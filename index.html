@@ -673,28 +673,27 @@
         </div>
       </div>
 
-      <!-- Linha: Categorias Favoritas + Próximas Transações + Últimas Transações -->
-      <div class="dash-bottom-row mb-4">
-        <!-- Categorias favoritas -->
-        <div id="dashCardFavCats" class="dash-fav-col">
-          <div id="dashFavCategories"></div>
+      <!-- Categorias favoritas -->
+      <div id="dashCardFavCats" class="dash-fav-col mb-4">
+        <div id="dashFavCategories"></div>
+      </div>
+
+      <!-- Próximas transações programadas -->
+      <div id="dashCardUpcoming" class="card mb-4">
+        <div class="card-header" style="gap:8px;flex-wrap:wrap">
+          <span class="card-title">Próximas Transações</span>
+          <span class="text-muted" style="font-size:.78rem">Próximos 10 dias</span>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('scheduled')">Ver programados</button>
         </div>
-        <!-- Próximas transações programadas -->
-        <div id="dashCardUpcoming" class="dash-tx-col card" style="display:none;padding:0;overflow:hidden">
-          <div class="card-header sc-upcoming-header" style="padding:14px 16px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <span class="card-title" id="dashUpcomingTitle">⏰ Próximas Transações</span>
-              <span id="dashUpcomingCount" style="font-size:.72rem;color:var(--muted)"></span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-              <span id="dashUpcomingTotal" class="badge badge-amber"></span>
-              
-            </div>
+        <div id="dashUpcomingWrap">
+          <div id="dashUpcomingList" style="padding:4px 0 2px 0">
+            <div class="text-muted" style="text-align:center;padding:18px;font-size:.83rem">Carregando...</div>
           </div>
-          <div id="dashUpcomingList" class="sc-upcoming-list"></div>
         </div>
-        <!-- Últimas transações -->
-        <div id="dashCardRecent" class="dash-tx-col card">
+      </div>
+
+      <!-- Últimas transações -->
+      <div id="dashCardRecent" class="dash-tx-col card mb-4">
           <div class="card-header" style="gap:8px;flex-wrap:wrap">
             <span class="card-title">Últimas Transações</span>
             <span id="dashPendingBadge" class="badge" style="background:var(--amber-lt,#fffbeb);color:var(--amber,#b45309);border:1px solid rgba(180,83,9,.18);display:none;white-space:nowrap">⏳ 0 pendentes</span>
@@ -707,7 +706,6 @@
             <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Ver todas</button>
           </div>
           <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody id="recentTxBody"><tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando...</td></tr></tbody></table></div>
-        </div>
       </div>
 
       <!-- Modal de customização do dashboard -->
