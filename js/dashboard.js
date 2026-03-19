@@ -31,13 +31,11 @@ async function loadDashboardRecent(memberIds = null){
   let q = famQ(
     sb.from('transactions')
       .select('*, status, accounts!transactions_account_id_fkey(name), categories(name,color)')
-  ).order('date', { ascending: false }).limit(20); // fetch more so filter doesn't leave empty list
+  ).order('date', { ascending: false }).limit(30);
 
   if (status) q = q.eq('status', status);
-  // Apply member filter
   const qFiltered = _applyDashMemberFilter(q, memberIds);
   if (qFiltered === null) {
-    // Filter active but no members match — show empty
     const body = document.getElementById('recentTxBody');
     if (body) body.innerHTML = '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Nenhuma transação para este filtro</td></tr>';
     return;
@@ -50,22 +48,51 @@ async function loadDashboardRecent(memberIds = null){
   const body = document.getElementById('recentTxBody');
   if (!body) return;
 
-  if (!recent?.length) {
+  const items = recent || [];
+  if (!items.length) {
     body.innerHTML = '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Sem transações</td></tr>';
     return;
   }
 
-  body.innerHTML = (recent || []).map(t => {
-    const isPend = (t.status || 'confirmed') === 'pending';
-    const rowStyle = isPend ? 'background:rgba(245,158,11,.10)' : '';
-    const badge = isPend ? '<span class="badge" style="margin-left:6px;background:rgba(245,158,11,.16);color:var(--amber,#b45309);border:1px solid rgba(180,83,9,.18);font-size:.65rem">⏳ pendente</span>' : '';
-    const clip = t.attachment_url ? ' <span title="Possui anexo" style="font-size:.85rem;opacity:.75">📎</span>' : '';
-    return `<tr class="tx-row-clickable" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')" style="cursor:pointer;${rowStyle}">
-      <td class="text-muted" style="white-space:nowrap">${fmtDate(t.date)}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${clip}${badge}</td>
-      <td>${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}28">${esc(t.categories.name)}</span>`:'—'}</td>
-      <td class="${t.amount>=0?'amount-pos':'amount-neg'}" style="white-space:nowrap">${fmt(t.amount)}</td>
-    </tr>`;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const byDate = {};
+  items.forEach(t => { (byDate[t.date] ||= []).push(t); });
+
+  const dateLabel = (date) => {
+    if (date === todayStr) return 'Hoje';
+    if (date === yesterdayStr) return 'Ontem';
+    return fmtDate(date);
+  };
+
+  body.innerHTML = Object.entries(byDate).map(([date, rows]) => {
+    const confirmedCount = rows.filter(t => (t.status || 'confirmed') !== 'pending').length;
+    const pendingCount = rows.length - confirmedCount;
+    const total = rows.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const badgeParts = [
+      `<span style="font-size:.7rem;color:var(--muted)">${rows.length} item${rows.length > 1 ? 's' : ''}</span>`
+    ];
+    if (pendingCount) badgeParts.push(`<span class="badge" style="background:rgba(245,158,11,.14);color:var(--amber,#b45309);border:1px solid rgba(180,83,9,.18);font-size:.64rem">⏳ ${pendingCount} pendente${pendingCount>1?'s':''}</span>`);
+    const totalColor = total === 0 ? 'var(--muted)' : (total > 0 ? 'var(--green,#16a34a)' : 'var(--red,#dc2626)');
+
+    const header = `<tr class="recent-date-group"><td colspan="4" style="padding:10px 10px 8px 10px;background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:.78rem;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.03em">${dateLabel(date)}</span><span style="font-size:.72rem;color:var(--muted)">${fmtDate(date)}</span>${badgeParts.join('')}</div><span style="font-size:.78rem;font-weight:800;color:${totalColor}">${fmt(total)}</span></div></td></tr>`;
+
+    const lines = rows.map(t => {
+      const isPend = (t.status || 'confirmed') === 'pending';
+      const rowStyle = isPend ? 'background:rgba(245,158,11,.10)' : '';
+      const badge = isPend ? '<span class="badge" style="margin-left:6px;background:rgba(245,158,11,.16);color:var(--amber,#b45309);border:1px solid rgba(180,83,9,.18);font-size:.65rem">⏳ pendente</span>' : '';
+      const clip = t.attachment_url ? ' <span title="Possui anexo" style="font-size:.85rem;opacity:.75">📎</span>' : '';
+      return `<tr class="tx-row-clickable" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')" style="cursor:pointer;${rowStyle}">
+        <td class="text-muted" style="white-space:nowrap">${fmtDate(t.date)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${clip}${badge}</td>
+        <td>${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}28">${esc(t.categories.name)}</span>`:'—'}</td>
+        <td class="${t.amount>=0?'amount-pos':'amount-neg'}" style="white-space:nowrap">${fmt(t.amount)}</td>
+      </tr>`;
+    }).join('');
+
+    return header + lines;
   }).join('');
 }
 
