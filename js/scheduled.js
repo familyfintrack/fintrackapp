@@ -525,12 +525,33 @@ function toggleScFinished() {
   if (arrow) arrow.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
+function _scheduledDatesInRange(sc, startDate, endDate) {
+  const dates = [];
+  if (!sc?.start_date) return dates;
+
+  const maxCount = Number(sc.end_count || 9999);
+  let cur = sc.start_date;
+  let count = 0;
+  let guard = 0;
+
+  while (cur && cur <= endDate && count < maxCount && guard++ < 800) {
+    if ((!sc.end_date || cur <= sc.end_date) && cur >= startDate) dates.push(cur);
+    count++;
+    if (sc.frequency === 'once') break;
+    const next = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
+    if (!next || next === cur) break;
+    cur = next;
+  }
+  return dates;
+}
+
 function renderUpcoming() {
   const today = new Date().toISOString().slice(0, 10);
   const limit = new Date(); limit.setDate(limit.getDate() + 10);
   const limitStr = limit.toISOString().slice(0, 10);
 
   const upcoming = [];
+  const seen = new Set();
   state.scheduled.forEach(sc => {
     if(sc.status === 'paused') return;
     const pendingDates=new Set(
@@ -543,13 +564,20 @@ function renderUpcoming() {
         .filter(o=>o.execution_status==='executed'||o.execution_status==='processing')
         .map(o=>o.scheduled_date)
     );
-    const occ=generateOccurrences(sc,30);
+    const occ = _scheduledDatesInRange(sc, today, limitStr);
     occ.forEach(date=>{
-      if(date>=today&&date<=limitStr&&!executedDates.has(date))
+      const key = `${sc.id}__${date}`;
+      if(!executedDates.has(date) && !seen.has(key)) {
+        seen.add(key);
         upcoming.push({sc,date,isPending:pendingDates.has(date)});
+      }
     });
     pendingDates.forEach(date=>{
-      if(!occ.includes(date)) upcoming.push({sc,date,isPending:true});
+      const key = `${sc.id}__${date}`;
+      if(!seen.has(key)) {
+        seen.add(key);
+        upcoming.push({sc,date,isPending:true});
+      }
     });
   });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
@@ -593,7 +621,7 @@ function renderUpcoming() {
     }, 0);
 
     const gid = 'upg_' + date.replace(/-/g,'');
-    const rows = items.map(({sc}) => {
+    const rows = items.map(({sc, isPending}) => {
       const isExp    = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
       const typeIcon = sc.type==='card_payment'?'💳':sc.type==='transfer'?'↔':isExp?'↑':'↓';
       const dest     = (sc.type==='transfer'||sc.type==='card_payment')
@@ -601,7 +629,7 @@ function renderUpcoming() {
       const catColor = sc.categories?.color || (isExp ? 'var(--red)' : 'var(--green)');
       const manualBadge = !sc.auto_register
         ? `<span class="sup-manual-badge">Manual</span>` : '';
-      const pendingBadge = u.isPending
+      const pendingBadge = isPending
         ? `<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>` : '';
       return `<div class="sup-item${isToday?' sup-item--today':''}">
         <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>

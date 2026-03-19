@@ -782,6 +782,33 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
     return acc + v;
   }, 0);
 
+
+  const childMap = {};
+  allCats.forEach(c => {
+    if (!c?.parent_id) return;
+    (childMap[c.parent_id] ||= []).push(c.id);
+  });
+
+  const _descendantIds = new Map();
+  const getDescendantIds = (catId) => {
+    if (_descendantIds.has(catId)) return _descendantIds.get(catId);
+    const direct = childMap[catId] || [];
+    const nested = direct.flatMap(id => getDescendantIds(id));
+    const all = [...direct, ...nested];
+    _descendantIds.set(catId, all);
+    return all;
+  };
+
+  const monthValueByCat = new Map();
+  const getMonthValueForCategory = (catId, includeDescendants = false) => {
+    const cacheKey = `${catId}__${includeDescendants ? 'all' : 'self'}`;
+    if (monthValueByCat.has(cacheKey)) return monthValueByCat.get(cacheKey);
+    const idsToSum = includeDescendants ? [catId, ...getDescendantIds(catId)] : [catId];
+    const value = idsToSum.reduce((acc, id) => acc + sumBrl(txsByCat[id] || []), 0);
+    monthValueByCat.set(cacheKey, value);
+    return value;
+  };
+
   // Inferir tipo pela categoria (DB) ou pelo sinal das transações
   const inferType = c => {
     if (c.type === 'receita') return 'income';
@@ -792,8 +819,8 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
 
   // Construir linha individual
   const renderRow = (c, isChild, isCtxOnly, isLast) => {
-    const ownTxs = txsByCat[c.id] || [];
-    const ownVal = sumBrl(ownTxs);
+    const includeDescendants = !isChild && !!(childMap[c.id]?.length);
+    const ownVal = getMonthValueForCategory(c.id, includeDescendants);
     const cType  = inferType(c);
     const base   = cType === 'expense' ? _lastDashExpense : _lastDashIncome;
     const pct    = base > 0 ? Math.abs(ownVal) / base * 100 : 0;
@@ -874,16 +901,14 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
     if (!rows.length) return '';
 
     // KPI da seção: total de todas as favoritas deste tipo
-    const secFavs = [...parentFavs, ...nfParents.flatMap(x => x.subs), ...orphans]
-      .filter(c => !covered.has(c.id) || !c.parent_id); // não duplicar
-    const sectionTotal = favCats
-      .filter(c => inferType(c) === typeKey && !c.parent_id)
-      .reduce((acc, c) => {
-        // incluir próprias txs + subcats (para o KPI da seção)
-        const subIds = allCats.filter(x => x.parent_id === c.id).map(x => x.id);
-        const allIds = [c.id, ...subIds];
-        return acc + allIds.reduce((a, id) => a + sumBrl(txsByCat[id] || []), 0);
-      }, 0);
+    const sectionRootIds = new Set();
+    parentFavs.forEach(c => sectionRootIds.add(c.id));
+    nfParents.forEach(({ p }) => sectionRootIds.add(p.id));
+    orphans.forEach(c => sectionRootIds.add(c.id));
+
+    const sectionTotal = [...sectionRootIds].reduce((acc, catId) => {
+      return acc + getMonthValueForCategory(catId, true);
+    }, 0);
     const base = typeKey === 'expense' ? _lastDashExpense : _lastDashIncome;
     const secPct = base > 0 ? Math.abs(sectionTotal) / base * 100 : 0;
 
