@@ -28,11 +28,8 @@ function dashFmt(value, currency='BRL'){
 
 function toggleDashUpcomingCard() {
   const listEl = document.getElementById('dashUpcomingList');
-  const arrow  = document.getElementById('dashUpcomingArrow');
   if (!listEl) return;
-  const open = listEl.style.display !== 'none';
-  listEl.style.display = open ? 'none' : '';
-  if (arrow) arrow.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+  listEl.style.display = '';
 }
 
 function _dashGenerateOccurrencesInRange(sc, startDate, endDate) {
