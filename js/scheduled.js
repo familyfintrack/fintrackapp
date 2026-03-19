@@ -543,19 +543,11 @@ function renderUpcoming() {
         .filter(o=>o.execution_status==='executed'||o.execution_status==='processing')
         .map(o=>o.scheduled_date)
     );
-    let cur = sc.start_date;
-    let count = 0;
-    const maxCount = sc.end_count || 999;
-    const endDate = sc.end_date || '2099-12-31';
-    while (cur && cur <= limitStr && count < maxCount && cur <= endDate) {
-      if (cur >= today && !executedDates.has(cur)) {
-        upcoming.push({ sc, date: cur, isPending: pendingDates.has(cur) });
-      }
-      count++;
-      if (sc.frequency === 'once') break;
-      cur = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
-      if (!cur) break;
-    }
+    const occ=generateOccurrences(sc,30);
+    occ.forEach(date=>{
+      if(date>=today&&date<=limitStr&&!executedDates.has(date))
+        upcoming.push({sc,date,isPending:pendingDates.has(date)});
+    });
     pendingDates.forEach(date=>{
       if(!occ.includes(date)) upcoming.push({sc,date,isPending:true});
     });
