@@ -26,183 +26,6 @@ function dashFmt(value, currency='BRL'){
   }
 }
 
-function toggleDashUpcomingCard() {
-  const listEl = document.getElementById('dashUpcomingList');
-  if (!listEl) return;
-  listEl.style.display = '';
-}
-
-function _dashGenerateOccurrencesInRange(sc, startDate, endDate) {
-  const out = [];
-  const maxCount = Number(sc.end_count || 999999);
-  const endCap = sc.end_date || '2099-12-31';
-  const hardEnd = endCap < endDate ? endCap : endDate;
-  let cur = sc.start_date;
-  let count = 0;
-  let guard = 0;
-  while (cur && cur <= hardEnd && count < maxCount && guard < 1500) {
-    if (cur >= startDate) out.push(cur);
-    count += 1;
-    guard += 1;
-    if (sc.frequency === 'once') break;
-    const next = typeof nextDate === 'function'
-      ? nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit)
-      : null;
-    if (!next || next <= cur) break;
-    cur = next;
-  }
-  return out;
-}
-
-function _dashFilterScheduledByMembers(list, memberIds) {
-  if (!memberIds) return list;
-  if (!memberIds.length) return [];
-  return (list || []).filter(sc => {
-    const single = sc.family_member_id ? [sc.family_member_id] : [];
-    const many = Array.isArray(sc.family_member_ids) ? sc.family_member_ids : [];
-    const set = new Set([...single, ...many].filter(Boolean));
-    if (!set.size) return false;
-    return memberIds.some(id => set.has(id));
-  });
-}
-
-async function loadDashboardUpcoming(memberIds = null) {
-  const card = document.getElementById('dashCardUpcoming');
-  const listEl = document.getElementById('dashUpcomingList');
-  const totalEl = document.getElementById('dashUpcomingTotal');
-  const cntEl = document.getElementById('dashUpcomingCount');
-  if (!card || !listEl) return;
-
-  const today = new Date().toISOString().slice(0, 10);
-  const limit = new Date();
-  limit.setDate(limit.getDate() + 10);
-  const limitStr = limit.toISOString().slice(0, 10);
-
-  try {
-    const { data, error } = await famQ(
-      sb.from('scheduled_transactions')
-        .select('*, accounts!scheduled_transactions_account_id_fkey(name,currency), categories(name,color), occurrences:scheduled_occurrences(id,scheduled_date,execution_status)')
-    );
-    if (error) throw error;
-
-    const scheduled = _dashFilterScheduledByMembers(data || [], memberIds);
-    const upcoming = [];
-
-    scheduled.forEach(sc => {
-      if (sc.status === 'paused') return;
-
-      const pendingDates = new Set(
-        (sc.occurrences || [])
-          .filter(o => (o.execution_status === 'pending' || o.execution_status === 'skipped') && o.scheduled_date >= today && o.scheduled_date <= limitStr)
-          .map(o => o.scheduled_date)
-      );
-      const executedDates = new Set(
-        (sc.occurrences || [])
-          .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing')
-          .map(o => o.scheduled_date)
-      );
-
-      const datesInRange = _dashGenerateOccurrencesInRange(sc, today, limitStr);
-      datesInRange.forEach(date => {
-        if (!executedDates.has(date)) upcoming.push({ sc, date, isPending: pendingDates.has(date) });
-      });
-      pendingDates.forEach(date => {
-        if (!datesInRange.includes(date) && !executedDates.has(date)) {
-          upcoming.push({ sc, date, isPending: true });
-        }
-      });
-    });
-
-    upcoming.sort((a, b) => a.date.localeCompare(b.date) || String(a.sc.description || '').localeCompare(String(b.sc.description || '')));
-
-    if (!upcoming.length) {
-      card.style.display = 'none';
-      return;
-    }
-
-    card.style.display = '';
-    if (cntEl) cntEl.textContent = upcoming.length + ' item' + (upcoming.length > 1 ? 's' : '');
-    if (totalEl) {
-      const tot = upcoming.reduce((s, { sc }) => {
-        const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
-        return s + (isExp ? -1 : 1) * Math.abs(Number(sc.amount || 0));
-      }, 0);
-      totalEl.textContent = (tot >= 0 ? '+' : '') + fmt(tot);
-      totalEl.className = 'badge ' + (tot >= 0 ? 'badge-green' : 'badge-red');
-    }
-
-    const byDate = {};
-    upcoming.forEach(item => {
-      (byDate[item.date] ||= []).push(item);
-    });
-
-    const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
-
-    listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
-      const isToday = date === today;
-      const isTomorrow = date === tomorrowStr;
-      const dow = DOW[new Date(date + 'T12:00:00').getDay()];
-      const gid = 'dashupg_' + date.replace(/-/g, '');
-      const dayTot = items.reduce((s, { sc }) => {
-        const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
-        return s + (isExp ? -1 : 1) * Math.abs(Number(sc.amount || 0));
-      }, 0);
-
-      const rows = items.map(({ sc, isPending }) => {
-        const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
-        const typeIcon = sc.type === 'card_payment' ? '💳' : sc.type === 'transfer' ? '↔' : isExp ? '↑' : '↓';
-        const dest = (sc.type === 'transfer' || sc.type === 'card_payment') ? state.accounts.find(a => a.id === sc.transfer_to_account_id) : null;
-        const catColor = sc.categories?.color || (isExp ? 'var(--red)' : 'var(--green)');
-        const manualBadge = !sc.auto_register ? `<span class="sup-manual-badge">Manual</span>` : '';
-        const pendingBadge = isPending ? `<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>` : '';
-        return `<div class="sup-item${isToday ? ' sup-item--today' : ''}">
-          <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
-          <div class="sup-body">
-            <div class="sup-desc">${esc(sc.description)}${manualBadge}${pendingBadge}</div>
-            <div class="sup-acct">${esc(sc.accounts?.name || '—')}${dest ? ` <span class="sup-arrow">→</span> ${esc(dest.name)}` : ''}</div>
-          </div>
-          <div class="sup-right">
-            <span class="sup-amt ${isExp ? 'neg' : 'pos'}">${isExp ? '−' : '+'}${fmt(Math.abs(Number(sc.amount || 0)))}</span>
-            <div class="sup-actions">
-              <button class="sup-ignore-btn" title="Ignorar" onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
-              <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-
-      const dayNum = new Date(date + 'T12:00:00').getDate();
-      const dayMon = new Date(date + 'T12:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
-      const dayPill = isToday
-        ? `<div class="sup-day-pill sup-day-pill--today"><span>Hoje</span></div>`
-        : isTomorrow
-        ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
-        : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
-
-      return `<div class="sup-group">
-        <div class="sup-group-hdr" onclick="toggleDashGroup('${gid}')">
-          <div class="sup-group-left">
-            ${dayPill}
-            <span class="sup-group-dow">${isToday ? 'Hoje' : isTomorrow ? 'Amanhã' : dow}</span>
-          </div>
-          <div class="sup-group-meta">
-            <span class="sup-day-total ${dayTot >= 0 ? 'pos' : 'neg'}">${dayTot >= 0 ? '+' : ''}${fmt(dayTot)}</span>
-            <span class="sup-day-count">${items.length}</span>
-            <svg class="sc-upcoming-day-arrow" id="dashGroupArrow-${gid}" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(-90deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-        </div>
-        <div class="sup-rows" id="dashGroupBody-${gid}" style="max-height:0;overflow:hidden;transition:max-height .25s ease">${rows}</div>
-      </div>`;
-    }).join('');
-  } catch (e) {
-    console.warn('[dashboard upcoming]', e?.message || e);
-    card.style.display = 'none';
-  }
-}
-
 async function loadDashboardRecent(memberIds = null){
   const status = document.getElementById('dashRecentStatus')?.value || '';
   let q = famQ(
@@ -389,12 +212,10 @@ async function loadDashboard(){
     // fail silently
   }
 
-  // Próximas transações programadas (próximos 10 dias)
-  await loadDashboardUpcoming(_dashMemberIds);
-
   // Recent transactions table (supports status filter)
   await loadDashboardRecent(_dashMemberIds);
-  if(typeof _renderDashFavCategories==='function') _renderDashFavCategories(income, expense);
+  if (typeof renderDashboardUpcoming === 'function') await renderDashboardUpcoming(_dashMemberIds);
+  if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
   await loadDashboardAutoRunSummary();
 
   // Render account balances grouped by account group
@@ -789,11 +610,11 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'accounts', label: 'Saldo por Conta',          icon: '🏦', sub: 'Saldo atual de cada conta',          el: 'dashCardAccounts' },
-  { id: 'charts',   label: 'Fluxo de Caixa e Gráficos',icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas', el: 'dashCardCharts'   },
-  { id: 'favcats',  label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',      el: 'dashCardFavCats'   },
-  { id: 'upcoming', label: 'Próximas Transações',       icon: '⏰', sub: 'Programados dos próximos 10 dias',      el: 'dashCardUpcoming'  },
-  { id: 'recent',   label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',      el: 'dashCardRecent'    },
+  { id: 'accounts', label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts' },
+  { id: 'charts',   label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'   },
+  { id: 'favcats',  label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'  },
+  { id: 'upcoming', label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming' },
+  { id: 'recent',   label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'   },
 ];
 
 function _dashGetPrefs() {
@@ -839,33 +660,6 @@ function _dashApplyPrefs(prefs) {
     const visible = prefs[c.id] !== false;
     el.style.display = visible ? '' : 'none';
   });
-
-  const row = document.querySelector('.dash-bottom-row');
-  if (!row) return;
-
-  const favVisible = prefs.favcats !== false;
-  const upVisible  = prefs.upcoming !== false;
-  const txVisible  = prefs.recent !== false;
-
-  if (window.innerWidth <= 900) {
-    row.style.gridTemplateColumns = '1fr';
-    return;
-  }
-  if (window.innerWidth <= 1100) {
-    if (favVisible && (upVisible || txVisible)) {
-      row.style.gridTemplateColumns = '300px 1fr';
-    } else if (upVisible && txVisible) {
-      row.style.gridTemplateColumns = '1fr 1fr';
-    } else {
-      row.style.gridTemplateColumns = '1fr';
-    }
-    return;
-  }
-
-  if (favVisible && upVisible && txVisible) row.style.gridTemplateColumns = '340px 1fr 1fr';
-  else if (favVisible && (upVisible || txVisible)) row.style.gridTemplateColumns = '340px 1fr';
-  else if (!favVisible && upVisible && txVisible) row.style.gridTemplateColumns = '1fr 1fr';
-  else row.style.gridTemplateColumns = '1fr';
 }
 
 function openDashCustomModal() {
@@ -915,7 +709,7 @@ let _lastDashIncome = 0, _lastDashExpense = 0;
 // ══════════════════════════════════════════════════════════════════
 // Dashboard: categorias favoritas — redesign completo
 // ══════════════════════════════════════════════════════════════════
-function _renderDashFavCategories(totalIncome, totalExpense) {
+async function _renderDashFavCategories(totalIncome, totalExpense) {
   _lastDashIncome  = totalIncome  != null ? totalIncome  : _lastDashIncome;
   _lastDashExpense = totalExpense != null ? totalExpense : _lastDashExpense;
 
@@ -960,13 +754,26 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
   const to   = `${y}-${mo}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
   const monthLabel = now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
-  // Índice de transações do mês por category_id
+  // Índice de transações confirmadas do mês por category_id
   const txsByCat = {};
-  (state.transactions || []).forEach(t => {
-    if (!t.category_id || t.is_transfer || t.date < from || t.date > to) return;
-    if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
-    txsByCat[t.category_id].push(t);
-  });
+  try {
+    let q = famQ(sb.from('transactions').select('category_id,date,amount,brl_amount,currency,is_transfer,status,family_member_id'))
+      .gte('date', from)
+      .lte('date', to)
+      .eq('status', 'confirmed');
+    const memberIds = _getDashMemberIds();
+    if (memberIds && memberIds.length > 0) q = q.in('family_member_id', memberIds);
+    else if (memberIds && memberIds.length === 0) q = null;
+    const { data: monthTx = [] } = q ? await q : { data: [] };
+    monthTx.forEach(t => {
+      const txDate = String(t.date || '').slice(0,10);
+      if (!t.category_id || t.is_transfer || txDate < from || txDate > to) return;
+      if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
+      txsByCat[t.category_id].push(t);
+    });
+  } catch (e) {
+    console.warn('[dash favcats monthTx]', e?.message || e);
+  }
 
   const sumBrl = txs => txs.reduce((acc, t) => {
     const v = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount) ?? 0;
@@ -975,8 +782,9 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
 
   // Inferir tipo pela categoria (DB) ou pelo sinal das transações
   const inferType = c => {
-    if (c.type === 'receita') return 'income';
-    if (c.type === 'despesa') return 'expense';
+    const rawType = String(c?.type || '').toLowerCase();
+    if (['receita','income','ganho','entrada'].includes(rawType)) return 'income';
+    if (['despesa','expense','gasto','saida','saída'].includes(rawType)) return 'expense';
     const txs = txsByCat[c.id] || [];
     return txs.length ? (sumBrl(txs) >= 0 ? 'income' : 'expense') : 'expense';
   };
@@ -1064,17 +872,12 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
 
     if (!rows.length) return '';
 
-    // KPI da seção: total de todas as favoritas deste tipo
-    const secFavs = [...parentFavs, ...nfParents.flatMap(x => x.subs), ...orphans]
-      .filter(c => !covered.has(c.id) || !c.parent_id); // não duplicar
-    const sectionTotal = favCats
-      .filter(c => inferType(c) === typeKey && !c.parent_id)
-      .reduce((acc, c) => {
-        // incluir próprias txs + subcats (para o KPI da seção)
-        const subIds = allCats.filter(x => x.parent_id === c.id).map(x => x.id);
-        const allIds = [c.id, ...subIds];
-        return acc + allIds.reduce((a, id) => a + sumBrl(txsByCat[id] || []), 0);
-      }, 0);
+    // KPI da seção: total de todas as categorias favoritas deste tipo, sem duplicar
+    const favIdsOfType = new Set(
+      favCats.filter(c => inferType(c) === typeKey).map(c => c.id)
+    );
+    const sectionTotal = Array.from(favIdsOfType)
+      .reduce((acc, id) => acc + sumBrl(txsByCat[id] || []), 0);
     const base = typeKey === 'expense' ? _lastDashExpense : _lastDashIncome;
     const secPct = base > 0 ? Math.abs(sectionTotal) / base * 100 : 0;
 
@@ -1112,4 +915,134 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
       ${incSec}
     </div>
   </div>`;
+}
+
+
+async function renderDashboardUpcoming(memberIds = null) {
+  const prefs = _dashGetPrefs();
+  _dashApplyPrefs(prefs);
+  const listEl = document.getElementById('dashUpcomingList');
+  const cardEl = document.getElementById('dashCardUpcoming');
+  if (!listEl || !cardEl) return;
+  if (prefs.upcoming === false) return;
+
+  if (!state.scheduled || !state.scheduled.length) {
+    try { if (typeof loadScheduled === 'function') await loadScheduled(); } catch(e) { console.warn('[dash upcoming loadScheduled]', e?.message || e); }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const limit = new Date();
+  limit.setDate(limit.getDate() + 10);
+  const limitStr = limit.toISOString().slice(0, 10);
+
+  const memberSet = Array.isArray(memberIds) && memberIds.length ? new Set(memberIds) : null;
+  const upcoming = [];
+
+  const pushOccurrence = (sc, date, isPending=false) => {
+    const scheduledMemberIds = [];
+    if (sc.family_member_id) scheduledMemberIds.push(sc.family_member_id);
+    if (Array.isArray(sc.family_member_ids)) scheduledMemberIds.push(...sc.family_member_ids.filter(Boolean));
+    const uniqueMembers = [...new Set(scheduledMemberIds)];
+    if (memberSet && uniqueMembers.length && !uniqueMembers.some(id => memberSet.has(id))) return;
+    if (memberSet && uniqueMembers.length === 0) return;
+    upcoming.push({ sc, date, isPending });
+  };
+
+  (state.scheduled || []).forEach(sc => {
+    if (sc.status === 'paused') return;
+    const pendingDates = new Set(
+      (sc.occurrences || [])
+        .filter(o => (o.execution_status === 'pending' || o.execution_status === 'skipped') && o.scheduled_date >= today && o.scheduled_date <= limitStr)
+        .map(o => o.scheduled_date)
+    );
+    const executedDates = new Set(
+      (sc.occurrences || [])
+        .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing')
+        .map(o => o.scheduled_date)
+    );
+
+    let cur = sc.start_date;
+    let count = 0;
+    const maxCount = sc.end_count || 999;
+    const endDate = sc.end_date || '2099-12-31';
+    while (cur && cur <= limitStr && count < maxCount && cur <= endDate) {
+      if (cur >= today && !executedDates.has(cur)) pushOccurrence(sc, cur, pendingDates.has(cur));
+      count++;
+      if (sc.frequency === 'once') break;
+      cur = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
+      if (!cur) break;
+    }
+    pendingDates.forEach(date => {
+      if (date >= today && date <= limitStr && !executedDates.has(date) && !upcoming.some(x => x.sc.id === sc.id && x.date === date)) {
+        pushOccurrence(sc, date, true);
+      }
+    });
+  });
+
+  upcoming.sort((a,b) => a.date.localeCompare(b.date) || String(a.sc.description||'').localeCompare(String(b.sc.description||'')));
+
+  if (!upcoming.length) {
+    listEl.innerHTML = '<div class="text-muted" style="text-align:center;padding:18px;font-size:.83rem">Sem programações para os próximos 10 dias.</div>';
+    return;
+  }
+
+  const byDate = {};
+  upcoming.forEach(u => { (byDate[u.date] ||= []).push(u); });
+  const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+
+  listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
+    const isToday = date === today;
+    const isTomorrow = date === tomorrowStr;
+    const dow = DOW[new Date(date+'T12:00:00').getDay()];
+    const dayTot = items.reduce((s,{sc}) => {
+      const isExp = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
+      return s + (isExp ? -1 : 1) * Math.abs(Number(sc.amount) || 0);
+    }, 0);
+    const rows = items.map(({sc,isPending}) => {
+      const isExp = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
+      const typeIcon = sc.type==='card_payment' ? '💳' : sc.type==='transfer' ? '↔' : isExp ? '↑' : '↓';
+      const dest = (sc.type==='transfer'||sc.type==='card_payment') ? (state.accounts || []).find(a => a.id === sc.transfer_to_account_id) : null;
+      const catColor = sc.categories?.color || (isExp ? 'var(--red)' : 'var(--green)');
+      const manualBadge = !sc.auto_register ? '<span class="sup-manual-badge">Manual</span>' : '';
+      const pendingBadge = isPending ? '<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>' : '';
+      return `<div class="sup-item${isToday?' sup-item--today':''}">
+        <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
+        <div class="sup-body">
+          <div class="sup-desc">${esc(sc.description)}${manualBadge}${pendingBadge}</div>
+          <div class="sup-acct">${esc(sc.accounts?.name||'—')}${dest?` <span class="sup-arrow">→</span> ${esc(dest.name)}`:''}</div>
+        </div>
+        <div class="sup-right">
+          <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(Number(sc.amount)||0))}</span>
+          <div class="sup-actions">
+            <button class="sup-ignore-btn" title="Ignorar" onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
+            <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const dayNum = new Date(date+'T12:00:00').getDate();
+    const dayMon = new Date(date+'T12:00:00').toLocaleString('pt-BR',{month:'short'}).replace('.','');
+    const dayPill = isToday
+      ? `<div class="sup-day-pill sup-day-pill--today"><span>Hoje</span></div>`
+      : isTomorrow
+      ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
+      : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
+
+    return `<div class="sup-group">
+      <div class="sup-group-hdr">
+        <div class="sup-group-left">
+          ${dayPill}
+          <span class="sup-group-dow">${dow}</span>
+        </div>
+        <div class="sup-group-meta">
+          <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
+          <span class="sup-day-count">${items.length}</span>
+        </div>
+      </div>
+      <div class="sup-rows">${rows}</div>
+    </div>`;
+  }).join('');
 }

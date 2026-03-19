@@ -543,29 +543,21 @@ function renderUpcoming() {
         .filter(o=>o.execution_status==='executed'||o.execution_status==='processing')
         .map(o=>o.scheduled_date)
     );
-    const occ = [];
-    const maxCount = Number(sc.end_count || 999999);
-    const endCap = sc.end_date || '2099-12-31';
-    const hardEnd = endCap < limitStr ? endCap : limitStr;
     let cur = sc.start_date;
     let count = 0;
-    let guard = 0;
-    while (cur && cur <= hardEnd && count < maxCount && guard < 1500) {
-      if (cur >= today) occ.push(cur);
-      count += 1;
-      guard += 1;
-      if (sc.frequency === 'once') break;
-      const next = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
-      if (!next || next <= cur) break;
-      cur = next;
-    }
-    occ.forEach(date => {
-      if (date >= today && date <= limitStr && !executedDates.has(date)) {
-        upcoming.push({ sc, date, isPending: pendingDates.has(date) });
+    const maxCount = sc.end_count || 999;
+    const endDate = sc.end_date || '2099-12-31';
+    while (cur && cur <= limitStr && count < maxCount && cur <= endDate) {
+      if (cur >= today && !executedDates.has(cur)) {
+        upcoming.push({ sc, date: cur, isPending: pendingDates.has(cur) });
       }
-    });
-    pendingDates.forEach(date => {
-      if (!occ.includes(date) && !executedDates.has(date)) upcoming.push({ sc, date, isPending: true });
+      count++;
+      if (sc.frequency === 'once') break;
+      cur = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
+      if (!cur) break;
+    }
+    pendingDates.forEach(date=>{
+      if(!occ.includes(date)) upcoming.push({sc,date,isPending:true});
     });
   });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
@@ -609,7 +601,7 @@ function renderUpcoming() {
     }, 0);
 
     const gid = 'upg_' + date.replace(/-/g,'');
-    const rows = items.map(({sc,isPending}) => {
+    const rows = items.map(({sc, isPending}) => {
       const isExp    = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
       const typeIcon = sc.type==='card_payment'?'💳':sc.type==='transfer'?'↔':isExp?'↑':'↓';
       const dest     = (sc.type==='transfer'||sc.type==='card_payment')
