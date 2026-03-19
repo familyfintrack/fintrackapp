@@ -26,6 +26,186 @@ function dashFmt(value, currency='BRL'){
   }
 }
 
+function toggleDashUpcomingCard() {
+  const listEl = document.getElementById('dashUpcomingList');
+  const arrow  = document.getElementById('dashUpcomingArrow');
+  if (!listEl) return;
+  const open = listEl.style.display !== 'none';
+  listEl.style.display = open ? 'none' : '';
+  if (arrow) arrow.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+function _dashGenerateOccurrencesInRange(sc, startDate, endDate) {
+  const out = [];
+  const maxCount = Number(sc.end_count || 999999);
+  const endCap = sc.end_date || '2099-12-31';
+  const hardEnd = endCap < endDate ? endCap : endDate;
+  let cur = sc.start_date;
+  let count = 0;
+  let guard = 0;
+  while (cur && cur <= hardEnd && count < maxCount && guard < 1500) {
+    if (cur >= startDate) out.push(cur);
+    count += 1;
+    guard += 1;
+    if (sc.frequency === 'once') break;
+    const next = typeof nextDate === 'function'
+      ? nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit)
+      : null;
+    if (!next || next <= cur) break;
+    cur = next;
+  }
+  return out;
+}
+
+function _dashFilterScheduledByMembers(list, memberIds) {
+  if (!memberIds) return list;
+  if (!memberIds.length) return [];
+  return (list || []).filter(sc => {
+    const single = sc.family_member_id ? [sc.family_member_id] : [];
+    const many = Array.isArray(sc.family_member_ids) ? sc.family_member_ids : [];
+    const set = new Set([...single, ...many].filter(Boolean));
+    if (!set.size) return false;
+    return memberIds.some(id => set.has(id));
+  });
+}
+
+async function loadDashboardUpcoming(memberIds = null) {
+  const card = document.getElementById('dashCardUpcoming');
+  const listEl = document.getElementById('dashUpcomingList');
+  const totalEl = document.getElementById('dashUpcomingTotal');
+  const cntEl = document.getElementById('dashUpcomingCount');
+  if (!card || !listEl) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const limit = new Date();
+  limit.setDate(limit.getDate() + 10);
+  const limitStr = limit.toISOString().slice(0, 10);
+
+  try {
+    const { data, error } = await famQ(
+      sb.from('scheduled_transactions')
+        .select('*, accounts!scheduled_transactions_account_id_fkey(name,currency), categories(name,color), occurrences:scheduled_occurrences(id,scheduled_date,execution_status)')
+    );
+    if (error) throw error;
+
+    const scheduled = _dashFilterScheduledByMembers(data || [], memberIds);
+    const upcoming = [];
+
+    scheduled.forEach(sc => {
+      if (sc.status === 'paused') return;
+
+      const pendingDates = new Set(
+        (sc.occurrences || [])
+          .filter(o => (o.execution_status === 'pending' || o.execution_status === 'skipped') && o.scheduled_date >= today && o.scheduled_date <= limitStr)
+          .map(o => o.scheduled_date)
+      );
+      const executedDates = new Set(
+        (sc.occurrences || [])
+          .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing')
+          .map(o => o.scheduled_date)
+      );
+
+      const datesInRange = _dashGenerateOccurrencesInRange(sc, today, limitStr);
+      datesInRange.forEach(date => {
+        if (!executedDates.has(date)) upcoming.push({ sc, date, isPending: pendingDates.has(date) });
+      });
+      pendingDates.forEach(date => {
+        if (!datesInRange.includes(date) && !executedDates.has(date)) {
+          upcoming.push({ sc, date, isPending: true });
+        }
+      });
+    });
+
+    upcoming.sort((a, b) => a.date.localeCompare(b.date) || String(a.sc.description || '').localeCompare(String(b.sc.description || '')));
+
+    if (!upcoming.length) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = '';
+    if (cntEl) cntEl.textContent = upcoming.length + ' item' + (upcoming.length > 1 ? 's' : '');
+    if (totalEl) {
+      const tot = upcoming.reduce((s, { sc }) => {
+        const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+        return s + (isExp ? -1 : 1) * Math.abs(Number(sc.amount || 0));
+      }, 0);
+      totalEl.textContent = (tot >= 0 ? '+' : '') + fmt(tot);
+      totalEl.className = 'badge ' + (tot >= 0 ? 'badge-green' : 'badge-red');
+    }
+
+    const byDate = {};
+    upcoming.forEach(item => {
+      (byDate[item.date] ||= []).push(item);
+    });
+
+    const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
+      const isToday = date === today;
+      const isTomorrow = date === tomorrowStr;
+      const dow = DOW[new Date(date + 'T12:00:00').getDay()];
+      const gid = 'dashupg_' + date.replace(/-/g, '');
+      const dayTot = items.reduce((s, { sc }) => {
+        const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+        return s + (isExp ? -1 : 1) * Math.abs(Number(sc.amount || 0));
+      }, 0);
+
+      const rows = items.map(({ sc, isPending }) => {
+        const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+        const typeIcon = sc.type === 'card_payment' ? '💳' : sc.type === 'transfer' ? '↔' : isExp ? '↑' : '↓';
+        const dest = (sc.type === 'transfer' || sc.type === 'card_payment') ? state.accounts.find(a => a.id === sc.transfer_to_account_id) : null;
+        const catColor = sc.categories?.color || (isExp ? 'var(--red)' : 'var(--green)');
+        const manualBadge = !sc.auto_register ? `<span class="sup-manual-badge">Manual</span>` : '';
+        const pendingBadge = isPending ? `<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>` : '';
+        return `<div class="sup-item${isToday ? ' sup-item--today' : ''}">
+          <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
+          <div class="sup-body">
+            <div class="sup-desc">${esc(sc.description)}${manualBadge}${pendingBadge}</div>
+            <div class="sup-acct">${esc(sc.accounts?.name || '—')}${dest ? ` <span class="sup-arrow">→</span> ${esc(dest.name)}` : ''}</div>
+          </div>
+          <div class="sup-right">
+            <span class="sup-amt ${isExp ? 'neg' : 'pos'}">${isExp ? '−' : '+'}${fmt(Math.abs(Number(sc.amount || 0)))}</span>
+            <div class="sup-actions">
+              <button class="sup-ignore-btn" title="Ignorar" onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
+              <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      const dayNum = new Date(date + 'T12:00:00').getDate();
+      const dayMon = new Date(date + 'T12:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+      const dayPill = isToday
+        ? `<div class="sup-day-pill sup-day-pill--today"><span>Hoje</span></div>`
+        : isTomorrow
+        ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
+        : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
+
+      return `<div class="sup-group">
+        <div class="sup-group-hdr" onclick="toggleDashGroup('${gid}')">
+          <div class="sup-group-left">
+            ${dayPill}
+            <span class="sup-group-dow">${isToday ? 'Hoje' : isTomorrow ? 'Amanhã' : dow}</span>
+          </div>
+          <div class="sup-group-meta">
+            <span class="sup-day-total ${dayTot >= 0 ? 'pos' : 'neg'}">${dayTot >= 0 ? '+' : ''}${fmt(dayTot)}</span>
+            <span class="sup-day-count">${items.length}</span>
+            <svg class="sc-upcoming-day-arrow" id="dashGroupArrow-${gid}" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(-90deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="sup-rows" id="dashGroupBody-${gid}" style="max-height:0;overflow:hidden;transition:max-height .25s ease">${rows}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.warn('[dashboard upcoming]', e?.message || e);
+    card.style.display = 'none';
+  }
+}
+
 async function loadDashboardRecent(memberIds = null){
   const status = document.getElementById('dashRecentStatus')?.value || '';
   let q = famQ(
@@ -211,6 +391,9 @@ async function loadDashboard(){
   } catch(e) {
     // fail silently
   }
+
+  // Próximas transações programadas (próximos 10 dias)
+  await loadDashboardUpcoming(_dashMemberIds);
 
   // Recent transactions table (supports status filter)
   await loadDashboardRecent(_dashMemberIds);
@@ -611,8 +794,9 @@ const _DASH_PREFS_KEY = () =>
 const _DASH_CARDS = [
   { id: 'accounts', label: 'Saldo por Conta',          icon: '🏦', sub: 'Saldo atual de cada conta',          el: 'dashCardAccounts' },
   { id: 'charts',   label: 'Fluxo de Caixa e Gráficos',icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas', el: 'dashCardCharts'   },
-  { id: 'favcats',  label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',   el: 'dashCardFavCats'  },
-  { id: 'recent',   label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',   el: 'dashCardRecent'   },
+  { id: 'favcats',  label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',      el: 'dashCardFavCats'   },
+  { id: 'upcoming', label: 'Próximas Transações',       icon: '⏰', sub: 'Programados dos próximos 10 dias',      el: 'dashCardUpcoming'  },
+  { id: 'recent',   label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',      el: 'dashCardRecent'    },
 ];
 
 function _dashGetPrefs() {
@@ -658,23 +842,33 @@ function _dashApplyPrefs(prefs) {
     const visible = prefs[c.id] !== false;
     el.style.display = visible ? '' : 'none';
   });
-  // Se favcats oculto → a coluna esquerda fica vazia → esconder o gap
-  const favCol = document.getElementById('dashCardFavCats');
-  const txCol  = document.getElementById('dashCardRecent');
-  const row    = favCol?.closest('.dash-bottom-row');
-  if (row && favCol && txCol) {
-    const favVisible = prefs.favcats !== false;
-    const txVisible  = prefs.recent  !== false;
-    if (!favVisible && txVisible) {
-      row.style.gridTemplateColumns = '1fr';
-    } else if (favVisible && txVisible) {
-      row.style.gridTemplateColumns = '';
-    } else if (favVisible && !txVisible) {
-      row.style.gridTemplateColumns = '340px';
+
+  const row = document.querySelector('.dash-bottom-row');
+  if (!row) return;
+
+  const favVisible = prefs.favcats !== false;
+  const upVisible  = prefs.upcoming !== false;
+  const txVisible  = prefs.recent !== false;
+
+  if (window.innerWidth <= 900) {
+    row.style.gridTemplateColumns = '1fr';
+    return;
+  }
+  if (window.innerWidth <= 1100) {
+    if (favVisible && (upVisible || txVisible)) {
+      row.style.gridTemplateColumns = '300px 1fr';
+    } else if (upVisible && txVisible) {
+      row.style.gridTemplateColumns = '1fr 1fr';
     } else {
       row.style.gridTemplateColumns = '1fr';
     }
+    return;
   }
+
+  if (favVisible && upVisible && txVisible) row.style.gridTemplateColumns = '340px 1fr 1fr';
+  else if (favVisible && (upVisible || txVisible)) row.style.gridTemplateColumns = '340px 1fr';
+  else if (!favVisible && upVisible && txVisible) row.style.gridTemplateColumns = '1fr 1fr';
+  else row.style.gridTemplateColumns = '1fr';
 }
 
 function openDashCustomModal() {
@@ -724,7 +918,7 @@ let _lastDashIncome = 0, _lastDashExpense = 0;
 // ══════════════════════════════════════════════════════════════════
 // Dashboard: categorias favoritas — redesign completo
 // ══════════════════════════════════════════════════════════════════
-async function _renderDashFavCategories(totalIncome, totalExpense) {
+function _renderDashFavCategories(totalIncome, totalExpense) {
   _lastDashIncome  = totalIncome  != null ? totalIncome  : _lastDashIncome;
   _lastDashExpense = totalExpense != null ? totalExpense : _lastDashExpense;
 
@@ -769,41 +963,13 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
   const to   = `${y}-${mo}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
   const monthLabel = now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
-  // Buscar SEMPRE as transações confirmadas do mês no banco.
-  // O dashboard não pode depender de state.transactions, pois esse array pode
-  // conter apenas a página/filtro atual da tela de transações.
+  // Índice de transações do mês por category_id
   const txsByCat = {};
-  try {
-    let q = famQ(
-      sb.from('transactions')
-        .select('category_id,amount,brl_amount,currency,is_transfer,date,status,family_member_id,family_member_ids')
-    )
-      .gte('date', from)
-      .lte('date', to)
-      .eq('status', 'confirmed');
-
-    const memberIds = typeof _getDashMemberIds === 'function' ? _getDashMemberIds() : null;
-    if (memberIds && memberIds.length > 0) {
-      const orClauses = memberIds.map(id => `family_member_id.eq.${id},family_member_ids.cs.{${id}}`).join(',');
-      q = q.or(orClauses);
-    }
-
-    const { data: monthTxs, error: monthErr } = await q;
-    if (monthErr) throw monthErr;
-
-    (monthTxs || []).forEach(t => {
-      if (!t.category_id || t.is_transfer || t.date < from || t.date > to) return;
-      if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
-      txsByCat[t.category_id].push(t);
-    });
-  } catch (e) {
-    console.warn('[dashboard favcats] month tx fetch failed, using state.transactions fallback:', e?.message || e);
-    (state.transactions || []).forEach(t => {
-      if (!t.category_id || t.is_transfer || t.date < from || t.date > to || t.status === 'pending') return;
-      if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
-      txsByCat[t.category_id].push(t);
-    });
-  }
+  (state.transactions || []).forEach(t => {
+    if (!t.category_id || t.is_transfer || t.date < from || t.date > to) return;
+    if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
+    txsByCat[t.category_id].push(t);
+  });
 
   const sumBrl = txs => txs.reduce((acc, t) => {
     const v = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount) ?? 0;
@@ -818,40 +984,17 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
     return txs.length ? (sumBrl(txs) >= 0 ? 'income' : 'expense') : 'expense';
   };
 
-  const childMap = {};
-  allCats.forEach(c => {
-    if (!c.parent_id) return;
-    if (!childMap[c.parent_id]) childMap[c.parent_id] = [];
-    childMap[c.parent_id].push(c.id);
-  });
-
-  const subtreeIdsCache = {};
-  const getSubtreeIds = (catId) => {
-    if (subtreeIdsCache[catId]) return subtreeIdsCache[catId];
-    const ids = [catId];
-    (childMap[catId] || []).forEach(childId => ids.push(...getSubtreeIds(childId)));
-    subtreeIdsCache[catId] = [...new Set(ids)];
-    return subtreeIdsCache[catId];
-  };
-
-  const totalByCatCache = {};
-  const totalForCategory = (catId) => {
-    if (Object.prototype.hasOwnProperty.call(totalByCatCache, catId)) return totalByCatCache[catId];
-    const total = getSubtreeIds(catId).reduce((acc, id) => acc + sumBrl(txsByCat[id] || []), 0);
-    totalByCatCache[catId] = total;
-    return total;
-  };
-
   // Construir linha individual
   const renderRow = (c, isChild, isCtxOnly, isLast) => {
-    const rowVal = totalForCategory(c.id);
+    const ownTxs = txsByCat[c.id] || [];
+    const ownVal = sumBrl(ownTxs);
     const cType  = inferType(c);
     const base   = cType === 'expense' ? _lastDashExpense : _lastDashIncome;
-    const pct    = base > 0 ? Math.abs(rowVal) / base * 100 : 0;
+    const pct    = base > 0 ? Math.abs(ownVal) / base * 100 : 0;
     const barW   = Math.min(pct, 100).toFixed(1);
     const barClr = cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)';
-    const valClr = rowVal === 0 ? 'var(--muted)' : (cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)');
-    const valStr = rowVal === 0 ? '—' : (rowVal > 0 ? '+' : '') + fmt(rowVal, 'BRL');
+    const valClr = ownVal === 0 ? 'var(--muted)' : (cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)');
+    const valStr = ownVal === 0 ? '—' : (ownVal > 0 ? '+' : '') + fmt(ownVal, 'BRL');
     const pctStr = pct >= 0.1 ? pct.toFixed(1) + '%' : (pct > 0 ? '<0.1%' : '—');
     const navAction = `onclick="_openDashMonthTx('${cType==='expense'?'expense':'income'}',null)"`;
 
@@ -860,7 +1003,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
       return `<div class="dfav-row dfav-row--ctx">
         <span class="dfav-icon">${c.icon||'📦'}</span>
         <span class="dfav-name dfav-name--ctx">${esc(c.name)}</span>
-        ${rowVal !== 0 ? `<span class="dfav-val dfav-val--muted">${fmt(Math.abs(rowVal),'BRL')}</span>` : ''}
+        ${ownVal !== 0 ? `<span class="dfav-val dfav-val--muted">${fmt(Math.abs(ownVal),'BRL')}</span>` : ''}
       </div>`;
     }
 
@@ -925,11 +1068,16 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
     if (!rows.length) return '';
 
     // KPI da seção: total de todas as favoritas deste tipo
-    const sectionTotal = [
-      ...parentFavs.map(c => totalForCategory(c.id)),
-      ...nfParents.flatMap(x => x.subs.map(c => totalForCategory(c.id))),
-      ...orphans.map(c => totalForCategory(c.id))
-    ].reduce((acc, v) => acc + v, 0);
+    const secFavs = [...parentFavs, ...nfParents.flatMap(x => x.subs), ...orphans]
+      .filter(c => !covered.has(c.id) || !c.parent_id); // não duplicar
+    const sectionTotal = favCats
+      .filter(c => inferType(c) === typeKey && !c.parent_id)
+      .reduce((acc, c) => {
+        // incluir próprias txs + subcats (para o KPI da seção)
+        const subIds = allCats.filter(x => x.parent_id === c.id).map(x => x.id);
+        const allIds = [c.id, ...subIds];
+        return acc + allIds.reduce((a, id) => a + sumBrl(txsByCat[id] || []), 0);
+      }, 0);
     const base = typeKey === 'expense' ? _lastDashExpense : _lastDashIncome;
     const secPct = base > 0 ? Math.abs(sectionTotal) / base * 100 : 0;
 
