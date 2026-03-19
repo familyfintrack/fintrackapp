@@ -13,8 +13,8 @@ async function toggleFamilyFeature(familyId, key, enabled) {
   await saveAppSetting(key, enabled);
   toast(enabled ? '✓ Módulo ativado' : 'Módulo desativado', 'success');
 
-  if (key.startsWith('prices_enabled_'))  { try { await applyPricesFeature?.();  } catch {} }
-  if (key.startsWith('grocery_enabled_')) { try { await applyGroceryFeature?.(); } catch {} }
+  if (key.startsWith('prices_enabled_'))      { try { await applyPricesFeature?.();      } catch {} }
+  if (key.startsWith('grocery_enabled_'))     { try { await applyGroceryFeature?.();     } catch {} }
   if (key.startsWith('investments_enabled_')) { try { await applyInvestmentsFeature?.(); } catch {} }
   await loadFamiliesList();
 }
@@ -24,7 +24,8 @@ async function _loadFamilyFeatures(families) {
   window._familyFeaturesCache = window._familyFeaturesCache || {};
   const keys = [];
   families.forEach(f => {
-    keys.push('prices_enabled_'+f.id, 'grocery_enabled_'+f.id, 'investments_enabled_'+f.id,
+    keys.push('prices_enabled_'+f.id, 'grocery_enabled_'+f.id,
+              'investments_enabled_'+f.id,
               'backup_enabled_'+f.id, 'snapshot_enabled_'+f.id);
   });
   try {
