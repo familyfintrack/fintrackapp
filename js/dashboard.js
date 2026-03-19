@@ -724,7 +724,7 @@ let _lastDashIncome = 0, _lastDashExpense = 0;
 // ══════════════════════════════════════════════════════════════════
 // Dashboard: categorias favoritas — redesign completo
 // ══════════════════════════════════════════════════════════════════
-function _renderDashFavCategories(totalIncome, totalExpense) {
+async function _renderDashFavCategories(totalIncome, totalExpense) {
   _lastDashIncome  = totalIncome  != null ? totalIncome  : _lastDashIncome;
   _lastDashExpense = totalExpense != null ? totalExpense : _lastDashExpense;
 
@@ -769,45 +769,46 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
   const to   = `${y}-${mo}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
   const monthLabel = now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
-  // Índice de transações do mês por category_id
+  // Buscar SEMPRE as transações confirmadas do mês no banco.
+  // O dashboard não pode depender de state.transactions, pois esse array pode
+  // conter apenas a página/filtro atual da tela de transações.
   const txsByCat = {};
-  (state.transactions || []).forEach(t => {
-    if (!t.category_id || t.is_transfer || t.date < from || t.date > to) return;
-    if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
-    txsByCat[t.category_id].push(t);
-  });
+  try {
+    let q = famQ(
+      sb.from('transactions')
+        .select('category_id,amount,brl_amount,currency,is_transfer,date,status,family_member_id,family_member_ids')
+    )
+      .gte('date', from)
+      .lte('date', to)
+      .eq('status', 'confirmed');
+
+    const memberIds = typeof _getDashMemberIds === 'function' ? _getDashMemberIds() : null;
+    if (memberIds && memberIds.length > 0) {
+      const orClauses = memberIds.map(id => `family_member_id.eq.${id},family_member_ids.cs.{${id}}`).join(',');
+      q = q.or(orClauses);
+    }
+
+    const { data: monthTxs, error: monthErr } = await q;
+    if (monthErr) throw monthErr;
+
+    (monthTxs || []).forEach(t => {
+      if (!t.category_id || t.is_transfer || t.date < from || t.date > to) return;
+      if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
+      txsByCat[t.category_id].push(t);
+    });
+  } catch (e) {
+    console.warn('[dashboard favcats] month tx fetch failed, using state.transactions fallback:', e?.message || e);
+    (state.transactions || []).forEach(t => {
+      if (!t.category_id || t.is_transfer || t.date < from || t.date > to || t.status === 'pending') return;
+      if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
+      txsByCat[t.category_id].push(t);
+    });
+  }
 
   const sumBrl = txs => txs.reduce((acc, t) => {
     const v = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount) ?? 0;
     return acc + v;
   }, 0);
-
-
-  const childMap = {};
-  allCats.forEach(c => {
-    if (!c?.parent_id) return;
-    (childMap[c.parent_id] ||= []).push(c.id);
-  });
-
-  const _descendantIds = new Map();
-  const getDescendantIds = (catId) => {
-    if (_descendantIds.has(catId)) return _descendantIds.get(catId);
-    const direct = childMap[catId] || [];
-    const nested = direct.flatMap(id => getDescendantIds(id));
-    const all = [...direct, ...nested];
-    _descendantIds.set(catId, all);
-    return all;
-  };
-
-  const monthValueByCat = new Map();
-  const getMonthValueForCategory = (catId, includeDescendants = false) => {
-    const cacheKey = `${catId}__${includeDescendants ? 'all' : 'self'}`;
-    if (monthValueByCat.has(cacheKey)) return monthValueByCat.get(cacheKey);
-    const idsToSum = includeDescendants ? [catId, ...getDescendantIds(catId)] : [catId];
-    const value = idsToSum.reduce((acc, id) => acc + sumBrl(txsByCat[id] || []), 0);
-    monthValueByCat.set(cacheKey, value);
-    return value;
-  };
 
   // Inferir tipo pela categoria (DB) ou pelo sinal das transações
   const inferType = c => {
@@ -817,17 +818,40 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
     return txs.length ? (sumBrl(txs) >= 0 ? 'income' : 'expense') : 'expense';
   };
 
+  const childMap = {};
+  allCats.forEach(c => {
+    if (!c.parent_id) return;
+    if (!childMap[c.parent_id]) childMap[c.parent_id] = [];
+    childMap[c.parent_id].push(c.id);
+  });
+
+  const subtreeIdsCache = {};
+  const getSubtreeIds = (catId) => {
+    if (subtreeIdsCache[catId]) return subtreeIdsCache[catId];
+    const ids = [catId];
+    (childMap[catId] || []).forEach(childId => ids.push(...getSubtreeIds(childId)));
+    subtreeIdsCache[catId] = [...new Set(ids)];
+    return subtreeIdsCache[catId];
+  };
+
+  const totalByCatCache = {};
+  const totalForCategory = (catId) => {
+    if (Object.prototype.hasOwnProperty.call(totalByCatCache, catId)) return totalByCatCache[catId];
+    const total = getSubtreeIds(catId).reduce((acc, id) => acc + sumBrl(txsByCat[id] || []), 0);
+    totalByCatCache[catId] = total;
+    return total;
+  };
+
   // Construir linha individual
   const renderRow = (c, isChild, isCtxOnly, isLast) => {
-    const includeDescendants = !isChild && !!(childMap[c.id]?.length);
-    const ownVal = getMonthValueForCategory(c.id, includeDescendants);
+    const rowVal = totalForCategory(c.id);
     const cType  = inferType(c);
     const base   = cType === 'expense' ? _lastDashExpense : _lastDashIncome;
-    const pct    = base > 0 ? Math.abs(ownVal) / base * 100 : 0;
+    const pct    = base > 0 ? Math.abs(rowVal) / base * 100 : 0;
     const barW   = Math.min(pct, 100).toFixed(1);
     const barClr = cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)';
-    const valClr = ownVal === 0 ? 'var(--muted)' : (cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)');
-    const valStr = ownVal === 0 ? '—' : (ownVal > 0 ? '+' : '') + fmt(ownVal, 'BRL');
+    const valClr = rowVal === 0 ? 'var(--muted)' : (cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)');
+    const valStr = rowVal === 0 ? '—' : (rowVal > 0 ? '+' : '') + fmt(rowVal, 'BRL');
     const pctStr = pct >= 0.1 ? pct.toFixed(1) + '%' : (pct > 0 ? '<0.1%' : '—');
     const navAction = `onclick="_openDashMonthTx('${cType==='expense'?'expense':'income'}',null)"`;
 
@@ -836,7 +860,7 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
       return `<div class="dfav-row dfav-row--ctx">
         <span class="dfav-icon">${c.icon||'📦'}</span>
         <span class="dfav-name dfav-name--ctx">${esc(c.name)}</span>
-        ${ownVal !== 0 ? `<span class="dfav-val dfav-val--muted">${fmt(Math.abs(ownVal),'BRL')}</span>` : ''}
+        ${rowVal !== 0 ? `<span class="dfav-val dfav-val--muted">${fmt(Math.abs(rowVal),'BRL')}</span>` : ''}
       </div>`;
     }
 
@@ -901,14 +925,11 @@ function _renderDashFavCategories(totalIncome, totalExpense) {
     if (!rows.length) return '';
 
     // KPI da seção: total de todas as favoritas deste tipo
-    const sectionRootIds = new Set();
-    parentFavs.forEach(c => sectionRootIds.add(c.id));
-    nfParents.forEach(({ p }) => sectionRootIds.add(p.id));
-    orphans.forEach(c => sectionRootIds.add(c.id));
-
-    const sectionTotal = [...sectionRootIds].reduce((acc, catId) => {
-      return acc + getMonthValueForCategory(catId, true);
-    }, 0);
+    const sectionTotal = [
+      ...parentFavs.map(c => totalForCategory(c.id)),
+      ...nfParents.flatMap(x => x.subs.map(c => totalForCategory(c.id))),
+      ...orphans.map(c => totalForCategory(c.id))
+    ].reduce((acc, v) => acc + v, 0);
     const base = typeKey === 'expense' ? _lastDashExpense : _lastDashIncome;
     const secPct = base > 0 ? Math.abs(sectionTotal) / base * 100 : 0;
 

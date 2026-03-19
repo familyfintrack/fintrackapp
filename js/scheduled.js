@@ -232,6 +232,29 @@ function generateOccurrences(sc, limit = 12) {
   return dates;
 }
 
+
+function generateOccurrencesBetween(sc, startDate, endDate, hardLimit = 400) {
+  const dates = [];
+  if (!sc?.start_date || !startDate || !endDate || startDate > endDate) return dates;
+
+  const maxCount = sc.end_count || 999999;
+  const finalDate = sc.end_date && sc.end_date < endDate ? sc.end_date : endDate;
+
+  let cur = sc.start_date;
+  let count = 0;
+  let guard = 0;
+  while (count < maxCount && cur <= finalDate && guard < hardLimit) {
+    if (cur >= startDate) dates.push(cur);
+    count++;
+    if (sc.frequency === 'once' || count >= maxCount || cur >= finalDate) break;
+    const next = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
+    if (!next || next <= cur) break;
+    cur = next;
+    guard++;
+  }
+  return dates;
+}
+
 function getNextOccurrence(sc) {
   const today = new Date().toISOString().slice(0, 10);
   const registered = (sc.occurrences || []).map(o => o.scheduled_date);
@@ -525,33 +548,12 @@ function toggleScFinished() {
   if (arrow) arrow.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
-function _scheduledDatesInRange(sc, startDate, endDate) {
-  const dates = [];
-  if (!sc?.start_date) return dates;
-
-  const maxCount = Number(sc.end_count || 9999);
-  let cur = sc.start_date;
-  let count = 0;
-  let guard = 0;
-
-  while (cur && cur <= endDate && count < maxCount && guard++ < 800) {
-    if ((!sc.end_date || cur <= sc.end_date) && cur >= startDate) dates.push(cur);
-    count++;
-    if (sc.frequency === 'once') break;
-    const next = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
-    if (!next || next === cur) break;
-    cur = next;
-  }
-  return dates;
-}
-
 function renderUpcoming() {
   const today = new Date().toISOString().slice(0, 10);
   const limit = new Date(); limit.setDate(limit.getDate() + 10);
   const limitStr = limit.toISOString().slice(0, 10);
 
   const upcoming = [];
-  const seen = new Set();
   state.scheduled.forEach(sc => {
     if(sc.status === 'paused') return;
     const pendingDates=new Set(
@@ -564,20 +566,13 @@ function renderUpcoming() {
         .filter(o=>o.execution_status==='executed'||o.execution_status==='processing')
         .map(o=>o.scheduled_date)
     );
-    const occ = _scheduledDatesInRange(sc, today, limitStr);
+    const occ = generateOccurrencesBetween(sc, today, limitStr);
     occ.forEach(date=>{
-      const key = `${sc.id}__${date}`;
-      if(!executedDates.has(date) && !seen.has(key)) {
-        seen.add(key);
+      if(date>=today&&date<=limitStr&&!executedDates.has(date))
         upcoming.push({sc,date,isPending:pendingDates.has(date)});
-      }
     });
     pendingDates.forEach(date=>{
-      const key = `${sc.id}__${date}`;
-      if(!seen.has(key)) {
-        seen.add(key);
-        upcoming.push({sc,date,isPending:true});
-      }
+      if(!occ.includes(date)) upcoming.push({sc,date,isPending:true});
     });
   });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
@@ -621,7 +616,7 @@ function renderUpcoming() {
     }, 0);
 
     const gid = 'upg_' + date.replace(/-/g,'');
-    const rows = items.map(({sc, isPending}) => {
+    const rows = items.map(({sc,date,isPending}) => {
       const isExp    = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
       const typeIcon = sc.type==='card_payment'?'💳':sc.type==='transfer'?'↔':isExp?'↑':'↓';
       const dest     = (sc.type==='transfer'||sc.type==='card_payment')
