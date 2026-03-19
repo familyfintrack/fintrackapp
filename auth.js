@@ -278,6 +278,105 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+
+function detectLoginPlatform() {
+  try {
+    const nav = window.navigator || {};
+    const ua  = String(nav.userAgent || '').toLowerCase();
+    const platform = String(nav.platform || '').toLowerCase();
+    const uaDataPlatform = String(nav.userAgentData?.platform || '').toLowerCase();
+    const touchPoints = Number(nav.maxTouchPoints || 0);
+
+    const isAndroid = /android/.test(ua);
+    const isIPhone = /iphone|ipod/.test(ua);
+    const isIPad = /ipad/.test(ua) || (/mac/.test(uaDataPlatform || platform) && touchPoints > 1);
+    const isIOS = isIPhone || isIPad;
+    const isWindows = /windows/.test(ua) || /win/.test(platform) || /windows/.test(uaDataPlatform);
+
+    let os = 'other';
+    if (isWindows) os = 'windows';
+    else if (isIOS) os = 'ios';
+    else if (isAndroid) os = 'android';
+
+    return {
+      os,
+      isWindows,
+      isIOS,
+      isAndroid,
+      isMobile: isIOS || isAndroid,
+      isDesktop: isWindows || (!isIOS && !isAndroid)
+    };
+  } catch (_) {
+    return {
+      os: 'other',
+      isWindows: false,
+      isIOS: false,
+      isAndroid: false,
+      isMobile: false,
+      isDesktop: true
+    };
+  }
+}
+
+function applyLoginPlatformMode() {
+  try {
+    const info = detectLoginPlatform();
+    window.__FT_LOGIN_PLATFORM__ = info;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const ls = document.getElementById('loginScreen');
+
+    const classes = [
+      'platform-windows','platform-ios','platform-android','platform-other',
+      'ft-platform-windows','ft-platform-ios','ft-platform-android','ft-platform-other'
+    ];
+    classes.forEach(cls => {
+      html?.classList.remove(cls);
+      body?.classList.remove(cls);
+      ls?.classList.remove(cls);
+    });
+
+    const cls = `platform-${info.os}`;
+    const ftCls = `ft-platform-${info.os}`;
+    html?.classList.add(cls, ftCls);
+    body?.classList.add(cls, ftCls);
+    ls?.classList.add(cls, ftCls);
+
+    if (ls) {
+      ls.dataset.platform = info.os;
+      ls.dataset.loginMode = info.isWindows ? 'simple' : 'rich';
+    }
+
+    return info;
+  } catch (_) {
+    return detectLoginPlatform();
+  }
+}
+
+window.detectLoginPlatform = detectLoginPlatform;
+window.applyLoginPlatformMode = applyLoginPlatformMode;
+
+function isWindowsLoginMode() {
+  try {
+    const info = window.__FT_LOGIN_PLATFORM__ || detectLoginPlatform();
+    return !!info?.isWindows;
+  } catch (_) {
+    return false;
+  }
+}
+
+function focusFieldSafely(elementId, delay = 100) {
+  window.setTimeout(() => {
+    try {
+      if (isWindowsLoginMode()) return;
+      const el = document.getElementById(elementId);
+      if (el && typeof el.focus === 'function') el.focus({ preventScroll: true });
+    } catch (_) {}
+  }, delay);
+}
+
+
 // ── Show / hide login screen ──
 function showLoginScreen() {
   // Ensure sb is initialized whenever login screen is shown —
@@ -351,6 +450,10 @@ function hideLoginScreen() {
   if (mainApp) mainApp.style.display = '';
   if (sidebar) sidebar.style.display = '';
 }
+document.addEventListener('DOMContentLoaded', () => {
+  applyLoginPlatformMode();
+});
+
 function toggleLoginPwd() {
   const inp = document.getElementById('loginPassword');
   if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -584,11 +687,22 @@ async function doChangeMyPwd() {
 
 // ── On login success ──
 async function onLoginSuccess() {
-  hideLoginScreen();
   updateUserUI();
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
   }
+
+  const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : { isWindows:false };
+  const loginLogo = document.getElementById('loginLogoImg');
+  if (loginLogo && !platformInfo.isWindows) loginLogo.classList.add('exiting');
+
+  if (!platformInfo.isWindows) {
+    await new Promise(r => setTimeout(r, 380));
+    if (typeof Cursor !== 'undefined') Cursor.show('A carregar…');
+  }
+
+  hideLoginScreen();
+
   // If the user has no family_id and is not a global admin/owner,
   // launch the wizard so they can create their own family as Owner.
   if (!currentUser?.family_id &&
@@ -600,6 +714,7 @@ async function onLoginSuccess() {
     }
   }
   await bootApp();
+  if (!platformInfo.isWindows && typeof Cursor !== 'undefined') Cursor.hide();
 }
 
 // ── Magic-link post-auth gate ─────────────────────────────────────────────
@@ -3736,6 +3851,39 @@ function mfmSwitchFamily(famId) {
     b.classList.toggle('active', b.id === `mfmTab-${famId}`);
   });
   _mfmRender();
+}
+
+
+// ── Add-member panel: switch between tabs ──────────────────────────────────
+function mfmSwitchAddTab(tab) {
+  const paneExist  = document.getElementById('mfmPaneExist');
+  const paneInvite = document.getElementById('mfmPaneInvite');
+  const tabExist   = document.getElementById('mfmTabExist');
+  const tabInvite  = document.getElementById('mfmTabInvite');
+  if (!paneExist || !paneInvite) return;
+
+  const isExist = tab === 'exist';
+  paneExist.style.display  = isExist ? '' : 'none';
+  paneInvite.style.display = isExist ? 'none' : '';
+
+  if (tabExist) {
+    tabExist.style.background = isExist ? 'var(--accent)' : 'var(--surface2)';
+    tabExist.style.color      = isExist ? '#fff' : 'var(--muted)';
+  }
+  if (tabInvite) {
+    tabInvite.style.background = isExist ? 'var(--surface2)' : 'var(--accent)';
+    tabInvite.style.color      = isExist ? 'var(--muted)' : '#fff';
+  }
+}
+
+// ── Toggle add-member panel ─────────────────────────────────────────────────
+function mfmToggleAddPanel() {
+  const panel = document.getElementById('mfmAddPanel');
+  const arrow = document.getElementById('mfmAddArr');
+  if (!panel) return;
+  const open = panel.style.display === 'none' || panel.style.display === '';
+  panel.style.display = open ? 'block' : 'none';
+  if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
 }
 
 async function _mfmRender() {
