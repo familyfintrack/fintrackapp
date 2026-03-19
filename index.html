@@ -673,11 +673,29 @@
         </div>
       </div>
 
-      <!-- Linha: Categorias Favoritas + Transações (grid 2 no desktop) -->
+      <!-- Linha: Categorias Favoritas + Próximas Transações + Últimas Transações -->
       <div class="dash-bottom-row mb-4">
         <!-- Categorias favoritas -->
         <div id="dashCardFavCats" class="dash-fav-col">
           <div id="dashFavCategories"></div>
+        </div>
+        <!-- Próximas transações programadas -->
+        <div id="dashCardUpcoming" class="dash-tx-col card" style="display:none;padding:0;overflow:hidden">
+          <div class="card-header sc-upcoming-header" onclick="toggleDashUpcomingCard()" style="cursor:pointer;user-select:none;padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span class="card-title" id="dashUpcomingTitle">⏰ Próximas Transações</span>
+              <span id="dashUpcomingCount" style="font-size:.72rem;color:var(--muted)"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <span id="dashUpcomingTotal" class="badge badge-amber"></span>
+              <svg id="dashUpcomingArrow" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                   style="color:var(--muted);transition:transform .2s;transform:rotate(-90deg)">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </div>
+          <div id="dashUpcomingList" class="sc-upcoming-list" style="display:none"></div>
         </div>
         <!-- Últimas transações -->
         <div id="dashCardRecent" class="dash-tx-col card">
@@ -2818,7 +2836,7 @@
         title="Ignorar apenas esta data — próximas ocorrências não serão afetadas">
         🚫 Ignorar esta ocorrência
       </button>
-      <button class="btn btn-primary btn-sm" style="padding:6px 12px;font-size:.82rem" onclick="confirmRegisterOccurrence()">Registrar Transação</button>
+      <button class="btn btn-primary" onclick="confirmRegisterOccurrence()">Registrar Transação</button>
     </div>
   </div>
 </div>
