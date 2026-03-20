@@ -5642,7 +5642,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* ── Forecast: fixed layout and always three lines ─────────────────── */
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
 .forecast-tx-row td { padding:6px 8px; vertical-align:top; }
-.forecast-date-cell { width:96px; padding-right:16px; color:var(--muted); }
+.forecast-date-cell { width:110px; padding-right:24px; color:var(--muted); }
 .forecast-date-main { font-size:.75rem; line-height:1.1; font-weight:600; white-space:nowrap; }
 .forecast-date-flag,
 .forecast-date-today { display:block; font-size:.66rem; line-height:1.05; min-height:12px; white-space:nowrap; }
@@ -8288,3 +8288,47 @@ body.ft-platform-windows .modal-close {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* ── Resizable table columns (desktop ≥ 768px) ──────────────────────────── */
+@media (min-width: 768px) {
+  .resizable-table { table-layout: fixed; }
+  .resizable-table th { position: relative; user-select: none; }
+  .col-resize-handle {
+    position: absolute; right: -1px; top: 0;
+    width: 8px; height: 100%;
+    cursor: col-resize; z-index: 3;
+    background: transparent; border-right: 2px solid transparent;
+    transition: border-color .15s;
+  }
+  .col-resize-handle:hover, .col-resize-handle.dragging {
+    border-right-color: var(--accent);
+  }
+}
+/* Reconciled row */
+.tx-reconciled td:not(.tx-v2-act) { opacity: .72; }
+.tx-reconcile-badge {
+  display:inline-block;font-size:.6rem;font-weight:700;
+  color:var(--green,#16a34a);border:1px solid currentColor;
+  border-radius:3px;padding:0 4px;line-height:1.5;vertical-align:middle;
+  margin-left:4px;letter-spacing:.04em;
+}
+.tx-reconcile-btn {
+  background:none;border:1.5px solid var(--border);border-radius:6px;
+  padding:3px 7px;font-size:.7rem;cursor:pointer;color:var(--muted);
+  font-family:var(--font-sans);transition:all .15s;white-space:nowrap;
+}
+.tx-reconcile-btn:hover { border-color:var(--green,#16a34a);color:var(--green,#16a34a); }
+.tx-reconcile-btn.reconciled {
+  background:var(--green-lt,#dcfce7);border-color:var(--green,#16a34a);
+  color:var(--green,#16a34a);font-weight:600;
+}
+/* Dashboard card reorder */
+.dash-custom-toggle { cursor:grab; }
+.dash-custom-toggle:active { cursor:grabbing; }
+.dash-custom-toggle.drag-over { outline:2px dashed var(--accent); border-radius:8px; }
+.dash-reorder-btns { display:flex;flex-direction:column;gap:2px;margin-left:4px;flex-shrink:0; }
+.dash-reorder-btn {
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.7rem;padding:0 3px;line-height:1;
+}
+.dash-reorder-btn:hover { color:var(--accent); }
