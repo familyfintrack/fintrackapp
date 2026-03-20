@@ -487,9 +487,6 @@ function _scCardHtml(sc) {
             : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>'
           }
         </button>
-        <button class="sc-icon-btn" onclick="copyScheduled('${sc.id}')" title="Duplicar">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        </button>
         <button class="sc-icon-btn" onclick="openScheduledModal('${sc.id}')" title="Editar">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -1051,107 +1048,6 @@ async function saveScheduled() {
     const selector = newId ? `#scCard-${newId}` : '.sc-card:first-child,.sc-item:first-child';
     _scrollTopAndHighlight(selector, 2500);
   }
-}
-
-/**
- * Open scheduled modal pre-filled as a copy (no id → new record).
- * Does NOT auto-save, does NOT create occurrences.
- */
-function copyScheduled(id) {
-  const sc = state.scheduled.find(s => s.id === id);
-  if (!sc) { toast('Programação não encontrada', 'error'); return; }
-
-  // Open the modal as if creating new, then override fields with the original's values
-  openScheduledModal('');   // reset + open
-
-  // Override title and key fields after the modal resets
-  setTimeout(() => {
-    document.getElementById('scModalTitle')?.setAttribute('data-copy', '1');
-    const titleEl = document.getElementById('scModalTitle') || document.querySelector('#scheduledModal .modal-title');
-    if (titleEl) titleEl.textContent = 'Duplicar Programação';
-
-    // Description with copy suffix
-    const descEl = document.getElementById('scDesc');
-    if (descEl) descEl.value = (sc.description || '') + ' (cópia)';
-
-    // Amount
-    setAmtField('scAmount', sc.amount);
-
-    // Type (triggers FX panel etc.)
-    if (typeof setScType === 'function') setScType(sc.type || 'expense');
-
-    // Accounts
-    const aEl = document.getElementById('scAccountId');
-    if (aEl && sc.account_id) aEl.value = sc.account_id;
-    const trEl = document.getElementById('scTransferToAccountId');
-    if (trEl && sc.transfer_to_account_id) trEl.value = sc.transfer_to_account_id;
-
-    // Payee + Category
-    if (typeof setPayeeField === 'function') setPayeeField(sc.payee_id || null, 'sc');
-    if (typeof setCatPickerValue === 'function') setCatPickerValue(sc.category_id || null, 'sc');
-
-    // Recurrence — preserve exactly
-    const freqInput = document.querySelector(`input[name=scFreq][value="${sc.frequency||'monthly'}"]`);
-    if (freqInput) freqInput.checked = true;
-
-    if (sc.frequency === 'custom') {
-      const ciEl = document.getElementById('scCustomInterval');
-      const cuEl = document.getElementById('scCustomUnit');
-      if (ciEl) ciEl.value = sc.custom_interval || 1;
-      if (cuEl) cuEl.value = sc.custom_unit || 'days';
-      const customGroup = document.getElementById('scCustomGroup');
-      if (customGroup) customGroup.style.display = '';
-    }
-
-    // End rules
-    if (sc.end_count) {
-      const endCountRad = document.querySelector('input[name=scEnd][value="count"]');
-      if (endCountRad) endCountRad.checked = true;
-      const ecEl = document.getElementById('scEndCount');
-      if (ecEl) ecEl.value = sc.end_count;
-    } else if (sc.end_date) {
-      const endDateRad = document.querySelector('input[name=scEnd][value="date"]');
-      if (endDateRad) endDateRad.checked = true;
-      const edEl = document.getElementById('scEndDate');
-      if (edEl) edEl.value = sc.end_date;
-    }
-
-    // Start date = today for copy
-    const sdEl = document.getElementById('scStartDate');
-    if (sdEl) sdEl.value = new Date().toISOString().slice(0, 10);
-
-    // FX settings
-    if (sc.fx_mode && typeof setScFxMode === 'function') {
-      const fxPanel = document.getElementById('scFxPanel');
-      if (fxPanel) {
-        fxPanel.setAttribute('data-fx-mode', sc.fx_mode);
-        if (sc.fx_rate) {
-          const rateEl = document.getElementById('scFxRate');
-          if (rateEl) rateEl.value = sc.fx_rate;
-        }
-      }
-    }
-
-    // Memo + Tags
-    const memoEl = document.getElementById('scMemo');
-    if (memoEl) memoEl.value = sc.memo || '';
-    const tagsEl = document.getElementById('scTags');
-    if (tagsEl) tagsEl.value = (sc.tags || []).join(', ');
-
-    // Member associations
-    if (typeof renderFmcMultiPicker === 'function') {
-      const preselected = sc.family_member_ids?.length
-        ? sc.family_member_ids
-        : (sc.family_member_id ? [sc.family_member_id] : []);
-      renderFmcMultiPicker('scFamilyMemberPicker', { selected: preselected });
-    }
-
-    // Auto-register settings
-    const arCb = document.getElementById('scAutoRegister');
-    if (arCb) arCb.checked = !!sc.auto_register;
-    const acCb = document.getElementById('scAutoConfirm');
-    if (acCb) acCb.checked = sc.auto_confirm !== false;
-  }, 60);
 }
 
 async function deleteScheduled(id) {
