@@ -1,7 +1,36 @@
 let rptState = { view:'regular', txData:[] };
 let rptTxSortField = 'date', rptTxSortAsc = false;
 
-/* ── Date range ── */
+/* ── Account select helper (used by populateReportFilters and populateSelects) ── */
+function _accountOptions(accounts, placeholder) {
+  const favs = (accounts||[]).filter(a => a.is_favorite);
+  const rest = (accounts||[]).filter(a => !a.is_favorite);
+  let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+  if (favs.length) {
+    html += `<optgroup label="⭐ Favoritas">${favs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
+    if (rest.length) html += `<optgroup label="Outras contas">${rest.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
+  } else {
+    html += (accounts||[]).map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  }
+  return html;
+}
+
+/* ── Hierarchical category options (used by populateSelects for txCategoryFilter) ── */
+function _buildCategoryFilterOptions() {
+  const cats = state.categories || [];
+  const roots = cats.filter(c => !c.parent_id).sort((a,b) => a.name.localeCompare(b.name));
+  const lines = [];
+  const walk = (list, depth) => list.forEach(c => {
+    const indent = '\u00a0\u00a0'.repeat(depth);
+    lines.push(`<option value="${c.id}">${indent}${esc(c.name)}</option>`);
+    const children = cats.filter(x => x.parent_id === c.id).sort((a,b) => a.name.localeCompare(b.name));
+    if (children.length) walk(children, depth + 1);
+  });
+  walk(roots, 0);
+  return lines.join('');
+}
+
+
 function getRptDateRange() {
   const p   = document.getElementById('rptPeriod')?.value || 'month';
   const now = new Date();
@@ -46,21 +75,21 @@ function populateReportFilters() {
     const el = document.getElementById(id); if(!el) return;
     const cur = el.value;
     el.innerHTML = (id==='forecastAccountFilter'?'<option value="">Todas as contas</option>':'<option value="">Todas</option>') +
-      opts(state.accounts, a=>a.id, a=>a.name);
+      opts(state.accounts||[], a=>a.id, a=>a.name+' ('+a.currency+')');
     el.value = cur;
   });
   const catEl = document.getElementById('rptCategory');
   if(catEl) {
     const cur = catEl.value;
     catEl.innerHTML = '<option value="">Todas</option>' +
-      opts(state.categories.sort((a,b)=>a.name.localeCompare(b.name)), c=>c.id, c=>(c.icon||'')+'  '+c.name);
+      opts((state.categories||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)), c=>c.id, c=>(c.icon||'')+'  '+c.name);
     catEl.value = cur;
   }
   const payEl = document.getElementById('rptPayee');
   if(payEl) {
     const cur = payEl.value;
     payEl.innerHTML = '<option value="">Todos</option>' +
-      opts(state.payees.sort((a,b)=>a.name.localeCompare(b.name)), p=>p.id, p=>p.name);
+      opts((state.payees||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)), p=>p.id, p=>p.name);
     payEl.value = cur;
   }
 
@@ -102,12 +131,15 @@ function _refreshRptTagFilter() {
 
 let _rptLoading = false;
 async function loadCurrentReport(resetPage = false) {
-  if (_rptLoading) return; // prevent concurrent fetches
+  if (!sb || !currentUser) return;           // Supabase not ready
+  if (_rptLoading) return;                   // prevent concurrent fetches
   _rptLoading = true;
   try {
     if (rptState.view === 'regular')           await loadReports();
     else if (rptState.view === 'transactions') await loadReportTx();
     else if (rptState.view === 'forecast')     await loadForecast();
+  } catch(e) {
+    console.warn('[reports] loadCurrentReport error:', e?.message);
   } finally {
     _rptLoading = false;
   }
@@ -1768,14 +1800,38 @@ function renderChart(id, type, labels, datasets, extraOptions={}) {
   return state.chartInstances[id];
 }
 
-function populateSelects(){populateReportFilters();
-  const aOpts=state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-  ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Selecione a conta</option>'+aOpts;});
-  const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML='<option value="">Todas as contas</option>'+aOpts;
-  // payee autocomplete uses state.payees directly - no select to populate
-  buildCatPicker(); // hierarchical picker replaces flat select
-  const pCat=document.getElementById('payeeCategory');if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+function populateSelects(){
+  try { populateReportFilters(); } catch(e) { console.warn('[populateSelects] reportFilters:', e?.message); }
+  try {
+    const accs = state.accounts || [];
+    const aOpts = accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Selecione a conta</option>'+aOpts;});
+    const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML='<option value="">Todas as contas</option>'+aOpts;
+    // Category filter for transactions (hierarchical)
+    const catF=document.getElementById('txCategoryFilter');
+    if(catF){
+      const cur=catF.value;
+      const cats=state.categories||[];
+      const roots=cats.filter(c=>!c.parent_id).sort((a,b)=>a.name.localeCompare(b.name));
+      const lines=['<option value="">Categoria</option>'];
+      const walk=(list,depth)=>list.forEach(c=>{
+        const indent='\u00a0\u00a0'.repeat(depth);
+        lines.push(`<option value="${c.id}">${indent}${esc(c.name)}</option>`);
+        const ch=cats.filter(x=>x.parent_id===c.id).sort((a,b)=>a.name.localeCompare(b.name));
+        if(ch.length) walk(ch,depth+1);
+      });
+      walk(roots,0);
+      catF.innerHTML=lines.join('');
+      catF.value=cur;
+    }
+  } catch(e) { console.warn('[populateSelects] accounts/cats:', e?.message); }
+  try { if(typeof buildCatPicker==='function') buildCatPicker(); } catch(e) {}
+  try {
+    const pCat=document.getElementById('payeeCategory');
+    if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+(state.categories||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  } catch(e) {}
 }
+
 
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}

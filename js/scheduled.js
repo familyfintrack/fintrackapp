@@ -453,7 +453,7 @@ function _scCardHtml(sc) {
       }).filter(Boolean).join('')
     : '';
 
-  return `<div class="sc-card" id="scCard-${sc.id}">
+  return `<div class="sc-card" id="scCard-${sc.id}" data-id="${sc.id}">
     <!-- Header row: icon · title+meta · amount+status · actions -->
     <div class="sc-card-row" onclick="toggleScCard('${sc.id}')">
       <div class="sc-card-icon" style="background:${iconBg}">${icon}</div>
@@ -479,6 +479,9 @@ function _scCardHtml(sc) {
             ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
             : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>'
           }
+        </button>
+        <button class="sc-icon-btn" onclick="duplicateScheduled('${sc.id}')" title="Copiar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
         <button class="sc-icon-btn" onclick="openScheduledModal('${sc.id}')" title="Editar">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -670,15 +673,20 @@ function openScheduledModal(id='') {
   document.getElementById('scTags').value = (sc?.tags||[]).join(', ');
   document.getElementById('scStatus').value = sc?.status||'active';
 
-  // Populate account select
+  // Populate account select (favorites first)
   const aEl = document.getElementById('scAccountId');
-  aEl.innerHTML = state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  aEl.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(state.accounts, 'Selecione a conta')
+    : state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
   if(sc?.account_id) aEl.value = sc.account_id;
 
-  // Populate transfer-to account select
+  // Populate transfer-to account select (favorites first)
   const trEl = document.getElementById('scTransferToAccountId');
   if(trEl) {
-    trEl.innerHTML = '<option value="">— Selecionar conta destino —</option>' + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    const trOpts = (typeof _accountOptions === 'function')
+      ? _accountOptions(state.accounts, '— Selecionar conta destino —')
+      : '<option value="">— Selecionar conta destino —</option>' + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    trEl.innerHTML = trOpts;
     if(sc?.transfer_to_account_id) trEl.value = sc.transfer_to_account_id;
   }
 
@@ -769,6 +777,11 @@ function openScheduledModal(id='') {
 
   updateScPreview();
   openModal('scheduledModal');
+  // Scroll modal body to top on every open
+  requestAnimationFrame(() => {
+    const body = document.querySelector('#scheduledModal .modal-body');
+    if (body) body.scrollTop = 0;
+  });
 }
 
 function setScType(type) {
@@ -1024,16 +1037,23 @@ async function saveScheduled() {
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
   if(!data.start_date) { toast('Informe a data de início', 'error'); return; }
 
-  let err;
+  let err, newId = id;
   if(!id) data.family_id = famId();
   if(id) { ({error:err} = await sb.from('scheduled_transactions').update(data).eq('id',id)); }
-  else    { ({error:err} = await sb.from('scheduled_transactions').insert(data)); }
+  else {
+    const {data: inserted, error: insErr} = await sb.from('scheduled_transactions').insert(data).select('id').single();
+    err = insErr;
+    if (inserted?.id) newId = inserted.id;
+  }
   if(err) { toast(err.message,'error'); return; }
   const _scNew=!id;
   toast(id?'Programação atualizada!':'Transação programada!','success');
   closeModal('scheduledModal');
   await loadScheduled();
-  if(_scNew) _scrollTopAndHighlight('.sc-card:first-child,.sc-item:first-child');
+  if(_scNew) {
+    const sel = newId ? `.sc-card[data-id="${newId}"],.sc-item[data-id="${newId}"]` : '.sc-card:first-child,.sc-item:first-child';
+    _scrollTopAndHighlight(sel, 2500);
+  }
 }
 
 async function deleteScheduled(id) {
@@ -1682,4 +1702,34 @@ async function fetchScCurrencyRate(){
     } else toast('Cotação não disponível. Insira manualmente.','warning');
   }catch(e){toast('Erro: '+e.message,'error');}
   finally{if(btn) btn.disabled=false; if(ico) ico.textContent='🔄';}
+}
+
+function duplicateScheduled(id) {
+  const sc = state.scheduled.find(s => s.id === id);
+  if (!sc) { toast('Programação não encontrada', 'error'); return; }
+  // Open modal pre-filled as a NEW record (no id) — user edits then saves
+  openScheduledModal('');
+  // Overwrite fields with original values after modal opens
+  requestAnimationFrame(() => {
+    document.getElementById('scDesc').value = (sc.description || '') + ' (cópia)';
+    setAmtField('scAmount', sc.amount || 0);
+    document.getElementById('scMemo').value = sc.memo || '';
+    document.getElementById('scTags').value = (sc.tags || []).join(', ');
+    const aEl = document.getElementById('scAccountId');
+    if (aEl && sc.account_id) aEl.value = sc.account_id;
+    const trEl = document.getElementById('scTransferToAccountId');
+    if (trEl && sc.transfer_to_account_id) trEl.value = sc.transfer_to_account_id;
+    setCatPickerValue(sc.category_id || null, 'sc');
+    setPayeeField(sc.payee_id || null, 'sc');
+    setScType(sc.type || 'expense');
+    const freq = sc.frequency || 'once';
+    document.querySelectorAll('input[name=scFreq]').forEach(r => r.checked = r.value === freq);
+    document.getElementById('scCustomIntervalGroup').style.display = freq === 'custom' ? '' : 'none';
+    document.getElementById('scEndGroup').style.display = freq === 'once' ? 'none' : '';
+    document.getElementById('scCustomInterval').value = sc.custom_interval || 1;
+    document.getElementById('scCustomUnit').value = sc.custom_unit || 'months';
+    document.getElementById('scStatus').value = 'active';
+    document.getElementById('scheduledModalTitle').textContent = 'Nova Programação (cópia)';
+    updateScPreview();
+  });
 }

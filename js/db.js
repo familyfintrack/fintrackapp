@@ -197,6 +197,18 @@ const _transactions = {
       else if (filter.type === 'card_payment') q = q.eq('is_card_payment', true);
       if (filter.status === 'pending')         q = q.eq('status', 'pending');
       else if (filter.status === 'confirmed')  q = q.eq('status', 'confirmed');
+      // Category filter: expand to include subcategories
+      if (filter.categoryId) {
+        const _catIds = [filter.categoryId];
+        const _all = state.categories || [];
+        const _queue = [filter.categoryId];
+        while (_queue.length) {
+          const _id = _queue.shift();
+          _all.filter(c => c.parent_id === _id).forEach(c => { _catIds.push(c.id); _queue.push(c.id); });
+        }
+        if (_catIds.length === 1) q = q.eq('category_id', _catIds[0]);
+        else                      q = q.in('category_id', _catIds);
+      }
       // Member filter: array of selected member IDs
       if (filter.memberIds && filter.memberIds.length > 0) {
         // Match transactions where any of the selected members appears
