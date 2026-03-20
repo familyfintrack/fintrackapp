@@ -693,6 +693,27 @@
         </div>
       </div>
 
+      <!-- Previsão de Caixa 90 dias -->
+      <div id="dashCardForecast90" class="card mb-4">
+        <div class="card-header" style="gap:8px;flex-wrap:wrap">
+          <span class="card-title">📈 Previsão de Caixa (90 dias)</span>
+          <select id="dashForecastAccount"
+            onchange="_renderDashForecast()"
+            style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:200px">
+            <option value="">Todas as contas</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text2);cursor:pointer;white-space:nowrap">
+            <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()"
+              style="width:13px;height:13px;accent-color:var(--accent)">
+            Incluir programados
+          </label>
+        </div>
+        <div style="position:relative;height:180px;margin-top:4px">
+          <canvas id="dashForecastChart"></canvas>
+        </div>
+        <div id="dashForecastSummary" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 0 2px 0;font-size:.78rem"></div>
+      </div>
+
       <!-- Últimas transações -->
       <div id="dashCardRecent" class="dash-tx-col card mb-4">
           <div class="card-header" style="gap:8px;flex-wrap:wrap">
@@ -3031,7 +3052,19 @@
             <span id="txCurrencyBadge" style="display:none">BRL</span>
           </div>
         </div>
-        <div class="form-group full"><label>Descrição *</label><input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"></div>
+        <div class="form-group full">
+          <label>Descrição *</label>
+          <input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"
+            oninput="_aiPayeeDebounce(this.value)"
+            onblur="_aiSuggestPayeeFromDesc(this.value)">
+          <div id="txAiPayeeSuggestion" style="display:none;margin-top:5px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="color:var(--muted)">🤖 Sugestão:</span>
+            <button id="txAiPayeeBtn" onclick="_applyAiPayeeSuggestion()"
+              style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
+            <button onclick="_dismissAiPayeeSuggestion()"
+              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
+          </div>
+        </div>
 
                 <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
 <div class="form-group"><label>Conta *</label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
