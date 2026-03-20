@@ -86,32 +86,18 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   gap: 10px;
   flex-shrink: 0;
 }
-.sb-user-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3ab855, #037762);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: .85rem;
-  color: #fff;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-.sb-user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .sb-user-info { min-width: 0; flex: 1; }
-.sb-user-name {
-  font-size: .82rem;
-  font-weight: 600;
+.sb-family-name {
+  font-size: .85rem;
+  font-weight: 700;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+  letter-spacing: -.01em;
 }
-.sb-user-role {
+.sb-user-sub {
   font-size: .68rem;
   color: rgba(255,255,255,.45);
   margin-top: 1px;
@@ -119,6 +105,9 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* legacy aliases — kept for any external reference */
+.sb-user-name  { font-size:.82rem; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.sb-user-role  { font-size:.68rem; color:rgba(255,255,255,.45); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* ── Scrollable nav body ── */
 .sidebar-nav {
@@ -1738,10 +1727,8 @@ canvas { cursor: default; }
 
 /* Tighter row padding on desktop */
 @media (min-width: 641px) {
-  .tx-table { font-size: .93rem; }
-  .tx-table tbody td { padding: 12px 14px; }
-  .tx-table thead th { padding: 10px 14px; font-size: .78rem; }
-  .tx-table tbody td:nth-child(6) { font-size: .95rem; }
+  .tx-table tbody td { padding: 9px 12px; }
+  .tx-table thead th { padding: 8px 12px; }
 }
 
 /* Pagination */
@@ -5448,6 +5435,25 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   -webkit-tap-highlight-color: transparent;
 }
 .sc-reg-btn:hover { filter: brightness(1.08); }
+
+/* Desktop: botão menor e discreto */
+@media (min-width: 768px) {
+  .sc-reg-btn {
+    flex: none;
+    padding: 4px 10px;
+    font-size: .72rem;
+    font-weight: 500;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    opacity: .7;
+  }
+  .sc-reg-btn:hover {
+    filter: none;
+    background: var(--accent-lt);
+    opacity: 1;
+  }
+}
 .sc-reg-none {
   flex: 1; font-size: .75rem; color: var(--muted);
   background: transparent; border-radius: 100px;
@@ -5649,24 +5655,6 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-payee { font-size:.7rem; color:var(--muted); }
 .forecast-amount-cell,
 .forecast-balance-cell { width:96px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
-
-/* Desktop forecast: better readability */
-@media (min-width: 641px) {
-  .forecast-tx-row td { padding: 9px 12px; }
-  .forecast-date-cell { width: 88px; }
-  .forecast-date-main { font-size: .82rem; font-weight: 700; }
-  .forecast-date-flag,
-  .forecast-date-today { font-size: .72rem; min-height: 14px; }
-  .forecast-title { font-size: .9rem; font-weight: 500; }
-  .forecast-category { font-size: .78rem; }
-  .forecast-payee { font-size: .75rem; }
-  .forecast-line { min-height: 16px; line-height: 1.25; }
-  .forecast-amount-cell,
-  .forecast-balance-cell { width: 110px; font-size: .88rem; }
-  .forecast-amount-main { font-size: .9rem; font-weight: 600; }
-  .forecast-run-bal { font-size: .78rem; }
-}
-
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
   .forecast-date-cell { width:70px; }
@@ -5681,7 +5669,6 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   }
   .forecast-table-wrap table { table-layout:auto !important; }
 }
-
 
 
 /* ── Transactions: avoid blank area under title when optional lines are absent ── */
