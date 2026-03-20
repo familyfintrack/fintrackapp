@@ -8,6 +8,85 @@ async function recalcAccountBalances() {
 }
 
 let _accountsViewMode='';
+// ── Consolidar Saldo da Conta ──────────────────────────────────────────────
+function openConsolidateModal(accountId) {
+  const a = (state.accounts || []).find(x => x.id === accountId);
+  if (!a) { toast('Conta não encontrada', 'error'); return; }
+  document.getElementById('consolidateAccountId').value = accountId;
+  document.getElementById('consolidateAccountName').textContent = a.name;
+  const cur = a.currency || 'BRL';
+  document.getElementById('consolidateCurrencyBadge').textContent = cur;
+  const balEl = document.getElementById('consolidateCurrentBalance');
+  balEl.textContent = fmt(a.balance, cur);
+  balEl.style.color = a.balance >= 0 ? 'var(--accent)' : 'var(--red)';
+  setAmtField('consolidateAmount', 0);
+  document.getElementById('consolidateDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('consolidateDesc').value = 'Consolidação de saldo';
+  document.getElementById('consolidatePreview').style.display = 'none';
+  document.getElementById('consolidateError').style.display = 'none';
+  openModal('consolidateModal');
+}
+
+function _updateConsolidatePreview() {
+  const accId = document.getElementById('consolidateAccountId')?.value;
+  const a = (state.accounts||[]).find(x => x.id === accId);
+  if (!a) return;
+  const cur = a.currency || 'BRL';
+  const target = getAmtField('consolidateAmount');
+  const current = parseFloat(a.balance) || 0;
+  const diff = target - current;
+  const preview = document.getElementById('consolidatePreview');
+  if (!preview) return;
+  if (Math.abs(diff) < 0.005) {
+    preview.style.display = '';
+    preview.innerHTML = '<span style="color:var(--muted)">✓ Sem diferença — nenhum ajuste necessário.</span>';
+    return;
+  }
+  const isPos = diff > 0;
+  preview.style.display = '';
+  preview.style.borderColor = isPos ? 'var(--green,#16a34a)' : 'var(--red)';
+  preview.innerHTML = `<strong style="color:${isPos?'var(--green,#16a34a)':'var(--red)'}">${isPos?'+':''}${fmt(diff,cur)} de ajuste</strong><br><span style="font-size:.78rem;color:var(--muted)">Atual: ${fmt(current,cur)} → Novo: ${fmt(target,cur)}</span>`;
+}
+
+async function saveConsolidation() {
+  const accId = document.getElementById('consolidateAccountId')?.value;
+  const a = (state.accounts||[]).find(x => x.id === accId);
+  if (!a) return;
+  const cur = a.currency || 'BRL';
+  const target = getAmtField('consolidateAmount');
+  const current = parseFloat(a.balance) || 0;
+  const diff = +(target - current).toFixed(10);
+  const errEl = document.getElementById('consolidateError');
+  errEl.style.display = 'none';
+  if (Math.abs(diff) < 0.005) { toast('Sem diferença — nenhum ajuste gerado.', 'info'); closeModal('consolidateModal'); return; }
+  const date = document.getElementById('consolidateDate')?.value || new Date().toISOString().slice(0,10);
+  const desc = document.getElementById('consolidateDesc')?.value?.trim() || 'Consolidação de saldo';
+  const btn = document.getElementById('consolidateSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  try {
+    const { error } = await sb.from('transactions').insert({
+      account_id: accId, date, amount: diff, currency: cur,
+      brl_amount: cur === 'BRL' ? diff : null,
+      description: desc, status: 'confirmed',
+      is_transfer: false, family_id: famId(),
+    });
+    if (error) throw error;
+    DB.accounts.bust();
+    try { await recalcAccountBalances(); } catch(_) {}
+    toast(`✓ Ajuste de ${fmt(diff,cur)} criado!`, 'success');
+    closeModal('consolidateModal');
+    if (state.currentPage === 'accounts') renderAccounts();
+    if (state.currentPage === 'transactions') loadTransactions();
+    if (state.currentPage === 'dashboard') loadDashboard();
+  } catch(e) {
+    errEl.textContent = 'Erro: ' + e.message;
+    errEl.style.display = '';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⚖️ Criar Ajuste'; }
+  }
+}
+
+
 function renderAccounts(ft=''){
   _accountsViewMode=ft;
   const grid=document.getElementById('accountGrid');
@@ -147,7 +226,7 @@ function accountCardHTML(a){
   return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
     ${favStar}
     <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
-    <div class="account-actions"><button class="btn-icon" onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button><button class="btn-icon" onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button></div>
+    <div class="account-actions"><button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button><button class="btn-icon" onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button><button class="btn-icon" onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button></div>
     <div class="account-icon" style="font-size:1.6rem;margin-bottom:8px">${renderIconEl(a.icon,a.color,36)}</div>
     <div class="account-name">${esc(a.name)}</div>
     <div class="account-type">${accountTypeLabel(a.type)}</div>

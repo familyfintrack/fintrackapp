@@ -733,29 +733,81 @@ async function _syncDashPrefsFromServer() {
 }
 
 function _dashApplyPrefs(prefs) {
-  _DASH_CARDS.forEach(c => {
+  const order = _getDashCardOrder(prefs);
+  // Apply visibility
+  order.forEach(c => {
     const el = document.getElementById(c.el);
     if (!el) return;
-    const visible = prefs[c.id] !== false;
-    el.style.display = visible ? '' : 'none';
+    el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
+  // Apply order in DOM (only on desktop, best-effort — no forced reflow)
+  try {
+    const parent = document.getElementById(order[0]?.el)?.parentElement;
+    if (parent && window.innerWidth >= 768) {
+      order.forEach(c => {
+        const el = document.getElementById(c.el);
+        if (el && el.parentElement === parent) parent.appendChild(el);
+      });
+    }
+  } catch(_) {}
 }
 
 function openDashCustomModal() {
   const prefs = _dashGetPrefs();
+  const order = _getDashCardOrder(prefs);
   const list  = document.getElementById('dashCustomList');
   if (!list) return;
-  list.innerHTML = _DASH_CARDS.map(c => `
-    <div class="dash-custom-toggle" onclick="_dashToggleCard('${c.id}',this)">
+  _renderDashCustomList(order, prefs);
+  openModal('dashCustomModal');
+}
+
+function _getDashCardOrder(prefs) {
+  // Use saved order from prefs, fallback to _DASH_CARDS default order
+  const savedOrder = prefs._order;
+  if (savedOrder && Array.isArray(savedOrder)) {
+    const ordered = savedOrder
+      .map(id => _DASH_CARDS.find(c => c.id === id))
+      .filter(Boolean);
+    // Append any new cards not in saved order
+    _DASH_CARDS.forEach(c => { if (!ordered.find(x => x.id === c.id)) ordered.push(c); });
+    return ordered;
+  }
+  return [..._DASH_CARDS];
+}
+
+function _renderDashCustomList(order, prefs) {
+  const list = document.getElementById('dashCustomList');
+  if (!list) return;
+  list.innerHTML = order.map((c, idx) => `
+    <div class="dash-custom-toggle" data-card-id="${c.id}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
       <span class="dash-custom-toggle-icon">${c.icon}</span>
       <div style="flex:1;min-width:0">
         <div class="dash-custom-toggle-label">${c.label}</div>
-        <div class="dash-custom-toggle-sub">${c.sub}</div>
+        <div class="dash-custom-toggle-sub" style="font-size:.72rem;color:var(--muted)">${c.sub}</div>
       </div>
-      <button class="dash-toggle-switch ${prefs[c.id]!==false?'on':''}" data-card="${c.id}" onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-toggle'))"></button>
+      <div class="dash-reorder-btns">
+        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',-1)" title="Mover para cima" ${idx===0?'disabled style="opacity:.3"':''}>▲</button>
+        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',+1)" title="Mover para baixo" ${idx===order.length-1?'disabled style="opacity:.3"':''}>▼</button>
+      </div>
+      <button class="dash-toggle-switch ${prefs[c.id]!==false?'on':''}" data-card="${c.id}"
+        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-toggle'))"></button>
     </div>`).join('');
-  openModal('dashCustomModal');
 }
+
+function _dashMoveCard(id, dir) {
+  const prefs = _dashGetPrefs();
+  const order = _getDashCardOrder(prefs);
+  const idx   = order.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= order.length) return;
+  [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
+  // Temporarily store new order and re-render the list
+  _dashCustomPendingOrder = order.map(c => c.id);
+  const updPrefs = {...prefs, _order: _dashCustomPendingOrder};
+  _renderDashCustomList(order, updPrefs);
+}
+let _dashCustomPendingOrder = null;
 
 function _dashToggleCard(id, row) {
   const btn = row?.querySelector('.dash-toggle-switch');
@@ -770,9 +822,16 @@ function _dashCustomSave() {
     const btn = document.querySelector(`.dash-toggle-switch[data-card="${c.id}"]`);
     prefs[c.id] = btn ? btn.classList.contains('on') : true;
   });
+  // Save card order if user reordered
+  if (_dashCustomPendingOrder) {
+    prefs._order = _dashCustomPendingOrder;
+    _dashCustomPendingOrder = null;
+  } else {
+    const existingPrefs = _dashGetPrefs();
+    if (existingPrefs._order) prefs._order = existingPrefs._order;
+  }
   _dashSavePrefs(prefs);
   _dashApplyPrefs(prefs);
-  // Re-renderizar favoritos se voltou a ser visível
   if (prefs.favcats !== false) _renderDashFavCategories(_lastDashIncome, _lastDashExpense);
   closeModal('dashCustomModal');
   toast('Preferências do dashboard salvas!', 'success');
@@ -880,7 +939,8 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
     const valClr = ownVal === 0 ? 'var(--muted)' : (cType === 'expense' ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)');
     const valStr = ownVal === 0 ? '—' : (ownVal > 0 ? '+' : '') + fmt(ownVal, 'BRL');
     const pctStr = pct >= 0.1 ? pct.toFixed(1) + '%' : (pct > 0 ? '<0.1%' : '—');
-    const navAction = `onclick="_openDashMonthTx('${cType==='expense'?'expense':'income'}',null)"`;
+    // Drill to exact transactions by category + current month
+    const navAction = `onclick="_dashDrillToTx('${c.id}','${y}-${mo}')"`;  
 
     // Linha de contexto (pai não-favorito, só para hierarquia)
     if (isCtxOnly) {
@@ -896,7 +956,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
     const connector = isChild
       ? `<span class="dfav-conn${isLast?' dfav-conn--last':''}"></span>` : '';
 
-    return `<div class="${rowClass}" ${navAction} title="Ver transações">
+    return `<div class="${rowClass}" style="cursor:pointer" ${navAction} title="Ver transações">
         ${connector}
         <span class="dfav-icon${isChild?' dfav-icon--sm':''}">${c.icon||'📦'}</span>
         <div class="dfav-body">

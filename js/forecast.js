@@ -303,7 +303,7 @@ function renderForecastTables(allItems, accounts) {
       <div class="forecast-table-wrap" id="forecastBody-${a.id}">
         ${txs.length ? `
         <div class="table-wrap" style="margin:0">
-          <table>
+          <table class="resizable-table" id="forecastTable-${a.id}">
             <thead><tr><th style="width:68px">Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead>
             <tbody>${rows}</tbody>
             <tfoot>
@@ -321,6 +321,8 @@ function renderForecastTables(allItems, accounts) {
       </div>
     </div>`;
   }).join('');
+  // Init resizable columns
+  setTimeout(() => { if (typeof initAllResizableTables === 'function') initAllResizableTables(); }, 50);
 }
 
 function toggleForecastSection(id) {

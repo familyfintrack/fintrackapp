@@ -411,10 +411,16 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
   const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';
 
-  return `<tr class="tx-row-clickable${isPending?' tx-pending':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
+  const isReconciled = !!t.is_reconciled;
+  const reconcileBadge = isReconciled ? '<span class="tx-reconcile-badge" title="Reconciliada">✓REC</span>' : '';
+  const reconcileBtn = `<button class="tx-reconcile-btn${isReconciled?' reconciled':''}"
+    title="${isReconciled?'Desmarcar reconciliação':'Marcar como reconciliada'}"
+    onclick="event.stopPropagation();toggleReconcile('${t.id}',this)">${isReconciled?'✓ Rec':'○ Rec'}</button>`;
+
+  return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${isReconciled?' tx-reconciled':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
     <td class="tx-v2-date">${dateStr}${pendDot}</td>
     <td class="tx-v2-body">
-      <div class="tx-v2-title">${esc(t.description||'—')}${attach}</div>
+      <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
       ${categoryLine}
       ${meta}
     </td>
@@ -422,8 +428,46 @@ function txRow(t, showAccount=true, runningBalance=null) {
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
       ${balHtml}
     </td>
-    <td class="tx-v2-act"></td>
+    <td class="tx-v2-act">${reconcileBtn}</td>
   </tr>`;
+}
+
+
+// ── Reconciliar Transação ──────────────────────────────────────────────────
+async function toggleReconcile(txId, btn) {
+  const isNow = btn?.classList.contains('reconciled');
+  const newVal = !isNow;
+  try {
+    const { error } = await sb.from('transactions')
+      .update({ is_reconciled: newVal })
+      .eq('id', txId);
+    if (error) throw error;
+    // Update UI optimistically
+    const row = document.querySelector(`[data-tx-id="${txId}"]`);
+    if (row) {
+      row.classList.toggle('tx-reconciled', newVal);
+      if (btn) {
+        btn.classList.toggle('reconciled', newVal);
+        btn.textContent = newVal ? '✓ Rec' : '○ Rec';
+        btn.title = newVal ? 'Desmarcar reconciliação' : 'Marcar como reconciliada';
+      }
+      const badge = row.querySelector('.tx-reconcile-badge');
+      const titleDiv = row.querySelector('.tx-v2-title');
+      if (newVal && titleDiv && !badge) {
+        const b = document.createElement('span');
+        b.className = 'tx-reconcile-badge'; b.title = 'Reconciliada'; b.textContent = '✓REC';
+        titleDiv.appendChild(b);
+      } else if (!newVal && badge) {
+        badge.remove();
+      }
+    }
+    // Update local state
+    const t = (state.transactions || []).find(x => x.id === txId);
+    if (t) t.is_reconciled = newVal;
+    toast(newVal ? '✓ Transação reconciliada' : 'Reconciliação removida', 'success');
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
 }
 
 

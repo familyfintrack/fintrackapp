@@ -1,3 +1,72 @@
+/* ═══════════════════════════════════════
+   RESIZABLE TABLE COLUMNS (desktop ≥768px)
+   Add class "resizable-table" to any <table>
+   Persists per table id in localStorage.
+═══════════════════════════════════════ */
+function initResizableTable(table) {
+  if (!table || window.innerWidth < 768) return;
+  if (table.dataset.resizeInited) return;
+  table.dataset.resizeInited = '1';
+  const ths = table.querySelectorAll('thead th');
+  ths.forEach((th, i) => {
+    if (i === ths.length - 1) return; // skip last (actions)
+    const handle = document.createElement('div');
+    handle.className = 'col-resize-handle';
+    handle.title = 'Arrastar para redimensionar';
+    th.appendChild(handle);
+    let startX = 0, startW = 0;
+    const onMove = e => {
+      const dx = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
+      const nw = Math.max(36, startW + dx);
+      th.style.width = nw + 'px';
+      th.style.minWidth = nw + 'px';
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (table.id) _saveColWidths(table);
+    };
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      startX = e.clientX; startW = th.offsetWidth;
+      handle.classList.add('dragging');
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+  if (table.id) _restoreColWidths(table);
+}
+function _saveColWidths(table) {
+  try {
+    const w = [...table.querySelectorAll('thead th')].map(t => t.style.width || '');
+    localStorage.setItem('col_w_' + table.id, JSON.stringify(w));
+  } catch(_) {}
+}
+function _restoreColWidths(table) {
+  try {
+    const raw = localStorage.getItem('col_w_' + table.id);
+    if (!raw) return;
+    JSON.parse(raw).forEach((w, i) => {
+      const th = table.querySelectorAll('thead th')[i];
+      if (th && w) { th.style.width = w; th.style.minWidth = w; }
+    });
+  } catch(_) {}
+}
+function initAllResizableTables() {
+  if (window.innerWidth < 768) return;
+  document.querySelectorAll('table.resizable-table:not([data-resize-inited])').forEach(initResizableTable);
+}
+// Auto-init via MutationObserver
+(function() {
+  if (typeof MutationObserver === 'undefined') return;
+  const obs = new MutationObserver(() => initAllResizableTables());
+  document.addEventListener('DOMContentLoaded', () => {
+    obs.observe(document.body, { childList: true, subtree: true });
+    initAllResizableTables();
+  });
+})();
+
 function _buildCategoryFilterOptions() {
   const cats = state.categories || [];
   const roots = cats.filter(c => !c.parent_id).sort((a,b) => a.name.localeCompare(b.name));
