@@ -244,7 +244,7 @@ async function loadDashboard(){
   if (typeof renderDashboardUpcoming === 'function') await renderDashboardUpcoming(_dashMemberIds);
   if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
   await loadDashboardAutoRunSummary();
-  await loadDash90Forecast();
+  try { await loadDash90Forecast(); } catch(e) { console.warn('[dash90] forecast failed:', e?.message); }
 
   // Render account balances grouped by account group
   (function renderAccountBalances() {
@@ -791,7 +791,9 @@ async function loadDash90Forecast() {
   const sel = document.getElementById('dash90AccountFilter');
   if (sel && state.accounts.length) {
     const savedVal = sel.value;
-    sel.innerHTML = _buildAccountOptions('Todas as contas');
+    sel.innerHTML = typeof _buildAccountOptions === 'function'
+      ? _buildAccountOptions('Todas as contas')
+      : '<option value="">Todas as contas</option>' + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
     if (savedVal) sel.value = savedVal;
   }
 
