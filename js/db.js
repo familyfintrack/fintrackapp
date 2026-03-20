@@ -375,6 +375,40 @@ const _prices = {
         if (error) throw new Error('price_history insert: ' + error.message);
       }
 
+      // 5. Refresh stats (avg_price, last_price, record_count) for every affected item
+      //    These are denormalised columns on price_items used by the list UI.
+      //    We recalculate them here so they are always consistent after any insert.
+      const affectedIds = [...new Set(historyRows.map(r => r.item_id).filter(Boolean))];
+      if (affectedIds.length) {
+        // Fetch all history for affected items in one query (cheaper than N queries)
+        const { data: hist } = await sb.from('price_history')
+          .select('item_id, unit_price, purchased_at')
+          .in('item_id', affectedIds)
+          .order('purchased_at', { ascending: false });
+
+        const byItem = {};
+        (hist || []).forEach(r => {
+          if (!byItem[r.item_id]) byItem[r.item_id] = [];
+          byItem[r.item_id].push(r.unit_price);
+        });
+
+        await Promise.all(affectedIds.map(id => {
+          const prices = (byItem[id] || []).filter(v => v != null);
+          if (!prices.length) {
+            return sb.from('price_items')
+              .update({ avg_price: null, last_price: null, record_count: 0 })
+              .eq('id', id);
+          }
+          const avg  = prices.reduce((a, b) => a + b, 0) / prices.length;
+          const last = prices[0]; // already sorted DESC by purchased_at
+          return sb.from('price_items').update({
+            avg_price:    Math.round(avg  * 100) / 100,
+            last_price:   last,
+            record_count: prices.length,
+          }).eq('id', id);
+        }));
+      }
+
       return { saved: historyRows.length };
     });
   },
