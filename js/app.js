@@ -905,45 +905,5 @@ if('serviceWorker' in navigator){
 
 
 
-
-function initTapAndZoomLocks(){
-  if(document.documentElement.dataset.ftZoomLockInit === '1') return;
-  document.documentElement.dataset.ftZoomLockInit = '1';
-
-  let lastTouchEnd = 0;
-  document.addEventListener('touchend', function(ev){
-    const now = Date.now();
-    if(now - lastTouchEnd < 350){
-      ev.preventDefault();
-    }
-    lastTouchEnd = now;
-  }, { passive:false });
-
-  document.addEventListener('gesturestart', function(ev){ ev.preventDefault(); }, { passive:false });
-  document.addEventListener('gesturechange', function(ev){ ev.preventDefault(); }, { passive:false });
-  document.addEventListener('gestureend', function(ev){ ev.preventDefault(); }, { passive:false });
-
-  window.addEventListener('wheel', function(ev){
-    if(ev.ctrlKey){ ev.preventDefault(); }
-  }, { passive:false });
-
-  const bindTap = (selector, handlerName) => {
-    document.querySelectorAll(selector).forEach((el)=>{
-      if(el.dataset.ftTapBound === '1') return;
-      el.dataset.ftTapBound = '1';
-      el.style.touchAction = 'manipulation';
-      el.addEventListener('pointerup', function(ev){
-        if(typeof window[handlerName] === 'function'){
-          ev.preventDefault();
-          window[handlerName]();
-        }
-      });
-    });
-  };
-
-  bindTap('#bottomFab', 'openTransactionModal');
-  bindTap('button[onclick="openScheduledModal()"]', 'openScheduledModal');
-  bindTap('button[onclick="openTransactionModal()"]', 'openTransactionModal');
-}
-
-document.addEventListener('DOMContentLoaded', ()=>{ initBottomNav(); initTapAndZoomLocks(); });
+document.addEventListener('DOMContentLoaded', initBottomNav);
+document.addEventListener('DOMContentLoaded', ()=>{ try{ if(typeof installZoomGuards==='function') installZoomGuards(); }catch(e){} });

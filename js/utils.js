@@ -100,36 +100,6 @@ function getAmtField(fieldId) {
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// Stronger zoom lock for touch devices and desktop pinch/ctrl+wheel.
-(function installViewportLock(){
-  if (window.__fintrackViewportLockInstalled) return;
-  window.__fintrackViewportLockInstalled = true;
-
-  let lastTouchEnd = 0;
-
-  const block = (e) => {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-  };
-
-  ['gesturestart','gesturechange','gestureend'].forEach((evt) => {
-    document.addEventListener(evt, block, { passive: false });
-  });
-
-  document.addEventListener('wheel', (e) => {
-    if (e.ctrlKey) block(e);
-  }, { passive: false });
-
-  document.addEventListener('touchmove', (e) => {
-    if (e.touches && e.touches.length > 1) block(e);
-  }, { passive: false });
-
-  document.addEventListener('touchend', (e) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) block(e);
-    lastTouchEnd = now;
-  }, { passive: false });
-})();
-
 
 /* ═══════════════════════════════════════
    PAYEE AUTOCOMPLETE
@@ -404,50 +374,26 @@ async function createPayeeFromInput(ctx) {
   toast(`"${typed}" criado como ${payeeType === 'fonte_pagadora' ? 'Fonte Pagadora' : 'Beneficiário'}`, 'success');
 }
 
+/* Legacy icon metadata moved to js/ui_helpers.js to avoid duplicate global declarations. */
 
-/* ═══════════════════════════════════════
-   ICON PICKER
-═══════════════════════════════════════ */
-const ICON_META = {
-  // Brazilian banks
-  'itau':       {label:'Itaú',        color:'#FF6600', type:'bank'},
-  'inter':      {label:'Inter',       color:'#FF7A00', type:'bank'},
-  'bradesco':   {label:'Bradesco',    color:'#CC092F', type:'bank'},
-  'nubank':     {label:'Nubank',      color:'#820AD1', type:'bank'},
-  'bb':         {label:'BB',          color:'#F5A623', type:'bank'},
-  'caixa':      {label:'Caixa',       color:'#005CA9', type:'bank'},
-  'santander':  {label:'Santander',   color:'#EC0000', type:'bank'},
-  'xp':         {label:'XP',          color:'#000000', type:'bank'},
-  'c6':         {label:'C6',          color:'#242424', type:'bank'},
-  'neon':       {label:'Neon',        color:'#00D4FF', type:'bank'},
-  'next':       {label:'Next',        color:'#00AF3F', type:'bank'},
-  'picpay':     {label:'PicPay',      color:'#21C25E', type:'bank'},
-  'mercadopago':{label:'Mercado Pago',color:'#009EE3', type:'bank'},
-  'sicoob':     {label:'Sicoob',      color:'#006837', type:'bank'},
-  'rico':       {label:'Rico',        color:'#00A86B', type:'bank'},
-  'will':       {label:'Will',        color:'#7B2D8B', type:'bank'},
-  // French banks
-  'boursobank': {label:'Boursobank',  color:'#1A2E5A', type:'bank'},
-  'bnp':        {label:'BNP Paribas', color:'#009B55', type:'bank'},
-  'sg':         {label:'Soc. Gén.',   color:'#E30613', type:'bank'},
-  'ca':         {label:'Crédit Ag.',  color:'#009A44', type:'bank'},
-  'lcl':        {label:'LCL',         color:'#005BAB', type:'bank'},
-  'laposte':    {label:'La Poste',    color:'#FDD000', type:'bank'},
-  'cic':        {label:'CIC',         color:'#003087', type:'bank'},
-  'bred':       {label:'BRED',        color:'#C8102E', type:'bank'},
-  'revolut':    {label:'Revolut',     color:'#0075EB', type:'bank'},
-  'n26':        {label:'N26',         color:'#3B82F6', type:'bank'},
-  'wise':       {label:'Wise',        color:'#9FE870', type:'bank'},
-  'paypal':     {label:'PayPal',      color:'#003087', type:'bank'},
-  // Cards
-  'visa':       {label:'Visa',        color:'#1A1F71', type:'card'},
-  'mastercard': {label:'Mastercard',  color:'#EB001B', type:'card'},
-  'amex':       {label:'Amex',        color:'#2E77BC', type:'card'},
-  'elo':        {label:'Elo',         color:'#000000', type:'card'},
-  'hipercard':  {label:'Hipercard',   color:'#B40019', type:'card'},
-  'dinersclub': {label:'Diners',      color:'#004B87', type:'card'},
-  'sams':       {label:"Sam's",       color:'#0067A0', type:'card'},
-  'porto':      {label:'Porto',       color:'#005B8E', type:'card'},
-};
+function installZoomGuards(){
+  if (window.__ftZoomGuardsInstalled) return;
+  window.__ftZoomGuardsInstalled = true;
 
-// Render icon from stored key into an element
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e){
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive:false });
+
+  ['gesturestart','gesturechange','gestureend'].forEach(function(evt){
+    document.addEventListener(evt, function(e){ e.preventDefault(); }, { passive:false });
+  });
+
+  document.addEventListener('wheel', function(e){
+    if (e.ctrlKey) e.preventDefault();
+  }, { passive:false });
+}

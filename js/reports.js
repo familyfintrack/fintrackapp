@@ -1819,18 +1819,17 @@ function parseAmtInput(s) {
   return neg ? -Math.abs(v) : v;
 }
 
-// Sign toggle button state is shared globally from utils.js.
-window._amtSignState = window._amtSignState || {};
+// Sign toggle button state is owned by js/utils.js to avoid duplicate globals.
 
 function toggleAmtSign(fieldId) {
-  window._amtSignState[fieldId] = !window._amtSignState[fieldId];
+  _amtSignState[fieldId] = !_amtSignState[fieldId];
   _updateSignBtn(fieldId);
 }
 
 function _updateSignBtn(fieldId) {
   const btn = document.getElementById(fieldId + 'SignBtn');
   if (!btn) return;
-  const isNeg = !!window._amtSignState[fieldId];
+  const isNeg = !!_amtSignState[fieldId];
   btn.textContent = isNeg ? '−' : '+';
   btn.classList.toggle('negative', isNeg);
   btn.classList.toggle('positive', !isNeg);
@@ -1839,7 +1838,7 @@ function _updateSignBtn(fieldId) {
 // Set amount field value and sign btn state from a numeric value (e.g. when editing)
 function setAmtField(fieldId, value) {
   const isNeg = (value < 0);
-  window._amtSignState[fieldId] = isNeg;
+  _amtSignState[fieldId] = isNeg;
   const el = document.getElementById(fieldId);
   if (el) el.value = value !== 0 ? Math.abs(value).toFixed(2).replace('.', ',') : '';
   _updateSignBtn(fieldId);
@@ -1855,7 +1854,7 @@ function getAmtField(fieldId) {
   let clean = raw.replace(/\./g, '').replace(',', '.'); // handle BR format
   if (!/[.,]/.test(raw)) clean = raw; // plain integer
   const abs = Math.abs(parseFloat(clean) || 0);
-  return window._amtSignState[fieldId] ? -abs : abs;
+  return _amtSignState[fieldId] ? -abs : abs;
 }
 
 // ─────────────────────────────────────────────────────────────
