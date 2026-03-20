@@ -102,15 +102,12 @@ function _refreshRptTagFilter() {
 
 let _rptLoading = false;
 async function loadCurrentReport(resetPage = false) {
-  if (!sb || !currentUser) return;           // Supabase not ready yet
-  if (_rptLoading) return;                   // prevent concurrent fetches
+  if (_rptLoading) return; // prevent concurrent fetches
   _rptLoading = true;
   try {
     if (rptState.view === 'regular')           await loadReports();
     else if (rptState.view === 'transactions') await loadReportTx();
     else if (rptState.view === 'forecast')     await loadForecast();
-  } catch(e) {
-    console.warn('[reports] loadCurrentReport error:', e?.message);
   } finally {
     _rptLoading = false;
   }
@@ -1771,21 +1768,13 @@ function renderChart(id, type, labels, datasets, extraOptions={}) {
   return state.chartInstances[id];
 }
 
-// ── populateSelects: canonical definition (utils.js is also loaded but reports.js
-//    is guaranteed to be in index.html, so this acts as the authoritative source) ──
-function populateSelects(){
-  try { populateReportFilters(); } catch(e) { console.warn('[populateSelects] reportFilters:', e?.message); }
-  try {
-    const accs = state.accounts || [];
-    ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=(typeof _accountOptions==='function')?_accountOptions(accs,'Selecione a conta'):'<option value="">Selecione a conta</option>'+accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');});
-    const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=(typeof _accountOptions==='function')?_accountOptions(accs,'Todas as contas'):'<option value="">Todas as contas</option>'+accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-    const catF=document.getElementById('txCategoryFilter');if(catF){const cur=catF.value;catF.innerHTML='<option value="">Categoria</option>'+((typeof _buildCategoryFilterOptions==='function')?_buildCategoryFilterOptions():(state.categories||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join(''));catF.value=cur;}
-  } catch(e) { console.warn('[populateSelects] accounts/cats:', e?.message); }
-  try { if(typeof buildCatPicker==='function') buildCatPicker(); } catch(e) {}
-  try {
-    const pCat=document.getElementById('payeeCategory');
-    if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+(state.categories||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  } catch(e) {}
+function populateSelects(){populateReportFilters();
+  const aOpts=state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Selecione a conta</option>'+aOpts;});
+  const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML='<option value="">Todas as contas</option>'+aOpts;
+  // payee autocomplete uses state.payees directly - no select to populate
+  buildCatPicker(); // hierarchical picker replaces flat select
+  const pCat=document.getElementById('payeeCategory');if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
 }
 
 function openModal(id){document.getElementById(id).classList.add('open');}

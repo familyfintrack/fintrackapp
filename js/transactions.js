@@ -257,7 +257,6 @@ function filterTransactions(immediate = false){
   state.txFilter.account=document.getElementById('txAccount').value;
   state.txFilter.type=document.getElementById('txType').value;
   state.txFilter.status=(document.getElementById('txStatusFilter')?.value)||'';
-  state.txFilter.categoryId=(document.getElementById('txCategoryFilter')?.value)||'';
   // Member filter: read selected IDs from multi-picker
   // Read selected member from compact select (empty string = all members)
   const _txMemberSel = document.getElementById('txMemberPicker');
@@ -512,9 +511,23 @@ function renderTransactionsGrouped(txs) {
     return na.localeCompare(nb);
   });
 
-  // Summary bar hidden in group view — saldos already visible in each group header
+  // Summary bar
   const summaryBar = document.getElementById('txSummaryBar');
-  if (summaryBar) summaryBar.style.display = 'none';
+  summaryBar.style.display = 'flex';
+  summaryBar.innerHTML = sortedKeys.map(k => {
+    const g = groups[k];
+    const acct = state.accounts.find(a => a.id === k) || {};
+    const col = acct.color || 'var(--accent)';
+    const bal = g.balance;
+    return `<div onclick="document.getElementById('txGroup-${k}').scrollIntoView({behavior:'smooth',block:'start'})"
+      style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;transition:box-shadow .15s;font-size:.8rem"
+      onmouseover="this.style.boxShadow='var(--shadow)'" onmouseout="this.style.boxShadow=''">
+      ${renderIconEl(acct.icon, acct.color, 20)}
+      <span style="font-weight:600;color:var(--text)">${esc(g.account?.name||'Sem conta')}</span>
+      <span class="${bal>=0?'amount-pos':'amount-neg'}" style="font-weight:600;font-size:.85rem">${fmt(bal,'BRL')}</span>
+    </div>`;
+  }).join('');
+
   // Render each group
   container.innerHTML = sortedKeys.map(k => {
     const g = groups[k];

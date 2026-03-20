@@ -17,7 +17,6 @@ const _px = {
   catFilter:     '',
   storeFilter:   '',
   pidStoreFilter: '',
-  groupBy:       '',   // '' | 'cat' | 'store'
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,176 +140,80 @@ function _renderPricesPage() {
     const q = _px.search.toLowerCase();
     items = items.filter(i => i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q));
   }
-  if (_px.catFilter)   items = items.filter(i => i.category_id === _px.catFilter);
-  if (_px.storeFilter && _px.groupBy !== 'store') {
-    // store filter when not in store-group mode: filter by storeFilter (noop at item level — applied in history)
-    // items don't carry store_id directly; keep all and let detail show filtered history
-  }
+  if (_px.catFilter) items = items.filter(i => i.category_id === _px.catFilter);
   const countEl = document.getElementById('pricesCount');
   if (countEl) countEl.textContent = items.length + (items.length !== 1 ? ' itens' : ' item');
   if (!items.length) {
     listEl.innerHTML = `
       <div class="prices-empty">
         <div style="font-size:2.8rem;margin-bottom:12px">🏷️</div>
-        <div style="font-weight:700;font-size:.95rem;margin-bottom:6px">Nenhum item encontrado</div>
+        <div style="font-weight:700;font-size:.95rem;margin-bottom:6px">Nenhum item cadastrado</div>
         <div style="font-size:.82rem;color:var(--muted);max-width:280px;text-align:center;line-height:1.55">
-          Tente ajustar os filtros ou cadastre novos itens.
+          Registre preços ao incluir transações com recibo lido por IA,<br>ou clique em <strong>+ Novo Item</strong>.
         </div>
       </div>`;
     return;
   }
-  if (_px.groupBy) {
-    _renderPricesGrouped(items);
-    return;
-  }
-  listEl.innerHTML = `<div class="px-grid">` + items.map(_pxCardHtml).join('') + `</div>`;
+  listEl.innerHTML = `<div class="px-grid">` +
+    items.map(item => {
+      const avg  = item.avg_price  != null ? fmt(item.avg_price)  : null;
+      const last = item.last_price != null ? fmt(item.last_price) : null;
+      const cnt  = item.record_count || 0;
+      const cat  = item.categories?.name  || '';
+      const catColor = item.categories?.color || 'var(--accent)';
+
+      // Trend arrow: compare last vs avg
+      let trend = '';
+      if (item.avg_price != null && item.last_price != null) {
+        if      (item.last_price > item.avg_price * 1.02) trend = '<span class="px-trend up">↑</span>';
+        else if (item.last_price < item.avg_price * 0.98) trend = '<span class="px-trend dn">↓</span>';
+        else                                               trend = '<span class="px-trend eq">→</span>';
+      }
+
+      // Visual avatar: first 2 chars of item name, coloured by category
+      const initials = item.name.trim().slice(0,2).toUpperCase();
+      const unitBadge = (item.unit && item.unit !== 'un')
+        ? `<span class="px-unit">${esc(item.unit)}</span>` : '';
+
+      return `
+      <div class="px-card" onclick="openPriceItemDetail('${item.id}')"
+           style="--px-clr:${catColor}">
+        <div class="px-card-top">
+          <div class="px-avatar" style="background:color-mix(in srgb,${catColor} 15%,transparent);color:${catColor}">${initials}</div>
+          ${cat ? `<span class="px-cat-badge" style="color:${catColor};background:color-mix(in srgb,${catColor} 12%,transparent)">${esc(cat)}</span>` : ''}
+          <button class="px-cart-btn" title="Adicionar à lista de compras"
+                  onclick="event.stopPropagation();openAddToGroceryList('${item.id}','${esc(item.name).replace(/'/g,'\u0027')}','${esc(item.unit||'un')}',${item.last_price ?? 'null'})">
+            🛒
+          </button>
+        </div>
+        <div class="px-name">${esc(item.name)}${unitBadge}</div>
+        ${item.description ? `<div class="px-desc">${esc(item.description)}</div>` : ''}
+        <div class="px-prices">
+          <div class="px-price-col">
+            <span class="px-price-lbl">Preço médio</span>
+            <span class="px-price-val">${avg ?? '—'}</span>
+          </div>
+          <div class="px-price-col">
+            <span class="px-price-lbl">Último ${trend}</span>
+            <span class="px-price-val ${item.last_price != null ? 'accent' : ''}">${last ?? '—'}</span>
+          </div>
+          <div class="px-price-col">
+            <span class="px-price-lbl">Registros</span>
+            <span class="px-price-val">${cnt}</span>
+          </div>
+        </div>
+        <div class="px-card-footer">
+          <div class="px-progress">
+            <div class="px-progress-bar" style="width:${Math.min(100, cnt * 10)}%;background:${catColor}"></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
 }
 
 function pricesSearch(val)      { _px.search = val;      _renderPricesPage(); }
 function pricesCatFilter(val)   { _px.catFilter = val;   _renderPricesPage(); }
 function pricesStoreFilter(val) { _px.storeFilter = val; _renderPricesPage(); }
-function pricesSetGroup(val) {
-  _px.groupBy = val;
-  ['pxGroupNone','pxGroupCat','pxGroupStore'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  const map = { '': 'pxGroupNone', cat: 'pxGroupCat', store: 'pxGroupStore' };
-  const active = document.getElementById(map[val]);
-  if (active) active.classList.add('active');
-  _renderPricesPage();
-}
-
-function _renderPricesGrouped(items) {
-  const listEl = document.getElementById('pricesItemList');
-  if (!listEl) return;
-
-  if (_px.groupBy === 'cat') {
-    // Group by category name
-    const groups = {};
-    items.forEach(item => {
-      const key = item.categories?.name || 'Sem categoria';
-      const color = item.categories?.color || 'var(--accent)';
-      if (!groups[key]) groups[key] = { color, items: [], total: 0 };
-      groups[key].items.push(item);
-      groups[key].total += item.record_count || 0;
-    });
-    listEl.innerHTML = Object.entries(groups)
-      .sort((a,b) => a[0].localeCompare(b[0]))
-      .map(([gName, g]) => `
-        <div class="px-group-section">
-          <div class="px-group-header">
-            <span class="px-group-dot" style="background:${g.color}"></span>
-            <span class="px-group-label">${esc(gName)}</span>
-            <span class="px-group-count">${g.items.length} ${g.items.length !== 1 ? 'itens' : 'item'}</span>
-          </div>
-          <div class="px-grid">${g.items.map(_pxCardHtml).join('')}</div>
-        </div>`).join('');
-
-  } else if (_px.groupBy === 'store') {
-    // Group by last recorded store — uses price_history to find recent store
-    // Since items don't carry store directly, group by avg cheapest store from history
-    // Fallback: group items by name prefix (letter) or show all under store filter
-    // We load per-item store data lazily — for now group by store from _px.stores filter
-    const storeId = _px.storeFilter;
-    if (storeId) {
-      // If a store filter is active, show items that have history in that store
-      // (already filtered) grouped under that store header
-      const store = _px.stores.find(s => s.id === storeId);
-      listEl.innerHTML = `
-        <div class="px-group-section">
-          <div class="px-group-header">
-            <span class="px-group-dot" style="background:var(--accent)">🏪</span>
-            <span class="px-group-label">${esc(store?.name || 'Estabelecimento')}</span>
-            <span class="px-group-count">${items.length} ${items.length !== 1 ? 'itens' : 'item'}</span>
-          </div>
-          <div class="px-grid">${items.map(_pxCardHtml).join('')}</div>
-        </div>`;
-    } else {
-      // No store filter: group alphabetically A-Z under store headers from history
-      // Load all history grouped by store (batch query)
-      _renderPricesGroupedByStore(items, listEl);
-      return;
-    }
-  }
-}
-
-async function _renderPricesGroupedByStore(items, listEl) {
-  if (!items.length) { listEl.innerHTML = ''; return; }
-  const fid = _famId();
-  if (!fid) return;
-  // Fetch last store per item from price_history
-  const itemIds = items.map(i => i.id);
-  const { data: hist } = await sb.from('price_history')
-    .select('item_id, store_id')
-    .eq('family_id', fid)
-    .in('item_id', itemIds)
-    .order('purchased_at', { ascending: false });
-
-  // Map item_id → most recent store_id
-  const itemToStore = {};
-  (hist || []).forEach(h => {
-    if (!itemToStore[h.item_id]) itemToStore[h.item_id] = h.store_id;
-  });
-
-  const storeMap = Object.fromEntries(_px.stores.map(s => [s.id, s]));
-  const groups = {};
-  items.forEach(item => {
-    const storeId = itemToStore[item.id];
-    const store = storeId ? storeMap[storeId] : null;
-    const key = store?.name || 'Sem estabelecimento';
-    if (!groups[key]) groups[key] = { items: [] };
-    groups[key].items.push(item);
-  });
-
-  listEl.innerHTML = Object.entries(groups)
-    .sort((a,b) => a[0].localeCompare(b[0]))
-    .map(([gName, g]) => `
-      <div class="px-group-section">
-        <div class="px-group-header">
-          <span style="font-size:.95rem">🏪</span>
-          <span class="px-group-label">${esc(gName)}</span>
-          <span class="px-group-count">${g.items.length} ${g.items.length !== 1 ? 'itens' : 'item'}</span>
-        </div>
-        <div class="px-grid">${g.items.map(_pxCardHtml).join('')}</div>
-      </div>`).join('');
-}
-
-function _pxCardHtml(item) {
-  const avg  = item.avg_price  != null ? fmt(item.avg_price)  : null;
-  const last = item.last_price != null ? fmt(item.last_price) : null;
-  const cnt  = item.record_count || 0;
-  const cat  = item.categories?.name  || '';
-  const catColor = item.categories?.color || 'var(--accent)';
-  let trend = '';
-  if (item.avg_price != null && item.last_price != null) {
-    if      (item.last_price > item.avg_price * 1.02) trend = '<span class="px-trend up">\u2191</span>';
-    else if (item.last_price < item.avg_price * 0.98) trend = '<span class="px-trend dn">\u2193</span>';
-    else                                               trend = '<span class="px-trend eq">\u2192</span>';
-  }
-  const initials = item.name.trim().slice(0,2).toUpperCase();
-  const unitBadge = (item.unit && item.unit !== 'un')
-    ? `<span class="px-unit">${esc(item.unit)}</span>` : '';
-  return `
-    <div class="px-card" onclick="openPriceItemDetail('${item.id}')" style="--px-clr:${catColor}">
-      <div class="px-card-top">
-        <div class="px-avatar" style="background:color-mix(in srgb,${catColor} 15%,transparent);color:${catColor}">${initials}</div>
-        ${cat && !_px.groupBy ? `<span class="px-cat-badge" style="color:${catColor};background:color-mix(in srgb,${catColor} 12%,transparent)">${esc(cat)}</span>` : ''}
-        <button class="px-cart-btn" title="Adicionar à lista de compras"
-                onclick="event.stopPropagation();openAddToGroceryList('${item.id}','${esc(item.name).replace(/'/g,'\u0027')}','${esc(item.unit||'un')}',${item.last_price ?? 'null'})">
-          🛒
-        </button>
-      </div>
-      <div class="px-name">${esc(item.name)}${unitBadge}</div>
-      ${item.description ? `<div class="px-desc">${esc(item.description)}</div>` : ''}
-      <div class="px-prices">
-        <div class="px-price-col"><span class="px-price-lbl">Preço médio</span><span class="px-price-val">${avg ?? '—'}</span></div>
-        <div class="px-price-col"><span class="px-price-lbl">Último ${trend}</span><span class="px-price-val ${item.last_price != null ? 'accent' : ''}">${last ?? '—'}</span></div>
-        <div class="px-price-col"><span class="px-price-lbl">Registros</span><span class="px-price-val">${cnt}</span></div>
-      </div>
-      <div class="px-card-footer"><div class="px-progress"><div class="px-progress-bar" style="width:${Math.min(100, cnt * 10)}%;background:${catColor}"></div></div></div>
-    </div>`;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ITEM DETAIL MODAL
