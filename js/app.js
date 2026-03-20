@@ -476,10 +476,7 @@ function setAppLogo(url){
   APP_LOGO_URL = clean || DEFAULT_LOGO_URL;
 
   // For wizard header use logo2 variant (dark background, no filter CSS)
-  // logo2.png is the dark-background variant — use it directly if APP_LOGO_URL is the default
-  const DARK_LOGO_URL = (APP_LOGO_URL === DEFAULT_LOGO_URL || APP_LOGO_URL === 'logo_transparent.png')
-    ? 'logo2.png'
-    : APP_LOGO_URL.replace(/\.png$/i, '2.png');
+  const DARK_LOGO_URL = APP_LOGO_URL.replace(/\.png$/i, '2.png');
 
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
     const el=document.getElementById(id);
@@ -769,26 +766,6 @@ function clearFamilyScopedUI() {
   _clearFamilySwitchNode('budgetList', '');
   _clearFamilySwitchNode('reportResult', '');
 
-  // Dashboard containers
-  _clearFamilySwitchNode('statTotal', '—');
-  _clearFamilySwitchNode('statIncome', '—');
-  _clearFamilySwitchNode('statExpenses', '—');
-  _clearFamilySwitchNode('statBalance', '—');
-  _clearFamilySwitchNode('accountBalancesList', '');
-  _clearFamilySwitchNode('dashRecentTxBody', '');
-  _clearFamilySwitchNode('catChartDetail', '');
-  _clearFamilySwitchNode('dashFavCategories', '');
-  _clearFamilySwitchNode('upcomingList', '');
-
-  // Reports
-  _clearFamilySwitchNode('reportKpis', '');
-  _clearFamilySwitchNode('reportDataInfo', '');
-  _clearFamilySwitchNode('reportCatSection', '');
-
-  // Investments
-  _clearFamilySwitchNode('investmentsContent', '');
-  _clearFamilySwitchNode('investmentsList', '');
-
   ['groceryDetailPanel','txBestCardSuggestion','txCurrencyPanel','txFxPanel','txCardPaymentBadge','pricesReceiptZone'].forEach(id => {
     try {
       const el = document.getElementById(id);
@@ -826,7 +803,7 @@ function clearFamilyScopedUI() {
     } catch(e) {}
   });
 
-  ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','forecastAccountFilter','pricesCatFilter','pricesStoreFilter'].forEach(id => {
+  ['txMonth','txAccount','txType','txStatusFilter','forecastAccountFilter','pricesCatFilter','pricesStoreFilter'].forEach(id => {
     try {
       const el = document.getElementById(id);
       if (el) el.value = '';
@@ -870,9 +847,9 @@ function navigate(page){
   state.currentPage=page;closeSidebar();
   _scrollActivePageToTop(page);
   if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){populateTxMonthFilter();if(typeof populateSelects==='function')populateSelects();loadTransactions();}
+  else if(page==='transactions'){populateTxMonthFilter();loadTransactions();}
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
-  else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
+  else if(page==='reports'){populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();
   else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}

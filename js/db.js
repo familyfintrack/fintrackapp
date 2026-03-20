@@ -197,12 +197,6 @@ const _transactions = {
       else if (filter.type === 'card_payment') q = q.eq('is_card_payment', true);
       if (filter.status === 'pending')         q = q.eq('status', 'pending');
       else if (filter.status === 'confirmed')  q = q.eq('status', 'confirmed');
-      // Category filter: includes selected category and all its children
-      if (filter.categoryId) {
-        const catIds = _resolveCategoryIds(filter.categoryId);
-        if (catIds.length === 1) q = q.eq('category_id', catIds[0]);
-        else                     q = q.in('category_id', catIds);
-      }
       // Member filter: array of selected member IDs
       if (filter.memberIds && filter.memberIds.length > 0) {
         // Match transactions where any of the selected members appears
@@ -409,16 +403,3 @@ window.DB = {
   preload:      dbPreload,
   bustAll:      dbBustAll,
 };
-
-// Resolve a category ID to itself + all descendant IDs (for hierarchical filter)
-function _resolveCategoryIds(rootId) {
-  const all = state.categories || [];
-  const result = [];
-  const queue = [rootId];
-  while (queue.length) {
-    const id = queue.shift();
-    result.push(id);
-    all.filter(c => c.parent_id === id).forEach(c => queue.push(c.id));
-  }
-  return result;
-}
