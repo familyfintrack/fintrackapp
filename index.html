@@ -2590,10 +2590,14 @@
               <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
                 oninput="updateScCurrencyPreview()">
             </div>
-            <span id="scCurrencyBadge"
-              style="flex-shrink:0;padding:6px 10px;border-radius:var(--r-sm);background:var(--surface2);
+            <!-- Seletor de moeda da transação (pode diferir da moeda da conta) -->
+            <select id="scCurrencySelect" onchange="onScCurrencyChange()"
+              style="flex-shrink:0;padding:6px 8px;border-radius:var(--r-sm);background:var(--surface2);
                      border:1px solid var(--border);font-size:.8rem;font-weight:700;
-                     color:var(--accent);letter-spacing:.04em;white-space:nowrap">BRL</span>
+                     color:var(--accent);cursor:pointer;max-width:82px">
+              <option value="BRL">BRL</option>
+            </select>
+            <span id="scCurrencyBadge" style="display:none">BRL</span>
           </div>
         </div>
         <div class="form-group"><label>Conta Origem *</label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
@@ -2604,29 +2608,50 @@
 
         <!-- Currency panel: expense/income on non-BRL account -->
         <div id="scCurrencyPanel" style="display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:.82rem;font-weight:600;color:var(--accent)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:.82rem;font-weight:600;color:var(--accent)">
               💱 <span id="scCurrencyPanelTitle">Conversão de Moeda</span>
-            </div>
-            <button type="button" onclick="fetchScCurrencyRate()" id="scCurrencyFetchBtn"
-              style="font-size:.75rem;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600">
-              <span id="scCurrencyFetchIcon">🔄</span> Buscar cotação
+            </span>
+          </div>
+          <!-- Modo de taxa: fixa agora vs buscar no momento do registro -->
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button type="button" id="scCurrModeFixed" onclick="setScCurrencyMode('fixed')"
+              style="flex:1;padding:6px 8px;border:1.5px solid var(--accent);border-radius:7px;background:var(--accent);color:#fff;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">
+              🔒 Taxa fixa agora
+            </button>
+            <button type="button" id="scCurrModeApi" onclick="setScCurrencyMode('api')"
+              style="flex:1;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--text2);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">
+              📡 Buscar no registro
             </button>
           </div>
-          <div id="scCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:.75rem;font-weight:600;display:block;margin-bottom:3px">
-                Taxa (1 <span id="scCurrencyRateFromLabel">USD</span> = ? BRL)
-              </label>
-              <input type="text" id="scCurrencyRate" inputmode="decimal" placeholder="1.00000"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)"
-                oninput="updateScCurrencyPreview()">
+          <!-- Painel taxa fixa -->
+          <div id="scCurrFixedPanel">
+            <div id="scCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="flex:1;min-width:120px">
+                <label style="font-size:.75rem;font-weight:600;display:block;margin-bottom:3px">
+                  Taxa (1 <span id="scCurrencyRateFromLabel">USD</span> = ? BRL)
+                </label>
+                <input type="text" id="scCurrencyRate" inputmode="decimal" placeholder="1.00000"
+                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)"
+                  oninput="updateScCurrencyPreview()">
+              </div>
+              <div style="padding-top:18px">
+                <button type="button" onclick="fetchScCurrencyRate()" id="scCurrencyFetchBtn"
+                  style="font-size:.75rem;padding:5px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600">
+                  <span id="scCurrencyFetchIcon">🔄</span> Buscar cotação
+                </button>
+              </div>
+              <div id="scCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
             </div>
-            <div id="scCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:8px">
+              💡 O valor em BRL (<span id="scCurrencyBrlHint">—</span>) será usado para relatórios e patrimônio.
+            </div>
           </div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:8px">
-            💡 O valor em BRL (<span id="scCurrencyBrlHint">—</span>) será registrado para fins de relatórios.
+          <!-- Painel API: taxa buscada no momento de cada registro -->
+          <div id="scCurrApiPanel" style="display:none;font-size:.8rem;color:#1e40af;background:#dbeafe;border-radius:8px;padding:10px 12px;line-height:1.6">
+            📡 A taxa de câmbio será buscada automaticamente na <strong>API Frankfurter (BCE)</strong> na data de cada lançamento.<br>
+            <span style="font-size:.75rem;color:#1d4ed8">O valor em BRL refletirá a cotação do dia do registro.</span>
           </div>
         </div>
 
