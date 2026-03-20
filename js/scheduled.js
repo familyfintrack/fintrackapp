@@ -701,6 +701,28 @@ function openScheduledModal(id='') {
   setScType(sc?.type||'expense');
   setTimeout(()=>_updateScCurrencyPanel(),30);
 
+  // Restore currency select and conversion mode
+  requestAnimationFrame(() => {
+    const accId      = document.getElementById('scAccountId')?.value;
+    const acc        = (state.accounts||[]).find(a => a.id === accId);
+    const accountCur = acc?.currency || 'BRL';
+    // Build the select with the right currency pre-selected
+    const savedCur = sc?.currency || accountCur;
+    _rebuildScCurrencySelect(accountCur, savedCur);
+    // Restore conversion mode and rate for non-transfer types
+    if (sc && sc.type !== 'transfer' && sc.type !== 'card_payment') {
+      _updateScCurrencyPanel();
+      const cPanel = document.getElementById('scCurrencyPanel');
+      if (cPanel && cPanel.style.display !== 'none' && sc.fx_mode) {
+        setScCurrencyMode(sc.fx_mode);
+        if (sc.fx_mode === 'fixed' && sc.fx_rate) {
+          const inp = document.getElementById('scCurrencyRate');
+          if (inp) { inp.value = Number(sc.fx_rate).toFixed(6); updateScCurrencyPreview(); }
+        }
+      }
+    }
+  });
+
   // Restore FX settings for cross-currency transfers
   setTimeout(() => {
     onScTransferAccountChange(); // re-evaluate if currencies differ
@@ -986,18 +1008,29 @@ async function saveScheduled() {
   const isScTransfer = type==='transfer' || type==='card_payment';
   const isScCardPayment = type==='card_payment';
 
-  // FX settings for cross-currency transfers
-  const fxPanel   = document.getElementById('scFxPanel');
-  const fxVisible = fxPanel && fxPanel.style.display !== 'none';
-  const fxMode    = fxVisible ? (fxPanel.getAttribute('data-fx-mode') || 'fixed') : null;
-  const fxRateRaw = parseFloat(document.getElementById('scFxRate')?.value?.replace(',', '.'));
-  const fxRate    = (fxMode === 'fixed' && fxRateRaw > 0) ? fxRateRaw : null;
+  // FX settings — from the transfer FX panel OR from the currency conversion panel
+  const fxPanel     = document.getElementById('scFxPanel');
+  const fxVisible   = fxPanel && fxPanel.style.display !== 'none';
+  const currPanel   = document.getElementById('scCurrencyPanel');
+  const currVisible = currPanel && currPanel.style.display !== 'none';
+  let fxMode = null, fxRate = null;
+  if (fxVisible) {
+    // Transfer between accounts with different currencies
+    fxMode = fxPanel.getAttribute('data-fx-mode') || 'fixed';
+    const raw = parseFloat(document.getElementById('scFxRate')?.value?.replace(',', '.'));
+    fxRate = (fxMode === 'fixed' && raw > 0) ? raw : null;
+  } else if (currVisible) {
+    // Expense/income in a currency different from the account or BRL
+    fxMode = currPanel.getAttribute('data-curr-mode') || 'fixed';
+    const raw = parseFloat(document.getElementById('scCurrencyRate')?.value?.replace(',', '.'));
+    fxRate = (fxMode === 'fixed' && raw > 0) ? raw : null;
+  }
 
   const data = {
     description: document.getElementById('scDesc').value.trim(),
     type,
     amount: (type==='expense'||isScTransfer) ? -Math.abs(amount) : Math.abs(amount),
-    currency:(()=>{const _a=(state.accounts||[]).find(a=>a.id===document.getElementById('scAccountId').value);return _a?.currency||'BRL';})(),
+    currency: _getScSelectedCurrency() || (()=>{const _a=(state.accounts||[]).find(a=>a.id===document.getElementById('scAccountId').value);return _a?.currency||'BRL';})(),
     account_id: document.getElementById('scAccountId').value || null,
     transfer_to_account_id: isScTransfer ? (document.getElementById('scTransferToAccountId')?.value || null) : null,
     payee_id: isScTransfer ? null : (document.getElementById('scPayeeId').value || null),
@@ -1653,55 +1686,144 @@ function _scCalRenderDetail(dateStr, data) {
     ${itemsHtml}`;
 }
 
-function onScAccountChange(){
+// ── Currency helpers ────────────────────────────────────────────────────────
+function _getScSelectedCurrency() {
+  const sel = document.getElementById('scCurrencySelect');
+  return sel?.value || 'BRL';
+}
+
+function _rebuildScCurrencySelect(accountCur, selectedCur) {
+  const sel = document.getElementById('scCurrencySelect');
+  if (!sel) return;
+  const CURRENCIES = ['BRL','USD','EUR','GBP','AED','ARS','CAD','CHF','JPY','MXN','CLP','COP','PEN','UYU'];
+  const list = [...new Set([accountCur, ...CURRENCIES])];
+  sel.innerHTML = list.map(c =>
+    `<option value="${c}"${c === (selectedCur || accountCur) ? ' selected' : ''}>${c}</option>`
+  ).join('');
+}
+
+function onScCurrencyChange() {
   _updateScCurrencyPanel();
-  if(typeof onScTransferAccountChange==='function') onScTransferAccountChange();
 }
-function _updateScCurrencyPanel(){
-  const accId=document.getElementById('scAccountId')?.value;
-  const acc=(state.accounts||[]).find(a=>a.id===accId);
-  const cur=acc?.currency||'BRL';
-  const badge=document.getElementById('scCurrencyBadge');
-  if(badge) badge.textContent=cur;
-  const panel=document.getElementById('scCurrencyPanel');
-  if(!panel) return;
-  const tv=document.getElementById('scTypeField')?.value||'';
-  if(cur==='BRL'||tv==='transfer'||tv==='card_payment'){panel.style.display='none';return;}
-  panel.style.display='';
-  const fl=document.getElementById('scCurrencyRateFromLabel');
-  const tl=document.getElementById('scCurrencyPanelTitle');
-  if(fl) fl.textContent=cur;
-  if(tl) tl.textContent=`Conversão: ${cur} → BRL`;
+
+function onScAccountChange() {
+  const accId = document.getElementById('scAccountId')?.value;
+  const acc   = (state.accounts||[]).find(a => a.id === accId);
+  const accountCur = acc?.currency || 'BRL';
+  // Keep user-chosen currency if already set; default to account currency
+  const currentSel = _getScSelectedCurrency();
+  _rebuildScCurrencySelect(accountCur, currentSel || accountCur);
+  _updateScCurrencyPanel();
+  if (typeof onScTransferAccountChange === 'function') onScTransferAccountChange();
+}
+
+function setScCurrencyMode(mode) {
+  const panel    = document.getElementById('scCurrencyPanel');
+  const fixedBtn = document.getElementById('scCurrModeFixed');
+  const apiBtn   = document.getElementById('scCurrModeApi');
+  const fixedPan = document.getElementById('scCurrFixedPanel');
+  const apiPan   = document.getElementById('scCurrApiPanel');
+  if (fixedBtn) {
+    fixedBtn.style.background  = mode === 'fixed' ? 'var(--accent)' : 'transparent';
+    fixedBtn.style.color       = mode === 'fixed' ? '#fff' : 'var(--text2)';
+    fixedBtn.style.borderColor = mode === 'fixed' ? 'var(--accent)' : 'var(--border)';
+  }
+  if (apiBtn) {
+    apiBtn.style.background  = mode === 'api' ? 'var(--accent)' : 'transparent';
+    apiBtn.style.color       = mode === 'api' ? '#fff' : 'var(--text2)';
+    apiBtn.style.borderColor = mode === 'api' ? 'var(--accent)' : 'var(--border)';
+  }
+  if (fixedPan) fixedPan.style.display = mode === 'fixed' ? '' : 'none';
+  if (apiPan)   apiPan.style.display   = mode === 'api'   ? '' : 'none';
+  if (panel)    panel.setAttribute('data-curr-mode', mode);
+}
+
+function _updateScCurrencyPanel() {
+  const accId      = document.getElementById('scAccountId')?.value;
+  const acc        = (state.accounts||[]).find(a => a.id === accId);
+  const accountCur = acc?.currency || 'BRL';
+  const txCur      = _getScSelectedCurrency();
+  const tv         = document.getElementById('scTypeField')?.value || '';
+
+  // Panel shows whenever tx currency ≠ BRL OR account is non-BRL
+  // (always hidden for transfers — they use scFxPanel instead)
+  const needsConversion = tv !== 'transfer' && tv !== 'card_payment' &&
+    (txCur !== 'BRL' || accountCur !== 'BRL');
+
+  const panel = document.getElementById('scCurrencyPanel');
+  if (!panel) return;
+  if (!needsConversion) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  // Determine display labels: what we're converting from and to
+  // If txCur ≠ accountCur: show txCur → accountCur (e.g. USD → BRL)
+  // If txCur === accountCur (both non-BRL): show accountCur → BRL
+  const dispFrom = txCur !== accountCur ? txCur : accountCur;
+  const dispTo   = txCur !== accountCur ? accountCur : 'BRL';
+
+  const fl = document.getElementById('scCurrencyRateFromLabel');
+  const tl = document.getElementById('scCurrencyPanelTitle');
+  if (fl) fl.textContent = dispFrom;
+  if (tl) tl.textContent = `Conversão: ${dispFrom} → ${dispTo}`;
+
+  // Default to fixed mode if not yet set
+  const currMode = panel.getAttribute('data-curr-mode') || 'fixed';
+  setScCurrencyMode(currMode);
+
   updateScCurrencyPreview();
+  // Auto-fetch rate for the current currency pair
+  fetchScCurrencyRate();
 }
-function updateScCurrencyPreview(){
-  const accId=document.getElementById('scAccountId')?.value;
-  const acc=(state.accounts||[]).find(a=>a.id===accId);
-  const cur=acc?.currency||'BRL';
-  const rate=parseFloat(document.getElementById('scCurrencyRate')?.value?.replace(',','.'))||0;
-  const amt=Math.abs(getAmtField('scAmount')||0);
-  const prev=document.getElementById('scCurrencyPreview');
-  if(!prev) return;
-  prev.textContent=rate&&amt?`≈ ${fmt(amt*rate,'BRL')} (1 ${cur} = ${rate.toFixed(4)} BRL)`:'';
+
+function updateScCurrencyPreview() {
+  const txCur  = _getScSelectedCurrency();
+  const accId  = document.getElementById('scAccountId')?.value;
+  const acc    = (state.accounts||[]).find(a => a.id === accId);
+  const accCur = acc?.currency || 'BRL';
+  const dispFrom = txCur !== accCur ? txCur : accCur;
+  const rate   = parseFloat(document.getElementById('scCurrencyRate')?.value?.replace(',','.')) || 0;
+  const amt    = Math.abs(getAmtField('scAmount') || 0);
+  const prev   = document.getElementById('scCurrencyPreview');
+  const hint   = document.getElementById('scCurrencyBrlHint');
+  if (!prev) return;
+  if (rate && amt) {
+    const converted = amt * rate;
+    const toCur = txCur !== accCur ? accCur : 'BRL';
+    prev.textContent = `≈ ${fmt(converted, toCur)} (1 ${dispFrom} = ${rate.toFixed(4)} ${toCur})`;
+    if (hint) hint.textContent = fmt(converted, toCur);
+  } else {
+    prev.textContent = '';
+    if (hint) hint.textContent = '—';
+  }
 }
-async function fetchScCurrencyRate(){
-  const accId=document.getElementById('scAccountId')?.value;
-  const acc=(state.accounts||[]).find(a=>a.id===accId);
-  const cur=acc?.currency||'BRL';
-  if(cur==='BRL') return;
-  const btn=document.getElementById('scCurrencyFetchBtn');
-  const ico=document.getElementById('scCurrencyFetchIcon');
-  if(btn) btn.disabled=true; if(ico) ico.textContent='⏳';
-  try{
-    const rate=typeof getFxRate==='function'?getFxRate(cur):0;
-    if(rate&&rate!==1){
-      const inp=document.getElementById('scCurrencyRate');
-      if(inp){inp.value=rate.toFixed(6);updateScCurrencyPreview();}
-      const sg=document.getElementById('scCurrencySuggestion');
-      if(sg){sg.style.display='';sg.textContent=`1 ${cur} = ${rate.toFixed(4)} BRL`;}
-    } else toast('Cotação não disponível. Insira manualmente.','warning');
-  }catch(e){toast('Erro: '+e.message,'error');}
-  finally{if(btn) btn.disabled=false; if(ico) ico.textContent='🔄';}
+
+async function fetchScCurrencyRate() {
+  const txCur  = _getScSelectedCurrency();
+  const accId  = document.getElementById('scAccountId')?.value;
+  const acc    = (state.accounts||[]).find(a => a.id === accId);
+  const accCur = acc?.currency || 'BRL';
+  const fromCur = txCur !== accCur ? txCur : accCur;
+  const toCur   = txCur !== accCur ? accCur : 'BRL';
+  if (fromCur === toCur) return;
+  const btn = document.getElementById('scCurrencyFetchBtn');
+  const ico = document.getElementById('scCurrencyFetchIcon');
+  if (btn) btn.disabled = true;
+  if (ico) ico.textContent = '⏳';
+  try {
+    const rate = typeof getFxRate === 'function' ? getFxRate(fromCur) : 0;
+    if (rate && rate !== 1) {
+      const inp = document.getElementById('scCurrencyRate');
+      if (inp) { inp.value = rate.toFixed(6); updateScCurrencyPreview(); }
+      const sg = document.getElementById('scCurrencySuggestion');
+      if (sg) { sg.style.display = ''; sg.textContent = `1 ${fromCur} = ${rate.toFixed(4)} ${toCur}`; }
+    } else {
+      toast('Cotação não disponível. Insira manualmente.', 'warning');
+    }
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
+  finally {
+    if (btn) btn.disabled = false;
+    if (ico) ico.textContent = '🔄';
+  }
 }
 
 function duplicateScheduled(id) {
