@@ -268,6 +268,7 @@ async function loadDashboard(){
   await loadDashboardRecent(_dashMemberIds);
   if (typeof renderDashboardUpcoming === 'function') await renderDashboardUpcoming(_dashMemberIds);
   if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
+  _renderDashForecast().catch(()=>{});
   await loadDashboardAutoRunSummary();
 
   // Render account balances grouped by account group
@@ -687,11 +688,12 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'accounts', label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts' },
-  { id: 'charts',   label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'   },
-  { id: 'favcats',  label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'  },
-  { id: 'upcoming', label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming' },
-  { id: 'recent',   label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'   },
+  { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
+  { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
+  { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
+  { id: 'upcoming',   label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
+  { id: 'forecast90', label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
+  { id: 'recent',     label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
 ];
 
 function _dashGetPrefs() {
@@ -1125,6 +1127,179 @@ async function renderDashboardUpcoming(memberIds = null) {
 }
 
 // Navigate to transactions page with category + month pre-filtered
+// ── Dashboard Forecast 90d ─────────────────────────────────────────────────
+let _dashForecastChart = null;
+let _dashForecastTimer = null;
+
+function _initDashForecastAccountSelect() {
+  const sel = document.getElementById('dashForecastAccount');
+  if (!sel) return;
+  const cur = sel.value;
+  const accs = state.accounts || [];
+  const favs = accs.filter(a => a.is_favorite);
+  const rest = accs.filter(a => !a.is_favorite);
+  let html = '<option value="">Todas as contas</option>';
+  if (favs.length) {
+    html += `<optgroup label="⭐ Favoritas">${favs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
+    if (rest.length) html += `<optgroup label="Outras">${rest.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
+  } else {
+    html += accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  }
+  sel.innerHTML = html;
+  if (cur) sel.value = cur;
+}
+
+async function _renderDashForecast() {
+  const card = document.getElementById('dashCardForecast90');
+  if (!card || card.style.display === 'none') return;
+
+  _initDashForecastAccountSelect();
+
+  const accFilter = document.getElementById('dashForecastAccount')?.value || '';
+  const includeScheduled = document.getElementById('dashForecastScheduled')?.checked !== false;
+  const canvas = document.getElementById('dashForecastChart');
+  if (!canvas) return;
+
+  // Destroy previous chart
+  if (_dashForecastChart) { try { _dashForecastChart.destroy(); } catch(_) {} _dashForecastChart = null; }
+
+  // Date range: today → today + 90 days
+  const fromDate = new Date();
+  const toDate   = new Date();
+  toDate.setDate(toDate.getDate() + 90);
+  const fromStr = fromDate.toISOString().slice(0, 10);
+  const toStr   = toDate.toISOString().slice(0, 10);
+
+  // Fetch real transactions in period
+  let q = famQ(sb.from('transactions')
+    .select('id,date,amount,currency,brl_amount,account_id,is_transfer')
+    .gte('date', fromStr).lte('date', toStr).order('date'));
+  if (accFilter) q = q.eq('account_id', accFilter);
+  const { data: txData } = await q;
+
+  // Build scheduled items using same logic as forecast.js
+  let scheduledItems = [];
+  if (includeScheduled && state.scheduled?.length) {
+    const schToProcess = accFilter
+      ? state.scheduled.filter(s => s.account_id === accFilter || s.transfer_to_account_id === accFilter)
+      : state.scheduled;
+    schToProcess.forEach(sc => {
+      if (sc.status === 'paused') return;
+      const registered = new Set((sc.occurrences||[]).map(o => o.scheduled_date));
+      const occ = typeof generateOccurrences === 'function' ? generateOccurrences(sc, 200) : [];
+      const isTransfer = sc.type === 'transfer' || sc.type === 'card_payment';
+      occ.forEach(date => {
+        if (date < fromStr || date > toStr || registered.has(date)) return;
+        const baseAmt = Math.abs(parseFloat(sc.amount) || 0);
+        if (!accFilter || sc.account_id === accFilter) {
+          const originAmount = sc.type === 'income' ? baseAmt : -baseAmt;
+          if (originAmount !== 0) scheduledItems.push({ date, amount: originAmount, account_id: sc.account_id, isScheduled: true });
+        }
+        if (isTransfer && sc.transfer_to_account_id && (!accFilter || sc.transfer_to_account_id === accFilter)) {
+          scheduledItems.push({ date, amount: Math.abs(parseFloat(sc.amount)||0), account_id: sc.transfer_to_account_id, isScheduled: true });
+        }
+      });
+    });
+  }
+
+  const allItems = [...(txData||[]), ...scheduledItems].sort((a,b)=>a.date.localeCompare(b.date));
+
+  const accountIds = [...new Set(allItems.map(t=>t.account_id))].filter(Boolean);
+  const accounts = accFilter
+    ? (state.accounts||[]).filter(a=>a.id===accFilter)
+    : (state.accounts||[]).filter(a=>accountIds.includes(a.id));
+
+  if (!accounts.length) {
+    const summary = document.getElementById('dashForecastSummary');
+    if (summary) summary.innerHTML = '<span style="color:var(--muted)">Sem dados de previsão para o período</span>';
+    return;
+  }
+
+  // Build daily dates (sampled weekly for display clarity)
+  const dates = [];
+  let cur = new Date(fromStr+'T12:00');
+  const end = new Date(toStr+'T12:00');
+  while (cur <= end) { dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  const step = 7; // weekly samples for 90d
+  const sampled = dates.filter((_,i)=>i%step===0);
+  if (!sampled.includes(toStr)) sampled.push(toStr);
+
+  const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
+  const datasets = accounts.slice(0,6).map((a,idx)=>{
+    const txAcc = allItems.filter(t=>t.account_id===a.id);
+    const realSum = txAcc.filter(t=>!t.isScheduled).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
+    const baseBal = (parseFloat(a.balance)||0) - realSum;
+    const color = a.color || COLORS[idx%COLORS.length];
+    return {
+      label: a.name,
+      data: sampled.map(d=>({
+        x: d,
+        y: +(baseBal + txAcc.filter(t=>t.date<=d).reduce((s,t)=>s+(parseFloat(t.amount)||0),0)).toFixed(2)
+      })),
+      borderColor: color,
+      backgroundColor: color+'18',
+      fill: false,
+      tension: 0.35,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+    };
+  });
+
+  // Find global min/max for annotations
+  const allVals = datasets.flatMap(ds=>ds.data.map(p=>p.y));
+  const minVal = allVals.length ? Math.min(...allVals) : 0;
+  const maxVal = allVals.length ? Math.max(...allVals) : 0;
+  const minPt  = datasets[0]?.data.find(p=>p.y===minVal);
+  const maxPt  = datasets[0]?.data.find(p=>p.y===maxVal);
+
+  const annotations = {
+    zeroLine: {
+      type: 'line', yMin: 0, yMax: 0,
+      borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [4,3],
+    },
+  };
+  if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minVal, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
+  if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxVal, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
+
+  _dashForecastChart = new Chart(canvas, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, font:{ size:10 } } },
+        tooltip: { callbacks: { label: ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+        annotation: { annotations },
+      },
+      scales: {
+        x: { type:'category', ticks:{ maxTicksLimit:8, color:'#8c8278', font:{size:10} }, grid:{ color:'#e8e4de33' } },
+        y: { ticks:{ callback:v=>fmt(v), color:'#8c8278', font:{size:10} }, grid:{ color: ctx=>ctx.tick.value===0?'rgba(220,38,38,0.2)':'#e8e4de33' } },
+      },
+    },
+  });
+
+  // Summary row: final balance per account
+  const summary = document.getElementById('dashForecastSummary');
+  if (summary) {
+    const today = new Date().toISOString().slice(0,10);
+    summary.innerHTML = accounts.slice(0,6).map((a,idx)=>{
+      const ds = datasets[idx];
+      const finalY = ds?.data[ds.data.length-1]?.y ?? 0;
+      const isNeg = finalY < 0;
+      const color = a.color || COLORS[idx%COLORS.length];
+      return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
+        <span style="color:var(--text2)">${esc(a.name)}:</span>
+        <strong style="color:${isNeg?'var(--red)':'var(--accent)'}">${fmt(finalY,a.currency)}</strong>
+      </span>`;
+    }).join('');
+  }
+}
+
+
 function _dashDrillToTx(categoryId, month) {
   state.txFilter = state.txFilter || {};
   state.txFilter.month      = month || '';

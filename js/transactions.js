@@ -596,6 +596,8 @@ function resetTxModal(){
   if (typeof renderFmcMultiPicker === 'function') {
     renderFmcMultiPicker('txFamilyMemberPicker', { selected: [] });
   }
+  // Reset AI payee suggestion
+  _dismissAiPayeeSuggestion();
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
@@ -1275,6 +1277,101 @@ function _openTxAsCopy(orig) {
   // txId stays empty → saveTransaction() will INSERT
   openModal('txModal');
 }
+// ── AI Payee Suggestion ───────────────────────────────────────────────────
+let _aiPayeeTimer = null;
+let _aiPayeePending = null; // { id, name } of last suggestion
+
+function _aiPayeeDebounce(val) {
+  if (_aiPayeeTimer) clearTimeout(_aiPayeeTimer);
+  // Hide previous suggestion while user types
+  _dismissAiPayeeSuggestion(false);
+  if (!val || val.length < 5) return;
+  _aiPayeeTimer = setTimeout(() => _aiSuggestPayeeFromDesc(val), 800);
+}
+
+async function _aiSuggestPayeeFromDesc(desc) {
+  if (_aiPayeeTimer) { clearTimeout(_aiPayeeTimer); _aiPayeeTimer = null; }
+  // Don't suggest if payee already selected
+  const curPayeeId = document.getElementById('txPayeeId')?.value;
+  if (curPayeeId) return;
+  if (!desc || desc.trim().length < 5) return;
+  if (!state.payees?.length) return;
+
+  // Get Gemini key (same setting as receipt_ai.js)
+  const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+  if (!apiKey || !apiKey.startsWith('AIza')) {
+    // Fallback: simple fuzzy match client-side
+    _aiPayeeFuzzyFallback(desc);
+    return;
+  }
+
+  // Call Gemini to match description to existing payee
+  const payeeList = state.payees.slice(0, 80).map(p => p.name).join(', ');
+  const prompt = `Given this transaction description: "${desc.trim()}"
+Find the BEST matching payee from this list: ${payeeList}
+Reply with ONLY the exact payee name from the list, or "none" if no good match exists.
+Do not explain. One word or short phrase only.`;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 30, temperature: 0 } }),
+    });
+    if (!resp.ok) { _aiPayeeFuzzyFallback(desc); return; }
+    const json = await resp.json();
+    const suggestion = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!suggestion || suggestion.toLowerCase() === 'none' || suggestion.toLowerCase() === 'nenhum') return;
+    // Find the matching payee in state
+    const matched = state.payees.find(p => p.name.toLowerCase() === suggestion.toLowerCase())
+      || state.payees.find(p => p.name.toLowerCase().includes(suggestion.toLowerCase()))
+      || state.payees.find(p => suggestion.toLowerCase().includes(p.name.toLowerCase()));
+    if (matched) _showAiPayeeSuggestion(matched);
+  } catch(_) {
+    // Silent fail — try fuzzy fallback
+    _aiPayeeFuzzyFallback(desc);
+  }
+}
+
+function _aiPayeeFuzzyFallback(desc) {
+  // Simple substring match for common cases when no API key
+  const d = desc.toLowerCase();
+  const matched = state.payees.find(p => {
+    const n = p.name.toLowerCase();
+    return n.length >= 3 && (d.includes(n) || n.includes(d.split(' ')[0]));
+  });
+  if (matched) _showAiPayeeSuggestion(matched);
+}
+
+function _showAiPayeeSuggestion(payee) {
+  // Don't overwrite if user already selected a payee
+  const curId = document.getElementById('txPayeeId')?.value;
+  if (curId) return;
+  _aiPayeePending = { id: payee.id, name: payee.name };
+  const chip = document.getElementById('txAiPayeeSuggestion');
+  const btn  = document.getElementById('txAiPayeeBtn');
+  if (!chip || !btn) return;
+  btn.textContent = payee.name;
+  chip.style.display = 'flex';
+}
+
+function _applyAiPayeeSuggestion() {
+  if (!_aiPayeePending) return;
+  // Don't overwrite if payee already manually selected
+  const curId = document.getElementById('txPayeeId')?.value;
+  if (curId && curId !== _aiPayeePending.id) { _dismissAiPayeeSuggestion(); return; }
+  selectPayee(_aiPayeePending.id, _aiPayeePending.name, 'tx');
+  _dismissAiPayeeSuggestion();
+}
+
+function _dismissAiPayeeSuggestion(clearPending = true) {
+  const chip = document.getElementById('txAiPayeeSuggestion');
+  if (chip) chip.style.display = 'none';
+  if (clearPending) _aiPayeePending = null;
+}
+
+
 async function deleteTransaction(id){
   if(!confirm('Excluir transação?'))return;
   // 1. Null out any scheduled_occurrence that references this transaction
