@@ -421,3 +421,83 @@ const ICON_META = {
 };
 
 // Render icon from stored key into an element
+
+
+function isLightColor(hex) {
+  try {
+    const c = String(hex || '').replace('#','');
+    if (c.length !== 6) return false;
+    const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+    return (r*299+g*587+b*114)/1000 > 160;
+  } catch(_) { return false; }
+}
+
+function renderIconEl(iconKey, color, size=28) {
+  if(!iconKey) return `<span style="font-size:${size}px">🏦</span>`;
+  if(String(iconKey).startsWith('emoji-')) {
+    const emoji = String(iconKey).replace('emoji-','');
+    return `<span style="font-size:${Math.round(size*0.9)}px">${emoji}</span>`;
+  }
+  const meta = (typeof ICON_META !== 'undefined' && ICON_META) ? ICON_META[iconKey] : null;
+  if(!meta) return `<span style="font-size:${Math.round(size*0.9)}px">🏦</span>`;
+  const bg = color || meta.color || '#2a6049';
+  if(meta.type === 'card') {
+    const r = Math.round(size*0.22);
+    const fs = Math.round(size*0.32);
+    if(iconKey === 'visa') return `<span style="width:${size}px;height:${size}px;background:#1A1F71;border-radius:${r}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-style:italic;font-weight:900;font-size:${fs}px;color:#fff;font-family:serif;letter-spacing:-.03em">VISA</span>`;
+    if(iconKey === 'mastercard') {
+      const cs = Math.round(size*0.38);
+      return `<span style="width:${size}px;height:${size}px;background:transparent;border-radius:${r}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;overflow:visible"><span style="width:${cs}px;height:${cs}px;background:#EB001B;border-radius:50%;opacity:.95;position:absolute;left:${Math.round(size*0.06)}px"></span><span style="width:${cs}px;height:${cs}px;background:#F79E1B;border-radius:50%;opacity:.95;position:absolute;right:${Math.round(size*0.06)}px"></span></span>`;
+    }
+    if(iconKey === 'amex') return `<span style="width:${size}px;height:${size}px;background:#2E77BC;border-radius:${r}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:${Math.round(size*0.26)}px;font-weight:700;color:#fff;letter-spacing:.04em">AMEX</span>`;
+    if(iconKey === 'elo') return `<span style="width:${size}px;height:${size}px;background:#000;border-radius:${r}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:${Math.round(size*0.34)}px;font-weight:900;color:#F5BC00;font-style:italic">elo</span>`;
+    const initials = meta.label.substring(0,2).toUpperCase();
+    return `<span style="width:${size}px;height:${size}px;background:${bg};color:${isLightColor(bg)?'#333':'#fff'};border-radius:${r}px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:${fs}px;font-family:var(--font-sans);letter-spacing:-.02em;flex-shrink:0">${initials}</span>`;
+  }
+  const initials = meta.label.substring(0,2).toUpperCase();
+  return `<span style="width:${size}px;height:${size}px;background:${bg};color:${isLightColor(bg)?'#333':'#fff'};border-radius:${size*0.22}px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:${Math.round(size*0.35)}px;font-family:var(--font-sans);letter-spacing:-.02em;flex-shrink:0">${initials}</span>`;
+}
+
+function showIconGroup(event, group) {
+  document.querySelectorAll('.icon-tab').forEach(t=>t.classList.remove('active'));
+  event?.target?.classList?.add('active');
+  document.querySelectorAll('.icon-grid').forEach(g=>g.style.display='none');
+  const el = document.getElementById('iconGroup-'+group);
+  if (el) el.style.display='grid';
+}
+
+function selectAccountIcon(el) {
+  document.querySelectorAll('.icon-option').forEach(o=>o.classList.remove('selected'));
+  el?.classList?.add('selected');
+  const iconKey = el?.dataset?.icon || '';
+  const iconColor = el?.dataset?.color || '';
+  const iconInput = document.getElementById('accountIcon');
+  const colorInput = document.getElementById('accountColor');
+  if (iconInput) iconInput.value = iconKey;
+  if (colorInput && iconColor) colorInput.value = iconColor;
+  const preview = document.getElementById('accountIconPreview');
+  if (preview) preview.innerHTML = renderIconEl(iconKey, iconColor, 28);
+}
+
+function syncIconPickerToValue(iconKey, color) {
+  document.querySelectorAll('.icon-option').forEach(o=>o.classList.toggle('selected', o.dataset.icon === iconKey));
+  if(iconKey) {
+    let group = 'generic';
+    const meta = (typeof ICON_META !== 'undefined' && ICON_META) ? ICON_META[iconKey] : null;
+    if(meta) {
+      const banksFR = ['boursobank','bnp','sg','ca','lcl','laposte','cic','bred','revolut','n26','wise','paypal'];
+      const cards = ['visa','mastercard','amex','elo','hipercard','dinersclub','sams','porto'];
+      if(cards.includes(iconKey)) group = 'cards';
+      else if(banksFR.includes(iconKey)) group = 'banks-fr';
+      else group = 'banks-br';
+    }
+    document.querySelectorAll('.icon-tab').forEach(t=>t.classList.remove('active'));
+    const activeTab = document.querySelector(`.icon-tab[onclick*="${group}"]`);
+    if(activeTab) activeTab.classList.add('active');
+    document.querySelectorAll('.icon-grid').forEach(g=>g.style.display='none');
+    const activeGroup = document.getElementById('iconGroup-'+group);
+    if(activeGroup) activeGroup.style.display='grid';
+  }
+  const preview = document.getElementById('accountIconPreview');
+  if(preview) preview.innerHTML = renderIconEl(iconKey, color, 28);
+}

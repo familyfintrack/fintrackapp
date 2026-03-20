@@ -1788,9 +1788,39 @@ function populateSelects(){
   } catch(e) {}
 }
 
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
 
-// Shared modal helpers, formatting helpers, sign-state helpers and payee autocomplete
-// are loaded from js/utils.js to avoid duplicate global declarations.
+function toast(msg,type='info'){
+  const icons={success:'✓',error:'✕',info:'i'};
+  const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span style="font-weight:700">${icons[type]||'i'}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(16px)';el.style.transition='.2s';setTimeout(()=>el.remove(),200);},3200);
+}
+
+function fmt(v,currency='BRL'){if(state.privacyMode)return'••••••';return new Intl.NumberFormat('pt-BR',{style:'currency',currency:currency||'BRL',minimumFractionDigits:2}).format(v||0);}
+// Parse a user-typed amount string: handles both "1.234,56" (BR) and "1,234.56" (EN) and negatives
+function parseAmtInput(s) {
+  if (!s && s !== 0) return 0;
+  const str = String(s).trim();
+  if (!str) return 0;
+  const neg = str.startsWith('-');
+  let clean = str.replace(/^-/, '');
+  // Detect BR format: ends with ,XX (comma as decimal separator)
+  if (/,\d{1,2}$/.test(clean)) {
+    clean = clean.replace(/\./g, '').replace(',', '.');
+  } else {
+    // EN format or plain integer: remove commas
+    clean = clean.replace(/,/g, '');
+  }
+  const v = parseFloat(clean);
+  if (isNaN(v)) return 0;
+  return neg ? -Math.abs(v) : v;
+}
+
+// Sign toggle helpers are provided by utils.js.
+// Keep reports.js free of duplicate global declarations to avoid aborting app boot.
 
 // ─────────────────────────────────────────────────────────────
 // Amount inputs: auto-decimals (centavos) mask

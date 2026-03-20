@@ -10,6 +10,31 @@ function toggleDashGroup(key) {
 }
 
 // Dashboard formatter: no decimals (0 casas) for quick glance
+
+function _dashRenderIcon(iconKey, color, size){
+  try {
+    if (typeof renderIconEl === 'function') return renderIconEl(iconKey, color, size);
+  } catch(_) {}
+  return `<span style="font-size:${size || 18}px">🏦</span>`;
+}
+
+function _dashRenderChart(id, type, labels, datasets, extraOptions={}) {
+  if (typeof renderChart === 'function') return renderChart(id, type, labels, datasets, extraOptions);
+  const canvas = document.getElementById(id);
+  const ctx = canvas?.getContext?.('2d');
+  if (!ctx || typeof Chart === 'undefined') return null;
+  state.chartInstances = state.chartInstances || {};
+  if (state.chartInstances[id]) {
+    try { state.chartInstances[id].destroy(); } catch(_) {}
+  }
+  state.chartInstances[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: Object.assign({ responsive:true, maintainAspectRatio:true }, extraOptions || {})
+  });
+  return state.chartInstances[id];
+}
+
 function dashFmt(value, currency='BRL'){
   if (state?.privacyMode) return '••••••';
   const v = Number(value) || 0;
@@ -248,7 +273,8 @@ async function loadDashboard(){
   // Render account balances grouped by account group
   (function renderAccountBalances() {
     const el = document.getElementById('accountBalancesList');
-    const accs = state.accounts;
+    if (!el) { console.warn('[dashboard] accountBalancesList not found'); return; }
+    const accs = Array.isArray(state.accounts) ? state.accounts : [];
     const groups = state.groups || [];
     const favs = accs.filter(a => a.is_favorite);
 
@@ -267,7 +293,7 @@ async function loadDashboard(){
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
-            <div class="dash-fav-card__icon">${renderIconEl(a.icon,a.color,20)}</div>
+            <div class="dash-fav-card__icon">${_dashRenderIcon(a.icon,a.color,20)}</div>
             <span class="dash-fav-card__type">${esc(_typeLabel)}</span>
           </div>
           <div class="dash-fav-card__name">${esc(a.name)}</div>
@@ -278,7 +304,7 @@ async function loadDashboard(){
       }
       // Standard row for non-favorites
       return `<div onclick="goToAccountTransactions('${a.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:4px;margin:0 -4px;padding-left:4px;padding-right:4px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <div style="display:flex;align-items:center;gap:9px">${renderIconEl(a.icon,a.color,18)}<span style="font-size:.83rem;color:var(--text2)">${esc(a.name)}</span></div>
+        <div style="display:flex;align-items:center;gap:9px">${_dashRenderIcon(a.icon,a.color,18)}<span style="font-size:.83rem;color:var(--text2)">${esc(a.name)}</span></div>
         <span class="${a.balance<0?'text-red':'text-accent'}" style="font-size:.83rem;font-weight:500">${fmt(a.balance,a.currency)}</span>
       </div>`;
     };
@@ -400,7 +426,7 @@ async function renderCashflowChart(memberIds = null){
   const balances = cashRows.map(r => r.balance);
   labels.length = 0;
   cashRows.forEach(r => labels.push(r.label));
-  renderChart('cashflowChart','bar',labels,[
+  _dashRenderChart('cashflowChart','bar',labels,[
     {label:'Receitas',data:incomes,backgroundColor:'rgba(42,122,74,.8)',borderRadius:6,borderSkipped:false,order:2},
     {label:'Despesas',data:expenses,backgroundColor:'rgba(192,57,43,.75)',borderRadius:6,borderSkipped:false,order:2},
     {label:'Saldo',data:balances,type:'line',borderColor:'#1e5ba8',backgroundColor:'rgba(30,91,168,.12)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1e5ba8',fill:true,tension:0.35,order:1},
