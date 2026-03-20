@@ -476,7 +476,10 @@ function setAppLogo(url){
   APP_LOGO_URL = clean || DEFAULT_LOGO_URL;
 
   // For wizard header use logo2 variant (dark background, no filter CSS)
-  const DARK_LOGO_URL = APP_LOGO_URL.replace(/\.png$/i, '2.png');
+  // logo2.png is the dark-background variant — use it directly if APP_LOGO_URL is the default
+  const DARK_LOGO_URL = (APP_LOGO_URL === DEFAULT_LOGO_URL || APP_LOGO_URL === 'logo_transparent.png')
+    ? 'logo2.png'
+    : APP_LOGO_URL.replace(/\.png$/i, '2.png');
 
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
     const el=document.getElementById(id);
@@ -527,6 +530,10 @@ async function bootApp(){
   // Logos (can be overridden by app_settings)
   setAppLogo(APP_LOGO_URL);
 
+  // Limpa restos visuais/caches de tela da sessão/família anterior antes do primeiro render.
+  // Isso evita que dashboard/relatórios iniciem com UI vazia/obsoleta até o segundo clique.
+  try { clearFamilyScopedUI?.(); } catch(e) {}
+
   // Carregar dados essenciais — loadAppSettings corre em paralelo mas
   // nunca aborta o boot se falhar (RLS, tabela ausente, etc.)
   try {
@@ -561,8 +568,11 @@ async function bootApp(){
   const budEl=document.getElementById('budgetMonth');if(budEl)budEl.value=ym;
   const budInEl=document.getElementById('budgetMonthInput');if(budInEl)budInEl.value=ym;
   state.txFilter.month=ym;
-  // Navegar para dashboard
-  navigate('dashboard');
+  // Navegar para a página atual após o DOM estar realmente visível.
+  // O requestAnimationFrame evita o caso em que a tela abre mas os loaders
+  // executam cedo demais e só aparecem após clicar novamente em Dashboard/Relatórios.
+  const _bootTargetPage = state.currentPage || 'dashboard';
+  await navigate(_bootTargetPage, { forceReload: true, deferUntilPaint: true });
   // Sincronizar favoritos de categoria do servidor (após boot — userId disponível)
   if (typeof _syncCatFavsFromServer === 'function') {
     setTimeout(() => _syncCatFavsFromServer().then(() => {
@@ -766,6 +776,26 @@ function clearFamilyScopedUI() {
   _clearFamilySwitchNode('budgetList', '');
   _clearFamilySwitchNode('reportResult', '');
 
+  // Dashboard containers
+  _clearFamilySwitchNode('statTotal', '—');
+  _clearFamilySwitchNode('statIncome', '—');
+  _clearFamilySwitchNode('statExpenses', '—');
+  _clearFamilySwitchNode('statBalance', '—');
+  _clearFamilySwitchNode('accountBalancesList', '');
+  _clearFamilySwitchNode('dashRecentTxBody', '');
+  _clearFamilySwitchNode('catChartDetail', '');
+  _clearFamilySwitchNode('dashFavCategories', '');
+  _clearFamilySwitchNode('upcomingList', '');
+
+  // Reports
+  _clearFamilySwitchNode('reportKpis', '');
+  _clearFamilySwitchNode('reportDataInfo', '');
+  _clearFamilySwitchNode('reportCatSection', '');
+
+  // Investments
+  _clearFamilySwitchNode('investmentsContent', '');
+  _clearFamilySwitchNode('investmentsList', '');
+
   ['groceryDetailPanel','txBestCardSuggestion','txCurrencyPanel','txFxPanel','txCardPaymentBadge','pricesReceiptZone'].forEach(id => {
     try {
       const el = document.getElementById(id);
@@ -803,7 +833,7 @@ function clearFamilyScopedUI() {
     } catch(e) {}
   });
 
-  ['txMonth','txAccount','txType','txStatusFilter','forecastAccountFilter','pricesCatFilter','pricesStoreFilter'].forEach(id => {
+  ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','forecastAccountFilter','pricesCatFilter','pricesStoreFilter'].forEach(id => {
     try {
       const el = document.getElementById(id);
       if (el) el.value = '';
@@ -821,7 +851,37 @@ function clearFamilyScopedUI() {
   } catch(e) {}
 }
 
-function navigate(page){
+async function _loadPageData(page, opts = {}) {
+  const { forceReload = false } = opts || {};
+  if(page==='dashboard' && sb) return await loadDashboard?.();
+  if(page==='transactions'){
+    populateTxMonthFilter();
+    if(typeof populateSelects==='function') populateSelects();
+    return await loadTransactions?.(forceReload);
+  }
+  if(page==='accounts'){
+    if(typeof initAccountsPage==='function') return await initAccountsPage();
+    return await renderAccounts?.();
+  }
+  if(page==='reports'){
+    if(typeof populateSelects==='function') populateSelects();
+    if(typeof populateReportFilters==='function') populateReportFilters();
+    return await loadCurrentReport?.(forceReload);
+  }
+  if(page==='budgets') return await initBudgetsPage?.();
+  if(page==='categories') return await initCategoriesPage?.();
+  if(page==='payees') return await _loadPayeeTxCounts?.().then(()=>renderPayees?.());
+  if(page==='scheduled') return await loadScheduled?.();
+  if(page==='import') return await initImportPage?.();
+  if(page==='settings') return await loadSettings?.();
+  if(page==='audit') return await loadAuditLogs?.();
+  if(page==='investments') return await loadInvestmentsPage?.();
+  if(page==='prices') return await initPricesPage?.();
+  if(page==='grocery') return await initGroceryPage?.();
+}
+
+async function navigate(page, opts = {}){
+  const { deferUntilPaint = false } = opts || {};
   // Guard: settings/audit são admin-only
   if((page==='settings'||page==='audit') && currentUser?.role !== 'admin'){
     toast('Acesso restrito: apenas Administradores globais podem acessar as Configurações.','warning');
@@ -846,20 +906,16 @@ function navigate(page){
   if(_iconEl) _iconEl.innerHTML=_pageIconsSVG[page]||_pageIconsSVG['dashboard'];
   state.currentPage=page;closeSidebar();
   _scrollActivePageToTop(page);
-  if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){populateTxMonthFilter();loadTransactions();}
-  else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
-  else if(page==='reports'){populateReportFilters();loadCurrentReport();}
-  else if(page==='budgets')initBudgetsPage();
-  else if(page==='categories')initCategoriesPage();
-  else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
-  else if(page==='scheduled')loadScheduled();
-  else if(page==='import')initImportPage();
-  else if(page==='settings')loadSettings();
-  else if(page==='audit')loadAuditLogs();
-  else if(page==='investments')loadInvestmentsPage?.();
-  else if(page==='prices')initPricesPage();
-  else if(page==='grocery')initGroceryPage();
+
+  if (deferUntilPaint) {
+    await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+  }
+
+  try {
+    await _loadPageData(page, opts);
+  } catch(e) {
+    console.warn('[navigate] load page failed:', page, e?.message || e);
+  }
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);

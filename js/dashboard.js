@@ -376,7 +376,11 @@ async function loadDashboard(){
     }
   }
 
-  await Promise.all([renderCashflowChart(_dashMemberIds),renderCategoryChart()]);
+  // Render charts independently — failure in one must not block the other
+  await Promise.all([
+    renderCashflowChart(_dashMemberIds).catch(e => console.warn('[dashboard] cashflow:', e?.message)),
+    renderCategoryChart().catch(e => console.warn('[dashboard] categoryChart:', e?.message)),
+  ]);
 }
 async function renderCashflowChart(memberIds = null){
   // Populate account filter (refresh every time dashboard loads)
@@ -469,7 +473,7 @@ async function renderCategoryChart(){
 
   let q = famQ(
     sb.from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,account_id,categories(name,color),payees(name),accounts!transactions_account_id_fkey(name)')
+      .select('id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)')
   ).gte('date',`${y}-${m}-01`).lte('date',`${y}-${m}-31`).lt('amount',0).not('category_id','is',null);
 
   if (memberIds && memberIds.length > 0) {
@@ -483,11 +487,30 @@ async function renderCategoryChart(){
 
   const{data}=await q;
 
+  // Build parent lookup from state.categories (already loaded, has parent_id)
+  const allCats = state.categories || [];
+  const catById = Object.fromEntries(allCats.map(c => [c.id, c]));
+  function _getRootCat(tx) {
+    // Start from the category_id on the transaction (not the join, to avoid nested FK issues)
+    const startId = tx.category_id;
+    if (!startId) return { name: 'Outros', color: '', id: null };
+    let cur = catById[startId];
+    if (!cur) {
+      // Fallback: use join data if state doesn't have it yet
+      return { name: tx.categories?.name || 'Outros', color: tx.categories?.color || '', id: startId };
+    }
+    while (cur.parent_id && catById[cur.parent_id]) {
+      cur = catById[cur.parent_id];
+    }
+    return { name: cur.name, color: cur.color || '', id: cur.id };
+  }
+
   const catMap={};
   (data||[]).forEach(t=>{
-    const n=t.categories?.name||'Outros';
-    const rawColor=t.categories?.color||'';
-    if(!catMap[n]) catMap[n]={rawColor, txs:[], total:0};
+    const root = _getRootCat(t);
+    const n = root.name;
+    const rawColor = root.color;
+    if(!catMap[n]) catMap[n]={rawColor, txs:[], total:0, rootId: root.id};
     const brl = t.brl_amount != null ? Math.abs(t.brl_amount) : toBRL(Math.abs(t.amount), t.currency||'BRL');
     catMap[n].total+=brl;
     catMap[n].txs.push({...t, _brl: brl});
@@ -502,6 +525,7 @@ async function renderCategoryChart(){
       total: v.total,
       color: _catColor(v.rawColor, i, _usedColors),
       txs: v.txs.sort((a,b)=>b._brl-a._brl),
+      rootId: v.rootId,
     }));
 
   if(!_catChartEntries.length){
@@ -512,28 +536,23 @@ async function renderCategoryChart(){
 
   closeCatDetail(); // reset any open detail
 
-  renderChart('categoryChart','doughnut',
-    _catChartEntries.map(e=>e.name),
-    [{
-      data: _catChartEntries.map(e=>e.total),
-      backgroundColor: _catChartEntries.map(e=>e.color),
-      borderWidth: 2,
-      borderColor: '#fff',
-      hoverOffset: 8,
-      hoverBorderWidth: 3,
-    }],
-    {
-      onClick(event, elements) {
-        if (!elements.length) return;
-        const idx = elements[0].index;
-        openCatDetail(idx);
-      },
-      onHover(event, elements) {
-        const canvas = event.native?.target;
-        if (canvas) canvas.style.cursor = elements.length ? 'pointer' : 'default';
-      },
-    }
-  );
+  // Restore chart type from prefs
+  const savedType = _dashGetPrefs()?.catChartType || 'doughnut';
+  if (savedType !== _catChartType) {
+    _catChartType = savedType;
+    // sync toggle buttons
+    const pie = document.getElementById('catChartTypePie');
+    const bar = document.getElementById('catChartTypeBar');
+    if (pie) { pie.style.background = savedType === 'doughnut' ? 'var(--accent)' : 'var(--surface)'; pie.style.color = savedType === 'doughnut' ? '#fff' : 'var(--muted)'; }
+    if (bar) { bar.style.background = savedType === 'bar' ? 'var(--accent)' : 'var(--surface)'; bar.style.color = savedType === 'bar' ? '#fff' : 'var(--muted)'; }
+  }
+
+  if (_catChartType === 'bar') {
+    _renderCatChartBar();
+    return;
+  }
+
+  _renderCatChartDoughnut();
 }
 
 function openCatDetail(idx) {
@@ -555,6 +574,11 @@ function openCatDetail(idx) {
 
   const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${entry.color};flex-shrink:0"></span>`;
   titleEl.innerHTML = `${dot}<strong>${esc(entry.name)}</strong><span style="color:var(--muted);font-weight:400;font-size:.72rem;margin-left:4px">${fmt(entry.total)}</span><span style="color:var(--muted);font-weight:400;font-size:.72rem;margin-left:4px">· ${entry.txs.length} lançamento${entry.txs.length!==1?'s':''}`;
+
+  // "Ver transações" button — navigates to transactions page with category pre-filtered
+  const now2 = new Date();
+  const ym = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}`;
+  titleEl.innerHTML += `&nbsp;<button onclick="_dashDrillToTx('${entry.rootId||''}','${ym}')" style="font-size:.68rem;padding:2px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent);cursor:pointer;font-weight:600;margin-left:6px">Ver tudo →</button>`;
 
   const MON=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   listEl.innerHTML = entry.txs.map(t => {
@@ -1072,4 +1096,116 @@ async function renderDashboardUpcoming(memberIds = null) {
       <div class="sup-rows">${rows}</div>
     </div>`;
   }).join('');
+}
+
+// Navigate to transactions page with category + month pre-filtered
+function _dashDrillToTx(categoryId, month) {
+  state.txFilter = state.txFilter || {};
+  state.txFilter.month      = month || '';
+  state.txFilter.categoryId = categoryId || '';
+  state.txFilter.type       = '';
+  state.txFilter.search     = '';
+  state.txFilter.status     = '';
+  state.txPage = 0;
+  navigate('transactions');
+  // Sync filter UI after navigation
+  requestAnimationFrame(() => {
+    const mEl = document.getElementById('txMonth');
+    const cEl = document.getElementById('txCategoryFilter');
+    if (mEl) mEl.value = state.txFilter.month;
+    if (cEl) cEl.value = state.txFilter.categoryId;
+    loadTransactions();
+  });
+}
+
+// ── Category chart type toggle ────────────────────────────────────────────
+let _catChartType = 'doughnut'; // persisted in dash prefs
+
+function _setCatChartType(type) {
+  _catChartType = type;
+
+  // Sync toggle button visuals
+  const pie = document.getElementById('catChartTypePie');
+  const bar = document.getElementById('catChartTypeBar');
+  if (pie) {
+    pie.style.background = type === 'doughnut' ? 'var(--accent)' : 'var(--surface)';
+    pie.style.color      = type === 'doughnut' ? '#fff' : 'var(--muted)';
+  }
+  if (bar) {
+    bar.style.background = type === 'bar' ? 'var(--accent)' : 'var(--surface)';
+    bar.style.color      = type === 'bar' ? '#fff' : 'var(--muted)';
+  }
+
+  // Persist preference
+  try { _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {}); } catch(_) {}
+
+  // Guard: no data yet — nothing to render
+  if (!_catChartEntries.length) return;
+
+  // Destroy current chart cleanly before switching type
+  const existing = state.chartInstances?.['categoryChart'];
+  if (existing) { try { existing.destroy(); } catch(_) {} delete state.chartInstances['categoryChart']; }
+
+  // Reset detail panel
+  const detailEl = document.getElementById('catChartDetail');
+  const backBtn  = document.getElementById('catDetailBackBtn');
+  if (detailEl) detailEl.style.display = 'none';
+  if (backBtn)  backBtn.style.display  = 'none';
+
+  if (type === 'bar') {
+    _renderCatChartBar();
+  } else {
+    _renderCatChartDoughnut();
+  }
+}
+
+function _renderCatChartDoughnut() {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas) return;
+  canvas.style.height = '200px';
+  canvas.removeAttribute('height');
+  renderChart('categoryChart', 'doughnut',
+    _catChartEntries.map(e => e.name),
+    [{ data: _catChartEntries.map(e => e.total), backgroundColor: _catChartEntries.map(e => e.color), borderWidth: 2, borderColor: '#fff', hoverOffset: 8, hoverBorderWidth: 3 }],
+    {
+      onClick(event, elements) { if (elements.length) openCatDetail(elements[0].index); },
+      onHover(event, elements) { const c = event.native?.target; if (c) c.style.cursor = elements.length ? 'pointer' : 'default'; },
+    }
+  );
+}
+
+function _renderCatChartBar() {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas || !_catChartEntries.length) return;
+  // Destroy existing
+  const existing = state.chartInstances['categoryChart'];
+  if (existing) { try { existing.destroy(); } catch(e) {} delete state.chartInstances['categoryChart']; }
+  canvas.height = 220;
+  const chart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: _catChartEntries.map(e => e.name),
+      datasets: [{
+        data: _catChartEntries.map(e => e.total),
+        backgroundColor: _catChartEntries.map(e => e.color + 'cc'),
+        borderColor:     _catChartEntries.map(e => e.color),
+        borderWidth: 1.5,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.x) } }
+      },
+      scales: {
+        x: { ticks: { callback: v => fmt(v), color: '#8c8278', font: { size: 10 } }, grid: { color: '#e8e4de44' } },
+        y: { ticks: { color: '#8c8278', font: { size: 11 } }, grid: { display: false } }
+      },
+      onClick(event, elements) { if (elements.length) openCatDetail(elements[0].index); },
+      onHover(event, elements) { const c = event.native?.target; if (c) c.style.cursor = elements.length ? 'pointer' : 'default'; },
+    }
+  });
+  state.chartInstances['categoryChart'] = chart;
 }

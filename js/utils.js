@@ -1,3 +1,17 @@
+function _buildCategoryFilterOptions() {
+  const cats = state.categories || [];
+  const roots = cats.filter(c => !c.parent_id).sort((a,b) => a.name.localeCompare(b.name));
+  const lines = [];
+  const walk = (list, depth) => list.forEach(c => {
+    const indent = '\u00a0\u00a0'.repeat(depth);
+    lines.push(`<option value="${c.id}">${indent}${esc(c.name)}</option>`);
+    const children = cats.filter(x => x.parent_id === c.id).sort((a,b) => a.name.localeCompare(b.name));
+    if (children.length) walk(children, depth + 1);
+  });
+  walk(roots, 0);
+  return lines.join('');
+}
+
 function _accountOptions(accounts, placeholder) {
   const favs = accounts.filter(a => a.is_favorite);
   const rest = accounts.filter(a => !a.is_favorite);
@@ -11,14 +25,8 @@ function _accountOptions(accounts, placeholder) {
   return html;
 }
 
-function populateSelects(){populateReportFilters();
-  const accs = state.accounts || [];
-  ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=_accountOptions(accs,'Selecione a conta');});
-  const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=_accountOptions(accs,'Todas as contas').replace('<option value="">Todas as contas</option>','<option value="">Todas as contas</option>');
-  // payee autocomplete uses state.payees directly - no select to populate
-  buildCatPicker(); // hierarchical picker replaces flat select
-  const pCat=document.getElementById('payeeCategory');if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-}
+// populateSelects is defined in reports.js (always loaded).
+// _accountOptions and _buildCategoryFilterOptions are helpers used by it.
 
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
