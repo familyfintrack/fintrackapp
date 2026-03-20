@@ -739,7 +739,7 @@
             <button class="modal-close" onclick="closeModal('dashCustomModal')">✕</button>
           </div>
           <div class="modal-body">
-            <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px">Escolha quais cards exibir. As preferências ficam salvas para você.</p>
+            <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px">Escolha quais cards exibir e reordene com as setas ↑↓. Preferências salvas por usuário.</p>
             <div id="dashCustomList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
           <div class="modal-footer">
@@ -829,7 +829,7 @@
       <!-- Flat table card -->
       <div class="card tx-table-card" id="txFlatCard">
         <div class="table-wrap">
-          <table class="tx-table">
+          <table class="tx-table resizable-table" id="txMainTable">
             <thead><tr>
               <th class="tx-v2-th-date" onclick="sortTx('date')">Data ⇅</th>
               <th class="tx-v2-th-body">Descrição</th>
@@ -1046,7 +1046,7 @@
             <span id="reportTxCount" class="badge badge-muted"></span>
           </div>
           <div class="table-wrap">
-            <table id="reportTxTable">
+            <table id="reportTxTable" class="resizable-table">
               <thead><tr>
                 <th onclick="rptSortTx('date')" style="cursor:pointer">Data <span id="rptSortDate"></span></th>
                 <th onclick="rptSortTx('description')" style="cursor:pointer">Descrição <span id="rptSortDesc"></span></th>
@@ -3176,6 +3176,62 @@
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button><button class="btn btn-primary" onclick="saveTransaction()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- ── Modal: Consolidar Saldo ──────────────────────────────────────────── -->
+<div class="modal-overlay" id="consolidateModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">⚖️ Consolidar Saldo</span>
+      <button class="modal-close" onclick="closeModal('consolidateModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px">
+        Informe o saldo real conforme extrato. O sistema cria uma transação de ajuste para igualar o saldo.
+      </p>
+      <input type="hidden" id="consolidateAccountId">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:3px;font-weight:600">CONTA</div>
+          <div id="consolidateAccountName" style="font-weight:700;font-size:.9rem;color:var(--accent)"></div>
+        </div>
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:3px;font-weight:600">SALDO ATUAL</div>
+          <div id="consolidateCurrentBalance" style="font-weight:700;font-size:.9rem"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Saldo real (extrato) *</label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="amt-wrap" style="flex:1">
+            <button type="button" class="amt-sign-btn" id="consolidateAmountSignBtn"
+              onclick="toggleAmtSign('consolidateAmount')" aria-label="Alternar sinal">+</button>
+            <input type="text" id="consolidateAmount" inputmode="numeric" placeholder="0,00"
+              pattern="[0-9.,]*" autocomplete="off" oninput="_updateConsolidatePreview()">
+          </div>
+          <span id="consolidateCurrencyBadge"
+            style="flex-shrink:0;padding:6px 10px;border-radius:var(--r-sm);background:var(--surface2);
+                   border:1px solid var(--border);font-size:.8rem;font-weight:700;color:var(--accent)">BRL</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Data do ajuste</label>
+        <input type="date" id="consolidateDate">
+      </div>
+      <div class="form-group">
+        <label>Descrição</label>
+        <input type="text" id="consolidateDesc" placeholder="Ajuste de saldo / Consolidação">
+      </div>
+      <div id="consolidatePreview" style="display:none;padding:10px 14px;border-radius:var(--r-sm);
+           font-size:.85rem;margin-top:8px;border:1px solid var(--border);background:var(--surface2)"></div>
+      <div id="consolidateError" style="display:none;color:var(--red);font-size:.82rem;margin-top:6px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('consolidateModal')">Cancelar</button>
+      <button class="btn btn-primary" id="consolidateSaveBtn" onclick="saveConsolidation()">⚖️ Criar Ajuste</button>
+    </div>
   </div>
 </div>
 
