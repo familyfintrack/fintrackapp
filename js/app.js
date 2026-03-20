@@ -908,11 +908,10 @@ if('serviceWorker' in navigator){
 document.addEventListener('DOMContentLoaded', initBottomNav);
 
 
-// Stronger mobile zoom guard and touch fallback for primary action buttons
+// Strong zoom lock for mobile/webview double-tap, pinch and ctrl+wheel
 (function(){
-  if (window.__fintrackTouchGuardsInstalled) return;
-  window.__fintrackTouchGuardsInstalled = true;
-
+  if (window.__ftZoomLockInit) return;
+  window.__ftZoomLockInit = true;
   let lastTouchEnd = 0;
   document.addEventListener('touchend', function(e){
     const now = Date.now();
@@ -921,30 +920,11 @@ document.addEventListener('DOMContentLoaded', initBottomNav);
     }
     lastTouchEnd = now;
   }, { passive:false });
-
   ['gesturestart','gesturechange','gestureend'].forEach(function(evt){
     document.addEventListener(evt, function(e){ e.preventDefault(); }, { passive:false });
   });
-
   document.addEventListener('wheel', function(e){
     if (e.ctrlKey) e.preventDefault();
   }, { passive:false });
-
-  function bindFastTap(selector, handlerName){
-    const el = document.querySelector(selector);
-    if (!el || el.__fastTapBound) return;
-    el.__fastTapBound = true;
-    el.style.touchAction = 'manipulation';
-    el.addEventListener('touchend', function(e){
-      e.preventDefault();
-      const fn = window[handlerName];
-      if (typeof fn === 'function') fn();
-    }, { passive:false });
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    bindFastTap('#bottomFab', 'openTransactionModal');
-    bindFastTap('button[onclick="openTransactionModal()"]', 'openTransactionModal');
-    bindFastTap('button[onclick="openScheduledModal()"]', 'openScheduledModal');
-  });
 })();
+

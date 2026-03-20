@@ -1,4 +1,4 @@
-const __ICON_META = window.__ICON_META || (window.__ICON_META = {
+window.ICON_META = window.ICON_META || {
   // Brazilian banks
   'itau':       {label:'Itaú',        color:'#FF6600', type:'bank'},
   'inter':      {label:'Inter',       color:'#FF7A00', type:'bank'},
@@ -38,7 +38,8 @@ const __ICON_META = window.__ICON_META || (window.__ICON_META = {
   'dinersclub': {label:'Diners',      color:'#004B87', type:'card'},
   'sams':       {label:"Sam's",       color:'#0067A0', type:'card'},
   'porto':      {label:'Porto',       color:'#005B8E', type:'card'},
-});
+};
+const ICON_META = window.ICON_META;
 
 // Render icon from stored key into an element
 function renderIconEl(iconKey, color, size=28) {
@@ -47,7 +48,7 @@ function renderIconEl(iconKey, color, size=28) {
     const emoji = iconKey.replace('emoji-','');
     return `<span style="font-size:${Math.round(size*0.9)}px">${emoji}</span>`;
   }
-  const meta = __ICON_META[iconKey];
+  const meta = ICON_META[iconKey];
   if(!meta) return `<span style="font-size:${Math.round(size*0.9)}px">🏦</span>`;
   const bg = color || meta.color;
   // Special visual rendering for card types
@@ -102,7 +103,7 @@ function syncIconPickerToValue(iconKey, color) {
   // Switch to correct tab if needed
   if(iconKey) {
     let group = 'generic';
-    const meta = __ICON_META[iconKey];
+    const meta = ICON_META[iconKey];
     if(meta) {
       const banksFR = ['boursobank','bnp','sg','ca','lcl','laposte','cic','bred','revolut','n26','wise','paypal'];
       const cards = ['visa','mastercard','amex','elo','hipercard','dinersclub','sams','porto'];
