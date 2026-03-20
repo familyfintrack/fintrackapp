@@ -25,20 +25,8 @@ function _accountOptions(accounts, placeholder) {
   return html;
 }
 
-function populateSelects(){
-  try { populateReportFilters(); } catch(e) { console.warn('[populateSelects] reportFilters:', e?.message); }
-  try {
-    const accs = state.accounts || [];
-    ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=_accountOptions(accs,'Selecione a conta');});
-    const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=_accountOptions(accs,'Todas as contas');
-    const catF=document.getElementById('txCategoryFilter');if(catF){const cur=catF.value;catF.innerHTML='<option value="">Categoria</option>'+_buildCategoryFilterOptions();catF.value=cur;}
-  } catch(e) { console.warn('[populateSelects] accounts/cats:', e?.message); }
-  try { buildCatPicker(); } catch(e) { console.warn('[populateSelects] catPicker:', e?.message); }
-  try {
-    const pCat=document.getElementById('payeeCategory');
-    if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+(state.categories||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  } catch(e) { console.warn('[populateSelects] payeeCat:', e?.message); }
-}
+// populateSelects is defined in reports.js (always loaded).
+// _accountOptions and _buildCategoryFilterOptions are helpers used by it.
 
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}

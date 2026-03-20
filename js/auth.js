@@ -3680,53 +3680,61 @@ async function switchFamily(familyId) {
 
   const targetPage = state.currentPage || 'dashboard';
 
-  // 1. Limpar UI e estado da família anterior imediatamente
+  // ── 1. Limpar UI da família anterior ─────────────────────────────────────
   try { clearFamilyScopedUI?.(); } catch(e) {}
 
-  // 2. Atualizar currentUser para a nova família
+  // ── 2. Limpar caches de módulos específicos ───────────────────────────────
+  try { DB.bustAll?.(); } catch(e) {}
+  try { if (typeof fmcBust === 'function') fmcBust(); } catch(e) {}           // family_members_composition
+  try { if (typeof _inv !== 'undefined') { _inv.loaded = false; _inv.positions = []; _inv.transactions = []; } } catch(e) {}  // investments
+  try { if (typeof _catChartEntries !== 'undefined') _catChartEntries.length = 0; } catch(e) {}  // dashboard chart
+  try { if (typeof rptState !== 'undefined') rptState.txData = []; } catch(e) {}  // reports
+  try { if (typeof _destroyForecastChart === 'function') _destroyForecastChart(); } catch(e) {}
+
+  // ── 3. Atualizar currentUser para nova família ────────────────────────────
   currentUser.family_id = familyId;
   if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
     currentUser.role = fam.role || 'user';
     const r = currentUser.role;
-    currentUser.can_create = r !== 'viewer';
-    currentUser.can_edit   = r !== 'viewer';
-    currentUser.can_delete = r === 'admin' || r === 'owner';
-    currentUser.can_import = r === 'admin' || r === 'owner';
+    currentUser.can_create        = r !== 'viewer';
+    currentUser.can_edit          = r !== 'viewer';
+    currentUser.can_delete        = r === 'admin' || r === 'owner';
+    currentUser.can_import        = r === 'admin' || r === 'owner';
     currentUser.can_admin         = r === 'admin';
     currentUser.can_manage_family = r === 'admin' || r === 'owner';
   }
-
   localStorage.setItem('ft_active_family_' + currentUser.id, familyId);
 
-  // 3. Bust todos os caches antes de recarregar
-  try { DB.bustAll?.(); } catch(e) {}
-
-  // 4. Recarregar todos os dados da nova família em paralelo
+  // ── 4. Recarregar dados essenciais (force=true para ignorar cache) ─────────
   try {
     await Promise.all([
-      loadAccounts().catch(()=>{}),
-      loadCategories().catch(()=>{}),
-      loadPayees().catch(()=>{}),
+      DB.accounts.load(true).catch(()=>{}),
+      DB.categories.load(true).catch(()=>{}),
+      DB.payees.load(true).catch(()=>{}),
       loadScheduled().catch(()=>{}),
       loadAppSettings().catch(()=>{}),
     ]);
   } catch(e) {}
 
-  // 5. Recarregar dados secundários em background
-  try { if (typeof loadFamilyComposition === 'function') loadFamilyComposition().catch(()=>{}); } catch(e) {}
+  // ── 5. Recarregar módulos secundários em background ───────────────────────
+  try { if (typeof loadFamilyComposition === 'function') loadFamilyComposition(true).catch(()=>{}); } catch(e) {}
   try { initFxRates().catch(()=>{}); } catch(e) {}
 
-  // 6. Atualizar selects e módulos opcionais
-  populateSelects();
+  // ── 6. Atualizar permissões e UI ──────────────────────────────────────────
+  updateUserUI();           // atualiza sidebar (nome da família) e topbar
+  _renderFamilySwitcher();
+  applyPermissions?.();
+
+  // ── 7. Atualizar módulos opcionais (feature flags da nova família) ─────────
   try { if (typeof applyPricesFeature === 'function')      await applyPricesFeature();      } catch(e) {}
   try { if (typeof applyGroceryFeature === 'function')     await applyGroceryFeature();     } catch(e) {}
   try { if (typeof applyInvestmentsFeature === 'function') await applyInvestmentsFeature(); } catch(e) {}
 
-  // 7. Atualizar UI — sidebar com nome da nova família ANTES de navegar
-  updateUserUI();
-  _renderFamilySwitcher();
+  // ── 8. Repopular todos os selects com dados da nova família ───────────────
+  try { populateSelects(); } catch(e) {}
 
-  // 8. Navegar para a página atual (força reload dos dados da nova família)
+  // ── 9. Navegar para a página atual, forçando reload dos dados ─────────────
+  // Usa navigate() diretamente — cada página tem seu próprio loader
   navigate(targetPage);
 
   const roleIcon = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[currentUser.role] || '👤';
