@@ -82,20 +82,22 @@ function _applyCurrentUserAvatar() {
 
 // ── Sidebar: populate user card ──────────────────────────────────────────────
 function _updateSidebarUserCard() {
-  const card    = document.getElementById('sbUserCard');
+  const card     = document.getElementById('sbUserCard');
   const avatarEl = document.getElementById('sbUserAvatar');
-  const nameEl  = document.getElementById('sbUserName');
-  const roleEl  = document.getElementById('sbUserRole');
+  const famEl    = document.getElementById('sbFamilyName');
+  const subEl    = document.getElementById('sbUserSub');
   if (!card || !currentUser) return;
   card.style.display = '';
-  // Name
-  if (nameEl) nameEl.textContent = currentUser.name || currentUser.email?.split('@')[0] || '—';
-  // Role label
-  const roleLabel =
-    currentUser.role === 'owner' ? '👑 Owner' :
-    currentUser.role === 'admin' ? '🛡️ Admin' :
-    currentUser.role === 'viewer' ? '👁 Visualizador' : '👤 Usuário';
-  if (roleEl) roleEl.textContent = roleLabel;
+
+  // Primary: active family name
+  const activeFam = (currentUser.families || []).find(f => f.id === currentUser.family_id);
+  const famName = activeFam?.name || currentUser.family_name || '—';
+  if (famEl) famEl.textContent = famName;
+
+  // Sub-line: user name (truncated)
+  const userName = currentUser.name || currentUser.email?.split('@')[0] || '—';
+  if (subEl) subEl.textContent = userName;
+
   // Avatar: photo or initials
   if (avatarEl) {
     if (currentUser.avatar_url) {

@@ -175,11 +175,47 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
         legend: { position: 'bottom' },
         tooltip: { callbacks: {
           label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
-        }}
+        }},
+        // Annotation: zero baseline + min/max per dataset
+        annotation: (() => {
+          const annotations = {
+            zeroLine: {
+              type: 'line', yMin: 0, yMax: 0,
+              borderColor: 'rgba(220,38,38,0.55)',
+              borderWidth: 1.5,
+              borderDash: [5, 4],
+              label: { content: 'Zero', enabled: true, position: 'start',
+                       font: { size: 10 }, color: '#dc2626',
+                       backgroundColor: 'rgba(220,38,38,0.08)' }
+            }
+          };
+          datasets.forEach((ds, i) => {
+            const vals = ds.data.map(p => p.y);
+            if (!vals.length) return;
+            const minVal = Math.min(...vals);
+            const maxVal = Math.max(...vals);
+            const minPt  = ds.data.find(p => p.y === minVal);
+            const maxPt  = ds.data.find(p => p.y === maxVal);
+            annotations[`min_${i}`] = {
+              type: 'point', xValue: minPt.x, yValue: minVal,
+              radius: 5, backgroundColor: '#dc2626',
+              borderColor: '#fff', borderWidth: 2
+            };
+            annotations[`max_${i}`] = {
+              type: 'point', xValue: maxPt.x, yValue: maxVal,
+              radius: 5, backgroundColor: '#16a34a',
+              borderColor: '#fff', borderWidth: 2
+            };
+          });
+          return { annotations };
+        })()
       },
       scales: {
         x: { type: 'category', ticks: { maxTicksLimit: 12, color: '#8c8278' }, grid: { color: '#e8e4de44' } },
-        y: { ticks: { callback: v => fmt(v), color: '#8c8278' }, grid: { color: '#e8e4de44' } }
+        y: {
+          ticks: { callback: v => fmt(v), color: '#8c8278' },
+          grid: { color: ctx => ctx.tick.value === 0 ? 'rgba(220,38,38,0.25)' : '#e8e4de44' }
+        }
       }
     }
   });

@@ -1250,40 +1250,43 @@ async function saveTransaction(){
   }
 }
 async function duplicateTransaction(id) {
-  if(!confirm('Duplicar transação?')) return;
-  // Find original transaction
-  const orig = state.transactions?.find(t=>t.id===id);
-  if (!orig) {
-    // Fetch from DB if not in state
-    const {data, error} = await sb.from('transactions').select('*').eq('id', id).single();
-    if (error || !data) { toast('Transação não encontrada','error'); return; }
-    await _doDuplicateTx(data);
-  } else {
-    await _doDuplicateTx(orig);
-  }
+  if(!confirm('Duplicar transação? Ela será aberta para edição antes de salvar.')) return;
+  const orig = state.transactions?.find(t=>t.id===id) ||
+    await sb.from('transactions').select('*').eq('id',id).single().then(r => r.data);
+  if (!orig) { toast('Transação não encontrada','error'); return; }
+  _openTxAsCopy(orig);
 }
-async function _doDuplicateTx(orig) {
+
+function _openTxAsCopy(orig) {
+  // Build a prefilled "new" transaction from orig — no ID, today's date
   const today = new Date().toISOString().slice(0,10);
-  const newTx = {
-    account_id:             orig.account_id,
-    description:            orig.description ? orig.description + ' (cópia)' : '(cópia)',
-    amount:                 orig.amount,
-    date:                   today,
-    category_id:            orig.category_id || null,
-    payee_id:               orig.payee_id || null,
-    memo:                   orig.memo || null,
-    is_transfer:            orig.is_transfer || false,
-    currency:               orig.currency || 'BRL',
-    transfer_to_account_id: orig.transfer_to_account_id || null,
-    family_id:              famId(),
-  };
-  const {data, error} = await sb.from('transactions').insert(newTx).select().single();
-  if (error) { toast('Erro ao duplicar: ' + error.message, 'error'); return; }
-  toast('Transação duplicada! (' + (newTx.description) + ')', 'success');
-  DB.accounts.bust();
-  try{await recalcAccountBalances();}catch(_e){}
-  if (state.currentPage === 'transactions') loadTransactions();
-  if (state.currentPage === 'dashboard') loadDashboard();
+  resetTxModal();
+  document.getElementById('txDate').value = today;
+  document.getElementById('txDesc').value = (orig.description || '') + ' (cópia)';
+  document.getElementById('txAccountId').value = orig.account_id || '';
+  setAmtField('txAmount', orig.amount || 0);
+  setCatPickerValue(orig.category_id || null);
+  setPayeeField(orig.payee_id || null, 'tx');
+  document.getElementById('txMemo').value = orig.memo || '';
+  document.getElementById('txTags').value = (orig.tags || []).join(', ');
+  const stEl = document.getElementById('txStatus');
+  if (stEl) stEl.value = orig.status || 'confirmed';
+  const type = orig.is_transfer
+    ? (orig.is_card_payment ? 'card_payment' : 'transfer')
+    : (orig.amount >= 0 ? 'income' : 'expense');
+  setTxType(type);
+  if (type === 'transfer' || type === 'card_payment') {
+    document.getElementById('txTransferTo').value = orig.transfer_to_account_id || '';
+  }
+  if (typeof renderFmcMultiPicker === 'function') {
+    const pre = orig.family_member_ids?.length
+      ? orig.family_member_ids
+      : (orig.family_member_id ? [orig.family_member_id] : []);
+    renderFmcMultiPicker('txFamilyMemberPicker', { selected: pre });
+  }
+  document.getElementById('txModalTitle').textContent = 'Nova Transação (cópia)';
+  // txId stays empty → saveTransaction() will INSERT
+  openModal('txModal');
 }
 async function deleteTransaction(id){
   if(!confirm('Excluir transação?'))return;
