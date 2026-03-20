@@ -1819,7 +1819,8 @@ function parseAmtInput(s) {
   return neg ? -Math.abs(v) : v;
 }
 
-// Sign toggle button state is owned by js/utils.js to avoid duplicate globals.
+// Sign toggle button state: fieldId → true means negative
+var _amtSignState = window._amtSignState || (window._amtSignState = {});
 
 function toggleAmtSign(fieldId) {
   _amtSignState[fieldId] = !_amtSignState[fieldId];
