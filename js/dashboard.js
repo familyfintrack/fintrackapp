@@ -244,6 +244,7 @@ async function loadDashboard(){
   if (typeof renderDashboardUpcoming === 'function') await renderDashboardUpcoming(_dashMemberIds);
   if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
   await loadDashboardAutoRunSummary();
+  await loadDash90Forecast();
 
   // Render account balances grouped by account group
   (function renderAccountBalances() {
@@ -402,7 +403,173 @@ async function renderCashflowChart(memberIds = null){
     {label:'Saldo',data:balances,type:'line',borderColor:'#1e5ba8',backgroundColor:'rgba(30,91,168,.12)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1e5ba8',fill:true,tension:0.35,order:1},
   ]);
 }
-// ─── Category chart: rich palette + click-to-drill ───────────────────────
+// ── Chart type toggle (Pie/Doughnut ↔ Bar) ──────────────────────────────────
+// Persisted in localStorage so preference survives navigation
+function _getCatChartType() {
+  try { return localStorage.getItem('dash_cat_chart_type') || 'doughnut'; } catch(_) { return 'doughnut'; }
+}
+function _setCatChartType(t) {
+  try { localStorage.setItem('dash_cat_chart_type', t); } catch(_) {}
+}
+
+function toggleCatChartType() {
+  const cur = _getCatChartType();
+  const next = (cur === 'doughnut') ? 'bar' : 'doughnut';
+  _setCatChartType(next);
+  _updateCatChartToggleBtn(next);
+  // Re-render with same data (no new DB query)
+  _renderCatChartWithCurrentData(next);
+}
+
+function _updateCatChartToggleBtn(type) {
+  const btn = document.getElementById('catChartToggleBtn');
+  if (!btn) return;
+  btn.title  = type === 'doughnut' ? 'Mudar para Barras' : 'Mudar para Pizza';
+  btn.innerHTML = type === 'doughnut'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="17" y="5" width="4" height="16"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
+}
+
+function _renderCatChartWithCurrentData(type) {
+  if (!_catChartEntries.length) return;
+  closeCatDetail();
+  if (type === 'bar') {
+    renderChart('categoryChart', 'bar',
+      _catChartEntries.map(e => e.name),
+      [{
+        label: 'Despesas',
+        data:  _catChartEntries.map(e => e.total),
+        backgroundColor: _catChartEntries.map(e => e.color),
+        borderRadius: 6,
+        borderSkipped: false,
+      }],
+      {
+        indexAxis: 'y',
+        onClick(event, elements) {
+          if (!elements.length) return;
+          openCatDetail(elements[0].index);
+        },
+        onHover(event, elements) {
+          const canvas = event.native?.target;
+          if (canvas) canvas.style.cursor = elements.length ? 'pointer' : 'default';
+        },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        },
+      }
+    );
+    // Resize canvas for bar chart
+    const canvas = document.getElementById('categoryChart');
+    if (canvas) canvas.height = Math.max(140, _catChartEntries.length * 30);
+  } else {
+    // Restore doughnut height
+    const canvas = document.getElementById('categoryChart');
+    if (canvas) canvas.height = 200;
+    renderChart('categoryChart', 'doughnut',
+      _catChartEntries.map(e => e.name),
+      [{
+        data: _catChartEntries.map(e => e.total),
+        backgroundColor: _catChartEntries.map(e => e.color),
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 8,
+        hoverBorderWidth: 3,
+      }],
+      {
+        onClick(event, elements) {
+          if (!elements.length) return;
+          openCatDetail(elements[0].index);
+        },
+        onHover(event, elements) {
+          const canvas = event.native?.target;
+          if (canvas) canvas.style.cursor = elements.length ? 'pointer' : 'default';
+        },
+      }
+    );
+  }
+}
+
+/**
+ * Resolve all descendant category IDs (recursive) for a given category ID.
+ * Returns an array that includes the root id plus all children/grandchildren.
+ */
+function _resolveCategoryTree(rootId) {
+  const all = state.categories || [];
+  const result = [];
+  const queue = [rootId];
+  while (queue.length) {
+    const id = queue.shift();
+    if (!result.includes(id)) {
+      result.push(id);
+      all.filter(c => c.parent_id === id).forEach(c => queue.push(c.id));
+    }
+  }
+  return result;
+}
+
+/**
+ * Navigate to transactions page filtered by a category tree.
+ * Respects current dashboard month period.
+ */
+function _openDashCategoryTx(entry) {
+  if (!entry) return;
+  // Resolve root category ID from name (entries use name as key)
+  const allCats = state.categories || [];
+  const root = allCats.find(c => c.name === entry.name);
+  const categoryIds = root ? _resolveCategoryTree(root.id) : [];
+
+  const now = new Date();
+  const month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+  state.txFilter = state.txFilter || {};
+  Object.assign(state.txFilter, {
+    month,
+    type: 'expense',
+    search: '',
+    account: '',
+    status: '',
+    categoryIds,
+    _categoryLabel: entry.name,  // for UI badge display
+  });
+  state.txPage = 0;
+  state.txSortField = 'date';
+  state.txSortAsc   = false;
+
+  const _e = id => document.getElementById(id);
+  if (_e('txMonth'))        _e('txMonth').value        = month;
+  if (_e('txType'))         _e('txType').value         = 'expense';
+  if (_e('txStatusFilter')) _e('txStatusFilter').value = '';
+  if (_e('txSearch'))       _e('txSearch').value       = '';
+  if (_e('txAccount'))      _e('txAccount').value      = '';
+
+  navigate('transactions');
+  // Show a chip/badge indicating the active category filter
+  setTimeout(() => _showCategoryFilterBadge(entry.name, entry.color), 80);
+}
+
+function _showCategoryFilterBadge(name, color) {
+  const bar = document.getElementById('txSummaryBar');
+  if (!bar) return;
+  bar.style.display = 'flex';
+  // Remove existing category badge if present
+  const existing = bar.querySelector('[data-cat-badge]');
+  if (existing) existing.remove();
+  const badge = document.createElement('div');
+  badge.setAttribute('data-cat-badge', '1');
+  badge.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:600;background:${color}18;color:${color};border:1px solid ${color}40;cursor:pointer`;
+  badge.title = 'Clique para remover filtro de categoria';
+  badge.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span> ${esc(name)} <span style="margin-left:4px;opacity:.7">✕</span>`;
+  badge.onclick = () => {
+    state.txFilter.categoryIds = [];
+    state.txFilter._categoryLabel = '';
+    badge.remove();
+    if (!bar.children.length) bar.style.display = 'none';
+    loadTransactions();
+  };
+  bar.insertBefore(badge, bar.firstChild);
+}
 // Stores raw transaction data so click handler can filter without re-fetching
 let _catChartRawData = [];  // [{name, color, brl, t}]
 let _catChartEntries = [];  // [{name, total, color, txs}]
@@ -511,29 +678,8 @@ async function renderCategoryChart(){
   }
 
   closeCatDetail(); // reset any open detail
-
-  renderChart('categoryChart','doughnut',
-    _catChartEntries.map(e=>e.name),
-    [{
-      data: _catChartEntries.map(e=>e.total),
-      backgroundColor: _catChartEntries.map(e=>e.color),
-      borderWidth: 2,
-      borderColor: '#fff',
-      hoverOffset: 8,
-      hoverBorderWidth: 3,
-    }],
-    {
-      onClick(event, elements) {
-        if (!elements.length) return;
-        const idx = elements[0].index;
-        openCatDetail(idx);
-      },
-      onHover(event, elements) {
-        const canvas = event.native?.target;
-        if (canvas) canvas.style.cursor = elements.length ? 'pointer' : 'default';
-      },
-    }
-  );
+  _updateCatChartToggleBtn(_getCatChartType());
+  _renderCatChartWithCurrentData(_getCatChartType());
 }
 
 function openCatDetail(idx) {
@@ -554,7 +700,7 @@ function openCatDetail(idx) {
   detailEl.style.display = '';
 
   const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${entry.color};flex-shrink:0"></span>`;
-  titleEl.innerHTML = `${dot}<strong>${esc(entry.name)}</strong><span style="color:var(--muted);font-weight:400;font-size:.72rem;margin-left:4px">${fmt(entry.total)}</span><span style="color:var(--muted);font-weight:400;font-size:.72rem;margin-left:4px">· ${entry.txs.length} lançamento${entry.txs.length!==1?'s':''}`;
+  titleEl.innerHTML = `${dot}<strong>${esc(entry.name)}</strong><span style="color:var(--muted);font-weight:400;font-size:.72rem;margin-left:4px">${fmt(entry.total)}</span><span style="color:var(--muted);font-weight:400;font-size:.72rem;margin-left:4px">· ${entry.txs.length} lançamento${entry.txs.length!==1?'s':''}</span><button onclick="_openDashCategoryTx(_catChartEntries[${idx}])" style="margin-left:auto;font-size:.72rem;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;color:var(--accent);font-weight:600" title="Abrir no módulo de Transações">→ Ver todas</button>`;
 
   const MON=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   listEl.innerHTML = entry.txs.map(t => {
@@ -630,6 +776,211 @@ async function loadDashboardAutoRunSummary(){
 
 
 // ════════════════════════════════════════════════════════════════
+// Dashboard: Previsão de Caixa 90 dias
+// ════════════════════════════════════════════════════════════════
+
+let _dash90ChartInstance = null;
+
+async function loadDash90Forecast() {
+  const prefs = _dashGetPrefs();
+  if (prefs.forecast90 === false) return;
+  const cardEl = document.getElementById('dashCardForecast90');
+  if (!cardEl) return;
+
+  // Populate account selector (favorites first)
+  const sel = document.getElementById('dash90AccountFilter');
+  if (sel && state.accounts.length) {
+    const savedVal = sel.value;
+    sel.innerHTML = _buildAccountOptions('Todas as contas');
+    if (savedVal) sel.value = savedVal;
+  }
+
+  const accFilter = sel ? sel.value : '';
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const end = new Date(today); end.setDate(end.getDate() + 89);
+  const endStr = end.toISOString().slice(0, 10);
+
+  const rangeEl = document.getElementById('dash90DateRange');
+  if (rangeEl) rangeEl.textContent = `${fmtDate(todayStr)} → ${fmtDate(endStr)}`;
+
+  // ── 1. Real confirmed transactions in the 90-day window ─────────────────
+  let txQ = famQ(sb.from('transactions')
+    .select('date,amount,brl_amount,currency,account_id,is_transfer')
+    .gte('date', todayStr)
+    .lte('date', endStr)
+    .eq('status', 'confirmed')
+  );
+  if (accFilter) txQ = txQ.eq('account_id', accFilter);
+  const { data: realTx = [] } = await txQ.catch(() => ({ data: [] }));
+
+  // ── 2. Scheduled occurrences in the window ───────────────────────────────
+  const scheduledItems = [];
+  const schToProcess = accFilter
+    ? (state.scheduled || []).filter(s => s.account_id === accFilter || s.transfer_to_account_id === accFilter)
+    : (state.scheduled || []);
+
+  schToProcess.forEach(sc => {
+    if (sc.status === 'paused') return;
+    const registered = new Set((sc.occurrences || []).map(o => o.scheduled_date));
+    const isTransfer = sc.type === 'transfer' || sc.type === 'card_payment';
+    const isIncome   = sc.type === 'income';
+    const isExpense  = sc.type === 'expense';
+    const baseAmt    = Math.abs(parseFloat(sc.amount) || 0);
+    const occ = typeof generateOccurrences === 'function' ? generateOccurrences(sc, 200) : [];
+
+    occ.forEach(date => {
+      if (date < todayStr || date > endStr || registered.has(date)) return;
+      if (!accFilter || sc.account_id === accFilter) {
+        const amt = isIncome ? baseAmt : -(baseAmt);
+        if (amt !== 0) scheduledItems.push({ date, amount: amt, currency: sc.currency || 'BRL', account_id: sc.account_id });
+      }
+      if ((isTransfer) && sc.transfer_to_account_id && (!accFilter || sc.transfer_to_account_id === accFilter)) {
+        const creditAmt = (sc.fx_mode === 'fixed' && sc.fx_rate > 0) ? baseAmt * sc.fx_rate : baseAmt;
+        scheduledItems.push({ date, amount: creditAmt, currency: sc.currency || 'BRL', account_id: sc.transfer_to_account_id });
+      }
+    });
+  });
+
+  // ── 3. Build daily balance series ────────────────────────────────────────
+  const accounts = accFilter
+    ? state.accounts.filter(a => a.id === accFilter)
+    : state.accounts;
+  let startBalance = accounts.reduce((s, a) => s + toBRL(parseFloat(a.balance) || 0, a.currency || 'BRL'), 0);
+
+  // Aggregate all events by date
+  const daily = {};
+  const addToDay = (date, brl, isScheduled) => {
+    if (!daily[date]) daily[date] = { real: 0, sched: 0 };
+    if (isScheduled) daily[date].sched += brl;
+    else daily[date].real += brl;
+  };
+
+  realTx.forEach(t => {
+    if (t.is_transfer) return; // avoid double-counting
+    const brl = t.brl_amount != null ? t.brl_amount : toBRL(parseFloat(t.amount) || 0, t.currency || 'BRL');
+    addToDay(t.date, brl, false);
+  });
+  scheduledItems.forEach(t => {
+    const brl = toBRL(t.amount, t.currency || 'BRL');
+    addToDay(t.date, brl, true);
+  });
+
+  // ── 4. Build chart arrays ────────────────────────────────────────────────
+  const labels = [], balances = [], isSchedDay = [];
+  let running = startBalance;
+  let minBal = running, maxBal = running, minIdx = 0, maxIdx = 0;
+
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(today); d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    const day = daily[key];
+    if (day) running += day.real + day.sched;
+    labels.push(i === 0 ? 'Hoje' : (i % 7 === 0 ? `+${i}d` : ''));
+    balances.push(+running.toFixed(2));
+    isSchedDay.push(!!(day?.sched));
+    if (running < minBal) { minBal = running; minIdx = i; }
+    if (running > maxBal) { maxBal = running; maxIdx = i; }
+  }
+
+  // ── 5. Render chart ──────────────────────────────────────────────────────
+  const canvas = document.getElementById('dash90Chart');
+  if (!canvas) return;
+
+  // Destroy previous instance
+  if (_dash90ChartInstance) { try { _dash90ChartInstance.destroy(); } catch(_) {} _dash90ChartInstance = null; }
+  if (state.chartInstances['dash90Chart']) {
+    try { state.chartInstances['dash90Chart'].destroy(); } catch(_) {}
+    delete state.chartInstances['dash90Chart'];
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  // Gradient fill: green if mostly positive, red if mostly negative
+  const lastBal = balances[balances.length - 1];
+  const gradTop    = lastBal >= 0 ? 'rgba(42,122,74,.35)' : 'rgba(192,57,43,.35)';
+  const gradBottom = lastBal >= 0 ? 'rgba(42,122,74,.0)'  : 'rgba(192,57,43,.0)';
+  const lineColor  = lastBal >= 0 ? '#2a6049' : '#c0392b';
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 180);
+  grad.addColorStop(0, gradTop);
+  grad.addColorStop(1, gradBottom);
+
+  // Point colors: highlight min/max
+  const pointColors = balances.map((_, i) => {
+    if (i === minIdx) return '#c0392b';
+    if (i === maxIdx) return '#2a6049';
+    return 'transparent';
+  });
+  const pointRadius = balances.map((_, i) => (i === minIdx || i === maxIdx) ? 5 : 0);
+  const pointHoverRadius = balances.map(() => 4);
+
+  _dash90ChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: balances,
+        borderColor: lineColor,
+        borderWidth: 2,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.35,
+        pointRadius,
+        pointHoverRadius,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const i = items[0]?.dataIndex ?? 0;
+              const d = new Date(today); d.setDate(d.getDate() + i);
+              return fmtDate(d.toISOString().slice(0,10));
+            },
+            label: (item) => ' Saldo: ' + fmt(item.raw, 'BRL'),
+          },
+        },
+        annotation: {}, // no external plugin needed
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: false,
+            callback: (_, i) => labels[i] || '' },
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,.06)' },
+          ticks: { font: { size: 10 }, callback: v => dashFmt(v, 'BRL') },
+        },
+      },
+    },
+  });
+
+  state.chartInstances['dash90Chart'] = _dash90ChartInstance;
+
+  // ── 6. Stats bar: current / min / max ────────────────────────────────────
+  const statsEl = document.getElementById('dash90Stats');
+  if (statsEl) {
+    const minDate = new Date(today); minDate.setDate(minDate.getDate() + minIdx);
+    const maxDate = new Date(today); maxDate.setDate(maxDate.getDate() + maxIdx);
+    statsEl.innerHTML = `
+      <span style="color:var(--muted)">Hoje: <strong style="color:${startBalance>=0?'var(--green)':'var(--red)'}">${fmt(startBalance,'BRL')}</strong></span>
+      <span style="color:var(--muted)">Mín: <strong style="color:var(--red)">${fmt(minBal,'BRL')}</strong> <span style="font-size:.68rem">(${fmtDate(minDate.toISOString().slice(0,10))})</span></span>
+      <span style="color:var(--muted)">Máx: <strong style="color:var(--green)">${fmt(maxBal,'BRL')}</strong> <span style="font-size:.68rem">(${fmtDate(maxDate.toISOString().slice(0,10))})</span></span>
+      <span style="color:var(--muted)">Final: <strong style="color:${lastBal>=0?'var(--green)':'var(--red)'}">${fmt(lastBal,'BRL')}</strong></span>`;
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════
 // Dashboard: sistema de customização por usuário
 // ════════════════════════════════════════════════════════════════
 
@@ -637,11 +988,12 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'accounts', label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts' },
-  { id: 'charts',   label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'   },
-  { id: 'favcats',  label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'  },
-  { id: 'upcoming', label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming' },
-  { id: 'recent',   label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'   },
+  { id: 'accounts',   label: 'Saldo por Conta',             icon: '🏦', sub: 'Saldo atual de cada conta',                   el: 'dashCardAccounts'   },
+  { id: 'charts',     label: 'Fluxo de Caixa e Gráficos',   icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',      el: 'dashCardCharts'     },
+  { id: 'forecast90', label: 'Previsão de Caixa 90 dias',   icon: '🔮', sub: 'Saldo projetado para os próximos 90 dias',    el: 'dashCardForecast90' },
+  { id: 'favcats',    label: 'Categorias Favoritas',        icon: '⭐', sub: 'Evolução das categorias marcadas',            el: 'dashCardFavCats'    },
+  { id: 'upcoming',   label: 'Próximas Transações',         icon: '📆', sub: 'Programadas para os próximos 10 dias',        el: 'dashCardUpcoming'   },
+  { id: 'recent',     label: 'Últimas Transações',          icon: '🧾', sub: 'Histórico recente de lançamentos',            el: 'dashCardRecent'     },
 ];
 
 function _dashGetPrefs() {

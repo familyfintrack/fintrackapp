@@ -605,6 +605,10 @@ function resetTxModal(){
   if(iofCb) iofCb.checked = false;
   document.getElementById('txIofMirrorInfo').classList.remove('visible');
   document.getElementById('txIofGroup').style.display='none';
+  // Clear AI payee suggestion
+  const _aiSugEl = document.getElementById('txAiPayeeSug');
+  if (_aiSugEl) { _aiSugEl.style.display = 'none'; _aiSugEl.innerHTML = ''; }
+  _txDescAiLastDesc = '';
   // Render family member multi-picker (cleared state)
   if (typeof renderFmcMultiPicker === 'function') {
     renderFmcMultiPicker('txFamilyMemberPicker', { selected: [] });
@@ -1250,40 +1254,80 @@ async function saveTransaction(){
   }
 }
 async function duplicateTransaction(id) {
-  if(!confirm('Duplicar transação?')) return;
-  // Find original transaction
-  const orig = state.transactions?.find(t=>t.id===id);
+  // Fetch full transaction data
+  let orig = state.transactions?.find(t => t.id === id);
   if (!orig) {
-    // Fetch from DB if not in state
-    const {data, error} = await sb.from('transactions').select('*').eq('id', id).single();
-    if (error || !data) { toast('Transação não encontrada','error'); return; }
-    await _doDuplicateTx(data);
-  } else {
-    await _doDuplicateTx(orig);
+    const { data, error } = await sb.from('transactions').select('*').eq('id', id).single();
+    if (error || !data) { toast('Transação não encontrada', 'error'); return; }
+    orig = data;
   }
+  // Open the modal pre-filled (no auto-save — user confirms)
+  await _prefillTxModalForCopy(orig);
 }
-async function _doDuplicateTx(orig) {
-  const today = new Date().toISOString().slice(0,10);
-  const newTx = {
-    account_id:             orig.account_id,
-    description:            orig.description ? orig.description + ' (cópia)' : '(cópia)',
-    amount:                 orig.amount,
-    date:                   today,
-    category_id:            orig.category_id || null,
-    payee_id:               orig.payee_id || null,
-    memo:                   orig.memo || null,
-    is_transfer:            orig.is_transfer || false,
-    currency:               orig.currency || 'BRL',
-    transfer_to_account_id: orig.transfer_to_account_id || null,
-    family_id:              famId(),
-  };
-  const {data, error} = await sb.from('transactions').insert(newTx).select().single();
-  if (error) { toast('Erro ao duplicar: ' + error.message, 'error'); return; }
-  toast('Transação duplicada! (' + (newTx.description) + ')', 'success');
-  DB.accounts.bust();
-  try{await recalcAccountBalances();}catch(_e){}
-  if (state.currentPage === 'transactions') loadTransactions();
-  if (state.currentPage === 'dashboard') loadDashboard();
+
+async function _prefillTxModalForCopy(orig) {
+  // Ensure family composition loaded for member picker
+  if (typeof loadFamilyComposition === 'function' && typeof _fmc !== 'undefined' && !_fmc.loaded) {
+    await loadFamilyComposition().catch(() => {});
+  }
+  resetTxModal();
+
+  // Title signals copy mode
+  document.getElementById('txModalTitle').textContent = 'Duplicar Transação';
+  // DO NOT copy id — new transaction
+  document.getElementById('txId').value = '';
+  // Today's date by default
+  document.getElementById('txDate').value = new Date().toISOString().slice(0, 10);
+
+  // Copy financial fields
+  setAmtField('txAmount', orig.amount);
+  document.getElementById('txDesc').value    = orig.description ? orig.description + ' (cópia)' : '(cópia)';
+  document.getElementById('txMemo').value    = orig.memo || '';
+  document.getElementById('txTags').value    = (orig.tags || []).join(', ');
+
+  const type = orig.is_transfer
+    ? (orig.is_card_payment ? 'card_payment' : 'transfer')
+    : (orig.amount >= 0 ? 'income' : 'expense');
+  setTxType(type);
+
+  // Account
+  if (orig.account_id) document.getElementById('txAccountId').value = orig.account_id;
+  if ((type === 'transfer' || type === 'card_payment') && orig.transfer_to_account_id) {
+    document.getElementById('txTransferTo').value = orig.transfer_to_account_id;
+  }
+
+  // Payee + Category
+  setPayeeField(orig.payee_id || null, 'tx');
+  setCatPickerValue(orig.category_id || null);
+
+  // Status: always pending for copies
+  const stEl = document.getElementById('txStatus');
+  if (stEl) stEl.value = 'pending';
+
+  // Member associations
+  if (typeof renderFmcMultiPicker === 'function') {
+    const preselected = orig.family_member_ids?.length
+      ? orig.family_member_ids
+      : (orig.family_member_id ? [orig.family_member_id] : []);
+    renderFmcMultiPicker('txFamilyMemberPicker', { selected: preselected });
+  }
+
+  // Currency panel
+  setTimeout(() => {
+    const accId = document.getElementById('txAccountId').value;
+    if (type !== 'transfer' && type !== 'card_payment') {
+      _updateTxCurrencyPanel(accId);
+      if (orig.currency && orig.currency !== 'BRL' && orig.brl_amount) {
+        const rate = Math.abs(orig.brl_amount / (orig.amount || 1));
+        const rateInput = document.getElementById('txCurrencyRate');
+        if (rateInput && rate > 0) rateInput.value = rate.toFixed(6);
+        if (typeof updateTxCurrencyPreview === 'function') updateTxCurrencyPreview();
+      }
+    }
+    checkAccountIofConfig(accId);
+  }, 80);
+
+  openModal('txModal');
 }
 async function deleteTransaction(id){
   if(!confirm('Excluir transação?'))return;
@@ -1761,3 +1805,174 @@ function _applyCardSuggestion(cardId) {
   }
   suggestBestCard();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 2.3 — AI Payee Suggestion
+// Triggered on description input (debounced) or blur.
+// Uses existing Gemini API key. Never auto-assigns — user confirms.
+// Silent fail on any error.
+// ═══════════════════════════════════════════════════════════════
+
+let _txDescAiTimer = null;
+let _txDescAiLastDesc = '';
+const _TX_AI_PAYEE_DEBOUNCE = 800; // ms after last keystroke
+
+function _txDescAiDebounce() {
+  clearTimeout(_txDescAiTimer);
+  _txDescAiTimer = setTimeout(_txDescAiSuggest, _TX_AI_PAYEE_DEBOUNCE);
+}
+
+async function _txDescAiSuggest() {
+  clearTimeout(_txDescAiTimer);
+  const descEl = document.getElementById('txDesc');
+  const sugEl  = document.getElementById('txAiPayeeSug');
+  if (!descEl || !sugEl) return;
+
+  const desc = (descEl.value || '').trim();
+  if (desc.length < 4) { sugEl.style.display = 'none'; return; }
+  if (desc === _txDescAiLastDesc) return; // no change
+  _txDescAiLastDesc = desc;
+
+  // Don't suggest if payee already selected by user
+  const payeeIdEl = document.getElementById('txPayeeId');
+  if (payeeIdEl && payeeIdEl.value) return;
+
+  // Don't suggest if payees not loaded
+  if (!state.payees || state.payees.length === 0) return;
+
+  // Step 1: quick local fuzzy match (no API call needed for obvious matches)
+  const localMatch = _txAiLocalPayeeMatch(desc);
+  if (localMatch) {
+    _txAiShowSuggestion(localMatch, 'local');
+    return;
+  }
+
+  // Step 2: Gemini API for harder cases (silent fail)
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '');
+    if (!apiKey) return; // AI not configured — silent
+
+    const payeeNames = state.payees.map(p => p.name).slice(0, 80).join('\n');
+    const prompt = `Given a transaction description: "${desc}"
+And this list of known payees:
+${payeeNames}
+
+Reply ONLY with a JSON object: {"name":"<best matching payee name or empty string>","confidence":<0.0-1.0>}
+Rules:
+- Match semantically (e.g. "Netflix.com" → "Netflix", "Supermercado Extra" → "Extra")
+- Only return a name that EXISTS EXACTLY in the list above
+- If no clear match, return {"name":"","confidence":0}
+- No explanation, only JSON`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 60, temperature: 0.0 },
+      }),
+    });
+    if (!resp.ok) return; // silent fail
+
+    const data  = await resp.json();
+    const text  = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json|```/g, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { return; }
+
+    if (!parsed?.name || parsed.confidence < 0.65) return;
+
+    // Verify the suggested name exists in state.payees
+    const match = state.payees.find(p => p.name === parsed.name);
+    if (!match) return;
+
+    // Don't show if user already has a payee selected (race condition)
+    if (payeeIdEl && payeeIdEl.value) return;
+
+    _txAiShowSuggestion(match, 'ai');
+  } catch (_) {
+    // Silent fail — any network/parse error ignored
+  }
+}
+
+/**
+ * Quick local fuzzy match: normalise both strings and check substring/word overlap.
+ * Returns a payee object or null.
+ */
+function _txAiLocalPayeeMatch(desc) {
+  const norm = s => s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const nd = norm(desc);
+  const words = nd.split(' ').filter(w => w.length > 3);
+
+  let best = null, bestScore = 0;
+  for (const p of state.payees) {
+    const np = norm(p.name);
+    // Exact substring match in either direction
+    if (nd.includes(np) || np.includes(nd)) {
+      const score = np.length / Math.max(nd.length, np.length);
+      if (score > bestScore) { bestScore = score; best = p; }
+      continue;
+    }
+    // Word overlap score
+    const pWords = np.split(' ').filter(w => w.length > 3);
+    const overlap = words.filter(w => pWords.includes(w)).length;
+    if (overlap > 0) {
+      const score = overlap / Math.max(words.length, pWords.length);
+      if (score > bestScore && score >= 0.5) { bestScore = score; best = p; }
+    }
+  }
+  return bestScore >= 0.5 ? best : null;
+}
+
+/**
+ * Render the suggestion chip below the description field.
+ * source: 'local' | 'ai'
+ */
+function _txAiShowSuggestion(payee, source) {
+  const sugEl = document.getElementById('txAiPayeeSug');
+  if (!sugEl) return;
+
+  // Still check: user may have typed a payee between async call and now
+  const payeeIdEl = document.getElementById('txPayeeId');
+  if (payeeIdEl && payeeIdEl.value) { sugEl.style.display = 'none'; return; }
+
+  const sourceLabel = source === 'ai'
+    ? '<span style="font-size:.65rem;opacity:.7;margin-left:4px">✨ IA</span>'
+    : '';
+
+  sugEl.innerHTML = `
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border-radius:20px;
+      border:1px dashed var(--accent);background:var(--accent-lt);font-size:.78rem;color:var(--accent)">
+      <span style="color:var(--muted);font-size:.72rem">Beneficiário sugerido:</span>
+      <strong>${esc(payee.name)}</strong>${sourceLabel}
+      <button onclick="_txAiApplySuggestion('${payee.id}','${esc(payee.name).replace(/'/g,"\\'")}',this)"
+        style="padding:2px 8px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);
+          color:#fff;cursor:pointer;font-size:.72rem;font-weight:600;font-family:inherit">
+        Usar
+      </button>
+      <button onclick="this.closest('[id=txAiPayeeSug]').style.display='none'"
+        style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.8rem;padding:0 2px"
+        title="Dispensar">✕</button>
+    </div>`;
+  sugEl.style.display = '';
+}
+
+/**
+ * Apply suggestion — only if no payee already selected.
+ * User explicitly clicked "Usar".
+ */
+function _txAiApplySuggestion(id, name, btn) {
+  // Guard: don't overwrite if user already picked a payee
+  const payeeIdEl = document.getElementById('txPayeeId');
+  if (payeeIdEl && payeeIdEl.value && payeeIdEl.value !== id) {
+    toast('Beneficiário já selecionado — limpe o campo para trocar.', 'info');
+    return;
+  }
+  selectPayee(id, name, 'tx');
+  const sugEl = document.getElementById('txAiPayeeSug');
+  if (sugEl) sugEl.style.display = 'none';
+}
+

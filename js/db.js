@@ -197,6 +197,10 @@ const _transactions = {
       else if (filter.type === 'card_payment') q = q.eq('is_card_payment', true);
       if (filter.status === 'pending')         q = q.eq('status', 'pending');
       else if (filter.status === 'confirmed')  q = q.eq('status', 'confirmed');
+      // Category filter: array of category IDs (parent + descendants, resolved by caller)
+      if (filter.categoryIds && filter.categoryIds.length > 0) {
+        q = q.in('category_id', filter.categoryIds);
+      }
       // Member filter: array of selected member IDs
       if (filter.memberIds && filter.memberIds.length > 0) {
         // Match transactions where any of the selected members appears
