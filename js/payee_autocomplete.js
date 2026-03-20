@@ -1,17 +1,8 @@
-// Compatibility wrapper: utils.js already provides the payee autocomplete globals.
-// Keep this file harmless to avoid duplicate lexical declarations on page load.
-(function(){
-  if (window.payeeAC || typeof window.onPayeeInput === 'function' || typeof window.selectPayee === 'function') {
-    console.info('[payee_autocomplete] skipped duplicate legacy bundle');
-    return;
-  }
-
-const payeeAC = {
-  focusIdx: -1,
-  blurTimer: null,
-  selectedId: null,
-  selectedName: null
-};
+// Reuse shared payee autocomplete state from utils.js.
+payeeAC.focusIdx = typeof payeeAC.focusIdx === 'number' ? payeeAC.focusIdx : -1;
+payeeAC.blurTimer = payeeAC.blurTimer || null;
+payeeAC.selectedId = payeeAC.selectedId || null;
+payeeAC.selectedName = payeeAC.selectedName || null;
 
 function clearPayeeField(ctx) {
   const c = payeeCtx(ctx);
@@ -282,5 +273,3 @@ async function createPayeeFromInput(ctx) {
 /* ═══════════════════════════════════════
    ICON PICKER
 ═══════════════════════════════════════ */
-
-})();

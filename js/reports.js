@@ -1819,8 +1819,44 @@ function parseAmtInput(s) {
   return neg ? -Math.abs(v) : v;
 }
 
-// Sign toggle helpers are provided by utils.js.
-// Keep reports.js free of duplicate global declarations to avoid aborting app boot.
+// Sign toggle button state is shared from utils.js
+// Reuse the existing global binding to avoid duplicate-declaration crashes.
+
+function toggleAmtSign(fieldId) {
+  _amtSignState[fieldId] = !_amtSignState[fieldId];
+  _updateSignBtn(fieldId);
+}
+
+function _updateSignBtn(fieldId) {
+  const btn = document.getElementById(fieldId + 'SignBtn');
+  if (!btn) return;
+  const isNeg = !!_amtSignState[fieldId];
+  btn.textContent = isNeg ? '−' : '+';
+  btn.classList.toggle('negative', isNeg);
+  btn.classList.toggle('positive', !isNeg);
+}
+
+// Set amount field value and sign btn state from a numeric value (e.g. when editing)
+function setAmtField(fieldId, value) {
+  const isNeg = (value < 0);
+  _amtSignState[fieldId] = isNeg;
+  const el = document.getElementById(fieldId);
+  if (el) el.value = value !== 0 ? Math.abs(value).toFixed(2).replace('.', ',') : '';
+  _updateSignBtn(fieldId);
+}
+
+// Read the signed value from an amount field
+function getAmtField(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return 0;
+  const raw = el.value.trim();
+  if (!raw) return 0;
+  // Parse the absolute value
+  let clean = raw.replace(/\./g, '').replace(',', '.'); // handle BR format
+  if (!/[.,]/.test(raw)) clean = raw; // plain integer
+  const abs = Math.abs(parseFloat(clean) || 0);
+  return _amtSignState[fieldId] ? -abs : abs;
+}
 
 // ─────────────────────────────────────────────────────────────
 // Amount inputs: auto-decimals (centavos) mask
