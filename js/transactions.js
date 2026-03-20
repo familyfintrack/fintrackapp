@@ -257,6 +257,7 @@ function filterTransactions(immediate = false){
   state.txFilter.account=document.getElementById('txAccount').value;
   state.txFilter.type=document.getElementById('txType').value;
   state.txFilter.status=(document.getElementById('txStatusFilter')?.value)||'';
+  state.txFilter.categoryId=(document.getElementById('txCategoryFilter')?.value)||'';
   // Member filter: read selected IDs from multi-picker
   // Read selected member from compact select (empty string = all members)
   const _txMemberSel = document.getElementById('txMemberPicker');

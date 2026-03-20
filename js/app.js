@@ -803,7 +803,7 @@ function clearFamilyScopedUI() {
     } catch(e) {}
   });
 
-  ['txMonth','txAccount','txType','txStatusFilter','forecastAccountFilter','pricesCatFilter','pricesStoreFilter'].forEach(id => {
+  ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','forecastAccountFilter','pricesCatFilter','pricesStoreFilter'].forEach(id => {
     try {
       const el = document.getElementById(id);
       if (el) el.value = '';

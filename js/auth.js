@@ -3680,11 +3680,11 @@ async function switchFamily(familyId) {
 
   const targetPage = state.currentPage || 'dashboard';
 
-  // Limpa imediatamente qualquer resíduo visual/estado da família anterior
+  // 1. Limpar UI e estado da família anterior imediatamente
   try { clearFamilyScopedUI?.(); } catch(e) {}
 
+  // 2. Atualizar currentUser para a nova família
   currentUser.family_id = familyId;
-  // Atualiza role para o perfil do usuário NESSA família
   if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
     currentUser.role = fam.role || 'user';
     const r = currentUser.role;
@@ -3698,26 +3698,39 @@ async function switchFamily(familyId) {
 
   localStorage.setItem('ft_active_family_' + currentUser.id, familyId);
 
+  // 3. Bust todos os caches antes de recarregar
+  try { DB.bustAll?.(); } catch(e) {}
+
+  // 4. Recarregar todos os dados da nova família em paralelo
   try {
     await Promise.all([
       loadAccounts().catch(()=>{}),
       loadCategories().catch(()=>{}),
       loadPayees().catch(()=>{}),
       loadScheduled().catch(()=>{}),
-      loadAppSettings().catch(()=>{})
+      loadAppSettings().catch(()=>{}),
     ]);
-    populateSelects();
-    try { if (typeof applyPricesFeature === 'function') await applyPricesFeature(); } catch(e) {}
-    try { if (typeof applyGroceryFeature === 'function') await applyGroceryFeature(); } catch(e) {}
-    navigate(targetPage);
-  } finally {
-    // nothing to restore
-  }
+  } catch(e) {}
+
+  // 5. Recarregar dados secundários em background
+  try { if (typeof loadFamilyComposition === 'function') loadFamilyComposition().catch(()=>{}); } catch(e) {}
+  try { initFxRates().catch(()=>{}); } catch(e) {}
+
+  // 6. Atualizar selects e módulos opcionais
+  populateSelects();
+  try { if (typeof applyPricesFeature === 'function')      await applyPricesFeature();      } catch(e) {}
+  try { if (typeof applyGroceryFeature === 'function')     await applyGroceryFeature();     } catch(e) {}
+  try { if (typeof applyInvestmentsFeature === 'function') await applyInvestmentsFeature(); } catch(e) {}
+
+  // 7. Atualizar UI — sidebar com nome da nova família ANTES de navegar
+  updateUserUI();
+  _renderFamilySwitcher();
+
+  // 8. Navegar para a página atual (força reload dos dados da nova família)
+  navigate(targetPage);
 
   const roleIcon = { owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[currentUser.role] || '👤';
   toast(roleIcon + ' ' + fam.name, 'success');
-  updateUserUI();
-  _renderFamilySwitcher();
 }
 
 function _roleLabel(role) {
