@@ -139,7 +139,7 @@ async function applyNormalizePayees() {
 
   closeModal('normalizePayeesModal');
   DB.payees.bust(); await loadPayees(true);
-  populateSelects();
+  if(typeof populateSelects==='function') populateSelects();
   renderPayees();
 
   toast(
@@ -495,7 +495,7 @@ async function savePayee(){
   };
   if(!data.name){toast('Informe o nome','error');return;}
   if(!id) data.family_id=famId(); let err;if(id){({error:err}=await sb.from('payees').update(data).eq('id',id));}else{({error:err}=await sb.from('payees').insert(data));}
-  if(err){toast(err.message,'error');return;}const _pyNew=!document.getElementById('payeeId').value;toast('Salvo!','success');closeModal('payeeModal');DB.payees.bust();await loadPayees(true);populateSelects();if(_pyNew)_scrollTopAndHighlight('.payee-card:first-child,.payee-row:first-child');renderPayees();
+  if(err){toast(err.message,'error');return;}const _pyNew=!document.getElementById('payeeId').value;toast('Salvo!','success');closeModal('payeeModal');DB.payees.bust();await loadPayees(true);if(typeof populateSelects==='function') populateSelects();if(_pyNew)_scrollTopAndHighlight('.payee-card:first-child,.payee-row:first-child');renderPayees();
 }
 async function deletePayee(id) {
   const payee = state.payees.find(p => p.id === id);
@@ -767,7 +767,7 @@ async function confirmPayeeClipboardImport() {
     }
 
     DB.payees.bust(); await loadPayees(true);
-    populateSelects();
+    if(typeof populateSelects==='function') populateSelects();
     renderPayees();
     closeModal('payeeClipboardModal');
     toast(`✓ ${created} beneficiário${created !== 1 ? 's' : ''} importado${created !== 1 ? 's' : ''}${errors ? ` · ${errors} erro(s)` : ''}`, errors ? 'warning' : 'success');

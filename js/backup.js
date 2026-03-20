@@ -1104,7 +1104,7 @@ async function executeClearDatabase() {
     state.accounts = []; state.categories = []; state.payees = []; state.transactions = []; state.budgets = [];
     if (state.scheduled) state.scheduled = [];
     state.txTotal = 0; state.txPage = 0;
-    populateSelects();
+    if(typeof populateSelects==='function') populateSelects();
     if (failed.length > 0) {
       alert('⚠️ Limpeza parcial:\n\n• ' + failed.join('\n• '));
       toast('Limpeza parcial — veja detalhes', 'error');

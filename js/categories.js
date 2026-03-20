@@ -343,7 +343,7 @@ async function saveCategory() {
   toast('Categoria salva!','success');
   closeModal('categoryModal');
   DB.categories.bust(); await loadCategories(true);
-  populateSelects(); renderCategories();
+  if(typeof populateSelects==='function') populateSelects(); renderCategories();
   if(_isNew) _scrollTopAndHighlight('.cat-group:first-child');
 
   if (window._catSaveCallback) {
@@ -494,7 +494,7 @@ async function _doDeleteCategory(id) {
   toast('Categoria excluída', 'success');
   DB.categories.bust(); await loadCategories(true);
   await _loadCatTxCounts();
-  populateSelects();
+  if(typeof populateSelects==='function') populateSelects();
   renderCategories();
 }
 

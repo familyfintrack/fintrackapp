@@ -1,3 +1,11 @@
+// Compatibility wrapper: utils.js already provides ICON_META and icon-picker helpers.
+// Keep this file harmless to avoid duplicate lexical declarations on page load.
+(function(){
+  if (window.ICON_META || typeof window.renderIconEl === 'function' || typeof window.syncIconPickerToValue === 'function') {
+    console.info('[ui_helpers] skipped duplicate legacy bundle');
+    return;
+  }
+
 const ICON_META = {
   // Brazilian banks
   'itau':       {label:'Itaú',        color:'#FF6600', type:'bank'},
@@ -413,4 +421,6 @@ function setCatPickerValue(catId, ctx) {
   } else {
     initMoneyInputs();
   }
+})();
+
 })();

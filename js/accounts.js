@@ -253,7 +253,7 @@ async function saveAccount(){
   toast(id?'Conta atualizada!':'Conta criada!','success');
   closeModal('accountModal');
   await loadAccounts();
-  populateSelects();
+  if(typeof populateSelects==='function') populateSelects();
   if(state.currentPage==='accounts')renderAccounts(_accountsViewMode);
   if(state.currentPage==='dashboard')loadDashboard();
 }
@@ -488,7 +488,7 @@ async function confirmDeleteAccount() {
     _delAccId = null;
 
     await loadAccounts();
-    populateSelects();
+    if(typeof populateSelects==='function') populateSelects();
     renderAccounts(_accountsViewMode);
     if (state.currentPage === 'transactions') loadTransactions();
 

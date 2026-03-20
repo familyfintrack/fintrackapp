@@ -1820,7 +1820,8 @@ function parseAmtInput(s) {
 }
 
 // Sign toggle button state: fieldId → true means negative
-const _amtSignState = {};
+window._amtSignState = window._amtSignState || {};
+const _amtSignState = window._amtSignState;
 
 function toggleAmtSign(fieldId) {
   _amtSignState[fieldId] = !_amtSignState[fieldId];

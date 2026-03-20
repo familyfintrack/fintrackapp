@@ -1,3 +1,11 @@
+// Compatibility wrapper: utils.js already provides the payee autocomplete globals.
+// Keep this file harmless to avoid duplicate lexical declarations on page load.
+(function(){
+  if (window.payeeAC || typeof window.onPayeeInput === 'function' || typeof window.selectPayee === 'function') {
+    console.info('[payee_autocomplete] skipped duplicate legacy bundle');
+    return;
+  }
+
 const payeeAC = {
   focusIdx: -1,
   blurTimer: null,
@@ -274,3 +282,5 @@ async function createPayeeFromInput(ctx) {
 /* ═══════════════════════════════════════
    ICON PICKER
 ═══════════════════════════════════════ */
+
+})();

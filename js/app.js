@@ -552,7 +552,7 @@ async function bootApp(){
     runScheduledAutoRegister().catch(() => {});
   }
 
-  populateSelects();
+  if(typeof populateSelects==='function') populateSelects();
   // Start auto-check timer if configured
   const _cfg = (typeof getAutoCheckConfig === 'function') ? getAutoCheckConfig() : {};
   if(_cfg.enabled && _cfg.method === 'browser' && typeof applyAutoCheckTimer === 'function') applyAutoCheckTimer(_cfg);
@@ -870,9 +870,9 @@ function navigate(page){
   state.currentPage=page;closeSidebar();
   _scrollActivePageToTop(page);
   if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){populateTxMonthFilter();if(typeof populateSelects==='function')populateSelects();loadTransactions();}
+  else if(page==='transactions'){populateTxMonthFilter();if(typeof populateSelects==='function')if(typeof populateSelects==='function') populateSelects();loadTransactions();}
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
-  else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
+  else if(page==='reports'){if(typeof populateSelects==='function')if(typeof populateSelects==='function') populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();
   else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
