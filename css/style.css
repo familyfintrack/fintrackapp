@@ -102,16 +102,17 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 }
 .sb-user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .sb-user-info { min-width: 0; flex: 1; }
-.sb-user-name {
-  font-size: .82rem;
-  font-weight: 600;
+.sb-family-name {
+  font-size: .85rem;
+  font-weight: 700;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+  letter-spacing: -.01em;
 }
-.sb-user-role {
+.sb-user-sub {
   font-size: .68rem;
   color: rgba(255,255,255,.45);
   margin-top: 1px;
@@ -119,6 +120,9 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* legacy aliases — kept for any external reference */
+.sb-user-name  { font-size:.82rem; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.sb-user-role  { font-size:.68rem; color:rgba(255,255,255,.45); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* ── Scrollable nav body ── */
 .sidebar-nav {
