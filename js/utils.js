@@ -1,7 +1,21 @@
+function _buildAccountOptions(placeholder, accounts) {
+  const list = accounts || state.accounts;
+  const favs = list.filter(a => a.is_favorite);
+  const rest  = list.filter(a => !a.is_favorite);
+  const toOpt = a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`;
+  let html = `<option value="">${placeholder}</option>`;
+  if (favs.length) {
+    html += `<optgroup label="⭐ Favoritas">${favs.map(toOpt).join('')}</optgroup>`;
+    if (rest.length) html += `<optgroup label="Todas as contas">${rest.map(toOpt).join('')}</optgroup>`;
+  } else {
+    html += rest.map(toOpt).join('');
+  }
+  return html;
+}
+
 function populateSelects(){populateReportFilters();
-  const aOpts=state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-  ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Selecione a conta</option>'+aOpts;});
-  const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML='<option value="">Todas as contas</option>'+aOpts;
+  ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=_buildAccountOptions('Selecione a conta');});
+  const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=_buildAccountOptions('Todas as contas');
   // payee autocomplete uses state.payees directly - no select to populate
   buildCatPicker(); // hierarchical picker replaces flat select
   const pCat=document.getElementById('payeeCategory');if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');

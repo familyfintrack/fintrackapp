@@ -398,6 +398,13 @@ function renderScheduled(list) {
   }
 
   container.innerHTML = activeHtml + finishedSection;
+
+  // Scroll to top after async render completes (no flicker — instant, post-paint)
+  requestAnimationFrame(() => {
+    const content = document.querySelector('.content');
+    if (content) { content.scrollTop = 0; content.scrollLeft = 0; }
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch (_) {}
+  });
   return;
 
 }
@@ -672,13 +679,13 @@ function openScheduledModal(id='') {
 
   // Populate account select
   const aEl = document.getElementById('scAccountId');
-  aEl.innerHTML = state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  aEl.innerHTML = _buildAccountOptions('Selecione a conta');
   if(sc?.account_id) aEl.value = sc.account_id;
 
   // Populate transfer-to account select
   const trEl = document.getElementById('scTransferToAccountId');
   if(trEl) {
-    trEl.innerHTML = '<option value="">— Selecionar conta destino —</option>' + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    trEl.innerHTML = _buildAccountOptions('— Selecionar conta destino —');
     if(sc?.transfer_to_account_id) trEl.value = sc.transfer_to_account_id;
   }
 
@@ -1024,16 +1031,23 @@ async function saveScheduled() {
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
   if(!data.start_date) { toast('Informe a data de início', 'error'); return; }
 
-  let err;
+  let err, newId = null;
   if(!id) data.family_id = famId();
   if(id) { ({error:err} = await sb.from('scheduled_transactions').update(data).eq('id',id)); }
-  else    { ({error:err} = await sb.from('scheduled_transactions').insert(data)); }
+  else    {
+    const { data: ins, error: insErr } = await sb.from('scheduled_transactions').insert(data).select('id').single();
+    err = insErr;
+    newId = ins?.id || null;
+  }
   if(err) { toast(err.message,'error'); return; }
   const _scNew=!id;
   toast(id?'Programação atualizada!':'Transação programada!','success');
   closeModal('scheduledModal');
   await loadScheduled();
-  if(_scNew) _scrollTopAndHighlight('.sc-card:first-child,.sc-item:first-child');
+  if(_scNew) {
+    const selector = newId ? `#scCard-${newId}` : '.sc-card:first-child,.sc-item:first-child';
+    _scrollTopAndHighlight(selector, 2500);
+  }
 }
 
 async function deleteScheduled(id) {
