@@ -1819,9 +1819,7 @@ function parseAmtInput(s) {
   return neg ? -Math.abs(v) : v;
 }
 
-// Amount/sign helpers live in js/utils.js.
-// Do not redeclare them here, otherwise WebKit/Edge/Chrome abort script parsing
-// with: "Can't create duplicate variable: '_amtSignState'".
+// Amount sign helpers moved to utils.js. Reuse the canonical shared implementation here.
 
 // ─────────────────────────────────────────────────────────────
 // Amount inputs: auto-decimals (centavos) mask
