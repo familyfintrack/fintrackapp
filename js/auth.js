@@ -82,10 +82,9 @@ function _applyCurrentUserAvatar() {
 
 // ── Sidebar: populate user card ──────────────────────────────────────────────
 function _updateSidebarUserCard() {
-  const card     = document.getElementById('sbUserCard');
-  const avatarEl = document.getElementById('sbUserAvatar');
-  const famEl    = document.getElementById('sbFamilyName');
-  const subEl    = document.getElementById('sbUserSub');
+  const card  = document.getElementById('sbUserCard');
+  const famEl = document.getElementById('sbFamilyName');
+  const subEl = document.getElementById('sbUserSub');
   if (!card || !currentUser) return;
   card.style.display = '';
 
@@ -94,20 +93,9 @@ function _updateSidebarUserCard() {
   const famName = activeFam?.name || currentUser.family_name || '—';
   if (famEl) famEl.textContent = famName;
 
-  // Sub-line: user name (truncated)
+  // Sub-line: user name
   const userName = currentUser.name || currentUser.email?.split('@')[0] || '—';
   if (subEl) subEl.textContent = userName;
-
-  // Avatar: photo or initials
-  if (avatarEl) {
-    if (currentUser.avatar_url) {
-      avatarEl.innerHTML = `<img src="${esc(currentUser.avatar_url)}" alt="">`;
-    } else {
-      const initials = (currentUser.name || currentUser.email || '?')
-        .split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase() || '').join('');
-      avatarEl.textContent = initials || '?';
-    }
-  }
 }
 
 // Returns a Supabase query with family_id filter applied.
