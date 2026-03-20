@@ -8288,3 +8288,15 @@ body.ft-platform-windows .modal-close {
   color: var(--accent);
   font-weight: 600;
 }
+
+
+/* Touch hardening for action buttons */
+.btn,
+.btn-icon,
+.fab,
+.bottom-nav button,
+button[onclick*="openTransactionModal"],
+button[onclick*="openScheduledModal"]{
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
