@@ -728,8 +728,30 @@ function _openRegisterModal(aiResult) {
       }
     }
   }
-  const rawItems = aiResult.items || [];
-  _renderRpmRows(rawItems.length ? rawItems : [{ ai_name: aiResult.description || '', quantity: 1, unit_price: aiResult.amount || 0 }]);
+  // Normalise items from both receipt_ai.js (_callClaudeVision) and prices.js (_callPricesVision)
+  // Both return items[] but with slightly different field names — unify here
+  const rawItems = (aiResult.items || []).map(it => ({
+    description: it.description || it.ai_name || '',
+    ai_name:     it.ai_name     || it.description || '',
+    quantity:    parseFloat(it.quantity)   || 1,
+    unit_price:  parseFloat(it.unit_price) || parseFloat(it.price) || 0,
+    total_price: parseFloat(it.total_price)|| (parseFloat(it.unit_price||0) * (parseFloat(it.quantity)||1)),
+    category:    it.category || null,
+  })).filter(it => it.description && it.unit_price > 0);
+
+  if (rawItems.length) {
+    _renderRpmRows(rawItems);
+  } else {
+    // Fallback: single row with the note total (nothing better to show)
+    _renderRpmRows([{
+      description: aiResult.description || aiResult.payee || '',
+      ai_name:     aiResult.description || '',
+      quantity:    1,
+      unit_price:  aiResult.amount || 0,
+      total_price: aiResult.amount || 0,
+      category:    aiResult.category || null,
+    }]);
+  }
   openModal('registerPricesModal');
 }
 
