@@ -1738,8 +1738,10 @@ canvas { cursor: default; }
 
 /* Tighter row padding on desktop */
 @media (min-width: 641px) {
-  .tx-table tbody td { padding: 9px 12px; }
-  .tx-table thead th { padding: 8px 12px; }
+  .tx-table { font-size: .93rem; }
+  .tx-table tbody td { padding: 12px 14px; }
+  .tx-table thead th { padding: 10px 14px; font-size: .78rem; }
+  .tx-table tbody td:nth-child(6) { font-size: .95rem; }
 }
 
 /* Pagination */
@@ -5647,6 +5649,24 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-payee { font-size:.7rem; color:var(--muted); }
 .forecast-amount-cell,
 .forecast-balance-cell { width:96px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
+
+/* Desktop forecast: better readability */
+@media (min-width: 641px) {
+  .forecast-tx-row td { padding: 9px 12px; }
+  .forecast-date-cell { width: 88px; }
+  .forecast-date-main { font-size: .82rem; font-weight: 700; }
+  .forecast-date-flag,
+  .forecast-date-today { font-size: .72rem; min-height: 14px; }
+  .forecast-title { font-size: .9rem; font-weight: 500; }
+  .forecast-category { font-size: .78rem; }
+  .forecast-payee { font-size: .75rem; }
+  .forecast-line { min-height: 16px; line-height: 1.25; }
+  .forecast-amount-cell,
+  .forecast-balance-cell { width: 110px; font-size: .88rem; }
+  .forecast-amount-main { font-size: .9rem; font-weight: 600; }
+  .forecast-run-bal { font-size: .78rem; }
+}
+
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
   .forecast-date-cell { width:70px; }
@@ -5661,6 +5681,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   }
   .forecast-table-wrap table { table-layout:auto !important; }
 }
+
 
 
 /* ── Transactions: avoid blank area under title when optional lines are absent ── */
