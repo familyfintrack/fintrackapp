@@ -8173,3 +8173,118 @@ body.ft-platform-windows .modal-close {
 .forecast-run-bal.amount-neg { color: var(--red,#dc2626); font-weight: 600; }
 .forecast-run-bal.amount-pos { color: var(--green,#16a34a); }
 .forecast-balance-mobile { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   WAVE 2 — DESKTOP UX: Transactions + Forecast
+   Applies only on ≥ 1024px. Mobile layout is completely untouched.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── #31 Transactions list — desktop refinement ─────────────────── */
+@media (min-width: 1024px) {
+  /* Larger, more readable rows */
+  .tx-table tbody td { padding: 11px 14px; font-size: .9rem; }
+  .tx-table thead th { padding: 9px 14px; font-size: .78rem; }
+
+  /* Description / title line bigger */
+  .tx-v2-title    { font-size: .93rem !important; }
+  .tx-v2-category { font-size: .76rem !important; }
+  .tx-v2-meta     { font-size: .72rem !important; }
+
+  /* Amount column: more breathing room */
+  .tx-v2-amount { font-size: .95rem !important; }
+
+  /* Date cell */
+  .tx-v2-date { font-size: .78rem !important; padding-top: 12px !important; }
+
+  /* Status badge */
+  .tx-status-badge { font-size: .7rem !important; padding: 2px 8px !important; }
+
+  /* Slightly more generous row height via hover area */
+  .tx-table tbody tr { transition: background .1s; }
+  .tx-table tbody tr:hover { background: var(--surface2); }
+
+  /* Filter bar: slightly larger selects */
+  .tx-chip-select { font-size: .82rem !important; padding: 5px 10px !important; }
+  #txSearch       { font-size: .82rem !important; }
+}
+
+/* ── #32 Forecast list — desktop refinement ─────────────────────── */
+@media (min-width: 1024px) {
+  /* Row padding & font size */
+  .forecast-tx-row td { padding: 9px 12px !important; }
+  .forecast-title     { font-size: .9rem !important; }
+  .forecast-category  { font-size: .76rem !important; }
+  .forecast-payee     { font-size: .73rem !important; }
+
+  /* Date column wider and cleaner */
+  .forecast-date-cell      { width: 88px !important; }
+  .forecast-date-main      { font-size: .8rem !important; }
+  .forecast-date-flag,
+  .forecast-date-today     { font-size: .7rem !important; }
+
+  /* Amount column */
+  .forecast-amount-main  { font-size: .9rem !important; }
+  .forecast-amount-brl   { font-size: .74rem !important; }
+  .forecast-run-bal      { font-size: .76rem !important; }
+  .forecast-amount-cell  { width: 110px !important; }
+
+  /* Account section header */
+  .forecast-account-header { padding: 12px 16px !important; }
+
+  /* Table header */
+  .forecast-table-wrap table thead th { font-size: .76rem !important; padding: 8px 12px !important; }
+}
+
+/* ── #11 Prices: group-by toggle buttons ────────────────────────── */
+.px-group-btn {
+  padding: 4px 10px;
+  font-size: .74rem;
+  font-weight: 500;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.px-group-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.px-group-btn:hover:not(.active) {
+  background: var(--bg2);
+  color: var(--text2);
+}
+
+/* ── #11 Prices: group section headers ──────────────────────────── */
+.px-group-section { margin-bottom: 18px; }
+.px-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 8px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 10px;
+}
+.px-group-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.px-group-label {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text2);
+  flex: 1;
+}
+.px-group-count {
+  font-size: .72rem;
+  color: var(--muted);
+}
+
+/* ── #9 Transactions: category filter active indicator ──────────── */
+#txCatFilterWrap.is-active .tx-chip-select {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
