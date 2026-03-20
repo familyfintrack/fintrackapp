@@ -376,7 +376,11 @@ async function loadDashboard(){
     }
   }
 
-  await Promise.all([renderCashflowChart(_dashMemberIds),renderCategoryChart()]);
+  // Render charts independently — failure in one must not block the other
+  await Promise.all([
+    renderCashflowChart(_dashMemberIds).catch(e => console.warn('[dashboard] cashflow:', e?.message)),
+    renderCategoryChart().catch(e => console.warn('[dashboard] categoryChart:', e?.message)),
+  ]);
 }
 async function renderCashflowChart(memberIds = null){
   // Populate account filter (refresh every time dashboard loads)
@@ -548,28 +552,7 @@ async function renderCategoryChart(){
     return;
   }
 
-  renderChart('categoryChart','doughnut',
-    _catChartEntries.map(e=>e.name),
-    [{
-      data: _catChartEntries.map(e=>e.total),
-      backgroundColor: _catChartEntries.map(e=>e.color),
-      borderWidth: 2,
-      borderColor: '#fff',
-      hoverOffset: 8,
-      hoverBorderWidth: 3,
-    }],
-    {
-      onClick(event, elements) {
-        if (!elements.length) return;
-        const idx = elements[0].index;
-        openCatDetail(idx);
-      },
-      onHover(event, elements) {
-        const canvas = event.native?.target;
-        if (canvas) canvas.style.cursor = elements.length ? 'pointer' : 'default';
-      },
-    }
-  );
+  _renderCatChartDoughnut();
 }
 
 function openCatDetail(idx) {
@@ -1140,28 +1123,55 @@ let _catChartType = 'doughnut'; // persisted in dash prefs
 
 function _setCatChartType(type) {
   _catChartType = type;
-  // Update toggle button states
+
+  // Sync toggle button visuals
   const pie = document.getElementById('catChartTypePie');
   const bar = document.getElementById('catChartTypeBar');
-  if (pie) { pie.style.background = type === 'doughnut' ? 'var(--accent)' : 'var(--surface)'; pie.style.color = type === 'doughnut' ? '#fff' : 'var(--muted)'; }
-  if (bar) { bar.style.background = type === 'bar'      ? 'var(--accent)' : 'var(--surface)'; bar.style.color = type === 'bar'      ? '#fff' : 'var(--muted)'; }
-  // Persist in prefs
-  _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {});
-  // Re-render with same data (no refetch)
+  if (pie) {
+    pie.style.background = type === 'doughnut' ? 'var(--accent)' : 'var(--surface)';
+    pie.style.color      = type === 'doughnut' ? '#fff' : 'var(--muted)';
+  }
+  if (bar) {
+    bar.style.background = type === 'bar' ? 'var(--accent)' : 'var(--surface)';
+    bar.style.color      = type === 'bar' ? '#fff' : 'var(--muted)';
+  }
+
+  // Persist preference
+  try { _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {}); } catch(_) {}
+
+  // Guard: no data yet — nothing to render
   if (!_catChartEntries.length) return;
-  closeCatDetail();
+
+  // Destroy current chart cleanly before switching type
+  const existing = state.chartInstances?.['categoryChart'];
+  if (existing) { try { existing.destroy(); } catch(_) {} delete state.chartInstances['categoryChart']; }
+
+  // Reset detail panel
+  const detailEl = document.getElementById('catChartDetail');
+  const backBtn  = document.getElementById('catDetailBackBtn');
+  if (detailEl) detailEl.style.display = 'none';
+  if (backBtn)  backBtn.style.display  = 'none';
+
   if (type === 'bar') {
     _renderCatChartBar();
   } else {
-    renderChart('categoryChart', 'doughnut',
-      _catChartEntries.map(e => e.name),
-      [{ data: _catChartEntries.map(e => e.total), backgroundColor: _catChartEntries.map(e => e.color), borderWidth: 2, borderColor: '#fff', hoverOffset: 8, hoverBorderWidth: 3 }],
-      {
-        onClick(event, elements) { if (elements.length) openCatDetail(elements[0].index); },
-        onHover(event, elements) { const c = event.native?.target; if (c) c.style.cursor = elements.length ? 'pointer' : 'default'; },
-      }
-    );
+    _renderCatChartDoughnut();
   }
+}
+
+function _renderCatChartDoughnut() {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas) return;
+  canvas.style.height = '200px';
+  canvas.removeAttribute('height');
+  renderChart('categoryChart', 'doughnut',
+    _catChartEntries.map(e => e.name),
+    [{ data: _catChartEntries.map(e => e.total), backgroundColor: _catChartEntries.map(e => e.color), borderWidth: 2, borderColor: '#fff', hoverOffset: 8, hoverBorderWidth: 3 }],
+    {
+      onClick(event, elements) { if (elements.length) openCatDetail(elements[0].index); },
+      onHover(event, elements) { const c = event.native?.target; if (c) c.style.cursor = elements.length ? 'pointer' : 'default'; },
+    }
+  );
 }
 
 function _renderCatChartBar() {
