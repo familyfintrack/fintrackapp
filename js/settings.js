@@ -481,6 +481,9 @@ function loadSettings() {
     initSettingsVisibilityForm();
     initServiceRoleKeySection();
     try { _loadNormalizeNamesInfo().catch(()=>{}); } catch {}
+    // Mostrar menuVisibilitySection para admin sempre
+    const mvSec = document.getElementById('menuVisibilitySection');
+    if (mvSec) { mvSec.style.display = ''; _renderMenuVisibilityForm(); }
   } else {
     // Usuário comum: aplicar restrições de visibilidade definidas pelo admin
     applySettingsVisibility();

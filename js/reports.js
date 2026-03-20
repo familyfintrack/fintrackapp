@@ -45,8 +45,8 @@ function populateReportFilters() {
   ['rptAccount','forecastAccountFilter'].forEach(id=>{
     const el = document.getElementById(id); if(!el) return;
     const cur = el.value;
-    const placeholder = id==='forecastAccountFilter' ? 'Todas as contas' : 'Todas';
-    el.innerHTML = _accountOptions(state.accounts, placeholder);
+    el.innerHTML = (id==='forecastAccountFilter'?'<option value="">Todas as contas</option>':'<option value="">Todas</option>') +
+      opts(state.accounts, a=>a.id, a=>a.name);
     el.value = cur;
   });
   const catEl = document.getElementById('rptCategory');
