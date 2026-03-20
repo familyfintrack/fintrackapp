@@ -102,12 +102,15 @@ function _refreshRptTagFilter() {
 
 let _rptLoading = false;
 async function loadCurrentReport(resetPage = false) {
-  if (_rptLoading) return; // prevent concurrent fetches
+  if (!sb || !currentUser) return;           // Supabase not ready yet
+  if (_rptLoading) return;                   // prevent concurrent fetches
   _rptLoading = true;
   try {
     if (rptState.view === 'regular')           await loadReports();
     else if (rptState.view === 'transactions') await loadReportTx();
     else if (rptState.view === 'forecast')     await loadForecast();
+  } catch(e) {
+    console.warn('[reports] loadCurrentReport error:', e?.message);
   } finally {
     _rptLoading = false;
   }

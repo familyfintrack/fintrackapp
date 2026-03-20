@@ -25,14 +25,19 @@ function _accountOptions(accounts, placeholder) {
   return html;
 }
 
-function populateSelects(){populateReportFilters();
-  const accs = state.accounts || [];
-  ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=_accountOptions(accs,'Selecione a conta');});
-  const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=_accountOptions(accs,'Todas as contas').replace('<option value="">Todas as contas</option>','<option value="">Todas as contas</option>');
-  const catF=document.getElementById('txCategoryFilter');if(catF){const cur=catF.value;catF.innerHTML='<option value="">Categoria</option>'+_buildCategoryFilterOptions();catF.value=cur;}
-  // payee autocomplete uses state.payees directly - no select to populate
-  buildCatPicker(); // hierarchical picker replaces flat select
-  const pCat=document.getElementById('payeeCategory');if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+state.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+function populateSelects(){
+  try { populateReportFilters(); } catch(e) { console.warn('[populateSelects] reportFilters:', e?.message); }
+  try {
+    const accs = state.accounts || [];
+    ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=_accountOptions(accs,'Selecione a conta');});
+    const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=_accountOptions(accs,'Todas as contas');
+    const catF=document.getElementById('txCategoryFilter');if(catF){const cur=catF.value;catF.innerHTML='<option value="">Categoria</option>'+_buildCategoryFilterOptions();catF.value=cur;}
+  } catch(e) { console.warn('[populateSelects] accounts/cats:', e?.message); }
+  try { buildCatPicker(); } catch(e) { console.warn('[populateSelects] catPicker:', e?.message); }
+  try {
+    const pCat=document.getElementById('payeeCategory');
+    if(pCat)pCat.innerHTML='<option value="">— Nenhuma —</option>'+(state.categories||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  } catch(e) { console.warn('[populateSelects] payeeCat:', e?.message); }
 }
 
 function openModal(id){document.getElementById(id).classList.add('open');}
