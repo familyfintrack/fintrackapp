@@ -552,7 +552,7 @@ async function bootApp(){
     runScheduledAutoRegister().catch(() => {});
   }
 
-  if(typeof populateSelects==='function') populateSelects();
+  populateSelects();
   // Start auto-check timer if configured
   const _cfg = (typeof getAutoCheckConfig === 'function') ? getAutoCheckConfig() : {};
   if(_cfg.enabled && _cfg.method === 'browser' && typeof applyAutoCheckTimer === 'function') applyAutoCheckTimer(_cfg);
@@ -870,9 +870,9 @@ function navigate(page){
   state.currentPage=page;closeSidebar();
   _scrollActivePageToTop(page);
   if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){populateTxMonthFilter();if(typeof populateSelects==='function')if(typeof populateSelects==='function') populateSelects();loadTransactions();}
+  else if(page==='transactions'){populateTxMonthFilter();if(typeof populateSelects==='function')populateSelects();loadTransactions();}
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
-  else if(page==='reports'){if(typeof populateSelects==='function')if(typeof populateSelects==='function') populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
+  else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();
   else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
@@ -905,4 +905,45 @@ if('serviceWorker' in navigator){
 
 
 
-document.addEventListener('DOMContentLoaded', initBottomNav);
+
+function initTapAndZoomLocks(){
+  if(document.documentElement.dataset.ftZoomLockInit === '1') return;
+  document.documentElement.dataset.ftZoomLockInit = '1';
+
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function(ev){
+    const now = Date.now();
+    if(now - lastTouchEnd < 350){
+      ev.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive:false });
+
+  document.addEventListener('gesturestart', function(ev){ ev.preventDefault(); }, { passive:false });
+  document.addEventListener('gesturechange', function(ev){ ev.preventDefault(); }, { passive:false });
+  document.addEventListener('gestureend', function(ev){ ev.preventDefault(); }, { passive:false });
+
+  window.addEventListener('wheel', function(ev){
+    if(ev.ctrlKey){ ev.preventDefault(); }
+  }, { passive:false });
+
+  const bindTap = (selector, handlerName) => {
+    document.querySelectorAll(selector).forEach((el)=>{
+      if(el.dataset.ftTapBound === '1') return;
+      el.dataset.ftTapBound = '1';
+      el.style.touchAction = 'manipulation';
+      el.addEventListener('pointerup', function(ev){
+        if(typeof window[handlerName] === 'function'){
+          ev.preventDefault();
+          window[handlerName]();
+        }
+      });
+    });
+  };
+
+  bindTap('#bottomFab', 'openTransactionModal');
+  bindTap('button[onclick="openScheduledModal()"]', 'openScheduledModal');
+  bindTap('button[onclick="openTransactionModal()"]', 'openTransactionModal');
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{ initBottomNav(); initTapAndZoomLocks(); });
