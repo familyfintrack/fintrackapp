@@ -86,18 +86,32 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   gap: 10px;
   flex-shrink: 0;
 }
-.sb-user-info { min-width: 0; flex: 1; }
-.sb-family-name {
-  font-size: .85rem;
+.sb-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3ab855, #037762);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
+  font-size: .85rem;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.sb-user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.sb-user-info { min-width: 0; flex: 1; }
+.sb-user-name {
+  font-size: .82rem;
+  font-weight: 600;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
-  letter-spacing: -.01em;
 }
-.sb-user-sub {
+.sb-user-role {
   font-size: .68rem;
   color: rgba(255,255,255,.45);
   margin-top: 1px;
@@ -105,9 +119,6 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* legacy aliases — kept for any external reference */
-.sb-user-name  { font-size:.82rem; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
-.sb-user-role  { font-size:.68rem; color:rgba(255,255,255,.45); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* ── Scrollable nav body ── */
 .sidebar-nav {
@@ -5435,25 +5446,6 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   -webkit-tap-highlight-color: transparent;
 }
 .sc-reg-btn:hover { filter: brightness(1.08); }
-
-/* Desktop: botão menor e discreto */
-@media (min-width: 768px) {
-  .sc-reg-btn {
-    flex: none;
-    padding: 4px 10px;
-    font-size: .72rem;
-    font-weight: 500;
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    opacity: .7;
-  }
-  .sc-reg-btn:hover {
-    filter: none;
-    background: var(--accent-lt);
-    opacity: 1;
-  }
-}
 .sc-reg-none {
   flex: 1; font-size: .75rem; color: var(--muted);
   background: transparent; border-radius: 100px;
