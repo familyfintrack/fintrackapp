@@ -5642,7 +5642,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* ── Forecast: fixed layout and always three lines ─────────────────── */
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
 .forecast-tx-row td { padding:6px 8px; vertical-align:top; }
-.forecast-date-cell { width:76px; color:var(--muted); }
+.forecast-date-cell { width:96px; padding-right:16px; color:var(--muted); }
 .forecast-date-main { font-size:.75rem; line-height:1.1; font-weight:600; white-space:nowrap; }
 .forecast-date-flag,
 .forecast-date-today { display:block; font-size:.66rem; line-height:1.05; min-height:12px; white-space:nowrap; }
@@ -5657,7 +5657,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-balance-cell { width:96px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
-  .forecast-date-cell { width:70px; }
+  .forecast-date-cell { width:72px; padding-right:8px; }
   .forecast-amount-cell { width:auto !important; font-size:.8rem; }
   .forecast-balance-head,
   .forecast-balance-cell {
