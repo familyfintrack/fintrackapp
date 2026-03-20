@@ -1,71 +1,136 @@
 /* ═══════════════════════════════════════
    RESIZABLE TABLE COLUMNS (desktop ≥768px)
-   Add class "resizable-table" to any <table>
-   Persists per table id in localStorage.
+   Strategy: inject <colgroup><col> elements so widths survive
+   thead/tbody re-renders. Persist per table.id in localStorage.
 ═══════════════════════════════════════ */
+
+const _COL_W_PREFIX = 'col_w_';
+
+function _saveColWidths(table) {
+  if (!table?.id) return;
+  try {
+    const cols = table.querySelectorAll('colgroup col');
+    if (!cols.length) return;
+    const widths = [...cols].map(c => c.style.width || '');
+    localStorage.setItem(_COL_W_PREFIX + table.id, JSON.stringify(widths));
+  } catch(_) {}
+}
+
+function _restoreColWidths(table) {
+  if (!table?.id) return;
+  try {
+    const raw = localStorage.getItem(_COL_W_PREFIX + table.id);
+    if (!raw) return;
+    const widths = JSON.parse(raw);
+    const cols   = table.querySelectorAll('colgroup col');
+    cols.forEach((col, i) => { if (widths[i]) col.style.width = widths[i]; });
+  } catch(_) {}
+}
+
+function _ensureColgroup(table) {
+  // Always keep colgroup in sync with current thead column count
+  const ths = table.querySelectorAll('thead tr:first-child th');
+  if (!ths.length) return null;
+  let cg = table.querySelector('colgroup');
+  if (!cg) {
+    cg = document.createElement('colgroup');
+    table.insertBefore(cg, table.firstChild);
+  }
+  // Add missing <col> elements
+  while (cg.children.length < ths.length) {
+    cg.appendChild(document.createElement('col'));
+  }
+  // Remove extras
+  while (cg.children.length > ths.length) {
+    cg.removeChild(cg.lastChild);
+  }
+  return cg;
+}
+
 function initResizableTable(table) {
   if (!table || window.innerWidth < 768) return;
-  if (table.dataset.resizeInited) return;
+  // Always (re-)sync colgroup and restore saved widths — even on re-init
+  const cg = _ensureColgroup(table);
+  if (!cg) return;
+  _restoreColWidths(table);
+  if (table.dataset.resizeInited) return; // handles already attached
   table.dataset.resizeInited = '1';
-  const ths = table.querySelectorAll('thead th');
+  table.style.tableLayout = 'fixed';
+
+  const ths = table.querySelectorAll('thead tr:first-child th');
   ths.forEach((th, i) => {
-    if (i === ths.length - 1) return; // skip last (actions)
+    if (i === ths.length - 1) return; // skip last column (actions)
     const handle = document.createElement('div');
     handle.className = 'col-resize-handle';
     handle.title = 'Arrastar para redimensionar';
     th.appendChild(handle);
+
     let startX = 0, startW = 0;
+
     const onMove = e => {
-      const dx = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
-      const nw = Math.max(36, startW + dx);
-      th.style.width = nw + 'px';
-      th.style.minWidth = nw + 'px';
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const nw = Math.max(36, startW + clientX - startX);
+      const col = cg.children[i];
+      if (col) col.style.width = nw + 'px';
     };
+
     const onUp = () => {
       handle.classList.remove('dragging');
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
-      if (table.id) _saveColWidths(table);
+      _saveColWidths(table);
     };
+
     handle.addEventListener('mousedown', e => {
       e.preventDefault(); e.stopPropagation();
-      startX = e.clientX; startW = th.offsetWidth;
+      // Use the <col> width if already set, otherwise measure the th
+      const col = cg.children[i];
+      const colW = col?.style.width ? parseFloat(col.style.width) : 0;
+      startX = e.clientX;
+      startW = colW || th.offsetWidth;
       handle.classList.add('dragging');
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     });
   });
-  if (table.id) _restoreColWidths(table);
 }
-function _saveColWidths(table) {
-  try {
-    const w = [...table.querySelectorAll('thead th')].map(t => t.style.width || '');
-    localStorage.setItem('col_w_' + table.id, JSON.stringify(w));
-  } catch(_) {}
+
+// Re-sync colgroup + restore widths whenever a resizable table's content changes
+function refreshResizableTable(tableOrId) {
+  const table = typeof tableOrId === 'string'
+    ? document.getElementById(tableOrId)
+    : tableOrId;
+  if (!table) return;
+  _ensureColgroup(table);
+  _restoreColWidths(table);
 }
-function _restoreColWidths(table) {
-  try {
-    const raw = localStorage.getItem('col_w_' + table.id);
-    if (!raw) return;
-    JSON.parse(raw).forEach((w, i) => {
-      const th = table.querySelectorAll('thead th')[i];
-      if (th && w) { th.style.width = w; th.style.minWidth = w; }
-    });
-  } catch(_) {}
-}
+
 function initAllResizableTables() {
   if (window.innerWidth < 768) return;
-  document.querySelectorAll('table.resizable-table:not([data-resize-inited])').forEach(initResizableTable);
+  document.querySelectorAll('table.resizable-table').forEach(t => {
+    // Always re-sync colgroup (thead may have been re-rendered)
+    _ensureColgroup(t);
+    _restoreColWidths(t);
+    if (!t.dataset.resizeInited) initResizableTable(t);
+  });
 }
+
 // Auto-init via MutationObserver
 (function() {
   if (typeof MutationObserver === 'undefined') return;
-  const obs = new MutationObserver(() => initAllResizableTables());
+  const obs = new MutationObserver(mutations => {
+    let needsSync = false;
+    mutations.forEach(m => {
+      if (m.type === 'childList') needsSync = true;
+    });
+    if (needsSync) initAllResizableTables();
+  });
   document.addEventListener('DOMContentLoaded', () => {
     obs.observe(document.body, { childList: true, subtree: true });
     initAllResizableTables();
   });
 })();
+
 
 function _buildCategoryFilterOptions() {
   const cats = state.categories || [];
