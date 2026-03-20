@@ -1,9 +1,9 @@
-var payeeAC = window.payeeAC || {
+const __payeeAC = window.payeeAC || (window.payeeAC = {
   focusIdx: -1,
   blurTimer: null,
   selectedId: null,
   selectedName: null
-};
+});
 
 function clearPayeeField(ctx) {
   const c = payeeCtx(ctx);
@@ -12,8 +12,8 @@ function clearPayeeField(ctx) {
   if(c.statusEl) c.statusEl.textContent = '';
   hidePayeeDropdown(ctx);
   hidePayeeSimilar();
-  payeeAC.selectedId = null;
-  payeeAC.selectedName = null;
+  __payeeAC.selectedId = null;
+  __payeeAC.selectedName = null;
 }
 
 function setPayeeField(payeeId, ctx) {
@@ -24,8 +24,8 @@ function setPayeeField(payeeId, ctx) {
     if(c.idEl) c.idEl.value = p.id;
     if(c.nameEl) c.nameEl.value = p.name;
     if(c.statusEl) c.statusEl.textContent = '✓';
-    payeeAC.selectedId = p.id;
-    payeeAC.selectedName = p.name;
+    __payeeAC.selectedId = p.id;
+    __payeeAC.selectedName = p.name;
   } else clearPayeeField(ctx);
 }
 
@@ -34,8 +34,8 @@ function selectPayee(id, name, ctx) {
   if(c.idEl) c.idEl.value = id;
   if(c.nameEl) c.nameEl.value = name;
   if(c.statusEl) c.statusEl.textContent = '✓';
-  payeeAC.selectedId = id;
-  payeeAC.selectedName = name;
+  __payeeAC.selectedId = id;
+  __payeeAC.selectedName = name;
   hidePayeeDropdown(ctx);
   hidePayeeSimilar();
   // Category suggestion only for tx modal
@@ -99,11 +99,11 @@ function payeeCtx(ctx) {
 
 function onPayeeInput(val, ctx) {
   const c = payeeCtx(ctx);
-  if (val !== payeeAC.selectedName) {
+  if (val !== __payeeAC.selectedName) {
     if(c.idEl) c.idEl.value = '';
     if(c.statusEl) c.statusEl.textContent = '';
-    payeeAC.selectedId = null;
-    payeeAC.selectedName = null;
+    __payeeAC.selectedId = null;
+    __payeeAC.selectedName = null;
   }
   if(c.bannerEl) c.bannerEl.style.display = 'none';
   if (val.length < 3) { if(c.ddEl) c.ddEl.style.display='none'; return; }
@@ -116,7 +116,7 @@ function showPayeeDropdown(matches, typed, ctx) {
   const c = payeeCtx(ctx);
   const dd = c.ddEl;
   if(!dd) return;
-  payeeAC.focusIdx = -1;
+  __payeeAC.focusIdx = -1;
   let html = '';
   matches.slice(0, 8).forEach((p) => {
     const badge = { beneficiario: 'Beneficiário', fonte_pagadora: 'Fonte Pagadora', ambos: 'Ambos' }[p.type] || p.type;
@@ -136,7 +136,7 @@ function showPayeeDropdown(matches, typed, ctx) {
 function hidePayeeDropdown(ctx) {
   const c = payeeCtx(ctx);
   if(c.ddEl) c.ddEl.style.display = 'none';
-  payeeAC.focusIdx = -1;
+  __payeeAC.focusIdx = -1;
 }
 
 function hidePayeeSimilar() {
@@ -145,12 +145,12 @@ function hidePayeeSimilar() {
 }
 
 function onPayeeBlur(ctx) {
-  payeeAC.blurTimer = setTimeout(() => {
+  __payeeAC.blurTimer = setTimeout(() => {
     const c = payeeCtx(ctx);
     const typed = c.nameEl?.value.trim() || '';
     hidePayeeDropdown(ctx);
     // Only show similar banner for tx modal (not sc)
-    if (ctx !== 'sc' && !payeeAC.selectedId && typed.length >= 2) {
+    if (ctx !== 'sc' && !__payeeAC.selectedId && typed.length >= 2) {
       checkSimilarPayee(typed);
     }
   }, 200);
@@ -164,17 +164,17 @@ function onPayeeKey(e, ctx) {
   if (!opts.length) return;
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    payeeAC.focusIdx = Math.min(payeeAC.focusIdx + 1, opts.length - 1);
-    opts.forEach((o, i) => o.classList.toggle('focused', i === payeeAC.focusIdx));
-    opts[payeeAC.focusIdx]?.scrollIntoView({ block: 'nearest' });
+    __payeeAC.focusIdx = Math.min(__payeeAC.focusIdx + 1, opts.length - 1);
+    opts.forEach((o, i) => o.classList.toggle('focused', i === __payeeAC.focusIdx));
+    opts[__payeeAC.focusIdx]?.scrollIntoView({ block: 'nearest' });
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    payeeAC.focusIdx = Math.max(payeeAC.focusIdx - 1, 0);
-    opts.forEach((o, i) => o.classList.toggle('focused', i === payeeAC.focusIdx));
-    opts[payeeAC.focusIdx]?.scrollIntoView({ block: 'nearest' });
-  } else if (e.key === 'Enter' && payeeAC.focusIdx >= 0) {
+    __payeeAC.focusIdx = Math.max(__payeeAC.focusIdx - 1, 0);
+    opts.forEach((o, i) => o.classList.toggle('focused', i === __payeeAC.focusIdx));
+    opts[__payeeAC.focusIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter' && __payeeAC.focusIdx >= 0) {
     e.preventDefault();
-    opts[payeeAC.focusIdx]?.click();
+    opts[__payeeAC.focusIdx]?.click();
   } else if (e.key === 'Escape') {
     hidePayeeDropdown(ctx);
   }

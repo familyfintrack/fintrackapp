@@ -1820,17 +1820,17 @@ function parseAmtInput(s) {
 }
 
 // Sign toggle button state: fieldId → true means negative
-var _amtSignState = window._amtSignState || (window._amtSignState = {});
+const __amtSignState = window.__amtSignState || (window.__amtSignState = {});
 
 function toggleAmtSign(fieldId) {
-  _amtSignState[fieldId] = !_amtSignState[fieldId];
+  __amtSignState[fieldId] = !__amtSignState[fieldId];
   _updateSignBtn(fieldId);
 }
 
 function _updateSignBtn(fieldId) {
   const btn = document.getElementById(fieldId + 'SignBtn');
   if (!btn) return;
-  const isNeg = !!_amtSignState[fieldId];
+  const isNeg = !!__amtSignState[fieldId];
   btn.textContent = isNeg ? '−' : '+';
   btn.classList.toggle('negative', isNeg);
   btn.classList.toggle('positive', !isNeg);
@@ -1839,7 +1839,7 @@ function _updateSignBtn(fieldId) {
 // Set amount field value and sign btn state from a numeric value (e.g. when editing)
 function setAmtField(fieldId, value) {
   const isNeg = (value < 0);
-  _amtSignState[fieldId] = isNeg;
+  __amtSignState[fieldId] = isNeg;
   const el = document.getElementById(fieldId);
   if (el) el.value = value !== 0 ? Math.abs(value).toFixed(2).replace('.', ',') : '';
   _updateSignBtn(fieldId);
@@ -1855,7 +1855,7 @@ function getAmtField(fieldId) {
   let clean = raw.replace(/\./g, '').replace(',', '.'); // handle BR format
   if (!/[.,]/.test(raw)) clean = raw; // plain integer
   const abs = Math.abs(parseFloat(clean) || 0);
-  return _amtSignState[fieldId] ? -abs : abs;
+  return __amtSignState[fieldId] ? -abs : abs;
 }
 
 // ─────────────────────────────────────────────────────────────
