@@ -656,6 +656,13 @@
                 style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:150px;display:none">
                 <option value="">Família (todos)</option>
               </select>
+              <!-- Chart type toggle -->
+              <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+                <button id="catChartTypePie" onclick="_setCatChartType('doughnut')" title="Pizza"
+                  style="padding:3px 7px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:.75rem;font-weight:600">🥧</button>
+                <button id="catChartTypeBar" onclick="_setCatChartType('bar')" title="Barras"
+                  style="padding:3px 7px;border:none;background:var(--surface);color:var(--muted);cursor:pointer;font-size:.75rem">▦</button>
+              </div>
               <button id="catDetailBackBtn" onclick="closeCatDetail()" style="display:none;background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--muted);align-items:center;gap:4px;padding:2px 6px;border-radius:6px;border:1px solid var(--border)">← Voltar</button>
             </div>
           </div>
@@ -754,6 +761,11 @@
           <div class="tx-filter-chip-wrap">
             <select id="txAccount" onchange="filterTransactions(true)" class="tx-chip-select">
               <option value="">Todas as contas</option>
+            </select>
+          </div>
+          <div class="tx-filter-chip-wrap" id="txCatFilterWrap">
+            <select id="txCategoryFilter" onchange="filterTransactions(true)" class="tx-chip-select">
+              <option value="">Categoria</option>
             </select>
           </div>
           <div class="tx-filter-chip-wrap">
@@ -1956,6 +1968,12 @@
                 style="font-size:.85rem;min-width:160px">
           <option value="">Todos os estabelecimentos</option>
         </select>
+        <!-- Group-by toggle -->
+        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0">
+          <button id="pxGroupNone"  onclick="pricesSetGroup('')"      class="px-group-btn active" title="Sem agrupamento">Lista</button>
+          <button id="pxGroupCat"   onclick="pricesSetGroup('cat')"   class="px-group-btn"        title="Agrupar por categoria">Categoria</button>
+          <button id="pxGroupStore" onclick="pricesSetGroup('store')" class="px-group-btn"        title="Agrupar por estabelecimento">Loja</button>
+        </div>
         <span id="pricesCount" style="font-size:.78rem;color:var(--muted);white-space:nowrap;align-self:center"></span>
       </div>
 
