@@ -1819,7 +1819,9 @@ function parseAmtInput(s) {
   return neg ? -Math.abs(v) : v;
 }
 
-// Amount sign helpers moved to utils.js. Reuse the canonical shared implementation here.
+// Amount sign helpers are provided by utils.js.
+// reports.js must not redeclare _amtSignState or related helpers,
+// otherwise the application aborts during script parsing.
 
 // ─────────────────────────────────────────────────────────────
 // Amount inputs: auto-decimals (centavos) mask
