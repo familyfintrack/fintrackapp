@@ -927,7 +927,7 @@ async function rpmNormalizeAI(idx) {
 }
 
 async function rpmNormalizeAllAI() {
-  const rows = document.querySelectorAll('tr.rpm-row');
+  const rows = document.querySelectorAll('[id^="rpmItem-"]');
   for (const row of rows) {
     await rpmNormalizeAI(row.id.replace('rpmItem-', ''));
     await new Promise(r => setTimeout(r, 200));
@@ -974,7 +974,7 @@ async function saveRegisterPrices() {
       }
     }
     // Collect grid rows then batch-save (2 queries instead of N*3)
-    const rows = document.querySelectorAll('tr.rpm-row');
+    const rows = document.querySelectorAll('[id^="rpmItem-"]');
     const items = [];
     rows.forEach(row => {
       const idx   = row.id.replace('rpmItem-', '');
