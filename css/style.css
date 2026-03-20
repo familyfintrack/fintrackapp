@@ -8291,12 +8291,15 @@ body.ft-platform-windows .modal-close {
 
 
 /* Touch hardening for action buttons */
-.btn,
-.btn-icon,
 .fab,
-.bottom-nav button,
+#globalAddBtn,
 button[onclick*="openTransactionModal"],
-button[onclick*="openScheduledModal"]{
+button[onclick*="openScheduledModal"],
+.btn,
+.btn-icon {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  overscroll-behavior: contain;
 }
