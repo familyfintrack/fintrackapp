@@ -415,8 +415,8 @@
   <div class="sb-user-card" id="sbUserCard" style="display:none">
     <div class="sb-user-avatar" id="sbUserAvatar">?</div>
     <div class="sb-user-info">
-      <div class="sb-user-name" id="sbUserName">—</div>
-      <div class="sb-user-role" id="sbUserRole">—</div>
+      <div class="sb-family-name" id="sbFamilyName">—</div>
+      <div class="sb-user-sub" id="sbUserSub">—</div>
     </div>
   </div>
 
@@ -1610,6 +1610,15 @@
             <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
           </div>
 
+          <div class="cfg-row" id="settingsFamilyMgmtRow">
+            <span class="cfg-row-icon" style="background:#dcfce7">🏠</span>
+            <div class="cfg-row-info">
+              <span class="cfg-row-label">Gestão da Família</span>
+              <span class="cfg-row-sub">Membros, convites e configurações da família ativa</span>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="openMyFamilyMgmt()">Abrir</button>
+          </div>
+
           <div class="cfg-row" id="famModulesRow" style="display:none;align-items:flex-start;flex-direction:column;gap:8px">
             <div style="display:flex;align-items:center;gap:10px;width:100%">
               <span class="cfg-row-icon" style="background:var(--green-lt)">🧩</span>
@@ -1620,20 +1629,7 @@
             </div>
             <div class="fam-mod-pills" id="famModulesPills" style="width:100%;padding-left:38px"></div>
           </div>
-          <div id="menuVisibilitySection" style="display:none">
-            <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px">
-              <div style="display:flex;align-items:center;gap:10px;width:100%">
-                <span class="cfg-row-icon" style="background:var(--accent-lt)">📋</span>
-                <span class="cfg-row-label">Itens do menu</span>
-              </div>
-              <div id="menuVisibilityForm" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%"></div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button class="btn btn-primary btn-sm" onclick="saveMenuVisibility()">Salvar</button>
-                <button class="btn btn-ghost btn-sm" onclick="resetMenuVisibility()">Restaurar padrão</button>
-              </div>
-              <div id="menuVisibilityHint" class="text-muted" style="font-size:.78rem"></div>
-            </div>
-          </div>
+
           <div id="settingsVisibilitySection" style="display:none">
             
           </div>
@@ -3083,15 +3079,6 @@
             <div id="txFxPreview" style="font-size:.82rem;color:#1d4ed8;padding-top:18px;white-space:nowrap"></div>
           </div>
         </div>
-        <!-- Membro da família (optional) -->
-        <div class="form-group" id="txFamilyMemberGroup">
-          <label>Membro(s) da família <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
-          <div id="txFamilyMemberPicker" class="fmc-picker-container">
-            <div class="fmc-picker-empty">Carregando…</div>
-          </div>
-          <!-- hidden select kept for backward compat with save logic -->
-          <select id="txFamilyMember" style="display:none"></select>
-        </div>
         <div class="form-group" id="txPayeeGroup" style="position:relative">
           <label>Beneficiário / Fonte</label>
           <input type="hidden" id="txPayeeId">
@@ -3119,6 +3106,15 @@
             <span class="cat-sug-name" id="catSugName"></span>
             <span class="cat-sug-dismiss" onclick="event.stopPropagation();hideCatSuggestion()" title="Dispensar">✕</span>
           </div>
+        </div>
+        <!-- Membro da família (optional) -->
+        <div class="form-group" id="txFamilyMemberGroup">
+          <label>Membro(s) da família <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
+          <div id="txFamilyMemberPicker" class="fmc-picker-container">
+            <div class="fmc-picker-empty">Carregando…</div>
+          </div>
+          <!-- hidden select kept for backward compat with save logic -->
+          <select id="txFamilyMember" style="display:none"></select>
         </div>
         <div class="form-group full"><label>Observação</label><textarea id="txMemo" rows="2" placeholder="Memo, notas..."></textarea></div>
         <div class="form-group full"><label>Tags (vírgula)</label><input type="text" id="txTags" placeholder="IR, Décio, ..."></div>
