@@ -594,7 +594,8 @@ async function bootApp(){
 
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
   grocery:'🛒 Lista de Mercado',
-  ai_insights:'🤖 AI Insights'};
+  ai_insights:'🤖 AI Insights',
+  help:'❓ Ajuda'};
 
 // SVG icons used in the mobile topbar (replaces text title on small screens)
 const _pageIconsSVG = {
@@ -611,6 +612,7 @@ const _pageIconsSVG = {
   prices:       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>',
   grocery:      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
   ai_insights:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".7"/></svg>',
+  help:         '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   audit:        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
 };
 async function togglePrivacy(){
@@ -896,6 +898,7 @@ function navigate(page){
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
+  else if(page==='help')initHelpPage();
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);
@@ -983,8 +986,16 @@ async function quickSetLang(lang) {
 }
 function _i18nUpdateTopbarLabel() {
   const lang = typeof i18nGetLanguage === 'function' ? i18nGetLanguage() : 'pt';
+  // Update badge (new globe-icon button)
+  const badge = document.getElementById('topbarLangBadge');
+  if (badge) badge.textContent = lang.toUpperCase();
+  // Fallback: old text-only label (kept for safety)
   const el = document.getElementById('topbarLangLabel');
   if (el) el.textContent = lang.toUpperCase();
+  // Highlight active item in dropdown
+  document.querySelectorAll('#topbarLangDropdown .i18n-dd-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
   // Also update profile selector if open
   if (typeof profileSelectLang === 'function') profileSelectLang(lang, true);
 }
