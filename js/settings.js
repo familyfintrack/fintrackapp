@@ -955,6 +955,7 @@ async function applyUserFeatureFlags() {
   try { await applyGroceryFeature?.(); } catch {}
   try { await applyInvestmentsFeature?.(); } catch {}
   try { await applyAiInsightsFeature?.(); } catch {}
+  try { await applyDebtsFeature?.(); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════════════

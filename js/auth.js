@@ -4005,21 +4005,19 @@ async function _mfmRender() {
       listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Nenhum membro ainda.</div>';
     } else {
       listEl.innerHTML = members.map(m => `
-        <div class="mfm-member-row">
-          <div class="mfm-member-avatar">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 32)}</div>
-          <div style="flex:1;min-width:0">
-            <div class="mfm-member-name">${esc(m.user_name)}</div>
-            <div class="mfm-member-email">${esc(m.user_email)}</div>
+        <div class="mfm2-member">
+          <div class="mfm2-member-av">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 36)}</div>
+          <div class="mfm2-member-info">
+            <div class="mfm2-member-name">${esc(m.user_name)}</div>
+            <div class="mfm2-member-email">${esc(m.user_email)}</div>
           </div>
-          <select class="mfm-role-select"
-                  onchange="mfmChangeRole(this,'${m.user_id}','${famId}')">
+          <select class="mfm2-role-sel" onchange="mfmChangeRole(this,'${m.user_id}','${famId}')">
             <option value="owner"  ${m.member_role==='owner'  ?'selected':''}>👑 Owner</option>
             <option value="admin"  ${m.member_role==='admin'  ?'selected':''}>🔧 Admin</option>
             <option value="user"   ${m.member_role==='user'   ?'selected':''}>👤 Usuário</option>
             <option value="viewer" ${m.member_role==='viewer' ?'selected':''}>👁 Visualizador</option>
           </select>
-          <button class="mfm-remove-btn" title="Remover da família"
-                  onclick="mfmRemoveMember('${m.user_id}','${esc(m.user_name)}','${famId}')">✕</button>
+          <button class="mfm2-remove-btn" title="Remover" onclick="mfmRemoveMember('${m.user_id}','${esc(m.user_name)}','${famId}')">✕</button>
         </div>`).join('');
     }
   }
@@ -4101,25 +4099,25 @@ function _mfmRenderFeatures(famId) {
     }).join('');
   }
 
-  // Load cache — always fetch any keys not yet in cache (handles new modules added post-deploy)
+  // Always re-fetch ALL module keys fresh (handles new modules added post-deploy)
   (async () => {
     if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-    const missingKeys = MODULES.map(m => m.key).filter(k => !(k in window._familyFeaturesCache));
-    if (missingKeys.length) {
-      try {
-        const { data } = await sb.from('app_settings')
-          .select('key,value')
-          .in('key', missingKeys);
-        (data || []).forEach(r => {
-          window._familyFeaturesCache[r.key] = (r.value === true || r.value === 'true');
-        });
-        // Keys absent from DB → default false (backup/snapshot default true)
-        missingKeys.forEach(k => {
-          if (!(k in window._familyFeaturesCache))
-            window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
-        });
-      } catch(_) {}
-    }
+    const allKeys = MODULES.map(m => m.key);
+    try {
+      const { data } = await sb.from('app_settings')
+        .select('key,value')
+        .in('key', allKeys);
+      // Reset only the keys for this family
+      allKeys.forEach(k => {
+        const row = (data || []).find(r => r.key === k);
+        if (row) {
+          window._familyFeaturesCache[k] = (row.value === true || row.value === 'true');
+        } else {
+          // Not in DB yet → default false, except backup/snapshot which default true
+          window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
+        }
+      });
+    } catch(_) {}
     render();
   })();
 }
