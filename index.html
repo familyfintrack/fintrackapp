@@ -848,7 +848,7 @@
     <!-- ACCOUNTS -->
     <div class="page" id="page-accounts">
       <div class="section-header mb-6">
-        <span class="section-title">Minhas Contas</span>
+        <span class="section-title">Minhas Contas<button onclick="navigate('help');setTimeout(()=>helpShowArticle('accounts','accounts-types'),200)" class="help-ctx-btn" title="Ajuda">?</button></span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openGroupModal()" title="Gerenciar grupos">🗂️ Grupos</button>
           <button class="btn btn-primary" onclick="openAccountModal()">+ Nova Conta</button>
@@ -1183,7 +1183,7 @@
     <div class="page" id="page-categories">
       <!-- Header -->
       <div class="section-header mb-6">
-        <span class="section-title">Categorias</span>
+        <span class="section-title">Categorias<button onclick="navigate('help');setTimeout(()=>helpShowArticle('categories','categories-intro'),200)" class="help-ctx-btn" title="Ajuda">?</button></span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">+ Despesa</button>
           <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','receita')">+ Receita</button>
@@ -1260,7 +1260,7 @@
     <div class="page" id="page-scheduled">
       <!-- Mobile header -->
       <div class="section-header mb-6">
-        <span class="section-title">Programados</span>
+        <span class="section-title">Programados<button onclick="navigate('help');setTimeout(()=>helpShowArticle('scheduled','scheduled-intro'),200)" class="help-ctx-btn" title="Ajuda">?</button></span>
         <div style="display:flex;gap:8px;align-items:center">
           <!-- View toggle: list / calendar -->
           <div class="sc-view-toggle" id="scViewToggle">
@@ -2097,51 +2097,11 @@
 
     </div><!-- /page-ai_insights -->
 
-    <!-- ════════════════════════════════════════════════════════
-         HELP — Ajuda interativa e documentação do app
-    ════════════════════════════════════════════════════════ -->
+
+    <!-- ══ HELP PAGE ════════════════════════════════════════════════════════ -->
     <div class="page" id="page-help">
-      <!-- Header -->
-      <div class="help-page-header">
-        <div class="help-header-top">
-          <span class="help-header-icon">❓</span>
-          <div>
-            <h2 class="help-header-title">Central de Ajuda</h2>
-            <p class="help-header-sub">Documentação completa do Family FinTrack</p>
-          </div>
-        </div>
-        <!-- Search -->
-        <div class="help-search-wrap">
-          <svg class="help-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="helpSearchInput" class="help-search-input"
-            placeholder="Buscar por funcionalidade, dúvida ou palavra-chave…"
-            oninput="helpSearch(this.value)"
-            autocomplete="off" autocorrect="off" spellcheck="false">
-          <button id="helpSearchClear" class="help-search-clear"
-            onclick="document.getElementById('helpSearchInput').value='';helpSearch('')"
-            style="display:none">✕</button>
-        </div>
-      </div>
-
-      <!-- Category pills -->
-      <div class="help-pills-wrap">
-        <div class="help-pills" id="helpCategoryPills"></div>
-      </div>
-
-      <!-- Content cards -->
-      <div class="help-content" id="helpContent" style="padding-bottom:80px">
-        <div class="help-empty" style="padding:48px 24px;text-align:center;color:var(--muted)">
-          <div style="font-size:2.5rem;margin-bottom:12px">📚</div>
-          <p>Carregando conteúdo de ajuda…</p>
-        </div>
-      </div>
-    </div><!-- /page-help -->
-
-    <!-- ══ HELP PAGE ══════════════════════════════════════════════════════ -->
-    <div class="page" id="page-help">
-      <!-- Rendered by help.js initHelpPage() -->
+      <!-- Rendered entirely by help.js initHelpPage() -->
     </div>
-
     <div class="page" id="page-audit">
       <div class="section-header mb-6">
         <span class="section-title">Auditoria de Auto-registros</span>
