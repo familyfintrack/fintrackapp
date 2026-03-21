@@ -488,20 +488,11 @@ async function renderCategoryChart(){
   const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
 
   // Build expense query (amount < 0)
-  let qExp = famQ(sb.from('transactions').select(_txSelect))
+  const qExp = famQ(sb.from('transactions').select(_txSelect))
     .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null);
   // Build income query (amount > 0)
-  let qInc = famQ(sb.from('transactions').select(_txSelect))
+  const qInc = famQ(sb.from('transactions').select(_txSelect))
     .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null);
-
-  if (memberIds && memberIds.length > 0) {
-    qExp = qExp.in('family_member_id', memberIds);
-    qInc = qInc.in('family_member_id', memberIds);
-  } else if (memberIds && memberIds.length === 0) {
-    const catChartEl = document.getElementById('catChartCard');
-    if (catChartEl) catChartEl.style.display = 'none';
-    return;
-  }
 
   const [{data}, {data: dataInc}] = await Promise.all([qExp, qInc]);
 
