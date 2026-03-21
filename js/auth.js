@@ -4054,6 +4054,7 @@ function _mfmRenderFeatures(famId) {
     { key: 'prices_enabled_'      + famId, label: 'Preços',       emoji: '🏷️', applyFn: 'applyPricesFeature' },
     { key: 'grocery_enabled_'     + famId, label: 'Mercado',      emoji: '🛒', applyFn: 'applyGroceryFeature' },
     { key: 'investments_enabled_' + famId, label: 'Investimentos',emoji: '📈', applyFn: 'applyInvestmentsFeature' },
+    { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',  emoji: '🤖', applyFn: 'applyAiInsightsFeature' },
     { key: 'backup_enabled_'      + famId, label: 'Backup',       emoji: '☁️', applyFn: null },
     { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',     emoji: '📸', applyFn: null },
   ];
