@@ -1006,25 +1006,47 @@ async function quickSetLang(lang) {
   const dd = document.getElementById('topbarLangDropdown');
   if (dd) dd.style.display = 'none';
 
-  // 1. Save to Supabase FIRST so auth.js reads the correct value on reload
+  if (typeof i18nSetLanguage !== 'function') return;
+
+  // Apply language immediately via i18nSetLanguage (sets _i18nLang, localStorage, applies DOM)
+  await i18nSetLanguage(lang);
+
+  // Update topbar badge
+  _i18nUpdateTopbarLabel();
+
+  // Update pageTitles and current page title
+  const pageKeyMap = {
+    dashboard:'page.dashboard', transactions:'page.transactions',
+    accounts:'page.accounts',   reports:'page.reports',
+    budgets:'page.budgets',     categories:'page.categories',
+    payees:'page.payees',       scheduled:'page.scheduled',
+    import:'page.import',       settings:'page.settings',
+    investments:'page.investments', prices:'page.prices',
+    ai_insights:'page.ai_insights', grocery:'page.grocery',
+    translations:'page.translations',
+  };
+  Object.entries(pageKeyMap).forEach(([page, key]) => {
+    const tr = typeof t === 'function' ? t(key) : null;
+    if (tr && tr !== key) pageTitles[page] = tr;
+  });
+  const page = state.currentPage;
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl && pageTitles[page]) titleEl.textContent = pageTitles[page];
+
+  // Save preference to Supabase (best-effort, non-blocking)
   if (window.sb && window.currentUser?.id) {
-    try {
-      await sb.from('app_users')
-        .update({ preferred_language: lang })
-        .eq('id', currentUser.id);
-      if (window.currentUser) currentUser.preferred_language = lang;
-    } catch(_) {}
+    sb.from('app_users')
+      .update({ preferred_language: lang })
+      .eq('id', currentUser.id)
+      .then(() => { if (window.currentUser) currentUser.preferred_language = lang; })
+      .catch(() => {});
   }
 
-  // 2. Persist to localStorage (i18nInit reads this on boot)
-  localStorage.setItem('fintrack_i18n_lang', lang);
-
-  // 3. Reload — auth.js will now read correct preferred_language from Supabase
-  location.reload();
+  toast('🌐 ' + ({ pt:'Português', en:'English', es:'Español', fr:'Français' }[lang] || lang), 'success');
 }
 // ── Profile language button strip selector ───────────────────────────────────
 function profileSelectLang(lang, silent) {
-  // Update hidden input value
+  // Update hidden input — saveMyProfile() reads this value when user clicks Save
   const hidden = document.getElementById('myProfileLanguage');
   if (hidden) hidden.value = lang;
 
@@ -1032,23 +1054,11 @@ function profileSelectLang(lang, silent) {
   const btns = document.querySelectorAll('#profileLangSelector .i18n-lang-btn');
   btns.forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
 
-  // If user explicitly clicked (not init), persist + reload with new language
-  if (!silent) {
-    // 1. Save to Supabase FIRST so auth.js reads correct value on reload
-    const _doReload = () => {
-      localStorage.setItem('fintrack_i18n_lang', lang);
-      location.reload();
-    };
-    if (window.sb && window.currentUser?.id) {
-      sb.from('app_users')
-        .update({ preferred_language: lang })
-        .eq('id', currentUser.id)
-        .then(() => { if (window.currentUser) currentUser.preferred_language = lang; _doReload(); })
-        .catch(() => _doReload());
-    } else {
-      _doReload();
-    }
-  }
+  // NOTE: NO reload here. Language is saved and applied by saveMyProfile()
+  // when the user clicks the Save button. This allows the user to change
+  // other profile fields at the same time without losing their work.
+  // saveMyProfile() calls i18nSetLanguage(newLang) which updates the DOM,
+  // localStorage and Supabase — no page reload required.
 }
 window.profileSelectLang = profileSelectLang;
 
