@@ -560,6 +560,41 @@ async function resetAppLogo() {
   toast('Logotipo restaurado','success');
 }
 
+// ── Cursor image URL settings ─────────────────────────────────────────────────
+const CURSOR_IMG_SETTING = 'cursor_img_url';
+const CURSOR_IMG_DEFAULT = 'logocursor.png';
+
+async function loadCursorImgSetting() {
+  const isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'owner');
+  if (!isAdmin) return;
+  const val = await getAppSetting(CURSOR_IMG_SETTING, CURSOR_IMG_DEFAULT);
+  const el = document.getElementById('cursorImgUrl');
+  if (el) el.value = val || CURSOR_IMG_DEFAULT;
+}
+
+async function saveCursorImgUrl() {
+  const isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'owner');
+  if (!isAdmin) { toast('Apenas administradores podem alterar esta configuração', 'warning'); return; }
+  const el  = document.getElementById('cursorImgUrl');
+  const val = (el?.value || '').trim() || CURSOR_IMG_DEFAULT;
+  await saveAppSetting(CURSOR_IMG_SETTING, val);
+  // Apply immediately to the cursor module
+  if (typeof window._setCursorLogoSrc === 'function') window._setCursorLogoSrc(val);
+  toast('✓ Imagem do cursor salva', 'success');
+}
+window.saveCursorImgUrl = saveCursorImgUrl;
+
+async function resetCursorImgUrl() {
+  const isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'owner');
+  if (!isAdmin) { toast('Apenas administradores podem alterar esta configuração', 'warning'); return; }
+  await saveAppSetting(CURSOR_IMG_SETTING, CURSOR_IMG_DEFAULT);
+  const el = document.getElementById('cursorImgUrl');
+  if (el) el.value = CURSOR_IMG_DEFAULT;
+  if (typeof window._setCursorLogoSrc === 'function') window._setCursorLogoSrc(CURSOR_IMG_DEFAULT);
+  toast('↺ Cursor restaurado para o padrão', 'success');
+}
+window.resetCursorImgUrl = resetCursorImgUrl;
+
 
 // ─────────────────────────────────────────────
 // User Preferences (per screen)
