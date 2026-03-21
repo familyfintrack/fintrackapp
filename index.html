@@ -1044,7 +1044,15 @@
             <span id="reportTxCount" class="badge badge-muted"></span>
           </div>
           <div class="table-wrap">
-            <table id="reportTxTable" class="resizable-table">
+            <table id="reportTxTable" class="resizable-table rpt-tx-table">
+              <colgroup>
+                <col class="rpt-col-date">
+                <col class="rpt-col-desc">
+                <col class="rpt-col-acct">
+                <col class="rpt-col-cat">
+                <col class="rpt-col-pay">
+                <col class="rpt-col-amt">
+              </colgroup>
               <thead><tr>
                 <th onclick="rptSortTx('date')" style="cursor:pointer">Data <span id="rptSortDate"></span></th>
                 <th onclick="rptSortTx('description')" style="cursor:pointer">Descrição <span id="rptSortDesc"></span></th>
