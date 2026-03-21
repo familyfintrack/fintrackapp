@@ -349,6 +349,37 @@ async function _aiCollectFinancialContext() {
     net:     +(v.income - v.expense).toFixed(2),
   }));
 
+  // Budget data — loaded from budgets table for current period
+  let budgetContext = null;
+  try {
+    if (typeof _rbtGetBudgetContext === 'function') {
+      budgetContext = await _rbtGetBudgetContext();
+    }
+    if (!budgetContext) {
+      // Fallback: query budgets for the selected period directly
+      const now = new Date();
+      const curMonth = now.toISOString().slice(0,7);
+      const { data: bdata } = await famQ(
+        sb.from('budgets').select('amount, categories(name)')
+      ).eq('month', curMonth + '-01');
+      if (bdata?.length) {
+        const rawSpend = {};
+        filtered.filter(t => t.category_id).forEach(t => {
+          const v = typeof txToBRL==='function' ? Math.abs(txToBRL(t)) : Math.abs(parseFloat(t.amount||0));
+          rawSpend[t.category_id] = (rawSpend[t.category_id]||0) + v;
+        });
+        budgetContext = {
+          period: { type:'monthly', month: curMonth },
+          budgets: (bdata||[]).map(b => {
+            const limit = parseFloat(b.amount||0);
+            const used  = rawSpend[b.category_id] || 0;
+            return { category:b.categories?.name||'—', limit:+limit.toFixed(2), used:+used.toFixed(2), available:+Math.max(0,limit-used).toFixed(2), pct:limit>0?+(used/limit*100).toFixed(1):0, over:used>limit&&limit>0 };
+          }),
+        };
+      }
+    }
+  } catch(_) {}
+
   const ctx = {
     period: { from: dateFrom || 'início', to: dateTo || 'hoje' },
     summary: {
@@ -367,6 +398,7 @@ async function _aiCollectFinancialContext() {
     accountSummary,
     topTransactions,
     anomalies,
+    budgets: budgetContext,
     filters: { dateFrom, dateTo, memberId, accountId, categoryId, payeeId },
   };
 
@@ -592,18 +624,18 @@ function _aiRenderAnalysis(r) {
     const netColor = net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
     overviewHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} Resumo do Período</div>
+        <div class="ai-section-header">${dataBadge} ${t('ai.summary')}</div>
         <div class="ai-kpi-row">
           <div class="ai-kpi ai-kpi-green">
-            <span class="ai-kpi-label">Receitas</span>
+            <span class="ai-kpi-label">${t('ai.income_label')}</span>
             <span class="ai-kpi-value">${fmt(ctx.summary.totalIncome)}</span>
           </div>
           <div class="ai-kpi ai-kpi-red">
-            <span class="ai-kpi-label">Despesas</span>
+            <span class="ai-kpi-label">${t('ai.expense_label')}</span>
             <span class="ai-kpi-value">${fmt(ctx.summary.totalExpense)}</span>
           </div>
           <div class="ai-kpi" style="border-color:${netColor}">
-            <span class="ai-kpi-label">Resultado Líquido</span>
+            <span class="ai-kpi-label">${t('ai.net_label')}</span>
             <span class="ai-kpi-value" style="color:${netColor}">${fmt(net)}</span>
           </div>
         </div>
@@ -631,7 +663,7 @@ function _aiRenderAnalysis(r) {
   if (r.cashflow_alerts?.length) {
     alertsHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${aiBadge} Alertas de Fluxo de Caixa</div>
+        <div class="ai-section-header">${aiBadge} ${t('ai.alerts')}</div>
         ${r.cashflow_alerts.map(a => `
           <div class="ai-alert ai-alert-${a.type || 'info'}">
             ${a.type === 'warning' ? '⚠️' : a.type === 'ok' ? '✅' : 'ℹ️'} ${esc(a.message)}
@@ -644,7 +676,7 @@ function _aiRenderAnalysis(r) {
   if (r.anomalies?.length) {
     anomaliesHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${aiBadge} Anomalias Detectadas</div>
+        <div class="ai-section-header">${aiBadge} ${t('ai.anomalies')}</div>
         ${r.anomalies.map(a => `
           <div class="ai-insight-card ai-severity-${a.severity || 'low'}">
             <div class="ai-insight-title">${esc(a.title)}</div>
@@ -658,7 +690,7 @@ function _aiRenderAnalysis(r) {
   if (ctx?.topCategories?.length) {
     catHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} Gastos por Categoria</div>
+        <div class="ai-section-header">${dataBadge} ${t('ai.top_categories')}</div>
         <div class="ai-bar-list">
           ${ctx.topCategories.map(c => `
             <div class="ai-bar-item">
@@ -683,7 +715,7 @@ function _aiRenderAnalysis(r) {
   if (ctx?.topPayees?.length) {
     payeeHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} Top Beneficiários</div>
+        <div class="ai-section-header">${dataBadge} ${t('ai.top_payees')}</div>
         <div class="ai-payee-list">
           ${ctx.topPayees.map((p, i) => `
             <div class="ai-payee-row">
@@ -760,7 +792,7 @@ function _aiRenderAnalysis(r) {
 
     memberHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} Gastos por Membro</div>
+        <div class="ai-section-header">${dataBadge} ${t('ai.by_member')}</div>
         <div class="ai-member-cards">${memberCards}</div>
       </div>`;
   }
@@ -770,7 +802,7 @@ function _aiRenderAnalysis(r) {
   if (r.savings_opportunities?.length) {
     savingsHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${tipBadge} Oportunidades de Economia</div>
+        <div class="ai-section-header">${tipBadge} ${t('ai.savings')}</div>
         ${r.savings_opportunities.map(s => `
           <div class="ai-savings-card">
             <div class="ai-savings-title">${esc(s.title)}</div>
@@ -780,7 +812,7 @@ function _aiRenderAnalysis(r) {
       </div>`;
   }
 
-  // Recomendações
+  // ${t('ai.recommendations')}
   let recsHtml = '';
   if (r.recommendations?.length) {
     recsHtml = `
@@ -825,7 +857,7 @@ function _aiRenderAnalysis(r) {
   if (ctx?.monthlyTrend?.length > 1) {
     trendHtml = `
       <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} Tendência Mensal</div>
+        <div class="ai-section-header">${dataBadge} ${t('ai.monthly_trend')}</div>
         <div class="ai-trend-table">
           <div class="ai-trend-header">
             <span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado</span>

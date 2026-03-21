@@ -590,13 +590,17 @@ function openCatDetail(idx) {
   const titleEl    = document.getElementById('catChartDetailTitle');
   const listEl     = document.getElementById('catChartDetailList');
   const backBtn    = document.getElementById('catDetailBackBtn');
-  const canvas     = document.getElementById('categoryChart');
+  const wrap       = document.getElementById('catChartWrap');
+  const chartToggle = document.querySelector('#catChartCard .dash-cat-controls');
+  const typeToggle  = document.querySelector('#catChartCard > div:last-child');
 
   if (!detailEl || !titleEl || !listEl) return;
 
-  // Shrink chart, show detail
-  if (canvas) canvas.height = 140;
-  if (backBtn) backBtn.style.display = 'flex';
+  // Hide chart completely, show transaction list
+  if (wrap)        wrap.style.display = 'none';
+  if (chartToggle) chartToggle.style.display = 'none';
+  if (typeToggle && typeToggle.querySelector('.dash-cat-toggle')) typeToggle.style.display = 'none';
+  if (backBtn)     backBtn.style.display = 'flex';
   detailEl.style.display = '';
 
   const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${entry.color};flex-shrink:0"></span>`;
@@ -634,12 +638,17 @@ function openCatDetail(idx) {
 }
 
 function closeCatDetail() {
-  const detailEl = document.getElementById('catChartDetail');
-  const backBtn  = document.getElementById('catDetailBackBtn');
-  const canvas   = document.getElementById('categoryChart');
-  if (detailEl) detailEl.style.display = 'none';
-  if (backBtn)  backBtn.style.display  = 'none';
-  if (canvas)   canvas.height = 200;
+  const detailEl    = document.getElementById('catChartDetail');
+  const backBtn     = document.getElementById('catDetailBackBtn');
+  const wrap        = document.getElementById('catChartWrap');
+  const chartToggle = document.querySelector('#catChartCard .dash-cat-controls');
+  const typeToggle  = document.querySelector('#catChartCard > div:last-child');
+
+  if (detailEl)    detailEl.style.display = 'none';
+  if (backBtn)     backBtn.style.display  = 'none';
+  if (wrap)        wrap.style.display = '';
+  if (chartToggle) chartToggle.style.display = '';
+  if (typeToggle && typeToggle.querySelector('.dash-cat-toggle')) typeToggle.style.display = '';
 
   // Restore chart colors
   const chart = state.chartInstances['categoryChart'];

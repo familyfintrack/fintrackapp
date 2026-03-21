@@ -463,11 +463,13 @@ function setReportView(view) {
   document.getElementById('reportRegularView').style.display  = view==='regular'       ? '' : 'none';
   document.getElementById('reportTxView').style.display       = view==='transactions'  ? '' : 'none';
   document.getElementById('reportForecastView').style.display = view==='forecast'      ? '' : 'none';
-  document.getElementById('reportFilterBar').style.display    = view==='forecast'      ? 'none' : '';
-  ['rptBtnRegular','rptBtnTx','rptBtnForecast'].forEach(id=>
+  document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
+  document.getElementById('reportFilterBar').style.display    = (view==='forecast'||view==='budgets') ? 'none' : '';
+  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
-  const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast'};
+  const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets'};
   document.getElementById(map[view])?.classList.add('active');
+  if (view === 'budgets') _rbtLoad();
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
       const today=new Date().toISOString().slice(0,10);
@@ -1847,3 +1849,214 @@ function populateSelects(){
 /* ═══════════════════════════════════════
    PAYEE AUTOCOMPLETE
 ═══════════════════════════════════════ */
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  REPORT BUDGET TAB  (_rbt*)
+//  Independent budget analysis inside reports — reuses budget DB queries
+// ══════════════════════════════════════════════════════════════════════════
+
+let _rbtType = 'monthly'; // 'monthly' | 'annual'
+
+function _rbtSetType(type) {
+  _rbtType = type;
+  const monthEl  = document.getElementById('rbtMonth');
+  const yearEl   = document.getElementById('rbtYear');
+  const btnM     = document.getElementById('rbtBtnMonth');
+  const btnA     = document.getElementById('rbtBtnAnnual');
+  if (monthEl) monthEl.style.display = type === 'monthly' ? '' : 'none';
+  if (yearEl)  yearEl.style.display  = type === 'annual'  ? '' : 'none';
+  btnM?.classList.toggle('active', type === 'monthly');
+  btnA?.classList.toggle('active', type === 'annual');
+  _rbtLoad();
+}
+window._rbtSetType = _rbtSetType;
+
+async function _rbtLoad() {
+  const grid    = document.getElementById('rbtGrid');
+  const kpiEl   = document.getElementById('rbtKpis');
+  if (!grid) return;
+
+  // Init controls with today's month if empty
+  const monthEl = document.getElementById('rbtMonth');
+  const yearEl  = document.getElementById('rbtYear');
+  if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
+  if (yearEl  && !yearEl.value)  yearEl.value  = new Date().getFullYear();
+
+  const period = _rbtType === 'monthly'
+    ? { type: 'monthly', month: monthEl?.value || new Date().toISOString().slice(0,7) }
+    : { type: 'annual',  year: parseInt(yearEl?.value) || new Date().getFullYear() };
+
+  grid.innerHTML = '<div class="empty-state"><span>⏳</span></div>';
+
+  // Query budgets
+  const hasNew = await _rbtCheckSchema();
+  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)'));
+  if (hasNew) {
+    bq = bq.eq('budget_type', period.type);
+    if (period.type === 'monthly') {
+      bq = bq.eq('month', period.month + '-01');
+    } else {
+      bq = bq.eq('year', period.year);
+    }
+  } else {
+    if (period.type === 'annual') {
+      grid.innerHTML = '<div class="empty-state"><p>Orçamentos anuais requerem migration do banco.</p></div>'; return;
+    }
+    bq = bq.eq('month', (period.month || new Date().toISOString().slice(0,7)) + '-01');
+  }
+  const { data: budgets, error: be } = await bq;
+  if (be) { grid.innerHTML = `<div class="empty-state"><p>Erro: ${esc(be.message)}</p></div>`; return; }
+  if (!budgets?.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="es-icon">🎯</div><p>Nenhum orçamento encontrado para este período.</p></div>';
+    if (kpiEl) kpiEl.innerHTML = '';
+    return;
+  }
+
+  // Query spending
+  let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount')).lt('amount',0);
+  if (period.type === 'monthly') {
+    const [y,m] = (period.month||'').split('-');
+    const last = new Date(+y, +m, 0).getDate();
+    txQ = txQ.gte('date',`${y}-${m}-01`).lte('date',`${y}-${m}-${String(last).padStart(2,'0')}`);
+  } else {
+    txQ = txQ.gte('date',`${period.year}-01-01`).lte('date',`${period.year}-12-31`);
+  }
+  const { data: txs } = await txQ;
+
+  // Build spending map
+  const rawSpend = {};
+  (txs||[]).forEach(t => {
+    if (!t.category_id) return;
+    const val = Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0));
+    rawSpend[t.category_id] = (rawSpend[t.category_id] || 0) + val;
+  });
+
+  // Category family lookup (for hierarchy spending)
+  const allCats = state.categories || [];
+  const catById = Object.fromEntries(allCats.map(c => [c.id, c]));
+  function _catFamily(cid) {
+    const ids = [cid];
+    const addChildren = (id) => {
+      allCats.filter(c => c.parent_id === id).forEach(c => { ids.push(c.id); addChildren(c.id); });
+    };
+    addChildren(cid);
+    return ids;
+  }
+
+  // Resolve spending per budget
+  const items = budgets.map(b => {
+    const cat   = b.categories || {};
+    const limit = parseFloat(b.amount || 0);
+    const fam   = _catFamily(b.category_id);
+    const used  = fam.reduce((s, cid) => s + (rawSpend[cid] || 0), 0);
+    const pct   = limit > 0 ? Math.min(100, used / limit * 100) : 0;
+    const over  = used > limit && limit > 0;
+    const near  = !over && pct >= 75;
+    return { b, cat, limit, used, pct, over, near };
+  });
+
+  // KPI summary
+  const totalLimit  = items.reduce((s,i) => s + i.limit, 0);
+  const totalUsed   = items.reduce((s,i) => s + i.used, 0);
+  const overCount   = items.filter(i => i.over).length;
+  const okCount     = items.filter(i => !i.over && !i.near).length;
+  const totalPct    = totalLimit > 0 ? Math.min(100, totalUsed / totalLimit * 100) : 0;
+
+  if (kpiEl) {
+    kpiEl.innerHTML = `
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Orçamento total</span><span class="rbt-kpi-val">${fmt(totalLimit)}</span></div>
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Consumido</span><span class="rbt-kpi-val" style="color:${totalPct>=100?'var(--red)':'var(--text)'}">${fmt(totalUsed)}</span></div>
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Disponível</span><span class="rbt-kpi-val" style="color:var(--green)">${fmt(Math.max(0,totalLimit-totalUsed))}</span></div>
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Dentro do limite</span><span class="rbt-kpi-val">${okCount}</span></div>
+      ${overCount ? `<div class="rbt-kpi"><span class="rbt-kpi-label">Ultrapassados</span><span class="rbt-kpi-val" style="color:var(--red)">${overCount}</span></div>` : ''}
+    `;
+  }
+
+  // Render cards sorted: over first, then near, then ok
+  items.sort((a,b) => (b.over-a.over)||(b.near-a.near)||(b.pct-a.pct));
+  grid.innerHTML = items.map(({ b, cat, limit, used, pct, over, near }) => {
+    const color  = cat.color || 'var(--accent)';
+    const icon   = cat.icon  || '📦';
+    const avail  = Math.max(0, limit - used);
+    const barColor = over ? 'var(--red)' : near ? 'var(--amber)' : 'var(--accent)';
+    return `<div class="rbt-card${over?' rbt-over':near?' rbt-near':''}">
+      <div class="rbt-card-top">
+        <div class="rbt-cat-badge" style="background:${color}18;color:${color}">${icon}</div>
+        <div class="rbt-card-info">
+          <div class="rbt-cat-name">${esc(cat.name||'—')}</div>
+          <div class="rbt-amounts">${fmt(used)} <span class="rbt-sep">/</span> ${fmt(limit)}</div>
+        </div>
+        <div class="rbt-pct" style="color:${barColor}">${pct.toFixed(0)}%</div>
+      </div>
+      <div class="rbt-bar-track">
+        <div class="rbt-bar-fill" style="width:${pct.toFixed(1)}%;background:${barColor}"></div>
+      </div>
+      <div class="rbt-avail">Disponível: <strong style="color:${over?'var(--red)':'var(--green)'}">${fmt(over?used-limit:avail)}</strong>${over?' acima':''}</div>
+    </div>`;
+  }).join('');
+}
+window._rbtLoad = _rbtLoad;
+
+async function _rbtCheckSchema() {
+  try {
+    const { error } = await famQ(sb.from('budgets').select('budget_type').limit(1));
+    return !error;
+  } catch { return false; }
+}
+
+// Export budget context for AI
+async function _rbtGetBudgetContext() {
+  const grid = document.getElementById('rbtGrid');
+  if (!grid || !grid.querySelector('.rbt-card')) return null;
+  // Re-run quietly and return data
+  const period = _rbtType === 'monthly'
+    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || new Date().toISOString().slice(0,7) }
+    : { type:'annual',  year: parseInt(document.getElementById('rbtYear')?.value) || new Date().getFullYear() };
+
+  const hasNew = await _rbtCheckSchema();
+  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'));
+  if (hasNew) {
+    bq = bq.eq('budget_type', period.type);
+    if (period.type === 'monthly') bq = bq.eq('month', (period.month||'')+'-01');
+    else bq = bq.eq('year', period.year);
+  } else {
+    bq = bq.eq('month', (period.month||'')+'-01');
+  }
+  const { data: budgets } = await bq;
+  if (!budgets?.length) return null;
+
+  let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount')).lt('amount',0);
+  if (period.type === 'monthly') {
+    const [y,m] = (period.month||'').split('-');
+    txQ = txQ.gte('date',`${y}-${m}-01`).lte('date',`${y}-${m}-${new Date(+y,+m,0).getDate()}`);
+  } else {
+    txQ = txQ.gte('date',`${period.year}-01-01`).lte('date',`${period.year}-12-31`);
+  }
+  const { data: txs } = await txQ;
+  const rawSpend = {};
+  (txs||[]).forEach(t => {
+    if (!t.category_id) return;
+    rawSpend[t.category_id] = (rawSpend[t.category_id]||0) + Math.abs(parseFloat(t.brl_amount??t.amount??0));
+  });
+  const allCats = state.categories||[];
+  function _cf(cid) { const ids=[cid]; allCats.filter(c=>c.parent_id===cid).forEach(c=>ids.push(..._cf(c.id))); return ids; }
+
+  return {
+    period,
+    budgets: budgets.map(b => {
+      const cat   = b.categories || {};
+      const limit = parseFloat(b.amount||0);
+      const used  = _cf(b.category_id).reduce((s,c)=>s+(rawSpend[c]||0),0);
+      return {
+        category: cat.name || '—',
+        limit:    +limit.toFixed(2),
+        used:     +used.toFixed(2),
+        available:+Math.max(0,limit-used).toFixed(2),
+        pct:      limit>0?+(used/limit*100).toFixed(1):0,
+        over:     used>limit&&limit>0,
+      };
+    }),
+  };
+}
+window._rbtGetBudgetContext = _rbtGetBudgetContext;

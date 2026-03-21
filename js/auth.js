@@ -1528,7 +1528,7 @@ async function _renderPendingTab() {
       // — Linha superior: avatar + nome + idade
       + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'
       + '<div style="width:40px;height:40px;border-radius:50%;background:#fef3c7;border:2px solid #f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;color:#92400e;flex-shrink:0">' + initials + '</div>'
-      + '<div style="flex:1;min-width:0">'
+      + '<div class="mfm-member-info">'
       + '<div style="font-size:.9rem;font-weight:700;color:var(--text)">' + esc(u.name || '—') + '</div>'
       + '<div style="font-size:.76rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(u.email) + '</div>'
       + '</div>'
@@ -2087,10 +2087,10 @@ async function loadFamiliesList() {
             ${available.map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('')}
           </select>
           <select id="addMemberRole-${fid}" class="fam-select fam-select-role">
-            <option value="user">👤 Usuário</option>
-            <option value="admin">🔧 Admin</option>
-            <option value="viewer">👁 Visualizador</option>
-            <option value="owner">👑 Owner</option>
+            <option value="user">Usuário</option>
+            <option value="admin">Admin</option>
+            <option value="viewer">Visualizador</option>
+            <option value="owner">Owner</option>
           </select>
           <button class="btn btn-primary fam-btn-full" onclick="addUserToFamily('${fid}')">+ Adicionar</button>
         </div>
@@ -3943,14 +3943,8 @@ function mfmSwitchAddTab(tab) {
   paneExist.style.display  = isExist ? '' : 'none';
   paneInvite.style.display = isExist ? 'none' : '';
 
-  if (tabExist) {
-    tabExist.style.background = isExist ? 'var(--accent)' : 'var(--surface2)';
-    tabExist.style.color      = isExist ? '#fff' : 'var(--muted)';
-  }
-  if (tabInvite) {
-    tabInvite.style.background = isExist ? 'var(--surface2)' : 'var(--accent)';
-    tabInvite.style.color      = isExist ? 'var(--muted)' : '#fff';
-  }
+  tabExist?.classList.toggle('active', isExist);
+  tabInvite?.classList.toggle('active', !isExist);
 }
 
 // ── Toggle add-member panel ─────────────────────────────────────────────────
@@ -3958,9 +3952,7 @@ function mfmToggleAddPanel() {
   const panel = document.getElementById('mfmAddPanel');
   const arrow = document.getElementById('mfmAddArr');
   if (!panel) return;
-  const open = panel.style.display === 'none' || panel.style.display === '';
-  panel.style.display = open ? 'block' : 'none';
-  if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
+  panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? '' : 'none';
 }
 
 async function _mfmRender() {
@@ -4013,20 +4005,20 @@ async function _mfmRender() {
       listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Nenhum membro ainda.</div>';
     } else {
       listEl.innerHTML = members.map(m => `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-          <div style="flex-shrink:0">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 32)}</div>
+        <div class="mfm-member-row">
+          <div class="mfm-member-avatar">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 32)}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.user_name)}</div>
-            <div style="font-size:.71rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.user_email)}</div>
+            <div class="mfm-member-name">${esc(m.user_name)}</div>
+            <div class="mfm-member-email">${esc(m.user_email)}</div>
           </div>
-          <select style="font-size:.78rem;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);width:118px"
+          <select class="mfm-role-select"
                   onchange="mfmChangeRole(this,'${m.user_id}','${famId}')">
             <option value="owner"  ${m.member_role==='owner'  ?'selected':''}>👑 Owner</option>
             <option value="admin"  ${m.member_role==='admin'  ?'selected':''}>🔧 Admin</option>
             <option value="user"   ${m.member_role==='user'   ?'selected':''}>👤 Usuário</option>
             <option value="viewer" ${m.member_role==='viewer' ?'selected':''}>👁 Visualizador</option>
           </select>
-          <button class="btn-icon" title="Remover da família" style="color:var(--red);flex-shrink:0"
+          <button class="mfm-remove-btn" title="Remover da família"
                   onclick="mfmRemoveMember('${m.user_id}','${esc(m.user_name)}','${famId}')">✕</button>
         </div>`).join('');
     }
@@ -4083,31 +4075,28 @@ function _mfmRenderFeatures(famId) {
   if (!container || !famId) return;
 
   const MODULES = [
-    { key: 'prices_enabled_'      + famId, label: 'Preços',       emoji: '🏷️', applyFn: 'applyPricesFeature' },
-    { key: 'grocery_enabled_'     + famId, label: 'Mercado',      emoji: '🛒', applyFn: 'applyGroceryFeature' },
-    { key: 'investments_enabled_' + famId, label: 'Investimentos',emoji: '📈', applyFn: 'applyInvestmentsFeature' },
-    { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',  emoji: '🤖', applyFn: 'applyAiInsightsFeature' },
-    { key: 'backup_enabled_'      + famId, label: 'Backup',       emoji: '☁️', applyFn: null },
-    { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',     emoji: '📸', applyFn: null },
+    { key: 'prices_enabled_'      + famId, label: 'Preços',       emoji: '🏷️', desc: 'Catálogo de preços',    applyFn: 'applyPricesFeature' },
+    { key: 'grocery_enabled_'     + famId, label: 'Mercado',      emoji: '🛒', desc: 'Lista de compras',      applyFn: 'applyGroceryFeature' },
+    { key: 'investments_enabled_' + famId, label: 'Investimentos',emoji: '📈', desc: 'Carteira de ativos',    applyFn: 'applyInvestmentsFeature' },
+    { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',  emoji: '🤖', desc: 'Análise com IA',        applyFn: 'applyAiInsightsFeature' },
+    { key: 'debts_enabled_'       + famId, label: 'Dívidas',      emoji: '💳', desc: 'Controle de dívidas',   applyFn: 'applyDebtsFeature' },
+    { key: 'backup_enabled_'      + famId, label: 'Backup',       emoji: '☁️', desc: 'Backup automático',     applyFn: null },
+    { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',     emoji: '📸', desc: 'Snapshots periódicos',  applyFn: null },
   ];
 
   const fc = window._familyFeaturesCache || {};
 
   function render() {
-    container.innerHTML = MODULES.map(({ key, label, emoji, applyFn }) => {
+    container.innerHTML = MODULES.map(({ key, label, emoji, applyFn, desc }) => {
       const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup') || key.includes('snapshot'));
-      return `<button
-        onclick="_mfmToggleFeature('${key}','${famId}','${label}','${applyFn||''}')"
-        style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;
-          padding:10px 12px;border-radius:var(--r-sm);cursor:pointer;text-align:left;
-          border:1.5px solid ${on ? 'var(--accent)' : 'var(--border)'};
-          background:${on ? 'var(--accent-lt)' : 'var(--surface2)'};
-          transition:all .15s">
-        <span style="font-size:1.1rem">${emoji}</span>
-        <span style="font-size:.78rem;font-weight:600;color:var(--text)">${label}</span>
-        <span style="font-size:.68rem;font-weight:700;color:${on ? 'var(--accent)' : 'var(--muted)'}">
-          ${on ? '● Ativo' : '○ Inativo'}
-        </span>
+      return `<button class="mfm-module-card${on ? ' on' : ''}"
+        onclick="_mfmToggleFeature('${key}','${famId}','${label}','${applyFn||''}')">
+        <div class="mfm-module-top">
+          <span class="mfm-module-emoji">${emoji}</span>
+          <span class="mfm-module-pill${on ? ' on' : ''}">${on ? 'Ativo' : 'Inativo'}</span>
+        </div>
+        <div class="mfm-module-label">${label}</div>
+        ${desc ? `<div class="mfm-module-desc">${desc}</div>` : ''}
       </button>`;
     }).join('');
   }
