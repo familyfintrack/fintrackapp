@@ -12268,3 +12268,295 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .air-hero-kpis    { grid-template-columns: 1fr 1fr; }
   .air-proj-table, .air-proj-header, .air-proj-row { font-size: .68rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FAMILY MANAGEMENT v2 — (.mfm2-*)
+═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes mfm2FadeIn {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── Sheet ──────────────────────────────────────────────────────────────── */
+.mfm2-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 560px;
+  margin: auto auto 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow: hidden;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.2);
+  animation: mfm2FadeIn .25s ease both;
+}
+@media (min-width: 600px) {
+  .mfm2-sheet { border-radius: 20px; margin: auto; }
+}
+
+/* ── Hero header ────────────────────────────────────────────────────────── */
+.mfm2-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(145deg, #091d10 0%, #0d2318 60%, #0a1f13 100%);
+  padding: 20px 20px 0;
+  flex-shrink: 0;
+}
+.mfm2-hero-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 80% at 85% -10%, rgba(42,96,73,.55) 0%, transparent 65%);
+}
+.mfm2-hero-inner {
+  position: relative; z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+.mfm2-hero-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.mfm2-hero-info { flex: 1; min-width: 0; }
+.mfm2-hero-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mfm2-hero-sub { font-size: .72rem; color: rgba(255,255,255,.5); margin-top: 2px; }
+.mfm2-close-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.65);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+  flex-shrink: 0;
+}
+.mfm2-close-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+/* Family tabs strip (multi-family) */
+.mfm2-family-tabs {
+  position: relative; z-index: 1;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  border-top: 1px solid rgba(255,255,255,.1);
+  padding: 0 4px;
+}
+.mfm2-family-tabs button {
+  padding: 9px 14px;
+  background: none; border: none;
+  color: rgba(255,255,255,.55);
+  font-size: .78rem; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .12s, border-color .12s;
+  white-space: nowrap;
+}
+.mfm2-family-tabs button.active { color: #fff; border-bottom-color: var(--accent); }
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+.mfm2-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 24px;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+.mfm2-section { padding: 20px 20px 0; }
+.mfm2-section + .mfm2-section {
+  border-top: 1px solid var(--border);
+  margin-top: 20px; padding-top: 20px;
+}
+.mfm2-section-hd { margin-bottom: 14px; }
+.mfm2-section-title {
+  display: block;
+  font-size: .78rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.01em;
+}
+.mfm2-section-sub {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: 2px;
+  display: block;
+}
+
+/* ── Modules grid ───────────────────────────────────────────────────────── */
+.mfm2-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 9px;
+}
+.mfm2-module {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 13px 12px;
+  border-radius: var(--r);
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color .14s, background .14s, transform .1s, box-shadow .14s;
+  position: relative;
+}
+.mfm2-module:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.07); }
+.mfm2-module.on {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+}
+.mfm2-module-emoji { font-size: 1.2rem; line-height: 1; }
+.mfm2-module-label {
+  font-size: .76rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.mfm2-module-desc {
+  font-size: .65rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+/* Toggle indicator */
+.mfm2-module-toggle {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 28px; height: 16px;
+  border-radius: 8px;
+  background: var(--border2);
+  transition: background .2s;
+  display: flex; align-items: center;
+}
+.mfm2-module.on .mfm2-module-toggle { background: var(--accent); }
+.mfm2-toggle-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  margin-left: 2px;
+  transition: transform .2s cubic-bezier(.4,0,.2,1);
+}
+.mfm2-toggle-dot.on { transform: translateX(12px); }
+
+/* ── Members ────────────────────────────────────────────────────────────── */
+.mfm2-members-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.mfm2-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color .12s;
+  animation: mfm2FadeIn .25s ease both;
+}
+.mfm2-member:hover { border-color: var(--border2); }
+.mfm2-member-av { flex-shrink: 0; }
+.mfm2-member-info { flex: 1; min-width: 0; }
+.mfm2-member-name {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mfm2-member-email {
+  font-size: .7rem;
+  color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mfm2-role-sel {
+  font-size: .73rem;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 112px;
+  flex-shrink: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mfm2-remove-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s, border-color .12s;
+  flex-shrink: 0;
+}
+.mfm2-remove-btn:hover { background: var(--red-lt); color: var(--red); border-color: var(--red); }
+
+/* ── Add member accordion ───────────────────────────────────────────────── */
+.mfm2-add-accordion { margin-top: 4px; }
+.mfm2-add-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.mfm2-add-trigger:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+.mfm2-add-panel {
+  margin-top: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mfm2-add-tabs {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mfm2-add-tab {
+  flex: 1;
+  padding: 7px 10px;
+  border: none;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.mfm2-add-tab + .mfm2-add-tab { border-left: 1px solid var(--border); }
+.mfm2-add-tab.active { background: var(--accent); color: #fff; }
+.mfm2-add-pane { display: flex; flex-direction: column; gap: 8px; }
+.mfm2-msg {
+  font-size: .76rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
