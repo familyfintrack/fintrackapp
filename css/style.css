@@ -10113,3 +10113,32 @@ tr.reconcile-checked td { opacity: 1 !important; }
   background: #eff6ff; border: 1px solid #bfdbfe;
   border-radius: 8px; font-size: .79rem; color: #1e40af; line-height: 1.5;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   REPORTS — Category chart toggle buttons
+═══════════════════════════════════════════════════════════════════ */
+.rpt-cat-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+.rpt-cat-btn {
+  background: none;
+  border: none;
+  padding: 5px 12px;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s, color .12s;
+  white-space: nowrap;
+}
+.rpt-cat-btn:hover { background: var(--border); color: var(--text); }
+.rpt-cat-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
