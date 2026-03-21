@@ -10914,3 +10914,206 @@ tr.reconcile-checked td { opacity: 1 !important; }
   transition: color .12s, border-color .12s;
 }
 .dash-cat-back:hover { color: var(--text); border-color: var(--border2); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEBTS MODULE (.dbt-*)
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── KPI strip ─────────────────────────────────────────────────────────── */
+.dbt-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+.dbt-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dbt-kpi-label {
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.dbt-kpi-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Debt card ─────────────────────────────────────────────────────────── */
+.dbt-card {
+  transition: box-shadow .14s, transform .12s;
+}
+.dbt-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  transform: translateY(-1px);
+}
+.dbt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+.dbt-card-name {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.dbt-card-creditor {
+  font-size: .75rem;
+  color: var(--muted);
+}
+.dbt-card-balance {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--red);
+  margin-bottom: 3px;
+  text-align: right;
+}
+.dbt-badge {
+  display: inline-block;
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────── */
+.dbt-progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.dbt-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+.dbt-card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: .72rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+/* ── Detail view ───────────────────────────────────────────────────────── */
+.dbt-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.dbt-detail-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+.dbt-detail-creditor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .82rem;
+  color: var(--text2);
+  margin-bottom: 4px;
+}
+.dbt-detail-label {
+  font-size: .72rem;
+  color: var(--muted);
+  min-width: 60px;
+}
+.dbt-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .8rem;
+  color: var(--text2);
+}
+.dbt-meta-row span { min-width: 100px; color: var(--muted); flex-shrink: 0; }
+
+/* ── Ledger ────────────────────────────────────────────────────────────── */
+.dbt-ledger {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.dbt-ledger-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+.dbt-ledger-entry:last-child { border-bottom: none; }
+.dbt-ledger-entry:hover { background: var(--surface2); }
+.dbt-ledger-left { min-width: 0; flex: 1; }
+.dbt-ledger-type {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.dbt-ledger-date { font-size: .7rem; color: var(--muted); }
+.dbt-ledger-desc {
+  font-size: .72rem;
+  color: var(--text2);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Amortization banner in tx modal ──────────────────────────────────── */
+.dbt-amort-banner {
+  background: linear-gradient(120deg, #fef3c7 0%, #fffbeb 100%);
+  border: 1px solid #f59e0b44;
+  border-left: 4px solid var(--amber);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin: 12px 0;
+}
+.dbt-amort-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.dbt-amort-icon { font-size: 1.4rem; flex-shrink: 0; }
+.dbt-amort-body { flex: 1; }
+.dbt-amort-title {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--amber);
+  margin-bottom: 2px;
+}
+.dbt-amort-sub { font-size: .77rem; color: var(--text2); }
+.dbt-amort-banner-ok {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--green);
+  padding: 6px 0;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .dbt-detail-grid { grid-template-columns: 1fr; }
+  .dbt-kpi-strip { grid-template-columns: 1fr 1fr; }
+}
