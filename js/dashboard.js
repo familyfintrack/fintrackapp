@@ -1423,8 +1423,11 @@ function _setCatChartType(type) {
 function _renderCatChartDoughnut() {
   const canvas = document.getElementById('categoryChart');
   if (!canvas) return;
-  canvas.style.height = '200px';
-  canvas.removeAttribute('height');
+  // Reset wrapper so doughnut uses its natural aspect ratio
+  const wrap = document.getElementById('catChartWrap');
+  if (wrap) { wrap.style.height = ''; }
+  canvas.setAttribute('height', '200');
+  canvas.style.height = '';
   renderChart('categoryChart', 'doughnut',
     _catChartEntries.map(e => e.name),
     [{ data: _catChartEntries.map(e => e.total), backgroundColor: _catChartEntries.map(e => e.color), borderWidth: 2, borderColor: '#fff', hoverOffset: 8, hoverBorderWidth: 3 }],
@@ -1441,7 +1444,12 @@ function _renderCatChartBar() {
   // Destroy existing
   const existing = state.chartInstances['categoryChart'];
   if (existing) { try { existing.destroy(); } catch(e) {} delete state.chartInstances['categoryChart']; }
-  canvas.height = 220;
+  // Set explicit height on the wrapper — required for maintainAspectRatio:false
+  const barH = Math.max(200, _catChartEntries.length * 36 + 48);
+  const wrap = document.getElementById('catChartWrap');
+  if (wrap) { wrap.style.height = barH + 'px'; }
+  canvas.removeAttribute('height');
+  canvas.style.height = barH + 'px';
   const chart = new Chart(canvas, {
     type: 'bar',
     data: {
