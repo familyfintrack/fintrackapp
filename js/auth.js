@@ -4087,14 +4087,14 @@ function _mfmRenderFeatures(famId) {
   function render() {
     container.innerHTML = MODULES.map(({ key, label, emoji, applyFn, desc }) => {
       const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup') || key.includes('snapshot'));
-      return `<button class="mfm-module-card${on ? ' on' : ''}"
+      return `<button class="mfm2-module${on ? ' on' : ''}"
         onclick="_mfmToggleFeature('${key}','${famId}','${label}','${applyFn||''}')">
-        <div class="mfm-module-top">
-          <span class="mfm-module-emoji">${emoji}</span>
-          <span class="mfm-module-pill${on ? ' on' : ''}">${on ? 'Ativo' : 'Inativo'}</span>
+        <div class="mfm2-module-emoji">${emoji}</div>
+        <div class="mfm2-module-label">${label}</div>
+        ${desc ? `<div class="mfm2-module-desc">${desc}</div>` : ''}
+        <div class="mfm2-module-toggle">
+          <span class="mfm2-toggle-dot${on ? ' on' : ''}"></span>
         </div>
-        <div class="mfm-module-label">${label}</div>
-        ${desc ? `<div class="mfm-module-desc">${desc}</div>` : ''}
       </button>`;
     }).join('');
   }
@@ -4127,12 +4127,15 @@ async function _mfmToggleFeature(key, famId, label, applyFn) {
   const wasOn = !!window._familyFeaturesCache[key];
   const nowOn = !wasOn;
   window._familyFeaturesCache[key] = nowOn;
+  // Also update _appSettingsCache so isXEnabled() reads the right value immediately
+  if (window._appSettingsCache) window._appSettingsCache[key] = nowOn;
   try {
     await saveAppSetting(key, nowOn);
     if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
     toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
   } catch(e) {
     window._familyFeaturesCache[key] = wasOn;
+    if (window._appSettingsCache) window._appSettingsCache[key] = wasOn;
     toast('Erro: ' + e.message, 'error');
   }
   _mfmRenderFeatures(famId);
