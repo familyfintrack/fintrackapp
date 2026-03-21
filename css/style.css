@@ -5666,7 +5666,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-desc-cell { min-width:0; }
 .forecast-line { display:block; margin:0; padding:0; min-height:14px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .forecast-title { font-size:.84rem; color:var(--text); font-weight:500; }
-.forecast-category { font-size:.78rem; color:var(--text2); font-weight:500; }
+.forecast-category { font-size:.78rem; color:var(--text2); }
 .forecast-payee { font-size:.75rem; color:var(--muted); }
 .forecast-amount-cell,
 .forecast-balance-cell { width:96px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
