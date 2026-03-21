@@ -256,8 +256,15 @@ async function _loadCurrentUserContext() {
     families:             userFamilies,
     avatar_url:           appUserRow?.avatar_url || null,
     preferred_family_id:  appUserRow?.preferred_family_id || null,
+    preferred_language:   appUserRow?.preferred_language  || 'pt',
     ...caps
   };
+
+  // Apply user language preference
+  if (typeof i18nSetLanguage === 'function') {
+    const lang = currentUser.preferred_language || 'pt';
+    i18nSetLanguage(lang).catch(() => {});
+  }
 
   return currentUser;
 }
@@ -958,11 +965,26 @@ function openMyProfile() {
     document.getElementById('myProfileFamilyRow')?.style.setProperty('display', 'none');
   }
 
+  // --- Language preference ---
+  const langSel = document.getElementById('myProfileLanguage');
+  if (langSel && typeof i18nGetAvailableLanguages === 'function') {
+    const langs = i18nGetAvailableLanguages();
+    langSel.innerHTML = langs.map(l =>
+      `<option value="${l.code}">${l.flag} ${l.label}</option>`
+    ).join('');
+    langSel.value = currentUser.preferred_language || 'pt';
+  }
+
   // Gerenciar Família — visível só para owners (e não para admins globais que já têm o painel completo)
   // Family mgmt btn: owner role only (admin has full panel)
   const isFamOwnerOnly = currentUser?.role === 'owner' && _currentUserIsFamilyOwner();
   const famMgmtBtn = document.getElementById('myProfileFamilyMgmtBtn');
   if (famMgmtBtn) famMgmtBtn.style.display = isFamOwnerOnly ? '' : 'none';
+
+  // Language selector
+  const savedLang = currentUser?.preferred_language ||
+    (typeof i18nGetLanguage === 'function' ? i18nGetLanguage() : 'pt');
+  profileSelectLang(savedLang, true);
 
   openModal('myProfileModal');
   setTimeout(() => document.getElementById('myProfilePwd1')?.focus(), 200);
@@ -1053,8 +1075,10 @@ async function saveMyProfile() {
   }
   const prefFamId = document.getElementById('myProfilePreferredFamily')?.value || null;
   const prefFamChanged = prefFamId !== (currentUser.preferred_family_id || null);
+  const newLang = document.getElementById('myProfileLanguage')?.value || 'pt';
+  const langChanged = newLang !== (currentUser.preferred_language || 'pt');
 
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged) {
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged) {
     closeModal('myProfileModal');
     return;
   }
@@ -1077,6 +1101,7 @@ async function saveMyProfile() {
     const updatePayload = {};
     if (newAvatarUrl !== currentUser.avatar_url) updatePayload.avatar_url = newAvatarUrl;
     if (prefFamChanged) updatePayload.preferred_family_id = prefFamId || null;
+    if (langChanged)    updatePayload.preferred_language  = newLang;
 
     if (Object.keys(updatePayload).length > 0) {
       const { error: avErr } = await sb.from('app_users').update(updatePayload).eq('id', appRow.id);
@@ -1091,6 +1116,11 @@ async function saveMyProfile() {
         if (prefFamId && prefFamId !== currentUser.family_id) {
           await switchFamily(prefFamId);
         }
+      }
+      if ('preferred_language' in updatePayload) {
+        currentUser.preferred_language = newLang;
+        if (typeof i18nSetLanguage === 'function') await i18nSetLanguage(newLang);
+        if (typeof _i18nUpdateTopbarLabel === 'function') _i18nUpdateTopbarLabel();
       }
     }
 
@@ -1286,22 +1316,26 @@ async function doRegister() {
     // Hash the password — stored in app_users for later Supabase Auth creation at approval time
     const pwdHash = await sha256(pwd);
 
+    // Capture preferred language from register form (if present)
+    const regLang = document.getElementById('regLanguage')?.value || 'pt';
+
     // Insert pending record — NOT approved, NOT active, no Supabase Auth account yet
     const { error: insErr } = await sb.from('app_users').insert({
       name,
       email,
-      password_hash: pwdHash,
-      role:          'viewer',
-      approved:      false,
-      active:        false,
-      can_view:      true,
-      can_create:    false,
-      can_edit:      false,
-      can_delete:    false,
-      can_export:    false,
-      can_import:    false,
-      can_admin:     false,
-      must_change_pwd: false,
+      password_hash:      pwdHash,
+      role:               'viewer',
+      approved:           false,
+      active:             false,
+      can_view:           true,
+      can_create:         false,
+      can_edit:           false,
+      can_delete:         false,
+      can_export:         false,
+      can_import:         false,
+      can_admin:          false,
+      must_change_pwd:    false,
+      preferred_language: regLang,
     });
     if (insErr) throw insErr;
 

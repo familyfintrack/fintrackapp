@@ -527,6 +527,13 @@ state.privacyMode  = state.privacyMode  ?? false;
 
 async function bootApp(){
   registerServiceWorkerSafe();
+  // i18n: load translations early (non-blocking — uses cache or DB)
+  if (typeof i18nInit === 'function') {
+    i18nInit().then(() => {
+      i18nApplyToDOM();
+      _i18nUpdateTopbarLabel();
+    }).catch(e => console.warn('[boot] i18n init failed:', e.message));
+  }
   // Logos (can be overridden by app_settings)
   setAppLogo(APP_LOGO_URL);
 
@@ -536,6 +543,7 @@ async function bootApp(){
     await Promise.all([
       DB.preload(),
       loadAppSettings().catch(e => console.warn('[boot] loadAppSettings (não fatal):', e?.message)),
+      (typeof i18nInit === 'function' ? i18nInit() : Promise.resolve()),
     ]);
   } catch(e) {
     toast('Erro ao carregar dados: '+e.message,'error');
@@ -871,6 +879,7 @@ function navigate(page){
   const _iconEl=document.getElementById('pageIcon');
   if(_iconEl) _iconEl.innerHTML=_pageIconsSVG[page]||_pageIconsSVG['dashboard'];
   state.currentPage=page;closeSidebar();
+  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document.getElementById('page-'+page));
   _scrollActivePageToTop(page);
   if(page==='dashboard' && sb) loadDashboard();
   else if(page==='transactions'){if(state.reconcileMode && typeof exitReconcileMode==='function')exitReconcileMode(false);populateTxMonthFilter();if(typeof populateSelects==='function')populateSelects();loadTransactions();}
@@ -932,3 +941,50 @@ document.addEventListener('DOMContentLoaded', initBottomNav);
   }, { passive:false });
 })();
 
+
+// ── Language picker (topbar) ─────────────────────────────────────────────────
+function toggleLangPicker() {
+  const dd = document.getElementById('topbarLangDropdown');
+  if (!dd) return;
+  const isOpen = dd.style.display !== 'none';
+  dd.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // Mark active language
+    const lang = typeof i18nGetLanguage === 'function' ? i18nGetLanguage() : 'pt';
+    dd.querySelectorAll('.i18n-dd-item').forEach(btn => {
+      btn.classList.toggle('i18n-dd-active', btn.dataset.lang === lang);
+    });
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', _closeLangPicker, { once: true });
+    }, 50);
+  }
+}
+function _closeLangPicker(e) {
+  const picker = document.getElementById('topbarLangPicker');
+  if (!picker || picker.contains(e.target)) return;
+  const dd = document.getElementById('topbarLangDropdown');
+  if (dd) dd.style.display = 'none';
+}
+async function quickSetLang(lang) {
+  const dd = document.getElementById('topbarLangDropdown');
+  if (dd) dd.style.display = 'none';
+  if (typeof i18nSetLanguage === 'function') {
+    await i18nSetLanguage(lang);
+    _i18nUpdateTopbarLabel();
+    // Re-render dynamic page titles
+    const page = state.currentPage;
+    if (pageTitles[page]) {
+      const el = document.getElementById('pageTitle');
+      if (el) el.textContent = pageTitles[page];
+    }
+  }
+  toast('🌐 ' + { pt:'Português', en:'English', es:'Español', fr:'Français' }[lang], 'success');
+}
+function _i18nUpdateTopbarLabel() {
+  const lang = typeof i18nGetLanguage === 'function' ? i18nGetLanguage() : 'pt';
+  const el = document.getElementById('topbarLangLabel');
+  if (el) el.textContent = lang.toUpperCase();
+  // Also update profile selector if open
+  if (typeof profileSelectLang === 'function') profileSelectLang(lang, true);
+}

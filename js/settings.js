@@ -481,6 +481,13 @@ function loadSettings() {
     initSettingsVisibilityForm();
     initServiceRoleKeySection();
     try { _loadNormalizeNamesInfo().catch(()=>{}); } catch {}
+    // Translations admin (admin only)
+    if (typeof initTranslationsAdmin === 'function') {
+      initTranslationsAdmin();
+    }
+    // Show translations section for admin
+    const transSection = document.getElementById('translationsSection');
+    if (transSection) transSection.style.display = '';
   } else {
     // Usuário comum: aplicar restrições de visibilidade definidas pelo admin
     applySettingsVisibility();
@@ -760,6 +767,13 @@ function toggleCfgSection(bodyId) {
   const arrId = 'cfgArr_' + bodyId.replace('cfgSec_', '');
   const arr = document.getElementById(arrId);
   if (arr) arr.textContent = isOpen ? '▾' : '▸';
+
+  // Lazy-init translations admin when section is opened
+  if (bodyId === 'cfgSec_i18n' && isOpen) {
+    if (typeof initTranslationsAdmin === 'function') {
+      initTranslationsAdmin();
+    }
+  }
 }
 
 
