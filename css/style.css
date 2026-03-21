@@ -8332,3 +8332,48 @@ body.ft-platform-windows .modal-close {
   font-size:.7rem;padding:0 3px;line-height:1;
 }
 .dash-reorder-btn:hover { color:var(--accent); }
+
+/* ── Multi-account selector for Forecast ───────────────────────────────── */
+.fc-acct-picker {
+  position: relative;
+  display: inline-block;
+  font-size: .8rem;
+}
+.fc-acct-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); background: var(--surface);
+  color: var(--text2); cursor: pointer; font-size: .8rem;
+  font-family: var(--font-sans); white-space: nowrap;
+  min-width: 140px; max-width: 220px;
+  transition: border-color .15s;
+}
+.fc-acct-btn:hover { border-color: var(--accent); }
+.fc-acct-btn .fc-acct-caret { margin-left: auto; opacity: .5; font-size: .65rem; }
+.fc-acct-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  min-width: 220px; max-width: 280px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); box-shadow: var(--shadow);
+  z-index: 200; display: none;
+  max-height: 280px; overflow-y: auto;
+}
+.fc-acct-dropdown.open { display: block; }
+.fc-acct-opt {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer; font-size: .82rem;
+  transition: background .1s;
+}
+.fc-acct-opt:hover { background: var(--surface2); }
+.fc-acct-opt input[type=checkbox] {
+  width: 14px; height: 14px; flex-shrink: 0;
+  accent-color: var(--accent); cursor: pointer;
+}
+.fc-acct-opt-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.fc-acct-sep {
+  font-size: .68rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 6px 12px 2px;
+}
