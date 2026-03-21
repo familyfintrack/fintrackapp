@@ -184,7 +184,10 @@ async function _aiCollectFinancialContext() {
   let totalIncome = 0, totalExpense = 0;
   const byCategory  = {};
   const byPayee     = {};
-  const byMember    = {};
+  const byMember    = {};       // { memId: totalExpense }
+  const byMemberCat = {};       // { memId: { catName: amount } }
+  const byMemberPay = {};       // { memId: { payName: amount } }
+  const byMemberInc = {};       // { memId: totalIncome }
   const byMonth     = {};
 
   filtered.forEach(t => {
@@ -199,22 +202,36 @@ async function _aiCollectFinancialContext() {
       ? (t.is_card_payment ? 'card_payment' : 'transfer')
       : rawAmt >= 0 ? 'income' : 'expense';
 
+    const memId  = t.family_member_id || null;
+    const catName = catMap[t.category_id] || 'Sem categoria';
+    const payName = payMap[t.payee_id]   || null;
+
     if (type === 'income') {
       totalIncome += amt;
+      if (memId) {
+        byMemberInc[memId] = (byMemberInc[memId] || 0) + amt;
+      }
     } else if (type === 'expense') {
       totalExpense += amt;
 
-      // Por categoria
-      const catName = catMap[t.category_id] || 'Sem categoria';
+      // Global por categoria e beneficiário
       byCategory[catName] = (byCategory[catName] || 0) + amt;
+      if (payName) byPayee[payName] = (byPayee[payName] || 0) + amt;
 
-      // Por beneficiário
-      const payName = payMap[t.payee_id] || 'Sem beneficiário';
-      byPayee[payName] = (byPayee[payName] || 0) + amt;
+      // Por membro — total
+      if (memId) {
+        byMember[memId] = (byMember[memId] || 0) + amt;
 
-      // Por membro
-      const memId = t.family_member_id || 'unknown';
-      byMember[memId] = (byMember[memId] || 0) + amt;
+        // Por membro — por categoria
+        if (!byMemberCat[memId]) byMemberCat[memId] = {};
+        byMemberCat[memId][catName] = (byMemberCat[memId][catName] || 0) + amt;
+
+        // Por membro — por beneficiário
+        if (payName) {
+          if (!byMemberPay[memId]) byMemberPay[memId] = {};
+          byMemberPay[memId][payName] = (byMemberPay[memId][payName] || 0) + amt;
+        }
+      }
     }
 
     // Por mês (todas as transações)
@@ -242,11 +259,36 @@ async function _aiCollectFinancialContext() {
 
   const memberInsights = Object.entries(byMember)
     .sort((a, b) => b[1] - a[1])
-    .map(([id, amount]) => ({
-      name: memberMap[id] || '—',  // never show raw UUID
-      amount: +amount.toFixed(2)
-    }))
-    .filter(m => m.name !== '—');  // skip unknown ids
+    .map(([id, expense]) => {
+      const name = memberMap[id] || '—';
+      if (name === '—') return null;
+
+      // Top 5 categories for this member
+      const topCats = Object.entries(byMemberCat[id] || {})
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([cat, amt]) => ({
+          name: cat,
+          amount: +amt.toFixed(2),
+          pct: expense > 0 ? +(amt / expense * 100).toFixed(1) : 0,
+        }));
+
+      // Top 5 payees for this member
+      const topPays = Object.entries(byMemberPay[id] || {})
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([pay, amt]) => ({ name: pay, amount: +amt.toFixed(2) }));
+
+      return {
+        id,
+        name,
+        expense:  +expense.toFixed(2),
+        income:   +(byMemberInc[id] || 0).toFixed(2),
+        topCategories: topCats,
+        topPayees:     topPays,
+        // Legacy field for backward compat
+        amount: +expense.toFixed(2),
+      };
+    })
+    .filter(Boolean);
 
   // Transações agendadas
   const { data: sched } = await famQ(sb.from('scheduled_transactions').select('description,brl_amount,frequency,next_date,type')).limit(20);
@@ -519,6 +561,18 @@ REGRAS IMPORTANTES:
 
 // ── Renderização da análise ───────────────────────────────────────────────
 
+// ── Member card toggle ─────────────────────────────────────────────────────
+function _aiToggleMember(idx) {
+  const body  = document.getElementById('ai-mem-body-' + idx);
+  const chev  = document.getElementById('ai-mem-chev-' + idx);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if (chev) chev.textContent = open ? '▼' : '▲';
+}
+window._aiToggleMember = _aiToggleMember;
+
+
 function _aiRenderAnalysis(r) {
   const container = document.getElementById('aiAnalysisResult');
   if (!container || !r) return;
@@ -641,24 +695,73 @@ function _aiRenderAnalysis(r) {
       </div>`;
   }
 
-  // Gastos por membro
+  // Gastos por membro — detalhado com categorias e beneficiários
   let memberHtml = '';
-  if (ctx?.memberInsights?.length > 1 || r.member_insights?.length) {
+  if (ctx?.memberInsights?.length) {
+    // Build AI insight map: name → insight text
+    const aiMemberMap = {};
+    (r.member_insights || []).forEach(mi => { if (mi.name) aiMemberMap[mi.name] = mi.insight; });
+
+    const memberCards = ctx.memberInsights.map((m, idx) => {
+      const totalPct = ctx.summary.totalExpense > 0
+        ? ((m.expense / ctx.summary.totalExpense) * 100).toFixed(1)
+        : 0;
+      const aiInsight = aiMemberMap[m.name] || '';
+
+      // Top categories bar list
+      const catBars = (m.topCategories || []).map(c => `
+        <div class="ai-mem-cat-item">
+          <div class="ai-mem-cat-label">
+            <span class="ai-mem-cat-name">${esc(c.name)}</span>
+            <span class="ai-mem-cat-val">${fmt(c.amount)} <small style="color:var(--muted)">${c.pct}%</small></span>
+          </div>
+          <div class="ai-bar-track" style="height:4px">
+            <div class="ai-bar-fill" style="width:${Math.min(100,c.pct)}%"></div>
+          </div>
+        </div>`).join('');
+
+      // Top payees compact list
+      const payList = (m.topPayees || []).slice(0, 4).map((p, i) => `
+        <div class="ai-mem-pay-item">
+          <span class="ai-mem-pay-rank">${i+1}</span>
+          <span class="ai-mem-pay-name">${esc(p.name)}</span>
+          <span class="ai-mem-pay-amt">${fmt(p.amount)}</span>
+        </div>`).join('');
+
+      return `
+        <div class="ai-member-card" id="ai-mem-${idx}">
+          <div class="ai-member-card-header" onclick="_aiToggleMember(${idx})">
+            <div class="ai-member-card-avatar">${esc(m.name.charAt(0).toUpperCase())}</div>
+            <div class="ai-member-card-info">
+              <div class="ai-member-card-name">${esc(m.name)}</div>
+              <div class="ai-member-card-sub">
+                <span class="amount-neg" style="font-weight:600">${fmt(m.expense)}</span>
+                ${m.income > 0 ? `<span style="color:var(--muted);margin:0 4px">·</span><span class="amount-pos">${fmt(m.income)}</span>` : ''}
+                <span style="color:var(--muted);margin:0 4px">·</span>
+                <span style="color:var(--muted)">${totalPct}% do total</span>
+              </div>
+            </div>
+            <span class="ai-member-card-chevron" id="ai-mem-chev-${idx}">▼</span>
+          </div>
+          <div class="ai-member-card-body" id="ai-mem-body-${idx}" style="display:none">
+            ${m.topCategories?.length ? `
+              <div class="ai-mem-section-label">🏷 Categorias mais usadas</div>
+              <div class="ai-mem-cats">${catBars}</div>` : ''}
+            ${m.topPayees?.length ? `
+              <div class="ai-mem-section-label" style="margin-top:10px">👤 Principais beneficiários</div>
+              <div class="ai-mem-pays">${payList}</div>` : ''}
+            ${aiInsight ? `
+              <div class="ai-mem-ai-insight">
+                ${aiBadge} <span>${esc(aiInsight)}</span>
+              </div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
     memberHtml = `
       <div class="ai-section">
         <div class="ai-section-header">${dataBadge} Gastos por Membro</div>
-        ${ctx.memberInsights.map(m => `
-          <div class="ai-member-row">
-            <span class="ai-member-name">${esc(m.name)}</span>
-            <span class="ai-member-amt">${fmt(m.amount)}</span>
-          </div>`).join('')}
-        ${r.member_insights?.length ? `
-          <div style="margin-top:10px">
-            <div class="ai-badge-row">${aiBadge}</div>
-            ${r.member_insights.map(mi => `
-              <div class="ai-cat-insight"><strong>${esc(mi.name)}</strong> — ${esc(mi.insight)}</div>
-            `).join('')}
-          </div>` : ''}
+        <div class="ai-member-cards">${memberCards}</div>
       </div>`;
   }
 
