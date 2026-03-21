@@ -249,9 +249,20 @@ async function _loadCurrentUserContext() {
   };
 
   // Apply user language preference
+  // Priority: Supabase preferred_language (already saved before reload by quickSetLang)
+  // Secondary: localStorage (set by quickSetLang as backup)
+  // This ensures the language chosen by the user is always applied correctly
   if (typeof i18nSetLanguage === 'function') {
-    const lang = currentUser.preferred_language || 'pt';
-    i18nSetLanguage(lang).catch(() => {});
+    const dbLang = currentUser.preferred_language || 'pt';
+    const lsLang = localStorage.getItem('fintrack_i18n_lang') || 'pt';
+    // Use DB value (authoritative) — quickSetLang saves to DB before reload
+    // If they differ, DB wins (user may have changed on another device)
+    const langToApply = dbLang;
+    // Sync localStorage to match DB so i18nInit boots with correct lang
+    localStorage.setItem('fintrack_i18n_lang', langToApply);
+    if (typeof i18nSetLanguage === 'function') {
+      i18nSetLanguage(langToApply).catch(() => {});
+    }
   }
 
   return currentUser;

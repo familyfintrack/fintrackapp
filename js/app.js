@@ -1006,18 +1006,20 @@ async function quickSetLang(lang) {
   const dd = document.getElementById('topbarLangDropdown');
   if (dd) dd.style.display = 'none';
 
-  // 1. Persist language preference
-  localStorage.setItem('fintrack_i18n_lang', lang);
-
-  // 2. Save to Supabase profile if logged in
+  // 1. Save to Supabase FIRST so auth.js reads the correct value on reload
   if (window.sb && window.currentUser?.id) {
     try {
-      await sb.from('app_users').update({ preferred_language: lang }).eq('id', currentUser.id);
+      await sb.from('app_users')
+        .update({ preferred_language: lang })
+        .eq('id', currentUser.id);
+      if (window.currentUser) currentUser.preferred_language = lang;
     } catch(_) {}
   }
 
-  // 3. Reload page with new language active
-  // (i18nInit reads localStorage on boot → applies correct language)
+  // 2. Persist to localStorage (i18nInit reads this on boot)
+  localStorage.setItem('fintrack_i18n_lang', lang);
+
+  // 3. Reload — auth.js will now read correct preferred_language from Supabase
   location.reload();
 }
 // ── Profile language button strip selector ───────────────────────────────────
@@ -1032,23 +1034,19 @@ function profileSelectLang(lang, silent) {
 
   // If user explicitly clicked (not init), persist + reload with new language
   if (!silent) {
-    // 1. Save to localStorage immediately
-    localStorage.setItem('fintrack_i18n_lang', lang);
-    // 2. Save to Supabase if logged in (best-effort, don't block reload)
+    // 1. Save to Supabase FIRST so auth.js reads correct value on reload
+    const _doReload = () => {
+      localStorage.setItem('fintrack_i18n_lang', lang);
+      location.reload();
+    };
     if (window.sb && window.currentUser?.id) {
       sb.from('app_users')
         .update({ preferred_language: lang })
         .eq('id', currentUser.id)
-        .then(() => {
-          // Reload after short delay to ensure DB write completes
-          setTimeout(() => location.reload(), 300);
-        })
-        .catch(() => {
-          // Reload anyway even if DB fails
-          setTimeout(() => location.reload(), 300);
-        });
+        .then(() => { if (window.currentUser) currentUser.preferred_language = lang; _doReload(); })
+        .catch(() => _doReload());
     } else {
-      setTimeout(() => location.reload(), 150);
+      _doReload();
     }
   }
 }
