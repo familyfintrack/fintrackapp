@@ -4082,9 +4082,8 @@ function _mfmRenderFeatures(famId) {
     { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',     emoji: '📸', desc: 'Snapshots periódicos',  applyFn: null },
   ];
 
-  const fc = window._familyFeaturesCache || {};
-
   function render() {
+    const fc = window._familyFeaturesCache || {}; // always read live reference
     container.innerHTML = MODULES.map(({ key, label, emoji, applyFn, desc }) => {
       const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup') || key.includes('snapshot'));
       return `<button class="mfm2-module${on ? ' on' : ''}"

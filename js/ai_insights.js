@@ -1103,39 +1103,272 @@ function _aiRenderAnalysis(r) {
 
 // ── Export ────────────────────────────────────────────────────────────────
 
-function exportAiAnalysis() {
-  if (!_ai.analysisResult || !_ai.financialContext) {
-    toast('Execute uma análise primeiro', 'warning');
-    return;
-  }
+// ── Build AI insights content for PDF / email ────────────────────────────
+function _buildAiInsightsHTML() {
+  if (!_ai.analysisResult || !_ai.financialContext) return null;
   const ctx = _ai.financialContext;
   const r   = _ai.analysisResult;
-  const lines = [
-    `AI Insights — Family FinTrack`,
-    `Período: ${ctx.period.from} a ${ctx.period.to}`,
-    `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
-    ``,
-    `=== RESUMO FINANCEIRO (App) ===`,
-    `Receitas:  R$ ${ctx.summary.totalIncome}`,
-    `Despesas:  R$ ${ctx.summary.totalExpense}`,
-    `Resultado: R$ ${ctx.summary.netResult}`,
-    ``,
-    `=== ANÁLISE IA ===`,
-    r.summary || '',
-    ``,
-    `=== RECOMENDAÇÕES ===`,
-    ...(r.recommendations || []).map(rec => `[${rec.priority?.toUpperCase()}] ${rec.title}: ${rec.description}`),
-    ``,
-    `=== OPORTUNIDADES DE ECONOMIA ===`,
-    ...(r.savings_opportunities || []).map(s => `${s.title}: ${s.description} (${s.estimated_saving || ''})`),
-  ];
+  const fmtR = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const netColor = ctx.summary.netResult >= 0 ? '#15803d' : '#dc2626';
 
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
-  a.download = `ai-insights-${ctx.period.from}-${ctx.period.to}.txt`;
-  a.click();
-  toast(t('report.export_ok'), 'success');
+  const recsHtml = (r.recommendations||[]).map(rc =>
+    `<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">
+      <span style="color:${rc.priority==='high'?'#dc2626':rc.priority==='medium'?'#d97706':'#15803d'};font-weight:700">[${(rc.priority||'').toUpperCase()}]</span>
+      <strong>${esc(rc.title)}</strong> — ${esc(rc.description)}
+    </td></tr>`).join('');
+
+  const savingsHtml = (r.savings_opportunities||[]).map(s =>
+    `<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">
+      <strong>${esc(s.title)}</strong> — ${esc(s.description)}
+      ${s.estimated_saving ? `<span style="color:#15803d;font-weight:700"> (${esc(s.estimated_saving)})</span>` : ''}
+    </td></tr>`).join('');
+
+  const catHtml = (ctx.topCategories||[]).slice(0,8).map(c =>
+    `<tr><td style="padding:4px 8px">${esc(c.name)}</td>
+     <td style="padding:4px 8px;text-align:right;font-weight:600">${fmtR(c.amount)}</td>
+     <td style="padding:4px 8px;text-align:right;color:#6b7280">${c.pct}%</td></tr>`).join('');
+
+  const forecastHtml = r.forecast ? `
+    <h3 style="color:#1e3a5f;font-size:14px;margin:20px 0 8px">Prognóstico Financeiro</h3>
+    <p style="background:#f0fdf4;border-left:4px solid #22c55e;padding:10px;margin:0 0 10px;font-style:italic">${esc(r.forecast.outlook||'')}</p>
+    ${(r.forecast.key_risks||[]).map(k=>`<p style="margin:4px 0">⚠️ <strong>${esc(k.risk)}</strong>${k.mitigation?` — ${esc(k.mitigation)}`:''}</p>`).join('')}
+    ${(r.forecast.opportunities||[]).map(o=>`<p style="margin:4px 0">🎯 <strong>${esc(o.opportunity)}</strong>${o.action?` — ${esc(o.action)}`:''}</p>`).join('')}
+  ` : '';
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <style>body{font-family:Arial,sans-serif;color:#111;font-size:13px;max-width:800px;margin:0 auto;padding:20px}
+    h2{color:#0d2318;border-bottom:2px solid #2a6049;padding-bottom:6px}
+    h3{color:#1a3d28;font-size:14px;margin:18px 0 6px}
+    table{width:100%;border-collapse:collapse}th{background:#f3f4f6;padding:6px 8px;text-align:left}
+    .kpi-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+    .kpi{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;min-width:120px}
+    .kpi-label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
+    .kpi-value{font-size:18px;font-weight:800;margin-top:2px}</style>
+  </head><body>
+    <h2>🤖 AI Insights — Family FinTrack</h2>
+    <p style="color:#6b7280">Período: <strong>${ctx.period.from} a ${ctx.period.to}</strong> · Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Receitas</div><div class="kpi-value" style="color:#15803d">${fmtR(ctx.summary.totalIncome)}</div></div>
+      <div class="kpi"><div class="kpi-label">Despesas</div><div class="kpi-value" style="color:#dc2626">${fmtR(ctx.summary.totalExpense)}</div></div>
+      <div class="kpi"><div class="kpi-label">Resultado</div><div class="kpi-value" style="color:${netColor}">${fmtR(ctx.summary.netResult)}</div></div>
+      <div class="kpi"><div class="kpi-label">Transações</div><div class="kpi-value">${ctx.summary.txCount}</div></div>
+    </div>
+
+    <h3>Análise Gemini</h3>
+    <p style="background:#f0f4ff;border-left:4px solid #6366f1;padding:10px;font-style:italic">${esc(r.summary||'')}</p>
+
+    ${forecastHtml}
+
+    ${catHtml ? `<h3>Top Categorias de Despesa</h3>
+    <table><thead><tr><th>Categoria</th><th style="text-align:right">Total</th><th style="text-align:right">%</th></tr></thead>
+    <tbody>${catHtml}</tbody></table>` : ''}
+
+    ${recsHtml ? `<h3>Recomendações</h3><table><tbody>${recsHtml}</tbody></table>` : ''}
+    ${savingsHtml ? `<h3>Oportunidades de Economia</h3><table><tbody>${savingsHtml}</tbody></table>` : ''}
+
+    <p style="color:#9ca3af;font-size:11px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:10px">
+      Family FinTrack · AI Insights · Análise gerada por Google Gemini</p>
+  </body></html>`;
+}
+
+// ── Export as PDF ─────────────────────────────────────────────────────────
+async function exportAiAnalysis() {
+  if (!_ai.analysisResult || !_ai.financialContext) {
+    toast('Execute uma análise primeiro', 'warning'); return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { toast('jsPDF não disponível', 'error'); return; }
+
+  toast('⏳ Gerando PDF…', 'info');
+  try {
+    const html = _buildAiInsightsHTML();
+    const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const ctx  = _ai.financialContext;
+    const r    = _ai.analysisResult;
+    const fmtP = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2});
+
+    let y = 15;
+    const lh = 6, pw = 180, lm = 15;
+
+    // Header
+    doc.setFontSize(16).setFont(undefined,'bold').setTextColor('#0d2318');
+    doc.text('AI Insights — Family FinTrack', lm, y); y += 8;
+    doc.setFontSize(9).setFont(undefined,'normal').setTextColor('#6b7280');
+    doc.text(`Período: ${ctx.period.from} a ${ctx.period.to}  ·  Gerado em ${new Date().toLocaleString('pt-BR')}`, lm, y); y += 8;
+
+    // KPI row
+    doc.setDrawColor('#e5e7eb').setFillColor('#f9fafb');
+    const kpis = [
+      {label:'Receitas',  val:fmtP(ctx.summary.totalIncome),  color:'#15803d'},
+      {label:'Despesas',  val:fmtP(ctx.summary.totalExpense), color:'#dc2626'},
+      {label:'Resultado', val:fmtP(ctx.summary.netResult),    color:ctx.summary.netResult>=0?'#15803d':'#dc2626'},
+      {label:'Transações',val:String(ctx.summary.txCount),    color:'#111'},
+    ];
+    const kw = pw/4;
+    kpis.forEach((k,i) => {
+      const x = lm + i*kw;
+      doc.roundedRect(x, y, kw-2, 16, 2, 2, 'FD');
+      doc.setFontSize(7).setTextColor('#6b7280').setFont(undefined,'normal');
+      doc.text(k.label.toUpperCase(), x+3, y+5);
+      doc.setFontSize(10).setFont(undefined,'bold').setTextColor(k.color);
+      doc.text(k.val, x+3, y+13);
+    });
+    y += 22;
+
+    const section = (title) => {
+      if (y > 260) { doc.addPage(); y = 15; }
+      doc.setFontSize(11).setFont(undefined,'bold').setTextColor('#0d2318');
+      doc.text(title, lm, y); y += 6;
+      doc.setDrawColor('#2a6049').line(lm, y, lm+pw, y); y += 4;
+    };
+
+    const paragraph = (text, color='#111', bold=false) => {
+      doc.setFontSize(9).setFont(undefined, bold?'bold':'normal').setTextColor(color);
+      const lines = doc.splitTextToSize(text||'', pw);
+      lines.forEach(l => { if (y>272){doc.addPage();y=15;} doc.text(l, lm, y); y+=lh; });
+      y += 2;
+    };
+
+    // AI Summary
+    section('Análise Gemini');
+    paragraph(r.summary||'', '#374151');
+    if (r.overview) {
+      if (r.overview.income_comment)  paragraph('💰 ' + r.overview.income_comment, '#15803d');
+      if (r.overview.expense_comment) paragraph('💸 ' + r.overview.expense_comment, '#dc2626');
+      if (r.overview.net_comment)     paragraph('📈 ' + r.overview.net_comment, '#1d4ed8');
+    }
+
+    // Forecast
+    if (r.forecast?.outlook) {
+      section('Prognóstico & Tendência');
+      paragraph(r.forecast.outlook, '#374151', false);
+      (r.forecast.key_risks||[]).forEach(k => paragraph(`⚠️ ${k.risk}${k.mitigation?' — '+k.mitigation:''}`, '#b45309'));
+      (r.forecast.opportunities||[]).forEach(o => paragraph(`🎯 ${o.opportunity}${o.action?' — '+o.action:''}`, '#15803d'));
+    }
+
+    // Cashflow alerts
+    if (r.cashflow_alerts?.length) {
+      section('Alertas de Fluxo de Caixa');
+      r.cashflow_alerts.forEach(a => paragraph(`${a.type==='warning'?'⚠️':'ℹ️'} ${a.message}`, a.type==='warning'?'#b45309':'#1d4ed8'));
+    }
+
+    // Top categories
+    if (ctx.topCategories?.length) {
+      section('Top Categorias de Despesa');
+      ctx.topCategories.slice(0,8).forEach(c => {
+        if (y>272){doc.addPage();y=15;}
+        doc.setFontSize(9).setFont(undefined,'normal').setTextColor('#111');
+        doc.text(esc(c.name), lm, y);
+        doc.setFont(undefined,'bold');
+        doc.text(fmtP(c.amount), lm+120, y, {align:'right'});
+        doc.setFont(undefined,'normal').setTextColor('#6b7280');
+        doc.text(`${c.pct}%`, lm+pw, y, {align:'right'});
+        y += lh;
+      });
+      y += 2;
+    }
+
+    // Recommendations
+    if (r.recommendations?.length) {
+      section('Recomendações');
+      r.recommendations.forEach(rec => {
+        const col = rec.priority==='high'?'#dc2626':rec.priority==='medium'?'#d97706':'#15803d';
+        paragraph(`[${(rec.priority||'').toUpperCase()}] ${rec.title}: ${rec.description}`, col);
+      });
+    }
+
+    // Savings
+    if (r.savings_opportunities?.length) {
+      section('Oportunidades de Economia');
+      r.savings_opportunities.forEach(s => {
+        paragraph(`${s.title}: ${s.description}${s.estimated_saving?' ('+s.estimated_saving+')':''}`, '#15803d');
+      });
+    }
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i).setFontSize(7).setTextColor('#9ca3af').setFont(undefined,'normal');
+      doc.text(`Family FinTrack · AI Insights · Pág. ${i}/${pageCount}`, 105, 290, {align:'center'});
+    }
+
+    doc.save(`ai-insights-${ctx.period.from}-${ctx.period.to}.pdf`);
+    toast(t('report.export_ok'), 'success');
+  } catch(e) {
+    console.error('[AI PDF]', e);
+    toast('Erro ao gerar PDF: ' + e.message, 'error');
+  }
+}
+
+// ── Send AI insights by email ──────────────────────────────────────────────
+async function sendAiInsightsByEmail() {
+  if (!_ai.analysisResult || !_ai.financialContext) {
+    toast('Execute uma análise primeiro', 'warning'); return;
+  }
+  // Reuse reports email popup
+  const popup = document.getElementById('emailPopup');
+  if (!popup) { toast('Modal de e-mail não encontrado', 'error'); return; }
+
+  // Override the send button action
+  const btn = document.getElementById('emailSendBtn');
+  if (btn) {
+    btn.onclick = _sendAiEmail;
+    btn.textContent = 'Enviar Análise';
+  }
+  const subjectEl = document.getElementById('emailSubject');
+  if (subjectEl) {
+    const ctx = _ai.financialContext;
+    subjectEl.value = `AI Insights — ${ctx.period.from} a ${ctx.period.to}`;
+  }
+  popup.style.display = 'flex';
+}
+window.sendAiInsightsByEmail = sendAiInsightsByEmail;
+
+async function _sendAiEmail() {
+  const toAddr = (document.getElementById('emailTo')?.value || '').trim();
+  if (!toAddr || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toAddr)) {
+    toast('Informe um e-mail válido', 'error'); return;
+  }
+  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.templateId || !EMAILJS_CONFIG.publicKey) {
+    toast('Configure o EmailJS primeiro', 'error'); showEmailConfig(); return;
+  }
+
+  const btn = document.getElementById('emailSendBtn');
+  const status = document.getElementById('emailStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
+  if (status) status.textContent = '';
+
+  try {
+    const ctx = _ai.financialContext;
+    const html = _buildAiInsightsHTML();
+    const subject = document.getElementById('emailSubject')?.value.trim()
+      || `AI Insights — ${ctx.period.from} a ${ctx.period.to}`;
+
+    emailjs.init(EMAILJS_CONFIG.publicKey);
+    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+      to_email: toAddr, to: toAddr, email: toAddr, recipient: toAddr,
+      from_name: 'Family FinTrack',
+      report_subject: subject, subject,
+      message: `AI Insights para o período ${ctx.period.from} a ${ctx.period.to}.`,
+      report_content: html,
+      report_period: `${ctx.period.from} a ${ctx.period.to}`,
+      report_income:  'R$ ' + (ctx.summary.totalIncome||0).toLocaleString('pt-BR',{minimumFractionDigits:2}),
+      report_expense: 'R$ ' + (ctx.summary.totalExpense||0).toLocaleString('pt-BR',{minimumFractionDigits:2}),
+      report_balance: 'R$ ' + (ctx.summary.netResult||0).toLocaleString('pt-BR',{minimumFractionDigits:2}),
+      pdf_url: '', pdf_name: '',
+    });
+
+    if (status) { status.textContent = '✓ Enviado!'; status.style.color = 'var(--green)'; }
+    toast('✓ E-mail enviado!', 'success');
+    setTimeout(closeEmailPopup, 1800);
+  } catch(e) {
+    const msg = e?.text || e?.message || JSON.stringify(e);
+    toast('Erro ao enviar: ' + msg, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviar Análise'; }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════

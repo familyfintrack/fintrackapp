@@ -60,7 +60,7 @@ async function saveAppSetting(key, value) {
   _appSettingsCache[key] = value;
   if (!sb) return;
   try {
-    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_)(.+)$/);
+    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_|ai_insights_enabled_)(.+)$/);
     const family_id = m ? m[2] : null;
     // Feature flags: try RPC SECURITY DEFINER first (bypasses RLS)
     if (family_id) {
@@ -998,7 +998,7 @@ function initFamModulesStandalone() {
   ];
 
   function renderCards() {
-    const fc = window._familyFeaturesCache || {};
+    const fc = window._familyFeaturesCache || {}; // always read live reference
     pills.innerHTML = keys.map(({ key, label, emoji, applyFn, desc }) => {
       const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup') || key.includes('snapshot'));
       return `
@@ -1071,7 +1071,7 @@ function initFamModulesRow() {
   ];
 
   function renderPills() {
-    const fc = window._familyFeaturesCache || {};
+    const fc = window._familyFeaturesCache || {}; // always read live reference
     pills.innerHTML = keys.map(({ key, label, emoji, applyFn }) => {
       const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup')||key.includes('snapshot'));
       return `<button class="fam-mod-pill ${on?'on':''}"
