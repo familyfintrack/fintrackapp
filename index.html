@@ -806,11 +806,7 @@
             </select>
           </div>
           <div class="tx-filter-chip-wrap">
-            <select id="txReconcileFilter" onchange="filterTransactions(true)" class="tx-chip-select">
-              <option value="">🔵 Reconciliação</option>
-              <option value="pending">○ Não reconciliadas</option>
-              <option value="done">✓ Reconciliadas</option>
-            </select>
+            <button id="btnEnterReconcile" class="tx-chip-select" style="cursor:pointer;background:none;border:1.5px solid var(--border);border-radius:8px;padding:4px 12px;font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap" onclick="enterReconcileMode()">⚖️ Reconciliar</button>
           </div>
           <!-- Member filter select (compact, hidden when family has no members) -->
           <div class="tx-filter-chip-wrap" id="txMemberFilterWrap" style="display:none">
@@ -832,6 +828,27 @@
       </div>
 
       <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+
+      <!-- ── Reconcile Mode Banner ─────────────────────────────── -->
+      <div id="reconcileBanner" style="display:none">
+        <div class="reconcile-banner-inner">
+          <div class="reconcile-banner-left">
+            <span class="reconcile-banner-icon">⚖️</span>
+            <div>
+              <div class="reconcile-banner-title">Modo Reconciliação</div>
+              <div class="reconcile-banner-sub">Marque as transações confirmadas no extrato bancário</div>
+            </div>
+          </div>
+          <div class="reconcile-banner-stats">
+            <span id="reconcileCount" class="reconcile-stat">0 marcadas</span>
+            <span id="reconcileSum"   class="reconcile-stat reconcile-sum">R$ 0,00</span>
+          </div>
+          <div class="reconcile-banner-actions">
+            <button class="btn btn-ghost btn-sm" onclick="exitReconcileMode(false)">Cancelar</button>
+            <button class="btn btn-primary btn-sm" id="btnConfirmReconcile" onclick="confirmReconcileMode()">✓ Confirmar</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Flat table card -->
       <div class="card tx-table-card" id="txFlatCard">
