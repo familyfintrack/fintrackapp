@@ -613,7 +613,7 @@
             <span class="card-title">Fluxo de Caixa (6 meses)</span>
             <select id="cashflowAccountFilter" onchange="renderCashflowChart(_getDashMemberIds())"
               style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:160px">
-              <option value="">Todas as contas</option>
+              <option value="" data-i18n="tx.all_accounts">Todas as contas</option>
             </select>
           </div>
           <canvas id="cashflowChart" height="200"></canvas>
@@ -829,8 +829,8 @@
         <div class="table-wrap">
           <table class="tx-table resizable-table" id="txMainTable">
             <thead><tr>
-              <th class="tx-v2-th-date" onclick="sortTx('date')">Data ⇅</th>
-              <th class="tx-v2-th-body">Descrição</th>
+              <th class="tx-v2-th-date" onclick="sortTx('date')" data-i18n="tx.col_date">Data ⇅</th>
+              <th class="tx-v2-th-body" data-i18n="tx.col_desc">Descrição</th>
               <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>
               
             </tr></thead>
@@ -943,8 +943,8 @@
           <label>Tipo</label>
           <select id="rptType" onchange="loadCurrentReport()">
             <option value="">Todos</option>
-            <option value="expense">Despesas</option>
-            <option value="income">Receitas</option>
+            <option value="expense" data-i18n="rpt.expense">Despesas</option>
+            <option value="income" data-i18n="rpt.income">Receitas</option>
           </select>
         </div>
         <div>
@@ -2036,8 +2036,8 @@
 
       <!-- Tabs: Análise / Chat -->
       <div class="ai-tabs" style="padding:0 16px;background:var(--surface,#1a2e1e);">
-        <button class="ai-tab-btn active" id="aiTab-analysis" onclick="_aiShowTab('analysis')">📊 Análise</button>
-        <button class="ai-tab-btn" id="aiTab-chat" onclick="_aiShowTab('chat')">💬 Chat</button>
+        <button class="ai-tab-btn active" id="aiTab-analysis" onclick="_aiShowTab('analysis')"><span data-i18n="ai.analysis">Análise</span></button>
+        <button class="ai-tab-btn" id="aiTab-chat" onclick="_aiShowTab('chat')"><span data-i18n="ai.chat">Chat</span></button>
       </div>
 
       <!-- ── PAINEL ANÁLISE ── -->
@@ -5389,18 +5389,18 @@
     <!-- Menu items -->
     <div style="padding:6px">
       <button class="user-menu-item" onclick="closeUserMenu();setTimeout(openMyProfile,80)">
-        <span>🖼️</span><span>Meu Perfil</span>
+        <span>🖼️</span><span data-i18n="topbar.my_profile">Meu Perfil</span>
       </button>
       <button class="user-menu-item" onclick="showChangeMyPwd();closeUserMenu()">
-        <span>🔑</span><span>Alterar senha</span>
+        <span>🔑</span><span data-i18n="topbar.change_pwd">Alterar senha</span>
       </button>
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
               onclick="closeUserMenu();openUserAdmin()">
-        <span>🏠</span><span>Gerenciar minha família</span>
+        <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="user-menu-item" onclick="doLogout()" style="color:var(--red,#dc2626)">
-        <span>↩</span><span>Sair</span>
+        <span>↩</span><span data-i18n="topbar.logout">Sair</span>
       </button>
     </div>
   </div>
