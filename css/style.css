@@ -8377,3 +8377,97 @@ body.ft-platform-windows .modal-close {
   text-transform: uppercase; letter-spacing: .06em;
   padding: 6px 12px 2px;
 }
+
+/* ── Category chart type toggle (sober) ─────────────────────────────────── */
+.cat-chart-type-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.cat-ctt-btn {
+  padding: 3px 10px;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .02em;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.cat-ctt-btn + .cat-ctt-btn {
+  border-left: 1px solid var(--border);
+}
+.cat-ctt-btn.active {
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 600;
+}
+.cat-ctt-btn:hover:not(.active) {
+  background: var(--surface2);
+  color: var(--text2);
+}
+
+/* ── Forecast card header — mobile-safe layout ──────────────────────────── */
+.fc-forecast-header {
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.fc-forecast-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.fc-acct-btn--sm {
+  min-width: 0 !important;
+  max-width: 160px !important;
+  font-size: .75rem !important;
+  padding: 3px 8px !important;
+}
+.fc-acct-picker {
+  min-width: 0;
+  max-width: 100%;
+}
+.fc-acct-btn {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-acct-dropdown {
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 32px));
+  right: auto;
+  left: 0;
+}
+.fc-forecast-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .75rem;
+  color: var(--text2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Prevent chart canvas overflow on mobile */
+#catChartWrap canvas,
+.forecast-chart-wrap canvas {
+  max-width: 100% !important;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  .fc-acct-btn--sm {
+    max-width: 130px !important;
+  }
+  .fc-forecast-controls {
+    width: 100%;
+  }
+}
