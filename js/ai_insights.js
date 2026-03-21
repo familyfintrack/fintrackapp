@@ -116,7 +116,7 @@ function _aiPopulateFilters() {
     // Try to get all members from family_members if available
     const allMembers = window._familyMembers || members;
     memSel.innerHTML = '<option value="">Todos os membros</option>' +
-      allMembers.map(m => `<option value="${esc(m.id || m.user_id || '')}">${esc(m.display_name || m.name || 'Membro')}</option>`).join('');
+      allMembers.map(m => `<option value="${esc(m.id || '')}">${esc(m.display_name || m.name || m.full_name || 'Membro')}</option>`).join('');
   }
 
   // Accounts
@@ -158,7 +158,7 @@ async function _aiCollectFinancialContext() {
 
   // Busca transações no período
   let q = famQ(sb.from('transactions').select(
-    'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,user_id,currency,exchange_rate'
+    'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,family_member_id,currency,exchange_rate'
   ).eq('status', 'confirmed'));
 
   if (dateFrom) q = q.gte('date', dateFrom);
@@ -179,8 +179,8 @@ async function _aiCollectFinancialContext() {
   const payMap  = Object.fromEntries((state.payees     || []).map(p => [p.id, p.name]));
   const accMap  = Object.fromEntries((state.accounts   || []).map(a => [a.id, { name: a.name, currency: a.currency }]));
 
-  // Filtro por membro (user_id)
-  const filtered = memberId ? rows.filter(t => t.user_id === memberId) : rows;
+  // Filtro por membro (family_member_id)
+  const filtered = memberId ? rows.filter(t => t.family_member_id === memberId) : rows;
 
   // Agregações (feitas pelo app, não pela IA)
   let totalIncome = 0, totalExpense = 0;
@@ -211,7 +211,7 @@ async function _aiCollectFinancialContext() {
       byPayee[payName] = (byPayee[payName] || 0) + amt;
 
       // Por membro
-      const memId = t.user_id || 'unknown';
+      const memId = t.family_member_id || 'unknown';
       byMember[memId] = (byMember[memId] || 0) + amt;
     }
 
@@ -235,7 +235,7 @@ async function _aiCollectFinancialContext() {
 
   // Membro → nome
   const memberMap = {};
-  (window._familyMembers || []).forEach(m => { memberMap[m.id || m.user_id] = m.display_name || m.name; });
+  (window._familyMembers || []).forEach(m => { memberMap[m.id] = m.display_name || m.name || m.full_name || '—'; });
 
   const memberInsights = Object.entries(byMember)
     .sort((a, b) => b[1] - a[1])

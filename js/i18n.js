@@ -134,10 +134,16 @@ function i18nGetLanguage() { return _i18nLang; }
 function i18nApplyToDOM(root) {
   const scope = root || document;
 
-  // Textos
+  // Textos — só atualiza se tradução encontrada (preserva texto original)
   scope.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
-    if (key) el.textContent = t(key);
+    if (!key) return;
+    let str = _i18nDict[key];
+    if (!str) {
+      const entry = _I18N_BUILTIN[key];
+      if (entry) str = entry[_i18nLang] || entry['pt'] || null;
+    }
+    if (str) el.textContent = str;
   });
 
   // Placeholders
@@ -293,6 +299,12 @@ function _i18nRunCallbacks() {
 function _i18nLangToLocale(lang) {
   return { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR' }[lang] || lang;
 }
+
+// Auto-aplicar quando DOM estiver pronto
+document.addEventListener('DOMContentLoaded', () => {
+  i18nApplyToDOM(document);
+  i18nOnReady(() => i18nApplyToDOM(document));
+});
 
 // Expõe globalmente
 window.t               = t;
