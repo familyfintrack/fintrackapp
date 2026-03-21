@@ -9931,3 +9931,83 @@ tr.reconcile-checked td { opacity: 1 !important; }
 .bottom-nav.is-collapsed .bottom-nav-toggle {
   animation: bn-handle-pulse .7s ease .1s 2;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   RELATÓRIO — Tabela de transações: colunas otimizadas
+   Data compacta · Descrição elástica · Valor fixo à direita
+═══════════════════════════════════════════════════════════════════ */
+
+/* Column widths via colgroup */
+.rpt-tx-table { table-layout: fixed; width: 100%; }
+
+.rpt-col-date { width: 86px;  }   /* "01/01/2026" = ~76px + padding */
+.rpt-col-desc { width: auto;  }   /* takes all remaining space */
+.rpt-col-acct { width: 110px; }
+.rpt-col-cat  { width: 110px; }
+.rpt-col-pay  { width: 110px; }
+.rpt-col-amt  { width: 106px; }
+
+/* Cell styles */
+.rpt-td-date {
+  white-space: nowrap;
+  font-size: .78rem;
+  color: var(--muted);
+  vertical-align: middle;
+  padding: 7px 8px;
+}
+.rpt-td-desc {
+  vertical-align: middle;
+  padding: 7px 8px;
+}
+.rpt-desc-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .84rem;
+}
+.rpt-td-acct {
+  font-size: .78rem;
+  color: var(--text2);
+  vertical-align: middle;
+  padding: 7px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rpt-td-cat {
+  vertical-align: middle;
+  padding: 7px 8px;
+}
+.rpt-td-pay {
+  font-size: .78rem;
+  color: var(--muted);
+  vertical-align: middle;
+  padding: 7px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rpt-td-amt {
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: .84rem;
+  text-align: right;
+  vertical-align: middle;
+  padding: 7px 8px;
+  font-family: var(--font-serif, inherit);
+}
+
+/* On mobile: hide Conta and Beneficiário to give space to Descrição */
+@media (max-width: 640px) {
+  .rpt-col-acct, .rpt-col-pay { display: none; }
+  .rpt-td-acct,  .rpt-td-pay  { display: none; }
+  .rpt-col-cat  { width: 90px; }
+  .rpt-col-amt  { width: 90px; }
+  .rpt-col-date { width: 78px; }
+}
+
+/* On very small screens: also hide Categoria */
+@media (max-width: 420px) {
+  .rpt-col-cat, .rpt-td-cat { display: none; }
+  .rpt-col-amt { width: 82px; }
+}
