@@ -418,84 +418,94 @@
   <div class="sidebar-nav">
 
     <div class="nav-section">
-      <div class="nav-label">Principal</div>
+      <div class="nav-label" data-i18n="nav.section_main">Principal</div>
       <button class="nav-item active" onclick="navigate('dashboard')" id="dashboardNav"    data-nav="dashboard">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        </span>Dashboard
+        </span data-i18n="nav.dashboard">Dashboard
       </button>
-      <button class="nav-item" onclick="navigate('transactions')" id="transactionsNav" data-nav="transactions">
+      <button class="nav-item" onclick="navigate('transactions'" id="transactionsNav" data-nav="transactions">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        </span>Transações
+        </span data-i18n="nav.transactions">Transações
       </button>
-      <button class="nav-item" onclick="navigate('accounts')" id="accountsNav"     data-nav="accounts">
+      <button class="nav-item" onclick="navigate('accounts'" id="accountsNav"     data-nav="accounts">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        </span>Contas
+        </span data-i18n="nav.accounts">Contas
       </button>
     </div>
 
     <div class="nav-section">
-      <div class="nav-label">Análise</div>
+      <div class="nav-label" data-i18n="nav.section_analysis">Análise</div>
       <button class="nav-item" onclick="navigate('reports')" id="reportsNav"      data-nav="reports">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </span>Relatórios
+        </span data-i18n="nav.reports">Relatórios
       </button>
-      <button class="nav-item" onclick="navigate('budgets')" id="budgetsNav"      data-nav="budgets">
+      <button class="nav-item" onclick="navigate('budgets'" id="budgetsNav"      data-nav="budgets">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </span>Orçamentos
+        </span data-i18n="nav.budgets">Orçamentos
       </button>
     </div>
 
     <div class="nav-section">
-      <div class="nav-label">Planejamento</div>
+      <div class="nav-label" data-i18n="nav.section_planning">Planejamento</div>
       <button class="nav-item" onclick="navigate('scheduled')" id="scheduledNav"    data-nav="scheduled">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </span>Programados
+        </span data-i18n="nav.scheduled">Programados
       </button>
     </div>
 
     <div class="nav-section">
-      <div class="nav-label">Cadastros</div>
+      <div class="nav-label" data-i18n="nav.section_data">Cadastros</div>
       <button class="nav-item" onclick="navigate('categories')" id="categoriesNav"   data-nav="categories">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        </span>Categorias
+        </span data-i18n="nav.categories">Categorias
       </button>
-      <button class="nav-item" onclick="navigate('payees')" id="payeesNav"       data-nav="payees">
+      <button class="nav-item" onclick="navigate('payees'" id="payeesNav"       data-nav="payees">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </span>Beneficiários
+        </span data-i18n="nav.payees">Beneficiários
       </button>
     </div>
 
     <!-- Módulos opcionais: visíveis apenas quando ativados por feature flag -->
     <div class="nav-section" id="modulesNavSection" style="display:none">
-      <div class="nav-label">Módulos</div>
+      <div class="nav-label" data-i18n="nav.section_modules">Módulos</div>
       <button class="nav-item" id="groceryNav" data-nav="grocery" data-feature-controlled="1" onclick="navigate('grocery')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        </span>Mercado
+        </span data-i18n="nav.grocery">Mercado
       </button>
       <button class="nav-item" id="investmentsNav" data-nav="investments" data-feature-controlled="1" onclick="navigate('investments')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-        </span>Investimentos
+        </span data-i18n="nav.investments">Investimentos
       </button>
       <button class="nav-item" id="pricesNav" data-nav="prices" data-feature-controlled="1" onclick="navigate('prices')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-        </span>Preços
+        </span data-i18n="nav.prices">Preços
       </button>
       <button class="nav-item" id="aiInsightsNav" data-nav="ai_insights" data-feature-controlled="1" onclick="navigate('ai_insights')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".8"/></svg>
-        </span>AI Insights
+        </span data-i18n="nav.ai_insights">AI Insights
       </button>
+    </div><!-- /modules section end -->
+
+    <!-- Help always visible -->
+    <div class="nav-section" style="margin-top:auto;padding-top:8px;border-top:1px solid var(--border2)">
+      <button class="nav-item" onclick="navigate('help')" id="helpNav" data-nav="help">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>Ajuda
+      </button>
+    </div>
       <button class="nav-item" id="helpNav" data-nav="help" onclick="navigate('help')">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -2103,6 +2113,46 @@
 
     </div><!-- /page-ai_insights -->
 
+    <!-- ════════════════════════════════════════════════════════
+         HELP — Ajuda interativa e documentação do app
+    ════════════════════════════════════════════════════════ -->
+    <div class="page" id="page-help">
+      <!-- Header -->
+      <div class="help-page-header">
+        <div class="help-header-top">
+          <span class="help-header-icon">❓</span>
+          <div>
+            <h2 class="help-header-title">Central de Ajuda</h2>
+            <p class="help-header-sub">Documentação completa do Family FinTrack</p>
+          </div>
+        </div>
+        <!-- Search -->
+        <div class="help-search-wrap">
+          <svg class="help-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="helpSearchInput" class="help-search-input"
+            placeholder="Buscar por funcionalidade, dúvida ou palavra-chave…"
+            oninput="helpSearch(this.value)"
+            autocomplete="off" autocorrect="off" spellcheck="false">
+          <button id="helpSearchClear" class="help-search-clear"
+            onclick="document.getElementById('helpSearchInput').value='';helpSearch('')"
+            style="display:none">✕</button>
+        </div>
+      </div>
+
+      <!-- Category pills -->
+      <div class="help-pills-wrap">
+        <div class="help-pills" id="helpCategoryPills"></div>
+      </div>
+
+      <!-- Content cards -->
+      <div class="help-content" id="helpContent" style="padding-bottom:80px">
+        <div class="help-empty" style="padding:48px 24px;text-align:center;color:var(--muted)">
+          <div style="font-size:2.5rem;margin-bottom:12px">📚</div>
+          <p>Carregando conteúdo de ajuda…</p>
+        </div>
+      </div>
+    </div><!-- /page-help -->
+
     <!-- ══ HELP PAGE ══════════════════════════════════════════════════════ -->
     <div class="page" id="page-help">
       <!-- Rendered by help.js initHelpPage() -->
@@ -2178,7 +2228,7 @@
     <div class="login-card" style="width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
       <div style="text-align:center;margin-bottom:28px">
         <img id="loginLogoImg" src="Logo.jpg" alt="Logo"  style="width:200px;height:auto;object-fit:contain;margin-bottom:12px">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af">Família inteligente,  Finanças sob controle</div>
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
       </div>
       <div id="loginFormArea">
 
@@ -2186,24 +2236,24 @@
         <div style="display:flex;background:#f3f4f6;border-radius:10px;padding:3px;margin-bottom:20px;gap:2px">
           <button id="loginTabPassword" onclick="switchLoginTab('password')"
             style="flex:1;padding:8px;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;font-family:inherit">
-            🔑 Senha
+            <span data-i18n="auth.login_tab_pwd">🔑 Senha</span>
           </button>
           <button id="loginTabMagic" onclick="switchLoginTab('magic')"
             style="flex:1;padding:8px;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;background:transparent;color:#6b7280;font-family:inherit">
-            ✉️ Link por E-mail
+            <span data-i18n="auth.login_tab_magic">✉️ Link por E-mail</span>
           </button>
         </div>
 
         <!-- Password login panel -->
         <div id="loginPanelPassword">
           <div class="form-group" style="margin-bottom:16px">
-            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
+            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block" data-i18n="auth.label_email">E-mail</label>
             <input type="email" id="loginEmail" class="login-input" placeholder="seu@email.com"
               style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
               onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
           </div>
           <div class="form-group" style="margin-bottom:20px;position:relative">
-            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Senha</label>
+            <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block" data-i18n="auth.label_password">Senha</label>
             <input type="password" id="loginPassword" class="login-input" placeholder="••••••••"
               style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box;padding-right:44px"
               onkeydown="if(event.key==='Enter')doLogin()">
@@ -2211,14 +2261,14 @@
           </div>
           <div style="display:flex;align-items:center;margin-bottom:16px;gap:8px">
             <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
-            <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none">Lembrar meu e-mail e senha</label>
+            <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none" data-i18n="auth.remember_me">Lembrar meu e-mail e senha</label>
           </div>
           <button onclick="doLogin()" id="loginBtn" class="login-btn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-            Entrar
+            <span data-i18n="auth.btn_enter">Entrar</span>
           </button>
           <div style="text-align:center;margin-top:10px">
-            <button onclick="showForgotPwdForm()" style="background:none;border:none;color:#6b7280;font-size:.78rem;cursor:pointer;text-decoration:underline">Esqueci minha senha</button>
+            <button onclick="showForgotPwdForm()" style="background:none;border:none;color:#6b7280;font-size:.78rem;cursor:pointer;text-decoration:underline" data-i18n="auth.forgot_password">Esqueci minha senha</button>
           </div>
         </div>
 
@@ -2238,7 +2288,7 @@
           </div>
           <button onclick="doMagicLink()" id="magicLinkBtn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-            ✉️ Enviar Link de Acesso
+            <span data-i18n="auth.btn_send_link">✉️ Enviar Link de Acesso</span>
           </button>
           <!-- Sent confirmation state -->
           <div id="magicLinkSent" style="display:none;margin-top:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px;text-align:center">
@@ -2254,8 +2304,8 @@
 
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
-          Não tem conta?
-          <button onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline">Solicitar acesso</button>
+          <span data-i18n="auth.no_account">Não tem conta?</span>
+          <button onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline" data-i18n="auth.request_access">Solicitar acesso</button>
         </div>
       </div>
 
@@ -2272,7 +2322,7 @@
         </div>
         <button onclick="doForgotPwd()" id="forgotPwdBtn"
           style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-          Enviar Link de Recuperação
+          <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
         </button>
         <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:14px">
@@ -2303,7 +2353,7 @@
         </div>
         <button onclick="doRecoveryPwd()" id="recoveryPwdBtn"
           style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-          Salvar Nova Senha
+          <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
         </button>
         <div id="recoveryPwdError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
       </div>
@@ -2348,7 +2398,7 @@
         </div>
         <button onclick="doRegister()" id="regBtn"
           style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-          Enviar Solicitação
+          <span data-i18n="register.btn_submit">Enviar Solicitação</span>
         </button>
         <div id="regError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:14px">
@@ -2380,7 +2430,7 @@
         </div>
         <button onclick="doChangePwd()"
           style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
-          Definir Senha e Entrar
+          <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
         </button>
         <div id="changePwdError" style="margin-top:10px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
       </div>
@@ -3066,31 +3116,31 @@
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><path d="M3 10.8L12 4l9 6.8"></path><path d="M5.5 9.8V20h4.8v-5.2h3.4V20h4.8V9.8"></path></svg>
       </span>
-      <span class="bn-label">Início</span>
+      <span class="bn-label" data-i18n="nav.dashboard">Início</span>
     </button>
     <button class="bn-item" onclick="navigate('transactions')" data-page="transactions" data-nav="transactions" aria-label="Lançamentos">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><path d="M7 4v16"></path><path d="M17 4v16"></path><path d="M4 8h6"></path><path d="M14 16h6"></path></svg>
       </span>
-      <span class="bn-label">Lançamentos</span>
+      <span class="bn-label" data-i18n="nav.transactions">Lançamentos</span>
     </button>
     <button class="bn-item" onclick="navigate('accounts')" data-page="accounts"     data-nav="accounts" aria-label="Contas">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><rect x="3.5" y="6" width="17" height="12" rx="2.5"></rect><path d="M15 12h3.5"></path></svg>
       </span>
-      <span class="bn-label">Contas</span>
+      <span class="bn-label" data-i18n="nav.accounts">Contas</span>
     </button>
     <button class="bn-item" onclick="navigate('scheduled')" data-page="scheduled"    data-nav="scheduled" aria-label="Programados">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><rect x="4" y="5" width="16" height="15" rx="2.5"></rect><path d="M8 3.8v3.5"></path><path d="M16 3.8v3.5"></path><path d="M4 9.5h16"></path></svg>
       </span>
-      <span class="bn-label">Programados</span>
+      <span class="bn-label" data-i18n="nav.scheduled">Programados</span>
     </button>
     <button class="bn-item" onclick="toggleSidebar()" data-page="more" aria-label="Mais opções">
       <span class="bn-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" class="bn-svg"><path d="M5 7h14"></path><path d="M5 12h14"></path><path d="M5 17h14"></path></svg>
       </span>
-      <span class="bn-label">Mais</span>
+      <span class="bn-label" data-i18n="nav.more">Mais</span>
     </button>
     <button class="bottom-nav-toggle" id="bottomNavToggle" type="button" aria-label="Recolher barra inferior" title="Recolher barra inferior">
       <svg viewBox="0 0 24 24" class="bottom-nav-toggle-icon"><path d="M9 6l6 6-6 6"></path></svg>
@@ -5276,6 +5326,7 @@
   <script src="js/family_members_composition.js"></script>
   <script src="js/investments.js"></script>
   <script src="js/ai_insights.js"></script>
+  <script src="js/help.js"></script>
   <script src="js/orphan.js"></script>
   <script src="js/wizard.js"></script>
   <script src="js/help.js"></script>
