@@ -328,194 +328,273 @@ function _helpRenderNav() {
 function helpShowHome() {
   const sections = _helpContent();
   _help.currentSection = null; _help.currentArticle = null;
+
   sections.forEach(s => {
     document.getElementById(`helpNavBtn-${s.id}`)?.classList.remove('active');
-    const ap = document.getElementById(`helpNavArts-${s.id}`); if (ap) ap.style.display = 'none';
+    const ap = document.getElementById(`helpNavArts-${s.id}`);
+    if (ap) ap.style.display = 'none';
   });
-  document.getElementById('helpBackBtn').style.display = 'none';
+  const backBtn = document.getElementById('helpBackBtn');
+  if (backBtn) backBtn.style.display = 'none';
 
-  // ── Localized copy ─────────────────────────────────────────────────────────
-  const L = {
-    heroTitle:   {pt:'Bem-vindo ao Family FinTrack', en:'Welcome to Family FinTrack', es:'Bienvenido a Family FinTrack', fr:'Bienvenue dans Family FinTrack'},
-    heroSub:     {pt:'Sua central de controle financeiro familiar. Tudo que você precisa para organizar, planejar e crescer — em um só lugar.', en:'Your family financial control center. Everything you need to organize, plan and grow — in one place.', es:'Su centro de control financiero familiar. Todo lo que necesita para organizar, planificar y crecer, en un solo lugar.', fr:'Votre centre de contrôle financier familial. Tout ce dont vous avez besoin pour organiser, planifier et grandir — en un seul endroit.'},
-    startBtn:    {pt:'Começar pelos Primeiros Passos →', en:'Start with Getting Started →', es:'Comenzar con los primeros pasos →', fr:'Commencer par les premiers pas →'},
-    powerTitle:  {pt:'O que o FinTrack entrega para você', en:'What FinTrack delivers for you', es:'Lo que FinTrack le entrega', fr:'Ce que FinTrack vous apporte'},
-    topicsTitle: {pt:'Explore a documentação', en:'Explore the documentation', es:'Explore la documentación', fr:'Explorez la documentation'},
-    quickTitle:  {pt:'Acesso rápido', en:'Quick access', es:'Acceso rápido', fr:'Accès rapide'},
-    tipsTitle:   {pt:'Dica do dia', en:'Tip of the day', es:'Consejo del día', fr:'Conseil du jour'},
-    footerTxt:   {pt:'Family FinTrack · Gestão financeira para toda a família', en:'Family FinTrack · Financial management for the whole family', es:'Family FinTrack · Gestión financiera para toda la familia', fr:'Family FinTrack · Gestion financière pour toute la famille'},
-    articles:    {pt:'artigos', en:'articles', es:'artículos', fr:'articles'},
+  // ── All multilingual copy ───────────────────────────────────────────────────
+  const C = {
+    tagline:    { pt:'Controle financeiro feito para sua família', en:'Financial control made for your family', es:'Control financiero hecho para su familia', fr:'Contrôle financier conçu pour votre famille' },
+    sub:        { pt:'Acompanhe receitas, despesas, investimentos e orçamentos de toda a família — com inteligência, clareza e em qualquer idioma.', en:'Track income, expenses, investments and budgets for your whole family — with intelligence, clarity and in any language.', es:'Siga ingresos, gastos, inversiones y presupuestos de toda su familia — con inteligencia, claridad y en cualquier idioma.', fr:'Suivez revenus, dépenses, investissements et budgets de toute votre famille — avec intelligence, clarté et dans n\'importe quelle langue.' },
+    cta:        { pt:'Explorar a documentação', en:'Explore the docs', es:'Explorar la documentación', fr:'Explorer la documentation' },
+    ctaSub:     { pt:'Primeiros passos →', en:'Getting started →', es:'Primeros pasos →', fr:'Premiers pas →' },
+    whyTitle:   { pt:'Por que escolher o FinTrack?', en:'Why choose FinTrack?', es:'¿Por qué elegir FinTrack?', fr:'Pourquoi choisir FinTrack?' },
+    journeyTitle:{ pt:'Sua jornada financeira, passo a passo', en:'Your financial journey, step by step', es:'Su camino financiero, paso a paso', fr:'Votre parcours financier, étape par étape' },
+    docsTitle:  { pt:'Documentação completa', en:'Complete documentation', es:'Documentación completa', fr:'Documentation complète' },
+    tipLabel:   { pt:'Dica do dia', en:'Tip of the day', es:'Consejo del día', fr:'Conseil du jour' },
+    tipMore:    { pt:'Ver todas as dicas →', en:'See all tips →', es:'Ver todos los consejos →', fr:'Voir tous les conseils →' },
+    langTitle:  { pt:'Disponível nos seus idiomas', en:'Available in your languages', es:'Disponible en sus idiomas', fr:'Disponible dans vos langues' },
+    langSub:    { pt:'Todo o conteúdo — app e ajuda — em Português, English, Español e Français. Mude em qualquer momento.', en:'All content — app and help — in Portuguese, English, Spanish and French. Switch at any time.', es:'Todo el contenido — app y ayuda — en Portugués, English, Español y Français. Cambie en cualquier momento.', fr:'Tout le contenu — app et aide — en Portugais, English, Español et Français. Changez à tout moment.' },
+    arts:       { pt:'artigos', en:'articles', es:'artículos', fr:'articles' },
   };
 
-  // ── Feature highlights (multilingual) ─────────────────────────────────────
-  const features = [
-    {
-      icon: '🏦',
-      color: '#0891b2',
-      title: {pt:'Controle total das contas', en:'Full account control', es:'Control total de cuentas', fr:'Contrôle total des comptes'},
-      desc:  {pt:'Acompanhe saldos em tempo real de todas as suas contas bancárias, investimentos e carteiras de qualquer moeda.', en:'Track real-time balances across all your bank accounts, investments and wallets in any currency.', es:'Siga saldos en tiempo real de todas sus cuentas bancarias, inversiones y carteras en cualquier moneda.', fr:'Suivez les soldes en temps réel de tous vos comptes bancaires, investissements et portefeuilles dans n\'importe quelle devise.'},
-    },
-    {
-      icon: '📊',
-      color: '#7c3aed',
-      title: {pt:'Relatórios que fazem sentido', en:'Reports that make sense', es:'Informes que tienen sentido', fr:'Des rapports qui ont du sens'},
-      desc:  {pt:'Gráficos de barras, rosca e tendências mensais. Exporte em PDF ou CSV. Filtre por período, conta ou categoria.', en:'Bar charts, donut charts and monthly trends. Export to PDF or CSV. Filter by period, account or category.', es:'Gráficos de barras, rosca y tendencias mensuales. Exporte en PDF o CSV. Filtre por período, cuenta o categoría.', fr:'Graphiques à barres, anneau et tendances mensuelles. Exportez en PDF ou CSV. Filtrez par période, compte ou catégorie.'},
-    },
-    {
-      icon: '🎯',
-      color: '#dc2626',
-      title: {pt:'Orçamentos com alerta visual', en:'Budgets with visual alerts', es:'Presupuestos con alertas visuales', fr:'Budgets avec alertes visuelles'},
-      desc:  {pt:'Defina limites por categoria. Barras de progresso coloridas avisam quando você está chegando no limite.', en:'Set limits per category. Colored progress bars warn you when you\'re approaching the limit.', es:'Establezca límites por categoría. Las barras de progreso de colores le avisan cuando se acerca al límite.', fr:'Définissez des limites par catégorie. Des barres de progression colorées vous avertissent quand vous approchez la limite.'},
-    },
-    {
-      icon: '🤖',
-      color: '#7c3aed',
-      title: {pt:'IA que analisa suas finanças', en:'AI that analyzes your finances', es:'IA que analiza sus finanzas', fr:'IA qui analyse vos finances'},
-      desc:  {pt:'Converse em linguagem natural com o Gemini sobre seus dados. Insights, recomendações e alertas personalizados.', en:'Chat in natural language with Gemini about your data. Personalized insights, recommendations and alerts.', es:'Converse en lenguaje natural con Gemini sobre sus datos. Insights, recomendaciones y alertas personalizados.', fr:'Discutez en langage naturel avec Gemini de vos données. Insights, recommandations et alertes personnalisés.'},
-    },
-    {
-      icon: '📅',
-      color: '#d97706',
-      title: {pt:'Automatize o recorrente', en:'Automate the recurring', es:'Automatice lo recurrente', fr:'Automatisez le récurrent'},
-      desc:  {pt:'Aluguel, salário, assinaturas. Programe uma vez e nunca mais esqueça um lançamento — diário, mensal ou anual.', en:'Rent, salary, subscriptions. Schedule once and never forget a transaction — daily, monthly or annual.', es:'Alquiler, salario, suscripciones. Programe una vez y nunca olvide una transacción, diaria, mensual o anual.', fr:'Loyer, salaire, abonnements. Planifiez une fois et n\'oubliez plus jamais une transaction, quotidienne, mensuelle ou annuelle.'},
-    },
-    {
-      icon: '👨‍👩‍👧‍👦',
-      color: '#16a34a',
-      title: {pt:'Feito para famílias', en:'Built for families', es:'Hecho para familias', fr:'Conçu pour les familles'},
-      desc:  {pt:'Multi-usuário com papéis de acesso. Cada membro contribui com seus lançamentos e todos veem o quadro completo.', en:'Multi-user with access roles. Each member contributes their transactions and everyone sees the full picture.', es:'Multi-usuario con roles de acceso. Cada miembro contribuye con sus transacciones y todos ven el panorama completo.', fr:'Multi-utilisateur avec rôles d\'accès. Chaque membre contribue avec ses transactions et tous voient le tableau complet.'},
-    },
+  // ── Why-cards ────────────────────────────────────────────────────────────────
+  const whyCards = [
+    { icon:'💡', color:'#f59e0b', bg:'#fffbeb',
+      title:{ pt:'Simples de usar', en:'Simple to use', es:'Fácil de usar', fr:'Simple à utiliser' },
+      text:{ pt:'Interface intuitiva para toda a família — jovens, adultos e idosos navegam sem treinamento.', en:'Intuitive interface for the whole family — young, adults and seniors navigate without training.', es:'Interfaz intuitiva para toda la familia — jóvenes, adultos y mayores navegan sin capacitación.', fr:'Interface intuitive pour toute la famille — jeunes, adultes et seniors naviguent sans formation.' }},
+    { icon:'🔒', color:'#2563eb', bg:'#eff6ff',
+      title:{ pt:'Seus dados, sua segurança', en:'Your data, your security', es:'Sus datos, su seguridad', fr:'Vos données, votre sécurité' },
+      text:{ pt:'Dados criptografados com Row Level Security — cada família acessa somente o que é seu.', en:'Data encrypted with Row Level Security — each family accesses only their own data.', es:'Datos cifrados con Row Level Security — cada familia accede solo a lo suyo.', fr:'Données chiffrées avec Row Level Security — chaque famille accède uniquement à ses propres données.' }},
+    { icon:'🌍', color:'#16a34a', bg:'#f0fdf4',
+      title:{ pt:'Multi-idiomas e multi-moedas', en:'Multi-language & multi-currency', es:'Multi-idioma y multi-divisa', fr:'Multi-langue et multi-devises' },
+      text:{ pt:'Suporte completo a BRL, USD, EUR e qualquer moeda. Interface em PT, EN, ES e FR.', en:'Full support for BRL, USD, EUR and any currency. Interface in PT, EN, ES and FR.', es:'Soporte completo para BRL, USD, EUR y cualquier moneda. Interfaz en PT, EN, ES y FR.', fr:'Support complet BRL, USD, EUR et toute devise. Interface en PT, EN, ES et FR.' }},
+    { icon:'📱', color:'#7c3aed', bg:'#faf5ff',
+      title:{ pt:'Funciona em qualquer dispositivo', en:'Works on any device', es:'Funciona en cualquier dispositivo', fr:'Fonctionne sur n\'importe quel appareil' },
+      text:{ pt:'PWA instalável no celular, tablet e computador. Dados sempre sincronizados na nuvem.', en:'PWA installable on phone, tablet and computer. Data always synced to the cloud.', es:'PWA instalable en móvil, tablet y computadora. Datos siempre sincronizados en la nube.', fr:'PWA installable sur téléphone, tablette et ordinateur. Données toujours synchronisées dans le cloud.' }},
   ];
 
-  // ── Quick-access articles ──────────────────────────────────────────────────
-  const quickLinks = [
-    { icon:'💸', label:{pt:'Registrar primeiro lançamento',en:'Record first transaction',es:'Registrar primera transacción',fr:'Enregistrer la 1ère transaction'}, sec:'transactions', art:'tx-types' },
-    { icon:'🏦', label:{pt:'Criar conta bancária',en:'Create bank account',es:'Crear cuenta bancaria',fr:'Créer un compte bancaire'}, sec:'accounts', art:'accounts-types' },
-    { icon:'🏷️', label:{pt:'Organizar categorias',en:'Set up categories',es:'Organizar categorías',fr:'Organiser les catégories'}, sec:'categories', art:'categories-intro' },
-    { icon:'🎯', label:{pt:'Definir orçamentos',en:'Set budgets',es:'Definir presupuestos',fr:'Définir des budgets'}, sec:'budgets', art:'budgets-intro' },
-    { icon:'📅', label:{pt:'Programar recorrências',en:'Schedule recurring',es:'Programar recurrencias',fr:'Programmer des récurrences'}, sec:'scheduled', art:'scheduled-intro' },
-    { icon:'🤖', label:{pt:'Ativar AI Insights',en:'Activate AI Insights',es:'Activar AI Insights',fr:'Activer AI Insights'}, sec:'ai-insights', art:'ai-intro' },
-    { icon:'📥', label:{pt:'Importar extrato bancário',en:'Import bank statement',es:'Importar extracto bancario',fr:'Importer un relevé bancaire'}, sec:'import', art:'import-intro' },
-    { icon:'💡', label:{pt:'Dicas e boas práticas',en:'Tips & best practices',es:'Consejos y buenas prácticas',fr:'Conseils et bonnes pratiques'}, sec:'tips', art:'tips-daily' },
+  // ── Journey steps ────────────────────────────────────────────────────────────
+  const journey = [
+    { step:'1', icon:'🏦', color:'#0891b2',
+      title:{ pt:'Cadastre suas contas', en:'Set up your accounts', es:'Configure sus cuentas', fr:'Configurez vos comptes' },
+      desc:{ pt:'Adicione conta corrente, poupança, cartão e investimentos. Defina o saldo inicial.', en:'Add checking, savings, credit card and investments. Set the opening balance.', es:'Agregue cuenta corriente, ahorros, tarjeta e inversiones. Establezca el saldo inicial.', fr:'Ajoutez compte courant, épargne, carte et investissements. Définissez le solde initial.' },
+      sec:'accounts', art:'accounts-types' },
+    { step:'2', icon:'🏷️', color:'#7c3aed',
+      title:{ pt:'Organize as categorias', en:'Organize categories', es:'Organice las categorías', fr:'Organisez les catégories' },
+      desc:{ pt:'Crie categorias de despesas e receitas. Use hierarquia pai → filho para detalhamento.', en:'Create expense and income categories. Use parent → child hierarchy for detail.', es:'Cree categorías de gastos e ingresos. Use jerarquía padre → hijo para más detalle.', fr:'Créez des catégories de dépenses et revenus. Utilisez la hiérarchie parent → enfant.' },
+      sec:'categories', art:'categories-intro' },
+    { step:'3', icon:'💸', color:'#16a34a',
+      title:{ pt:'Lance receitas e despesas', en:'Record income & expenses', es:'Registre ingresos y gastos', fr:'Enregistrez revenus et dépenses' },
+      desc:{ pt:'Registre cada lançamento com conta, categoria e beneficiário. Anexe recibos em foto.', en:'Record each transaction with account, category and payee. Attach receipt photos.', es:'Registre cada transacción con cuenta, categoría y beneficiario. Adjunte fotos de recibos.', fr:'Enregistrez chaque transaction avec compte, catégorie et bénéficiaire. Joignez des photos.' },
+      sec:'transactions', art:'tx-types' },
+    { step:'4', icon:'🎯', color:'#dc2626',
+      title:{ pt:'Defina orçamentos', en:'Set budgets', es:'Defina presupuestos', fr:'Définissez des budgets' },
+      desc:{ pt:'Limite de gastos por categoria com alertas visuais ao se aproximar do teto.', en:'Spending limits per category with visual alerts when approaching the ceiling.', es:'Límite de gastos por categoría con alertas visuales al acercarse al tope.', fr:'Plafond de dépenses par catégorie avec alertes visuelles quand on s\'en approche.' },
+      sec:'budgets', art:'budgets-intro' },
+    { step:'5', icon:'📊', color:'#0284c7',
+      title:{ pt:'Analise os relatórios', en:'Analyze reports', es:'Analice los informes', fr:'Analysez les rapports' },
+      desc:{ pt:'Gráficos de distribuição, tendência mensal, previsão de caixa e exportação PDF/CSV.', en:'Distribution charts, monthly trend, cash flow forecast and PDF/CSV export.', es:'Gráficos de distribución, tendencia mensual, previsión de caja y exportación PDF/CSV.', fr:'Graphiques de distribution, tendance mensuelle, prévision de trésorerie et export PDF/CSV.' },
+      sec:'reports', art:'reports-intro' },
+    { step:'6', icon:'🤖', color:'#7c3aed',
+      title:{ pt:'Ative a IA', en:'Activate AI', es:'Active la IA', fr:'Activez l\'IA' },
+      desc:{ pt:'Converse com o Gemini sobre seus dados. Insights, recomendações e leitura automática de recibos.', en:'Chat with Gemini about your data. Insights, recommendations and automatic receipt reading.', es:'Converse con Gemini sobre sus datos. Insights, recomendaciones y lectura automática de recibos.', fr:'Discutez avec Gemini de vos données. Insights, recommandations et lecture automatique de reçus.' },
+      sec:'ai-insights', art:'ai-intro' },
   ];
 
-  // ── Rotating tips ──────────────────────────────────────────────────────────
+  // ── Rotating tips ────────────────────────────────────────────────────────────
   const tips = [
-    {pt:'Reconcilie suas contas mensalmente comparando com o extrato bancário para garantir que nenhum lançamento foi esquecido.',
-     en:'Reconcile your accounts monthly by comparing with your bank statement to ensure no transactions were missed.',
-     es:'Concilie sus cuentas mensualmente comparando con el extracto bancario para asegurarse de que no falte ninguna transacción.',
-     fr:'Rapprochez vos comptes mensuellement en les comparant avec votre relevé bancaire pour vous assurer qu\'aucune transaction n\'a été oubliée.'},
-    {pt:'Use lançamentos Pendentes para planejar despesas futuras sem afetar seu saldo atual — eles viram Confirmados quando o pagamento ocorre.',
-     en:'Use Pending transactions to plan future expenses without affecting your current balance — they become Confirmed when payment occurs.',
-     es:'Use transacciones Pendientes para planificar gastos futuros sin afectar su saldo actual; se convierten en Confirmadas cuando se realiza el pago.',
-     fr:'Utilisez les transactions En attente pour planifier des dépenses futures sans affecter votre solde actuel — elles deviennent Confirmées lors du paiement.'},
-    {pt:'Configure orçamentos mensais por categoria e receba alertas visuais quando estiver chegando no limite de gastos.',
-     en:'Set monthly budgets per category and receive visual alerts when you\'re approaching your spending limit.',
-     es:'Configure presupuestos mensuales por categoría y reciba alertas visuales cuando se acerque al límite de gastos.',
-     fr:'Configurez des budgets mensuels par catégorie et recevez des alertes visuelles quand vous approchez votre limite de dépenses.'},
-    {pt:'O AI Insights usa o Gemini para analisar seu histórico e sugerir onde você pode economizar dinheiro todo mês.',
-     en:'AI Insights uses Gemini to analyze your history and suggest where you can save money every month.',
-     es:'AI Insights usa Gemini para analizar su historial y sugerir dónde puede ahorrar dinero cada mes.',
-     fr:'AI Insights utilise Gemini pour analyser votre historique et suggérer où vous pouvez économiser de l\'argent chaque mois.'},
-    {pt:'Fotografe seus recibos ao criar um lançamento. O AI Insights pode ler automaticamente o valor, estabelecimento e data.',
-     en:'Photograph your receipts when creating a transaction. AI Insights can automatically read the amount, store and date.',
-     es:'Fotografíe sus recibos al crear una transacción. AI Insights puede leer automáticamente el monto, establecimiento y fecha.',
-     fr:'Photographiez vos reçus lors de la création d\'une transaction. AI Insights peut automatiquement lire le montant, le magasin et la date.'},
+    { pt:'Reconcilie suas contas mensalmente. Leva 5 minutos e garante que nenhum lançamento foi esquecido.', en:'Reconcile your accounts monthly. It takes 5 minutes and ensures no transaction was missed.', es:'Concilie sus cuentas mensualmente. Tarda 5 minutos y garantiza que no se olvidó ninguna transacción.', fr:'Rapprochez vos comptes chaque mois. Cela prend 5 minutes et garantit qu\'aucune transaction n\'a été oubliée.' },
+    { pt:'Use lançamentos Pendentes para planejar despesas futuras sem afetar o saldo atual.', en:'Use Pending transactions to plan future expenses without affecting your current balance.', es:'Use transacciones Pendientes para planificar gastos futuros sin afectar el saldo actual.', fr:'Utilisez les transactions En attente pour planifier des dépenses futures sans affecter votre solde.' },
+    { pt:'Programe recorrências para aluguel, salário e assinaturas — o app lembra de você.', en:'Schedule recurring transactions for rent, salary and subscriptions — the app remembers for you.', es:'Programe recurrencias para alquiler, salario y suscripciones — la app lo recuerda por usted.', fr:'Programmez des récurrences pour loyer, salaire et abonnements — l\'app s\'en souvient pour vous.' },
+    { pt:'O AI Insights analisa seu histórico e sugere onde você pode economizar dinheiro.', en:'AI Insights analyzes your history and suggests where you can save money.', es:'AI Insights analiza su historial y sugiere dónde puede ahorrar dinero.', fr:'AI Insights analyse votre historique et suggère où vous pouvez économiser de l\'argent.' },
+    { pt:'Fotografe seus recibos ao criar um lançamento — o FinTrack guarda tudo digitalizado.', en:'Photograph your receipts when creating a transaction — FinTrack keeps everything digitized.', es:'Fotografíe sus recibos al crear una transacción — FinTrack guarda todo digitalizado.', fr:'Photographiez vos reçus lors de la création d\'une transaction — FinTrack garde tout numérisé.' },
+    { pt:'Convide os membros da família. Cada um lança suas despesas e todos veem o quadro completo.', en:'Invite family members. Each one records their expenses and everyone sees the full picture.', es:'Invite a los miembros de la familia. Cada uno registra sus gastos y todos ven el panorama completo.', fr:'Invitez les membres de la famille. Chacun enregistre ses dépenses et tous voient le tableau complet.' },
   ];
-  const todayTip = tips[new Date().getDate() % tips.length];
+  const tipIdx = new Date().getDate() % tips.length;
 
+  // ── Language pills ────────────────────────────────────────────────────────────
+  const langs = [
+    { code:'pt', flag:'🇧🇷', name:'Português' },
+    { code:'en', flag:'🇺🇸', name:'English' },
+    { code:'es', flag:'🇪🇸', name:'Español' },
+    { code:'fr', flag:'🇫🇷', name:'Français' },
+  ];
+  const curLang = (typeof i18nGetLanguage === 'function') ? i18nGetLanguage() : 'pt';
+
+  // ── Build HTML ───────────────────────────────────────────────────────────────
   document.getElementById('helpMain').innerHTML = `
-<div class="hh-root">
+<div class="hh2-root">
 
-  <!-- ══ HERO ═══════════════════════════════════════════════════════════════ -->
-  <div class="hh-hero">
-    <div class="hh-hero-bg"></div>
-    <div class="hh-hero-content">
-      <div class="hh-hero-logo">💰</div>
-      <h1 class="hh-hero-title">${_ht(L.heroTitle)}</h1>
-      <p class="hh-hero-sub">${_ht(L.heroSub)}</p>
-      <button class="hh-hero-cta" onclick="helpShowArticle('getting-started','what-is')">
-        ${_ht(L.startBtn)}
-      </button>
-    </div>
-    <div class="hh-hero-stats">
-      ${sections.map(s => `
-        <div class="hh-stat">
-          <span class="hh-stat-icon">${s.icon}</span>
-          <span class="hh-stat-num">${s.articles.length}</span>
-          <span class="hh-stat-label">${_ht(s.title)}</span>
-        </div>`).join('')}
-    </div>
-  </div>
-
-  <!-- ══ FEATURE GRID ════════════════════════════════════════════════════════ -->
-  <div class="hh-section">
-    <h2 class="hh-section-title">${_ht(L.powerTitle)}</h2>
-    <div class="hh-features">
-      ${features.map(f => `
-        <div class="hh-feature-card">
-          <div class="hh-feature-icon" style="background:${f.color}18;color:${f.color}">${f.icon}</div>
-          <div class="hh-feature-body">
-            <strong class="hh-feature-title">${_ht(f.title)}</strong>
-            <p class="hh-feature-desc">${_ht(f.desc)}</p>
-          </div>
-        </div>`).join('')}
-    </div>
-  </div>
-
-  <!-- ══ QUICK ACCESS ════════════════════════════════════════════════════════ -->
-  <div class="hh-section">
-    <h2 class="hh-section-title">${_ht(L.quickTitle)}</h2>
-    <div class="hh-quick-grid">
-      ${quickLinks.map(q => `
-        <button class="hh-quick-btn" onclick="helpShowArticle('${q.sec}','${q.art}')">
-          <span class="hh-quick-icon">${q.icon}</span>
-          <span class="hh-quick-label">${_ht(q.label)}</span>
-          <span class="hh-quick-arr">→</span>
-        </button>`).join('')}
-    </div>
-  </div>
-
-  <!-- ══ TOPIC CARDS ═════════════════════════════════════════════════════════ -->
-  <div class="hh-section">
-    <h2 class="hh-section-title">${_ht(L.topicsTitle)}</h2>
-    <div class="hh-topics">
-      ${sections.map(s => `
-        <button class="hh-topic-card" style="--tc:${s.color}" onclick="helpShowSection('${s.id}')">
-          <div class="hh-topic-header">
-            <span class="hh-topic-icon">${s.icon}</span>
-            <span class="hh-topic-badge">${s.articles.length} ${_ht(L.articles)}</span>
-          </div>
-          <div class="hh-topic-title">${_ht(s.title)}</div>
-          <div class="hh-topic-articles">
-            ${s.articles.slice(0,3).map(a => `<div class="hh-topic-art">· ${_ht(a.title)}</div>`).join('')}
-            ${s.articles.length > 3 ? `<div class="hh-topic-art hh-topic-more">+ ${s.articles.length - 3} ${_ht(L.articles)}</div>` : ''}
-          </div>
-        </button>`).join('')}
-    </div>
-  </div>
-
-  <!-- ══ TIP OF THE DAY ══════════════════════════════════════════════════════ -->
-  <div class="hh-section">
-    <div class="hh-tip-banner">
-      <div class="hh-tip-icon">💡</div>
-      <div class="hh-tip-body">
-        <div class="hh-tip-label">${_ht(L.tipsTitle)}</div>
-        <p class="hh-tip-text">${_ht(todayTip)}</p>
+  <!-- ══ HERO ══════════════════════════════════════════════════════════════ -->
+  <div class="hh2-hero">
+    <div class="hh2-hero-deco"></div>
+    <div class="hh2-hero-inner">
+      <div class="hh2-hero-badge">
+        <span class="hh2-hero-badge-dot"></span>
+        Family FinTrack
       </div>
-      <button class="hh-tip-btn" onclick="helpShowArticle('tips','tips-daily')">
-        ${_ht({pt:'Ver mais dicas',en:'More tips',es:'Más consejos',fr:'Plus de conseils'})} →
-      </button>
+      <h1 class="hh2-hero-title">${_ht(C.tagline)}</h1>
+      <p class="hh2-hero-sub">${_ht(C.sub)}</p>
+      <div class="hh2-hero-actions">
+        <button class="hh2-cta-primary" onclick="helpShowArticle('getting-started','what-is')">
+          ${_ht(C.cta)}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+        <button class="hh2-cta-ghost" onclick="helpShowSection('getting-started')">${_ht(C.ctaSub)}</button>
+      </div>
+    </div>
+    <div class="hh2-hero-modules">
+      ${sections.slice(0,6).map(s => `
+        <button class="hh2-module-pill" onclick="helpShowSection('${s.id}')" style="--mc:${s.color}">
+          <span>${s.icon}</span>
+          <span>${_ht(s.title)}</span>
+        </button>`).join('')}
     </div>
   </div>
 
-  <!-- ══ FOOTER ══════════════════════════════════════════════════════════════ -->
-  <div class="hh-footer">
-    <span>${_ht(L.footerTxt)}</span>
+  <!-- ══ WHY SECTION ════════════════════════════════════════════════════════ -->
+  <div class="hh2-section">
+    <div class="hh2-section-header">
+      <h2 class="hh2-section-title">${_ht(C.whyTitle)}</h2>
+      <div class="hh2-section-line"></div>
+    </div>
+    <div class="hh2-why-grid">
+      ${whyCards.map((w,i) => `
+        <div class="hh2-why-card" style="--wc:${w.color};--wbg:${w.bg};animation-delay:${i*60}ms">
+          <div class="hh2-why-icon">${w.icon}</div>
+          <div class="hh2-why-title">${_ht(w.title)}</div>
+          <div class="hh2-why-text">${_ht(w.text)}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- ══ JOURNEY ════════════════════════════════════════════════════════════ -->
+  <div class="hh2-section">
+    <div class="hh2-section-header">
+      <h2 class="hh2-section-title">${_ht(C.journeyTitle)}</h2>
+      <div class="hh2-section-line"></div>
+    </div>
+    <div class="hh2-journey">
+      ${journey.map((j,i) => `
+        <button class="hh2-journey-step" onclick="helpShowArticle('${j.sec}','${j.art}')" style="--jc:${j.color};animation-delay:${i*50}ms">
+          <div class="hh2-journey-step-num" style="background:${j.color}">${j.step}</div>
+          <div class="hh2-journey-icon" style="color:${j.color}">${j.icon}</div>
+          <div class="hh2-journey-body">
+            <div class="hh2-journey-title">${_ht(j.title)}</div>
+            <div class="hh2-journey-desc">${_ht(j.desc)}</div>
+          </div>
+          <div class="hh2-journey-arr" style="color:${j.color}">›</div>
+          ${i < journey.length - 1 ? '<div class="hh2-journey-connector"></div>' : ''}
+        </button>`).join('')}
+    </div>
+  </div>
+
+  <!-- ══ DOCS GRID ══════════════════════════════════════════════════════════ -->
+  <div class="hh2-section">
+    <div class="hh2-section-header">
+      <h2 class="hh2-section-title">${_ht(C.docsTitle)}</h2>
+      <div class="hh2-section-line"></div>
+    </div>
+    <div class="hh2-docs-grid">
+      ${sections.map(s => `
+        <button class="hh2-doc-card" onclick="helpShowSection('${s.id}')" style="--dc:${s.color}">
+          <div class="hh2-doc-card-top">
+            <span class="hh2-doc-icon">${s.icon}</span>
+            <span class="hh2-doc-badge">${s.articles.length} ${_ht(C.arts)}</span>
+          </div>
+          <div class="hh2-doc-title">${_ht(s.title)}</div>
+          <div class="hh2-doc-arts">
+            ${s.articles.slice(0,2).map(a => `
+              <div class="hh2-doc-art">
+                <span class="hh2-doc-art-dot" style="background:${s.color}"></span>
+                ${_ht(a.title)}
+              </div>`).join('')}
+            ${s.articles.length > 2 ? `<div class="hh2-doc-art hh2-doc-art-more" style="color:${s.color}">+ ${s.articles.length - 2} ${_ht(C.arts)}</div>` : ''}
+          </div>
+          <div class="hh2-doc-arrow" style="color:${s.color}">→</div>
+        </button>`).join('')}
+    </div>
+  </div>
+
+  <!-- ══ TIP ROTATIVO ═══════════════════════════════════════════════════════ -->
+  <div class="hh2-section">
+    <div class="hh2-tip-card" id="hh2TipCard">
+      <div class="hh2-tip-left">
+        <div class="hh2-tip-icon-wrap">
+          <span class="hh2-tip-pulse"></span>
+          💡
+        </div>
+        <div>
+          <div class="hh2-tip-label">${_ht(C.tipLabel)}</div>
+          <p class="hh2-tip-text" id="hh2TipText">${_ht(tips[tipIdx])}</p>
+        </div>
+      </div>
+      <div class="hh2-tip-right">
+        <div class="hh2-tip-dots" id="hh2TipDots">
+          ${tips.map((_,i) => `<button class="hh2-tip-dot ${i===tipIdx?'active':''}" onclick="hh2SetTip(${i})" aria-label="Tip ${i+1}"></button>`).join('')}
+        </div>
+        <button class="hh2-tip-more" onclick="helpShowArticle('tips','tips-daily')">${_ht(C.tipMore)}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LANGUAGE STRIP ════════════════════════════════════════════════════ -->
+  <div class="hh2-section">
+    <div class="hh2-lang-strip">
+      <div class="hh2-lang-copy">
+        <div class="hh2-lang-title">${_ht(C.langTitle)}</div>
+        <div class="hh2-lang-sub">${_ht(C.langSub)}</div>
+      </div>
+      <div class="hh2-lang-pills">
+        ${langs.map(l => `
+          <button class="hh2-lang-pill ${l.code===curLang?'active':''}"
+                  onclick="if(typeof quickSetLang==='function')quickSetLang('${l.code}')"
+                  title="${l.name}">
+            <span class="hh2-lang-flag">${l.flag}</span>
+            <span>${l.name}</span>
+          </button>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FOOTER ═════════════════════════════════════════════════════════════ -->
+  <div class="hh2-footer">
+    <div class="hh2-footer-logo">💰 Family FinTrack</div>
+    <div class="hh2-footer-tagline">${_ht({ pt:'Gestão financeira para toda a família', en:'Financial management for the whole family', es:'Gestión financiera para toda la familia', fr:'Gestion financière pour toute la famille' })}</div>
   </div>
 
 </div>`;
+
+  // Tip rotation state
+  window._hh2TipIdx = tipIdx;
+  window._hh2Tips   = tips;
 }
+
+// Tip rotation controller
+window.hh2SetTip = function(idx) {
+  const tips  = window._hh2Tips;
+  const text  = document.getElementById('hh2TipText');
+  const dots  = document.getElementById('hh2TipDots');
+  if (!tips || !text || !dots) return;
+  window._hh2TipIdx = idx;
+  // Fade out → update → fade in
+  text.style.opacity = '0';
+  text.style.transform = 'translateY(4px)';
+  setTimeout(() => {
+    text.textContent = _ht(tips[idx]);
+    text.style.opacity = '1';
+    text.style.transform = 'translateY(0)';
+  }, 160);
+  dots.querySelectorAll('.hh2-tip-dot').forEach((d,i) => d.classList.toggle('active', i===idx));
+};
+
+// Auto-rotate tip every 8s when help is visible
+(function _hh2AutoRotate() {
+  const interval = setInterval(() => {
+    if (!document.getElementById('hh2TipCard')) { clearInterval(interval); return; }
+    const tips = window._hh2Tips || [];
+    if (!tips.length) return;
+    const next = ((window._hh2TipIdx || 0) + 1) % tips.length;
+    hh2SetTip(next);
+  }, 8000);
+})();
+
 
 function helpShowSection(sectionId) {
   const sections = _helpContent();
