@@ -4107,14 +4107,16 @@ function _mfmRenderFeatures(famId) {
       const { data } = await sb.from('app_settings')
         .select('key,value')
         .in('key', allKeys);
-      // Reset only the keys for this family
       allKeys.forEach(k => {
         const row = (data || []).find(r => r.key === k);
         if (row) {
           window._familyFeaturesCache[k] = (row.value === true || row.value === 'true');
         } else {
-          // Not in DB yet → default false, except backup/snapshot which default true
-          window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
+          // Not in DB: check localStorage (user may have toggled but DB save failed)
+          const local = localStorage.getItem(k);
+          window._familyFeaturesCache[k] = local === 'true'
+            ? true
+            : (k.includes('backup') || k.includes('snapshot'));
         }
       });
     } catch(_) {}

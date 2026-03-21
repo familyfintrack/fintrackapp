@@ -7,6 +7,14 @@ async function loadAppSettings() {
     if (error) throw error;
     _appSettingsCache = {};
     (data || []).forEach(row => { _appSettingsCache[row.key] = row.value; });
+    // Merge feature flag overrides from localStorage (in case DB save failed)
+    const _featurePrefixes = ['prices_enabled_','grocery_enabled_','investments_enabled_','ai_insights_enabled_','debts_enabled_','backup_enabled_','snapshot_enabled_'];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && _featurePrefixes.some(p => k.startsWith(p)) && !_appSettingsCache.hasOwnProperty(k)) {
+        try { const v = localStorage.getItem(k); if (v !== null) _appSettingsCache[k] = (v === 'true' || v === true); } catch {}
+      }
+    }
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
@@ -1011,24 +1019,27 @@ function initFamModulesStandalone() {
     }).join('');
   }
 
-  // Load cache and render
+  // Load cache and render — always re-fetch to catch new modules
   (async () => {
     if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-    const missingKeys1 = keys.map(k => k.key).filter(k => !(k in window._familyFeaturesCache));
-    if (missingKeys1.length) {
-      try {
-        const { data } = await sb.from('app_settings')
-          .select('key,value')
-          .in('key', missingKeys1);
-        (data || []).forEach(r => {
-          window._familyFeaturesCache[r.key] = (r.value === true || r.value === 'true');
-        });
-        missingKeys1.forEach(k => {
-          if (!(k in window._familyFeaturesCache))
-            window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
-        });
-      } catch(_) {}
-    }
+    const allModuleKeys = keys.map(k => k.key);
+    try {
+      const { data } = await sb.from('app_settings')
+        .select('key,value')
+        .in('key', allModuleKeys);
+      allModuleKeys.forEach(k => {
+        const row = (data || []).find(r => r.key === k);
+        if (row) {
+          window._familyFeaturesCache[k] = (row.value === true || row.value === 'true');
+        } else {
+          // Not in DB: check localStorage then default
+          const local = localStorage.getItem(k);
+          window._familyFeaturesCache[k] = local === 'true' || local === true
+            ? true
+            : (k.includes('backup') || k.includes('snapshot'));
+        }
+      });
+    } catch(_) {}
     renderCards();
   })();
 }
@@ -1075,21 +1086,22 @@ function initFamModulesRow() {
   // Ensure cache loaded
   (async () => {
     if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-    const missingKeys2 = keys.map(k => k.key).filter(k => !(k in window._familyFeaturesCache));
-    if (missingKeys2.length) {
-      try {
-        const { data } = await sb.from('app_settings')
-          .select('key,value')
-          .in('key', missingKeys2);
-        (data||[]).forEach(row => {
-          window._familyFeaturesCache[row.key] = (row.value === true || row.value === 'true');
-        });
-        missingKeys2.forEach(k => {
-          if (!(k in window._familyFeaturesCache))
-            window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
-        });
-      } catch {}
-    }
+    const allRowKeys = keys.map(k => k.key);
+    try {
+      const { data } = await sb.from('app_settings')
+        .select('key,value')
+        .in('key', allRowKeys);
+      allRowKeys.forEach(k => {
+        const row = (data || []).find(r => r.key === k);
+        if (row) {
+          window._familyFeaturesCache[k] = (row.value === true || row.value === 'true');
+        } else {
+          const local = localStorage.getItem(k);
+          window._familyFeaturesCache[k] = local === 'true'
+            ? true : (k.includes('backup') || k.includes('snapshot'));
+        }
+      });
+    } catch {}
     renderPills();
   })();
 }
