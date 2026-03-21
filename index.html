@@ -626,13 +626,18 @@
         <div class="card" id="catChartCard">
           <div class="card-header">
             <span class="card-title" id="dashCatChartTitle">Distribuição por Categoria</span>
-            <div class="dash-cat-controls">
-              <!-- Despesas / Receitas toggle — stays in header -->
-              <div class="dash-cat-toggle" role="group">
-                <button class="dash-cat-btn active" id="dashCatModeExp" onclick="_setDashCatMode('expense')">Despesas</button>
-                <button class="dash-cat-btn" id="dashCatModeInc" onclick="_setDashCatMode('income')">Receitas</button>
+            <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+              <!-- Back button — shown when detail is open, hidden otherwise -->
+              <button id="catDetailBackBtn" onclick="closeCatDetail()" class="dash-cat-back" style="display:none">
+                ← Voltar ao gráfico
+              </button>
+              <!-- Despesas / Receitas toggle — hidden when detail is open -->
+              <div class="dash-cat-controls" id="dashCatControls">
+                <div class="dash-cat-toggle" role="group">
+                  <button class="dash-cat-btn active" id="dashCatModeExp" onclick="_setDashCatMode('expense')">Despesas</button>
+                  <button class="dash-cat-btn" id="dashCatModeInc" onclick="_setDashCatMode('income')">Receitas</button>
+                </div>
               </div>
-              <button id="catDetailBackBtn" onclick="closeCatDetail()" class="dash-cat-back" style="display:none">← Voltar</button>
             </div>
           </div>
           <div id="catChartWrap" style="position:relative;width:100%;max-width:100%;overflow:hidden">
