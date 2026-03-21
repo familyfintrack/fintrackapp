@@ -797,6 +797,10 @@ async function editTransaction(id){
       }
     }
   }, 80);
+  // Clear any pending debt amortization state from previous modal use
+  window._pendingAmortDebtId = null;
+  const _dab = document.getElementById('debtAmortizationBanner');
+  if (_dab) { _dab.style.display = 'none'; _dab.innerHTML = ''; }
   openModal('txModal');
 }
 function _filterTxAccountOrigin(excludeCreditCards) {
@@ -1392,6 +1396,10 @@ async function saveTransaction(){
   }
   DB.accounts.bust();
   try{await recalcAccountBalances();}catch(_e){}
+  // Debt amortization: post credit entry to debt ledger (new transactions only)
+  if (!id && txResult?.id && window._pendingAmortDebtId && typeof postDebtAmortizationEntry === 'function') {
+    await postDebtAmortizationEntry(data.amount, data.date, txResult.id).catch(() => {});
+  }
   toast(id?'✓ Atualizado!':'✓ Transação salva!','success');
   closeModal('txModal');
   if(!id && savedId) {

@@ -406,6 +406,13 @@ function selectPayee(id, name, ctx) {
   hidePayeeSimilar();
   // Category suggestion only for tx modal
   if(ctx !== 'sc') suggestCategoryForPayee(id);
+  // Debt amortization detection (tx modal only, expense transactions)
+  if(ctx === 'tx' || ctx === undefined) {
+    const txType = document.getElementById('txTypeField')?.value;
+    if(txType === 'expense' && typeof checkDebtAmortization === 'function') {
+      checkDebtAmortization(id).catch(() => {});
+    }
+  }
 }
 
 async function suggestCategoryForPayee(payeeId) {

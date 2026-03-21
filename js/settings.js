@@ -52,7 +52,7 @@ async function saveAppSetting(key, value) {
   _appSettingsCache[key] = value;
   if (!sb) return;
   try {
-    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_)(.+)$/);
+    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_)(.+)$/);
     const family_id = m ? m[2] : null;
     // Feature flags: try RPC SECURITY DEFINER first (bypasses RLS)
     if (family_id) {
@@ -948,6 +948,7 @@ function initFamModulesStandalone() {
     { key: 'grocery_enabled_'     + famId, label: 'Mercado',          emoji: '🛒', applyFn: 'applyGroceryFeature',      desc: 'Lista de mercado e compras' },
     { key: 'investments_enabled_' + famId, label: 'Investimentos',    emoji: '📈', applyFn: 'applyInvestmentsFeature',  desc: 'Carteira de investimentos (requer conta do tipo Investimentos)' },
     { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',      emoji: '🤖', applyFn: 'applyAiInsightsFeature',   desc: 'Análise financeira e chat com IA Gemini (requer chave API)' },
+    { key: 'debts_enabled_'       + famId, label: 'Dívidas',          emoji: '💳', applyFn: 'applyDebtsFeature',        desc: 'Controle e evolução de dívidas' },
     { key: 'backup_enabled_'      + famId, label: 'Backup',           emoji: '☁️', applyFn: null,                       desc: 'Backup automático de dados' },
     { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',         emoji: '📸', applyFn: null,                       desc: 'Snapshots periódicos do estado financeiro' },
   ];
@@ -1017,6 +1018,7 @@ function initFamModulesRow() {
     { key: 'grocery_enabled_' + famId, label: 'Mercado',      emoji: '🛒', applyFn: 'applyGroceryFeature'     },
     { key: 'investments_enabled_' + famId, label: 'Investimentos', emoji: '📈', applyFn: 'applyInvestmentsFeature' },
     { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',  emoji: '🤖', applyFn: 'applyAiInsightsFeature'  },
+    { key: 'debts_enabled_'   + famId, label: 'Dívidas', emoji: '💳', applyFn: 'applyDebtsFeature' },
     { key: 'backup_enabled_'  + famId, label: 'Backup',       emoji: '☁️', applyFn: null },
     { key: 'snapshot_enabled_'+ famId, label: 'Snapshot',     emoji: '📸', applyFn: null },
   ];

@@ -592,6 +592,7 @@ async function bootApp(){
   if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
   if (typeof applyInvestmentsFeature === 'function') applyInvestmentsFeature().catch(() => {});
   if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
+  if (typeof applyDebtsFeature === 'function') applyDebtsFeature().catch(() => {});
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
 }
@@ -599,6 +600,7 @@ async function bootApp(){
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
   grocery:'🛒 Lista de Mercado',
   ai_insights:'🤖 AI Insights',
+  debts:'💳 Dívidas',
   help:'❓ Ajuda'};
 
 // SVG icons used in the mobile topbar (replaces text title on small screens)
@@ -899,6 +901,7 @@ function navigate(page){
   else if(page==='settings')loadSettings();
   else if(page==='audit')loadAuditLogs();
   else if(page==='investments')loadInvestmentsPage?.();
+  else if(page==='debts')loadDebtsPage?.();
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
