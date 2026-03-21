@@ -10861,3 +10861,56 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .hh2-docs-grid { grid-template-columns: 1fr; }
   .hh2-hero-actions { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
+
+/* ── Dashboard category chart — controls bar ───────────────────────────── */
+.dash-cat-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.dash-cat-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.dash-cat-btn {
+  padding: 4px 11px;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .13s, color .13s;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.dash-cat-btn + .dash-cat-btn {
+  border-left: 1px solid var(--border);
+}
+.dash-cat-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.dash-cat-btn:hover:not(.active) {
+  background: var(--bg2);
+  color: var(--text2);
+}
+.dash-cat-back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: .74rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 9px;
+  transition: color .12s, border-color .12s;
+}
+.dash-cat-back:hover { color: var(--text); border-color: var(--border2); }
