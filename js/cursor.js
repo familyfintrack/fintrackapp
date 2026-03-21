@@ -34,7 +34,7 @@ const Cursor = (() => {
   let _mode    = 'load';
   let _timer   = null;
 
-  const LOGO_SRC = 'logocursor.png';
+  const LOGO_SRC = 'logo.jpg';
   let _img = null, _imgReady = false;
 
   function _preload() {

@@ -469,7 +469,7 @@ function getAppBaseUrl() {
   return origin + base;
 }
 
-const DEFAULT_LOGO_URL='logo_transparent.png';
+const DEFAULT_LOGO_URL='logo.jpg';
 let APP_LOGO_URL=DEFAULT_LOGO_URL;
 function setAppLogo(url){
   // Defensive: avoid accidentally assigning a Promise/thenable to img.src
@@ -487,9 +487,8 @@ function setAppLogo(url){
 
   // For wizard header use logo2 variant (dark background, no filter CSS)
   // logo2.png is the dark-background variant — use it directly if APP_LOGO_URL is the default
-  const DARK_LOGO_URL = (APP_LOGO_URL === DEFAULT_LOGO_URL || APP_LOGO_URL === 'logo_transparent.png')
-    ? 'logo2.png'
-    : APP_LOGO_URL.replace(/\.png$/i, '2.png');
+  // Dark variant: use same logo.jpg (single logo file)
+  const DARK_LOGO_URL = APP_LOGO_URL || DEFAULT_LOGO_URL;
 
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
     const el=document.getElementById(id);
