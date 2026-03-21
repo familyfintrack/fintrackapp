@@ -552,6 +552,9 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 }
 .bottom-nav.is-collapsed{
   transform:translateX(calc(100% - var(--bn-visible-handle)));
+  /* manipulation = no 300ms tap delay, allows fast single taps */
+  touch-action:manipulation;
+  cursor:pointer;
 }
 .bottom-nav.is-collapsed .bn-item,
 .bottom-nav.is-collapsed + .fab{
@@ -560,6 +563,11 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 }
 .bottom-nav.is-collapsed .bottom-nav-toggle{
   background:rgba(255,255,255,.10);
+  animation:bn-handle-hint 2.4s ease-in-out 1s 2;
+}
+@keyframes bn-handle-hint{
+  0%,100%{ background:rgba(255,255,255,.10); }
+  50%     { background:rgba(255,255,255,.22); box-shadow:0 0 0 3px rgba(255,255,255,.08); }
 }
 .bottom-nav.is-collapsed .bottom-nav-toggle-icon{
   transform:rotate(180deg);
@@ -9898,4 +9906,28 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .help-section-grid { grid-template-columns: 1fr 1fr; }
   .help-nav { max-height: 240px; }
   .help-card-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BOTTOM NAV — collapsed state UX improvements
+   Tap anywhere on the visible handle strip to expand (no drag needed)
+═══════════════════════════════════════════════════════════════════ */
+
+/* Entire nav is clickable when collapsed — signal with pointer cursor */
+.bottom-nav.is-collapsed {
+  cursor: pointer;
+}
+/* Toggle button itself stays default cursor */
+.bottom-nav.is-collapsed .bottom-nav-toggle {
+  cursor: pointer;
+}
+
+/* Subtle entrance pulse on the handle when freshly collapsed */
+@keyframes bn-handle-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(255,255,255,.20); }
+  60%  { box-shadow: 0 0 0 8px rgba(255,255,255,.00); }
+  100% { box-shadow: 0 0 0 0   rgba(255,255,255,.00); }
+}
+.bottom-nav.is-collapsed .bottom-nav-toggle {
+  animation: bn-handle-pulse .7s ease .1s 2;
 }
