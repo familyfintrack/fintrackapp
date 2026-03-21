@@ -248,8 +248,8 @@ async function loadReports() {
   const accE = Object.entries(accMap).sort((a,b)=>(b[1].exp+b[1].inc)-(a[1].exp+a[1].inc));
   if(accE.length)
     renderChart('reportAccountChart','bar',accE.map(e=>e[0]),[
-      {label:'Despesas',data:accE.map(e=>+e[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.8)',borderRadius:5,borderSkipped:false},
-      {label:'Receitas',data:accE.map(e=>+e[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
+      {label:t('rpt.expense'),data:accE.map(e=>+e[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.8)',borderRadius:5,borderSkipped:false},
+      {label:t('rpt.income'),data:accE.map(e=>+e[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
     ]);
 
   /* Evolução */
@@ -352,8 +352,8 @@ async function renderTrendChart(from, to) {
     });
     const wks=Object.entries(wkMap);
     if(wks.length) renderChart('reportTrendChart','bar',wks.map(w=>w[0]),[
-      {label:'Receitas',data:wks.map(w=>+w[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
-      {label:'Despesas',data:wks.map(w=>+w[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
+      {label:t('rpt.income'),data:wks.map(w=>+w[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
+      {label:t('rpt.expense'),data:wks.map(w=>+w[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
     ]);
     return;
   }
@@ -362,8 +362,8 @@ async function renderTrendChart(from, to) {
     if(t.amount<0) m.exp+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):Math.abs(t.brl_amount??t.amount??0)); else m.inc+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):parseFloat(t.brl_amount??t.amount)??0);
   });
   renderChart('reportTrendChart','bar',months.map(m=>m.label),[
-    {label:'Receitas',data:months.map(m=>+m.inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
-    {label:'Despesas',data:months.map(m=>+m.exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
+    {label:t('rpt.income'),data:months.map(m=>+m.inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
+    {label:t('rpt.expense'),data:months.map(m=>+m.exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
   ]);
 }
 
@@ -413,7 +413,7 @@ function renderReportTxTable(txs) {
         <td class="rpt-td-pay">${esc(t.payees?.name||'—')}</td>
         <td class="rpt-td-amt ${t.amount>=0?'amount-pos':'amount-neg'}">${fmt(t.amount)}</td>
       </tr>`).join('')
-    : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">Nenhuma transação no período</td></tr>';
+    : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">${t('tx.empty')}</td></tr>`;
 }
 
 /* ═══ VIEW TOGGLE ═══ */
@@ -1141,7 +1141,7 @@ async function _buildReportPDF() {
         y = _pdfSectionTitle(doc, y, 'Resumo por Conta');
         doc.autoTable({
           startY: y,
-          head: [['Conta', 'Qtd', 'Receitas', 'Despesas', 'Saldo']],
+          head: [['Conta', 'Qtd', t('rpt.income'), t('rpt.expense'), t('rpt.balance')]],
           body: accRows.map(([name, v]) => [
             name, v.count, fmt(v.inc), fmt(v.exp), fmt(v.inc - v.exp)
           ]),
@@ -1218,7 +1218,7 @@ function printReport() {
   const totExp = txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
   const totInc = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const bal = totInc - totExp;
-  const viewLabel = { regular:'Análise', transactions:'Transações', forecast:'Previsão' }[rptState.view] || '';
+  const viewLabel = { regular:'Análise', transactions:t('rpt.transactions'), forecast:'Previsão' }[rptState.view] || '';
 
   // Capture charts as images
   const chartIds   = ['reportCatChart','reportIncomeChart','reportAccountChart','reportTrendChart','forecastChart'];
@@ -1234,10 +1234,10 @@ function printReport() {
   const kpiHtml = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0">
       ${[
-        ['Receitas', fmt(totInc), '#2a7a4a', '#e8f5ee'],
-        ['Despesas', fmt(totExp), '#c0392b', '#fdf0ee'],
-        ['Saldo',    fmt(bal),    bal>=0?'#2a7a4a':'#c0392b', bal>=0?'#e8f5ee':'#fdf0ee'],
-        ['Transações', txs.length, '#22553c', '#f0f7f2'],
+        [t('rpt.income'), fmt(totInc), '#2a7a4a', '#e8f5ee'],
+        [t('rpt.expense'), fmt(totExp), '#c0392b', '#fdf0ee'],
+        [t('rpt.balance'),    fmt(bal),    bal>=0?'#2a7a4a':'#c0392b', bal>=0?'#e8f5ee':'#fdf0ee'],
+        [t('rpt.transactions'), txs.length, '#22553c', '#f0f7f2'],
       ].map(([label, val, color, bg]) => `
         <div style="background:${bg};border-radius:8px;padding:12px;border-top:3px solid ${color}">
           <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">${label}</div>
@@ -1399,10 +1399,10 @@ function _buildReportEmailHTML(txs, from, to, viewLabel, filters, pdfUrl) {
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:6px 0;margin:16px 0">
       <tr>
         ${[
-          ['Receitas',  money(totInc), GREEN_LT, GREEN_BG],
-          ['Despesas',  money(totExp), RED,      RED_BG],
-          ['Saldo',     money(bal),    bal>=0?GREEN_LT:RED, bal>=0?GREEN_BG:RED_BG],
-          ['Transações',String(txs.length), '#374151', '#f3f4f6'],
+          [t('rpt.income'),  money(totInc), GREEN_LT, GREEN_BG],
+          [t('rpt.expense'),  money(totExp), RED,      RED_BG],
+          [t('rpt.balance'),     money(bal),    bal>=0?GREEN_LT:RED, bal>=0?GREEN_BG:RED_BG],
+          [t('rpt.transactions'),String(txs.length), '#374151', '#f3f4f6'],
         ].map(([lbl,val,color,bg]) => `
           <td width="25%" style="padding:0">
             <div style="background:${bg};border-radius:8px;padding:10px 8px;border-top:3px solid ${color};text-align:center">

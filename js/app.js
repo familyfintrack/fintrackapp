@@ -929,7 +929,7 @@ document.addEventListener('DOMContentLoaded', initBottomNav);
 
 // ── i18n: re-render UI when language changes ─────────────────────────────────
 document.addEventListener('i18n:changed', () => {
-  // Update pageTitles from translation dict
+  // 1. Update pageTitles from translation dict
   const pageKeyMap = {
     dashboard:'page.dashboard', transactions:'page.transactions',
     accounts:'page.accounts',   reports:'page.reports',
@@ -946,13 +946,48 @@ document.addEventListener('i18n:changed', () => {
       if (tr && tr !== key) pageTitles[page] = tr;
     });
   }
-  // Update topbar page title
+
+  // 2. Update topbar page title
   const titleEl = document.getElementById('pageTitle');
   if (titleEl && state.currentPage && pageTitles[state.currentPage]) {
     titleEl.textContent = pageTitles[state.currentPage];
   }
-  // Apply data-i18n across full document
+
+  // 3. Apply data-i18n to all static HTML elements
   if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document);
+
+  // 4. Re-render current page content (JS-rendered strings)
+  // Use lightweight re-render that rebuilds HTML without refetching from DB
+  const page = state.currentPage;
+  try {
+    if (page === 'transactions') {
+      if (typeof populateTxMonthFilter === 'function') populateTxMonthFilter();
+      if (typeof populateSelects === 'function') populateSelects();
+      if (typeof renderTxTable === 'function') renderTxTable(state.transactions);
+    } else if (page === 'accounts') {
+      if (typeof renderAccounts === 'function') renderAccounts();
+    } else if (page === 'categories') {
+      if (typeof renderCategories === 'function') renderCategories();
+    } else if (page === 'payees') {
+      if (typeof renderPayees === 'function') renderPayees();
+    } else if (page === 'budgets') {
+      if (typeof renderBudgets === 'function') renderBudgets();
+    } else if (page === 'reports') {
+      if (typeof populateSelects === 'function') populateSelects();
+      if (typeof populateReportFilters === 'function') populateReportFilters();
+      if (typeof loadCurrentReport === 'function') loadCurrentReport();
+    } else if (page === 'dashboard') {
+      if (typeof loadDashboard === 'function') loadDashboard();
+    } else if (page === 'scheduled') {
+      if (typeof renderScheduled === 'function') renderScheduled();
+    } else if (page === 'prices') {
+      if (typeof _renderPricesPage === 'function') _renderPricesPage();
+    } else if (page === 'investments') {
+      if (typeof renderInvestments === 'function') renderInvestments();
+    } else if (page === 'settings') {
+      if (typeof loadSettings === 'function') loadSettings();
+    }
+  } catch(_) {}
 });
 
 

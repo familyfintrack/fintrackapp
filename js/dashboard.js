@@ -62,7 +62,7 @@ async function loadDashboardRecent(memberIds = null){
   const qFiltered = _applyDashMemberFilter(q, memberIds);
   if (qFiltered === null) {
     const body = document.getElementById('recentTxBody');
-    if (body) body.innerHTML = '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Nenhuma transação para este filtro</td></tr>';
+    if (body) body.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">${t('dash.empty_tx')}</td></tr>`;
     return;
   }
   q = qFiltered;
@@ -75,7 +75,7 @@ async function loadDashboardRecent(memberIds = null){
 
   const items = recent || [];
   if (!items.length) {
-    body.innerHTML = '<tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Sem transações</td></tr>';
+    body.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">${t('dash.empty_tx')}</td></tr>`;
     return;
   }
 
@@ -398,7 +398,7 @@ async function loadDashboard(){
   } else {
     const dashMemSel = document.getElementById('dashMemberFilter');
     if (dashMemSel && typeof populateFamilyMemberSelect === 'function') {
-      populateFamilyMemberSelect('dashMemberFilter', { placeholder: 'Família (todos)' });
+      populateFamilyMemberSelect('dashMemberFilter', { placeholder: t('dash.all_members') });
       dashMemSel.style.display = dashMemSel.options.length > 1 ? '' : 'none';
     }
   }
@@ -414,7 +414,7 @@ async function renderCashflowChart(memberIds = null){
   const sel = document.getElementById('cashflowAccountFilter');
   if(sel) {
     const curVal = sel.value;
-    sel.innerHTML = '<option value="">Todas as contas</option>' +
+    sel.innerHTML = `<option value="">${t('dash.all_accounts')}</option>` +
       state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
     if(curVal) sel.value = curVal; // restore selection
   }
@@ -605,7 +605,7 @@ function openCatDetail(idx) {
   // "Ver transações" button — navigates to transactions page with category pre-filtered
   const now2 = new Date();
   const ym = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}`;
-  titleEl.innerHTML += `&nbsp;<button onclick="_dashDrillToTx('${entry.rootId||''}','${ym}')" style="font-size:.68rem;padding:2px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent);cursor:pointer;font-weight:600;margin-left:6px">Ver tudo →</button>`;
+  titleEl.innerHTML += `&nbsp;<button onclick="_dashDrillToTx('${entry.rootId||''}','${ym}')" style="font-size:.68rem;padding:2px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent);cursor:pointer;font-weight:600;margin-left:6px">${t('dash.view_all')}</button>`;
 
   const MON=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   listEl.innerHTML = entry.txs.map(t => {
@@ -882,7 +882,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
   const allCats = state.categories || [];
   const favCats = allCats.filter(c => ids.includes(c.id));
   if (!favCats.length) {
-    el.innerHTML = `<div class="dfav-card"><div class="dfav-header"><span class="dfav-title">⭐ Categorias Favoritas</span><button class="dfav-manage" onclick="navigate('categories')">Gerenciar</button></div><div class="dfav-empty"><div>Categorias favoritas não encontradas.<br><span style="font-size:.75rem">Elas podem ter sido excluídas.</span></div></div></div>`;
+    el.innerHTML = `<div class="dfav-card"><div class="dfav-header"><span class="dfav-title">⭐ Categorias Favoritas</span><button class="dfav-manage" onclick="navigate('categories')">${t('dash.manage')}</button></div><div class="dfav-empty"><div>Categorias favoritas não encontradas.<br><span style="font-size:.75rem">Elas podem ter sido excluídas.</span></div></div></div>`;
     return;
   }
 
@@ -1035,7 +1035,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
   const incSec = buildSection('Receitas', 'income',  'var(--green,#16a34a)');
 
   if (!expSec && !incSec) {
-    el.innerHTML = `<div class="dfav-card"><div class="dfav-header"><span class="dfav-title">⭐ Categorias Favoritas</span><button class="dfav-manage" onclick="navigate('categories')">Gerenciar</button></div><div class="dfav-empty">Sem movimentações no mês para as categorias favoritas.</div></div>`;
+    el.innerHTML = `<div class="dfav-card"><div class="dfav-header"><span class="dfav-title">⭐ Categorias Favoritas</span><button class="dfav-manage" onclick="navigate('categories')">${t('dash.manage')}</button></div><div class="dfav-empty">Sem movimentações no mês para as categorias favoritas.</div></div>`;
     return;
   }
 

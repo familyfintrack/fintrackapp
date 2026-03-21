@@ -288,7 +288,7 @@ function populateTxMonthFilter() {
   const curM = now.getMonth() + 1;
   const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-  let html = '<option value="">Todos os meses</option>';
+  let html = `<option value="">${t('tx.all_months')}</option>`;
 
   // Year options for current and 2 previous years
   for (let y = curY; y >= curY - 2; y--) {
@@ -642,7 +642,7 @@ function renderTransactions(){
 
   body.innerHTML = pending.map(t => txRow(t, !singleAccId, null)).join('') + sep + confirmed.map(renderRow).join('');
   const total=state.txTotal, page=state.txPage, ps=state.txPageSize;
-  document.getElementById('txPagination').innerHTML=`<span>${page*ps+1}–${Math.min((page+1)*ps,total)} de ${total}</span><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" ${page===0?'disabled':''} onclick="changePage(-1)">‹ Anterior</button><button class="btn btn-ghost btn-sm" ${(page+1)*ps>=total?'disabled':''} onclick="changePage(1)">Próxima ›</button></div>`;
+  document.getElementById('txPagination').innerHTML=`<span>${page*ps+1}–${Math.min((page+1)*ps,total)} de ${total}</span><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" ${page===0?'disabled':''} onclick="changePage(-1)">${t('tx.prev_page')}</button><button class="btn btn-ghost btn-sm" ${(page+1)*ps>=total?'disabled':''} onclick="changePage(1)">${t('tx.next_page')}</button></div>`;
 
   try{ initTxMobileUX(); }catch(e){}
 }

@@ -282,7 +282,8 @@ function renderForecastTables(allItems, accounts) {
             ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon}</span>`
             : '<span class="forecast-date-flag">&nbsp;</span>');
       const todayMarker = isToday ? '<span class="forecast-date-today">hoje</span>' : '<span class="forecast-date-today">&nbsp;</span>';
-      const categoryLine = `<div class="forecast-line forecast-category">${t.categories?.name ? esc(t.categories.name) : '&nbsp;'}</div>`;
+      const _catLabel = t.categories?.name ? `<span style="font-size:.9em;margin-right:3px">${_catIcon || ''}</span>${esc(t.categories.name)}` : '&nbsp;';
+      const categoryLine = `<div class="forecast-line forecast-category">${_catLabel}</div>`;
       const payeeLine = `<div class="forecast-line forecast-payee">${t.payees?.name ? esc(t.payees.name) : '&nbsp;'}</div>`;
       return `<tr class="${rowClass} ${balClass} forecast-tx-row">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">

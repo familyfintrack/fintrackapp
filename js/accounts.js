@@ -126,7 +126,7 @@ function _syncAccountsTab(ft) {
 
 
 function renderAccountsFlat(accs,grid){
-  if(!accs.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🏦</div><p>Nenhuma conta encontrada</p></div>';return;}
+  if(!accs.length){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🏦</div><p>${t('acct.empty')}</p></div>`;return;}
   // Favoritas no topo (Feature 7)
   const sorted = [...accs].sort((a,b)=>(b.is_favorite?1:0)-(a.is_favorite?1:0));
   grid.innerHTML=sorted.map(a=>accountCardHTML(a)).join('');
@@ -187,7 +187,7 @@ function renderAccountsGrouped(accs,grid){
          style="--grp-color:var(--muted)">
       <span class="account-group-badge" style="background:var(--bg2)">📂</span>
       <div style="flex:1;min-width:0">
-        <span class="account-group-title">Sem grupo</span>
+        <span class="account-group-title">${t('acct.no_group')}</span>
         <span class="account-group-count" style="margin-left:8px">${ungrouped.length} conta${ungrouped.length!==1?'s':''}</span>
       </div>
       <span class="account-group-chevron ${_collapsed['__none__']?'':'expanded'}">▾</span>
@@ -216,7 +216,7 @@ function renderAccountsSummary(){
   const total=accs.reduce((s,a)=>s+toBRL(parseFloat(a.balance)||0,a.currency||'BRL'),0);
   const pos=accs.filter(a=>a.balance>=0).reduce((s,a)=>s+toBRL(parseFloat(a.balance)||0,a.currency||'BRL'),0);
   const neg=accs.filter(a=>a.balance<0).reduce((s,a)=>s+toBRL(parseFloat(a.balance)||0,a.currency||'BRL'),0);
-  el.innerHTML=`<span class="summary-label">Total:</span><span class="summary-value ${total<0?'text-red':'text-accent'}">${fmt(total)}</span>${pos?`<span class="summary-sep">·</span><span class="summary-pos">+${fmt(pos)}</span>`:''}${neg?`<span class="summary-sep">·</span><span class="summary-neg">${fmt(neg)}</span>`:''}`;
+  el.innerHTML=`<span class="summary-label">${t('acct.total')}</span><span class="summary-value ${total<0?'text-red':'text-accent'}">${fmt(total)}</span>${pos?`<span class="summary-sep">·</span><span class="summary-pos">+${fmt(pos)}</span>`:''}${neg?`<span class="summary-sep">·</span><span class="summary-neg">${fmt(neg)}</span>`:''}`;
 }
 
 function accountCardHTML(a){
