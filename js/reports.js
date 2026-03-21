@@ -1,6 +1,61 @@
 let rptState = { view:'regular', txData:[] };
 let rptTxSortField = 'date', rptTxSortAsc = false;
 
+// ── Category chart state ───────────────────────────────────────────────────
+let _rptCatMode  = 'expense';   // 'expense' | 'income'
+let _rptCatType  = 'bar';       // 'bar' | 'doughnut'
+let _rptCatDataCache = { expEntries: [], incEntries: [] };
+
+function setRptCatMode(mode) {
+  _rptCatMode = mode;
+  document.getElementById('rptCatBtnExp')?.classList.toggle('active', mode === 'expense');
+  document.getElementById('rptCatBtnInc')?.classList.toggle('active', mode === 'income');
+  _renderCatChartFromState();
+}
+function setRptCatChart(chartType) {
+  _rptCatType = chartType;
+  document.getElementById('rptChartBtnBar')?.classList.toggle('active', chartType === 'bar');
+  document.getElementById('rptChartBtnDonut')?.classList.toggle('active', chartType === 'doughnut');
+  _renderCatChartFromState();
+}
+function _renderCatChartFromState() {
+  const entries = (_rptCatMode === 'expense'
+    ? _rptCatDataCache.expEntries
+    : _rptCatDataCache.incEntries) || [];
+
+  if (state.chartInstances['reportCatChart']) {
+    state.chartInstances['reportCatChart'].destroy();
+    delete state.chartInstances['reportCatChart'];
+  }
+  if (!entries.length) return;
+
+  const colors = new Set();
+  if (_rptCatType === 'bar') {
+    const top = entries.slice(0, 15);
+    renderChart('reportCatChart', 'bar',
+      top.map(e => e[0]),
+      [{ data: top.map(e => +e[1].total.toFixed(2)),
+         backgroundColor: top.map((e, i) => _catColor(e[1].rawColor, i, colors)),
+         borderRadius: 5, borderSkipped: false }],
+      { indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { callback: v => fmt(v) } },
+          y: { ticks: { font: { size: 11 } } }
+        }
+      }
+    );
+  } else {
+    renderChart('reportCatChart', 'doughnut',
+      entries.map(e => e[0]),
+      [{ data: entries.map(e => +e[1].total.toFixed(2)),
+         backgroundColor: entries.map((e, i) => _catColor(e[1].rawColor, i, colors)),
+         borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }]
+    );
+  }
+}
+
+
 /* ── Date range ── */
 function getRptDateRange() {
   const p   = document.getElementById('rptPeriod')?.value || 'month';
@@ -205,18 +260,6 @@ async function loadReports() {
   const expEntries = Object.entries(expMap).sort((a,b)=>b[1].total-a[1].total);
   // Always destroy stale instance — even if there is no data to render,
   // so filters don't leave the previous chart visible
-  if(state.chartInstances['reportCatChart']) {
-    state.chartInstances['reportCatChart'].destroy();
-    delete state.chartInstances['reportCatChart'];
-  }
-  if(expEntries.length){
-    const _expColors = new Set();
-    renderChart('reportCatChart','doughnut',expEntries.map(e=>e[0]),
-      [{data:expEntries.map(e=>e[1].total),
-        backgroundColor:expEntries.map((e,i)=>_catColor(e[1].rawColor,i,_expColors)),
-        borderWidth:2,borderColor:'#fff',hoverOffset:8}]);
-  }
-
   /* Receitas por categoria */
   const incMap = {};
   incs.forEach(t=>{
@@ -225,17 +268,15 @@ async function loadReports() {
     incMap[n].total+=_rBrl(t); incMap[n].count++;
   });
   const incEntries = Object.entries(incMap).sort((a,b)=>b[1].total-a[1].total);
-  // Always destroy stale instance first
+
+  // Cache and render via state (supports mode + type toggle)
+  _rptCatDataCache = { expEntries, incEntries };
+  _renderCatChartFromState();
+
+  // Keep hidden income canvas cleared (PDF compat)
   if(state.chartInstances['reportIncomeChart']) {
     state.chartInstances['reportIncomeChart'].destroy();
     delete state.chartInstances['reportIncomeChart'];
-  }
-  if(incEntries.length){
-    const _incColors = new Set();
-    renderChart('reportIncomeChart','doughnut',incEntries.map(e=>e[0]),
-      [{data:incEntries.map(e=>e[1].total),
-        backgroundColor:incEntries.map((e,i)=>_catColor(e[1].rawColor,i,_incColors)),
-        borderWidth:2,borderColor:'#fff',hoverOffset:8}]);
   }
 
   /* Por conta */
@@ -352,8 +393,8 @@ async function renderTrendChart(from, to) {
     });
     const wks=Object.entries(wkMap);
     if(wks.length) renderChart('reportTrendChart','bar',wks.map(w=>w[0]),[
-      {label:t('rpt.income'),data:wks.map(w=>+w[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
-      {label:t('rpt.expense'),data:wks.map(w=>+w[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
+      {label:'Receitas',data:wks.map(w=>+w[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
+      {label:'Despesas',data:wks.map(w=>+w[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
     ]);
     return;
   }
@@ -362,8 +403,8 @@ async function renderTrendChart(from, to) {
     if(t.amount<0) m.exp+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):Math.abs(t.brl_amount??t.amount??0)); else m.inc+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):parseFloat(t.brl_amount??t.amount)??0);
   });
   renderChart('reportTrendChart','bar',months.map(m=>m.label),[
-    {label:t('rpt.income'),data:months.map(m=>+m.inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
-    {label:t('rpt.expense'),data:months.map(m=>+m.exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
+    {label:'Receitas',data:months.map(m=>+m.inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
+    {label:'Despesas',data:months.map(m=>+m.exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
   ]);
 }
 
@@ -1141,7 +1182,7 @@ async function _buildReportPDF() {
         y = _pdfSectionTitle(doc, y, 'Resumo por Conta');
         doc.autoTable({
           startY: y,
-          head: [['Conta', 'Qtd', t('rpt.income'), t('rpt.expense'), t('rpt.balance')]],
+          head: [['Conta', 'Qtd', 'Receitas', 'Despesas', 'Saldo']],
           body: accRows.map(([name, v]) => [
             name, v.count, fmt(v.inc), fmt(v.exp), fmt(v.inc - v.exp)
           ]),
@@ -1218,7 +1259,7 @@ function printReport() {
   const totExp = txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
   const totInc = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
   const bal = totInc - totExp;
-  const viewLabel = { regular:'Análise', transactions:t('rpt.transactions'), forecast:'Previsão' }[rptState.view] || '';
+  const viewLabel = { regular:'Análise', transactions:'Transações', forecast:'Previsão' }[rptState.view] || '';
 
   // Capture charts as images
   const chartIds   = ['reportCatChart','reportIncomeChart','reportAccountChart','reportTrendChart','forecastChart'];
@@ -1234,10 +1275,10 @@ function printReport() {
   const kpiHtml = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0">
       ${[
-        [t('rpt.income'), fmt(totInc), '#2a7a4a', '#e8f5ee'],
-        [t('rpt.expense'), fmt(totExp), '#c0392b', '#fdf0ee'],
-        [t('rpt.balance'),    fmt(bal),    bal>=0?'#2a7a4a':'#c0392b', bal>=0?'#e8f5ee':'#fdf0ee'],
-        [t('rpt.transactions'), txs.length, '#22553c', '#f0f7f2'],
+        ['Receitas', fmt(totInc), '#2a7a4a', '#e8f5ee'],
+        ['Despesas', fmt(totExp), '#c0392b', '#fdf0ee'],
+        ['Saldo',    fmt(bal),    bal>=0?'#2a7a4a':'#c0392b', bal>=0?'#e8f5ee':'#fdf0ee'],
+        ['Transações', txs.length, '#22553c', '#f0f7f2'],
       ].map(([label, val, color, bg]) => `
         <div style="background:${bg};border-radius:8px;padding:12px;border-top:3px solid ${color}">
           <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">${label}</div>
@@ -1399,10 +1440,10 @@ function _buildReportEmailHTML(txs, from, to, viewLabel, filters, pdfUrl) {
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:6px 0;margin:16px 0">
       <tr>
         ${[
-          [t('rpt.income'),  money(totInc), GREEN_LT, GREEN_BG],
-          [t('rpt.expense'),  money(totExp), RED,      RED_BG],
-          [t('rpt.balance'),     money(bal),    bal>=0?GREEN_LT:RED, bal>=0?GREEN_BG:RED_BG],
-          [t('rpt.transactions'),String(txs.length), '#374151', '#f3f4f6'],
+          ['Receitas',  money(totInc), GREEN_LT, GREEN_BG],
+          ['Despesas',  money(totExp), RED,      RED_BG],
+          ['Saldo',     money(bal),    bal>=0?GREEN_LT:RED, bal>=0?GREEN_BG:RED_BG],
+          ['Transações',String(txs.length), '#374151', '#f3f4f6'],
         ].map(([lbl,val,color,bg]) => `
           <td width="25%" style="padding:0">
             <div style="background:${bg};border-radius:8px;padding:10px 8px;border-top:3px solid ${color};text-align:center">
