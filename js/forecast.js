@@ -31,7 +31,7 @@ async function loadForecast() {
   } catch(_) {}
 
   const container = document.getElementById('forecastAccountsContainer');
-  if (container) container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:1.5rem;margin-bottom:8px">⏳</div>Carregando previsão...</div>';
+  if (container) container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:1.5rem;margin-bottom:8px">⏳</div>${t('fc.loading')}</div>`;
 
   // ── 1. Real transactions in period ──────────────────────────────────────
   let q = famQ(sb.from('transactions')
@@ -282,8 +282,11 @@ function renderForecastTables(allItems, accounts) {
             ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon}</span>`
             : '<span class="forecast-date-flag">&nbsp;</span>');
       const todayMarker = isToday ? '<span class="forecast-date-today">hoje</span>' : '<span class="forecast-date-today">&nbsp;</span>';
-      const _catLabel = t.categories?.name ? `<span style="font-size:.9em;margin-right:3px">${_catIcon || ''}</span>${esc(t.categories.name)}` : '&nbsp;';
-      const categoryLine = `<div class="forecast-line forecast-category">${_catLabel}</div>`;
+      // Category badge shown inline with description title
+      const _catName  = t.categories?.name ? esc(t.categories.name) : null;
+      const _catBadge = _catName
+        ? `<span class="forecast-cat-inline" style="color:${_catColor}">${_catIcon ? _catIcon + ' ' : ''}${_catName}</span>`
+        : '';
       const payeeLine = `<div class="forecast-line forecast-payee">${t.payees?.name ? esc(t.payees.name) : '&nbsp;'}</div>`;
       return `<tr class="${rowClass} ${balClass} forecast-tx-row">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">
@@ -292,8 +295,7 @@ function renderForecastTables(allItems, accounts) {
           ${todayMarker}
         </td>
         <td class="forecast-desc-cell">
-          <div class="forecast-line forecast-title">${esc(t.description||'')}</div>
-          ${categoryLine}
+          <div class="forecast-line forecast-title">${esc(t.description||'')}${_catBadge}</div>
           ${payeeLine}
         </td>
         <td class="forecast-amount-cell ${(parseFloat(t.amount)||0)>=0?'amount-pos':'amount-neg'}">
@@ -315,11 +317,11 @@ function renderForecastTables(allItems, accounts) {
         <div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:${accentColor}22;flex-shrink:0">${renderIconEl(a.icon, a.color, 22)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:.95rem">${esc(a.name)}</div>
-          <div style="font-size:.75rem;color:var(--muted)">Saldo atual: <strong>${fmt(a.balance || 0, a.currency)}</strong> · ${txs.length} transação${txs.length !== 1 ? 'ões' : ''} no período</div>
+          <div style="font-size:.75rem;color:var(--muted)">${t("fc.current_balance")} <strong>${fmt(a.balance || 0, a.currency)}</strong> · ${txs.length} ${txs.length !== 1 ? t("fc.txs_in_period_pl") : t("fc.txs_in_period")}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:var(--font-serif);font-weight:700;font-size:1rem;color:${finalBalance >= 0 ? 'var(--green,#16a34a)' : 'var(--red)'}">${fmt(finalBalance, a.currency)}</div>
-          <div style="font-size:.68rem;color:var(--muted)">saldo final prev.</div>
+          <div style="font-size:.68rem;color:var(--muted)">${t("fc.final_balance")}</div>
         </div>
         <span id="forecastToggle-${a.id}" style="color:var(--muted);font-size:.75rem;margin-left:8px">▼</span>
       </div>
@@ -327,20 +329,20 @@ function renderForecastTables(allItems, accounts) {
         ${txs.length ? `
         <div class="table-wrap" style="margin:0">
           <table class="resizable-table" id="forecastTable-${a.id}">
-            <thead><tr><th style="width:68px">Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead>
+            <thead><tr><th style="width:68px">${t("fc.date")}</th><th>${t("fc.description")}</th><th style="text-align:right">${t("fc.amount")}</th></tr></thead>
             <tbody>${rows}</tbody>
             <tfoot>
               <tr style="background:var(--surface2);font-weight:600">
-                <td colspan="2" style="padding:7px 8px;font-size:.78rem">Total do período</td>
+                <td colspan="2" style="padding:7px 8px;font-size:.78rem">${t("fc.period_total")}</td>
                 <td class="${periodSum>=0?'amount-pos':'amount-neg'}" style="text-align:right;padding:7px 8px">${periodSum>=0?'+':''}${fmt(periodSum,a.currency)}</td>
               </tr>
               <tr style="background:color-mix(in srgb,${accentColor} 8%,var(--surface));border-top:2px solid ${accentColor}40">
-                <td colspan="2" style="padding:7px 8px;font-size:.78rem;color:var(--muted);font-weight:600">Saldo final previsto</td>
+                <td colspan="2" style="padding:7px 8px;font-size:.78rem;color:var(--muted);font-weight:600">${t("fc.final_balance")}</td>
                 <td class="${finalBalance<0?'amount-neg':''}" style="text-align:right;padding:7px 8px;font-weight:800;font-size:.95rem;font-family:var(--font-serif)">${fmt(finalBalance,a.currency)}</td>
               </tr>
             </tfoot>
           </table>
-        </div>` : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">Nenhuma transação neste período</div>'}
+        </div>` : `<div style="padding:20px;text-align:center;color:var(--muted);font-size:.85rem">${t('fc.empty')}</div>`}
       </div>
     </div>`;
   }).join('');

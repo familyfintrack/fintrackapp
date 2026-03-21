@@ -1,38 +1,36 @@
 let rptState = { view:'regular', txData:[] };
 let rptTxSortField = 'date', rptTxSortAsc = false;
 
-// ── Category chart state ───────────────────────────────────────────────────
-let _rptCatMode  = 'expense';   // 'expense' | 'income'
-let _rptCatType  = 'bar';       // 'bar' | 'doughnut'
+// ── Category chart state — two independent charts ───────────────────────────
+let _rptCatTypeExp = 'bar';    // expense chart type
+let _rptCatTypeInc = 'bar';    // income chart type
 let _rptCatDataCache = { expEntries: [], incEntries: [] };
 
-function setRptCatMode(mode) {
-  _rptCatMode = mode;
-  document.getElementById('rptCatBtnExp')?.classList.toggle('active', mode === 'expense');
-  document.getElementById('rptCatBtnInc')?.classList.toggle('active', mode === 'income');
-  _renderCatChartFromState();
-}
-function setRptCatChart(chartType) {
-  _rptCatType = chartType;
-  document.getElementById('rptChartBtnBar')?.classList.toggle('active', chartType === 'bar');
-  document.getElementById('rptChartBtnDonut')?.classList.toggle('active', chartType === 'doughnut');
-  _renderCatChartFromState();
-}
-function _renderCatChartFromState() {
-  const entries = (_rptCatMode === 'expense'
-    ? _rptCatDataCache.expEntries
-    : _rptCatDataCache.incEntries) || [];
-
-  if (state.chartInstances['reportCatChart']) {
-    state.chartInstances['reportCatChart'].destroy();
-    delete state.chartInstances['reportCatChart'];
+function setRptCatChart(chartType, which) {
+  // which = 'exp' | 'inc'
+  if (which === 'exp') {
+    _rptCatTypeExp = chartType;
+    document.getElementById('rptChartBtnBarExp')?.classList.toggle('active', chartType === 'bar');
+    document.getElementById('rptChartBtnDonutExp')?.classList.toggle('active', chartType === 'doughnut');
+    _renderSingleCatChart('reportCatChart', _rptCatDataCache.expEntries, _rptCatTypeExp);
+  } else {
+    _rptCatTypeInc = chartType;
+    document.getElementById('rptChartBtnBarInc')?.classList.toggle('active', chartType === 'bar');
+    document.getElementById('rptChartBtnDonutInc')?.classList.toggle('active', chartType === 'doughnut');
+    _renderSingleCatChart('reportIncomeChart', _rptCatDataCache.incEntries, _rptCatTypeInc);
   }
-  if (!entries.length) return;
+}
 
+function _renderSingleCatChart(canvasId, entries, chartType) {
+  if (state.chartInstances[canvasId]) {
+    state.chartInstances[canvasId].destroy();
+    delete state.chartInstances[canvasId];
+  }
+  if (!entries || !entries.length) return;
   const colors = new Set();
-  if (_rptCatType === 'bar') {
-    const top = entries.slice(0, 15);
-    renderChart('reportCatChart', 'bar',
+  if (chartType === 'bar') {
+    const top = entries.slice(0, 12);
+    renderChart(canvasId, 'bar',
       top.map(e => e[0]),
       [{ data: top.map(e => +e[1].total.toFixed(2)),
          backgroundColor: top.map((e, i) => _catColor(e[1].rawColor, i, colors)),
@@ -46,13 +44,19 @@ function _renderCatChartFromState() {
       }
     );
   } else {
-    renderChart('reportCatChart', 'doughnut',
+    renderChart(canvasId, 'doughnut',
       entries.map(e => e[0]),
       [{ data: entries.map(e => +e[1].total.toFixed(2)),
          backgroundColor: entries.map((e, i) => _catColor(e[1].rawColor, i, colors)),
          borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }]
     );
   }
+}
+
+// Legacy — kept for backward compat (PDF export etc.)
+function _renderCatChartFromState() {
+  _renderSingleCatChart('reportCatChart',   _rptCatDataCache.expEntries, _rptCatTypeExp);
+  _renderSingleCatChart('reportIncomeChart', _rptCatDataCache.incEntries, _rptCatTypeInc);
 }
 
 
@@ -269,15 +273,11 @@ async function loadReports() {
   });
   const incEntries = Object.entries(incMap).sort((a,b)=>b[1].total-a[1].total);
 
-  // Cache and render via state (supports mode + type toggle)
+  // Cache entries for toggle re-renders
   _rptCatDataCache = { expEntries, incEntries };
-  _renderCatChartFromState();
-
-  // Keep hidden income canvas cleared (PDF compat)
-  if(state.chartInstances['reportIncomeChart']) {
-    state.chartInstances['reportIncomeChart'].destroy();
-    delete state.chartInstances['reportIncomeChart'];
-  }
+  // Render both charts independently
+  _renderSingleCatChart('reportCatChart',    expEntries, _rptCatTypeExp);
+  _renderSingleCatChart('reportIncomeChart', incEntries, _rptCatTypeInc);
 
   /* Por conta */
   const accMap = {};

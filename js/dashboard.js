@@ -498,21 +498,26 @@ async function renderCategoryChart(){
   }
   if (memberId) memberIds = [memberId]; // specific member overrides group
 
-  let q = famQ(
-    sb.from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)')
-  ).gte('date',`${y}-${m}-01`).lte('date',`${y}-${m}-31`).lt('amount',0).not('category_id','is',null);
+  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
+  const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
+
+  // Build expense query (amount < 0)
+  let qExp = famQ(sb.from('transactions').select(_txSelect))
+    .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null);
+  // Build income query (amount > 0)
+  let qInc = famQ(sb.from('transactions').select(_txSelect))
+    .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null);
 
   if (memberIds && memberIds.length > 0) {
-    q = q.in('family_member_id', memberIds);
+    qExp = qExp.in('family_member_id', memberIds);
+    qInc = qInc.in('family_member_id', memberIds);
   } else if (memberIds && memberIds.length === 0) {
-    // Group exists but has no members — return empty
     const catChartEl = document.getElementById('catChartCard');
     if (catChartEl) catChartEl.style.display = 'none';
     return;
   }
 
-  const{data}=await q;
+  const [{data}, {data: dataInc}] = await Promise.all([qExp, qInc]);
 
   // Build parent lookup from state.categories (already loaded, has parent_id)
   const allCats = state.categories || [];
@@ -555,16 +560,34 @@ async function renderCategoryChart(){
       rootId: v.rootId,
     }));
 
+  // Build income category entries (same logic, positive amounts)
+  const incMap = {};
+  (dataInc||[]).forEach(t => {
+    const root = _getRootCat(t);
+    const n = root.name, rawColor = root.color;
+    if (!incMap[n]) incMap[n] = {rawColor, txs:[], total:0, rootId:root.id};
+    const brl = t.brl_amount != null ? Math.abs(t.brl_amount) : toBRL(Math.abs(t.amount), t.currency||'BRL');
+    incMap[n].total += brl;
+    incMap[n].txs.push({...t, _brl:brl});
+  });
+  const _incColors = new Set();
+  window._catChartIncEntries = Object.entries(incMap)
+    .sort((a,b)=>b[1].total-a[1].total).slice(0,8)
+    .map(([name,v],i)=>({ name, total:v.total, color:_catColor(v.rawColor,i,_incColors), txs:v.txs.sort((a,b)=>b._brl-a._brl), rootId:v.rootId }));
+
+  // Cache both for mode toggle
+  window._catChartExpEntriesRaw = [..._catChartEntries];
+  window._catChartIncEntriesRaw = [...(window._catChartIncEntries||[])];
+
   if(!_catChartEntries.length){
     const el=document.getElementById('categoryChart');
-    if(el){const ctx=el.getContext('2d');ctx.clearRect(0,0,el.width,el.height);ctx.fillStyle='#8c8278';ctx.textAlign='center';ctx.font='13px Outfit';ctx.fillText('Sem despesas no mês',el.width/2,el.height/2);}
-    return;
+    if(el){const ctx=el.getContext('2d');ctx.clearRect(0,0,el.width,el.height);ctx.fillStyle='#8c8278';ctx.textAlign='center';ctx.font='13px Outfit';ctx.fillText(t('dash.empty_tx'),el.width/2,el.height/2);}
   }
 
   closeCatDetail(); // reset any open detail
 
   // Restore chart type from prefs
-  const savedType = _dashGetPrefs()?.catChartType || 'doughnut';
+  const savedType = _dashGetPrefs()?.catChartType || 'bar';
   if (savedType !== _catChartType) {
     _catChartType = savedType;
     // sync toggle buttons
@@ -1374,16 +1397,46 @@ function _dashDrillToTx(categoryId, month) {
 }
 
 // ── Category chart type toggle ────────────────────────────────────────────
-let _catChartType = 'doughnut'; // persisted in dash prefs
+let _catChartType = 'bar';     // default: bar chart
+let _dashCatMode  = 'expense'; // 'expense' | 'income'
+
+// Dashboard category mode toggle (expense/income)
+function _setDashCatMode(mode) {
+  _dashCatMode = mode;
+  const expBtn = document.getElementById('dashCatModeExp');
+  const incBtn = document.getElementById('dashCatModeInc');
+  if (expBtn) expBtn.classList.toggle('active', mode === 'expense');
+  if (incBtn) incBtn.classList.toggle('active', mode === 'income');
+  const titleEl = document.getElementById('dashCatChartTitle');
+  if (titleEl) titleEl.textContent = 'Distribuição por Categoria';
+  // Re-render using cached data
+  _renderDashCatWithMode();
+}
+window._setDashCatMode = _setDashCatMode;
+
+function _renderDashCatWithMode() {
+  // Switch _catChartEntries to whichever mode is active, then re-render
+  if (_dashCatMode === 'income') {
+    _catChartEntries = window._catChartIncEntriesRaw || [];
+  } else {
+    _catChartEntries = window._catChartExpEntriesRaw || [];
+  }
+  if (!_catChartEntries.length) return;
+  // Destroy existing chart cleanly
+  const existing = state.chartInstances?.['categoryChart'];
+  if (existing) { try { existing.destroy(); } catch(_){} delete state.chartInstances['categoryChart']; }
+  closeCatDetail();
+  if (_catChartType === 'bar') _renderCatChartBar();
+  else _renderCatChartDoughnut();
+}
 
 function _setCatChartType(type) {
   _catChartType = type;
-
   // Sync toggle button visuals
-  const pie = document.getElementById('catChartTypePie');
-  const bar = document.getElementById('catChartTypeBar');
-  if (pie) { pie.classList.toggle('active', type === 'doughnut'); pie.style.background=''; pie.style.color=''; }
-  if (bar) { bar.classList.toggle('active', type === 'bar');     bar.style.background=''; bar.style.color=''; }
+  const pie  = document.getElementById('catChartTypePie');
+  const bar2 = document.getElementById('catChartTypeBar');
+  if (pie)  { pie.classList.toggle('active',  type === 'doughnut'); pie.style.background=''; pie.style.color=''; }
+  if (bar2) { bar2.classList.toggle('active', type === 'bar');      bar2.style.background=''; bar2.style.color=''; }
 
   // Persist preference
   try { _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {}); } catch(_) {}
