@@ -1054,6 +1054,23 @@ async function quickSetLang(lang) {
 
   toast('🌐 ' + { pt:'Português', en:'English', es:'Español', fr:'Français' }[lang], 'success');
 }
+// ── Profile language button strip selector ───────────────────────────────────
+function profileSelectLang(lang, silent) {
+  // Update hidden input
+  const hidden = document.getElementById('myProfileLanguage');
+  if (hidden) hidden.value = lang;
+
+  // Highlight active button
+  const btns = document.querySelectorAll('#profileLangSelector .i18n-lang-btn');
+  btns.forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
+
+  // If not silent (user explicitly clicked), apply language immediately
+  if (!silent && typeof i18nSetLanguage === 'function') {
+    i18nSetLanguage(lang).then(() => _i18nUpdateTopbarLabel()).catch(()=>{});
+  }
+}
+window.profileSelectLang = profileSelectLang;
+
 function _i18nUpdateTopbarLabel() {
   const lang = typeof i18nGetLanguage === 'function' ? i18nGetLanguage() : 'pt';
   // Update badge (new globe-icon button)

@@ -80,22 +80,10 @@ function _applyCurrentUserAvatar() {
   _updateSidebarUserCard();
 }
 
-// ── Sidebar: populate user card ──────────────────────────────────────────────
+// ── Sidebar: populate user card — removed from sidebar UI ──────────────────
 function _updateSidebarUserCard() {
-  const card  = document.getElementById('sbUserCard');
-  const famEl = document.getElementById('sbFamilyName');
-  const subEl = document.getElementById('sbUserSub');
-  if (!card || !currentUser) return;
-  card.style.display = '';
-
-  // Primary: active family name
-  const activeFam = (currentUser.families || []).find(f => f.id === currentUser.family_id);
-  const famName = activeFam?.name || currentUser.family_name || '—';
-  if (famEl) famEl.textContent = famName;
-
-  // Sub-line: user name
-  const userName = currentUser.name || currentUser.email?.split('@')[0] || '—';
-  if (subEl) subEl.textContent = userName;
+  // User name and family name removed from sidebar to maximize nav space.
+  // Function kept as no-op to avoid errors from existing callers.
 }
 
 // Returns a Supabase query with family_id filter applied.
@@ -921,7 +909,8 @@ function toggleUserMenu(e) {
 function _closeUserMenuOutside(e) {
   const dd  = document.getElementById('userMenuDropdown');
   const btn = document.getElementById('topbarUserBtn');
-  if (dd && btn && !btn.contains(e.target)) {
+  // Dropdown is now in <body>; check both the avatar btn AND the dropdown itself
+  if (dd && !dd.contains(e.target) && btn && !btn.contains(e.target)) {
     closeUserMenu();
   }
 }
@@ -1013,7 +1002,7 @@ function openMyProfile() {
   // Language selector
   const savedLang = currentUser?.preferred_language ||
     (typeof i18nGetLanguage === 'function' ? i18nGetLanguage() : 'pt');
-  profileSelectLang(savedLang, true);
+  if (typeof profileSelectLang === 'function') profileSelectLang(savedLang, true);
 
   openModal('myProfileModal');
   setTimeout(() => document.getElementById('myProfilePwd1')?.focus(), 200);
