@@ -965,18 +965,9 @@
             <option value="">Todas</option>
           </select>
         </div>
-        <div>
-          <label>Membro</label>
-          <select id="rptMember" onchange="loadCurrentReport(true)">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div>
-          <label>Relação</label>
-          <select id="rptRelGroup" onchange="_onRptRelGroupChange()">
-            <option value="">Todos</option>
-          </select>
-        </div>
+        <!-- Member/Relation filters removed — use global family filter instead -->
+        <select id="rptMember" style="display:none"></select>
+        <select id="rptRelGroup" style="display:none"></select>
       </div>
 
       <!-- ── Barra de exportação ── -->
@@ -1007,13 +998,23 @@
       <div id="reportRegularView">
         <div class="report-kpi-grid" id="reportKpis"></div>
         <div class="grid-2 mb-4">
-          <div class="card">
-            <div class="card-header"><span class="card-title">Despesas por Categoria</span></div>
-            <canvas id="reportCatChart" height="260"></canvas>
-          </div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">Receitas por Categoria</span></div>
-            <canvas id="reportIncomeChart" height="260"></canvas>
+          <div class="card" style="grid-column:1/-1">
+            <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+              <span class="card-title" id="reportCatChartTitle">Distribuição por Categoria</span>
+              <div style="display:flex;gap:6px;align-items:center">
+                <div class="rpt-cat-toggle" id="rptCatTypeToggle">
+                  <button class="rpt-cat-btn active" id="rptCatBtnExp" onclick="setRptCatMode('expense')">💸 Despesas</button>
+                  <button class="rpt-cat-btn" id="rptCatBtnInc" onclick="setRptCatMode('income')">💰 Receitas</button>
+                </div>
+                <div class="rpt-cat-toggle" id="rptCatChartToggle">
+                  <button class="rpt-cat-btn active" id="rptChartBtnBar" onclick="setRptCatChart('bar')" title="Barras">▊</button>
+                  <button class="rpt-cat-btn" id="rptChartBtnDonut" onclick="setRptCatChart('doughnut')" title="Rosca">◉</button>
+                </div>
+              </div>
+            </div>
+            <canvas id="reportCatChart" height="200"></canvas>
+            <!-- Hidden canvas kept for PDF export compatibility -->
+            <canvas id="reportIncomeChart" style="display:none" height="1"></canvas>
           </div>
         </div>
         <div class="grid-2 mb-4">
