@@ -290,15 +290,85 @@ async function _aiCollectFinancialContext() {
     })
     .filter(Boolean);
 
-  // Transações agendadas
-  const { data: sched } = await famQ(sb.from('scheduled_transactions').select('description,brl_amount,frequency,next_date,type')).limit(20);
-  const scheduledSummary = (sched || []).slice(0, 10).map(s => ({
-    description: s.description,
-    amount: Math.abs(parseFloat(s.brl_amount || 0)),
-    frequency: s.frequency,
-    next_date: s.next_date,
-    type: s.type,
-  }));
+  // ── Transações programadas — previsão futura ────────────────────────────
+  // Use state.scheduled if already loaded (richer data incl categories/payees)
+  const _stSched = (state.scheduled || []).filter(s => s.status !== 'finished' && s.status !== 'paused');
+
+  // Projection helpers
+  const _freqMonthly = { daily:30, weekly:4.33, biweekly:2.17, monthly:1, bimonthly:0.5, quarterly:0.33, semiannual:0.17, annual:1/12 };
+  function _monthlyFactor(freq) { return _freqMonthly[freq] || 1; }
+  function _schedAmt(s) { return Math.abs(parseFloat(s.brl_amount || s.amount || 0)); }
+
+  // Monthly commitment summary (recurring obligations)
+  const _schedByType = { expense:0, income:0, transfer:0 };
+  const _schedByCategory = {};
+
+  _stSched.forEach(s => {
+    const factor = _monthlyFactor(s.frequency);
+    const monthlyAmt = _schedAmt(s) * factor;
+    const stype = s.type || (parseFloat(s.amount||0)<0 ? 'expense' : 'income');
+    if (_schedByType[stype] !== undefined) _schedByType[stype] += monthlyAmt;
+    const catName = s.categories?.name || 'Sem categoria';
+    if (!_schedByCategory[catName]) _schedByCategory[catName] = { income:0, expense:0 };
+    if (stype === 'income')  _schedByCategory[catName].income  += monthlyAmt;
+    if (stype === 'expense') _schedByCategory[catName].expense += monthlyAmt;
+  });
+
+  // 6-month forward projection (month by month)
+  const _today = new Date();
+  const _projMonths = [];
+  for (let i = 1; i <= 6; i++) {
+    const d = new Date(_today.getFullYear(), _today.getMonth() + i, 1);
+    const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    // Base: use last known monthly trend as baseline
+    const lastMonthData = monthlyTrend.length ? monthlyTrend[monthlyTrend.length-1] : null;
+    const baseIncome  = lastMonthData ? lastMonthData.income  : totalIncome;
+    const baseExpense = lastMonthData ? lastMonthData.expense : totalExpense;
+    // Add scheduled recurring delta
+    const projIncome  = +(baseIncome  + _schedByType.income).toFixed(2);
+    const projExpense = +(baseExpense + _schedByType.expense).toFixed(2);
+    _projMonths.push({
+      month:   ym,
+      projected_income:  projIncome,
+      projected_expense: projExpense,
+      projected_net:     +(projIncome - projExpense).toFixed(2),
+    });
+  }
+
+  // Top scheduled items (most impactful)
+  const scheduledSummary = _stSched
+    .map(s => ({
+      description: s.description,
+      category:    s.categories?.name || null,
+      payee:       s.payees?.name || null,
+      amount_monthly: +(_schedAmt(s) * _monthlyFactor(s.frequency)).toFixed(2),
+      amount_raw:   +_schedAmt(s).toFixed(2),
+      frequency:   s.frequency,
+      type:        s.type || (parseFloat(s.amount||0)<0 ? 'expense' : 'income'),
+      next_date:   typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : s.next_date,
+      status:      s.status,
+    }))
+    .sort((a,b) => b.amount_monthly - a.amount_monthly)
+    .slice(0, 20);
+
+  // Recurring financial commitments (fixed monthly obligations)
+  const recurringCommitments = {
+    monthly_expense: +_schedByType.expense.toFixed(2),
+    monthly_income:  +_schedByType.income.toFixed(2),
+    monthly_net:     +(_schedByType.income - _schedByType.expense).toFixed(2),
+    by_category: Object.entries(_schedByCategory)
+      .map(([cat, v]) => ({ category:cat, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
+      .sort((a,b) => (b.monthly_expense+b.monthly_income)-(a.monthly_expense+a.monthly_income)),
+  };
+
+  // 6-month financial projection
+  const financialProjection = {
+    horizon: '6 meses',
+    months:  _projMonths,
+    trend_direction: _projMonths.every(m=>m.projected_net>=0) ? 'positive'
+                   : _projMonths.every(m=>m.projected_net<0)  ? 'negative' : 'mixed',
+    avg_projected_net: +(_projMonths.reduce((s,m)=>s+m.projected_net,0)/_projMonths.length).toFixed(2),
+  };
 
   // Saldos atuais das contas (do state — computados pelo app)
   const accountBalances = (state.accounts || [])
@@ -394,6 +464,8 @@ async function _aiCollectFinancialContext() {
     memberInsights,
     monthlyTrend,
     scheduledSummary,
+    recurringCommitments,
+    financialProjection,
     accountBalances,
     accountSummary,
     topTransactions,
@@ -500,6 +572,9 @@ async function _callGeminiAnalysis(apiKey, ctx) {
     memberInsights: ctx.memberInsights,
     monthlyTrend: ctx.monthlyTrend,
     scheduledSummary: ctx.scheduledSummary,
+    recurringCommitments: ctx.recurringCommitments,
+    financialProjection: ctx.financialProjection,
+    budgets: ctx.budgets,
     accountBalances: ctx.accountBalances,
     accountSummary: ctx.accountSummary || [],
     anomalies: ctx.anomalies,
@@ -554,12 +629,38 @@ RETORNE EXATAMENTE ESTE JSON:
   ]
 }
 
+- recurringCommitments: compromissos financeiros mensais fixos provenientes dos programados (receitas e despesas recorrentes)
+- financialProjection: projeção de 6 meses calculada com base no histórico + programados ativos
+- budgets: dados de orçamentos vs realizado do período
+
+ADICIONE AO JSON OS SEGUINTES CAMPOS OBRIGATÓRIOS:
+  "forecast": {
+    "outlook": "resumo executivo em 2-3 frases do prognóstico financeiro para os próximos meses",
+    "trend": "positive | negative | mixed | stable",
+    "risk_level": "low | medium | high",
+    "monthly_commitment_insight": "análise dos compromissos mensais fixos (contas recorrentes, salários, etc.)",
+    "projection_highlights": [
+      { "month": "YYYY-MM", "highlight": "observação relevante sobre este mês projetado" }
+    ],
+    "key_risks": [
+      { "risk": "descrição do risco financeiro futuro", "mitigation": "como mitigar" }
+    ],
+    "opportunities": [
+      { "opportunity": "oportunidade financeira identificada", "action": "ação recomendada" }
+    ]
+  },
+  "budget_analysis": [
+    { "category": "nome", "status": "ok|near|over", "insight": "análise do orçamento desta categoria" }
+  ]
+
 REGRAS IMPORTANTES:
 - NÃO invente números ou totais — use apenas os dados fornecidos
 - Seja específico e acionável, não genérico
 - Respeite o contexto brasileiro (BRL, hábitos locais)
 - member_insights: apenas se houver dados por membro, lista vazia se não houver
 - classification_suggestions: apenas para transações sem categoria ou com categoria genérica (máx 5)
+- forecast.projection_highlights: apenas para meses com algo relevante a destacar (máx 3)
+- budget_analysis: lista vazia se não houver dados de orçamento
 - Todos os textos em português brasileiro`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
@@ -569,7 +670,7 @@ REGRAS IMPORTANTES:
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 3000, temperature: 0.3 },
+      generationConfig: { maxOutputTokens: 4000, temperature: 0.3 },
     }),
   });
 
@@ -875,7 +976,124 @@ function _aiRenderAnalysis(r) {
       </div>`;
   }
 
-  container.innerHTML = overviewHtml + summaryHtml + alertsHtml + anomaliesHtml + catHtml + payeeHtml + memberHtml + trendHtml + savingsHtml + recsHtml + classSugHtml;
+
+  // ── Prognóstico e tendência futura (programados) ─────────────────────────
+  let forecastHtml = '';
+  const fc_data = r.forecast;
+  const proj     = ctx?.financialProjection;
+  const rcm      = ctx?.recurringCommitments;
+
+  if (fc_data || proj) {
+    const trendIcon = { positive:'📈', negative:'📉', mixed:'↕️', stable:'➡️' }[fc_data?.trend || proj?.trend_direction] || '📊';
+    const riskColor = { low:'var(--green,#22c55e)', medium:'var(--amber,#f59e0b)', high:'var(--red,#ef4444)' }[fc_data?.risk_level] || 'var(--muted)';
+
+    let projTableHtml = '';
+    if (proj?.months?.length) {
+      projTableHtml = `
+        <div class="ai-trend-table ai-proj-table">
+          <div class="ai-trend-header">
+            <span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado Proj.</span>
+          </div>
+          ${proj.months.map(m => {
+            const netColor = m.projected_net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
+            return `<div class="ai-trend-row">
+              <span>${m.month}</span>
+              <span class="ai-trend-in">${fmt(m.projected_income)}</span>
+              <span class="ai-trend-out">${fmt(m.projected_expense)}</span>
+              <span style="color:${netColor};font-weight:700">${fmt(m.projected_net)}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }
+
+    let rcmHtml = '';
+    if (rcm?.monthly_expense || rcm?.monthly_income) {
+      const rcmColor = rcm.monthly_net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
+      rcmHtml = `
+        <div class="ai-forecast-rcm">
+          <div class="ai-forecast-rcm-title">Compromissos mensais recorrentes (programados ativos)</div>
+          <div class="ai-kpi-row">
+            <div class="ai-kpi ai-kpi-green">
+              <span class="ai-kpi-label">Receita recorrente</span>
+              <span class="ai-kpi-value">${fmt(rcm.monthly_income)}</span>
+            </div>
+            <div class="ai-kpi ai-kpi-red">
+              <span class="ai-kpi-label">Despesa recorrente</span>
+              <span class="ai-kpi-value">${fmt(rcm.monthly_expense)}</span>
+            </div>
+            <div class="ai-kpi">
+              <span class="ai-kpi-label">Resultado líquido</span>
+              <span class="ai-kpi-value" style="color:${rcmColor}">${fmt(rcm.monthly_net)}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    let keyRisksHtml = '';
+    if (fc_data?.key_risks?.length) {
+      keyRisksHtml = `
+        <div class="ai-forecast-risks">
+          ${fc_data.key_risks.map(k => `
+            <div class="ai-forecast-risk-item">
+              <span class="ai-forecast-risk-icon">⚠️</span>
+              <div>
+                <div class="ai-forecast-risk-title">${esc(k.risk)}</div>
+                ${k.mitigation ? `<div class="ai-forecast-risk-mit">→ ${esc(k.mitigation)}</div>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    let oppHtml = '';
+    if (fc_data?.opportunities?.length) {
+      oppHtml = `
+        <div class="ai-forecast-opps">
+          ${fc_data.opportunities.map(o => `
+            <div class="ai-forecast-opp-item">
+              <span class="ai-forecast-opp-icon">🎯</span>
+              <div>
+                <div class="ai-forecast-opp-title">${esc(o.opportunity)}</div>
+                ${o.action ? `<div class="ai-forecast-opp-act">→ ${esc(o.action)}</div>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    forecastHtml = `
+      <div class="ai-section ai-section-forecast">
+        <div class="ai-section-header">
+          ${aiBadge} ${trendIcon} Prognóstico & Tendência Futura
+          ${fc_data?.risk_level ? `<span class="ai-risk-badge" style="color:${riskColor};background:${riskColor}18">Risco ${fc_data.risk_level === 'low' ? 'Baixo' : fc_data.risk_level === 'medium' ? 'Médio' : 'Alto'}</span>` : ''}
+        </div>
+        ${fc_data?.outlook ? `<p class="ai-forecast-outlook">${esc(fc_data.outlook)}</p>` : ''}
+        ${rcmHtml}
+        ${projTableHtml ? `<div class="ai-subsection-title">📅 Projeção 6 meses (baseada em histórico + programados)</div>${projTableHtml}` : ''}
+        ${keyRisksHtml ? `<div class="ai-subsection-title">Riscos identificados</div>${keyRisksHtml}` : ''}
+        ${oppHtml ? `<div class="ai-subsection-title">Oportunidades</div>${oppHtml}` : ''}
+      </div>`;
+  }
+
+  // ── Análise de orçamentos ─────────────────────────────────────────────────
+  let budgetAnalysisHtml = '';
+  if (r.budget_analysis?.length) {
+    budgetAnalysisHtml = `
+      <div class="ai-section">
+        <div class="ai-section-header">${dataBadge} 🎯 Análise de Orçamentos</div>
+        ${r.budget_analysis.map(b => {
+          const statusColor = { ok:'var(--green)', near:'var(--amber)', over:'var(--red)' }[b.status] || 'var(--muted)';
+          const statusIcon  = { ok:'✅', near:'⚠️', over:'🚨' }[b.status] || 'ℹ️';
+          return `<div class="ai-budget-insight">
+            <span class="ai-budget-insight-icon">${statusIcon}</span>
+            <div>
+              <strong style="color:${statusColor}">${esc(b.category)}</strong>
+              <p class="ai-budget-insight-text">${esc(b.insight)}</p>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  container.innerHTML = overviewHtml + forecastHtml + summaryHtml + alertsHtml + anomaliesHtml + catHtml + payeeHtml + memberHtml + trendHtml + budgetAnalysisHtml + savingsHtml + recsHtml + classSugHtml;
 }
 
 // ── Export ────────────────────────────────────────────────────────────────
