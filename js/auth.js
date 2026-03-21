@@ -883,7 +883,35 @@ function toggleUserMenu(e) {
   // ── Family switcher inside menu ──
   _renderUserMenuFamilies();
 
-  dd.style.display = '';
+  // ── Position dropdown relative to avatar button, safe for mobile ──
+  const btn   = document.getElementById('topbarUserBtn');
+  const rect  = btn ? btn.getBoundingClientRect() : { bottom: 56, right: window.innerWidth - 8 };
+  const gap   = 8;
+  const menuW = 240;
+  const vw    = window.innerWidth;
+  const vh    = window.innerHeight;
+
+  // Show first (hidden) so we can read its height
+  dd.style.display    = '';
+  dd.style.visibility = 'hidden';
+  const menuH = dd.offsetHeight;
+  dd.style.visibility = '';
+
+  // Prefer aligning right edge of menu to right edge of button
+  let left = rect.right - menuW;
+  // Clamp: don't go off left or right edge, keep 8px margin
+  left = Math.max(8, Math.min(left, vw - menuW - 8));
+
+  // Prefer opening downward; if not enough room, open upward
+  let top = rect.bottom + gap;
+  if (top + menuH > vh - 8) {
+    top = rect.top - menuH - gap;
+  }
+  // Last resort: pin to top of viewport with margin
+  if (top < 8) top = 8;
+
+  dd.style.top  = top  + 'px';
+  dd.style.left = left + 'px';
 
   // Close on outside click
   setTimeout(() => document.addEventListener('click', _closeUserMenuOutside), 10);
