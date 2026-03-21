@@ -805,6 +805,13 @@
               <option value="confirmed">✅ Confirmadas</option>
             </select>
           </div>
+          <div class="tx-filter-chip-wrap">
+            <select id="txReconcileFilter" onchange="filterTransactions(true)" class="tx-chip-select">
+              <option value="">🔵 Reconciliação</option>
+              <option value="pending">○ Não reconciliadas</option>
+              <option value="done">✓ Reconciliadas</option>
+            </select>
+          </div>
           <!-- Member filter select (compact, hidden when family has no members) -->
           <div class="tx-filter-chip-wrap" id="txMemberFilterWrap" style="display:none">
             <select id="txMemberPicker" class="tx-chip-select" onchange="filterTransactions(true)"
@@ -3087,10 +3094,24 @@
             oninput="_aiPayeeDebounce(this.value)"
             onblur="_aiSuggestPayeeFromDesc(this.value)">
           <div id="txAiPayeeSuggestion" style="display:none;margin-top:5px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="color:var(--muted)">🤖 Sugestão:</span>
+            <span style="color:var(--muted)">🤖 Beneficiário:</span>
             <button id="txAiPayeeBtn" onclick="_applyAiPayeeSuggestion()"
               style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
             <button onclick="_dismissAiPayeeSuggestion()"
+              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
+          </div>
+          <div id="txAiAccountSuggestion" style="display:none;margin-top:4px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="color:var(--muted)">🏦 Conta:</span>
+            <button id="txAiAccountBtn" onclick="_applyAiAccountSuggestion()"
+              style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
+            <button onclick="_dismissAiAccountSuggestion()"
+              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
+          </div>
+          <div id="txAiMemberSuggestion" style="display:none;margin-top:4px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="color:var(--muted)">👤 Membro:</span>
+            <button id="txAiMemberBtn" onclick="_applyAiMemberSuggestion()"
+              style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
+            <button onclick="_dismissAiMemberSuggestion()"
               style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
           </div>
         </div>
