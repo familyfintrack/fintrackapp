@@ -123,7 +123,7 @@ async function _loadCurrentUserContext() {
   // app_users: fonte de verdade para dados pessoais e role global
   const { data: appUserRow } = await sb
     .from('app_users')
-    .select('id, family_id, avatar_url, role, name, preferred_family_id')
+    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -248,21 +248,14 @@ async function _loadCurrentUserContext() {
     ...caps
   };
 
-  // Apply user language preference
-  // Priority: Supabase preferred_language (already saved before reload by quickSetLang)
-  // Secondary: localStorage (set by quickSetLang as backup)
-  // This ensures the language chosen by the user is always applied correctly
+  // Apply user language preference from DB (preferred_language column)
+  // DB is authoritative — it was saved by saveMyProfile() / quickSetLang()
+  const _langToApply = currentUser.preferred_language || 'pt';
+  // Sync localStorage immediately so i18n.js reads correct lang on next load
+  localStorage.setItem('fintrack_i18n_lang', _langToApply);
+  // Apply to DOM now — await so everything renders in the correct language
   if (typeof i18nSetLanguage === 'function') {
-    const dbLang = currentUser.preferred_language || 'pt';
-    const lsLang = localStorage.getItem('fintrack_i18n_lang') || 'pt';
-    // Use DB value (authoritative) — quickSetLang saves to DB before reload
-    // If they differ, DB wins (user may have changed on another device)
-    const langToApply = dbLang;
-    // Sync localStorage to match DB so i18nInit boots with correct lang
-    localStorage.setItem('fintrack_i18n_lang', langToApply);
-    if (typeof i18nSetLanguage === 'function') {
-      i18nSetLanguage(langToApply).catch(() => {});
-    }
+    await i18nSetLanguage(_langToApply).catch(() => {});
   }
 
   return currentUser;
