@@ -8202,8 +8202,13 @@ body.ft-platform-windows .modal-close {
 
   /* Description / title line bigger */
   .tx-v2-title    { font-size: .93rem !important; }
-  .tx-v2-category { font-size: .76rem !important; }
-  .tx-v2-meta     { font-size: .72rem !important; }
+  .tx-v2-category { font-size: .78rem !important; }
+  .tx-v2-meta     { font-size: .76rem !important; }
+
+  /* Category chip and payee/account in meta line — larger on desktop */
+  .tx-cat-chip    { font-size: .72rem !important; max-width: 120px !important; }
+  .tx-v2-acct,
+  .tx-v2-pay      { font-size: .76rem !important; }
 
   /* Amount column: more breathing room */
   .tx-v2-amount { font-size: .95rem !important; }
