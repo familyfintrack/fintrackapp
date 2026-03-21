@@ -320,10 +320,11 @@ async function _aiCollectFinancialContext() {
   for (let i = 1; i <= 6; i++) {
     const d = new Date(_today.getFullYear(), _today.getMonth() + i, 1);
     const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    // Base: use last known monthly trend as baseline
-    const lastMonthData = monthlyTrend.length ? monthlyTrend[monthlyTrend.length-1] : null;
-    const baseIncome  = lastMonthData ? lastMonthData.income  : totalIncome;
-    const baseExpense = lastMonthData ? lastMonthData.expense : totalExpense;
+    // Base: use last known month from byMonth (available here, monthlyTrend built later)
+    const _sortedMonths = Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]));
+    const _lastMonth = _sortedMonths.length ? _sortedMonths[_sortedMonths.length-1][1] : null;
+    const baseIncome  = _lastMonth ? _lastMonth.income  : totalIncome;
+    const baseExpense = _lastMonth ? _lastMonth.expense : totalExpense;
     // Add scheduled recurring delta
     const projIncome  = +(baseIncome  + _schedByType.income).toFixed(2);
     const projExpense = +(baseExpense + _schedByType.expense).toFixed(2);
