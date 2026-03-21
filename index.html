@@ -491,6 +491,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
         </span>Preços
       </button>
+      <button class="nav-item" id="aiInsightsNav" data-nav="ai_insights" data-feature-controlled="1" onclick="navigate('ai_insights')" style="display:none">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".8"/></svg>
+        </span>AI Insights
+      </button>
     </div>
 
     <!-- adminNavSection: audit removed from sidebar — accessible via topbar icon only -->
@@ -2030,6 +2035,74 @@
         <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">⏳ Carregando…</div>
       </div>
     </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         AI INSIGHTS — Análise IA + Chat financeiro
+    ════════════════════════════════════════════════════════ -->
+    <div class="page" id="page-ai_insights">
+
+      <!-- Tabs: Análise / Chat -->
+      <div class="ai-tabs" style="padding:0 16px;background:var(--surface,#1a2e1e);">
+        <button class="ai-tab-btn active" id="aiTab-analysis" onclick="_aiShowTab('analysis')">📊 Análise</button>
+        <button class="ai-tab-btn" id="aiTab-chat" onclick="_aiShowTab('chat')">💬 Chat</button>
+      </div>
+
+      <!-- ── PAINEL ANÁLISE ── -->
+      <div id="aiPanel-analysis">
+        <!-- Filtros -->
+        <div class="ai-toolbar">
+          <input type="date" id="aiDateFrom" title="Data inicial">
+          <input type="date" id="aiDateTo"   title="Data final">
+          <select id="aiMemberFilter"></select>
+          <select id="aiAccountFilter"></select>
+          <select id="aiCategoryFilter"></select>
+          <select id="aiPayeeFilter"></select>
+          <div class="ai-toolbar-actions">
+            <button class="btn btn-primary btn-sm" onclick="runAiAnalysis()">🤖 Analisar</button>
+            <button class="btn btn-ghost btn-sm"   onclick="exportAiAnalysis()" title="Exportar análise">📥</button>
+          </div>
+        </div>
+        <!-- Resultado -->
+        <div style="padding:12px 16px 80px">
+          <div id="aiAnalysisResult">
+            <div class="ai-empty-state">
+              <span style="font-size:2.8rem">🤖</span>
+              <p style="font-size:.95rem;font-weight:600">Análise Financeira com IA</p>
+              <p style="font-size:.82rem;max-width:280px">Selecione um período, aplique filtros e clique em <strong>Analisar</strong> para gerar insights com Gemini.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAINEL CHAT ── -->
+      <div id="aiPanel-chat" style="display:none">
+        <div class="ai-chat-wrap">
+          <div class="ai-chat-feed" id="aiChatFeed">
+            <div class="ai-chat-empty">
+              <p>💬 Faça perguntas sobre suas finanças em linguagem natural.</p>
+              <div class="ai-chat-suggestions">
+                <button class="ai-chat-suggest" onclick="aiChatSuggest('Qual foi meu maior gasto este mês?')">Maior gasto este mês?</button>
+                <button class="ai-chat-suggest" onclick="aiChatSuggest('Em quais categorias posso economizar?')">Onde economizar?</button>
+                <button class="ai-chat-suggest" onclick="aiChatSuggest('Como está meu fluxo de caixa?')">Fluxo de caixa?</button>
+                <button class="ai-chat-suggest" onclick="aiChatSuggest('Qual é o saldo atual das minhas contas?')">Saldo atual?</button>
+              </div>
+            </div>
+          </div>
+          <div class="ai-chat-input-bar">
+            <textarea id="aiChatInput" rows="1"
+              placeholder="Pergunte sobre suas finanças… (Enter para enviar)"></textarea>
+            <button class="ai-chat-send-btn" onclick="sendAiChatMessage()" title="Enviar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div style="padding:6px 16px 80px;display:flex;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="clearAiChat()" style="font-size:.75rem">🗑 Limpar chat</button>
+        </div>
+      </div>
+
+    </div><!-- /page-ai_insights -->
+
     <div class="page" id="page-audit">
       <div class="section-header mb-6">
         <span class="section-title">Auditoria de Auto-registros</span>
@@ -5170,6 +5243,7 @@
 
   <script src="js/family_members_composition.js"></script>
   <script src="js/investments.js"></script>
+  <script src="js/ai_insights.js"></script>
   <script src="js/orphan.js"></script>
   <script src="js/wizard.js"></script>
 
