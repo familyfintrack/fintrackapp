@@ -806,6 +806,9 @@ function updateUserUI() {
   // Avatar in topbar, settings and sidebar
   setTimeout(_applyCurrentUserAvatar, 50);
 
+  // Sync topbar language badge with user's actual preference
+  if (typeof _i18nUpdateTopbarLabel === 'function') _i18nUpdateTopbarLabel();
+
   // Apply permission restrictions
   applyPermissions();
 

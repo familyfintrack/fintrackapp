@@ -587,6 +587,7 @@ async function bootApp(){
   }
   initEmailJSStatus();
   updateUserUI();
+  if (typeof _i18nUpdateTopbarLabel === 'function') _i18nUpdateTopbarLabel();
   // Aplica visibilidade do módulo de preços conforme feature flag da família
   if (typeof applyPricesFeature === 'function') applyPricesFeature().catch(() => {});
   if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
@@ -953,7 +954,10 @@ document.addEventListener('i18n:changed', () => {
     titleEl.textContent = pageTitles[state.currentPage];
   }
 
-  // 3. Apply data-i18n to all static HTML elements
+  // 3. Update topbar language badge to reflect current language
+  if (typeof _i18nUpdateTopbarLabel === 'function') _i18nUpdateTopbarLabel();
+
+  // 4. Apply data-i18n to all static HTML elements + text-node engine
   if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document);
 
   // 4. Re-render current page content (JS-rendered strings)

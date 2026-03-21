@@ -307,6 +307,261 @@ const _I18N_BUILTIN = {
   'imp.title':        {pt:'Importar / Backup',  en:'Import / Backup',  es:'Importar / Respaldo',fr:'Importer / Sauvegarde'},
   'imp.backup_now':   {pt:'Fazer Backup',        en:'Backup Now',       es:'Hacer respaldo',     fr:'Sauvegarder'},
   'imp.restore':      {pt:'Restaurar',           en:'Restore',          es:'Restaurar',          fr:'Restaurer'},
+
+  // ── Forecast ──────────────────────────────────────────────────────────────
+  'fc.title':         {pt:'Previsão de Caixa',  en:'Cash Flow Forecast', es:'Previsión de caja',  fr:'Prévision de trésorerie'},
+  'fc.loading':       {pt:'Carregando previsão…',en:'Loading forecast…', es:'Cargando previsión…',fr:'Chargement…'},
+  'fc.date':          {pt:'Data',               en:'Date',               es:'Fecha',              fr:'Date'},
+  'fc.description':   {pt:'Descrição',          en:'Description',        es:'Descripción',        fr:'Description'},
+  'fc.amount':        {pt:'Valor',              en:'Amount',             es:'Monto',              fr:'Montant'},
+  'fc.balance':       {pt:'Saldo',              en:'Balance',            es:'Saldo',              fr:'Solde'},
+  'fc.period_total':  {pt:'Total do período',   en:'Period total',       es:'Total del período',  fr:'Total de la période'},
+  'fc.final_balance': {pt:'Saldo final previsto',en:'Projected balance', es:'Saldo final previsto',fr:'Solde final prévu'},
+  'fc.current_balance':{pt:'Saldo atual:',      en:'Current balance:',   es:'Saldo actual:',      fr:'Solde actuel :'},
+  'fc.empty':         {pt:'Nenhuma transação neste período',en:'No transactions in this period',es:'Sin transacciones en este período',fr:'Aucune transaction dans cette période'},
+  'fc.txs_in_period': {pt:'transação no período',en:'transaction in period',es:'transacción en el período',fr:'transaction dans la période'},
+  'fc.txs_in_period_pl':{pt:'transações no período',en:'transactions in period',es:'transacciones en el período',fr:'transactions dans la période'},
+
+  // ── Investments ───────────────────────────────────────────────────────────
+  'inv.empty':        {pt:'Nenhuma conta de investimentos', en:'No investment accounts', es:'Sin cuentas de inversión', fr:"Aucun compte d'investissement"},
+  'inv.asset_code':   {pt:'Código do Ativo',    en:'Asset Code',         es:'Código del activo',  fr:'Code actif'},
+  'inv.current_price':{pt:'Cotação Atual',      en:'Current Price',      es:'Cotización actual',  fr:'Cours actuel'},
+  'inv.avg_cost':     {pt:'Custo Médio',        en:'Average Cost',       es:'Costo promedio',     fr:'Coût moyen'},
+  'inv.total_cost':   {pt:'Custo Total',        en:'Total Cost',         es:'Costo total',        fr:'Coût total'},
+  'inv.evolution':    {pt:'Evolução do Investimento',en:'Investment Evolution',es:'Evolución de la inversión',fr:"Évolution de l'investissement"},
+  'inv.history':      {pt:'Histórico de Movimentações',en:'Transaction History',es:'Historial de movimientos',fr:'Historique des mouvements'},
+  'inv.active':       {pt:'Ativo',              en:'Active',             es:'Activo',             fr:'Actif'},
+
+  // ── Scheduled ─────────────────────────────────────────────────────────────
+  'sch.upcoming_label':{pt:'Próximos lançamentos',en:'Upcoming entries', es:'Próximos lanzamientos',fr:'Prochaines entrées'},
+  'sch.past_due':     {pt:'Vencido',            en:'Past due',           es:'Vencido',            fr:'Échu'},
+  'sch.next_date':    {pt:'Próxima data',       en:'Next date',          es:'Próxima fecha',      fr:'Prochaine date'},
+  'sch.frequency':    {pt:'Frequência',         en:'Frequency',          es:'Frecuencia',         fr:'Fréquence'},
+  'sch.register':     {pt:'Registrar',          en:'Register',           es:'Registrar',          fr:'Enregistrer'},
+  'sch.skip':         {pt:'Pular',              en:'Skip',               es:'Omitir',             fr:'Ignorer'},
+
+  // ── Common status / feedback ──────────────────────────────────────────────
+  'status.active':    {pt:'Ativo',              en:'Active',             es:'Activo',             fr:'Actif'},
+  'status.inactive':  {pt:'Inativo',            en:'Inactive',           es:'Inactivo',           fr:'Inactif'},
+  'status.pending':   {pt:'Pendente',           en:'Pending',            es:'Pendiente',          fr:'En attente'},
+  'status.confirmed': {pt:'Confirmado',         en:'Confirmed',          es:'Confirmado',         fr:'Confirmé'},
+  'status.cancelled': {pt:'Cancelado',          en:'Cancelled',          es:'Cancelado',          fr:'Annulé'},
+  'status.approved':  {pt:'Aprovado',           en:'Approved',           es:'Aprobado',           fr:'Approuvé'},
+  'status.waiting':   {pt:'Aguardando',         en:'Waiting',            es:'Esperando',          fr:'En attente'},
+  'status.loading':   {pt:'Carregando…',       en:'Loading…',           es:'Cargando…',          fr:'Chargement…'},
+  'status.saving':    {pt:'Salvando…',         en:'Saving…',            es:'Guardando…',         fr:'Enregistrement…'},
+  'status.processing':{pt:'Processando…',      en:'Processing…',        es:'Procesando…',        fr:'Traitement…'},
+  'status.error':     {pt:'Erro',              en:'Error',              es:'Error',              fr:'Erreur'},
+  'status.success':   {pt:'Sucesso',           en:'Success',            es:'Éxito',              fr:'Succès'},
+
+  // ── Auth / User management ────────────────────────────────────────────────
+  'auth.cancel':      {pt:'Cancelar',          en:'Cancel',             es:'Cancelar',           fr:'Annuler'},
+  'auth.close':       {pt:'Fechar',            en:'Close',              es:'Cerrar',             fr:'Fermer'},
+  'auth.loading':     {pt:'Carregando…',      en:'Loading…',           es:'Cargando…',          fr:'Chargement…'},
+  'auth.access_released':{pt:'Acesso liberado como',en:'Access granted as',es:'Acceso otorgado como',fr:'Accès accordé comme'},
+  'auth.invite_origin':{pt:'Convite de origem:',en:'Invite origin:',   es:'Origen de invitación:',fr:"Origine de l'invitation :"},
+  'auth.actions':     {pt:'Ações',            en:'Actions',            es:'Acciones',           fr:'Actions'},
+  'auth.only_owners': {pt:'Apenas owners podem gerenciar famílias.',en:'Only owners can manage families.',es:'Solo los propietarios pueden gestionar familias.',fr:'Seuls les propriétaires peuvent gérer les familles.'},
+  'auth.later':       {pt:'Depois',           en:'Later',              es:'Después',            fr:'Plus tard'},
+  'auth.attention':   {pt:'Atenção:',         en:'Attention:',         es:'Atención:',          fr:'Attention :'},
+  'auth.destination': {pt:'Destino (será sobrescrito)',en:'Destination (will be overwritten)',es:'Destino (será sobreescrito)',fr:'Destination (sera écrasé)'},
+  'auth.settings':    {pt:'Configurações',    en:'Settings',           es:'Configuración',      fr:'Paramètres'},
+  'auth.enter_ft':    {pt:'Acessar o Family FinTrack →',en:'Enter Family FinTrack →',es:'Acceder a Family FinTrack →',fr:'Accéder à Family FinTrack →'},
+
+  // ── Backup / Import ───────────────────────────────────────────────────────
+  'bkp.backup':       {pt:'Backup',           en:'Backup',             es:'Respaldo',           fr:'Sauvegarde'},
+  'bkp.restore':      {pt:'Restaurar',        en:'Restore',            es:'Restaurar',          fr:'Restaurer'},
+  'bkp.download':     {pt:'Baixar',           en:'Download',           es:'Descargar',          fr:'Télécharger'},
+  'bkp.upload':       {pt:'Enviar',           en:'Upload',             es:'Subir',              fr:'Envoyer'},
+  'bkp.created_at':   {pt:'Criado em',        en:'Created at',         es:'Creado el',          fr:'Créé le'},
+  'bkp.size':         {pt:'Tamanho',          en:'Size',               es:'Tamaño',             fr:'Taille'},
+
+  // ── Grocery ───────────────────────────────────────────────────────────────
+  'groc.title':       {pt:'Lista de Mercado', en:'Grocery List',       es:'Lista de compras',   fr:'Liste de courses'},
+  'groc.add_item':    {pt:'Adicionar item',   en:'Add item',           es:'Agregar artículo',   fr:'Ajouter un article'},
+  'groc.empty':       {pt:'Lista vazia',      en:'Empty list',         es:'Lista vacía',        fr:'Liste vide'},
+  'groc.checked':     {pt:'Marcados',         en:'Checked',            es:'Marcados',           fr:'Cochés'},
+  'groc.unit':        {pt:'Unidade',          en:'Unit',               es:'Unidad',             fr:'Unité'},
+  'groc.qty':         {pt:'Qtd',              en:'Qty',                es:'Cant.',              fr:'Qté'},
+
+  // ── Reports extended ──────────────────────────────────────────────────────
+  'rpt.no_data':      {pt:'Sem dados para o período',en:'No data for period',es:'Sin datos para el período',fr:'Pas de données pour la période'},
+  'rpt.download_pdf': {pt:'Baixar PDF',       en:'Download PDF',       es:'Descargar PDF',      fr:'Télécharger PDF'},
+  'rpt.export_csv':   {pt:'Exportar CSV',     en:'Export CSV',         es:'Exportar CSV',       fr:'Exporter CSV'},
+  'rpt.col_date':     {pt:'Data',             en:'Date',               es:'Fecha',              fr:'Date'},
+  'rpt.col_desc':     {pt:'Descrição',        en:'Description',        es:'Descripción',        fr:'Description'},
+  'rpt.col_account':  {pt:'Conta',            en:'Account',            es:'Cuenta',             fr:'Compte'},
+  'rpt.col_category': {pt:'Categoria',        en:'Category',           es:'Categoría',          fr:'Catégorie'},
+  'rpt.col_payee':    {pt:'Beneficiário',     en:'Payee',              es:'Beneficiario',       fr:'Bénéficiaire'},
+  'rpt.col_amount':   {pt:'Valor',            en:'Amount',             es:'Monto',              fr:'Montant'},
+  'rpt.total':        {pt:'Total',            en:'Total',              es:'Total',              fr:'Total'},
+
+  // ── Wizard ────────────────────────────────────────────────────────────────
+  'wiz.next':         {pt:'Próximo →',        en:'Next →',             es:'Siguiente →',        fr:'Suivant →'},
+  'wiz.prev':         {pt:'← Anterior',       en:'← Back',             es:'← Anterior',         fr:'← Précédent'},
+  'wiz.finish':       {pt:'Concluir',         en:'Finish',             es:'Finalizar',          fr:'Terminer'},
+  'wiz.skip':         {pt:'Pular',            en:'Skip',               es:'Omitir',             fr:'Ignorer'},
+  'wiz.welcome':      {pt:'Bem-vindo!',       en:'Welcome!',           es:'¡Bienvenido!',       fr:'Bienvenue !'},
+  'wiz.setup_family': {pt:'Configurar Família',en:'Set Up Family',     es:'Configurar familia', fr:'Configurer la famille'},
+
+  // ── AI Insights extended ──────────────────────────────────────────────────
+  'ai.period_from':   {pt:'De',              en:'From',               es:'Desde',              fr:'Du'},
+  'ai.period_to':     {pt:'Até',             en:'To',                 es:'Hasta',              fr:'Au'},
+  'ai.export':        {pt:'Exportar análise',en:'Export analysis',    es:'Exportar análisis',  fr:"Exporter l'analyse"},
+  'ai.summary':       {pt:'Resumo do período',en:'Period summary',    es:'Resumen del período',fr:'Résumé de la période'},
+  'ai.income_label':  {pt:'Receitas',        en:'Income',             es:'Ingresos',           fr:'Revenus'},
+  'ai.expense_label': {pt:'Despesas',        en:'Expenses',           es:'Gastos',             fr:'Dépenses'},
+  'ai.net_label':     {pt:'Resultado Líquido',en:'Net Result',        es:'Resultado neto',     fr:'Résultat net'},
+  'ai.top_categories':{pt:'Gastos por Categoria',en:'Expenses by Category',es:'Gastos por categoría',fr:'Dépenses par catégorie'},
+  'ai.top_payees':    {pt:'Top Beneficiários',en:'Top Payees',        es:'Principales beneficiarios',fr:'Principaux bénéficiaires'},
+  'ai.by_member':     {pt:'Gastos por Membro',en:'Expenses by Member',es:'Gastos por miembro', fr:'Dépenses par membre'},
+  'ai.monthly_trend': {pt:'Tendência Mensal', en:'Monthly Trend',     es:'Tendencia mensual',  fr:'Tendance mensuelle'},
+  'ai.recommendations':{pt:'Recomendações',  en:'Recommendations',    es:'Recomendaciones',    fr:'Recommandations'},
+  'ai.savings':       {pt:'Oportunidades de Economia',en:'Savings Opportunities',es:'Oportunidades de ahorro',fr:"Opportunités d'économies"},
+  'ai.anomalies':     {pt:'Anomalias Detectadas',en:'Detected Anomalies',es:'Anomalías detectadas',fr:'Anomalies détectées'},
+  'ai.alerts':        {pt:'Alertas de Fluxo de Caixa',en:'Cash Flow Alerts',es:'Alertas de flujo de caja',fr:'Alertes de trésorerie'},
+  'ai.chat_placeholder':{pt:'Pergunte sobre suas finanças…',en:'Ask about your finances…',es:'Pregunta sobre tus finanzas…',fr:'Posez une question sur vos finances…'},
+  'ai.chat_send':     {pt:'Enviar',          en:'Send',               es:'Enviar',             fr:'Envoyer'},
+  'ai.chat_clear':    {pt:'Limpar chat',     en:'Clear chat',         es:'Limpiar chat',       fr:'Effacer le chat'},
+  'ai.empty':         {pt:'Configure a chave Gemini para usar AI Insights',en:'Configure Gemini key to use AI Insights',es:'Configure la clave Gemini para usar AI Insights',fr:'Configurez la clé Gemini pour utiliser AI Insights'},
+
+  // ── Direct text translations (reverse-map engine) ─────────────────────────
+  // Keys match the PT text directly — used by _i18nWalkTextNodes()
+  // Common UI
+  'Cancelar':           {pt:'Cancelar',          en:'Cancel',            es:'Cancelar',           fr:'Annuler'},
+  'Salvar':             {pt:'Salvar',             en:'Save',              es:'Guardar',            fr:'Enregistrer'},
+  'Fechar':             {pt:'Fechar',             en:'Close',             es:'Cerrar',             fr:'Fermer'},
+  'Adicionar':          {pt:'Adicionar',          en:'Add',               es:'Agregar',            fr:'Ajouter'},
+  'Editar':             {pt:'Editar',             en:'Edit',              es:'Editar',             fr:'Modifier'},
+  'Excluir':            {pt:'Excluir',            en:'Delete',            es:'Eliminar',           fr:'Supprimer'},
+  'Confirmar':          {pt:'Confirmar',          en:'Confirm',           es:'Confirmar',          fr:'Confirmer'},
+  'Buscar':             {pt:'Buscar',             en:'Search',            es:'Buscar',             fr:'Rechercher'},
+  'Voltar':             {pt:'Voltar',             en:'Back',              es:'Volver',             fr:'Retour'},
+  'Novo':               {pt:'Novo',               en:'New',               es:'Nuevo',              fr:'Nouveau'},
+  'Nova':               {pt:'Nova',               en:'New',               es:'Nueva',              fr:'Nouvelle'},
+  'Exportar':           {pt:'Exportar',           en:'Export',            es:'Exportar',           fr:'Exporter'},
+  'Hoje':               {pt:'Hoje',               en:'Today',             es:'Hoy',                fr:"Aujourd'hui"},
+  'Total':              {pt:'Total',              en:'Total',             es:'Total',              fr:'Total'},
+  'Todos':              {pt:'Todos',              en:'All',               es:'Todos',              fr:'Tous'},
+  'Todas':              {pt:'Todas',              en:'All',               es:'Todas',              fr:'Toutes'},
+  'Saldo':              {pt:'Saldo',              en:'Balance',           es:'Saldo',              fr:'Solde'},
+  'Valor':              {pt:'Valor',              en:'Amount',            es:'Monto',              fr:'Montant'},
+  'Data':               {pt:'Data',               en:'Date',              es:'Fecha',              fr:'Date'},
+  'Nome':               {pt:'Nome',               en:'Name',              es:'Nombre',             fr:'Nom'},
+  'Tipo':               {pt:'Tipo',               en:'Type',              es:'Tipo',               fr:'Type'},
+  'Moeda':              {pt:'Moeda',              en:'Currency',          es:'Moneda',             fr:'Devise'},
+  'Categoria':          {pt:'Categoria',          en:'Category',          es:'Categoría',          fr:'Catégorie'},
+  'Conta':              {pt:'Conta',              en:'Account',           es:'Cuenta',             fr:'Compte'},
+  'Senha':              {pt:'Senha',              en:'Password',          es:'Contraseña',         fr:'Mot de passe'},
+  'Idioma':             {pt:'Idioma',             en:'Language',          es:'Idioma',             fr:'Langue'},
+  'Família':            {pt:'Família',            en:'Family',            es:'Familia',            fr:'Famille'},
+  'Perfil':             {pt:'Perfil',             en:'Profile',           es:'Perfil',             fr:'Profil'},
+  'Segurança':          {pt:'Segurança',          en:'Security',          es:'Seguridad',          fr:'Sécurité'},
+  'Ativo':              {pt:'Ativo',              en:'Active',            es:'Activo',             fr:'Actif'},
+  'Ativos':             {pt:'Ativos',             en:'Active',            es:'Activos',            fr:'Actifs'},
+  'Sim':                {pt:'Sim',                en:'Yes',               es:'Sí',                 fr:'Oui'},
+  'Não':                {pt:'Não',                en:'No',                es:'No',                 fr:'Non'},
+  'Enviar':             {pt:'Enviar',             en:'Send',              es:'Enviar',             fr:'Envoyer'},
+  'Copiar':             {pt:'Copiar',             en:'Copy',              es:'Copiar',             fr:'Copier'},
+  'Gerenciar':          {pt:'Gerenciar',          en:'Manage',            es:'Gestionar',          fr:'Gérer'},
+  'Detalhes':           {pt:'Detalhes',           en:'Details',           es:'Detalles',           fr:'Détails'},
+  'Histórico':          {pt:'Histórico',          en:'History',           es:'Historial',          fr:'Historique'},
+  'Ações':              {pt:'Ações',              en:'Actions',           es:'Acciones',           fr:'Actions'},
+  'Observações':        {pt:'Observações',        en:'Notes',             es:'Notas',              fr:'Notes'},
+  'Descrição':          {pt:'Descrição',          en:'Description',       es:'Descripción',        fr:'Description'},
+  'Sair':               {pt:'Sair',               en:'Sign out',          es:'Salir',              fr:'Se déconnecter'},
+  'Ver tudo →':         {pt:'Ver tudo →',         en:'View all →',        es:'Ver todo →',         fr:'Voir tout →'},
+  // Transactions
+  'Lançamentos':        {pt:'Lançamentos',        en:'Transactions',      es:'Transacciones',      fr:'Transactions'},
+  'Receita':            {pt:'Receita',            en:'Income',            es:'Ingreso',            fr:'Revenu'},
+  'Despesa':            {pt:'Despesa',            en:'Expense',           es:'Gasto',              fr:'Dépense'},
+  'Transferência':      {pt:'Transferência',      en:'Transfer',          es:'Transferencia',      fr:'Virement'},
+  'Receitas':           {pt:'Receitas',           en:'Income',            es:'Ingresos',           fr:'Revenus'},
+  'Despesas':           {pt:'Despesas',           en:'Expenses',          es:'Gastos',             fr:'Dépenses'},
+  'Todos os meses':     {pt:'Todos os meses',     en:'All months',        es:'Todos los meses',    fr:'Tous les mois'},
+  'Todas as contas':    {pt:'Todas as contas',    en:'All accounts',      es:'Todas las cuentas',  fr:'Tous les comptes'},
+  'Confirmadas':        {pt:'Confirmadas',        en:'Confirmed',         es:'Confirmadas',        fr:'Confirmées'},
+  'Pendentes':          {pt:'Pendentes',          en:'Pending',           es:'Pendientes',         fr:'En attente'},
+  'Conta Origem':       {pt:'Conta Origem',       en:'Source Account',    es:'Cuenta origen',      fr:'Compte source'},
+  'Conta Destino':      {pt:'Conta Destino',      en:'Destination',       es:'Cuenta destino',     fr:'Compte destination'},
+  'Nova Transação':     {pt:'Nova Transação',     en:'New Transaction',   es:'Nueva transacción',  fr:'Nouvelle transaction'},
+  // Accounts
+  'Nova Conta':         {pt:'Nova Conta',         en:'New Account',       es:'Nueva cuenta',       fr:'Nouveau compte'},
+  'Sem grupo':          {pt:'Sem grupo',           en:'No group',          es:'Sin grupo',          fr:'Sans groupe'},
+  'Total:':             {pt:'Total:',              en:'Total:',            es:'Total:',             fr:'Total:'},
+  'Saldo inicial':      {pt:'Saldo inicial',       en:'Initial balance',   es:'Saldo inicial',      fr:'Solde initial'},
+  'Corrente':           {pt:'Corrente',            en:'Checking',          es:'Corriente',          fr:'Courant'},
+  'Poupança':           {pt:'Poupança',            en:'Savings',           es:'Ahorros',            fr:'Épargne'},
+  'Cartão':             {pt:'Cartão',              en:'Card',              es:'Tarjeta',            fr:'Carte'},
+  'Dinheiro':           {pt:'Dinheiro',            en:'Cash',              es:'Efectivo',           fr:'Espèces'},
+  // Categories
+  'Nova Categoria':     {pt:'Nova Categoria',      en:'New Category',      es:'Nueva categoría',    fr:'Nouvelle catégorie'},
+  'Categoria Pai':      {pt:'Categoria Pai',       en:'Parent Category',   es:'Categoría padre',    fr:'Catégorie parente'},
+  'Favoritar':          {pt:'Favoritar',           en:'Favorite',          es:'Favorito',           fr:'Favori'},
+  'Editar Categoria':   {pt:'Editar Categoria',    en:'Edit Category',     es:'Editar categoría',   fr:'Modifier catégorie'},
+  // Payees
+  'Beneficiário':       {pt:'Beneficiário',        en:'Payee',             es:'Beneficiario',       fr:'Bénéficiaire'},
+  'Beneficiários':      {pt:'Beneficiários',       en:'Payees',            es:'Beneficiarios',      fr:'Bénéficiaires'},
+  'Ambos':              {pt:'Ambos',               en:'Both',              es:'Ambos',              fr:'Les deux'},
+  'Pendente':           {pt:'Pendente',            en:'Pending',           es:'Pendiente',          fr:'En attente'},
+  // Scheduled
+  'Atrasado':           {pt:'Atrasado',            en:'Overdue',           es:'Atrasado',           fr:'En retard'},
+  'Concluído':          {pt:'Concluído',           en:'Completed',         es:'Completado',         fr:'Terminé'},
+  'Diário':             {pt:'Diário',              en:'Daily',             es:'Diario',             fr:'Quotidien'},
+  'Semanal':            {pt:'Semanal',             en:'Weekly',            es:'Semanal',            fr:'Hebdomadaire'},
+  'Mensal':             {pt:'Mensal',              en:'Monthly',           es:'Mensual',            fr:'Mensuel'},
+  'Bimestral':          {pt:'Bimestral',           en:'Bimonthly',         es:'Bimestral',          fr:'Bimestriel'},
+  'Trimestral':         {pt:'Trimestral',          en:'Quarterly',         es:'Trimestral',         fr:'Trimestriel'},
+  'Semestral':          {pt:'Semestral',           en:'Semiannual',        es:'Semestral',          fr:'Semestriel'},
+  'Anual':              {pt:'Anual',               en:'Annual',            es:'Anual',              fr:'Annuel'},
+  // Reports
+  'Ticket médio':       {pt:'Ticket médio',        en:'Avg ticket',        es:'Ticket promedio',    fr:'Ticket moyen'},
+  'Por Categoria':      {pt:'Por Categoria',       en:'By Category',       es:'Por categoría',      fr:'Par catégorie'},
+  'Por Mês':            {pt:'Por Mês',             en:'By Month',          es:'Por mes',            fr:'Par mois'},
+  'Previsão':           {pt:'Previsão',            en:'Forecast',          es:'Previsión',          fr:'Prévision'},
+  'Mês atual':          {pt:'Mês atual',           en:'Current month',     es:'Mes actual',         fr:'Mois en cours'},
+  'Trimestre':          {pt:'Trimestre',           en:'Quarter',           es:'Trimestre',          fr:'Trimestre'},
+  'Ano atual':          {pt:'Ano atual',           en:'Current year',      es:'Año actual',         fr:'Année en cours'},
+  'Personalizado':      {pt:'Personalizado',       en:'Custom',            es:'Personalizado',      fr:'Personnalisé'},
+  // Budgets
+  'Utilizado':          {pt:'Utilizado',           en:'Used',              es:'Utilizado',          fr:'Utilisé'},
+  'Restante':           {pt:'Restante',            en:'Remaining',         es:'Restante',           fr:'Restant'},
+  'Excedido':           {pt:'Excedido',            en:'Over budget',       es:'Excedido',           fr:'Dépassé'},
+  // Settings
+  'Configurações':      {pt:'Configurações',       en:'Settings',          es:'Configuración',      fr:'Paramètres'},
+  'Ativar':             {pt:'Ativar',              en:'Enable',            es:'Activar',            fr:'Activer'},
+  'Desativar':          {pt:'Desativar',           en:'Disable',           es:'Desactivar',         fr:'Désactiver'},
+  'Módulos':            {pt:'Módulos',             en:'Modules',           es:'Módulos',            fr:'Modules'},
+  // Investments
+  'Compra':             {pt:'Compra',              en:'Buy',               es:'Compra',             fr:'Achat'},
+  'Venda':              {pt:'Venda',               en:'Sell',              es:'Venta',              fr:'Vente'},
+  'Custo':              {pt:'Custo',               en:'Cost',              es:'Costo',              fr:'Coût'},
+  'Cotação':            {pt:'Cotação',             en:'Quote',             es:'Cotización',         fr:'Cours'},
+  // Prices
+  'Preço médio':        {pt:'Preço médio',         en:'Avg price',         es:'Precio promedio',    fr:'Prix moyen'},
+  'Último':             {pt:'Último',              en:'Latest',            es:'Último',             fr:'Dernier'},
+  'Registros':          {pt:'Registros',           en:'Records',           es:'Registros',          fr:'Enregistrements'},
+  // AI
+  'Análise':            {pt:'Análise',             en:'Analysis',          es:'Análisis',           fr:'Analyse'},
+  'Analisar':           {pt:'Analisar',            en:'Analyze',           es:'Analizar',           fr:'Analyser'},
+  'Todos os membros':   {pt:'Todos os membros',    en:'All members',       es:'Todos los miembros', fr:'Tous les membres'},
+  // Months full
+  'Janeiro':            {pt:'Janeiro',             en:'January',           es:'Enero',              fr:'Janvier'},
+  'Fevereiro':          {pt:'Fevereiro',           en:'February',          es:'Febrero',            fr:'Février'},
+  'Março':              {pt:'Março',               en:'March',             es:'Marzo',              fr:'Mars'},
+  'Abril':              {pt:'Abril',               en:'April',             es:'Abril',              fr:'Avril'},
+  'Maio':               {pt:'Maio',                en:'May',               es:'Mayo',               fr:'Mai'},
+  'Junho':              {pt:'Junho',               en:'June',              es:'Junio',              fr:'Juin'},
+  'Julho':              {pt:'Julho',               en:'July',              es:'Julio',              fr:'Juillet'},
+  'Agosto':             {pt:'Agosto',              en:'August',            es:'Agosto',             fr:'Août'},
+  'Setembro':           {pt:'Setembro',            en:'September',         es:'Septiembre',         fr:'Septembre'},
+  'Outubro':            {pt:'Outubro',             en:'October',           es:'Octubre',            fr:'Octobre'},
+  'Novembro':           {pt:'Novembro',            en:'November',          es:'Noviembre',          fr:'Novembre'},
+  'Dezembro':           {pt:'Dezembro',            en:'December',          es:'Diciembre',          fr:'Décembre'},
+  // Forecast
+  'Saldo final prev.':  {pt:'Saldo final prev.',   en:'Projected balance',  es:'Saldo final prev.',  fr:'Solde final prévu'},
+  'Total do período':   {pt:'Total do período',    en:'Period total',       es:'Total del período',  fr:'Total de la période'},
+  'Saldo atual:':       {pt:'Saldo atual:',        en:'Current balance:',   es:'Saldo actual:',      fr:'Solde actuel:'},
 };
 
 // ── Estado interno ───────────────────────────────────────────────────────────
@@ -425,8 +680,9 @@ function i18nGetLanguage() { return _i18nLang; }
  */
 function i18nApplyToDOM(root) {
   const scope = root || document;
+  const isDoc = (scope === document);
 
-  // Textos — só atualiza se tradução encontrada (preserva texto original)
+  // 1. data-i18n explicit keys (highest priority, exact mapping)
   scope.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (!key) return;
@@ -438,23 +694,39 @@ function i18nApplyToDOM(root) {
     if (str) el.textContent = str;
   });
 
-  // Placeholders
+  // 2. Placeholders
   scope.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
     if (key) el.placeholder = t(key);
   });
 
-  // Title/aria-label
+  // 3. Title/aria-label
   scope.querySelectorAll('[data-i18n-title]').forEach(el => {
     const key = el.getAttribute('data-i18n-title');
     if (key) el.title = t(key);
   });
 
-  // HTML content (use sparingly — XSS risk, only for trusted keys)
+  // 4. HTML content
   scope.querySelectorAll('[data-i18n-html]').forEach(el => {
     const key = el.getAttribute('data-i18n-html');
     if (key) el.innerHTML = t(key);
   });
+
+  // 5. Text-node engine — translates ALL visible text in the DOM
+  //    by matching against the PT→key reverse map.
+  //    Only runs when language is not PT (no-op for default language).
+  if (_i18nLang !== 'pt') {
+    // For full document: scope to app shell (skip login screen)
+    const walkRoot = isDoc
+      ? (document.getElementById('mainApp') || document.getElementById('sidebar') || scope)
+      : scope;
+    _i18nWalkTextNodes(walkRoot);
+    // Also walk sidebar explicitly (it's outside mainApp)
+    if (isDoc) {
+      const sb = document.getElementById('sidebar');
+      if (sb) _i18nWalkTextNodes(sb);
+    }
+  }
 }
 
 /**
@@ -590,6 +862,84 @@ function _i18nRunCallbacks() {
 
 function _i18nLangToLocale(lang) {
   return { pt: 'pt-BR', en: 'en-US', es: 'es-ES', fr: 'fr-FR' }[lang] || lang;
+}
+
+
+// ── Reverse-map text-node engine ─────────────────────────────────────────────
+// Maps Portuguese text → translation key, built from _I18N_BUILTIN at runtime.
+// This allows translating ALL rendered content — JS innerHTML, static HTML,
+// without requiring data-i18n on every element.
+let _i18nReverseMap = null; // { 'pt text': 'key' }
+
+function _i18nBuildReverseMap() {
+  _i18nReverseMap = {};
+  for (const [key, langs] of Object.entries(_I18N_BUILTIN)) {
+    const ptText = langs.pt;
+    if (ptText) _i18nReverseMap[ptText.trim()] = key;
+  }
+}
+
+/**
+ * Translate a single text string using the builtin dict.
+ * Falls back to returning the original string if not found.
+ */
+function _i18nTranslateText(text) {
+  if (_i18nLang === 'pt') return text; // no-op for Portuguese
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+
+  // 1. Try direct dict lookup (DB translations)
+  if (_i18nDict[trimmed]) return text.replace(trimmed, _i18nDict[trimmed]);
+
+  // 2. Try reverse map (PT text → key → translation)
+  if (!_i18nReverseMap) _i18nBuildReverseMap();
+  const key = _i18nReverseMap[trimmed];
+  if (key) {
+    const entry = _I18N_BUILTIN[key];
+    if (entry) {
+      const translated = entry[_i18nLang] || entry['pt'];
+      if (translated) return text.replace(trimmed, translated);
+    }
+  }
+
+  return text; // untranslatable — return original
+}
+
+/**
+ * Walk all visible text nodes in an element tree and translate them.
+ * Skips: scripts, styles, inputs, SVGs, code, elements with data-i18n-skip.
+ */
+function _i18nWalkTextNodes(root) {
+  if (!root || _i18nLang === 'pt') return;
+  if (!_i18nReverseMap) _i18nBuildReverseMap();
+
+  const SKIP_TAGS = new Set(['SCRIPT','STYLE','INPUT','TEXTAREA','SELECT','OPTION','CODE','PRE','SVG','PATH','USE','SYMBOL','CANVAS','NOSCRIPT']);
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        const p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        if (SKIP_TAGS.has(p.tagName)) return NodeFilter.FILTER_REJECT;
+        if (p.closest('[data-i18n-skip],[data-no-translate]')) return NodeFilter.FILTER_REJECT;
+        if (p.closest('script,style,svg')) return NodeFilter.FILTER_REJECT;
+        const text = node.textContent.trim();
+        if (!text || text.length < 2) return NodeFilter.FILTER_SKIP;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+
+  const nodes = [];
+  let node;
+  while ((node = walker.nextNode())) nodes.push(node);
+
+  for (const n of nodes) {
+    const original = n.textContent;
+    const translated = _i18nTranslateText(original);
+    if (translated !== original) n.textContent = translated;
+  }
 }
 
 // Auto-aplicar quando DOM estiver pronto
