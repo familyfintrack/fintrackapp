@@ -14,11 +14,23 @@ function initBottomNav(){
     const saved = localStorage.getItem('bottomNavCollapsed') === '1';
     nav.classList.toggle('is-collapsed', saved);
   }catch(e){}
+
+  // Toggle button: always open/close
   toggle.addEventListener('click', (ev)=>{
     ev.stopPropagation();
     setBottomNavCollapsed(!nav.classList.contains('is-collapsed'));
   });
 
+  // Tap anywhere on the nav while collapsed → expand (no drag needed)
+  nav.addEventListener('click', (ev)=>{
+    if(!nav.classList.contains('is-collapsed')) return;
+    // Don't double-fire when the toggle button itself was clicked
+    if(toggle.contains(ev.target)) return;
+    ev.stopPropagation();
+    setBottomNavCollapsed(false);
+  });
+
+  // Swipe: right = collapse, left = expand
   let startX = 0;
   let startY = 0;
   let tracking = false;
@@ -34,8 +46,6 @@ function initBottomNav(){
   };
   nav.addEventListener('touchstart', e=>{ const t=e.changedTouches[0]; start(t.clientX, t.clientY); }, {passive:true});
   nav.addEventListener('touchend', e=>{ const t=e.changedTouches[0]; end(t.clientX, t.clientY); }, {passive:true});
-  nav.addEventListener('pointerdown', e=>{ start(e.clientX, e.clientY); });
-  nav.addEventListener('pointerup', e=>{ end(e.clientX, e.clientY); });
 }
 
 function openSidebar(){
