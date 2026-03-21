@@ -1402,30 +1402,37 @@ const SC_MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 function setScView(view) {
   _scView = view;
 
-  const listBtn = document.getElementById('scViewList');
-  const calBtn  = document.getElementById('scViewCal');
-  if (listBtn) listBtn.classList.toggle('active', view === 'list');
-  if (calBtn)  calBtn.classList.toggle('active',  view === 'calendar');
+  const listBtn  = document.getElementById('scViewList');
+  const calBtn   = document.getElementById('scViewCal');
+  const catsBtn  = document.getElementById('scViewCats');
+  if (listBtn)  listBtn.classList.toggle('active',  view === 'list');
+  if (calBtn)   calBtn.classList.toggle('active',   view === 'calendar');
+  if (catsBtn)  catsBtn.classList.toggle('active',  view === 'categories');
 
   // Toggle section visibility
-  const filterBar   = document.querySelector('.sc-filter-bar');
-  const summaryBar  = document.getElementById('scheduledSummaryBar');
+  const filterBar    = document.querySelector('.sc-filter-bar');
+  const summaryBar   = document.getElementById('scheduledSummaryBar');
   const upcomingCard = document.getElementById('scheduledUpcomingCard');
-  const listEl      = document.getElementById('scheduledList');
-  const calView     = document.getElementById('scCalendarView');
+  const listEl       = document.getElementById('scheduledList');
+  const calView      = document.getElementById('scCalendarView');
+  const catsView     = document.getElementById('scCategoriesView');
+
+  // Hide all
+  [filterBar, summaryBar, upcomingCard, listEl, calView, catsView].forEach(el => {
+    if (el) el.style.display = 'none';
+  });
 
   if (view === 'calendar') {
-    if (filterBar)    filterBar.style.display    = 'none';
-    if (summaryBar)   summaryBar.style.display   = 'none';
-    if (upcomingCard) upcomingCard.style.display = 'none';
-    if (listEl)       listEl.style.display       = 'none';
-    if (calView)      calView.style.display      = '';
+    if (calView) calView.style.display = '';
     renderScCalendar();
+  } else if (view === 'categories') {
+    if (catsView) catsView.style.display = '';
+    renderScCategories();
   } else {
     if (filterBar)    filterBar.style.display    = '';
     if (summaryBar)   summaryBar.style.display   = '';
+    if (upcomingCard) upcomingCard.style.display = '';
     if (listEl)       listEl.style.display       = '';
-    if (calView)      calView.style.display      = 'none';
     filterScheduled();
   }
 }
@@ -1854,4 +1861,165 @@ function duplicateScheduled(id) {
     document.getElementById('scheduledModalTitle').textContent = 'Nova Programação (cópia)';
     updateScPreview();
   });
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  SCHEDULED CATEGORIES CHART  (scCats*)
+// ══════════════════════════════════════════════════════════════════════════
+
+let _scCatsFilter = 'all'; // 'all' | 'expense' | 'income'
+
+function scCatsFilter(type) {
+  _scCatsFilter = type;
+  ['all','expense','income'].forEach(t => {
+    const id = 'scCatsBtn' + t.charAt(0).toUpperCase() + t.slice(1);
+    document.getElementById(id)?.classList.toggle('active', t === type);
+  });
+  renderScCategories();
+}
+window.scCatsFilter = scCatsFilter;
+
+function renderScCategories() {
+  const sched = state.scheduled || [];
+  if (!sched.length) {
+    _scCatsSetEmpty('Nenhum programado cadastrado.');
+    return;
+  }
+
+  // Filter by type
+  const filtered = sched.filter(s => {
+    if (s.status === 'finished') return false;
+    if (_scCatsFilter === 'expense') return s.type === 'expense';
+    if (_scCatsFilter === 'income')  return s.type === 'income';
+    return s.type === 'expense' || s.type === 'income';
+  });
+
+  if (!filtered.length) {
+    _scCatsSetEmpty('Nenhum programado para o filtro selecionado.');
+    return;
+  }
+
+  // Aggregate by category
+  const catMap  = Object.fromEntries((state.categories||[]).map(c => [c.id, c]));
+  const bycat   = {};
+
+  filtered.forEach(s => {
+    const cat = catMap[s.category_id];
+    const key = cat?.name || 'Sem categoria';
+    const color = cat?.color || '#94a3b8';
+    const amt = Math.abs(parseFloat(s.brl_amount || s.amount || 0));
+    if (!bycat[key]) bycat[key] = { total: 0, color, count: 0, items: [] };
+    bycat[key].total += amt;
+    bycat[key].count++;
+    bycat[key].items.push(s);
+  });
+
+  const entries = Object.entries(bycat)
+    .sort((a,b) => b[1].total - a[1].total);
+
+  const totalAmt = entries.reduce((s,[,v]) => s + v.total, 0);
+
+  // ── KPI strip ─────────────────────────────────────────────────────────
+  const kpiEl = document.getElementById('scCatsKpis');
+  if (kpiEl) {
+    const totalCount = filtered.length;
+    const catCount   = entries.length;
+    kpiEl.innerHTML = `
+      <div class="sc-cats-kpi">
+        <span class="sc-cats-kpi-lbl">Total mensal est.</span>
+        <span class="sc-cats-kpi-val">${fmt(totalAmt)}</span>
+      </div>
+      <div class="sc-cats-kpi">
+        <span class="sc-cats-kpi-lbl">Programados</span>
+        <span class="sc-cats-kpi-val">${totalCount}</span>
+      </div>
+      <div class="sc-cats-kpi">
+        <span class="sc-cats-kpi-lbl">Categorias</span>
+        <span class="sc-cats-kpi-val">${catCount}</span>
+      </div>`;
+  }
+
+  // ── Title ─────────────────────────────────────────────────────────────
+  const titleEl = document.getElementById('scCatsChartTitle');
+  if (titleEl) {
+    const typeLabel = { all:'Todos os Programados', expense:'Despesas', income:'Receitas' }[_scCatsFilter];
+    titleEl.textContent = `Distribuição por Categoria — ${typeLabel}`;
+  }
+
+  // ── Bar chart ─────────────────────────────────────────────────────────
+  const canvas = document.getElementById('scCatsChart');
+  if (!canvas) return;
+
+  // Destroy existing
+  if (state.chartInstances?.['scCatsChart']) {
+    try { state.chartInstances['scCatsChart'].destroy(); } catch(_) {}
+    delete state.chartInstances['scCatsChart'];
+  }
+
+  const top = entries.slice(0, 15);
+  const labels = top.map(([k]) => k);
+  const vals   = top.map(([,v]) => +v.total.toFixed(2));
+  const colors = top.map(([,v]) => v.color || '#94a3b8');
+
+  if (typeof Chart === 'undefined' || typeof renderChart !== 'function') {
+    canvas.style.display = 'none';
+  } else {
+    canvas.style.display = '';
+    const chart = renderChart('scCatsChart', 'bar', labels,
+      [{ data: vals, backgroundColor: colors, borderRadius: 6, borderSkipped: false }],
+      {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { callback: v => fmt(v), font: { size: 11 } } },
+          y: { ticks: { font: { size: 11 } } },
+        },
+      }
+    );
+    if (chart) state.chartInstances['scCatsChart'] = chart;
+  }
+
+  // ── Category detail cards ──────────────────────────────────────────────
+  const listEl = document.getElementById('scCatsList');
+  if (!listEl) return;
+
+  listEl.innerHTML = entries.map(([catName, v]) => {
+    const pct = totalAmt > 0 ? (v.total / totalAmt * 100).toFixed(1) : '0.0';
+    const itemRows = v.items.slice(0, 4).map(s => `
+      <div class="sc-cats-item-row" onclick="openScheduledDetail('${s.id}')">
+        <span class="sc-cats-item-desc">${esc(s.description || '—')}</span>
+        <span class="sc-cats-item-amt">${fmt(Math.abs(parseFloat(s.brl_amount||s.amount||0)))}</span>
+      </div>`).join('');
+    const more = v.items.length > 4 ? `<div class="sc-cats-item-more">+${v.items.length-4} mais</div>` : '';
+
+    return `
+    <div class="card mb-3 sc-cats-card">
+      <div class="sc-cats-card-header">
+        <div class="sc-cats-dot" style="background:${v.color}"></div>
+        <div class="sc-cats-card-info">
+          <span class="sc-cats-card-name">${esc(catName)}</span>
+          <span class="sc-cats-card-count">${v.count} programado${v.count!==1?'s':''}</span>
+        </div>
+        <div class="sc-cats-card-right">
+          <span class="sc-cats-card-total">${fmt(v.total)}</span>
+          <span class="sc-cats-card-pct">${pct}%</span>
+        </div>
+      </div>
+      <div class="sc-cats-bar-track">
+        <div class="sc-cats-bar-fill" style="width:${pct}%;background:${v.color}"></div>
+      </div>
+      ${itemRows}${more}
+    </div>`;
+  }).join('');
+}
+window.renderScCategories = renderScCategories;
+
+function _scCatsSetEmpty(msg) {
+  const kpiEl  = document.getElementById('scCatsKpis');
+  const listEl = document.getElementById('scCatsList');
+  if (kpiEl)  kpiEl.innerHTML = '';
+  if (listEl) listEl.innerHTML = `<div class="empty-state"><div class="es-icon">🏷️</div><p>${msg}</p></div>`;
+  const canvas = document.getElementById('scCatsChart');
+  if (canvas) canvas.style.display = 'none';
 }
