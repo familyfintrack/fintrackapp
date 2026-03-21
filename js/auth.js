@@ -677,7 +677,7 @@ async function doChangeMyPwd() {
     await sb.from('app_users')
       .update({ password_hash: newHash, must_change_pwd: false })
       .eq('email', currentUser?.email);
-    toast('✓ Senha alterada com sucesso!', 'success');
+    toast(t('toast.pwd_changed'), 'success');
     closeModal('changeMyPwdModal');
   } catch(e) { errEl.textContent = 'Erro: ' + (e?.message || e); errEl.style.display = ''; }
 }
@@ -1162,7 +1162,7 @@ async function saveMyProfile() {
       await sb.from('app_users').update({ password_hash: hash, must_change_pwd: false }).eq('id', appRow.id);
     }
 
-    toast('✓ Perfil atualizado!', 'success');
+    toast(t('profile.updated'), 'success');
     closeModal('myProfileModal');
   } catch(e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
@@ -1220,7 +1220,7 @@ async function clearAppCache() {
     }
     // Clear sessionStorage
     sessionStorage.clear();
-    toast('✓ Cache limpo com sucesso! Recarregando...', 'success');
+    toast(t('toast.cache_cleared'), 'success');
     setTimeout(() => window.location.reload(), 1200);
   } catch(e) {
     toast('Erro ao limpar cache: ' + e.message, 'error');
@@ -4160,7 +4160,7 @@ async function mfmChangeRole(sel, userId, famId) {
   const { error } = await sb.from('family_members')
     .update({ role: newRole }).eq('user_id', userId).eq('family_id', famId);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
-  toast('✓ Perfil atualizado', 'success');
+  toast(t('profile.updated'), 'success');
 }
 
 async function mfmRemoveMember(userId, userName, famId) {
@@ -4168,7 +4168,7 @@ async function mfmRemoveMember(userId, userName, famId) {
   const { error } = await sb.from('family_members')
     .delete().eq('user_id', userId).eq('family_id', famId);
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
-  toast('✓ Membro removido', 'success');
+  toast(t('toast.member_removed'), 'success');
   await _mfmRender();
 }
 

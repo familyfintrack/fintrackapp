@@ -493,7 +493,7 @@ async function savePayee(){
     website:           document.getElementById('payeeWebsite').value.trim()  || null,
     cnpj_cpf:          document.getElementById('payeeCnpj').value.trim()     || null,
   };
-  if(!data.name){toast('Informe o nome','error');return;}
+  if(!data.name){toast(t('toast.err_name'),'error');return;}
   if(!id) data.family_id=famId(); let err;if(id){({error:err}=await sb.from('payees').update(data).eq('id',id));}else{({error:err}=await sb.from('payees').insert(data));}
   if(err){toast(err.message,'error');return;}const _pyNew=!document.getElementById('payeeId').value;toast('Salvo!','success');closeModal('payeeModal');DB.payees.bust();await loadPayees(true);if(typeof populateSelects==='function') populateSelects();if(_pyNew)_scrollTopAndHighlight('.payee-card:first-child,.payee-row:first-child');renderPayees();
 }
@@ -606,7 +606,7 @@ async function confirmPayeeReassign() {
 async function _doDeletePayee(id) {
   const { error } = await sb.from('payees').delete().eq('id', id);
   if (error) { toast(error.message, 'error'); return; }
-  toast('Beneficiário excluído', 'success');
+  toast(t('payee.deleted'), 'success');
   DB.payees.bust(); await loadPayees(true);
   await _loadPayeeTxCounts();
   renderPayees();

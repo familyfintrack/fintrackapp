@@ -174,7 +174,7 @@ function txClipToggleAll(checked) {
 
 async function confirmTxClipImport() {
   const toImport = _txClipItems.filter(r => r.selected && r.errors.length === 0);
-  if (!toImport.length) { toast('Nenhuma linha selecionada', 'warning'); return; }
+  if (!toImport.length) { toast(t('toast.no_row_selected'), 'warning'); return; }
 
   const btn = document.getElementById('txClipImportBtn');
   btn.disabled = true; btn.textContent = '⏳ Importando...';
@@ -1296,7 +1296,7 @@ async function saveTransaction(){
       return document.getElementById('txFamilyMember')?.value || null;
     })()
   };
-  if(!data.date||!data.account_id){toast('Preencha data e conta','error');return;}
+  if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
   let err,txResult;
   if(id){
     ({error:err}=await sb.from('transactions').update(data).eq('id',id));
@@ -1405,7 +1405,7 @@ async function duplicateTransaction(id) {
   if(!confirm('Duplicar transação? Ela será aberta para edição antes de salvar.')) return;
   const orig = state.transactions?.find(t=>t.id===id) ||
     await sb.from('transactions').select('*').eq('id',id).single().then(r => r.data);
-  if (!orig) { toast('Transação não encontrada','error'); return; }
+  if (!orig) { toast(t('tx.not_found'),'error'); return; }
   _openTxAsCopy(orig);
 }
 
@@ -1696,7 +1696,7 @@ async function deleteTransaction(id){
   if(error){toast(error.message,'error');return;}
   DB.accounts.bust();
   try{await recalcAccountBalances();}catch(_e){}
-  toast('Excluída','success');
+  toast(t('tx.deleted'),'success');
   loadTransactions();
   if(state.currentPage==='dashboard') loadDashboard();
 }
@@ -1711,7 +1711,7 @@ async function openTxDetail(id) {
   const { data, error } = await sb.from('transactions')
     .select('*, accounts!transactions_account_id_fkey(name,currency,color,icon), payees(name), categories(name,color,icon), family_composition(id,name,avatar_emoji,member_type,birth_date)')
     .eq('id', id).single();
-  if (error || !data) { toast('Transação não encontrada', 'error'); return; }
+  if (error || !data) { toast(t('tx.not_found'), 'error'); return; }
   const t = data;
 
   // Cache current status for quick toggle actions
@@ -1967,7 +1967,7 @@ async function convertTxToScheduled(txId) {
   const { data: t, error } = await sb.from('transactions')
     .select('*, accounts!transactions_account_id_fkey(name,currency), categories(name,color), payees(name)')
     .eq('id', txId).single();
-  if (error || !t) { toast('Erro ao carregar transação.', 'error'); return; }
+  if (error || !t) { toast(t('toast.err_load_tx'), 'error'); return; }
 
   // Pre-fill the convertToScheduledModal
   const el = id => document.getElementById(id);
@@ -2009,9 +2009,9 @@ async function saveConvertToScheduled() {
   const memo   = el('ctsMemo')?.value || '';
   const type   = el('ctsType')?.value || 'expense';
 
-  if (!desc)      { toast('Informe a descrição','error'); return; }
-  if (!accId)     { toast('Selecione a conta','error'); return; }
-  if (!startDate) { toast('Informe a data de início','error'); return; }
+  if (!desc)      { toast(t('toast.err_description'),'error'); return; }
+  if (!accId)     { toast(t('toast.err_select_account'),'error'); return; }
+  if (!startDate) { toast(t('toast.err_start_date'),'error'); return; }
 
   // Find original tx to copy category/payee
   const orig = (state.transactions||[]).find(t=>t.id===txId) || {};
@@ -2037,7 +2037,7 @@ async function saveConvertToScheduled() {
   const { error } = await sb.from('scheduled_transactions').insert(data);
   if (error) { toast('Erro ao criar programação: ' + error.message, 'error'); return; }
 
-  toast('✅ Programação criada! A transação original permanece inalterada.', 'success');
+  toast(t('scheduled.saved'), 'success');
   closeModal('convertToScheduledModal');
   if (state.currentPage === 'scheduled') loadScheduled();
 }

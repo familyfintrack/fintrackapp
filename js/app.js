@@ -156,7 +156,7 @@ function scheduleDailyAutoRegister(){
 async function initSupabase(){
   const url=document.getElementById('supabaseUrl').value.trim();
   const key=document.getElementById('supabaseKey').value.trim();
-  if(!url||!key){toast('Preencha URL e Key do Supabase','error');return;}
+  if(!url||!key){toast(t('error.supabase_config'),'error');return;}
   try{
     sb=supabase.createClient(url,key);
     const{error}=await sb.from('accounts').select('id').limit(1);
@@ -165,7 +165,7 @@ async function initSupabase(){
     document.getElementById('setupScreen').style.display='none';
     document.getElementById('pinScreen').style.display='none';
     _pinUnlocked=true;
-    toast('Conectado ao Supabase!','success');
+    toast(t('toast.supabase_ok'),'success');
     await bootApp();
     resetAutoLockTimer();
   }catch(e){toast('Erro: '+e.message,'error');}
@@ -556,7 +556,7 @@ async function bootApp(){
       (typeof i18nInit === 'function' ? i18nInit() : Promise.resolve()),
     ]);
   } catch(e) {
-    toast('Erro ao carregar dados: '+e.message,'error');
+    toast(t('error.load_data')+' '+e.message,'error');
     return;
   }
   // Dados secundários em background — não bloqueiam o dashboard
@@ -598,6 +598,7 @@ async function bootApp(){
   if (typeof applyPricesFeature === 'function') applyPricesFeature().catch(() => {});
   if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
   if (typeof applyInvestmentsFeature === 'function') applyInvestmentsFeature().catch(() => {});
+  if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
 }
@@ -870,7 +871,7 @@ function clearFamilyScopedUI() {
 function navigate(page){
   // Guard: settings/audit são admin-only
   if((page==='settings'||page==='audit') && currentUser?.role !== 'admin'){
-    toast('Acesso restrito: apenas Administradores globais podem acessar as Configurações.','warning');
+    toast(t('error.admin_only'),'warning');
     return;
   }
 
@@ -908,7 +909,7 @@ function navigate(page){
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
-  else if(page==='help')initHelpPage();
+  else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);
@@ -932,6 +933,34 @@ if('serviceWorker' in navigator){
 
 
 document.addEventListener('DOMContentLoaded', initBottomNav);
+
+// ── i18n: re-render UI when language changes ─────────────────────────────────
+document.addEventListener('i18n:changed', () => {
+  // Update pageTitles from translation dict
+  const pageKeyMap = {
+    dashboard:'page.dashboard', transactions:'page.transactions',
+    accounts:'page.accounts',   reports:'page.reports',
+    budgets:'page.budgets',     categories:'page.categories',
+    payees:'page.payees',       scheduled:'page.scheduled',
+    import:'page.import',       settings:'page.settings',
+    investments:'page.investments', prices:'page.prices',
+    ai_insights:'page.ai_insights', grocery:'page.grocery',
+    translations:'page.translations',
+  };
+  if (typeof t === 'function') {
+    Object.entries(pageKeyMap).forEach(([page, key]) => {
+      const tr = t(key);
+      if (tr && tr !== key) pageTitles[page] = tr;
+    });
+  }
+  // Update topbar page title
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl && state.currentPage && pageTitles[state.currentPage]) {
+    titleEl.textContent = pageTitles[state.currentPage];
+  }
+  // Apply data-i18n across full document
+  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document);
+});
 
 
 // Strong zoom lock for mobile/webview double-tap, pinch and ctrl+wheel
@@ -982,16 +1011,47 @@ function _closeLangPicker(e) {
 async function quickSetLang(lang) {
   const dd = document.getElementById('topbarLangDropdown');
   if (dd) dd.style.display = 'none';
-  if (typeof i18nSetLanguage === 'function') {
-    await i18nSetLanguage(lang);
-    _i18nUpdateTopbarLabel();
-    // Re-render dynamic page titles
-    const page = state.currentPage;
-    if (pageTitles[page]) {
-      const el = document.getElementById('pageTitle');
-      if (el) el.textContent = pageTitles[page];
-    }
+  if (typeof i18nSetLanguage !== 'function') return;
+
+  await i18nSetLanguage(lang);
+  _i18nUpdateTopbarLabel();
+
+  // Apply to every element in the entire document with data-i18n
+  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document);
+
+  // Re-render pageTitles object entries from translation dict
+  const pageKeyMap = {
+    dashboard: 'page.dashboard', transactions: 'page.transactions',
+    accounts: 'page.accounts',   reports: 'page.reports',
+    budgets: 'page.budgets',     categories: 'page.categories',
+    payees: 'page.payees',       scheduled: 'page.scheduled',
+    import: 'page.import',       settings: 'page.settings',
+    investments: 'page.investments', prices: 'page.prices',
+    ai_insights: 'page.ai_insights', grocery: 'page.grocery',
+    translations: 'page.translations',
+  };
+  Object.entries(pageKeyMap).forEach(([page, key]) => {
+    const tr = typeof t === 'function' ? t(key) : null;
+    if (tr && tr !== key) pageTitles[page] = tr;
+  });
+
+  // Update current page title immediately
+  const page = state.currentPage;
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl && pageTitles[page]) titleEl.textContent = pageTitles[page];
+
+  // Re-run current page to refresh any JS-rendered content
+  if (page && page !== 'dashboard') {
+    // Lightweight re-render: just reapply without full data reload
+    try {
+      if (page === 'transactions') { if (typeof loadTransactions==='function') loadTransactions(); }
+      else if (page === 'accounts') { if (typeof renderAccounts==='function') renderAccounts(); }
+      else if (page === 'categories') { if (typeof renderCategories==='function') renderCategories(); }
+      else if (page === 'payees') { if (typeof renderPayees==='function') renderPayees(); }
+      else if (page === 'reports') { if (typeof loadCurrentReport==='function') loadCurrentReport(); }
+    } catch(_) {}
   }
+
   toast('🌐 ' + { pt:'Português', en:'English', es:'Español', fr:'Français' }[lang], 'success');
 }
 function _i18nUpdateTopbarLabel() {

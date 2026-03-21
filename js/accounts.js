@@ -11,7 +11,7 @@ let _accountsViewMode='';
 // ── Consolidar Saldo da Conta ──────────────────────────────────────────────
 function openConsolidateModal(accountId) {
   const a = (state.accounts || []).find(x => x.id === accountId);
-  if (!a) { toast('Conta não encontrada', 'error'); return; }
+  if (!a) { toast(t('account.not_found'), 'error'); return; }
   document.getElementById('consolidateAccountId').value = accountId;
   document.getElementById('consolidateAccountName').textContent = a.name;
   const cur = a.currency || 'BRL';
@@ -58,7 +58,7 @@ async function saveConsolidation() {
   const diff = +(target - current).toFixed(10);
   const errEl = document.getElementById('consolidateError');
   errEl.style.display = 'none';
-  if (Math.abs(diff) < 0.005) { toast('Sem diferença — nenhum ajuste gerado.', 'info'); closeModal('consolidateModal'); return; }
+  if (Math.abs(diff) < 0.005) { toast(t('toast.no_diff'), 'info'); closeModal('consolidateModal'); return; }
   const date = document.getElementById('consolidateDate')?.value || new Date().toISOString().slice(0,10);
   const desc = document.getElementById('consolidateDesc')?.value?.trim() || 'Consolidação de saldo';
   const btn = document.getElementById('consolidateSaveBtn');
@@ -323,7 +323,7 @@ async function saveAccount(){
     due_day: isCC&&ddEl&&ddEl.value ? (parseInt(ddEl.value)||null) : null,
     updated_at:new Date().toISOString()
   };
-  if(!data.name){toast('Informe o nome da conta','error');return;}
+  if(!data.name){toast(t('toast.err_account_name'),'error');return;}
   if(!id) data.family_id=famId();
   let err;
   if(id){({error:err}=await sb.from('accounts').update(data).eq('id',id));}
@@ -554,7 +554,7 @@ async function confirmDeleteAccount() {
         sb.from('scheduled_transactions').delete()
       ).eq('transfer_to_account_id', _delAccId);
 
-      toast('✓ Todos os registros excluídos', 'success');
+      toast(t('toast.all_deleted'), 'success');
     }
 
     // ── Finally: deactivate the account ─────────────────────────────
@@ -563,7 +563,7 @@ async function confirmDeleteAccount() {
     if (deactErr) throw new Error('Erro ao desativar conta: ' + deactErr.message);
 
     closeModal('deleteAccountModal');
-    toast('✓ Conta excluída com sucesso', 'success');
+    toast(t('account.deleted'), 'success');
     _delAccId = null;
 
     await loadAccounts();
@@ -622,7 +622,7 @@ async function deleteGroup(id){
   await sb.from('accounts').update({group_id:null}).eq('group_id',id);
   const{error}=await sb.from('account_groups').delete().eq('id',id);
   if(error){toast(error.message,'error');return;}
-  toast('Grupo removido','success');
+  toast(t('toast.group_removed'),'success');
   await loadGroups();
   renderGroupManager();
   await loadAccounts();
@@ -670,13 +670,13 @@ async function saveGroup(){
     currency:currEl?currEl.value:'BRL',
     updated_at:new Date().toISOString()
   };
-  if(!data.name){toast('Informe o nome do grupo','error');return;}
+  if(!data.name){toast(t('toast.err_group_name'),'error');return;}
   if(!id)data.family_id=famId();
   let err;
   if(id){({error:err}=await sb.from('account_groups').update(data).eq('id',id));}
   else{({error:err}=await sb.from('account_groups').insert(data));}
   if(err){toast(err.message,'error');return;}
-  toast('Grupo salvo!','success');
+  toast(t('toast.group_saved'),'success');
   cancelGroupEdit();
   await loadGroups();
   renderGroupManager();

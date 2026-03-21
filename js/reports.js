@@ -1201,7 +1201,7 @@ async function exportReportPDF() {
   try {
     const { doc, from, to } = await _buildReportPDF();
     doc.save(`FinTrack_${from}_${to}_${rptState.view}.pdf`);
-    toast('✓ PDF gerado e baixado!', 'success');
+    toast(t('report.pdf_ok'), 'success');
   } catch (e) {
     toast('Erro ao gerar PDF: ' + e.message, 'error');
     console.error('[PDF]', e);

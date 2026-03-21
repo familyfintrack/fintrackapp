@@ -317,7 +317,7 @@ async function runAiAnalysis() {
 
   const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
   if (!apiKey || !apiKey.startsWith('AIza')) {
-    toast('Configure a chave Gemini em Configurações → IA', 'warning');
+    toast(t('ai.no_api_key_config'), 'warning');
     showAiConfig();
     return;
   }
@@ -330,7 +330,7 @@ async function runAiAnalysis() {
     const result = await _callGeminiAnalysis(apiKey, ctx);
     _ai.analysisResult = result;
     _aiRenderAnalysis(result);
-    toast('✅ Análise concluída', 'success');
+    toast(t('ai.analysis_done'), 'success');
   } catch (e) {
     _aiSetAnalysisState('error', e.message);
     toast('Erro na análise: ' + e.message, 'error');
@@ -715,7 +715,7 @@ function exportAiAnalysis() {
   a.href     = URL.createObjectURL(blob);
   a.download = `ai-insights-${ctx.period.from}-${ctx.period.to}.txt`;
   a.click();
-  toast('📥 Exportado', 'success');
+  toast(t('report.export_ok'), 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -888,7 +888,7 @@ function clearAiChat() {
   _ai.chatHistory = [];
   _ai.financialContext = null;
   _aiRenderChatHistory();
-  toast('Chat limpo', 'info');
+  toast(t('ai.chat_clear'), 'info');
 }
 
 // ══════════════════════════════════════════════════════════════════════════

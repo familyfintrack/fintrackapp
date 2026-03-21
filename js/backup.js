@@ -713,7 +713,7 @@ async function restoreBackup(event) {
     await _restoreBackupData(backup.data, status, restoreOptions);
     await _reloadAfterRestore();
     _backupStatus(status, '✓ Restaurado com sucesso!', 'var(--green)');
-    toast('Backup restaurado!', 'success');
+    toast(t('toast.backup_restored'), 'success');
   } catch (e) {
     _backupStatus(status, '✗ ' + e.message, 'var(--red)');
     toast('Erro: ' + e.message, 'error');
@@ -906,7 +906,7 @@ async function _createDbBackup_legacy_unused(label = '') {
     };
     const { error } = await sb.from('app_backups').insert(row);
     if (error) throw error;
-    toast('✅ Backup criado no banco!', 'success');
+    toast(t('toast.backup_ok'), 'success');
     await loadDbBackups();
   } catch (e) {
     toast('Erro ao criar backup: ' + e.message, 'error');
@@ -979,7 +979,7 @@ async function downloadDbBackup(id) {
     a.download = `FinTrack_Backup_${data.created_at.slice(0, 10)}_${id.slice(0, 8)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast('Backup baixado!', 'success');
+    toast(t('toast.backup_downloaded'), 'success');
   } catch (e) {
     toast('Erro ao baixar backup: ' + e.message, 'error');
   }
@@ -1034,7 +1034,7 @@ async function deleteDbBackup(id) {
   if (!confirm('Excluir este backup?')) return;
   const { error } = await sb.from('app_backups').delete().eq('id', id);
   if (error) { toast(error.message, 'error'); return; }
-  toast('Backup excluído', 'success');
+  toast(t('toast.backup_deleted'), 'success');
   await loadDbBackups();
 }
 

@@ -138,7 +138,7 @@ async function saveEmailJSConfig() {
   try { localStorage.setItem('ej_sched_template', stpl); } catch {}
   ejCheckStatus();
   closeModal('emailjsModal');
-  toast('✓ EmailJS configurado e salvo no banco!', 'success');
+  toast(t('toast.emailjs_saved'), 'success');
 }
 
 function toggleEjKey() {
@@ -151,7 +151,7 @@ function toggleEjKey() {
 function copyEjField(id) {
   const val = document.getElementById(id)?.value;
   if(!val) return;
-  navigator.clipboard.writeText(val).then(()=>toast('Copiado!','success'));
+  navigator.clipboard.writeText(val).then(()=>toast(t('toast.copied'),'success'));
 }
 
 async function testEmailJSConnection() {
@@ -186,7 +186,7 @@ async function testEmailJSConnection() {
     });
     res.textContent = '✅ Conexão bem-sucedida! Verifique sua caixa de entrada.';
     res.className   = 'ej-test-result ej-test-ok';
-    toast('Teste enviado com sucesso!', 'success');
+    toast(t('toast.email_sent'), 'success');
   } catch(e) {
     res.textContent = '❌ Erro: ' + (e.text || e.message || JSON.stringify(e));
     res.className   = 'ej-test-result ej-test-err';

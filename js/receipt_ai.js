@@ -192,7 +192,7 @@ async function readReceiptWithAI() {
 
   const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
   if (!apiKey || !apiKey.startsWith('AIza')) {
-    toast('Configure a chave Gemini em Configurações → IA', 'warning');
+    toast(t('ai.no_api_key_config'), 'warning');
     showAiConfig();
     return;
   }
@@ -206,7 +206,7 @@ async function readReceiptWithAI() {
     _applyResultToForm(result);
     _renderAiResultPanel(result);
     window._lastReceiptAiResult = result; // used by Módulo de Preços
-    toast('✅ Campos preenchidos! Revise e salve.', 'success');
+    toast(t('toast.receipt_filled'), 'success');
     // Show "Registrar Preços" button if prices feature active for this family
     try {
       if (typeof isPricesEnabled === 'function' && await isPricesEnabled()) {
