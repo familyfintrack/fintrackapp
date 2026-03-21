@@ -570,8 +570,8 @@ async function renderCategoryChart(){
     // sync toggle buttons
     const pie = document.getElementById('catChartTypePie');
     const bar = document.getElementById('catChartTypeBar');
-    if (pie) { pie.style.background = savedType === 'doughnut' ? 'var(--accent)' : 'var(--surface)'; pie.style.color = savedType === 'doughnut' ? '#fff' : 'var(--muted)'; }
-    if (bar) { bar.style.background = savedType === 'bar' ? 'var(--accent)' : 'var(--surface)'; bar.style.color = savedType === 'bar' ? '#fff' : 'var(--muted)'; }
+    if (pie) { pie.classList.toggle('active', savedType === 'doughnut'); pie.style.background=''; pie.style.color=''; }
+    if (bar) { bar.classList.toggle('active', savedType === 'bar');     bar.style.background=''; bar.style.color=''; }
   }
 
   if (_catChartType === 'bar') {
@@ -740,10 +740,10 @@ function _dashApplyPrefs(prefs) {
     if (!el) return;
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
-  // Apply order in DOM (only on desktop, best-effort — no forced reflow)
+  // Apply order in DOM on all screen sizes
   try {
     const parent = document.getElementById(order[0]?.el)?.parentElement;
-    if (parent && window.innerWidth >= 768) {
+    if (parent) {
       order.forEach(c => {
         const el = document.getElementById(c.el);
         if (el && el.parentElement === parent) parent.appendChild(el);
@@ -817,7 +817,9 @@ function _dashToggleCard(id, row) {
 }
 
 function _dashCustomSave() {
-  const prefs = {};
+  // Start from existing prefs so we don't lose catChartType, dashForecastAccounts, etc.
+  const existingPrefs = _dashGetPrefs();
+  const prefs = { ...existingPrefs };
   _DASH_CARDS.forEach(c => {
     const btn = document.querySelector(`.dash-toggle-switch[data-card="${c.id}"]`);
     prefs[c.id] = btn ? btn.classList.contains('on') : true;
@@ -826,9 +828,6 @@ function _dashCustomSave() {
   if (_dashCustomPendingOrder) {
     prefs._order = _dashCustomPendingOrder;
     _dashCustomPendingOrder = null;
-  } else {
-    const existingPrefs = _dashGetPrefs();
-    if (existingPrefs._order) prefs._order = existingPrefs._order;
   }
   _dashSavePrefs(prefs);
   _dashApplyPrefs(prefs);
@@ -1383,14 +1382,8 @@ function _setCatChartType(type) {
   // Sync toggle button visuals
   const pie = document.getElementById('catChartTypePie');
   const bar = document.getElementById('catChartTypeBar');
-  if (pie) {
-    pie.style.background = type === 'doughnut' ? 'var(--accent)' : 'var(--surface)';
-    pie.style.color      = type === 'doughnut' ? '#fff' : 'var(--muted)';
-  }
-  if (bar) {
-    bar.style.background = type === 'bar' ? 'var(--accent)' : 'var(--surface)';
-    bar.style.color      = type === 'bar' ? '#fff' : 'var(--muted)';
-  }
+  if (pie) { pie.classList.toggle('active', type === 'doughnut'); pie.style.background=''; pie.style.color=''; }
+  if (bar) { bar.classList.toggle('active', type === 'bar');     bar.style.background=''; bar.style.color=''; }
 
   // Persist preference
   try { _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {}); } catch(_) {}
@@ -1442,9 +1435,10 @@ function _renderCatChartBar() {
   // Set explicit height on the wrapper — required for maintainAspectRatio:false
   const barH = Math.max(200, _catChartEntries.length * 36 + 48);
   const wrap = document.getElementById('catChartWrap');
-  if (wrap) { wrap.style.height = barH + 'px'; }
+  if (wrap) { wrap.style.height = barH + 'px'; wrap.style.overflowX = 'hidden'; }
   canvas.removeAttribute('height');
   canvas.style.height = barH + 'px';
+  canvas.style.maxWidth = '100%';
   const chart = new Chart(canvas, {
     type: 'bar',
     data: {
