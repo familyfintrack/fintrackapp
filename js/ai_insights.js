@@ -711,390 +711,394 @@ function _aiRenderAnalysis(r) {
   if (!container || !r) return;
 
   const ctx = _ai.financialContext;
-  const fmt = (v) => 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtN = (v) => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  // Badge de origem
-  const dataBadge = `<span class="ai-badge ai-badge-data">📊 Dado do App</span>`;
-  const aiBadge   = `<span class="ai-badge ai-badge-ai">🤖 Insight IA</span>`;
-  const tipBadge  = `<span class="ai-badge ai-badge-tip">💡 Sugestão</span>`;
-
-  // Overview financeiro (dados do app)
-  let overviewHtml = '';
+  // ── Score de saúde financeira (0-100) ──────────────────────────────────
+  let healthScore = 50;
   if (ctx) {
     const net = ctx.summary.netResult;
-    const netColor = net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
-    overviewHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} ${t('ai.summary')}</div>
-        <div class="ai-kpi-row">
-          <div class="ai-kpi ai-kpi-green">
-            <span class="ai-kpi-label">${t('ai.income_label')}</span>
-            <span class="ai-kpi-value">${fmt(ctx.summary.totalIncome)}</span>
-          </div>
-          <div class="ai-kpi ai-kpi-red">
-            <span class="ai-kpi-label">${t('ai.expense_label')}</span>
-            <span class="ai-kpi-value">${fmt(ctx.summary.totalExpense)}</span>
-          </div>
-          <div class="ai-kpi" style="border-color:${netColor}">
-            <span class="ai-kpi-label">${t('ai.net_label')}</span>
-            <span class="ai-kpi-value" style="color:${netColor}">${fmt(net)}</span>
-          </div>
+    const inc = ctx.summary.totalIncome || 1;
+    const savRate = net / inc;
+    if (savRate >= 0.30) healthScore = 92;
+    else if (savRate >= 0.20) healthScore = 80;
+    else if (savRate >= 0.10) healthScore = 68;
+    else if (savRate >= 0)    healthScore = 55;
+    else if (savRate >= -0.10) healthScore = 38;
+    else healthScore = 22;
+    // bonus/malus from AI
+    if (r.forecast?.risk_level === 'low')    healthScore = Math.min(100, healthScore + 8);
+    if (r.forecast?.risk_level === 'high')   healthScore = Math.max(0,   healthScore - 12);
+    if (r.anomalies?.length > 2)             healthScore = Math.max(0,   healthScore - 6);
+  }
+  const healthColor = healthScore >= 75 ? '#22c55e' : healthScore >= 50 ? '#f59e0b' : '#ef4444';
+  const healthLabel = healthScore >= 75 ? 'Saudável' : healthScore >= 50 ? 'Atenção' : 'Crítico';
+  const healthEmoji = healthScore >= 75 ? '💚' : healthScore >= 50 ? '💛' : '❤️';
+
+  // ── Trend icon & forecast ─────────────────────────────────────────────
+  const trendDir = r.forecast?.trend || ctx?.financialProjection?.trend_direction || 'stable';
+  const trendMeta = {
+    positive: { icon:'📈', label:'Tendência positiva', color:'#22c55e' },
+    negative: { icon:'📉', label:'Tendência negativa', color:'#ef4444' },
+    mixed:    { icon:'↕️', label:'Tendência mista',    color:'#f59e0b' },
+    stable:   { icon:'➡️', label:'Estável',            color:'#60a5fa' },
+  }[trendDir] || { icon:'📊', label:'Análise', color:'#60a5fa' };
+
+  // ── Hero card ─────────────────────────────────────────────────────────
+  const net      = ctx?.summary?.netResult ?? 0;
+  const netColor = net >= 0 ? '#22c55e' : '#ef4444';
+  const netLabel = net >= 0 ? 'Superávit' : 'Déficit';
+
+  const circleCircumference = 2 * Math.PI * 38; // r=38
+  const circleOffset = circleCircumference * (1 - healthScore/100);
+
+  let heroHtml = `
+<div class="air-hero">
+  <div class="air-hero-glow"></div>
+  <div class="air-hero-content">
+    <!-- Score gauge -->
+    <div class="air-score-wrap">
+      <svg class="air-score-svg" viewBox="0 0 100 100" width="100" height="100">
+        <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="7"/>
+        <circle cx="50" cy="50" r="38" fill="none" stroke="${healthColor}" stroke-width="7"
+          stroke-dasharray="${circleCircumference.toFixed(1)}"
+          stroke-dashoffset="${circleOffset.toFixed(1)}"
+          stroke-linecap="round"
+          transform="rotate(-90 50 50)"
+          class="air-score-arc"/>
+        <text x="50" y="46" text-anchor="middle" fill="#fff" font-size="18" font-weight="800" font-family="inherit">${healthScore}</text>
+        <text x="50" y="60" text-anchor="middle" fill="rgba(255,255,255,.6)" font-size="8" font-family="inherit">/ 100</text>
+      </svg>
+      <div class="air-score-label" style="color:${healthColor}">${healthEmoji} ${healthLabel}</div>
+    </div>
+    <!-- KPIs -->
+    <div class="air-hero-kpis">
+      ${ctx ? `
+      <div class="air-hero-kpi">
+        <span class="air-hero-kpi-lbl">Receitas</span>
+        <span class="air-hero-kpi-val air-green">${fmtN(ctx.summary.totalIncome)}</span>
+      </div>
+      <div class="air-hero-kpi">
+        <span class="air-hero-kpi-lbl">Despesas</span>
+        <span class="air-hero-kpi-val air-red">${fmtN(ctx.summary.totalExpense)}</span>
+      </div>
+      <div class="air-hero-kpi">
+        <span class="air-hero-kpi-lbl">${netLabel}</span>
+        <span class="air-hero-kpi-val" style="color:${netColor}">${fmtN(Math.abs(net))}</span>
+      </div>
+      <div class="air-hero-kpi">
+        <span class="air-hero-kpi-lbl">Transações</span>
+        <span class="air-hero-kpi-val">${ctx.summary.txCount}</span>
+      </div>` : ''}
+    </div>
+    <!-- Trend badge -->
+    <div class="air-trend-badge" style="color:${trendMeta.color};background:${trendMeta.color}18;border-color:${trendMeta.color}33">
+      ${trendMeta.icon} ${trendMeta.label}
+    </div>
+  </div>
+</div>`;
+
+  // ── AI Summary card — the "voice" of the AI ───────────────────────────
+  let aiVoiceHtml = '';
+  if (r.summary) {
+    aiVoiceHtml = `
+<div class="air-voice-card">
+  <div class="air-voice-icon">🤖</div>
+  <div class="air-voice-body">
+    <div class="air-voice-label">Análise Gemini</div>
+    <p class="air-voice-text">${esc(r.summary)}</p>
+    ${r.overview ? `<div class="air-pills-row">
+      ${r.overview.income_comment  ? `<div class="air-pill air-pill-g">💰 ${esc(r.overview.income_comment)}</div>` : ''}
+      ${r.overview.expense_comment ? `<div class="air-pill air-pill-r">💸 ${esc(r.overview.expense_comment)}</div>` : ''}
+      ${r.overview.net_comment     ? `<div class="air-pill air-pill-b">📈 ${esc(r.overview.net_comment)}</div>` : ''}
+    </div>` : ''}
+  </div>
+</div>`;
+  }
+
+  // ── Forecast banner ───────────────────────────────────────────────────
+  let forecastBannerHtml = '';
+  const fc = r.forecast;
+  const proj = ctx?.financialProjection;
+  const rcm  = ctx?.recurringCommitments;
+  if (fc || proj) {
+    const riskLevel = fc?.risk_level || 'medium';
+    const riskMeta = {
+      low:    { color:'#22c55e', bg:'#052e16', label:'Risco Baixo',  icon:'🛡️' },
+      medium: { color:'#f59e0b', bg:'#1c1001', label:'Risco Médio',  icon:'⚡' },
+      high:   { color:'#ef4444', bg:'#1c0000', label:'Risco Alto',   icon:'🔥' },
+    }[riskLevel] || { color:'#60a5fa', bg:'#0c1a2e', label:'', icon:'📊' };
+
+    let projRows = '';
+    if (proj?.months?.length) {
+      projRows = proj.months.map(m => {
+        const isPos = m.projected_net >= 0;
+        return `<div class="air-proj-row">
+          <span class="air-proj-month">${m.month}</span>
+          <span class="air-proj-val air-green">${fmtN(m.projected_income)}</span>
+          <span class="air-proj-val air-red">${fmtN(m.projected_expense)}</span>
+          <span class="air-proj-net" style="color:${isPos?'#22c55e':'#ef4444'}">${isPos?'+':''}${fmtN(m.projected_net)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    let rcmKpis = '';
+    if (rcm?.monthly_expense || rcm?.monthly_income) {
+      const rcmNetColor = rcm.monthly_net >= 0 ? '#22c55e' : '#ef4444';
+      rcmKpis = `<div class="air-rcm-strip">
+        <div class="air-rcm-kpi"><span>Receita recorrente/mês</span><strong class="air-green">${fmtN(rcm.monthly_income)}</strong></div>
+        <div class="air-rcm-kpi"><span>Despesa recorrente/mês</span><strong class="air-red">${fmtN(rcm.monthly_expense)}</strong></div>
+        <div class="air-rcm-kpi"><span>Resultado recorrente</span><strong style="color:${rcmNetColor}">${fmtN(rcm.monthly_net)}</strong></div>
+      </div>`;
+    }
+
+    let keyRisksHtml = (fc?.key_risks||[]).map(k => `
+      <div class="air-risk-item">
+        <span class="air-risk-bullet">▸</span>
+        <div><strong>${esc(k.risk)}</strong>${k.mitigation?`<span class="air-risk-mit"> — ${esc(k.mitigation)}</span>`:''}</div>
+      </div>`).join('');
+
+    let oppsHtml = (fc?.opportunities||[]).map(o => `
+      <div class="air-opp-item">
+        <span class="air-opp-bullet">✦</span>
+        <div><strong>${esc(o.opportunity)}</strong>${o.action?`<span class="air-opp-act"> — ${esc(o.action)}</span>`:''}</div>
+      </div>`).join('');
+
+    forecastBannerHtml = `
+<div class="air-forecast" style="--fc:${riskMeta.color};--fcbg:${riskMeta.bg}">
+  <div class="air-forecast-head">
+    <span class="air-forecast-icon">${trendMeta.icon}</span>
+    <div>
+      <div class="air-forecast-title">Prognóstico Financeiro</div>
+      ${fc?.outlook ? `<p class="air-forecast-outlook">${esc(fc.outlook)}</p>` : ''}
+    </div>
+    <span class="air-risk-chip" style="color:${riskMeta.color}">${riskMeta.icon} ${riskMeta.label}</span>
+  </div>
+  ${rcmKpis}
+  ${projRows ? `
+  <div class="air-proj-table">
+    <div class="air-proj-header"><span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado</span></div>
+    ${projRows}
+  </div>` : ''}
+  ${keyRisksHtml ? `<div class="air-forecast-section-title">Riscos</div><div class="air-risks-list">${keyRisksHtml}</div>` : ''}
+  ${oppsHtml ? `<div class="air-forecast-section-title">Oportunidades</div><div class="air-opps-list">${oppsHtml}</div>` : ''}
+</div>`;
+  }
+
+  // ── Alerts — priority strip ───────────────────────────────────────────
+  let alertsHtml = '';
+  const allAlerts = [
+    ...(r.cashflow_alerts||[]).map(a => ({...a, src:'cashflow'})),
+    ...(r.anomalies||[]).map(a => ({type:a.severity==='high'?'warning':'info', message:`${a.title}: ${a.description}`, src:'anomaly'})),
+  ];
+  if (allAlerts.length) {
+    alertsHtml = `
+<div class="air-alerts-strip">
+  ${allAlerts.map(a => {
+    const meta = {
+      warning: { icon:'⚠️', cls:'air-alert-w' },
+      info:    { icon:'ℹ️', cls:'air-alert-i' },
+      ok:      { icon:'✅', cls:'air-alert-ok' },
+    }[a.type||'info'] || { icon:'ℹ️', cls:'air-alert-i' };
+    return `<div class="air-alert-pill ${meta.cls}">${meta.icon} ${esc(a.message)}</div>`;
+  }).join('')}
+</div>`;
+  }
+
+  // ── Savings + Recommendations ─────────────────────────────────────────
+  const allActions = [
+    ...(r.savings_opportunities||[]).map(s=>({type:'saving', title:s.title, desc:s.description, extra:s.estimated_saving})),
+    ...(r.recommendations||[]).map(rc=>({type:rc.priority||'medium', title:rc.title, desc:rc.description, extra:null})),
+  ];
+  let actionsHtml = '';
+  if (allActions.length) {
+    actionsHtml = `
+<div class="air-section">
+  <div class="air-section-title">💡 Recomendações & Oportunidades</div>
+  <div class="air-actions-grid">
+    ${allActions.map((a,i) => {
+      const isSaving = a.type === 'saving';
+      const isHigh   = a.type === 'high';
+      return `<div class="air-action-card ${isSaving?'air-action-saving':isHigh?'air-action-high':''}" style="animation-delay:${i*40}ms">
+        <div class="air-action-icon">${isSaving?'💰':isHigh?'🔴':a.type==='medium'?'🟡':'🟢'}</div>
+        <div class="air-action-body">
+          <div class="air-action-title">${esc(a.title)}</div>
+          <div class="air-action-desc">${esc(a.desc)}</div>
+          ${a.extra?`<div class="air-action-est">→ ${esc(a.extra)}</div>`:''}
         </div>
       </div>`;
+    }).join('')}
+  </div>
+</div>`;
   }
 
-  // Sumário IA
-  let summaryHtml = '';
-  if (r.summary) {
-    summaryHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${aiBadge} Análise Geral</div>
-        <p class="ai-summary-text">${esc(r.summary)}</p>
-        ${r.overview ? `
-          <div class="ai-overview-pills">
-            ${r.overview.income_comment  ? `<div class="ai-overview-pill ai-pill-green">💰 ${esc(r.overview.income_comment)}</div>` : ''}
-            ${r.overview.expense_comment ? `<div class="ai-overview-pill ai-pill-red">💸 ${esc(r.overview.expense_comment)}</div>` : ''}
-            ${r.overview.net_comment     ? `<div class="ai-overview-pill ai-pill-blue">📈 ${esc(r.overview.net_comment)}</div>` : ''}
-          </div>` : ''}
-      </div>`;
-  }
-
-  // Alertas de cashflow
-  let alertsHtml = '';
-  if (r.cashflow_alerts?.length) {
-    alertsHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${aiBadge} ${t('ai.alerts')}</div>
-        ${r.cashflow_alerts.map(a => `
-          <div class="ai-alert ai-alert-${a.type || 'info'}">
-            ${a.type === 'warning' ? '⚠️' : a.type === 'ok' ? '✅' : 'ℹ️'} ${esc(a.message)}
-          </div>`).join('')}
-      </div>`;
-  }
-
-  // Anomalias
-  let anomaliesHtml = '';
-  if (r.anomalies?.length) {
-    anomaliesHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${aiBadge} ${t('ai.anomalies')}</div>
-        ${r.anomalies.map(a => `
-          <div class="ai-insight-card ai-severity-${a.severity || 'low'}">
-            <div class="ai-insight-title">${esc(a.title)}</div>
-            <div class="ai-insight-desc">${esc(a.description)}</div>
-          </div>`).join('')}
-      </div>`;
-  }
-
-  // Top categorias (dados do app) + insights IA
+  // ── Top categories — visual bar chart ─────────────────────────────────
   let catHtml = '';
   if (ctx?.topCategories?.length) {
+    const maxAmt = ctx.topCategories[0].amount || 1;
     catHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} ${t('ai.top_categories')}</div>
-        <div class="ai-bar-list">
-          ${ctx.topCategories.map(c => `
-            <div class="ai-bar-item">
-              <div class="ai-bar-label"><span>${esc(c.name)}</span><span>${fmt(c.amount)} <small>(${c.pct}%)</small></span></div>
-              <div class="ai-bar-track"><div class="ai-bar-fill" style="width:${c.pct}%"></div></div>
-            </div>`).join('')}
+<div class="air-section">
+  <div class="air-section-title">📊 Despesas por Categoria</div>
+  <div class="air-cat-bars">
+    ${ctx.topCategories.slice(0,8).map((c,i) => {
+      const barW = (c.amount / maxAmt * 100).toFixed(1);
+      const catInsight = (r.category_insights||[]).find(ci=>ci.category===c.name);
+      return `<div class="air-cat-row" style="animation-delay:${i*35}ms">
+        <div class="air-cat-meta">
+          <span class="air-cat-name">${esc(c.name)}</span>
+          <span class="air-cat-amt">${fmtN(c.amount)} <small>${c.pct}%</small></span>
         </div>
-        ${r.category_insights?.length ? `
-          <div class="ai-insights-list" style="margin-top:12px">
-            <div class="ai-badge-row">${aiBadge} <span style="font-size:.78rem;color:var(--muted)">Insights por categoria</span></div>
-            ${r.category_insights.map(ci => `
-              <div class="ai-cat-insight">
-                <strong>${esc(ci.category)}</strong> — ${esc(ci.insight)}
-                ${ci.action ? `<span class="ai-action-tip">→ ${esc(ci.action)}</span>` : ''}
-              </div>`).join('')}
-          </div>` : ''}
+        <div class="air-cat-track">
+          <div class="air-cat-fill" style="width:${barW}%;animation-delay:${i*60+200}ms"></div>
+        </div>
+        ${catInsight?.insight?`<div class="air-cat-insight">${esc(catInsight.insight)}</div>`:''}
       </div>`;
+    }).join('')}
+  </div>
+</div>`;
   }
 
-  // Top beneficiários
-  let payeeHtml = '';
-  if (ctx?.topPayees?.length) {
-    payeeHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} ${t('ai.top_payees')}</div>
-        <div class="ai-payee-list">
-          ${ctx.topPayees.map((p, i) => `
-            <div class="ai-payee-row">
-              <span class="ai-payee-rank">${i + 1}</span>
-              <span class="ai-payee-name">${esc(p.name)}</span>
-              <span class="ai-payee-amt">${fmt(p.amount)}</span>
-            </div>`).join('')}
-        </div>
+  // ── Budget analysis ───────────────────────────────────────────────────
+  let budgetHtml = '';
+  if (r.budget_analysis?.length) {
+    budgetHtml = `
+<div class="air-section">
+  <div class="air-section-title">🎯 Análise de Orçamentos</div>
+  <div class="air-budget-list">
+    ${r.budget_analysis.map(b => {
+      const sc = {ok:{icon:'✅',color:'#22c55e'}, near:{icon:'⚠️',color:'#f59e0b'}, over:{icon:'🚨',color:'#ef4444'}}[b.status]||{icon:'ℹ️',color:'#60a5fa'};
+      return `<div class="air-budget-item" style="border-left-color:${sc.color}">
+        <span class="air-budget-icon">${sc.icon}</span>
+        <div><strong style="color:${sc.color}">${esc(b.category)}</strong><p class="air-budget-insight">${esc(b.insight)}</p></div>
       </div>`;
+    }).join('')}
+  </div>
+</div>`;
   }
 
-  // Gastos por membro — detalhado com categorias e beneficiários
+  // ── Members ───────────────────────────────────────────────────────────
   let memberHtml = '';
   if (ctx?.memberInsights?.length) {
-    // Build AI insight map: name → insight text
-    const aiMemberMap = {};
-    (r.member_insights || []).forEach(mi => { if (mi.name) aiMemberMap[mi.name] = mi.insight; });
-
-    const memberCards = ctx.memberInsights.map((m, idx) => {
-      const totalPct = ctx.summary.totalExpense > 0
-        ? ((m.expense / ctx.summary.totalExpense) * 100).toFixed(1)
-        : 0;
-      const aiInsight = aiMemberMap[m.name] || '';
-
-      // Top categories bar list
-      const catBars = (m.topCategories || []).map(c => `
-        <div class="ai-mem-cat-item">
-          <div class="ai-mem-cat-label">
-            <span class="ai-mem-cat-name">${esc(c.name)}</span>
-            <span class="ai-mem-cat-val">${fmt(c.amount)} <small style="color:var(--muted)">${c.pct}%</small></span>
-          </div>
-          <div class="ai-bar-track" style="height:4px">
-            <div class="ai-bar-fill" style="width:${Math.min(100,c.pct)}%"></div>
-          </div>
-        </div>`).join('');
-
-      // Top payees compact list
-      const payList = (m.topPayees || []).slice(0, 4).map((p, i) => `
-        <div class="ai-mem-pay-item">
-          <span class="ai-mem-pay-rank">${i+1}</span>
-          <span class="ai-mem-pay-name">${esc(p.name)}</span>
-          <span class="ai-mem-pay-amt">${fmt(p.amount)}</span>
-        </div>`).join('');
-
-      return `
-        <div class="ai-member-card" id="ai-mem-${idx}">
-          <div class="ai-member-card-header" onclick="_aiToggleMember(${idx})">
-            <div class="ai-member-card-avatar">${esc(m.name.charAt(0).toUpperCase())}</div>
-            <div class="ai-member-card-info">
-              <div class="ai-member-card-name">${esc(m.name)}</div>
-              <div class="ai-member-card-sub">
-                <span class="amount-neg" style="font-weight:600">${fmt(m.expense)}</span>
-                ${m.income > 0 ? `<span style="color:var(--muted);margin:0 4px">·</span><span class="amount-pos">${fmt(m.income)}</span>` : ''}
-                <span style="color:var(--muted);margin:0 4px">·</span>
-                <span style="color:var(--muted)">${totalPct}% do total</span>
-              </div>
-            </div>
-            <span class="ai-member-card-chevron" id="ai-mem-chev-${idx}">▼</span>
-          </div>
-          <div class="ai-member-card-body" id="ai-mem-body-${idx}" style="display:none">
-            ${m.topCategories?.length ? `
-              <div class="ai-mem-section-label">🏷 Categorias mais usadas</div>
-              <div class="ai-mem-cats">${catBars}</div>` : ''}
-            ${m.topPayees?.length ? `
-              <div class="ai-mem-section-label" style="margin-top:10px">👤 Principais beneficiários</div>
-              <div class="ai-mem-pays">${payList}</div>` : ''}
-            ${aiInsight ? `
-              <div class="ai-mem-ai-insight">
-                ${aiBadge} <span>${esc(aiInsight)}</span>
-              </div>` : ''}
-          </div>
-        </div>`;
-    }).join('');
-
+    const aiMMap = {};
+    (r.member_insights||[]).forEach(mi => { if(mi.name) aiMMap[mi.name]=mi.insight; });
     memberHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} ${t('ai.by_member')}</div>
-        <div class="ai-member-cards">${memberCards}</div>
-      </div>`;
-  }
-
-  // Oportunidades de economia
-  let savingsHtml = '';
-  if (r.savings_opportunities?.length) {
-    savingsHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${tipBadge} ${t('ai.savings')}</div>
-        ${r.savings_opportunities.map(s => `
-          <div class="ai-savings-card">
-            <div class="ai-savings-title">${esc(s.title)}</div>
-            <div class="ai-savings-desc">${esc(s.description)}</div>
-            ${s.estimated_saving ? `<div class="ai-savings-est">💰 Estimativa: ${esc(s.estimated_saving)}</div>` : ''}
-          </div>`).join('')}
-      </div>`;
-  }
-
-  // ${t('ai.recommendations')}
-  let recsHtml = '';
-  if (r.recommendations?.length) {
-    recsHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${tipBadge} Recomendações</div>
-        ${r.recommendations.map(rec => `
-          <div class="ai-rec-card ai-rec-${rec.priority || 'medium'}">
-            <div class="ai-rec-prio">${rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '🟢'}</div>
-            <div>
-              <div class="ai-rec-title">${esc(rec.title)}</div>
-              <div class="ai-rec-desc">${esc(rec.description)}</div>
-            </div>
-          </div>`).join('')}
-      </div>`;
-  }
-
-  // Sugestões de classificação (advisory only)
-  let classSugHtml = '';
-  if (r.classification_suggestions?.length) {
-    classSugHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${tipBadge} Sugestões de Classificação
-          <span class="ai-advisory-note">⚠️ Apenas sugestões — não aplicadas automaticamente</span>
+<div class="air-section">
+  <div class="air-section-title">👥 Por Membro da Família</div>
+  <div class="air-member-list">
+    ${ctx.memberInsights.map((m,idx) => {
+      const pct = ctx.summary.totalExpense>0 ? ((m.expense/ctx.summary.totalExpense)*100).toFixed(1) : 0;
+      const insight = aiMMap[m.name]||'';
+      const maxCat = (m.topCategories||[])[0]?.amount || 1;
+      return `<div class="air-member-card2" id="air-mc-${idx}">
+        <div class="air-member2-header" onclick="_aiToggleMember(${idx})">
+          <div class="air-avatar2">${esc(m.name.charAt(0).toUpperCase())}</div>
+          <div class="air-member2-info">
+            <span class="air-member2-name">${esc(m.name)}</span>
+            <span class="air-member2-sub">${fmtN(m.expense)} despesas · ${pct}% do total${m.income>0?' · '+fmtN(m.income)+' receitas':''}</span>
+          </div>
+          <span class="air-member2-chev" id="ai-mem-chev-${idx}">▼</span>
         </div>
-        ${r.classification_suggestions.map(cs => `
-          <div class="ai-class-card">
-            <div class="ai-class-desc">${esc(cs.description)}</div>
-            <div class="ai-class-details">
-              ${cs.suggested_category ? `<span class="ai-class-tag">📁 ${esc(cs.suggested_category)}</span>` : ''}
-              ${cs.suggested_payee    ? `<span class="ai-class-tag">👤 ${esc(cs.suggested_payee)}</span>` : ''}
-              ${cs.purpose            ? `<span class="ai-class-tag">🎯 ${esc(cs.purpose)}</span>` : ''}
-              <span class="ai-class-conf">${Math.round((cs.confidence || 0) * 100)}% confiança</span>
-            </div>
-            ${cs.explanation ? `<div class="ai-class-exp">${esc(cs.explanation)}</div>` : ''}
-          </div>`).join('')}
-        <p class="ai-disclaimer">As sugestões acima são apenas orientativas. Aplique manualmente se concordar.</p>
+        <div class="air-member2-body" id="ai-mem-body-${idx}" style="display:none">
+          ${m.topCategories?.length?`<div class="air-mem-cats2">${m.topCategories.map(c=>`
+            <div class="air-mem-cat2">
+              <div class="air-mem-cat2-top">
+                <span>${esc(c.name)}</span>
+                <span>${fmtN(c.amount)}</span>
+              </div>
+              <div class="air-cat-track"><div class="air-cat-fill" style="width:${(c.amount/maxCat*100).toFixed(1)}%"></div></div>
+            </div>`).join('')}</div>`:''}
+          ${insight?`<div class="air-mem-insight"><span>🤖</span>${esc(insight)}</div>`:''}
+        </div>
       </div>`;
+    }).join('')}
+  </div>
+</div>`;
   }
 
-  // Tendência mensal (dados do app)
+  // ── Trend table ───────────────────────────────────────────────────────
   let trendHtml = '';
   if (ctx?.monthlyTrend?.length > 1) {
     trendHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} ${t('ai.monthly_trend')}</div>
-        <div class="ai-trend-table">
-          <div class="ai-trend-header">
-            <span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado</span>
-          </div>
-          ${ctx.monthlyTrend.map(m => {
-            const netColor = m.net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
-            return `<div class="ai-trend-row">
-              <span>${m.month}</span>
-              <span class="ai-trend-in">${fmt(m.income)}</span>
-              <span class="ai-trend-out">${fmt(m.expense)}</span>
-              <span style="color:${netColor};font-weight:600">${fmt(m.net)}</span>
-            </div>`;
-          }).join('')}
+<div class="air-section">
+  <div class="air-section-title">📅 Histórico Mensal</div>
+  <div class="air-trend-table2">
+    <div class="air-trend-header2"><span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado</span></div>
+    ${ctx.monthlyTrend.map(m => {
+      const nc = m.net>=0?'#22c55e':'#ef4444';
+      return `<div class="air-trend-row2">
+        <span class="air-trend-month">${m.month}</span>
+        <span class="air-green">${fmtN(m.income)}</span>
+        <span class="air-red">${fmtN(m.expense)}</span>
+        <span style="color:${nc};font-weight:700">${fmtN(m.net)}</span>
+      </div>`;
+    }).join('')}
+  </div>
+</div>`;
+  }
+
+  // ── Top payees ────────────────────────────────────────────────────────
+  let payeeHtml = '';
+  if (ctx?.topPayees?.length) {
+    payeeHtml = `
+<div class="air-section">
+  <div class="air-section-title">🏪 Principais Beneficiários</div>
+  <div class="air-payee-list">
+    ${ctx.topPayees.slice(0,6).map((p,i) => `
+      <div class="air-payee-item" style="animation-delay:${i*30}ms">
+        <span class="air-payee-rank">${i+1}</span>
+        <span class="air-payee-name">${esc(p.name)}</span>
+        <span class="air-payee-amt">${fmtN(p.amount)}</span>
+      </div>`).join('')}
+  </div>
+</div>`;
+  }
+
+  // ── Classification suggestions ────────────────────────────────────────
+  let classSugHtml = '';
+  if (r.classification_suggestions?.length) {
+    classSugHtml = `
+<div class="air-section air-section-advisory">
+  <div class="air-section-title">🏷️ Sugestões de Classificação <small style="font-weight:400;color:var(--muted);font-size:.7rem">apenas sugestões</small></div>
+  <div class="air-class-list">
+    ${r.classification_suggestions.map(cs => `
+      <div class="air-class-item">
+        <div class="air-class-desc">${esc(cs.description)}</div>
+        <div class="air-class-tags">
+          ${cs.suggested_category?`<span class="air-class-tag">📁 ${esc(cs.suggested_category)}</span>`:''}
+          ${cs.suggested_payee?`<span class="air-class-tag">👤 ${esc(cs.suggested_payee)}</span>`:''}
+          <span class="air-class-conf">${Math.round((cs.confidence||0)*100)}%</span>
         </div>
-      </div>`;
+      </div>`).join('')}
+  </div>
+</div>`;
   }
 
+  // ── Final assembly ────────────────────────────────────────────────────
+  container.innerHTML = `
+<div class="air-root">
+  ${heroHtml}
+  ${aiVoiceHtml}
+  ${alertsHtml}
+  ${forecastBannerHtml}
+  ${actionsHtml}
+  ${catHtml}
+  ${budgetHtml}
+  ${memberHtml}
+  ${trendHtml}
+  ${payeeHtml}
+  ${classSugHtml}
+  <div class="air-footer">
+    <span>Análise gerada por Google Gemini · Family FinTrack</span>
+  </div>
+</div>`;
 
-  // ── Prognóstico e tendência futura (programados) ─────────────────────────
-  let forecastHtml = '';
-  const fc_data = r.forecast;
-  const proj     = ctx?.financialProjection;
-  const rcm      = ctx?.recurringCommitments;
-
-  if (fc_data || proj) {
-    const trendIcon = { positive:'📈', negative:'📉', mixed:'↕️', stable:'➡️' }[fc_data?.trend || proj?.trend_direction] || '📊';
-    const riskColor = { low:'var(--green,#22c55e)', medium:'var(--amber,#f59e0b)', high:'var(--red,#ef4444)' }[fc_data?.risk_level] || 'var(--muted)';
-
-    let projTableHtml = '';
-    if (proj?.months?.length) {
-      projTableHtml = `
-        <div class="ai-trend-table ai-proj-table">
-          <div class="ai-trend-header">
-            <span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado Proj.</span>
-          </div>
-          ${proj.months.map(m => {
-            const netColor = m.projected_net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
-            return `<div class="ai-trend-row">
-              <span>${m.month}</span>
-              <span class="ai-trend-in">${fmt(m.projected_income)}</span>
-              <span class="ai-trend-out">${fmt(m.projected_expense)}</span>
-              <span style="color:${netColor};font-weight:700">${fmt(m.projected_net)}</span>
-            </div>`;
-          }).join('')}
-        </div>`;
-    }
-
-    let rcmHtml = '';
-    if (rcm?.monthly_expense || rcm?.monthly_income) {
-      const rcmColor = rcm.monthly_net >= 0 ? 'var(--green,#22c55e)' : 'var(--red,#ef4444)';
-      rcmHtml = `
-        <div class="ai-forecast-rcm">
-          <div class="ai-forecast-rcm-title">Compromissos mensais recorrentes (programados ativos)</div>
-          <div class="ai-kpi-row">
-            <div class="ai-kpi ai-kpi-green">
-              <span class="ai-kpi-label">Receita recorrente</span>
-              <span class="ai-kpi-value">${fmt(rcm.monthly_income)}</span>
-            </div>
-            <div class="ai-kpi ai-kpi-red">
-              <span class="ai-kpi-label">Despesa recorrente</span>
-              <span class="ai-kpi-value">${fmt(rcm.monthly_expense)}</span>
-            </div>
-            <div class="ai-kpi">
-              <span class="ai-kpi-label">Resultado líquido</span>
-              <span class="ai-kpi-value" style="color:${rcmColor}">${fmt(rcm.monthly_net)}</span>
-            </div>
-          </div>
-        </div>`;
-    }
-
-    let keyRisksHtml = '';
-    if (fc_data?.key_risks?.length) {
-      keyRisksHtml = `
-        <div class="ai-forecast-risks">
-          ${fc_data.key_risks.map(k => `
-            <div class="ai-forecast-risk-item">
-              <span class="ai-forecast-risk-icon">⚠️</span>
-              <div>
-                <div class="ai-forecast-risk-title">${esc(k.risk)}</div>
-                ${k.mitigation ? `<div class="ai-forecast-risk-mit">→ ${esc(k.mitigation)}</div>` : ''}
-              </div>
-            </div>`).join('')}
-        </div>`;
-    }
-
-    let oppHtml = '';
-    if (fc_data?.opportunities?.length) {
-      oppHtml = `
-        <div class="ai-forecast-opps">
-          ${fc_data.opportunities.map(o => `
-            <div class="ai-forecast-opp-item">
-              <span class="ai-forecast-opp-icon">🎯</span>
-              <div>
-                <div class="ai-forecast-opp-title">${esc(o.opportunity)}</div>
-                ${o.action ? `<div class="ai-forecast-opp-act">→ ${esc(o.action)}</div>` : ''}
-              </div>
-            </div>`).join('')}
-        </div>`;
-    }
-
-    forecastHtml = `
-      <div class="ai-section ai-section-forecast">
-        <div class="ai-section-header">
-          ${aiBadge} ${trendIcon} Prognóstico & Tendência Futura
-          ${fc_data?.risk_level ? `<span class="ai-risk-badge" style="color:${riskColor};background:${riskColor}18">Risco ${fc_data.risk_level === 'low' ? 'Baixo' : fc_data.risk_level === 'medium' ? 'Médio' : 'Alto'}</span>` : ''}
-        </div>
-        ${fc_data?.outlook ? `<p class="ai-forecast-outlook">${esc(fc_data.outlook)}</p>` : ''}
-        ${rcmHtml}
-        ${projTableHtml ? `<div class="ai-subsection-title">📅 Projeção 6 meses (baseada em histórico + programados)</div>${projTableHtml}` : ''}
-        ${keyRisksHtml ? `<div class="ai-subsection-title">Riscos identificados</div>${keyRisksHtml}` : ''}
-        ${oppHtml ? `<div class="ai-subsection-title">Oportunidades</div>${oppHtml}` : ''}
-      </div>`;
-  }
-
-  // ── Análise de orçamentos ─────────────────────────────────────────────────
-  let budgetAnalysisHtml = '';
-  if (r.budget_analysis?.length) {
-    budgetAnalysisHtml = `
-      <div class="ai-section">
-        <div class="ai-section-header">${dataBadge} 🎯 Análise de Orçamentos</div>
-        ${r.budget_analysis.map(b => {
-          const statusColor = { ok:'var(--green)', near:'var(--amber)', over:'var(--red)' }[b.status] || 'var(--muted)';
-          const statusIcon  = { ok:'✅', near:'⚠️', over:'🚨' }[b.status] || 'ℹ️';
-          return `<div class="ai-budget-insight">
-            <span class="ai-budget-insight-icon">${statusIcon}</span>
-            <div>
-              <strong style="color:${statusColor}">${esc(b.category)}</strong>
-              <p class="ai-budget-insight-text">${esc(b.insight)}</p>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`;
-  }
-
-  container.innerHTML = overviewHtml + forecastHtml + summaryHtml + alertsHtml + anomaliesHtml + catHtml + payeeHtml + memberHtml + trendHtml + budgetAnalysisHtml + savingsHtml + recsHtml + classSugHtml;
+  // Animate score arc
+  requestAnimationFrame(() => {
+    const arc = container.querySelector('.air-score-arc');
+    if (arc) { arc.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)'; }
+  });
 }
+
+
 
 // ── Export ────────────────────────────────────────────────────────────────
 
