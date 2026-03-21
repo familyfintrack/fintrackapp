@@ -414,6 +414,51 @@ function _onDebtIndexChange() {
 }
 window._onDebtIndexChange = _onDebtIndexChange;
 
+// ── Auto-create amortization category on first debt ─────────────────────────
+async function _ensureAmortizacaoCategory() {
+  try {
+    const fid = famId();
+    if (!fid) return;
+
+    // Check state cache first (already loaded categories)
+    const cats = state.categories || [];
+    const exists = cats.some(c =>
+      c.family_id === fid &&
+      (c.slug === 'amortizacao_divida' ||
+       c.name?.toLowerCase().includes('amortiza') && c.type === 'expense')
+    );
+    if (exists) return;
+
+    // Also check DB (in case state not yet refreshed)
+    const { data: dbCat } = await sb.from('categories')
+      .select('id')
+      .eq('family_id', fid)
+      .ilike('name', '%amortiza%')
+      .eq('type', 'expense')
+      .maybeSingle();
+    if (dbCat) return;
+
+    // Insert the category
+    const catName = (typeof t === 'function') ? t('cat.debt_amort') : 'Amortização de Dívida';
+    const { error } = await sb.from('categories').insert({
+      name:      catName,
+      type:      'expense',
+      icon:      '💳',
+      color:     '#c0392b',
+      family_id: fid,
+    });
+
+    if (!error) {
+      // Bust DB cache and reload so the category appears immediately
+      if (typeof DB !== 'undefined' && DB.categories?.bust) DB.categories.bust();
+      if (typeof loadCategories === 'function') await loadCategories(true);
+    }
+  } catch (e) {
+    // Non-critical — silently ignore
+    console.warn('[debts] _ensureAmortizacaoCategory error:', e?.message);
+  }
+}
+
 async function saveDebt() {
   const id       = document.getElementById('debtFormId').value;
   const name     = document.getElementById('debtFormName').value.trim();
@@ -462,6 +507,8 @@ async function saveDebt() {
         family_id: famId(),
         created_at: new Date().toISOString(),
       });
+      // Ensure "Amortização de Dívida" category exists for this family
+      await _ensureAmortizacaoCategory();
     }
   }
 

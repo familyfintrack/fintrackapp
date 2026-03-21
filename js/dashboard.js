@@ -396,11 +396,7 @@ async function loadDashboard(){
   if (typeof refreshAllFamilyMemberSelects === 'function') {
     refreshAllFamilyMemberSelects();
   } else {
-    const dashMemSel = document.getElementById('dashMemberFilter');
-    if (dashMemSel && typeof populateFamilyMemberSelect === 'function') {
-      populateFamilyMemberSelect('dashMemberFilter', { placeholder: t('dash.all_members') });
-      dashMemSel.style.display = dashMemSel.options.length > 1 ? '' : 'none';
-    }
+    // member filter removed
   }
 
   // Render charts independently — failure in one must not block the other
@@ -488,16 +484,6 @@ function _catColor(color, idx, usedSet) {
 
 async function renderCategoryChart(){
   const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
-  const memberId  = document.getElementById('dashMemberFilter')?.value || '';
-  const relGroup  = document.getElementById('dashRelGroup')?.value || '';
-
-  // Resolve member IDs from relationship group filter
-  let memberIds = null;
-  if (relGroup && typeof getMemberIdsByRelGroup === 'function') {
-    memberIds = getMemberIdsByRelGroup(relGroup);
-  }
-  if (memberId) memberIds = [memberId]; // specific member overrides group
-
   const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
   const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
 
