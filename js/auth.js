@@ -852,6 +852,7 @@ if (!p.can_admin) {
   // Módulos por família: visibilidade depende de feature flag
   if (typeof applyPricesFeature === 'function') applyPricesFeature().catch(() => {});
   if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
+  if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2074,6 +2075,7 @@ async function loadFamiliesList() {
     const _groceryOn     = !!(_fc['grocery_enabled_'     + fid]);
     const _pricesOn      = !!(_fc['prices_enabled_'      + fid]);
     const _investmentsOn = !!(_fc['investments_enabled_' + fid]);
+    const _aiInsightsOn  = !!(_fc['ai_insights_enabled_' + fid]);
     const isOwner    = isGlobalAdmin || members.some(m => m.user_id === currentUser?.id && m.member_role === 'owner');
 
     const membersHtml = members.length
@@ -2133,6 +2135,11 @@ async function loadFamiliesList() {
             class="fam-mod-chip${_investmentsOn?' active':''}"
             onclick="_famToggleModule('${fid}','investments_enabled_','famInvestBtn-${fid}','applyInvestmentsFeature')">
             📈 Investimentos <span class="fam-mod-dot">${_investmentsOn?'●':'○'}</span>
+          </button>
+          <button id="famAiInsightsBtn-${fid}"
+            class="fam-mod-chip${_aiInsightsOn?' active':''}"
+            onclick="_famToggleModule('${fid}','ai_insights_enabled_','famAiInsightsBtn-${fid}','applyAiInsightsFeature')">
+            🤖 AI Insights <span class="fam-mod-dot">${_aiInsightsOn?'●':'○'}</span>
           </button>
         </div>
       </div>`;
@@ -3791,6 +3798,7 @@ async function switchFamily(familyId) {
   try { if (typeof applyPricesFeature === 'function')      await applyPricesFeature();      } catch(e) {}
   try { if (typeof applyGroceryFeature === 'function')     await applyGroceryFeature();     } catch(e) {}
   try { if (typeof applyInvestmentsFeature === 'function') await applyInvestmentsFeature(); } catch(e) {}
+  try { if (typeof applyAiInsightsFeature === 'function')  await applyAiInsightsFeature();  } catch(e) {}
 
   // ── 8. Repopular todos os selects com dados da nova família ───────────────
   try { populateSelects(); } catch(e) {}
@@ -4108,16 +4116,22 @@ function _mfmRenderFeatures(famId) {
     }).join('');
   }
 
-  // Load cache if empty, then render
+  // Load cache — always fetch any keys not yet in cache (handles new modules added post-deploy)
   (async () => {
-    if (!window._familyFeaturesCache || !Object.keys(window._familyFeaturesCache).length) {
+    if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+    const missingKeys = MODULES.map(m => m.key).filter(k => !(k in window._familyFeaturesCache));
+    if (missingKeys.length) {
       try {
         const { data } = await sb.from('app_settings')
           .select('key,value')
-          .in('key', MODULES.map(m => m.key));
-        if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+          .in('key', missingKeys);
         (data || []).forEach(r => {
           window._familyFeaturesCache[r.key] = (r.value === true || r.value === 'true');
+        });
+        // Keys absent from DB → default false (backup/snapshot default true)
+        missingKeys.forEach(k => {
+          if (!(k in window._familyFeaturesCache))
+            window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
         });
       } catch(_) {}
     }

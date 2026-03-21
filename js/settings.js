@@ -919,6 +919,7 @@ async function applyUserFeatureFlags() {
   try { await applyPricesFeature?.(); } catch {}
   try { await applyGroceryFeature?.(); } catch {}
   try { await applyInvestmentsFeature?.(); } catch {}
+  try { await applyAiInsightsFeature?.(); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -975,14 +976,19 @@ function initFamModulesStandalone() {
 
   // Load cache and render
   (async () => {
-    if (!window._familyFeaturesCache || !Object.keys(window._familyFeaturesCache).length) {
+    if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+    const missingKeys1 = keys.map(k => k.key).filter(k => !(k in window._familyFeaturesCache));
+    if (missingKeys1.length) {
       try {
         const { data } = await sb.from('app_settings')
           .select('key,value')
-          .in('key', keys.map(k => k.key));
-        if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+          .in('key', missingKeys1);
         (data || []).forEach(r => {
           window._familyFeaturesCache[r.key] = (r.value === true || r.value === 'true');
+        });
+        missingKeys1.forEach(k => {
+          if (!(k in window._familyFeaturesCache))
+            window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
         });
       } catch(_) {}
     }
@@ -1030,14 +1036,19 @@ function initFamModulesRow() {
 
   // Ensure cache loaded
   (async () => {
-    if (!window._familyFeaturesCache || !Object.keys(window._familyFeaturesCache).length) {
+    if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+    const missingKeys2 = keys.map(k => k.key).filter(k => !(k in window._familyFeaturesCache));
+    if (missingKeys2.length) {
       try {
         const { data } = await sb.from('app_settings')
           .select('key,value')
-          .in('key', keys.map(k => k.key));
-        if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+          .in('key', missingKeys2);
         (data||[]).forEach(row => {
           window._familyFeaturesCache[row.key] = (row.value === true || row.value === 'true');
+        });
+        missingKeys2.forEach(k => {
+          if (!(k in window._familyFeaturesCache))
+            window._familyFeaturesCache[k] = k.includes('backup') || k.includes('snapshot');
         });
       } catch {}
     }
