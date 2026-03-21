@@ -132,6 +132,132 @@ function initAllResizableTables() {
 })();
 
 
+/* ═══════════════════════════════════════
+   FORECAST MULTI-ACCOUNT PICKER
+   Shared by Relatórios/Forecast and Dashboard Forecast.
+   State persisted in _dashSavePrefs under 'forecastAccounts' and 'dashForecastAccounts'.
+═══════════════════════════════════════ */
+
+// Map pickerId → { accountIds: Set, onChange: fn }
+const _fcPickers = {};
+
+function _fcPickerToggle(pickerId) {
+  const dd = document.getElementById(pickerId.replace('Picker','Dropdown').replace('AcctPicker','AcctDropdown'));
+  if (!dd) return;
+  const isOpen = dd.classList.toggle('open');
+  if (isOpen) {
+    // Close on outside click
+    setTimeout(() => {
+      const handler = e => {
+        const picker = document.getElementById(pickerId);
+        if (picker && !picker.contains(e.target)) {
+          dd.classList.remove('open');
+          document.removeEventListener('click', handler);
+        }
+      };
+      document.addEventListener('click', handler);
+    }, 0);
+  }
+}
+
+function _fcPickerBuild(pickerId, selectedIds, onChange) {
+  const ddId = pickerId.replace('AcctPicker','AcctDropdown');
+  const dd = document.getElementById(ddId);
+  if (!dd) return;
+
+  const selected = new Set(Array.isArray(selectedIds) ? selectedIds : []);
+  _fcPickers[pickerId] = { selected, onChange };
+
+  const accs = state.accounts || [];
+  const favs = accs.filter(a => a.is_favorite);
+  const rest = accs.filter(a => !a.is_favorite);
+
+  let html = `<div class="fc-acct-opt">
+    <input type="checkbox" id="${ddId}_all" ${selected.size===0?'checked':''}
+      onchange="_fcPickerToggleAll('${pickerId}', this.checked)">
+    <span style="font-weight:600;color:var(--text)">Todas as contas</span>
+  </div>`;
+
+  const renderGroup = (list, label) => {
+    if (!list.length) return '';
+    let g = label ? `<div class="fc-acct-sep">${label}</div>` : '';
+    g += list.map(a => `
+      <div class="fc-acct-opt">
+        <input type="checkbox" id="${ddId}_${a.id}" value="${a.id}"
+          ${selected.has(a.id)?'checked':''}
+          onchange="_fcPickerToggleOne('${pickerId}','${a.id}',this.checked)">
+        <span class="fc-acct-opt-dot" style="background:${a.color||'var(--accent)'}"></span>
+        <span>${esc(a.name)} <span style="color:var(--muted);font-size:.75em">${a.currency}</span></span>
+      </div>`).join('');
+    return g;
+  };
+
+  html += renderGroup(favs, favs.length && rest.length ? '⭐ Favoritas' : '');
+  html += renderGroup(rest, favs.length && rest.length ? 'Outras' : '');
+  dd.innerHTML = html;
+  _fcPickerUpdateLabel(pickerId);
+}
+
+function _fcPickerToggleAll(pickerId, checked) {
+  const p = _fcPickers[pickerId];
+  if (!p) return;
+  if (checked) {
+    p.selected.clear();
+  } else {
+    // Re-check "all" if user unchecks it (can't have nothing)
+    const allChk = document.getElementById(pickerId.replace('AcctPicker','AcctDropdown') + '_all');
+    if (allChk) allChk.checked = true;
+    return;
+  }
+  // Uncheck all individual
+  document.querySelectorAll(`#${pickerId.replace('AcctPicker','AcctDropdown')} input[value]`)
+    .forEach(cb => { cb.checked = false; });
+  _fcPickerUpdateLabel(pickerId);
+  p.onChange?.([]);
+}
+
+function _fcPickerToggleOne(pickerId, accountId, checked) {
+  const p = _fcPickers[pickerId];
+  if (!p) return;
+  if (checked) {
+    p.selected.add(accountId);
+  } else {
+    p.selected.delete(accountId);
+  }
+  // Sync "all" checkbox
+  const ddId = pickerId.replace('AcctPicker','AcctDropdown');
+  const allChk = document.getElementById(ddId + '_all');
+  if (allChk) allChk.checked = p.selected.size === 0;
+  // If nothing selected, revert to "all"
+  if (p.selected.size === 0 && allChk) allChk.checked = true;
+  _fcPickerUpdateLabel(pickerId);
+  p.onChange?.(p.selected.size ? [...p.selected] : []);
+}
+
+function _fcPickerGetSelected(pickerId) {
+  return _fcPickers[pickerId] ? [...(_fcPickers[pickerId].selected)] : [];
+}
+
+function _fcPickerUpdateLabel(pickerId) {
+  const p = _fcPickers[pickerId];
+  if (!p) return;
+  const labelId = pickerId.replace('AcctPicker','AcctLabel');
+  const el = document.getElementById(labelId);
+  if (!el) return;
+  if (p.selected.size === 0) {
+    el.textContent = pickerId.includes('dash') ? 'Todas' : 'Todas as contas';
+    return;
+  }
+  const accs = state.accounts || [];
+  const names = [...p.selected].map(id => accs.find(a=>a.id===id)?.name || id);
+  if (names.length <= 2) {
+    el.textContent = names.join(', ');
+  } else {
+    el.textContent = `${names.length} contas`;
+  }
+}
+
+
 function _buildCategoryFilterOptions() {
   const cats = state.categories || [];
   const roots = cats.filter(c => !c.parent_id).sort((a,b) => a.name.localeCompare(b.name));

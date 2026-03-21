@@ -1,3 +1,10 @@
+
+// ── Init / refresh the forecast account multi-picker ─────────────────────────
+function _initForecastPicker(savedIds) {
+  if (typeof _fcPickerBuild !== 'function') return;
+  _fcPickerBuild('forecastAcctPicker', savedIds || [], loadForecast);
+}
+
 let forecastChartInstance = null;
 
 function _destroyForecastChart() {
@@ -10,9 +17,18 @@ function _destroyForecastChart() {
 async function loadForecast() {
   const fromStr = document.getElementById('forecastFrom').value;
   const toStr   = document.getElementById('forecastTo').value;
-  const accFilter = document.getElementById('forecastAccountFilter').value;
+  // Multi-account: get array of selected IDs (empty = all)
+  const accIds = typeof _fcPickerGetSelected === 'function'
+    ? _fcPickerGetSelected('forecastAcctPicker')
+    : [];
   const includeScheduled = document.getElementById('forecastIncludeScheduled').checked;
   if (!fromStr || !toStr) return;
+
+  // Save preference
+  try {
+    const prefs = typeof _dashGetPrefs === 'function' ? _dashGetPrefs() : {};
+    if (typeof _dashSavePrefs === 'function') _dashSavePrefs({ ...prefs, forecastAccounts: accIds }).catch(()=>{});
+  } catch(_) {}
 
   const container = document.getElementById('forecastAccountsContainer');
   if (container) container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:1.5rem;margin-bottom:8px">⏳</div>Carregando previsão...</div>';
@@ -23,7 +39,8 @@ async function loadForecast() {
     .gte('date', fromStr)
     .lte('date', toStr)
     .order('date'));
-  if (accFilter) q = q.eq('account_id', accFilter);
+  if (accIds.length === 1) q = q.eq('account_id', accIds[0]);
+  else if (accIds.length > 1) q = q.in('account_id', accIds);
   const { data: txData, error: txErr } = await q;
   if (txErr) { toast(txErr.message, 'error'); return; }
 
@@ -31,8 +48,8 @@ async function loadForecast() {
   let scheduledItems = [];
   if (includeScheduled && state.scheduled.length) {
     // Filter: conta origem OU conta destino bate com o filtro
-    const schToProcess = accFilter
-      ? state.scheduled.filter(s => s.account_id === accFilter || s.transfer_to_account_id === accFilter)
+    const schToProcess = accIds.length
+      ? state.scheduled.filter(s => accIds.includes(s.account_id) || accIds.includes(s.transfer_to_account_id))
       : state.scheduled;
 
     schToProcess.forEach(sc => {
@@ -53,7 +70,7 @@ async function loadForecast() {
         // - expense: saída (negativo)
         // - income: entrada (positivo)
         // - transfer/card_payment: perna de débito (negativo)
-        if (!accFilter || sc.account_id === accFilter) {
+        if (!accIds.length || accIds.includes(sc.account_id)) {
           let originAmount = 0;
           if (isIncome) originAmount = baseAmt;
           else if (isExpense || isTransfer || isCardPayment) originAmount = -baseAmt;
@@ -75,7 +92,7 @@ async function loadForecast() {
         }
 
         // Conta destino: apenas transferências/cartão, sempre positivo
-        if ((isTransfer || isCardPayment) && sc.transfer_to_account_id && (!accFilter || sc.transfer_to_account_id === accFilter)) {
+        if ((isTransfer || isCardPayment) && sc.transfer_to_account_id && (!accIds.length || accIds.includes(sc.transfer_to_account_id))) {
           let creditAmt = baseAmt;
           if (sc.fx_mode === 'fixed' && sc.fx_rate > 0) creditAmt = creditAmt * sc.fx_rate;
           scheduledItems.push({
@@ -101,8 +118,8 @@ async function loadForecast() {
 
   const accountIds = [...new Set(allItems.map(t => t.account_id))].filter(Boolean);
   // Look up accounts from state (has real balance, color, currency, icon)
-  const accounts = accFilter
-    ? state.accounts.filter(a => a.id === accFilter)
+  const accounts = accIds.length
+    ? state.accounts.filter(a => accIds.includes(a.id))
     : state.accounts.filter(a => accountIds.includes(a.id));
 
   if (!accounts.length && !allItems.length) {

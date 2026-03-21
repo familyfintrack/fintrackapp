@@ -434,6 +434,16 @@ function setReportView(view) {
       document.getElementById('forecastFrom').value=today;
       document.getElementById('forecastTo').value=in3.toISOString().slice(0,10);
     }
+    // Init multi-account picker (restore saved preference)
+    if (typeof _initForecastPicker === 'function') {
+      const savedIds = (() => {
+        try {
+          const p = typeof _dashGetPrefs === 'function' ? _dashGetPrefs() : {};
+          return Array.isArray(p.forecastAccounts) ? p.forecastAccounts : [];
+        } catch(_) { return []; }
+      })();
+      _initForecastPicker(savedIds);
+    }
     loadForecast();
   } else {
     loadCurrentReport();

@@ -1192,21 +1192,13 @@ let _dashForecastChart = null;
 let _dashForecastTimer = null;
 
 function _initDashForecastAccountSelect() {
-  const sel = document.getElementById('dashForecastAccount');
-  if (!sel) return;
-  const cur = sel.value;
-  const accs = state.accounts || [];
-  const favs = accs.filter(a => a.is_favorite);
-  const rest = accs.filter(a => !a.is_favorite);
-  let html = '<option value="">Todas as contas</option>';
-  if (favs.length) {
-    html += `<optgroup label="⭐ Favoritas">${favs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
-    if (rest.length) html += `<optgroup label="Outras">${rest.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
-  } else {
-    html += accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-  }
-  sel.innerHTML = html;
-  if (cur) sel.value = cur;
+  if (typeof _fcPickerBuild !== 'function') return;
+  const prefs    = _dashGetPrefs();
+  const savedIds = Array.isArray(prefs.dashForecastAccounts) ? prefs.dashForecastAccounts : [];
+  _fcPickerBuild('dashForecastAcctPicker', savedIds, ids => {
+    _dashSavePrefs({ ..._dashGetPrefs(), dashForecastAccounts: ids }).catch(()=>{});
+    _renderDashForecast();
+  });
 }
 
 async function _renderDashForecast() {
@@ -1215,7 +1207,9 @@ async function _renderDashForecast() {
 
   _initDashForecastAccountSelect();
 
-  const accFilter = document.getElementById('dashForecastAccount')?.value || '';
+  const accIds = typeof _fcPickerGetSelected === 'function'
+    ? _fcPickerGetSelected('dashForecastAcctPicker')
+    : [];
   const includeScheduled = document.getElementById('dashForecastScheduled')?.checked !== false;
   const canvas = document.getElementById('dashForecastChart');
   if (!canvas) return;
@@ -1234,14 +1228,15 @@ async function _renderDashForecast() {
   let q = famQ(sb.from('transactions')
     .select('id,date,amount,currency,brl_amount,account_id,is_transfer')
     .gte('date', fromStr).lte('date', toStr).order('date'));
-  if (accFilter) q = q.eq('account_id', accFilter);
+  if (accIds.length === 1) q = q.eq('account_id', accIds[0]);
+  else if (accIds.length > 1) q = q.in('account_id', accIds);
   const { data: txData } = await q;
 
   // Build scheduled items using same logic as forecast.js
   let scheduledItems = [];
   if (includeScheduled && state.scheduled?.length) {
-    const schToProcess = accFilter
-      ? state.scheduled.filter(s => s.account_id === accFilter || s.transfer_to_account_id === accFilter)
+    const schToProcess = accIds.length
+      ? state.scheduled.filter(s => accIds.includes(s.account_id) || accIds.includes(s.transfer_to_account_id))
       : state.scheduled;
     schToProcess.forEach(sc => {
       if (sc.status === 'paused') return;
@@ -1251,11 +1246,11 @@ async function _renderDashForecast() {
       occ.forEach(date => {
         if (date < fromStr || date > toStr || registered.has(date)) return;
         const baseAmt = Math.abs(parseFloat(sc.amount) || 0);
-        if (!accFilter || sc.account_id === accFilter) {
+        if (!accIds.length || accIds.includes(sc.account_id)) {
           const originAmount = sc.type === 'income' ? baseAmt : -baseAmt;
           if (originAmount !== 0) scheduledItems.push({ date, amount: originAmount, account_id: sc.account_id, isScheduled: true });
         }
-        if (isTransfer && sc.transfer_to_account_id && (!accFilter || sc.transfer_to_account_id === accFilter)) {
+        if (isTransfer && sc.transfer_to_account_id && (!accIds.length || accIds.includes(sc.transfer_to_account_id))) {
           scheduledItems.push({ date, amount: Math.abs(parseFloat(sc.amount)||0), account_id: sc.transfer_to_account_id, isScheduled: true });
         }
       });
@@ -1265,8 +1260,8 @@ async function _renderDashForecast() {
   const allItems = [...(txData||[]), ...scheduledItems].sort((a,b)=>a.date.localeCompare(b.date));
 
   const accountIds = [...new Set(allItems.map(t=>t.account_id))].filter(Boolean);
-  const accounts = accFilter
-    ? (state.accounts||[]).filter(a=>a.id===accFilter)
+  const accounts = accIds.length
+    ? (state.accounts||[]).filter(a=>accIds.includes(a.id))
     : (state.accounts||[]).filter(a=>accountIds.includes(a.id));
 
   if (!accounts.length) {
