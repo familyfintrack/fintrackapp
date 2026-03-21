@@ -627,15 +627,10 @@
           <div class="card-header">
             <span class="card-title" id="dashCatChartTitle">Distribuição por Categoria</span>
             <div class="dash-cat-controls">
-              <!-- Despesas / Receitas toggle -->
+              <!-- Despesas / Receitas toggle — stays in header -->
               <div class="dash-cat-toggle" role="group">
                 <button class="dash-cat-btn active" id="dashCatModeExp" onclick="_setDashCatMode('expense')">Despesas</button>
                 <button class="dash-cat-btn" id="dashCatModeInc" onclick="_setDashCatMode('income')">Receitas</button>
-              </div>
-              <!-- Barras / Rosca toggle -->
-              <div class="dash-cat-toggle" role="group">
-                <button class="dash-cat-btn active" id="catChartTypeBar" onclick="_setCatChartType('bar')">Barras</button>
-                <button class="dash-cat-btn" id="catChartTypePie" onclick="_setCatChartType('doughnut')">Rosca</button>
               </div>
               <button id="catDetailBackBtn" onclick="closeCatDetail()" class="dash-cat-back" style="display:none">← Voltar</button>
             </div>
@@ -646,6 +641,13 @@
           <div id="catChartDetail" style="display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
             <div id="catChartDetailTitle" style="font-size:.78rem;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"></div>
             <div id="catChartDetailList" style="max-height:260px;overflow-y:auto"></div>
+          </div>
+          <!-- Barras / Rosca toggle — below chart -->
+          <div style="display:flex;justify-content:center;padding:10px 0 2px;border-top:1px solid var(--border);margin-top:8px">
+            <div class="dash-cat-toggle" role="group">
+              <button class="dash-cat-btn active" id="catChartTypeBar" onclick="_setCatChartType('bar')">Barras</button>
+              <button class="dash-cat-btn" id="catChartTypePie" onclick="_setCatChartType('doughnut')">Rosca</button>
+            </div>
           </div>
         </div>
       </div>
