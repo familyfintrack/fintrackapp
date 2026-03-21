@@ -5652,15 +5652,22 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-tx-row td { padding:6px 8px; vertical-align:top; }
 .forecast-date-cell { width:110px; padding-right:24px; color:var(--muted); }
 .forecast-date-main { font-size:.75rem; line-height:1.1; font-weight:600; white-space:nowrap; }
+
+/* Forecast category icon in date column */
+.forecast-cat-icon {
+  font-size: .88rem;
+  line-height: 1;
+  display: block;
+}
 .forecast-date-flag,
 .forecast-date-today { display:block; font-size:.66rem; line-height:1.05; min-height:12px; white-space:nowrap; }
 .forecast-date-cell--today .forecast-date-main,
 .forecast-date-cell--today .forecast-date-today { color:var(--accent); }
 .forecast-desc-cell { min-width:0; }
 .forecast-line { display:block; margin:0; padding:0; min-height:14px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.forecast-title { font-size:.82rem; color:var(--text); }
-.forecast-category { font-size:.72rem; color:var(--text2); }
-.forecast-payee { font-size:.7rem; color:var(--muted); }
+.forecast-title { font-size:.84rem; color:var(--text); font-weight:500; }
+.forecast-category { font-size:.78rem; color:var(--text2); font-weight:500; }
+.forecast-payee { font-size:.75rem; color:var(--muted); }
 .forecast-amount-cell,
 .forecast-balance-cell { width:96px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) {
@@ -8220,9 +8227,9 @@ body.ft-platform-windows .modal-close {
 @media (min-width: 1024px) {
   /* Row padding & font size */
   .forecast-tx-row td { padding: 9px 12px !important; }
-  .forecast-title     { font-size: .9rem !important; }
-  .forecast-category  { font-size: .76rem !important; }
-  .forecast-payee     { font-size: .73rem !important; }
+  .forecast-title     { font-size: .92rem !important; }
+  .forecast-category  { font-size: .82rem !important; }
+  .forecast-payee     { font-size: .79rem !important; }
 
   /* Date column wider and cleaner */
   .forecast-date-cell      { width: 88px !important; }
