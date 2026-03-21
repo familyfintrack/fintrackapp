@@ -699,11 +699,14 @@
       <div id="dashCardForecast90" class="card mb-4">
         <div class="card-header" style="gap:8px;flex-wrap:wrap">
           <span class="card-title">📈 Previsão de Caixa (90 dias)</span>
-          <select id="dashForecastAccount"
-            onchange="_renderDashForecast()"
-            style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:200px">
-            <option value="">Todas as contas</option>
-          </select>
+          <div class="fc-acct-picker" id="dashForecastAcctPicker" style="font-size:.75rem">
+            <button type="button" class="fc-acct-btn" style="font-size:.75rem;padding:3px 8px"
+              onclick="_fcPickerToggle('dashForecastAcctPicker')">
+              <span id="dashForecastAcctLabel">Todas</span>
+              <span class="fc-acct-caret">▼</span>
+            </button>
+            <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
+          </div>
           <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text2);cursor:pointer;white-space:nowrap">
             <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()"
               style="width:13px;height:13px;accent-color:var(--accent)">
@@ -1077,10 +1080,14 @@
             <input type="date" id="forecastTo" onchange="loadForecast()">
           </div>
           <div>
-            <label>Conta</label>
-            <select id="forecastAccountFilter" onchange="loadForecast()">
-              <option value="">Todas as contas</option>
-            </select>
+            <label>Contas</label>
+            <div class="fc-acct-picker" id="forecastAcctPicker">
+              <button type="button" class="fc-acct-btn" onclick="_fcPickerToggle('forecastAcctPicker')">
+                <span id="forecastAcctLabel">Todas as contas</span>
+                <span class="fc-acct-caret">▼</span>
+              </button>
+              <div class="fc-acct-dropdown" id="forecastAcctDropdown"></div>
+            </div>
           </div>
           <div>
             <label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Opções</label>
