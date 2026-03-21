@@ -22,6 +22,67 @@ const I18N_CACHE_KEY      = 'fintrack_i18n_cache';
 const I18N_CACHE_LANG_KEY = 'fintrack_i18n_lang';
 const I18N_CACHE_TTL_MS   = 60 * 60 * 1000; // 1h
 
+
+// ── Dicionário embutido — funciona sem banco de dados ────────────────────────
+// Garante que os labels do nav e da tela de login aparecem traduzidos mesmo
+// quando a tabela i18n_translations ainda não existe no Supabase.
+// Formato: { chave: { pt, en, es, fr } }
+const _I18N_BUILTIN = {
+  // Navegação
+  'nav.dashboard':        {pt:'Início',        en:'Home',          es:'Inicio',          fr:'Accueil'},
+  'nav.transactions':     {pt:'Transações',    en:'Transactions',  es:'Transacciones',   fr:'Transactions'},
+  'nav.accounts':         {pt:'Contas',        en:'Accounts',      es:'Cuentas',         fr:'Comptes'},
+  'nav.reports':          {pt:'Relatórios',    en:'Reports',       es:'Informes',        fr:'Rapports'},
+  'nav.budgets':          {pt:'Orçamentos',    en:'Budgets',       es:'Presupuestos',    fr:'Budgets'},
+  'nav.categories':       {pt:'Categorias',    en:'Categories',    es:'Categorías',      fr:'Catégories'},
+  'nav.payees':           {pt:'Beneficiários', en:'Payees',        es:'Beneficiarios',   fr:'Bénéficiaires'},
+  'nav.scheduled':        {pt:'Programados',   en:'Scheduled',     es:'Programados',     fr:'Programmés'},
+  'nav.grocery':          {pt:'Mercado',       en:'Grocery',       es:'Mercado',         fr:'Courses'},
+  'nav.prices':           {pt:'Preços',        en:'Prices',        es:'Precios',         fr:'Prix'},
+  'nav.investments':      {pt:'Investimentos', en:'Investments',   es:'Inversiones',     fr:'Investissements'},
+  'nav.ai_insights':      {pt:'AI Insights',   en:'AI Insights',   es:'Perspectivas IA', fr:'Aperçus IA'},
+  'nav.more':             {pt:'Mais',          en:'More',          es:'Más',             fr:'Plus'},
+  // Seções do sidebar
+  'nav.section_main':     {pt:'Principal',     en:'Main',          es:'Principal',       fr:'Principal'},
+  'nav.section_analysis': {pt:'Análise',       en:'Analysis',      es:'Análisis',        fr:'Analyse'},
+  'nav.section_planning': {pt:'Planejamento',  en:'Planning',      es:'Planificación',   fr:'Planification'},
+  'nav.section_data':     {pt:'Cadastros',     en:'Records',       es:'Registros',       fr:'Enregistrements'},
+  'nav.section_modules':  {pt:'Módulos',       en:'Modules',       es:'Módulos',         fr:'Modules'},
+  // Autenticação
+  'auth.tagline':          {pt:'Família inteligente, Finanças sob controle', en:'Smart family, Finances under control', es:'Familia inteligente, Finanzas bajo control', fr:'Famille intelligente, Finances maîtrisées'},
+  'auth.login_tab_pwd':    {pt:'🔑 Senha',      en:'🔑 Password',   es:'🔑 Contraseña',   fr:'🔑 Mot de passe'},
+  'auth.login_tab_magic':  {pt:'✉️ Link por E-mail', en:'✉️ Email Link', es:'✉️ Enlace por correo', fr:'✉️ Lien par e-mail'},
+  'auth.label_email':      {pt:'E-mail',        en:'Email',         es:'Correo',          fr:'E-mail'},
+  'auth.label_password':   {pt:'Senha',         en:'Password',      es:'Contraseña',      fr:'Mot de passe'},
+  'auth.remember_me':      {pt:'Lembrar meu e-mail e senha', en:'Remember my email and password', es:'Recordar mi correo y contraseña', fr:'Se souvenir de mon e-mail et mot de passe'},
+  'auth.btn_enter':        {pt:'Entrar',        en:'Sign In',       es:'Ingresar',        fr:'Se connecter'},
+  'auth.forgot_password':  {pt:'Esqueci minha senha', en:'Forgot my password', es:'Olvidé mi contraseña', fr:'Mot de passe oublié'},
+  'auth.no_account':       {pt:'Não tem conta?', en:'No account?',  es:'¿No tienes cuenta?', fr:'Pas de compte ?'},
+  'auth.request_access':   {pt:'Solicitar acesso', en:'Request access', es:'Solicitar acceso', fr:"Demander l\'accès"},
+  'auth.btn_send_link':    {pt:'✉️ Enviar Link de Acesso', en:'✉️ Send Access Link', es:'✉️ Enviar enlace', fr:'✉️ Envoyer le lien'},
+  'auth.btn_send_recovery':{pt:'Enviar Link de Recuperação', en:'Send Recovery Link', es:'Enviar enlace de recuperación', fr:'Envoyer le lien de récupération'},
+  'auth.btn_set_password': {pt:'Salvar Nova Senha', en:'Save New Password', es:'Guardar nueva contraseña', fr:'Enregistrer le mot de passe'},
+  'auth.btn_set_enter':    {pt:'Definir Senha e Entrar', en:'Set Password & Sign In', es:'Definir contraseña e ingresar', fr:'Définir le mot de passe et se connecter'},
+  // Cadastro
+  'register.btn_submit':   {pt:'Enviar Solicitação', en:'Submit Request', es:'Enviar solicitud', fr:'Envoyer la demande'},
+  // Títulos de páginas
+  'page.dashboard':        {pt:'Dashboard',     en:'Dashboard',     es:'Panel',           fr:'Tableau de bord'},
+  'page.transactions':     {pt:'Transações',    en:'Transactions',  es:'Transacciones',   fr:'Transactions'},
+  'page.accounts':         {pt:'Contas',        en:'Accounts',      es:'Cuentas',         fr:'Comptes'},
+  'page.reports':          {pt:'Relatórios',    en:'Reports',       es:'Informes',        fr:'Rapports'},
+  'page.budgets':          {pt:'Orçamentos',    en:'Budgets',       es:'Presupuestos',    fr:'Budgets'},
+  'page.categories':       {pt:'Categorias',    en:'Categories',    es:'Categorías',      fr:'Catégories'},
+  'page.payees':           {pt:'Beneficiários', en:'Payees',        es:'Beneficiarios',   fr:'Bénéficiaires'},
+  'page.scheduled':        {pt:'Programados',   en:'Scheduled',     es:'Programados',     fr:'Programmés'},
+  'page.investments':      {pt:'Investimentos', en:'Investments',   es:'Inversiones',     fr:'Investissements'},
+  'page.prices':           {pt:'Preços',        en:'Prices',        es:'Precios',         fr:'Prix'},
+  'page.ai_insights':      {pt:'🤖 AI Insights', en:'🤖 AI Insights', es:'🤖 Perspectivas IA', fr:'🤖 Aperçus IA'},
+  'page.grocery':          {pt:'🛒 Mercado',    en:'🛒 Grocery',    es:'🛒 Mercado',       fr:'🛒 Courses'},
+  'page.import':           {pt:'Importar / Backup', en:'Import / Backup', es:'Importar / Respaldo', fr:'Importer / Sauvegarde'},
+  'page.settings':         {pt:'Configurações', en:'Settings',      es:'Configuración',   fr:'Paramètres'},
+  'page.translations':     {pt:'Traduções',     en:'Translations',  es:'Traducciones',    fr:'Traductions'},
+};
+
 // ── Estado interno ───────────────────────────────────────────────────────────
 let _i18nLang  = I18N_DEFAULT_LANG;
 let _i18nDict  = {};   // { 'key': 'translated string' }
@@ -38,6 +99,11 @@ let _i18nReadyCallbacks = [];
  */
 function t(key, vars) {
   let str = _i18nDict[key];
+  // Fallback 1: dicionário embutido (funciona sem banco)
+  if (!str) {
+    const entry = _I18N_BUILTIN[key];
+    if (entry) str = entry[_i18nLang] || entry['pt'] || null;
+  }
   if (!str) str = _i18nFallback(key);
   if (!str) str = key; // último recurso: mostra a chave
 
@@ -302,8 +368,10 @@ function _i18nLangToLocale(lang) {
 
 // Auto-aplicar quando DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-  i18nApplyToDOM(document);
-  i18nOnReady(() => i18nApplyToDOM(document));
+  setTimeout(() => {
+    i18nApplyToDOM(document);
+    i18nOnReady(() => i18nApplyToDOM(document));
+  }, 0);
 });
 
 // Expõe globalmente

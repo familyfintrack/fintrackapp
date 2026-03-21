@@ -276,6 +276,82 @@ async function _renderPricesGroupedByStore(items, listEl) {
       </div>`).join('');
 }
 
+
+// ── Emoji inteligente por item — baseado em nome e categoria ─────────────────
+// Mapeamento local: sem chamada de API, instantâneo.
+function _pxItemEmoji(item) {
+  // 1. Prioridade: ícone da categoria
+  const catIcon = item.categories?.icon;
+  if (catIcon && catIcon.length <= 4) return catIcon; // emoji do cadastro
+
+  // 2. Mapa por palavras-chave no nome do item (normalizado)
+  const name = (item.name + ' ' + (item.description || '')).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // remove acentos
+
+  const MAP = [
+    // Laticínios e ovos
+    [/leite|iogurte|queijo|manteiga|nata|creme\s+de\s+leite|requeijao|mussarela/,'🥛'],
+    [/ovo|ovos/,'🥚'],
+    // Carnes
+    [/carne|bife|frango|peixe|atum|sardinha|camarao|bacalhau|linguica|salsicha|presunto|bacon|peito|coxa|sobrecoxa|patinho|alcatra|file|costela|pernil|lombo/,'🥩'],
+    // Hortifruti
+    [/banana|maca|laranja|limao|uva|morango|abacaxi|mamao|manga|pera|melao|melancia|kiwi|fruta/,'🍎'],
+    [/tomate|alface|cenoura|batata|cebola|alho|pepino|brocolis|abobrinha|pimentao|berinjela|mandioca|inhame|legume|verdura|vegetal|espinafre|couve|repolho/,'🥦'],
+    // Grãos e massas
+    [/arroz/,'🍚'],
+    [/feijao|lentilha|grao|ervilha/,'🫘'],
+    [/macarrao|massa|espaguete|lasanha|penne|fusilli|farinha|amido|aveia/,'🍝'],
+    [/pao|bolo|biscoito|bolacha|torrada|croissant|waffle|panqueca/,'🍞'],
+    // Condimentos e temperos
+    [/sal|acucar|mel|azeite|vinagre|ketchup|mostarda|maionese|molho|pimenta|canela|oregano|tempero|extrato|caldo/,'🧂'],
+    // Bebidas
+    [/agua|agua\s+mineral|agua\s+com\s+gas/,'💧'],
+    [/suco|nectar|limonada/,'🧃'],
+    [/refrigerante|coca|pepsi|guarana|fanta|sprite/,'🥤'],
+    [/cerveja|vinho|whisky|vodka|cachaca|licor|espumante/,'🍺'],
+    [/cafe|cha|cappuccino|nescafe|achocolatado|chocolate\s+quente/,'☕'],
+    // Limpeza
+    [/detergente|sabao|sabonete|shampoo|condicionador|desinfetante|multiuso|limpador|agua\s+sanitaria|alvejante|amaciante|esponja|papel\s+toalha|papel\s+higienico/,'🧹'],
+    // Higiene pessoal
+    [/creme\s+dental|pasta\s+de\s+dente|escova\s+de\s+dente|fio\s+dental|desodorante|perfume|absorvente|fraldas|barbear/,'🪥'],
+    // Congelados e padaria
+    [/sorvete|gelado|popsicle/,'🍦'],
+    [/pizza|hamburguer|hot\s+dog/,'🍕'],
+    // Bebê / criança
+    [/fralda|papinha|formula\s+infant/,'👶'],
+    // Animais
+    [/racao|petisco\s+pet|pet\s+shop/,'🐾'],
+    // Farmácia
+    [/remedio|medicamento|vitamina|suplemento|pomada|antisseptico|curativo/,'💊'],
+    // Eletrônicos / pilhas
+    [/pilha|bateria|lampada|cabo\s+usb/,'🔋'],
+    // Papelaria
+    [/caderno|caneta|lapis|borracha|cola|papel\s+a4/,'📝'],
+    // Categoria genérica por nome da categoria
+    [/aliment|mercearia|supermercado|padaria/,'🛒'],
+    [/limpeza|higiene|cuidado/,'🧼'],
+    [/bebe|infantil|kids/,'👶'],
+    [/pet|animal/,'🐾'],
+    [/farm|saude|medic/,'💊'],
+    [/bebida/,'🥤'],
+    [/hortifruti|frutas|verduras/,'🥬'],
+  ];
+
+  for (const [re, emoji] of MAP) {
+    if (re.test(name)) return emoji;
+  }
+
+  // 3. Fallback por nome da categoria
+  const catName = (item.categories?.name || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  for (const [re, emoji] of MAP) {
+    if (re.test(catName)) return emoji;
+  }
+
+  // 4. Fallback neutro
+  return '📦';
+}
+
 function _pxCardHtml(item) {
   const avg  = item.avg_price  != null ? fmt(item.avg_price)  : null;
   const last = item.last_price != null ? fmt(item.last_price) : null;
@@ -288,13 +364,13 @@ function _pxCardHtml(item) {
     else if (item.last_price < item.avg_price * 0.98) trend = '<span class="px-trend dn">\u2193</span>';
     else                                               trend = '<span class="px-trend eq">\u2192</span>';
   }
-  const initials = item.name.trim().slice(0,2).toUpperCase();
+  const emoji  = _pxItemEmoji(item);
   const unitBadge = (item.unit && item.unit !== 'un')
     ? `<span class="px-unit">${esc(item.unit)}</span>` : '';
   return `
     <div class="px-card" onclick="openPriceItemDetail('${item.id}')" style="--px-clr:${catColor}">
       <div class="px-card-top">
-        <div class="px-avatar" style="background:color-mix(in srgb,${catColor} 15%,transparent);color:${catColor}">${initials}</div>
+        <div class="px-avatar" style="background:color-mix(in srgb,${catColor} 15%,transparent);font-size:1.4rem;line-height:1">${emoji}</div>
         ${cat && !_px.groupBy ? `<span class="px-cat-badge" style="color:${catColor};background:color-mix(in srgb,${catColor} 12%,transparent)">${esc(cat)}</span>` : ''}
         <button class="px-cart-btn" title="Adicionar à lista de compras"
                 onclick="event.stopPropagation();openAddToGroceryList('${item.id}','${esc(item.name).replace(/'/g,'\u0027')}','${esc(item.unit||'un')}',${item.last_price ?? 'null'})">

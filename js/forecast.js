@@ -78,7 +78,7 @@ async function loadForecast() {
           if (originAmount !== 0) {
             scheduledItems.push({
               date,
-              description: sc.description + ' 📅',
+              description: sc.description,
               amount: originAmount,
               currency: sc.currency || sc.accounts?.currency || null,
               account_id: sc.account_id,
@@ -97,7 +97,7 @@ async function loadForecast() {
           if (sc.fx_mode === 'fixed' && sc.fx_rate > 0) creditAmt = creditAmt * sc.fx_rate;
           scheduledItems.push({
             date,
-            description: sc.description + ' 📅',
+            description: sc.description,
             amount: creditAmt,
             currency: null, // credit leg uses destination account currency
             account_id: sc.transfer_to_account_id,
@@ -273,9 +273,14 @@ function renderForecastTables(allItems, accounts) {
       const isPos    = runningBalance > 0;
       const rowClass = isPast ? 'forecast-row-past' : isToday ? 'forecast-row-today' : '';
       const balClass = isNeg ? 'forecast-row-negative' : '';
+      // Category icon: show emoji from category if available, else 📅 for scheduled
+      const _catIcon = t.categories?.icon || null;
+      const _catColor = t.categories?.color || 'var(--accent)';
       const dateMeta = t.isScheduled
-        ? `<span class="forecast-date-flag">${t.transferLeg === 'credit' ? 'prog.↑' : t.transferLeg === 'debit' ? 'prog.↓' : 'prog.'}</span>`
-        : '<span class="forecast-date-flag">&nbsp;</span>';
+        ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon || '📅'}</span>`
+        : (_catIcon
+            ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon}</span>`
+            : '<span class="forecast-date-flag">&nbsp;</span>');
       const todayMarker = isToday ? '<span class="forecast-date-today">hoje</span>' : '<span class="forecast-date-today">&nbsp;</span>';
       const categoryLine = `<div class="forecast-line forecast-category">${t.categories?.name ? esc(t.categories.name) : '&nbsp;'}</div>`;
       const payeeLine = `<div class="forecast-line forecast-payee">${t.payees?.name ? esc(t.payees.name) : '&nbsp;'}</div>`;

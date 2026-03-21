@@ -537,13 +537,6 @@ state.privacyMode  = state.privacyMode  ?? false;
 
 async function bootApp(){
   registerServiceWorkerSafe();
-  // i18n: load translations early (non-blocking — uses cache or DB)
-  if (typeof i18nInit === 'function') {
-    i18nInit().then(() => {
-      i18nApplyToDOM();
-      _i18nUpdateTopbarLabel();
-    }).catch(e => console.warn('[boot] i18n init failed:', e.message));
-  }
   // Logos (can be overridden by app_settings)
   setAppLogo(APP_LOGO_URL);
 
@@ -1004,59 +997,32 @@ function toggleLangPicker() {
 }
 function _closeLangPicker(e) {
   const picker = document.getElementById('topbarLangPicker');
-  if (!picker || picker.contains(e.target)) return;
-  const dd = document.getElementById('topbarLangDropdown');
+  const dd     = document.getElementById('topbarLangDropdown');
+  // Don't close if click was on the picker itself or inside the dropdown
+  if (!picker || picker.contains(e.target) || (dd && dd.contains(e.target))) return;
   if (dd) dd.style.display = 'none';
 }
 async function quickSetLang(lang) {
   const dd = document.getElementById('topbarLangDropdown');
   if (dd) dd.style.display = 'none';
-  if (typeof i18nSetLanguage !== 'function') return;
 
-  await i18nSetLanguage(lang);
-  _i18nUpdateTopbarLabel();
+  // 1. Persist language preference
+  localStorage.setItem('fintrack_i18n_lang', lang);
 
-  // Apply to every element in the entire document with data-i18n
-  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document);
-
-  // Re-render pageTitles object entries from translation dict
-  const pageKeyMap = {
-    dashboard: 'page.dashboard', transactions: 'page.transactions',
-    accounts: 'page.accounts',   reports: 'page.reports',
-    budgets: 'page.budgets',     categories: 'page.categories',
-    payees: 'page.payees',       scheduled: 'page.scheduled',
-    import: 'page.import',       settings: 'page.settings',
-    investments: 'page.investments', prices: 'page.prices',
-    ai_insights: 'page.ai_insights', grocery: 'page.grocery',
-    translations: 'page.translations',
-  };
-  Object.entries(pageKeyMap).forEach(([page, key]) => {
-    const tr = typeof t === 'function' ? t(key) : null;
-    if (tr && tr !== key) pageTitles[page] = tr;
-  });
-
-  // Update current page title immediately
-  const page = state.currentPage;
-  const titleEl = document.getElementById('pageTitle');
-  if (titleEl && pageTitles[page]) titleEl.textContent = pageTitles[page];
-
-  // Re-run current page to refresh any JS-rendered content
-  if (page && page !== 'dashboard') {
-    // Lightweight re-render: just reapply without full data reload
+  // 2. Save to Supabase profile if logged in
+  if (window.sb && window.currentUser?.id) {
     try {
-      if (page === 'transactions') { if (typeof loadTransactions==='function') loadTransactions(); }
-      else if (page === 'accounts') { if (typeof renderAccounts==='function') renderAccounts(); }
-      else if (page === 'categories') { if (typeof renderCategories==='function') renderCategories(); }
-      else if (page === 'payees') { if (typeof renderPayees==='function') renderPayees(); }
-      else if (page === 'reports') { if (typeof loadCurrentReport==='function') loadCurrentReport(); }
+      await sb.from('app_users').update({ preferred_language: lang }).eq('id', currentUser.id);
     } catch(_) {}
   }
 
-  toast('🌐 ' + { pt:'Português', en:'English', es:'Español', fr:'Français' }[lang], 'success');
+  // 3. Reload page with new language active
+  // (i18nInit reads localStorage on boot → applies correct language)
+  location.reload();
 }
 // ── Profile language button strip selector ───────────────────────────────────
 function profileSelectLang(lang, silent) {
-  // Update hidden input
+  // Update hidden input value
   const hidden = document.getElementById('myProfileLanguage');
   if (hidden) hidden.value = lang;
 
@@ -1064,9 +1030,26 @@ function profileSelectLang(lang, silent) {
   const btns = document.querySelectorAll('#profileLangSelector .i18n-lang-btn');
   btns.forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
 
-  // If not silent (user explicitly clicked), apply language immediately
-  if (!silent && typeof i18nSetLanguage === 'function') {
-    i18nSetLanguage(lang).then(() => _i18nUpdateTopbarLabel()).catch(()=>{});
+  // If user explicitly clicked (not init), persist + reload with new language
+  if (!silent) {
+    // 1. Save to localStorage immediately
+    localStorage.setItem('fintrack_i18n_lang', lang);
+    // 2. Save to Supabase if logged in (best-effort, don't block reload)
+    if (window.sb && window.currentUser?.id) {
+      sb.from('app_users')
+        .update({ preferred_language: lang })
+        .eq('id', currentUser.id)
+        .then(() => {
+          // Reload after short delay to ensure DB write completes
+          setTimeout(() => location.reload(), 300);
+        })
+        .catch(() => {
+          // Reload anyway even if DB fails
+          setTimeout(() => location.reload(), 300);
+        });
+    } else {
+      setTimeout(() => location.reload(), 150);
+    }
   }
 }
 window.profileSelectLang = profileSelectLang;

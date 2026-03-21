@@ -109,14 +109,12 @@ function _aiShowTab(tab) {
 }
 
 function _aiPopulateFilters() {
-  // Members
+  // Members — use getFamilyMembers() from family_members_composition.js
   const memSel = document.getElementById('aiMemberFilter');
   if (memSel) {
-    const members = state.profile ? [state.profile] : [];
-    // Try to get all members from family_members if available
-    const allMembers = window._familyMembers || members;
+    const allMembers = (typeof getFamilyMembers === 'function') ? getFamilyMembers() : [];
     memSel.innerHTML = '<option value="">Todos os membros</option>' +
-      allMembers.map(m => `<option value="${esc(m.id || '')}">${esc(m.display_name || m.name || m.full_name || 'Membro')}</option>`).join('');
+      allMembers.map(m => `<option value="${esc(m.id || '')}">${esc(m.name || m.display_name || '—')}</option>`).join('');
   }
 
   // Accounts
@@ -237,13 +235,18 @@ async function _aiCollectFinancialContext() {
     .sort((a, b) => b[1] - a[1]).slice(0, 10)
     .map(([name, amount]) => ({ name, amount: +amount.toFixed(2) }));
 
-  // Membro → nome
+  // Membro → nome (family_composition.id → m.name)
   const memberMap = {};
-  (window._familyMembers || []).forEach(m => { memberMap[m.id] = m.display_name || m.name || m.full_name || '—'; });
+  const _fmcMembers = (typeof getFamilyMembers === 'function') ? getFamilyMembers() : [];
+  _fmcMembers.forEach(m => { memberMap[m.id] = m.name || m.display_name || '—'; });
 
   const memberInsights = Object.entries(byMember)
     .sort((a, b) => b[1] - a[1])
-    .map(([id, amount]) => ({ name: memberMap[id] || id, amount: +amount.toFixed(2) }));
+    .map(([id, amount]) => ({
+      name: memberMap[id] || '—',  // never show raw UUID
+      amount: +amount.toFixed(2)
+    }))
+    .filter(m => m.name !== '—');  // skip unknown ids
 
   // Transações agendadas
   const { data: sched } = await famQ(sb.from('scheduled_transactions').select('description,brl_amount,frequency,next_date,type')).limit(20);
