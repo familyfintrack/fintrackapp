@@ -4904,85 +4904,91 @@
 
   <!-- ══ Modal: Gerenciar Minha Família (owner) ══════════════════════════════ -->
   <div class="modal-overlay" id="myFamilyMgmtModal" onclick="if(event.target===this)closeModal('myFamilyMgmtModal')">
-    <div class="mfm-sheet">
+    <div class="mfm2-sheet">
       <div class="modal-handle"></div>
 
-      <!-- Header -->
-      <div class="mfm-header">
-        <div class="mfm-header-left">
-          <div class="mfm-family-icon">🏠</div>
-          <div>
-            <div class="mfm-header-title" id="mfmFamilyName">Família</div>
-            <div class="mfm-header-sub" id="mfmFamilyDesc"></div>
+      <!-- ── Hero header ── -->
+      <div class="mfm2-hero">
+        <div class="mfm2-hero-glow"></div>
+        <div class="mfm2-hero-inner">
+          <div class="mfm2-hero-icon">🏠</div>
+          <div class="mfm2-hero-info">
+            <div class="mfm2-hero-name" id="mfmFamilyName">Minha Família</div>
+            <div class="mfm2-hero-sub" id="mfmFamilyDesc"></div>
           </div>
+          <button class="mfm2-close-btn" onclick="closeModal('myFamilyMgmtModal')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-        <button class="modal-close" onclick="closeModal('myFamilyMgmtModal')">✕</button>
+        <!-- Family tabs (multi-family) -->
+        <div id="mfmFamilyTabs" class="mfm2-family-tabs" style="display:none"></div>
       </div>
 
-      <!-- Family tabs (multi-family owners) -->
-      <div id="mfmFamilyTabs" class="mfm-family-tabs" style="display:none"></div>
+      <!-- ── Scrollable body ── -->
+      <div class="mfm2-body">
 
-      <!-- Scrollable body -->
-      <div class="mfm-body">
-
-        <!-- ── Section: Módulos ── -->
-        <div class="mfm-section">
-          <div class="mfm-section-label">Módulos</div>
-          <div id="mfmFeatCards" class="mfm-modules-grid"></div>
+        <!-- ── Módulos ── -->
+        <div class="mfm2-section">
+          <div class="mfm2-section-hd">
+            <span class="mfm2-section-title">Módulos</span>
+            <span class="mfm2-section-sub">Ative funcionalidades para esta família</span>
+          </div>
+          <div id="mfmFeatCards" class="mfm2-modules-grid"></div>
         </div>
 
-        <!-- ── Section: Membros ── -->
-        <div class="mfm-section">
-          <div class="mfm-section-header">
-            <span class="mfm-section-label">Membros</span>
-            <button class="mfm-add-btn" onclick="mfmToggleAddPanel()" id="mfmAddToggle">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Adicionar
+        <!-- ── Membros ── -->
+        <div class="mfm2-section">
+          <div class="mfm2-section-hd">
+            <span class="mfm2-section-title">Membros</span>
+            <span class="mfm2-section-sub">Gerencie quem tem acesso à família</span>
+          </div>
+          <div id="mfmMembersList" class="mfm2-members-list"></div>
+
+          <!-- Add member accordion -->
+          <div class="mfm2-add-accordion">
+            <button class="mfm2-add-trigger" onclick="mfmToggleAddPanel()" id="mfmAddToggle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Adicionar membro
             </button>
-          </div>
-          <div id="mfmMembersList" class="mfm-members-list"></div>
-
-          <!-- Add panel -->
-          <div id="mfmAddPanel" class="mfm-add-panel" style="display:none">
-            <div class="mfm-add-tabs">
-              <button id="mfmTabExist"  class="mfm-add-tab active" onclick="mfmSwitchAddTab('exist')">Usuário existente</button>
-              <button id="mfmTabInvite" class="mfm-add-tab"        onclick="mfmSwitchAddTab('invite')">Convidar por e-mail</button>
-            </div>
-            <!-- Existing user -->
-            <div id="mfmPaneExist" id="mfmAddExistingRow" class="mfm-add-pane">
-              <select id="mfmAddUserSel" class="form-select">
-                <option value="">Selecionar usuário…</option>
-              </select>
-              <div class="mfm-add-row">
-                <select id="mfmAddUserRole" class="form-select" style="flex:1">
-                  <option value="user">Usuário</option>
-                  <option value="admin">Admin</option>
-                  <option value="viewer">Visualizador</option>
-                  <option value="owner">Owner</option>
-                </select>
-                <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()">Adicionar</button>
+            <div id="mfmAddPanel" class="mfm2-add-panel" style="display:none">
+              <div class="mfm2-add-tabs">
+                <button id="mfmTabExist"  class="mfm2-add-tab active" onclick="mfmSwitchAddTab('exist')">Usuário existente</button>
+                <button id="mfmTabInvite" class="mfm2-add-tab"        onclick="mfmSwitchAddTab('invite')">Convidar por e-mail</button>
               </div>
-            </div>
-            <!-- Invite -->
-            <div id="mfmPaneInvite" class="mfm-add-pane" style="display:none">
-              <input type="email" id="mfmInviteEmail" class="form-input"
-                placeholder="email@exemplo.com" onkeydown="if(event.key==='Enter')mfmInvite()">
-              <div class="mfm-add-row">
-                <select id="mfmInviteRole" class="form-select" style="flex:1">
-                  <option value="user">Usuário</option>
-                  <option value="admin">Admin</option>
-                  <option value="viewer">Visualizador</option>
-                  <option value="owner">Owner</option>
+              <div id="mfmPaneExist" id="mfmAddExistingRow" class="mfm2-add-pane">
+                <select id="mfmAddUserSel" class="form-select">
+                  <option value="">Selecionar usuário…</option>
                 </select>
-                <button class="btn btn-primary btn-sm" id="mfmInviteBtn" onclick="mfmInvite()">Convidar</button>
+                <div style="display:flex;gap:8px">
+                  <select id="mfmAddUserRole" class="form-select" style="flex:1">
+                    <option value="user">👤 Usuário</option>
+                    <option value="admin">🔧 Admin</option>
+                    <option value="viewer">👁 Visualizador</option>
+                    <option value="owner">👑 Owner</option>
+                  </select>
+                  <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()">Adicionar</button>
+                </div>
               </div>
+              <div id="mfmPaneInvite" class="mfm2-add-pane" style="display:none">
+                <input type="email" id="mfmInviteEmail" class="form-input"
+                  placeholder="email@exemplo.com" onkeydown="if(event.key==='Enter')mfmInvite()">
+                <div style="display:flex;gap:8px">
+                  <select id="mfmInviteRole" class="form-select" style="flex:1">
+                    <option value="user">👤 Usuário</option>
+                    <option value="admin">🔧 Admin</option>
+                    <option value="viewer">👁 Visualizador</option>
+                    <option value="owner">👑 Owner</option>
+                  </select>
+                  <button class="btn btn-primary btn-sm" id="mfmInviteBtn" onclick="mfmInvite()">📨 Convidar</button>
+                </div>
+              </div>
+              <div id="mfmMsg" class="mfm2-msg" style="display:none"></div>
             </div>
-            <div id="mfmMsg" class="mfm-msg" style="display:none"></div>
           </div>
         </div>
 
-      </div><!-- /mfm-body -->
-    </div><!-- /mfm-sheet -->
+      </div><!-- /mfm2-body -->
+    </div><!-- /mfm2-sheet -->
   </div>
 
   <!-- Delete Account Modal -->
