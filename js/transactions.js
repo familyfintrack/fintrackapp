@@ -266,7 +266,7 @@ function filterTransactions(immediate = false){
   state.txFilter.memberIds = (_txMemberVal && _txMemberUuidRx.test(_txMemberVal)) ? [_txMemberVal] : [];
   state.txPage=0;
   if(state.txView==='flat') document.getElementById('txSummaryBar').style.display='none';
-  ['txMonth','txAccount','txType','txStatusFilter'].forEach(id => {
+  ['txMonth','txAccount','txType','txStatusFilter','txReconcileFilter'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('is-active', !!el.value);
   });
@@ -642,6 +642,8 @@ function resetTxModal(){
   }
   // Reset AI payee suggestion
   _dismissAiPayeeSuggestion();
+  _dismissAiAccountSuggestion();
+  _dismissAiMemberSuggestion();
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
@@ -1331,6 +1333,9 @@ function _aiPayeeDebounce(val) {
   _dismissAiPayeeSuggestion(false);
   if (!val || val.length < 5) return;
   _aiPayeeTimer = setTimeout(() => _aiSuggestPayeeFromDesc(val), 800);
+  // Also trigger account and member suggestions
+  _aiAccountDebounce(val);
+  _aiMemberDebounce(val);
 }
 
 async function _aiSuggestPayeeFromDesc(desc) {
@@ -1413,6 +1418,148 @@ function _dismissAiPayeeSuggestion(clearPending = true) {
   const chip = document.getElementById('txAiPayeeSuggestion');
   if (chip) chip.style.display = 'none';
   if (clearPending) _aiPayeePending = null;
+}
+
+// ── Sugestão IA de Conta e Membro ─────────────────────────────────────────
+let _aiAccountTimer = null;
+let _aiAccountPending = null;
+
+function _aiAccountDebounce(val) {
+  if (_aiAccountTimer) clearTimeout(_aiAccountTimer);
+  _dismissAiAccountSuggestion(false);
+  if (!val || val.length < 4) return;
+  _aiAccountTimer = setTimeout(() => _aiSuggestAccountFromDesc(val), 900);
+}
+
+function _aiSuggestAccountFromDesc(desc) {
+  if (_aiAccountTimer) { clearTimeout(_aiAccountTimer); _aiAccountTimer = null; }
+  // Don't suggest if account already selected
+  const curAccId = document.getElementById('txAccountId')?.value;
+  if (curAccId) return;
+  if (!desc || desc.trim().length < 4) return;
+  if (!state.accounts?.length || !state.transactions?.length) return;
+
+  // Build frequency map: for each account, count recent txs whose description
+  // shares at least one significant word with the input description
+  const words = desc.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+  if (!words.length) return;
+
+  const scores = {};
+  const recent = state.transactions.slice(0, 300); // look at last 300 txs
+  for (const tx of recent) {
+    if (!tx.account_id || !tx.description) continue;
+    const txWords = tx.description.toLowerCase().split(/\s+/);
+    const match = words.some(w => txWords.some(tw => tw.includes(w) || w.includes(tw)));
+    if (match) {
+      scores[tx.account_id] = (scores[tx.account_id] || 0) + 1;
+    }
+  }
+
+  // Find account with highest score
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  if (!best || best[1] < 1) return;
+
+  const account = state.accounts.find(a => a.id === best[0]);
+  if (!account) return;
+  _showAiAccountSuggestion(account);
+}
+
+function _showAiAccountSuggestion(account) {
+  const curId = document.getElementById('txAccountId')?.value;
+  if (curId) return;
+  _aiAccountPending = { id: account.id, name: account.name };
+  const chip = document.getElementById('txAiAccountSuggestion');
+  const btn  = document.getElementById('txAiAccountBtn');
+  if (!chip || !btn) return;
+  btn.textContent = account.name;
+  chip.style.display = 'flex';
+}
+
+function _applyAiAccountSuggestion() {
+  if (!_aiAccountPending) return;
+  const sel = document.getElementById('txAccountId');
+  if (!sel) return;
+  const curVal = sel.value;
+  if (curVal && curVal !== _aiAccountPending.id) { _dismissAiAccountSuggestion(); return; }
+  sel.value = _aiAccountPending.id;
+  sel.dispatchEvent(new Event('change'));
+  _dismissAiAccountSuggestion();
+}
+
+function _dismissAiAccountSuggestion(clearPending = true) {
+  const chip = document.getElementById('txAiAccountSuggestion');
+  if (chip) chip.style.display = 'none';
+  if (clearPending) _aiAccountPending = null;
+}
+
+// ── Sugestão IA de Membro da Família ──────────────────────────────────────
+let _aiMemberTimer = null;
+let _aiMemberPending = null;
+
+function _aiMemberDebounce(val) {
+  if (_aiMemberTimer) clearTimeout(_aiMemberTimer);
+  _dismissAiMemberSuggestion(false);
+  if (!val || val.length < 4) return;
+  _aiMemberTimer = setTimeout(() => _aiSuggestMemberFromDesc(val), 900);
+}
+
+function _aiSuggestMemberFromDesc(desc) {
+  if (_aiMemberTimer) { clearTimeout(_aiMemberTimer); _aiMemberTimer = null; }
+  if (!desc || desc.trim().length < 4) return;
+  const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+  if (!members.length || !state.transactions?.length) return;
+  // Don't suggest if member already selected
+  const existingPicks = document.querySelectorAll('#txFamilyMemberPicker .fmc-pick-chip');
+  if (existingPicks.length > 0) return;
+
+  const words = desc.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+  if (!words.length) return;
+
+  const scores = {};
+  const recent = state.transactions.slice(0, 300);
+  for (const tx of recent) {
+    if (!tx.description) continue;
+    const memberIds = tx.family_member_ids?.length ? tx.family_member_ids
+      : (tx.family_member_id ? [tx.family_member_id] : []);
+    if (!memberIds.length) continue;
+    const txWords = tx.description.toLowerCase().split(/\s+/);
+    const match = words.some(w => txWords.some(tw => tw.includes(w) || w.includes(tw)));
+    if (match) {
+      for (const mid of memberIds) {
+        scores[mid] = (scores[mid] || 0) + 1;
+      }
+    }
+  }
+
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  if (!best || best[1] < 2) return; // require at least 2 matches for member
+
+  const member = members.find(m => m.id === best[0]);
+  if (!member) return;
+  _showAiMemberSuggestion(member);
+}
+
+function _showAiMemberSuggestion(member) {
+  _aiMemberPending = { id: member.id, name: member.name };
+  const chip = document.getElementById('txAiMemberSuggestion');
+  const btn  = document.getElementById('txAiMemberBtn');
+  if (!chip || !btn) return;
+  btn.textContent = member.name;
+  chip.style.display = 'flex';
+}
+
+function _applyAiMemberSuggestion() {
+  if (!_aiMemberPending) return;
+  if (typeof renderFmcMultiPicker === 'function') {
+    renderFmcMultiPicker('txFamilyMemberPicker', { selected: [_aiMemberPending.id] });
+  }
+  _dismissAiMemberSuggestion();
+}
+
+function _dismissAiMemberSuggestion(clearPending = true) {
+  const chip = document.getElementById('txAiMemberSuggestion');
+  if (chip) chip.style.display = 'none';
+  if (clearPending) _aiMemberPending = null;
 }
 
 

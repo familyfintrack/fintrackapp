@@ -197,6 +197,9 @@ const _transactions = {
       else if (filter.type === 'card_payment') q = q.eq('is_card_payment', true);
       if (filter.status === 'pending')         q = q.eq('status', 'pending');
       else if (filter.status === 'confirmed')  q = q.eq('status', 'confirmed');
+      // Reconciliation filter
+      if (filter.reconciled === 'done')        q = q.eq('is_reconciled', true);
+      else if (filter.reconciled === 'pending') q = q.or('is_reconciled.is.null,is_reconciled.eq.false');
       // Category filter: includes selected category and all its children
       if (filter.categoryId) {
         const catIds = _resolveCategoryIds(filter.categoryId);
