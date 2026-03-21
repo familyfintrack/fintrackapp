@@ -1291,6 +1291,10 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span class="sc-view-lbl">Calendário</span>
             </button>
+            <button class="sc-view-btn" id="scViewCats" onclick="setScView('categories')" title="Categorias">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span class="sc-view-lbl">Categorias</span>
+            </button>
           </div>
           <button class="btn btn-primary" onclick="openScheduledModal()">+ Programar</button>
         </div>
@@ -1331,6 +1335,28 @@
         </div>
         <!-- Day detail panel -->
         <div class="sc-cal-detail card" id="scCalDetail" style="display:none;margin-top:12px"></div>
+      </div>
+
+      <!-- Categories chart view -->
+      <div id="scCategoriesView" style="display:none">
+        <div class="sc-cats-controls mb-4">
+          <div class="sc-cats-type-toggle">
+            <button class="sc-cats-type-btn active" id="scCatsBtnAll"      onclick="scCatsFilter('all')">Todos</button>
+            <button class="sc-cats-type-btn"        id="scCatsBtnExpense"  onclick="scCatsFilter('expense')">Despesas</button>
+            <button class="sc-cats-type-btn"        id="scCatsBtnIncome"   onclick="scCatsFilter('income')">Receitas</button>
+          </div>
+        </div>
+        <!-- KPI strip -->
+        <div class="sc-cats-kpis mb-4" id="scCatsKpis"></div>
+        <!-- Bar chart -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <span class="card-title" id="scCatsChartTitle">Distribuição por Categoria</span>
+          </div>
+          <canvas id="scCatsChart" height="260"></canvas>
+        </div>
+        <!-- Category detail list -->
+        <div id="scCatsList"></div>
       </div>
 
       <!-- Status summary chips (scrollable on mobile) -->
