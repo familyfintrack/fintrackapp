@@ -10026,3 +10026,90 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .rpt-col-amt  { width: 82px; }
   .rpt-col-date { width: 84px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   AI INSIGHTS — Member cards with category/payee breakdown
+═══════════════════════════════════════════════════════════════════ */
+
+.ai-member-cards { display: flex; flex-direction: column; gap: 8px; }
+
+.ai-member-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.ai-member-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .12s;
+}
+.ai-member-card-header:hover { background: #f1f5f9; }
+
+.ai-member-card-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent, #16a34a), #059669);
+  color: #fff;
+  font-weight: 700;
+  font-size: .95rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-member-card-info { flex: 1; min-width: 0; }
+.ai-member-card-name { font-weight: 700; font-size: .88rem; color: #111827; }
+.ai-member-card-sub  { font-size: .75rem; color: var(--muted, #6b7280); margin-top: 1px; display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+.ai-member-card-chevron { font-size: .7rem; color: #9ca3af; flex-shrink: 0; transition: transform .2s; }
+
+.ai-member-card-body {
+  padding: 0 14px 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ai-mem-section-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #6b7280;
+  margin: 10px 0 6px;
+}
+
+/* Category bars per member */
+.ai-mem-cats { display: flex; flex-direction: column; gap: 6px; }
+.ai-mem-cat-item { }
+.ai-mem-cat-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: .78rem;
+  color: #374151;
+  margin-bottom: 3px;
+}
+.ai-mem-cat-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.ai-mem-cat-val  { white-space: nowrap; font-weight: 600; }
+
+/* Payee list per member */
+.ai-mem-pays { display: flex; flex-direction: column; gap: 3px; }
+.ai-mem-pay-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .78rem; padding: 4px 6px;
+  border-radius: 6px; background: #fff; border: 1px solid #f1f5f9;
+}
+.ai-mem-pay-rank { width: 16px; text-align: center; font-weight: 700; color: #2563eb; font-size: .72rem; flex-shrink: 0; }
+.ai-mem-pay-name { flex: 1; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-mem-pay-amt  { font-weight: 600; color: #111827; white-space: nowrap; }
+
+/* AI insight per member */
+.ai-mem-ai-insight {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 10px; padding: 8px 10px;
+  background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: 8px; font-size: .79rem; color: #1e40af; line-height: 1.5;
+}
