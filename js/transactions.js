@@ -257,6 +257,7 @@ function filterTransactions(immediate = false){
   state.txFilter.account=document.getElementById('txAccount').value;
   state.txFilter.type=document.getElementById('txType').value;
   state.txFilter.status=(document.getElementById('txStatusFilter')?.value)||'';
+  state.txFilter.reconciled=(document.getElementById('txReconcileFilter')?.value)||'';
   state.txFilter.categoryId=(document.getElementById('txCategoryFilter')?.value)||'';
   // Member filter: read selected IDs from multi-picker
   // Read selected member from compact select (empty string = all members)
@@ -413,6 +414,34 @@ function txRow(t, showAccount=true, runningBalance=null) {
 
   const isReconciled = !!t.is_reconciled;
   const reconcileBadge = isReconciled ? '<span class="tx-reconcile-badge" title="Reconciliada">✓REC</span>' : '';
+
+  // ── Modo Reconciliação ──
+  if (state.reconcileMode) {
+    const isChecked = state.reconcileChecked.has(t.id);
+    const checkedCls = isChecked ? ' reconcile-checked' : '';
+    const reconciledCls = isReconciled ? ' tx-reconciled' : '';
+    const checkboxCell = `<td class="tx-v2-chk" onclick="event.stopPropagation()">
+      <label class="reconcile-chk-label">
+        <input type="checkbox" class="reconcile-chk" ${isChecked?'checked':''} ${isReconciled?'disabled title="Já reconciliada"':''}
+          onchange="toggleReconcileCheck('${t.id}',this)">
+      </label>
+    </td>`;
+    return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${reconciledCls}${checkedCls}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
+      ${checkboxCell}
+      <td class="tx-v2-date">${dateStr}${pendDot}</td>
+      <td class="tx-v2-body">
+        <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
+        ${categoryLine}
+        ${meta}
+      </td>
+      <td class="tx-v2-right">
+        <div class="tx-v2-amt-wrap">${amtHtml}</div>
+        ${balHtml}
+      </td>
+    </tr>`;
+  }
+
+  // ── Modo normal ──
   const reconcileBtn = `<button class="tx-reconcile-btn${isReconciled?' reconciled':''}"
     title="${isReconciled?'Desmarcar reconciliação':'Marcar como reconciliada'}"
     onclick="event.stopPropagation();toggleReconcile('${t.id}',this)">${isReconciled?'✓ Rec':'○ Rec'}</button>`;
@@ -433,7 +462,82 @@ function txRow(t, showAccount=true, runningBalance=null) {
 }
 
 
-// ── Reconciliar Transação ──────────────────────────────────────────────────
+// ── Modo Reconciliação ────────────────────────────────────────────────────
+
+function enterReconcileMode() {
+  state.reconcileMode = true;
+  state.reconcileChecked = new Set();
+  // Esconde botão de entrada, mostra banner
+  const btn = document.getElementById('btnEnterReconcile');
+  if (btn) btn.style.display = 'none';
+  const banner = document.getElementById('reconcileBanner');
+  if (banner) banner.style.display = 'block';
+  _updateReconcileBannerStats();
+  renderTransactions();
+}
+
+function exitReconcileMode(committed) {
+  state.reconcileMode = false;
+  state.reconcileChecked = new Set();
+  const btn = document.getElementById('btnEnterReconcile');
+  if (btn) btn.style.display = '';
+  const banner = document.getElementById('reconcileBanner');
+  if (banner) banner.style.display = 'none';
+  if (!committed) renderTransactions();
+}
+
+function _updateReconcileBannerStats() {
+  const ids = [...(state.reconcileChecked || [])];
+  const count = ids.length;
+  let sum = 0;
+  ids.forEach(id => {
+    const t = (state.transactions || []).find(x => x.id === id);
+    if (t) sum += parseFloat(t.brl_amount ?? t.amount ?? 0) || 0;
+  });
+  const countEl = document.getElementById('reconcileCount');
+  const sumEl   = document.getElementById('reconcileSum');
+  if (countEl) countEl.textContent = `${count} marcada${count !== 1 ? 's' : ''}`;
+  if (sumEl)   sumEl.textContent   = fmt(sum, 'BRL');
+  const confirmBtn = document.getElementById('btnConfirmReconcile');
+  if (confirmBtn) confirmBtn.disabled = count === 0;
+}
+
+function toggleReconcileCheck(txId, checkbox) {
+  if (!state.reconcileMode) return;
+  if (checkbox.checked) {
+    state.reconcileChecked.add(txId);
+  } else {
+    state.reconcileChecked.delete(txId);
+  }
+  // highlight row
+  const row = document.querySelector(`[data-tx-id="${txId}"]`);
+  if (row) row.classList.toggle('reconcile-checked', checkbox.checked);
+  _updateReconcileBannerStats();
+}
+
+async function confirmReconcileMode() {
+  const ids = [...(state.reconcileChecked || [])];
+  if (!ids.length) return;
+  const confirmBtn = document.getElementById('btnConfirmReconcile');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Salvando…'; }
+  try {
+    // Batch: update all checked as reconciled + confirmed
+    const { error } = await famQ(
+      sb.from('transactions')
+        .update({ is_reconciled: true, status: 'confirmed' })
+        .in('id', ids)
+    );
+    if (error) throw error;
+    toast(`✓ ${ids.length} transaç${ids.length !== 1 ? 'ões reconciliadas' : 'ão reconciliada'}`, 'success');
+    exitReconcileMode(true);
+    await loadTransactions();
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = '✓ Confirmar'; }
+  }
+}
+
+// ── Toggle reconciliação inline (fora do modo) ─────────────────────────────
 async function toggleReconcile(txId, btn) {
   const isNow = btn?.classList.contains('reconciled');
   const newVal = !isNow;
@@ -522,6 +626,19 @@ function renderTransactions(){
       : null;
     return txRow(t, !singleAccId, runningBal);
   };
+
+  // Ajusta cabeçalho da tabela conforme modo
+  const thead = document.querySelector('#txMainTable thead tr');
+  if (thead) {
+    const hasChkCol = !!thead.querySelector('.th-chk');
+    if (state.reconcileMode && !hasChkCol) {
+      const th = document.createElement('th');
+      th.className = 'th-chk'; th.style.width = '36px';
+      thead.insertBefore(th, thead.firstChild);
+    } else if (!state.reconcileMode && hasChkCol) {
+      thead.querySelector('.th-chk').remove();
+    }
+  }
 
   body.innerHTML = pending.map(t => txRow(t, !singleAccId, null)).join('') + sep + confirmed.map(renderRow).join('');
   const total=state.txTotal, page=state.txPage, ps=state.txPageSize;

@@ -46,6 +46,10 @@ var state = window.state || {
   ui:                 { currentPage: 'dashboard' },
   privacyMode:        false,
 
+  // ── Modo Reconciliação ────────────────────────────────────────
+  reconcileMode:      false,
+  reconcileChecked:   new Set(), // IDs marcados nesta sessão
+
   // ── Preferências e caches auxiliares ─────────────────────────
   prefs:              {},
   lastCategoryByPayee:{},
