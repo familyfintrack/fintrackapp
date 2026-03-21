@@ -9942,7 +9942,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* Column widths via colgroup */
 .rpt-tx-table { table-layout: fixed; width: 100%; }
 
-.rpt-col-date { width: 86px;  }   /* "01/01/2026" = ~76px + padding */
+.rpt-col-date { width: 105px; }   /* date column — enough for dd/mm/yyyy */
 .rpt-col-desc { width: auto;  }   /* takes all remaining space */
 .rpt-col-acct { width: 110px; }
 .rpt-col-cat  { width: 110px; }
@@ -10005,11 +10005,12 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .rpt-td-acct,  .rpt-td-pay  { display: none; }
   .rpt-col-cat  { width: 90px; }
   .rpt-col-amt  { width: 90px; }
-  .rpt-col-date { width: 78px; }
+  .rpt-col-date { width: 90px; }
 }
 
 /* On very small screens: also hide Categoria */
 @media (max-width: 420px) {
   .rpt-col-cat, .rpt-td-cat { display: none; }
-  .rpt-col-amt { width: 82px; }
+  .rpt-col-amt  { width: 82px; }
+  .rpt-col-date { width: 84px; }
 }
