@@ -1708,6 +1708,22 @@
             </div>
             <img id="appLogoPreview" alt="" style="height:36px;max-width:200px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:4px;background:var(--surface)">
           </div>
+
+          <!-- Cursor image URL -->
+          <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;width:100%">
+              <span class="cfg-row-icon" style="background:var(--amber-lt)">🖱️</span>
+              <div class="cfg-row-info">
+                <span class="cfg-row-label">Imagem do cursor animado</span>
+                <span class="cfg-row-sub">URL da imagem exibida no cursor de carregamento. Padrão: logocursor.png</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;width:100%;flex-wrap:wrap">
+              <input id="cursorImgUrl" type="text" placeholder="logocursor.png" class="form-input" style="flex:1;min-width:200px">
+              <button class="btn btn-primary btn-sm" onclick="saveCursorImgUrl()">💾 Salvar</button>
+              <button class="btn btn-ghost btn-sm" onclick="resetCursorImgUrl()">↺ Padrão</button>
+            </div>
+          </div>
         </div>
       </div>
 
