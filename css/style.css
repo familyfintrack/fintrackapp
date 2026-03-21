@@ -10168,3 +10168,19 @@ tr.reconcile-checked td { opacity: 1 !important; }
   color: #fff;
   border-color: var(--accent);
 }
+
+/* ── Forecast: category inline with description ─────────────────── */
+.forecast-cat-inline {
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
