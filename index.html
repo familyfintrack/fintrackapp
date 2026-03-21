@@ -123,18 +123,6 @@
 }
 
 /* ── User card ── */
-.sb-user-card {
-  background: var(--sb-bg2) !important;
-  border-bottom: 1px solid var(--sb-divider) !important;
-}
-.sb-user-name {
-  color: var(--sb-text) !important;
-  font-weight: 600 !important;
-}
-.sb-user-role {
-  color: var(--sb-muted) !important;
-}
-
 /* ── Labels de seção ── */
 .nav-label {
   color: var(--sb-label) !important;
@@ -406,14 +394,6 @@
     <button class="sb-close" onclick="closeSidebar()" aria-label="Fechar menu">✕</button>
   </div>
 
-  <!-- User card: populated by updateSidebarUser() in auth.js -->
-  <div class="sb-user-card" id="sbUserCard" style="display:none">
-    <div class="sb-user-info">
-      <div class="sb-family-name" id="sbFamilyName">—</div>
-      <div class="sb-user-sub" id="sbUserSub">—</div>
-    </div>
-  </div>
-
   <!-- Scrollable nav body -->
   <div class="sidebar-nav">
 
@@ -422,17 +402,17 @@
       <button class="nav-item active" onclick="navigate('dashboard')" id="dashboardNav"    data-nav="dashboard">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        </span data-i18n="nav.dashboard">Dashboard
+        </span><span data-i18n="nav.dashboard">Dashboard
       </button>
-      <button class="nav-item" onclick="navigate('transactions'" id="transactionsNav" data-nav="transactions">
+      <button class="nav-item" onclick="navigate('transactions')" id="transactionsNav" data-nav="transactions">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        </span data-i18n="nav.transactions">Transações
+        </span><span data-i18n="nav.transactions">Transações
       </button>
-      <button class="nav-item" onclick="navigate('accounts'" id="accountsNav"     data-nav="accounts">
+      <button class="nav-item" onclick="navigate('accounts')" id="accountsNav"     data-nav="accounts">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        </span data-i18n="nav.accounts">Contas
+        </span><span data-i18n="nav.accounts">Contas
       </button>
     </div>
 
@@ -441,12 +421,12 @@
       <button class="nav-item" onclick="navigate('reports')" id="reportsNav"      data-nav="reports">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </span data-i18n="nav.reports">Relatórios
+        </span><span data-i18n="nav.reports">Relatórios
       </button>
-      <button class="nav-item" onclick="navigate('budgets'" id="budgetsNav"      data-nav="budgets">
+      <button class="nav-item" onclick="navigate('budgets')" id="budgetsNav"      data-nav="budgets">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </span data-i18n="nav.budgets">Orçamentos
+        </span><span data-i18n="nav.budgets">Orçamentos
       </button>
     </div>
 
@@ -455,7 +435,7 @@
       <button class="nav-item" onclick="navigate('scheduled')" id="scheduledNav"    data-nav="scheduled">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </span data-i18n="nav.scheduled">Programados
+        </span><span data-i18n="nav.scheduled">Programados
       </button>
     </div>
 
@@ -464,12 +444,12 @@
       <button class="nav-item" onclick="navigate('categories')" id="categoriesNav"   data-nav="categories">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        </span data-i18n="nav.categories">Categorias
+        </span><span data-i18n="nav.categories">Categorias
       </button>
-      <button class="nav-item" onclick="navigate('payees'" id="payeesNav"       data-nav="payees">
+      <button class="nav-item" onclick="navigate('payees')" id="payeesNav"       data-nav="payees">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </span data-i18n="nav.payees">Beneficiários
+        </span><span data-i18n="nav.payees">Beneficiários
       </button>
     </div>
 
@@ -479,22 +459,22 @@
       <button class="nav-item" id="groceryNav" data-nav="grocery" data-feature-controlled="1" onclick="navigate('grocery')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        </span data-i18n="nav.grocery">Mercado
+        </span><span data-i18n="nav.grocery">Mercado
       </button>
       <button class="nav-item" id="investmentsNav" data-nav="investments" data-feature-controlled="1" onclick="navigate('investments')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-        </span data-i18n="nav.investments">Investimentos
+        </span><span data-i18n="nav.investments">Investimentos
       </button>
       <button class="nav-item" id="pricesNav" data-nav="prices" data-feature-controlled="1" onclick="navigate('prices')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-        </span data-i18n="nav.prices">Preços
+        </span><span data-i18n="nav.prices">Preços
       </button>
       <button class="nav-item" id="aiInsightsNav" data-nav="ai_insights" data-feature-controlled="1" onclick="navigate('ai_insights')" style="display:none">
         <span class="ni-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".8"/></svg>
-        </span data-i18n="nav.ai_insights">AI Insights
+        </span><span data-i18n="nav.ai_insights">AI Insights
       </button>
     </div><!-- /modules section end -->
 
@@ -506,12 +486,7 @@
         </span>Ajuda
       </button>
     </div>
-      <button class="nav-item" id="helpNav" data-nav="help" onclick="navigate('help')">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </span>Ajuda
-      </button>
-    </div>
+      
 
     <!-- adminNavSection: audit removed from sidebar — accessible via topbar icon only -->
 
@@ -5405,7 +5380,7 @@
     </div>
     <!-- Menu items -->
     <div style="padding:6px">
-      <button class="user-menu-item" onclick="openMyProfile()">
+      <button class="user-menu-item" onclick="closeUserMenu();setTimeout(openMyProfile,80)">
         <span>🖼️</span><span>Meu Perfil</span>
       </button>
       <button class="user-menu-item" onclick="showChangeMyPwd();closeUserMenu()">
