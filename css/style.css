@@ -11662,3 +11662,101 @@ tr.reconcile-checked td { opacity: 1 !important; }
   padding-top: 5px;
   border-top: 1px solid var(--border);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AI FORECAST SECTION  (.ai-forecast-* .ai-proj-* .ai-budget-insight)
+═══════════════════════════════════════════════════════════════════════════ */
+
+.ai-section-forecast {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+}
+
+.ai-risk-badge {
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.ai-forecast-outlook {
+  font-size: .85rem;
+  color: var(--text2);
+  line-height: 1.65;
+  margin: 0 0 14px;
+  font-style: italic;
+}
+
+.ai-forecast-rcm {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.ai-forecast-rcm-title {
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+
+.ai-subsection-title {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 14px 0 8px;
+}
+
+.ai-proj-table { margin-top: 6px; }
+
+/* Risks */
+.ai-forecast-risks,
+.ai-forecast-opps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ai-forecast-risk-item,
+.ai-forecast-opp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+.ai-forecast-risk-item { border-color: color-mix(in srgb, var(--amber) 25%, var(--border)); }
+.ai-forecast-opp-item  { border-color: color-mix(in srgb, var(--accent) 20%, var(--border)); }
+.ai-forecast-risk-icon,
+.ai-forecast-opp-icon  { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.ai-forecast-risk-title,
+.ai-forecast-opp-title { font-size: .8rem; font-weight: 600; color: var(--text); }
+.ai-forecast-risk-mit,
+.ai-forecast-opp-act   { font-size: .74rem; color: var(--muted); margin-top: 2px; }
+
+/* Budget insights */
+.ai-budget-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ai-budget-insight:last-child { border-bottom: none; }
+.ai-budget-insight-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.ai-budget-insight-text {
+  font-size: .78rem;
+  color: var(--text2);
+  margin: 3px 0 0;
+  line-height: 1.5;
+}
