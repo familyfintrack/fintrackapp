@@ -190,7 +190,11 @@ async function _aiCollectFinancialContext() {
   const byMonth     = {};
 
   filtered.forEach(t => {
-    const amt = Math.abs(parseFloat(t.brl_amount || t.amount_brl || 0));
+    // Use txToBRL for correct BRL conversion (handles FX, null brl_amount, etc.)
+    const brlVal = typeof txToBRL === 'function'
+      ? txToBRL(t)
+      : parseFloat(t.brl_amount ?? t.amount_brl ?? t.amount ?? 0);
+    const amt = Math.abs(brlVal);
     // Derive type from amount sign and flags (no 'type' column in schema)
     const rawAmt = parseFloat(t.amount || 0);
     const type = t.is_transfer
@@ -264,6 +268,42 @@ async function _aiCollectFinancialContext() {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([month, v]) => ({ month, income: +v.income.toFixed(2), expense: +v.expense.toFixed(2), net: +(v.income - v.expense).toFixed(2) }));
 
+  // Top transactions individuais (para o chat responder com precisão)
+  const topTransactions = filtered
+    .filter(t => !t.is_transfer)
+    .map(t => {
+      const brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
+      return {
+        date: t.date,
+        description: t.description || '—',
+        amount_brl: +Math.abs(brl).toFixed(2),
+        type: parseFloat(t.amount||0) >= 0 ? 'income' : 'expense',
+        category: catMap[t.category_id] || null,
+        payee: payMap[t.payee_id] || null,
+        account: accMap[t.account_id]?.name || null,
+        currency: t.currency || 'BRL',
+        memo: t.memo || null,
+      };
+    })
+    .sort((a, b) => b.amount_brl - a.amount_brl)
+    .slice(0, 30); // top 30 por valor
+
+  // Resumo por conta (receita e despesa por conta)
+  const byAccount = {};
+  filtered.filter(t => !t.is_transfer).forEach(t => {
+    const accName = accMap[t.account_id]?.name || 'Desconhecida';
+    if (!byAccount[accName]) byAccount[accName] = { income: 0, expense: 0 };
+    const brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
+    if (brl >= 0) byAccount[accName].income += brl;
+    else          byAccount[accName].expense += Math.abs(brl);
+  });
+  const accountSummary = Object.entries(byAccount).map(([name, v]) => ({
+    name,
+    income:  +v.income.toFixed(2),
+    expense: +v.expense.toFixed(2),
+    net:     +(v.income - v.expense).toFixed(2),
+  }));
+
   const ctx = {
     period: { from: dateFrom || 'início', to: dateTo || 'hoje' },
     summary: {
@@ -271,6 +311,7 @@ async function _aiCollectFinancialContext() {
       totalExpense:  +totalExpense.toFixed(2),
       netResult:     +(totalIncome - totalExpense).toFixed(2),
       txCount:       filtered.length,
+      transferCount: filtered.filter(t => t.is_transfer).length,
     },
     topCategories,
     topPayees,
@@ -278,6 +319,8 @@ async function _aiCollectFinancialContext() {
     monthlyTrend,
     scheduledSummary,
     accountBalances,
+    accountSummary,
+    topTransactions,
     anomalies,
     filters: { dateFrom, dateTo, memberId, accountId, categoryId, payeeId },
   };
@@ -292,7 +335,8 @@ function _aiDetectAnomalies(txs, catMap, payMap) {
   txs.filter(t => { const r=parseFloat(t.amount||0); return !t.is_transfer && r < 0; }).forEach(t => {
     const name = payMap[t.payee_id] || 'Sem beneficiário';
     if (!payeeAmounts[name]) payeeAmounts[name] = [];
-    payeeAmounts[name].push(Math.abs(parseFloat(t.brl_amount || t.amount_brl || 0)));
+    const _brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
+    payeeAmounts[name].push(Math.abs(_brl));
   });
 
   const anomalies = [];
@@ -370,12 +414,27 @@ function _aiSetAnalysisState(state, msg) {
 }
 
 async function _callGeminiAnalysis(apiKey, ctx) {
+  // Build structured prompt data (exclude topTransactions from main JSON to keep size manageable)
+  const promptData = {
+    period: ctx.period,
+    summary: ctx.summary,
+    topCategories: ctx.topCategories,
+    topPayees: ctx.topPayees,
+    memberInsights: ctx.memberInsights,
+    monthlyTrend: ctx.monthlyTrend,
+    scheduledSummary: ctx.scheduledSummary,
+    accountBalances: ctx.accountBalances,
+    accountSummary: ctx.accountSummary || [],
+    anomalies: ctx.anomalies,
+    topTransactions: (ctx.topTransactions || []).slice(0, 20),
+  };
+
   const prompt = `Você é um consultor financeiro pessoal analisando dados financeiros de uma família brasileira.
-Os dados abaixo foram COMPUTADOS pelo sistema financeiro e são 100% precisos. Sua função é INTERPRETAR, não recalcular.
+Os dados abaixo foram COMPUTADOS pelo sistema financeiro (valores em BRL) e são 100% precisos. Sua função é INTERPRETAR, não recalcular.
 Responda SOMENTE com JSON válido, sem markdown, sem texto antes ou depois.
 
 DADOS FINANCEIROS DO PERÍODO ${ctx.period.from} a ${ctx.period.to}:
-${JSON.stringify(ctx, null, 0)}
+${JSON.stringify(promptData, null, 0)}
 
 RETORNE EXATAMENTE ESTE JSON:
 {
@@ -765,12 +824,14 @@ async function _callGeminiChat(apiKey, question, history) {
   const ctxStr = ctx ? JSON.stringify({
     period: ctx.period,
     summary: ctx.summary,
-    topCategories: ctx.topCategories.slice(0,5),
-    topPayees: ctx.topPayees.slice(0,5),
+    topCategories: ctx.topCategories.slice(0,10),
+    topPayees: ctx.topPayees.slice(0,10),
     memberInsights: ctx.memberInsights,
-    monthlyTrend: ctx.monthlyTrend.slice(-3),
-    scheduledSummary: ctx.scheduledSummary.slice(0,5),
+    monthlyTrend: ctx.monthlyTrend,
+    scheduledSummary: ctx.scheduledSummary,
     accountBalances: ctx.accountBalances,
+    accountSummary: ctx.accountSummary || [],
+    topTransactions: ctx.topTransactions || [],
     anomalies: ctx.anomalies,
   }) : '{}';
 

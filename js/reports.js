@@ -406,12 +406,12 @@ function renderReportTxTable(txs) {
   if(totEl){totEl.textContent=fmt(total);totEl.className=total>=0?'amount-pos':'amount-neg';}
   document.getElementById('reportTxBody').innerHTML=txs.length
     ? txs.map(t=>`<tr>
-        <td style="white-space:nowrap;font-size:.8rem;color:var(--muted)">${fmtDate(t.date)}</td>
-        <td style="max-width:180px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</div></td>
-        <td style="font-size:.8rem">${esc(t.accounts?.name||'—')}</td>
-        <td>${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}30;font-size:.68rem">${esc(t.categories.name)}</span>`:'—'}</td>
-        <td style="font-size:.8rem;color:var(--muted)">${esc(t.payees?.name||'—')}</td>
-        <td class="${t.amount>=0?'amount-pos':'amount-neg'}" style="white-space:nowrap;font-weight:600">${fmt(t.amount)}</td>
+        <td class="rpt-td-date">${fmtDate(t.date)}</td>
+        <td class="rpt-td-desc"><div class="rpt-desc-cell">${esc(t.description||'—')}</div></td>
+        <td class="rpt-td-acct">${esc(t.accounts?.name||'—')}</td>
+        <td class="rpt-td-cat">${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}30;font-size:.68rem;white-space:nowrap">${esc(t.categories.name)}</span>`:'—'}</td>
+        <td class="rpt-td-pay">${esc(t.payees?.name||'—')}</td>
+        <td class="rpt-td-amt ${t.amount>=0?'amount-pos':'amount-neg'}">${fmt(t.amount)}</td>
       </tr>`).join('')
     : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">Nenhuma transação no período</td></tr>';
 }
