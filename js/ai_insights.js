@@ -158,7 +158,7 @@ async function _aiCollectFinancialContext() {
 
   // Busca transações no período
   let q = famQ(sb.from('transactions').select(
-    'id,date,amount_brl,brl_amount,type,status,description,memo,category_id,payee_id,account_id,user_id,currency,exchange_rate'
+    'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,user_id,currency,exchange_rate'
   ).eq('status', 'confirmed'));
 
   if (dateFrom) q = q.gte('date', dateFrom);
@@ -191,7 +191,11 @@ async function _aiCollectFinancialContext() {
 
   filtered.forEach(t => {
     const amt = Math.abs(parseFloat(t.brl_amount || t.amount_brl || 0));
-    const type = t.type;
+    // Derive type from amount sign and flags (no 'type' column in schema)
+    const rawAmt = parseFloat(t.amount || 0);
+    const type = t.is_transfer
+      ? (t.is_card_payment ? 'card_payment' : 'transfer')
+      : rawAmt >= 0 ? 'income' : 'expense';
 
     if (type === 'income') {
       totalIncome += amt;
@@ -285,7 +289,7 @@ async function _aiCollectFinancialContext() {
 function _aiDetectAnomalies(txs, catMap, payMap) {
   // Agrupa por beneficiário e calcula média e desvio padrão
   const payeeAmounts = {};
-  txs.filter(t => t.type === 'expense').forEach(t => {
+  txs.filter(t => { const r=parseFloat(t.amount||0); return !t.is_transfer && r < 0; }).forEach(t => {
     const name = payMap[t.payee_id] || 'Sem beneficiário';
     if (!payeeAmounts[name]) payeeAmounts[name] = [];
     payeeAmounts[name].push(Math.abs(parseFloat(t.brl_amount || t.amount_brl || 0)));
@@ -928,7 +932,7 @@ async function enrichTransactionContext(tx) {
     transaction: {
       description: tx.description,
       amount: Math.abs(parseFloat(tx.brl_amount || 0)),
-      type: tx.type,
+      type: tx.is_transfer ? (tx.is_card_payment ? 'card_payment' : 'transfer') : parseFloat(tx.amount||0) >= 0 ? 'income' : 'expense',
       date: tx.date,
       memo: tx.memo,
       category: catMap[tx.category_id] || null,
