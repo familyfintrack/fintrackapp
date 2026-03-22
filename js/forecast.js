@@ -282,17 +282,24 @@ function renderForecastTables(allItems, accounts) {
             ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon}</span>`
             : '<span class="forecast-date-flag">&nbsp;</span>');
       const todayMarker = isToday ? '<span class="forecast-date-today">hoje</span>' : '<span class="forecast-date-today">&nbsp;</span>';
-      // Category badge shown inline with description title
+      // Category shown as separate line below description
       const _catName  = t.categories?.name ? esc(t.categories.name) : null;
-      const _catBadge = _catName
-        ? `<span class="forecast-cat-inline" style="color:${_catColor}">${_catIcon ? _catIcon + ' ' : ''}${_catName}</span>`
+      const _catLine  = _catName
+        ? `<div class="forecast-line forecast-category" style="color:${_catColor}"><span class="forecast-cat-dot" style="background:${_catColor}"></span>${_catIcon ? _catIcon + ' ' : ''}${_catName}</div>`
         : '';
-      const payeeLine = `<div class="forecast-line forecast-payee">${t.payees?.name ? esc(t.payees.name) : '&nbsp;'}</div>`;
+      const payeeLine = t.payees?.name
+        ? `<div class="forecast-line forecast-payee">${esc(t.payees.name)}</div>`
+        : '';
       return `<tr class="${rowClass} ${balClass} forecast-tx-row">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">
           <div class="forecast-date-main">${fmtDate(t.date)}</div>
           ${dateMeta}
           ${todayMarker}
+        </td>
+        <td class="forecast-desc-cell">
+          <div class="forecast-line forecast-title">${esc(t.description||'')}</div>
+          ${_catLine}
+          ${payeeLine}
         </td>
         <td class="forecast-desc-cell">
           <div class="forecast-line forecast-title">${esc(t.description||'')}${_catBadge}</div>
