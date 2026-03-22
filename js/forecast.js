@@ -301,10 +301,6 @@ function renderForecastTables(allItems, accounts) {
           ${_catLine}
           ${payeeLine}
         </td>
-        <td class="forecast-desc-cell">
-          <div class="forecast-line forecast-title">${esc(t.description||'')}${_catBadge}</div>
-          ${payeeLine}
-        </td>
         <td class="forecast-amount-cell ${(parseFloat(t.amount)||0)>=0?'amount-pos':'amount-neg'}">
           <div class="forecast-amount-main">${(parseFloat(t.amount)||0)>=0?'+':''}${fmt(t.amount, a.currency)}</div>
           ${(a.currency !== 'BRL' && t.brl_amount != null)
