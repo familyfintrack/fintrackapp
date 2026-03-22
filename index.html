@@ -1103,32 +1103,35 @@
 
       <!-- ── View: Previsão ── -->
       <div id="reportForecastView" style="display:none">
-        <div class="report-filter-bar" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:14px">
-          <div>
-            <label>De</label>
-            <input type="date" id="forecastFrom" onchange="loadForecast()">
-          </div>
-          <div>
-            <label>Até</label>
-            <input type="date" id="forecastTo" onchange="loadForecast()">
-          </div>
-          <div>
-            <label>Contas</label>
-            <div class="fc-acct-picker" id="forecastAcctPicker">
-              <button type="button" class="fc-acct-btn" onclick="_fcPickerToggle('forecastAcctPicker')">
-                <span id="forecastAcctLabel">Todas as contas</span>
-                <span class="fc-acct-caret">▼</span>
-              </button>
-              <div class="fc-acct-dropdown" id="forecastAcctDropdown"></div>
+        <div class="fc-filter-wrap">
+          <div class="fc-filter-dates">
+            <div class="fc-filter-field">
+              <label class="fc-filter-label">De</label>
+              <input type="date" id="forecastFrom" class="fc-filter-input" onchange="loadForecast()">
+            </div>
+            <div class="fc-filter-field">
+              <label class="fc-filter-label">Até</label>
+              <input type="date" id="forecastTo" class="fc-filter-input" onchange="loadForecast()">
             </div>
           </div>
-          <div>
-            <label style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:4px">Opções</label>
-            <label style="display:flex;align-items:center;gap:7px;font-size:.83rem;font-weight:500;cursor:pointer;padding:6px 0">
-              <input type="checkbox" id="forecastIncludeScheduled" checked onchange="loadForecast()"
-                style="width:15px;height:15px;flex-shrink:0;accent-color:var(--accent)">
-              Incluir programados
-            </label>
+          <div class="fc-filter-row2">
+            <div class="fc-filter-field fc-filter-acct">
+              <label class="fc-filter-label">Contas</label>
+              <div class="fc-acct-picker" id="forecastAcctPicker">
+                <button type="button" class="fc-acct-btn" onclick="_fcPickerToggle('forecastAcctPicker')">
+                  <span id="forecastAcctLabel">Todas as contas</span>
+                  <span class="fc-acct-caret">▼</span>
+                </button>
+                <div class="fc-acct-dropdown" id="forecastAcctDropdown"></div>
+              </div>
+            </div>
+            <div class="fc-filter-field fc-filter-opts">
+              <label class="fc-filter-label">Opções</label>
+              <label class="fc-filter-check">
+                <input type="checkbox" id="forecastIncludeScheduled" checked onchange="loadForecast()">
+                Incluir programados
+              </label>
+            </div>
           </div>
         </div>
         <div class="card mb-4">
