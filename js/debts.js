@@ -739,7 +739,24 @@ async function saveDebt() {
     ({ error } = await sb.from('debts').update(data).eq('id', id));
   } else {
     data.current_balance = amount; // initial balance = original amount
+
+    // Try direct insert first; if blocked by RLS, fall back to SECURITY DEFINER RPC
     ({ data: result, error } = await sb.from('debts').insert(data).select().single());
+
+    if (error && (error.code === '42501' || (error.message||'').toLowerCase().includes('security'))) {
+      console.warn('[debts] RLS blocked direct insert, trying RPC fallback:', error.message);
+      try {
+        const { data: rpcResult, error: rpcErr } = await sb.rpc('insert_debt', {
+          p_data: JSON.stringify(data)
+        });
+        if (rpcErr) throw rpcErr;
+        result = typeof rpcResult === 'string' ? JSON.parse(rpcResult) : rpcResult;
+        error  = null;
+      } catch (rpcEx) {
+        // Keep original RLS error — both paths failed
+        console.error('[debts] RPC fallback also failed:', rpcEx.message);
+      }
+    }
     // Create opening ledger entry
     if (!error && result) {
       await sb.from('debt_ledger').insert({
