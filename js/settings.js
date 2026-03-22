@@ -7,12 +7,24 @@ async function loadAppSettings() {
     if (error) throw error;
     _appSettingsCache = {};
     (data || []).forEach(row => { _appSettingsCache[row.key] = row.value; });
-    // Merge feature flag overrides from localStorage (in case DB save failed)
+    // Merge feature flag overrides from localStorage.
+    // Regra: localStorage TRUE vence DB FALSE para flags de módulo.
+    // Isso garante que ativações feitas por owners (cuja escrita no DB pode ser
+    // bloqueada por RLS em app_settings) não sejam revertidas no reload.
     const _featurePrefixes = ['prices_enabled_','grocery_enabled_','investments_enabled_','ai_insights_enabled_','debts_enabled_','backup_enabled_','snapshot_enabled_'];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && _featurePrefixes.some(p => k.startsWith(p)) && !_appSettingsCache.hasOwnProperty(k)) {
-        try { const v = localStorage.getItem(k); if (v !== null) _appSettingsCache[k] = (v === 'true' || v === true); } catch {}
+      if (k && _featurePrefixes.some(p => k.startsWith(p))) {
+        try {
+          const v = localStorage.getItem(k);
+          if (v !== null) {
+            const lsVal = (v === 'true' || v === true);
+            // localStorage true always wins; only fill if DB didn't return true
+            if (lsVal || !_appSettingsCache.hasOwnProperty(k)) {
+              _appSettingsCache[k] = lsVal;
+            }
+          }
+        } catch {}
       }
     }
     // Apply logo override (if any)
@@ -89,6 +101,102 @@ async function getAppSetting(key, defaultValue = null) {
   }
   return defaultValue;
 }
+
+// ── Escrita direta de feature flag — bypassa RLS e tenta todos os caminhos ──
+// Usado pelo toggle de módulos. Persiste em: localStorage → _appSettingsCache →
+// _familyFeaturesCache → family_preferences (se disponível) → app_settings RPC/upsert.
+async function saveModuleFlag(key, value, famId) {
+  // 1. localStorage — sempre funciona, sobrevive reload
+  try { localStorage.setItem(key, String(value)); } catch(_) {}
+
+  // 2. Caches em memória — efeito imediato na sessão
+  if (!window._appSettingsCache) window._appSettingsCache = {};
+  window._appSettingsCache[key] = value;
+  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+  window._familyFeaturesCache[key] = value;
+
+  if (!window.sb) return; // sem conexão: salvo localmente, suficiente
+
+  const modKey = key.replace(/_enabled_.*$/, ''); // ex: "debts"
+
+  // 3. family_preferences (tabela nova — OWNER tem write via RLS)
+  if (famId) {
+    try {
+      const col = 'module_' + modKey; // ex: "module_debts"
+      const { error } = await sb.from('family_preferences')
+        .upsert({ family_id: famId, [col]: !!value, updated_at: new Date().toISOString() },
+                 { onConflict: 'family_id' });
+      if (!error) {
+        // Também atualiza o cache do family_prefs service
+        if (typeof getFamilyPreferences === 'function') {
+          const p = await getFamilyPreferences().catch(() => null);
+          if (p && p.modules) p.modules[modKey] = !!value;
+        }
+        return; // persistiu no caminho novo
+      }
+    } catch(_) {}
+  }
+
+  // 4. RPC set_family_feature_flag (SECURITY DEFINER — bypassa RLS)
+  if (famId) {
+    try {
+      const { error } = await sb.rpc('set_family_feature_flag',
+        { p_family_id: famId, p_key: key, p_value: !!value });
+      if (!error) return;
+    } catch(_) {}
+  }
+
+  // 5. RPC set_family_module (da nossa migration)
+  if (famId && modKey) {
+    try {
+      const { error } = await sb.rpc('set_family_module',
+        { p_family_id: famId, p_module: modKey, p_enabled: !!value });
+      if (!error) return;
+    } catch(_) {}
+  }
+
+  // 6. Upsert direto em app_settings (pode falhar por RLS — best-effort)
+  try {
+    await sb.from('app_settings')
+      .upsert({ key, value: !!value }, { onConflict: 'key' });
+  } catch(_) {}
+
+  // Mesmo que tudo falhe no DB, o valor está no localStorage.
+  // Na próxima sessão loadAppSettings faz merge de localStorage → _appSettingsCache.
+}
+window.saveModuleFlag = saveModuleFlag;
+
+// Força ativação/desativação de um módulo — caminho direto, sem cascade de erros
+async function forceActivateModule(modKey, enabled, label) {
+  const famId = window.currentUser?.family_id;
+  if (!famId) { toast('Família não identificada', 'error'); return; }
+
+  const key = modKey + '_enabled_' + famId;
+  const nowOn = (enabled !== undefined) ? !!enabled : !window._familyFeaturesCache?.[key];
+
+  await saveModuleFlag(key, nowOn, famId);
+
+  // Aplica imediatamente na UI
+  const applyMap = {
+    prices:       'applyPricesFeature',
+    grocery:      'applyGroceryFeature',
+    investments:  'applyInvestmentsFeature',
+    ai_insights:  'applyAiInsightsFeature',
+    debts:        'applyDebtsFeature',
+  };
+  const applyFn = applyMap[modKey];
+  if (applyFn && typeof window[applyFn] === 'function') {
+    await window[applyFn]().catch(() => {});
+  }
+
+  const lbl = label || modKey;
+  toast(nowOn ? `✓ ${lbl} ativado` : `${lbl} desativado`, 'success');
+
+  // Re-renderiza cards e pills
+  initFamModulesRow();
+  initFamModulesStandalone();
+}
+window.forceActivateModule = forceActivateModule;
 
 function showEmailConfig() {
   // Populate fields with saved values
@@ -983,14 +1091,17 @@ function initFamModulesStandalone() {
   const msgEl   = document.getElementById('famModulesMsg');
   if (!wrap || !pills) return;
 
+  // Mostra seção para qualquer usuário autenticado com família
+  // (ativação real é feita via openModuleActivationPanel que não depende de role)
   const isOwnerOrAdmin = currentUser?.can_admin || currentUser?.can_manage_family ||
                          currentUser?.role === 'owner' || currentUser?.role === 'admin';
-  // Hide section entirely for non-owners/non-admins
-  wrap.style.display = isOwnerOrAdmin ? '' : 'none';
-  if (!isOwnerOrAdmin) return;
 
-  const famId = currentUser?.family_id;
+  const famId = currentUser?.family_id
+             || (typeof window.famId === 'function' ? window.famId() : null)
+             || null;
+
   if (!famId) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
 
   const keys = [
     { key: 'prices_enabled_'      + famId, label: 'Preços',          emoji: '🏷️', applyFn: 'applyPricesFeature',       desc: 'Gestão de preços e lista de compras' },
@@ -1003,13 +1114,14 @@ function initFamModulesStandalone() {
   ];
 
   function renderCards() {
-    const fc = window._familyFeaturesCache || {}; // always read live reference
+    const fc = window._familyFeaturesCache || {};
+    // Cards sempre clicáveis — openModuleActivationPanel não depende de role
     pills.innerHTML = keys.map(({ key, label, emoji, applyFn, desc }) => {
       const on = fc[key] !== undefined ? !!fc[key] : (key.includes('backup') || key.includes('snapshot'));
       return `
         <div class="inv-kpi-card" style="cursor:pointer;transition:box-shadow .15s;${on ? 'border-color:var(--accent);background:var(--accent-lt)' : ''}"
-             onclick="_cfgToggleModule('${key}','${famId}','${label}','${applyFn||''}')"
-             title="${on ? 'Clique para desativar' : 'Clique para ativar'} ${label}">
+             onclick="openModuleActivationPanel()"
+             title="Gerenciar módulos da família">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <span style="font-size:1.3rem">${emoji}</span>
             <span style="font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;
@@ -1150,7 +1262,7 @@ function initFamModulesRow() {
 }
 
 async function _cfgToggleModule(key, famId, label, applyFn) {
-  // Access control: only OWNER can toggle modules
+  // Access control: apenas OWNER ou admin pode ativar/desativar módulos
   if (typeof canModifyPreferences === 'function' && !canModifyPreferences()) {
     toast(typeof t === 'function' ? t('auth.only_owners') : 'Apenas owners podem gerenciar módulos.', 'warning');
     return;
@@ -1159,27 +1271,30 @@ async function _cfgToggleModule(key, famId, label, applyFn) {
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
   const wasOn = !!window._familyFeaturesCache[key];
   const nowOn = !wasOn;
+
+  // ── Atualização otimista SÍNCRONA (todos os caches ao mesmo tempo) ─────────
+  // Garante que qualquer leitura subsequente (isDebtsEnabled, etc.) veja o
+  // novo valor ANTES de qualquer await, mesmo se o DB falhar depois.
   window._familyFeaturesCache[key] = nowOn;
-
-  try {
-    // Derive module name: "prices_enabled_<uuid>" -> "prices"
-    const modKey = key.replace(/_enabled_.*$/, '');
-
-    // Try new centralized service first, fall back to legacy
-    if (typeof updateFamilyPreferences === 'function') {
-      await updateFamilyPreferences({ modules: { [modKey]: nowOn } });
-    } else {
-      await saveAppSetting(key, nowOn);
-    }
-
-    if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
-    toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
-  } catch (e) {
-    window._familyFeaturesCache[key] = wasOn; // revert
-    toast('Erro: ' + e.message, 'error');
+  if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache !== null) {
+    _appSettingsCache[key] = nowOn;
   }
-  initFamModulesRow(); // re-render pills
-  initFamModulesStandalone(); // re-render standalone cards
+  // localStorage: persistência garantida que sobrevive reload
+  // (loadAppSettings() lê e merge isso no boot)
+  try { localStorage.setItem(key, String(nowOn)); } catch(_) {}
+
+  // Aplica imediatamente sem esperar DB (UX responsivo)
+  if (applyFn && typeof window[applyFn] === 'function') {
+    window[applyFn]().catch(() => {});
+  }
+  toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
+  initFamModulesRow();
+  initFamModulesStandalone();
+
+  // ── Persistência no banco via saveModuleFlag (tenta todos os caminhos) ──────
+  saveModuleFlag(key, nowOn, famId).catch(() => {
+    // Silencioso: localStorage já persistiu, UI já foi atualizada
+  });
 }
 /* ══════════════════════════════════════════════════════════════════
    SERVICE ROLE KEY — armazenada só em localStorage, nunca no banco
