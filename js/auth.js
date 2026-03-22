@@ -1687,6 +1687,7 @@ function openCopyFamilyModal(srcId, srcName) {
     </div>`;
 
   document.body.appendChild(modal);
+  if (typeof _scrollModalToTop === 'function') _scrollModalToTop(modal);
 }
 
 async function executeCopyFamily(srcId, srcName) {

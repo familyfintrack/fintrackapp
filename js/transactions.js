@@ -1405,7 +1405,7 @@ async function saveTransaction(){
   if(!id && savedId) {
     await _goToSavedTransaction(savedId, { ...data, id: savedId, status: data.status, date: data.date });
   } else {
-    if(state.currentPage==='transactions') await loadTransactions();
+    if(state.currentPage==='transactions') { await loadTransactions(); if (typeof _scrollActivePageToTop === 'function') _scrollActivePageToTop('transactions'); }
     if(state.currentPage==='dashboard') await loadDashboard();
   }
 }

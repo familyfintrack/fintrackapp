@@ -5,7 +5,6 @@ const BACKUP_VERSION = '4.2';
 const BACKUP_TABLES = [
   'families',
   'family_members',
-  'family_composition',
   'account_groups',
   'accounts',
   'categories',
@@ -18,13 +17,6 @@ const BACKUP_TABLES = [
   'price_items',
   'price_stores',
   'price_history',
-  'debts',
-  'debt_ledger',
-  'investment_positions',
-  'investment_transactions',
-  'investment_price_history',
-  'grocery_lists',
-  'grocery_items',
 ];
 
 const BACKUP_RELATIONS = [
@@ -100,13 +92,9 @@ async function _resolveActiveFamilyId() {
 async function _collectFamilyBackupPayload(fid) {
   const qf = (table) => sb.from(table).select('*').eq('family_id', fid);
 
-  // Core tables — always present
-  const [familiesRes, membersRes, compositionRes, groupsRes, accountsRes,
-         categoriesRes, payeesRes, txRes, budgetsRes, schedRes,
-         priceItemsRes, priceStoresRes, debtsRes, groceryListsRes, backupsRes] = await Promise.all([
+  const [familiesRes, membersRes, groupsRes, accountsRes, categoriesRes, payeesRes, txRes, budgetsRes, schedRes, priceItemsRes, priceStoresRes, backupsRes] = await Promise.all([
     sb.from('families').select('*').eq('id', fid).limit(1),
     sb.from('family_members').select('*').eq('family_id', fid),
-    qf('family_composition').catch(() => ({ data: [] })),
     qf('account_groups'),
     qf('accounts'),
     qf('categories'),
@@ -114,73 +102,49 @@ async function _collectFamilyBackupPayload(fid) {
     qf('transactions'),
     qf('budgets'),
     qf('scheduled_transactions'),
-    qf('price_items').catch(() => ({ data: [] })),
-    qf('price_stores').catch(() => ({ data: [] })),
-    qf('debts').catch(() => ({ data: [] })),
-    qf('grocery_lists').catch(() => ({ data: [] })),
-    qf('app_backups').catch(() => ({ data: [] })),
+    qf('price_items'),
+    qf('price_stores'),
+    qf('app_backups'),
   ]);
 
-  const scheduledIds    = _arr(schedRes.data).map(r => r.id);
-  const transactionIds  = _arr(txRes.data).map(r => r.id);
-  const priceItemIds    = _arr(priceItemsRes.data).map(r => r.id);
-  const priceStoreIds   = _arr(priceStoresRes.data).map(r => r.id);
-  const debtIds         = _arr(debtsRes.data).map(r => r.id);
-  const groceryListIds  = _arr(groceryListsRes.data).map(r => r.id);
+  const scheduledIds = _arr(schedRes.data).map(r => r.id);
+  const transactionIds = _arr(txRes.data).map(r => r.id);
+  const priceItemIds = _arr(priceItemsRes.data).map(r => r.id);
+  const priceStoreIds = _arr(priceStoresRes.data).map(r => r.id);
 
-  // Secondary tables that depend on primary IDs
-  const [occRes, runLogRes, priceHistoryRes, debtLedgerRes,
-         invPositionsRes, invTxRes, invPriceRes, groceryItemsRes] = await Promise.all([
+  const [occRes, runLogRes, priceHistoryRes] = await Promise.all([
     scheduledIds.length
       ? sb.from('scheduled_occurrences').select('*').in('scheduled_id', scheduledIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     sb.from('scheduled_run_logs').select('*').or([
       `family_id.eq.${fid}`,
-      scheduledIds.length   ? `scheduled_id.in.(${scheduledIds.join(',')})` : null,
+      scheduledIds.length ? `scheduled_id.in.(${scheduledIds.join(',')})` : null,
       transactionIds.length ? `transaction_id.in.(${transactionIds.join(',')})` : null,
-    ].filter(Boolean).join(',')).catch(() => ({ data: [] })),
-    (priceItemIds.length || priceStoreIds.length)
+    ].filter(Boolean).join(',')),
+    priceItemIds.length || priceStoreIds.length
       ? sb.from('price_history').select('*').or([
           `family_id.eq.${fid}`,
-          priceItemIds.length  ? `item_id.in.(${priceItemIds.join(',')})` : null,
+          priceItemIds.length ? `item_id.in.(${priceItemIds.join(',')})` : null,
           priceStoreIds.length ? `store_id.in.(${priceStoreIds.join(',')})` : null,
         ].filter(Boolean).join(','))
-      : Promise.resolve({ data: [] }),
-    debtIds.length
-      ? sb.from('debt_ledger').select('*').in('debt_id', debtIds).catch(() => ({ data: [] }))
-      : Promise.resolve({ data: [] }),
-    // Investments — optional module
-    qf('investment_positions').catch(() => ({ data: [] })),
-    qf('investment_transactions').catch(() => ({ data: [] })),
-    qf('investment_price_history').catch(() => ({ data: [] })),
-    groceryListIds.length
-      ? sb.from('grocery_items').select('*').in('list_id', groceryListIds).catch(() => ({ data: [] }))
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const payload = {
-    families:                 _arr(familiesRes.data),
-    family_members:           _arr(membersRes.data),
-    family_composition:       _arr(compositionRes.data),
-    account_groups:           _arr(groupsRes.data),
-    accounts:                 _arr(accountsRes.data),
-    categories:               _arr(categoriesRes.data),
-    payees:                   _arr(payeesRes.data),
-    transactions:             _arr(txRes.data),
-    budgets:                  _arr(budgetsRes.data),
-    scheduled_transactions:   _arr(schedRes.data),
-    scheduled_occurrences:    _arr(occRes.data),
-    scheduled_run_logs:       _arr(runLogRes.data),
-    price_items:              _arr(priceItemsRes.data),
-    price_stores:             _arr(priceStoresRes.data),
-    price_history:            _arr(priceHistoryRes.data),
-    debts:                    _arr(debtsRes.data),
-    debt_ledger:              _arr(debtLedgerRes.data),
-    investment_positions:     _arr(invPositionsRes.data),
-    investment_transactions:  _arr(invTxRes.data),
-    investment_price_history: _arr(invPriceRes.data),
-    grocery_lists:            _arr(groceryListsRes.data),
-    grocery_items:            _arr(groceryItemsRes.data),
+    families: _arr(familiesRes.data),
+    family_members: _arr(membersRes.data),
+    account_groups: _arr(groupsRes.data),
+    accounts: _arr(accountsRes.data),
+    categories: _arr(categoriesRes.data),
+    payees: _arr(payeesRes.data),
+    transactions: _arr(txRes.data),
+    budgets: _arr(budgetsRes.data),
+    scheduled_transactions: _arr(schedRes.data),
+    scheduled_occurrences: _arr(occRes.data),
+    scheduled_run_logs: _arr(runLogRes.data),
+    price_items: _arr(priceItemsRes.data),
+    price_stores: _arr(priceStoresRes.data),
+    price_history: _arr(priceHistoryRes.data),
   };
 
   const counts = {};
@@ -436,6 +400,7 @@ function _showBackupReportModal({ title, html, canProceed = false, proceedLabel 
         </div>
       </div>`;
     document.body.appendChild(wrap);
+    if (typeof _scrollModalToTop === 'function') _scrollModalToTop(wrap);
 
     const close = (v) => { wrap.remove(); resolve(v); };
     wrap.querySelector('#backupReportCancel')?.addEventListener('click', () => close(false));
@@ -546,6 +511,7 @@ function _showRestoreSectionSelector(backup) {
         </div>
       </div>`;
     document.body.appendChild(wrap);
+    if (typeof _scrollModalToTop === 'function') _scrollModalToTop(wrap);
 
     const boxes = () => Array.from(wrap.querySelectorAll('input[type="checkbox"][data-key]'));
     const setAll = (v) => boxes().forEach(cb => { cb.checked = v; });
@@ -884,6 +850,7 @@ async function openFamilyBackupManager(fid, familyName = '') {
         </div>
       </div>`;
     document.body.appendChild(wrap);
+    if (typeof _scrollModalToTop === 'function') _scrollModalToTop(wrap);
     const close = () => wrap.remove();
     wrap.querySelector('#familyBackupManagerClose')?.addEventListener('click', close);
     wrap.querySelector('#familyBackupManagerCloseX')?.addEventListener('click', close);

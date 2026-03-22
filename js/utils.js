@@ -288,7 +288,76 @@ function _accountOptions(accounts, placeholder) {
 // populateSelects is defined in reports.js (always loaded).
 // _accountOptions and _buildCategoryFilterOptions are helpers used by it.
 
-function openModal(id){document.getElementById(id).classList.add('open');}
+// ── Scroll utilities ─────────────────────────────────────────────────────────
+
+/**
+ * Scroll the main content area and window to top.
+ * Works regardless of which element is actually scrolling.
+ */
+function ftScrollTop(behavior = 'auto') {
+  try {
+    const content = document.querySelector('.content');
+    if (content) {
+      if (behavior === 'smooth') {
+        content.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        content.scrollTop = 0;
+        content.scrollLeft = 0;
+      }
+    }
+    // Also reset window / document scroll (fallback for some layouts)
+    try { window.scrollTo({ top: 0, left: 0, behavior }); } catch(_) {}
+    try { document.documentElement.scrollTop = 0; } catch(_) {}
+    try { document.body.scrollTop = 0; } catch(_) {}
+  } catch(_) {}
+}
+window.ftScrollTop = ftScrollTop;
+
+/**
+ * Scroll a modal's body to the top when opening.
+ */
+function openModal(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
+  _scrollModalToTop(el);
+}
+
+/**
+ * Scroll all scrollable areas inside a modal overlay to the top.
+ * Works for standard modals, sheet modals (mfm2-sheet), and any container.
+ */
+function _scrollModalToTop(el) {
+  if (!el) return;
+  const reset = (e) => {
+    try { e.scrollTop = 0; e.scrollLeft = 0; } catch(_) {}
+  };
+  // Immediate reset
+  [el,
+   el.querySelector('.modal-body'),
+   el.querySelector('.modal'),
+   el.querySelector('.mfm2-body'),
+   el.querySelector('.mfm2-sheet'),
+   el.querySelector('.modal-scroll'),
+  ].filter(Boolean).forEach(reset);
+  // RAF pass (after paint)
+  requestAnimationFrame(() => {
+    [el,
+     el.querySelector('.modal-body'),
+     el.querySelector('.modal'),
+     el.querySelector('.mfm2-body'),
+     el.querySelector('.mfm2-sheet'),
+    ].filter(Boolean).forEach(reset);
+  });
+  // Extra pass after 80ms (covers modals that animate in)
+  setTimeout(() => {
+    [el,
+     el.querySelector('.modal-body'),
+     el.querySelector('.mfm2-body'),
+    ].filter(Boolean).forEach(reset);
+  }, 80);
+}
+window._scrollModalToTop = _scrollModalToTop;
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
 

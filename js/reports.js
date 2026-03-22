@@ -463,12 +463,13 @@ function setReportView(view) {
   document.getElementById('reportRegularView').style.display  = view==='regular'       ? '' : 'none';
   document.getElementById('reportTxView').style.display       = view==='transactions'  ? '' : 'none';
   document.getElementById('reportForecastView').style.display = view==='forecast'      ? '' : 'none';
-  document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
-  // Hide the entire filter section (wrapper + bar) for views that don't need filters
+  const _bv = document.getElementById('reportBudgetView');
+  if (_bv) _bv.style.display = view === 'budgets' ? '' : 'none';
   const _hideFilters = (view === 'forecast' || view === 'budgets');
-  const _filterWrap = document.getElementById('rptFilterWrap');
-  if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
-  document.getElementById('reportFilterBar').style.display = _hideFilters ? 'none' : '';
+  const _fw = document.getElementById('rptFilterWrap');
+  if (_fw) _fw.style.display = _hideFilters ? 'none' : '';
+  const _fb = document.getElementById('reportFilterBar');
+  if (_fb) _fb.style.display = _hideFilters ? 'none' : '';
   ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets'};
@@ -1893,35 +1894,23 @@ async function _rbtLoad() {
 
   grid.innerHTML = '<div class="empty-state"><span>⏳</span></div>';
 
-  // Query budgets — defensive: works with old schema (no budget_type) and new schema
-  // Old budgets may have budget_type=NULL; never filter them out
+  // Query budgets
   const hasNew = await _rbtCheckSchema();
-  let budgets = null, be = null;
-
+  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)'));
   if (period.type === 'monthly') {
     const monthStr = (period.month || new Date().toISOString().slice(0,7)) + '-01';
-    // Try with budget_type filter first (new schema)
-    if (hasNew) {
-      ({ data: budgets, error: be } = await famQ(
-        sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)')
-      ).eq('month', monthStr).or('budget_type.eq.monthly,budget_type.is.null'));
-    }
-    // Fallback: query by month only (old schema or if above returned nothing)
-    if (!budgets?.length) {
-      ({ data: budgets, error: be } = await famQ(
-        sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)')
-      ).eq('month', monthStr));
-    }
+    bq = bq.eq('month', monthStr);
+    // Include both explicit monthly budgets AND legacy budgets with null budget_type
+    if (hasNew) bq = bq.or('budget_type.eq.monthly,budget_type.is.null');
   } else {
     // Annual view
     if (!hasNew) {
       grid.innerHTML = '<div class="empty-state"><p>Orçamentos anuais requerem migration do banco.</p></div>'; return;
     }
-    ({ data: budgets, error: be } = await famQ(
-      sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)')
-    ).eq('year', period.year).or('budget_type.eq.annual,budget_type.is.null').is('month', null));
+    bq = bq.or('budget_type.eq.annual,budget_type.is.null');
+    if (period.year) bq = bq.eq('year', period.year);
   }
-
+  const { data: budgets, error: be } = await bq;
   if (be) { grid.innerHTML = `<div class="empty-state"><p>Erro: ${esc(be.message)}</p></div>`; return; }
   if (!budgets?.length) {
     grid.innerHTML = '<div class="empty-state"><div class="es-icon">🎯</div><p>Nenhum orçamento encontrado para este período.</p></div>';
@@ -1980,292 +1969,39 @@ async function _rbtLoad() {
   const totalPct    = totalLimit > 0 ? Math.min(100, totalUsed / totalLimit * 100) : 0;
 
   if (kpiEl) {
-    const nearCount = items.filter(i => !i.over && i.near).length;
-    const pctColor  = totalPct >= 100 ? 'var(--red)' : totalPct >= 75 ? 'var(--amber,#f59e0b)' : 'var(--accent)';
     kpiEl.innerHTML = `
-      <div class="rbt-kpi">
-        <span class="rbt-kpi-label">Orçamento total</span>
-        <span class="rbt-kpi-val">${fmt(totalLimit)}</span>
-      </div>
-      <div class="rbt-kpi">
-        <span class="rbt-kpi-label">Consumido</span>
-        <span class="rbt-kpi-val" style="color:${pctColor}">${fmt(totalUsed)}</span>
-        <span style="font-size:.65rem;color:var(--muted);margin-top:1px">${totalPct.toFixed(0)}% do total</span>
-      </div>
-      <div class="rbt-kpi">
-        <span class="rbt-kpi-label">Disponível</span>
-        <span class="rbt-kpi-val" style="color:${totalUsed>totalLimit?'var(--red)':'var(--green)'}">${fmt(Math.max(0,totalLimit-totalUsed))}</span>
-      </div>
-      <div class="rbt-kpi">
-        <span class="rbt-kpi-label">✓ OK</span>
-        <span class="rbt-kpi-val" style="color:var(--green)">${okCount}</span>
-        <span style="font-size:.65rem;color:var(--muted)">categoria${okCount!==1?'s':''}</span>
-      </div>
-      ${nearCount ? `<div class="rbt-kpi">
-        <span class="rbt-kpi-label">⚡ Atenção</span>
-        <span class="rbt-kpi-val" style="color:var(--amber,#f59e0b)">${nearCount}</span>
-        <span style="font-size:.65rem;color:var(--muted)">≥75% do limite</span>
-      </div>` : ''}
-      ${overCount ? `<div class="rbt-kpi">
-        <span class="rbt-kpi-label">⚠ Excedido</span>
-        <span class="rbt-kpi-val" style="color:var(--red)">${overCount}</span>
-        <span style="font-size:.65rem;color:var(--muted)">categoria${overCount!==1?'s':''}</span>
-      </div>` : ''}
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Orçamento total</span><span class="rbt-kpi-val">${fmt(totalLimit)}</span></div>
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Consumido</span><span class="rbt-kpi-val" style="color:${totalPct>=100?'var(--red)':'var(--text)'}">${fmt(totalUsed)}</span></div>
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Disponível</span><span class="rbt-kpi-val" style="color:var(--green)">${fmt(Math.max(0,totalLimit-totalUsed))}</span></div>
+      <div class="rbt-kpi"><span class="rbt-kpi-label">Dentro do limite</span><span class="rbt-kpi-val">${okCount}</span></div>
+      ${overCount ? `<div class="rbt-kpi"><span class="rbt-kpi-label">Ultrapassados</span><span class="rbt-kpi-val" style="color:var(--red)">${overCount}</span></div>` : ''}
     `;
   }
 
-  // Sort: over → near → ok → by pct desc (default)
-  const sortMode = document.getElementById('rbtSort')?.value || 'status';
-  items.sort((a,b) => {
-    if (sortMode === 'pct_desc')  return b.pct - a.pct;
-    if (sortMode === 'pct_asc')   return a.pct - b.pct;
-    if (sortMode === 'used_desc') return b.used - a.used;
-    if (sortMode === 'name')      return (a.cat.name||'').localeCompare(b.cat.name||'');
-    // default 'status': over → near → ok → pct desc
-    return (b.over-a.over)||(b.near-a.near)||(b.pct-a.pct);
-  });
-
-  // ── Cards view ────────────────────────────────────────────────────────
-  const now = new Date();
-  const daysInM  = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-  const daysDone = now.getDate();
+  // Render cards sorted: over first, then near, then ok
+  items.sort((a,b) => (b.over-a.over)||(b.near-a.near)||(b.pct-a.pct));
   grid.innerHTML = items.map(({ b, cat, limit, used, pct, over, near }) => {
-    const color    = cat.color || 'var(--accent)';
-    const icon     = cat.icon  || '📦';
-    const avail    = limit - used;
-    const barColor = over ? 'var(--red)' : near ? 'var(--amber,#f59e0b)' : 'var(--accent)';
-    const barW     = Math.min(100, pct).toFixed(1);
-    const pctLabel = pct > 999 ? '>999%' : pct.toFixed(0) + '%';
-    // Projection for current month
-    const isCurrentMonth = period.type === 'monthly' && period.month === now.toISOString().slice(0,7);
-    const dailyAvg = daysDone > 0 ? used / daysDone : 0;
-    const projected = dailyAvg * daysInM;
-    const showProj  = isCurrentMonth && !over && limit > 0 && projected > limit * 0.85;
+    const color  = cat.color || 'var(--accent)';
+    const icon   = cat.icon  || '📦';
+    const avail  = Math.max(0, limit - used);
+    const barColor = over ? 'var(--red)' : near ? 'var(--amber)' : 'var(--accent)';
     return `<div class="rbt-card${over?' rbt-over':near?' rbt-near':''}">
       <div class="rbt-card-top">
         <div class="rbt-cat-badge" style="background:${color}18;color:${color}">${icon}</div>
         <div class="rbt-card-info">
           <div class="rbt-cat-name">${esc(cat.name||'—')}</div>
-          <div class="rbt-amounts">
-            <strong style="color:${barColor}">${fmt(used)}</strong>
-            <span class="rbt-sep">de</span>${fmt(limit)}
-          </div>
+          <div class="rbt-amounts">${fmt(used)} <span class="rbt-sep">/</span> ${fmt(limit)}</div>
         </div>
-        <div class="rbt-pct" style="color:${barColor}">${pctLabel}</div>
+        <div class="rbt-pct" style="color:${barColor}">${pct.toFixed(0)}%</div>
       </div>
       <div class="rbt-bar-track">
-        <div class="rbt-bar-fill" style="width:${barW}%;background:${barColor}"></div>
+        <div class="rbt-bar-fill" style="width:${pct.toFixed(1)}%;background:${barColor}"></div>
       </div>
-      <div class="rbt-avail" style="display:flex;justify-content:space-between;align-items:center">
-        <span>
-          ${over
-            ? `<span style="color:var(--red);font-weight:700">⚠ ${fmt(Math.abs(avail))} acima</span>`
-            : `Disponível: <strong style="color:var(--green)">${fmt(avail)}</strong>`}
-        </span>
-        ${showProj ? `<span style="font-size:.68rem;color:var(--amber);font-weight:600" title="Projeção baseada no ritmo atual">📈 ${fmt(projected)}</span>` : ''}
-      </div>
+      <div class="rbt-avail">Disponível: <strong style="color:${over?'var(--red)':'var(--green)'}">${fmt(over?used-limit:avail)}</strong>${over?' acima':''}</div>
     </div>`;
   }).join('');
-
-  // ── Total progress bar ────────────────────────────────────────────────
-  const totalBar  = document.getElementById('rbtTotalBar');
-  const totalFill = document.getElementById('rbtTotalFill');
-  const totalPctEl= document.getElementById('rbtTotalPct');
-  const totalSub  = document.getElementById('rbtTotalSub');
-  if (totalBar) {
-    totalBar.style.display = '';
-    const pctColor = totalPct >= 100 ? 'var(--red)' : totalPct >= 75 ? 'var(--amber,#f59e0b)' : 'var(--accent)';
-    if (totalFill)  { totalFill.style.width = Math.min(100,totalPct).toFixed(1)+'%'; totalFill.style.background = pctColor; }
-    if (totalPctEl) { totalPctEl.textContent = totalPct.toFixed(0)+'%'; totalPctEl.style.color = pctColor; }
-    if (totalSub)   totalSub.textContent = `${fmt(totalUsed)} consumido de ${fmt(totalLimit)} · ${fmt(Math.max(0,totalLimit-totalUsed))} disponível`;
-  }
-
-  // ── Table view ────────────────────────────────────────────────────────
-  const tbody = document.getElementById('rbtTableBody');
-  const tfoot = document.getElementById('rbtTableFoot');
-  if (tbody) {
-    tbody.innerHTML = items.map(({ cat, limit, used, pct, over, near }) => {
-      const avail      = limit - used;
-      const color      = cat.color || 'var(--accent)';
-      const barColor   = over ? 'var(--red)' : near ? 'var(--amber,#f59e0b)' : 'var(--accent)';
-      const barW       = Math.min(100, pct).toFixed(1);
-      const statusCls  = over ? 'rbt-status-over' : near ? 'rbt-status-near' : 'rbt-status-ok';
-      const statusTxt  = over ? '⚠ Excedido' : near ? '⚡ Atenção' : '✓ OK';
-      return `<tr>
-        <td>
-          <div class="rbt-td-cat">
-            <div class="rbt-td-badge" style="background:${color}18;color:${color}">${esc(cat.icon||'📦')}</div>
-            <span style="font-weight:600;font-size:.82rem">${esc(cat.name||'—')}</span>
-          </div>
-        </td>
-        <td class="rbt-td-num">${fmt(limit)}</td>
-        <td class="rbt-td-num" style="color:${barColor};font-weight:700">${fmt(used)}</td>
-        <td class="rbt-td-num" style="color:${over?'var(--red)':'var(--green)'};${over?'font-weight:700':''}">${fmt(avail)}</td>
-        <td class="rbt-td-num">
-          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-            <div style="width:48px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0">
-              <div style="width:${barW}%;height:100%;background:${barColor};border-radius:2px"></div>
-            </div>
-            <span style="color:${barColor};font-weight:700;min-width:36px;text-align:right">${pct.toFixed(0)}%</span>
-          </div>
-        </td>
-        <td><span class="rbt-status-pill ${statusCls}">${statusTxt}</span></td>
-      </tr>`;
-    }).join('');
-  }
-  if (tfoot) {
-    const pctColor = totalPct >= 100 ? 'var(--red)' : 'var(--accent)';
-    tfoot.innerHTML = `<tr style="font-weight:700;border-top:2px solid var(--border)">
-      <td>Total</td>
-      <td class="rbt-th-num">${fmt(totalLimit)}</td>
-      <td class="rbt-th-num" style="color:${pctColor}">${fmt(totalUsed)}</td>
-      <td class="rbt-th-num" style="color:var(--green)">${fmt(Math.max(0,totalLimit-totalUsed))}</td>
-      <td class="rbt-th-num" style="color:${pctColor}">${totalPct.toFixed(0)}%</td>
-      <td></td>
-    </tr>`;
-  }
-
-  // ── Trend chart (Chart.js — last 6 months) ────────────────────────────
-  if (period.type === 'monthly' && typeof Chart !== 'undefined') {
-    const [cy, cm] = period.month.split('-').map(Number);
-    const months6 = [];
-    for (let i = 5; i >= 0; i--) {
-      let mm = cm - i, yy = cy;
-      while (mm <= 0) { mm += 12; yy--; }
-      months6.push(`${yy}-${String(mm).padStart(2,'0')}`);
-    }
-    const trendFrom = months6[0] + '-01';
-    const lastM = months6[months6.length-1];
-    const lastDay = new Date(+lastM.split('-')[0], +lastM.split('-')[1], 0).getDate();
-    const trendTo = `${lastM}-${String(lastDay).padStart(2,'0')}`;
-
-    const { data: trendTxs } = await famQ(
-      sb.from('transactions').select('category_id,amount,brl_amount,date')
-    ).lt('amount',0).gte('date',trendFrom).lte('date',trendTo);
-
-    // Group spend per month (all budget categories combined)
-    const monthSpend = new Array(6).fill(0);
-    const catIds = new Set(items.map(i => i.b.category_id));
-    (trendTxs||[]).forEach(t => {
-      if (!t.category_id) return;
-      const txMonth = (t.date||'').slice(0,7);
-      const mIdx = months6.indexOf(txMonth);
-      if (mIdx < 0) return;
-      // Check if this category belongs to any budget (direct or as child)
-      const matchesBudget = items.some(item => {
-        const allCats = state.categories || [];
-        function _cf(cid) { const ids=[cid]; allCats.filter(c=>c.parent_id===cid).forEach(c=>ids.push(..._cf(c.id))); return ids; }
-        return _cf(item.b.category_id).includes(t.category_id);
-      });
-      if (matchesBudget) monthSpend[mIdx] += Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0));
-    });
-
-    const avgLimit = totalLimit; // limit is same each month (current period)
-    const monthLabels = months6.map(m => {
-      const [y,mo] = m.split('-');
-      const names = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-      return names[parseInt(mo)-1] + '/' + y.slice(2);
-    });
-
-    const trendCanvas = document.getElementById('rbtTrendChart');
-    if (trendCanvas) {
-      const existingChart = Chart.getChart?.(trendCanvas) || state.chartInstances?.['rbtTrend'];
-      if (existingChart) existingChart.destroy();
-      const newChart = new Chart(trendCanvas, {
-        type: 'bar',
-        data: {
-          labels: monthLabels,
-          datasets: [
-            {
-              label: 'Consumo real',
-              data: monthSpend.map(v => +v.toFixed(2)),
-              backgroundColor: monthSpend.map((v,i) => i === 5 ? 'rgba(42,96,73,.85)' : 'rgba(42,96,73,.35)'),
-              borderRadius: 4,
-              order: 1,
-            },
-            {
-              label: 'Limite total',
-              data: new Array(6).fill(+avgLimit.toFixed(2)),
-              type: 'line',
-              borderColor: 'var(--red)',
-              borderWidth: 1.5,
-              borderDash: [4,3],
-              pointRadius: 0,
-              fill: false,
-              order: 0,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'bottom', labels: { font: { size: 11 } } },
-            tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.parsed.y) } }
-          },
-          scales: {
-            y: { ticks: { callback: v => fmt(v) }, grid: { color: 'rgba(0,0,0,.05)' } },
-            x: { grid: { display: false } }
-          }
-        }
-      });
-      if (!state.chartInstances) state.chartInstances = {};
-      state.chartInstances['rbtTrend'] = newChart;
-    }
-
-    // Trend insights: categories with highest average overage
-    const insightsEl = document.getElementById('rbtTrendInsights');
-    if (insightsEl) {
-      // Per-category trend (use last-6-months spend for each budget category)
-      const catTrend = items.map(item => {
-        const allCats = state.categories || [];
-        function _cf(cid) { const ids=[cid]; allCats.filter(c=>c.parent_id===cid).forEach(c=>ids.push(..._cf(c.id))); return ids; }
-        const famIds = new Set(_cf(item.b.category_id));
-        const mSpend = new Array(6).fill(0);
-        (trendTxs||[]).forEach(t => {
-          if (!famIds.has(t.category_id)) return;
-          const mIdx = months6.indexOf((t.date||'').slice(0,7));
-          if (mIdx >= 0) mSpend[mIdx] += Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0));
-        });
-        const avg = mSpend.reduce((a,b)=>a+b,0) / 6;
-        const overMonths = mSpend.filter(v => v > item.limit).length;
-        return { ...item, mSpend, avg, overMonths };
-      }).sort((a,b) => b.overMonths - a.overMonths || b.avg - a.avg).slice(0,5);
-
-      insightsEl.innerHTML = catTrend.map(item => {
-        const color = item.cat.color || 'var(--accent)';
-        const overRatio = item.limit > 0 ? item.avg / item.limit : 0;
-        const trendIcon = overRatio > 0.9 ? '📈' : overRatio < 0.5 ? '✅' : '➡️';
-        const trendColor = overRatio > 0.9 ? 'var(--red)' : overRatio < 0.5 ? 'var(--green)' : 'var(--muted)';
-        const avgPct = item.limit > 0 ? (item.avg / item.limit * 100).toFixed(0) + '%' : '—';
-        return `<div class="rbt-insight-row">
-          <div class="rbt-insight-badge" style="background:${color}18;color:${color}">${item.cat.icon||'📦'}</div>
-          <div class="rbt-insight-info">
-            <div class="rbt-insight-name">${esc(item.cat.name||'—')}</div>
-            <div class="rbt-insight-sub">
-              Média ${fmt(item.avg)}/mês (${avgPct} do limite) ·
-              ${item.overMonths > 0
-                ? `<span style="color:var(--red);font-weight:600">${item.overMonths} ${item.overMonths===1?'mês':'meses'} excedido</span>`
-                : '<span style="color:var(--green);font-weight:600">sem excedências</span>'}
-            </div>
-          </div>
-          <div class="rbt-insight-stat" style="color:${trendColor}">${trendIcon}</div>
-        </div>`;
-      }).join('') || '<div style="padding:16px;color:var(--muted);font-size:.8rem;text-align:center">Dados insuficientes para análise.</div>';
-    }
-  }
 }
 window._rbtLoad = _rbtLoad;
-
-// ── Switch between Cards / Table / Trend views ────────────────────────────
-function _rbtSwitchView(view) {
-  ['cards','table','trend'].forEach(v => {
-    const panel = document.getElementById(`rbtView${v.charAt(0).toUpperCase()+v.slice(1)}`);
-    const btn   = document.getElementById(`rbtTab${v.charAt(0).toUpperCase()+v.slice(1)}`);
-    if (panel) panel.style.display = v === view ? '' : 'none';
-    if (btn)   btn.classList.toggle('active', v === view);
-  });
-}
-window._rbtSwitchView = _rbtSwitchView;
 
 async function _rbtCheckSchema() {
   try {
@@ -2284,21 +2020,15 @@ async function _rbtGetBudgetContext() {
     : { type:'annual',  year: parseInt(document.getElementById('rbtYear')?.value) || new Date().getFullYear() };
 
   const hasNew = await _rbtCheckSchema();
-  let budgets = null;
-  const monthStr = (period.month || '') + '-01';
-  if (period.type === 'monthly') {
-    if (hasNew) {
-      ({ data: budgets } = await famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'))
-        .eq('month', monthStr).or('budget_type.eq.monthly,budget_type.is.null'));
-    }
-    if (!budgets?.length) {
-      ({ data: budgets } = await famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'))
-        .eq('month', monthStr));
-    }
-  } else if (hasNew) {
-    ({ data: budgets } = await famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'))
-      .eq('year', period.year).or('budget_type.eq.annual,budget_type.is.null').is('month', null));
+  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'));
+  if (hasNew) {
+    bq = bq.eq('budget_type', period.type);
+    if (period.type === 'monthly') bq = bq.eq('month', (period.month||'')+'-01');
+    else bq = bq.eq('year', period.year);
+  } else {
+    bq = bq.eq('month', (period.month||'')+'-01');
   }
+  const { data: budgets } = await bq;
   if (!budgets?.length) return null;
 
   let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount')).lt('amount',0);
