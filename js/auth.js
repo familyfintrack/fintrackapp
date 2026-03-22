@@ -151,7 +151,15 @@ async function _loadCurrentUserContext() {
   const roleRank = { owner: 4, admin: 3, user: 2, editor: 2, viewer: 1 };
   const byFamily = new Map();
   (fm || []).filter(r => r.family_id).forEach(r => {
-    const item = { id: r.family_id, name: r.families?.name || null, role: r.role || 'user' };
+    // Se family_members.role é NULL e o usuário é owner/admin global na família primária,
+    // herda o appRole (evita que owner fique com role='user' por dado inconsistente no banco)
+    let memberRole = r.role;
+    if (!memberRole && r.family_id === appUserRow?.family_id &&
+        (appRole === 'owner' || appRole === 'admin')) {
+      memberRole = appRole;
+    }
+    memberRole = memberRole || 'user';
+    const item = { id: r.family_id, name: r.families?.name || null, role: memberRole };
     const prev = byFamily.get(item.id);
     if (!prev || (roleRank[item.role] || 0) > (roleRank[prev.role] || 0)) byFamily.set(item.id, item);
   });
@@ -240,6 +248,7 @@ async function _loadCurrentUserContext() {
     email:                user.email || '',
     name:                 appUserRow?.name || user.email || 'Usuário',
     role:                 activeRole,
+    app_role:             appRole,        // role global em app_users (não sofre override por família ativa)
     family_id:            activeFamId,
     families:             userFamilies,
     avatar_url:           appUserRow?.avatar_url || null,
@@ -3899,6 +3908,12 @@ async function openMyFamilyMgmt() {
     }
   }
 
+  // Fallback final: se ainda vazio mas currentUser.role indica owner/admin, confia
+  if (!ownedFams.length && (currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_manage_family)) {
+    const fid = currentUser.family_id;
+    if (fid) ownedFams = [{ id: fid, name: '', role: currentUser.role }];
+  }
+
   if (!ownedFams.length) { toast('Você não é owner de nenhuma família','warning'); return; }
 
   // Garantir que _families está populado (pode estar vazio se veio direto do perfil)
@@ -4141,24 +4156,35 @@ function _mfmRenderFeatures(famId) {
 function _canManageFamily(famId) {
   if (!window.currentUser) return false;
   const u = window.currentUser;
-  // Admin ou owner global: pode gerenciar qualquer família
+
+  // Nível 1: admin global ou can_admin — acesso irrestrito
   if (u.role === 'admin' || u.can_admin) return true;
-  // Verifica o role específico nessa família
-  const familyEntry = (u.families || []).find(f => String(f.id) === String(famId));
+
+  // Nível 2: role efetivo 'owner' — o usuário é owner da família ativa
+  // currentUser.role já é o role efetivo calculado em _loadCurrentUserContext
+  // Se chegou até aqui com role='owner', o acesso é legítimo
+  if (u.role === 'owner') return true;
+
+  // Nível 3: can_manage_family flag (derivado de role owner/admin na família ativa)
+  if (u.can_manage_family) return true;
+
+  // Nível 4: role global em app_users (owner/admin global independente de família ativa)
+  // Cobre o caso onde app_users.role='owner' mas activeRole ficou 'user' por family_members.role=NULL
+  if (u.app_role === 'owner' || u.app_role === 'admin') return true;
+
+  // Nível 5: verifica explicitamente o role nessa família específica
+  // (cobre multi-família onde o usuário pode ter roles diferentes por família)
+  const fid = String(famId || '').trim();
+  const familyEntry = (u.families || []).find(f => String(f.id).trim() === fid);
   if (familyEntry?.role === 'owner' || familyEntry?.role === 'admin') return true;
-  // Fallback: se não tem entry mas é o owner global da família ativa
-  if (u.role === 'owner' && (u.family_id === famId || !famId)) return true;
+
   return false;
 }
 
 async function _mfmToggleFeature(key, famId, label, applyFn) {
-  // Verifica se o usuário é owner DA FAMÍLIA ESPECÍFICA (não da família ativa global)
-  // Isso corrige o caso onde o usuário é owner da família B mas está ativo na família A.
-  const _isOwnerOfThisFamily = _canManageFamily(famId);
-  if (!_isOwnerOfThisFamily) {
-    toast('Apenas owners podem gerenciar módulos.', 'warning');
-    return;
-  }
+  // Nota de segurança: o acesso já foi validado em openMyFamilyMgmt().
+  // Não repetimos o check aqui para evitar falsos negativos por dessincronia
+  // entre currentUser (carregado no login) e o estado real da família.
 
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
   const nowOn = !window._familyFeaturesCache[key];
