@@ -484,6 +484,11 @@ function loadSettings() {
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
 
+  // ── Módulos da família: sempre inicializa (OWNER ou admin vê a seção) ──────
+  // initFamModulesStandalone controla internamente quem pode ver/editar
+  initFamModulesStandalone();
+  initFamModulesRow();
+
   if (isAdmin) {
     // Admin: inicializar formulários das novas seções
     initSettingsVisibilityForm();
@@ -1019,10 +1024,31 @@ function initFamModulesStandalone() {
     }).join('');
   }
 
-  // Load cache and render — always re-fetch to catch new modules
+  // Load cache and render — usa family_prefs service (novo) com fallback app_settings (legado)
   (async () => {
     if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
     const allModuleKeys = keys.map(k => k.key);
+
+    try {
+      // 1. Tenta carregar via centralized service (family_preferences table)
+      if (typeof getFamilyPreferences === 'function') {
+        const prefs = await getFamilyPreferences();
+        if (prefs && prefs.modules) {
+          // prefs.modules = { debts: bool, prices: bool, ... }
+          // Mapeia para o formato legado de cache
+          keys.forEach(({ key }) => {
+            const modKey = key.replace(/_enabled_.*$/, '');
+            if (modKey in prefs.modules) {
+              window._familyFeaturesCache[key] = !!(prefs.modules[modKey]);
+            }
+          });
+          renderCards();
+          return; // pronto — não precisa ir ao app_settings
+        }
+      }
+    } catch(_) {}
+
+    // 2. Fallback: app_settings legado
     try {
       const { data } = await sb.from('app_settings')
         .select('key,value')
@@ -1032,7 +1058,6 @@ function initFamModulesStandalone() {
         if (row) {
           window._familyFeaturesCache[k] = (row.value === true || row.value === 'true');
         } else {
-          // Not in DB: check localStorage then default
           const local = localStorage.getItem(k);
           window._familyFeaturesCache[k] = local === 'true' || local === true
             ? true
@@ -1083,10 +1108,28 @@ function initFamModulesRow() {
     }).join('');
   }
 
-  // Ensure cache loaded
+  // Carrega módulos via family_prefs (novo) com fallback app_settings
   (async () => {
     if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
     const allRowKeys = keys.map(k => k.key);
+
+    try {
+      if (typeof getFamilyPreferences === 'function') {
+        const prefs = await getFamilyPreferences();
+        if (prefs && prefs.modules) {
+          keys.forEach(({ key }) => {
+            const modKey = key.replace(/_enabled_.*$/, '');
+            if (modKey in prefs.modules) {
+              window._familyFeaturesCache[key] = !!(prefs.modules[modKey]);
+            }
+          });
+          renderPills();
+          return;
+        }
+      }
+    } catch(_) {}
+
+    // Fallback: app_settings legado
     try {
       const { data } = await sb.from('app_settings')
         .select('key,value')
