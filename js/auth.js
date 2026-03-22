@@ -151,15 +151,7 @@ async function _loadCurrentUserContext() {
   const roleRank = { owner: 4, admin: 3, user: 2, editor: 2, viewer: 1 };
   const byFamily = new Map();
   (fm || []).filter(r => r.family_id).forEach(r => {
-    // Se family_members.role é NULL e o usuário é owner/admin global na família primária,
-    // herda o appRole (evita que owner fique com role='user' por dado inconsistente no banco)
-    let memberRole = r.role;
-    if (!memberRole && r.family_id === appUserRow?.family_id &&
-        (appRole === 'owner' || appRole === 'admin')) {
-      memberRole = appRole;
-    }
-    memberRole = memberRole || 'user';
-    const item = { id: r.family_id, name: r.families?.name || null, role: memberRole };
+    const item = { id: r.family_id, name: r.families?.name || null, role: r.role || 'user' };
     const prev = byFamily.get(item.id);
     if (!prev || (roleRank[item.role] || 0) > (roleRank[prev.role] || 0)) byFamily.set(item.id, item);
   });
@@ -248,7 +240,6 @@ async function _loadCurrentUserContext() {
     email:                user.email || '',
     name:                 appUserRow?.name || user.email || 'Usuário',
     role:                 activeRole,
-    app_role:             appRole,        // role global em app_users (não sofre override por família ativa)
     family_id:            activeFamId,
     families:             userFamilies,
     avatar_url:           appUserRow?.avatar_url || null,
@@ -1009,7 +1000,11 @@ function openMyProfile() {
     langSel.value = currentUser.preferred_language || 'pt';
   }
 
-  // Gerenciar Família: acessível via user menu (umManageFamilyBtn) — não mais no perfil modal
+  // Gerenciar Família — visível só para owners (e não para admins globais que já têm o painel completo)
+  // Family mgmt btn: owner role only (admin has full panel)
+  const isFamOwnerOnly = currentUser?.role === 'owner' && _currentUserIsFamilyOwner();
+  const famMgmtBtn = document.getElementById('myProfileFamilyMgmtBtn');
+  if (famMgmtBtn) famMgmtBtn.style.display = isFamOwnerOnly ? '' : 'none';
 
   // Language selector
   const savedLang = currentUser?.preferred_language ||
@@ -2303,7 +2298,7 @@ function showFamilyForm(id='') {
   document.getElementById('editFamilyId').value = id;
   document.getElementById('fName').value = '';
   document.getElementById('fDesc').value = '';
-  document.getElementById('familyFormTitle').textContent = id ? 'Editar Família' : 'Nova Família';
+  document.getElementById('familyFormTitle').textContent = id ? t('family.edit') : t('family.new');
   document.getElementById('familyFormArea').style.display = '';
   if (id) {
     const f = _families.find(x => x.id === id) || (currentUser?.families || []).find(x => x.id === id);
@@ -2746,7 +2741,7 @@ async function loadUsersList() {
 
 function showNewUserForm() {
   const formArea = document.getElementById('userFormArea');
-  document.getElementById('userFormTitle').textContent = 'Novo Usuário';
+  document.getElementById('userFormTitle').textContent = t('user.new');
 
   // Clear form fields
   const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
@@ -2812,7 +2807,7 @@ async function editUser(userId) {
   if (!formArea) return;
 
   // NOTE: no switchUATab here — it fires loadUsersList async which races with form display
-  document.getElementById('userFormTitle').textContent = 'Editar Usuário';
+  document.getElementById('userFormTitle').textContent = t('user.edit');
   // Set the correct hidden field (inside userFormArea — second occurrence has id="editUserId")
   // We use querySelectorAll to target specifically the one inside userFormArea
   const hiddenId = formArea.querySelector('#editUserId') ||
@@ -3523,7 +3518,7 @@ async function doResetUserPwd() {
     errEl.textContent = 'Erro: ' + (e.message || e);
     errEl.style.display = '';
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Salvar Nova Senha'; }
+    if (btn) { btn.disabled = false; btn.textContent = t('auth.save_pwd'); }
   }
 }
 
@@ -3892,28 +3887,8 @@ async function _checkPendingApprovals() {
 let _mfmActiveFamilyId = null;
 
 async function openMyFamilyMgmt() {
-  const _isGlobalAdmin = currentUser?.role === 'admin' || currentUser?.can_admin;
-
-  // Famílias onde o usuário é owner ou admin global
-  let ownedFams = (currentUser?.families || []).filter(f =>
-    f.role === 'owner' || f.role === 'admin' || _isGlobalAdmin
-  );
-
-  // Fallback: se currentUser.families está vazio mas o usuário tem family_id e role owner/admin,
-  // cria uma entrada sintética para não bloquear desnecessariamente
-  if (!ownedFams.length && currentUser?.family_id) {
-    const isOwnerRole = currentUser?.role === 'owner' || currentUser?.role === 'admin' || _isGlobalAdmin;
-    if (isOwnerRole) {
-      ownedFams = [{ id: currentUser.family_id, name: '', role: currentUser.role }];
-    }
-  }
-
-  // Fallback final: se ainda vazio mas currentUser.role indica owner/admin, confia
-  if (!ownedFams.length && (currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_manage_family)) {
-    const fid = currentUser.family_id;
-    if (fid) ownedFams = [{ id: fid, name: '', role: currentUser.role }];
-  }
-
+  // Famílias onde o usuário é owner (pega do cache _families ou busca do banco)
+  let ownedFams = (currentUser?.families || []).filter(f => f.role === 'owner');
   if (!ownedFams.length) { toast('Você não é owner de nenhuma família','warning'); return; }
 
   // Garantir que _families está populado (pode estar vazio se veio direto do perfil)
@@ -4091,97 +4066,7 @@ async function _mfmRender() {
 
   // Render feature toggle cards
   _mfmRenderFeatures(_mfmActiveFamilyId);
-
-  // ── Integrantes (family_composition) ──────────────────────────────────────
-  // Carrega pais, filhos, etc. da família ativa no painel
-  const fmcListEl = document.getElementById('mfmFmcList');
-  if (fmcListEl && famId) {
-    if (typeof _loadAndRenderFmcForFamily === 'function') {
-      _loadAndRenderFmcForFamily(famId, 'mfmFmcList').catch(() => {
-        if (fmcListEl) fmcListEl.innerHTML =
-          '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0">Nenhum integrante cadastrado.</div>';
-      });
-    } else {
-      fmcListEl.innerHTML =
-        '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0">Módulo não disponível.</div>';
-    }
-  }
-
-  // ── Gestão de Dados: backup, snapshot, cópia, exclusão ──────────────────
-  _mfmRenderDataSection(famId);
-
-  // ── Nova Família: sempre visível (acesso já validado em openMyFamilyMgmt) ──
-  const newFamSec = document.getElementById('mfmNewFamilySection');
-  if (newFamSec) newFamSec.style.display = '';
 }
-
-// ── Data management section: backup, snapshot, copy, delete ─────────────────
-function _mfmRenderDataSection(famId) {
-  const el = document.getElementById('mfmDataActions');
-  if (!el || !famId) return;
-
-  const fam = _families.find(f => f.id === famId) ||
-              (currentUser?.families || []).find(f => f.id === famId);
-  const famName = fam?.name || _familyDisplayName?.(famId, '') || '';
-
-  const isOwner = currentUser?.role === 'admin' || currentUser?.role === 'owner' ||
-    currentUser?.can_admin ||
-    (currentUser?.families || []).some(f => String(f.id) === String(famId) &&
-      (f.role === 'owner' || f.role === 'admin'));
-
-  // Backup/Snapshot card — always available if module active
-  const snapshotBtn = `
-    <button class="mfm2-data-btn" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>openFamilyBackupManager('${famId}','${famName.replace(/'/g,"\'")}'),120)">
-      <div class="mfm2-data-icon" style="background:#eff6ff;color:#2563eb">📸</div>
-      <div class="mfm2-data-info">
-        <span class="mfm2-data-label">Snapshots</span>
-        <span class="mfm2-data-sub">Criar e restaurar backups</span>
-      </div>
-    </button>`;
-
-  // Export JSON backup
-  const exportBtn = `
-    <button class="mfm2-data-btn" onclick="closeModal('myFamilyMgmtModal');setTimeout(exportBackup,120)">
-      <div class="mfm2-data-icon" style="background:#f0fdf4;color:#16a34a">⬇️</div>
-      <div class="mfm2-data-info">
-        <span class="mfm2-data-label">Exportar JSON</span>
-        <span class="mfm2-data-sub">Baixar backup completo</span>
-      </div>
-    </button>`;
-
-  // Copy family — owners only
-  const copyBtn = isOwner ? `
-    <button class="mfm2-data-btn" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>openCopyFamilyModal('${famId}','${famName.replace(/'/g,"\'")}'),120)">
-      <div class="mfm2-data-icon" style="background:#fef3c7;color:#d97706">📋</div>
-      <div class="mfm2-data-info">
-        <span class="mfm2-data-label">Copiar família</span>
-        <span class="mfm2-data-sub">Duplicar dados para outra família</span>
-      </div>
-    </button>` : '';
-
-  // Wipe data — owners only, dangerous
-  const wipeBtn = isOwner ? `
-    <button class="mfm2-data-btn warn" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>wipeFamilyData('${famId}','${famName.replace(/'/g,"\'")}'),200)">
-      <div class="mfm2-data-icon" style="background:#fef3c7;color:#d97706">🗑️</div>
-      <div class="mfm2-data-info">
-        <span class="mfm2-data-label">Limpar dados</span>
-        <span class="mfm2-data-sub">Remove transações e histórico</span>
-      </div>
-    </button>` : '';
-
-  // Delete family — owners only, very dangerous
-  const deleteBtn = isOwner ? `
-    <button class="mfm2-data-btn danger" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>deleteFamily('${famId}','${famName.replace(/'/g,"\'")}'),200)">
-      <div class="mfm2-data-icon" style="background:#fef2f2;color:#dc2626">⛔</div>
-      <div class="mfm2-data-info">
-        <span class="mfm2-data-label">Excluir família</span>
-        <span class="mfm2-data-sub">Remove a família permanentemente</span>
-      </div>
-    </button>` : '';
-
-  el.innerHTML = snapshotBtn + exportBtn + copyBtn + wipeBtn + deleteBtn;
-}
-window._mfmRenderDataSection = _mfmRenderDataSection;
 
 function _mfmRenderFeatures(famId) {
   const container = document.getElementById('mfmFeatCards');
@@ -4238,85 +4123,23 @@ function _mfmRenderFeatures(famId) {
   })();
 }
 
-/**
- * Verifica se o usuário atual pode gerenciar a família especificada.
- * Retorna true para: owner da família, admin global, ou owner global.
- * Usa currentUser.families[] (role por família) em vez de currentUser.role (role ativo global).
- */
-function _canManageFamily(famId) {
-  if (!window.currentUser) return false;
-  const u = window.currentUser;
-
-  // Nível 1: admin global ou can_admin — acesso irrestrito
-  if (u.role === 'admin' || u.can_admin) return true;
-
-  // Nível 2: role efetivo 'owner' — o usuário é owner da família ativa
-  // currentUser.role já é o role efetivo calculado em _loadCurrentUserContext
-  // Se chegou até aqui com role='owner', o acesso é legítimo
-  if (u.role === 'owner') return true;
-
-  // Nível 3: can_manage_family flag (derivado de role owner/admin na família ativa)
-  if (u.can_manage_family) return true;
-
-  // Nível 4: role global em app_users (owner/admin global independente de família ativa)
-  // Cobre o caso onde app_users.role='owner' mas activeRole ficou 'user' por family_members.role=NULL
-  if (u.app_role === 'owner' || u.app_role === 'admin') return true;
-
-  // Nível 5: verifica explicitamente o role nessa família específica
-  // (cobre multi-família onde o usuário pode ter roles diferentes por família)
-  const fid = String(famId || '').trim();
-  const familyEntry = (u.families || []).find(f => String(f.id).trim() === fid);
-  if (familyEntry?.role === 'owner' || familyEntry?.role === 'admin') return true;
-
-  return false;
-}
-
 async function _mfmToggleFeature(key, famId, label, applyFn) {
-  // Nota de segurança: o acesso já foi validado em openMyFamilyMgmt().
-  // Não repetimos o check aqui para evitar falsos negativos por dessincronia
-  // entre currentUser (carregado no login) e o estado real da família.
-
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-  const nowOn = !window._familyFeaturesCache[key];
-
-  // ── Atualização síncrona de todos os caches antes de qualquer await ──────
+  const wasOn = !!window._familyFeaturesCache[key];
+  const nowOn = !wasOn;
   window._familyFeaturesCache[key] = nowOn;
+  // Also update _appSettingsCache so isXEnabled() reads the right value immediately
   if (window._appSettingsCache) window._appSettingsCache[key] = nowOn;
-  try { localStorage.setItem(key, String(nowOn)); } catch(_) {}
-
-  // Aplica feature imediatamente (UI responsiva, sem aguardar DB)
-  if (applyFn && typeof window[applyFn] === 'function') {
-    window[applyFn]().catch(() => {});
+  try {
+    await saveAppSetting(key, nowOn);
+    if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
+    toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
+  } catch(e) {
+    window._familyFeaturesCache[key] = wasOn;
+    if (window._appSettingsCache) window._appSettingsCache[key] = wasOn;
+    toast('Erro: ' + e.message, 'error');
   }
-  toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
   _mfmRenderFeatures(famId);
-
-  // ── Persistência best-effort — 3 caminhos em cascata ────────────────────
-  (async () => {
-    const modKey = key.replace(/_enabled_.*$/, '');
-
-    // 1. family_preferences (RLS owner-safe, tabela dedicada)
-    if (typeof updateFamilyPreferences === 'function') {
-      try { await updateFamilyPreferences({ modules: { [modKey]: nowOn } }); return; } catch(_) {}
-    }
-
-    // 2. families.settings JSONB (owner sempre pode escrever na própria família)
-    if (famId && window.sb) {
-      try {
-        const { data: fRow } = await sb.from('families')
-          .select('settings').eq('id', famId).maybeSingle();
-        const cur  = (typeof fRow?.settings === 'object' && fRow?.settings) ? fRow.settings : {};
-        const next = { ...cur, modules: { ...(cur.modules || {}), [modKey]: nowOn } };
-        const { error } = await sb.from('families').update({ settings: next }).eq('id', famId);
-        if (!error) return;
-      } catch(_) {}
-    }
-
-    // 3. app_settings legado (pode falhar por RLS para owner — localStorage já garantiu)
-    if (typeof saveAppSetting === 'function') {
-      saveAppSetting(key, nowOn).catch(() => {});
-    }
-  })();
 }
 
 async function mfmChangeRole(sel, userId, famId) {
@@ -4334,107 +4157,6 @@ async function mfmRemoveMember(userId, userName, famId) {
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   toast(t('toast.member_removed'), 'success');
   await _mfmRender();
-}
-
-// ── Nova família a partir do painel de gerenciamento ─────────────────────────
-
-function mfmScrollToNewFamily() {
-  // Abre o accordion de nova família e faz scroll até ele
-  const panel = document.getElementById('mfmNewFamPanel');
-  const sec   = document.getElementById('mfmNewFamilySection');
-  if (!panel || !sec) return;
-  // Garantir que a seção está visível
-  sec.style.display = '';
-  // Abrir o accordion se fechado
-  if (panel.style.display === 'none' || !panel.style.display) {
-    mfmToggleNewFamPanel();
-  }
-  // Scroll suave até a seção
-  setTimeout(() => {
-    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 80);
-}
-
-function mfmToggleNewFamPanel() {
-  const panel   = document.getElementById('mfmNewFamPanel');
-  const trigger = document.getElementById('mfmNewFamTrigger');
-  if (!panel) return;
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : '';
-  if (!isOpen) {
-    // Abre: foca o input e limpa estado anterior
-    const inp = document.getElementById('mfmNewFamName');
-    const err = document.getElementById('mfmNewFamError');
-    const btn = document.getElementById('mfmNewFamBtn');
-    if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
-    if (err) err.style.display = 'none';
-    if (btn) { btn.disabled = false; btn.textContent = '🏠 Criar família'; }
-    if (trigger) { trigger.style.borderColor = 'var(--accent)'; trigger.style.color = 'var(--accent)'; }
-  } else {
-    if (trigger) { trigger.style.borderColor = ''; trigger.style.color = ''; }
-  }
-}
-
-async function mfmCreateNewFamily() {
-  const inp    = document.getElementById('mfmNewFamName');
-  const err    = document.getElementById('mfmNewFamError');
-  const btn    = document.getElementById('mfmNewFamBtn');
-  const name   = (inp?.value || '').trim();
-
-  const showErr = (msg) => {
-    if (err) { err.textContent = msg; err.style.display = ''; }
-    if (btn) { btn.disabled = false; btn.textContent = '🏠 Criar família'; }
-  };
-
-  if (!name) { showErr('Informe o nome da família.'); inp?.focus(); return; }
-  if (name.length < 2) { showErr('Nome deve ter pelo menos 2 caracteres.'); return; }
-
-  if (err) err.style.display = 'none';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
-
-  try {
-    // 1. Criar a família no banco
-    const { data: newFam, error: famErr } = await sb
-      .from('families')
-      .insert({ name })
-      .select('id, name')
-      .single();
-    if (famErr) throw new Error('Erro ao criar família: ' + famErr.message);
-
-    const newFamId = newFam.id;
-
-    // 2. Associar o usuário atual como owner
-    const userId = currentUser?.id;
-    if (userId) {
-      const { error: memErr } = await sb
-        .from('family_members')
-        .upsert({ user_id: userId, family_id: newFamId, role: 'owner' },
-                { onConflict: 'user_id,family_id' });
-      if (memErr) console.warn('[mfmCreateNewFamily] family_members upsert:', memErr.message);
-    }
-
-    // 3. Atualizar currentUser.families localmente (evita reload completo)
-    if (!currentUser.families) currentUser.families = [];
-    currentUser.families.push({ id: newFamId, name, role: 'owner' });
-
-    // 4. Atualizar cache global de famílias
-    if (!window._families) window._families = [];
-    window._families.push({ id: newFamId, name });
-
-    // 5. Fechar painel de criação
-    mfmToggleNewFamPanel();
-    toast(`✓ Família "${esc(name)}" criada!`, 'success');
-
-    // 6. Mudar para nova família automaticamente
-    await switchFamily(newFamId);
-
-    // 7. Reabrir o painel para mostrar a nova família
-    // (pequeno delay para switchFamily terminar suas animações)
-    setTimeout(() => openMyFamilyMgmt(), 600);
-
-  } catch(e) {
-    showErr(e.message || 'Erro ao criar família.');
-  }
 }
 
 async function mfmAddExisting() {

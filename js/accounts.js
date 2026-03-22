@@ -266,7 +266,7 @@ async function openAccountModal(id=''){
   setAmtField('accountBalance', form.initial_balance);
   document.getElementById('accountIcon').value=form.icon||'';
   document.getElementById('accountColor').value=form.color||'#2a6049';
-  document.getElementById('accountModalTitle').textContent=id?'Editar Conta':'Nova Conta';
+  document.getElementById('accountModalTitle').textContent=id?t('account.edit'):t('account.new');
   const gSel=document.getElementById('accountGroupId');
   if(gSel){
     if(!state.groups||!state.groups.length){try{await loadGroups();}catch(_e){}}
@@ -329,7 +329,7 @@ async function saveAccount(){
   if(id){({error:err}=await sb.from('accounts').update(data).eq('id',id));}
   else{({error:err}=await sb.from('accounts').insert(data));}
   if(err){toast(err.message,'error');return;}
-  toast(id?'Conta atualizada!':'Conta criada!','success');
+  toast(id?t('account.updated'):t('account.saved'),'success');
   closeModal('accountModal');
   await loadAccounts();
   if(typeof populateSelects==='function') populateSelects();
@@ -576,7 +576,7 @@ async function confirmDeleteAccount() {
     console.error('[deleteAccount]', e);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Confirmar Exclusão';
+    btn.textContent = t('account.confirm_delete');
   }
 }
 

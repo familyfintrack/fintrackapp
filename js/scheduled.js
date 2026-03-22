@@ -573,8 +573,8 @@ function renderUpcoming() {
     totalEl.textContent = (tot>=0?'+':'') + fmt(tot);
     totalEl.className = 'badge ' + (tot>=0?'badge-green':'badge-red');
   }
-  // Card starts expanded by default (display is '' from HTML)
-  // toggleUpcomingCard() handles collapse/expand on click
+  // Feature 1: list starts collapsed; user can expand
+  if(listEl && listEl.style.display === undefined) listEl.style.display = 'none';
 
   // Agrupar por data
   const byDate = {};
@@ -653,10 +653,9 @@ function toggleUpcomingCard() {
   const listEl = document.getElementById('scheduledUpcomingList');
   const arrow  = document.getElementById('upcomingCardArrow');
   if (!listEl) return;
-  // Treat missing/empty display as 'open' (default expanded state)
-  const isOpen = listEl.style.display !== 'none';
-  listEl.style.display = isOpen ? 'none' : '';
-  if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+  const open = listEl.style.display !== 'none';
+  listEl.style.display = open ? 'none' : '';
+  if (arrow) arrow.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
 function toggleScCard(id) {
@@ -765,7 +764,7 @@ function openScheduledModal(id='') {
     if(el) el.oninput = updateScPreview;
   });
 
-  document.getElementById('scheduledModalTitle').textContent = id ? 'Editar Programação' : 'Programar Transação';
+  document.getElementById('scheduledModalTitle').textContent = id ? t('scheduled.edit') : t('scheduled.new');
 
   // Auto-register & notify fields
   const arEl = document.getElementById('scAutoRegister');
@@ -822,7 +821,7 @@ function setScType(type) {
   const cpBadge = document.getElementById('scCardPaymentBadge');
   if(cpBadge) cpBadge.style.display = isCardPayment ? '' : 'none';
   const trLabel = document.querySelector('#scTransferToGroup label');
-  if(trLabel) trLabel.textContent = isCardPayment ? 'Cartão de Crédito (Destino) *' : 'Conta Destino *';
+  if(trLabel) trLabel.textContent = isCardPayment ? t('scheduled.card_dest') : t('scheduled.transfer_dest');
   // Hide FX panel when switching away from transfer
   if (!isTransfer) _hideScFxPanel();
   // Filter source account: card_payment origin cannot be a credit card account
@@ -1081,7 +1080,7 @@ async function saveScheduled() {
   }
   if(err) { toast(err.message,'error'); return; }
   const _scNew=!id;
-  toast(id?'Programação atualizada!':'Transação programada!','success');
+  toast(id?t('scheduled.updated'):t('scheduled.saved'),'success');
   closeModal('scheduledModal');
   await loadScheduled();
   if(_scNew) {
@@ -1859,7 +1858,7 @@ function duplicateScheduled(id) {
     document.getElementById('scCustomInterval').value = sc.custom_interval || 1;
     document.getElementById('scCustomUnit').value = sc.custom_unit || 'months';
     document.getElementById('scStatus').value = 'active';
-    document.getElementById('scheduledModalTitle').textContent = 'Nova Programação (cópia)';
+    document.getElementById('scheduledModalTitle').textContent = t('scheduled.copy');
     updateScPreview();
   });
 }

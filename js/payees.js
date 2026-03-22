@@ -367,7 +367,7 @@ function openPayeeModal(id=''){
   document.getElementById('payeeName').value  = form.name;
   document.getElementById('payeeType').value  = form.type;
   document.getElementById('payeeNotes').value = form.notes || '';
-  document.getElementById('payeeModalTitle').textContent = id ? 'Editar Beneficiário' : 'Novo Beneficiário';
+  document.getElementById('payeeModalTitle').textContent = id ? t('payee.edit') : t('payee.new');
   // Campos de contato/localização
   document.getElementById('payeeAddress').value  = form.address  || '';
   document.getElementById('payeeCity').value     = form.city     || '';

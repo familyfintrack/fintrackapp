@@ -726,7 +726,7 @@ async function openTransactionModal(id=''){
   }
   resetTxModal();
   document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
-  document.getElementById('txModalTitle').textContent='Nova Transação';
+  document.getElementById('txModalTitle').textContent=t('tx.new');
   if(id) editTransaction(id); else openModal('txModal');
 }
 function resetTxModal(){
@@ -774,7 +774,7 @@ async function editTransaction(id){
   // Check IOF config for account
   setTimeout(()=>checkAccountIofConfig(data.account_id), 50);
   const type=data.is_transfer?(data.is_card_payment?'card_payment':'transfer'):data.amount>=0?'income':'expense';setTxType(type);if(type==='transfer'||type==='card_payment')document.getElementById('txTransferTo').value=data.transfer_to_account_id||'';
-  document.getElementById('txModalTitle').textContent='Editar Transação';
+  document.getElementById('txModalTitle').textContent=t('tx.edit');
   // Render family member multi-picker
   if (typeof renderFmcMultiPicker === 'function') {
     const preselected = data?.family_member_ids?.length
@@ -835,7 +835,7 @@ function setTxType(type){
   const cpBadge = document.getElementById('txCardPaymentBadge');
   if(cpBadge) cpBadge.style.display = isCardPayment ? '' : 'none';
   const transferToLabel = document.querySelector('#txTransferToGroup label');
-  if(transferToLabel) transferToLabel.textContent = isCardPayment ? 'Cartão de Crédito (Destino) *' : 'Conta Destino *';
+  if(transferToLabel) transferToLabel.textContent = isCardPayment ? t('scheduled.card_dest') : t('scheduled.transfer_dest');
   // Filter source account: card_payment origin cannot be a credit card account
   _filterTxAccountOrigin(isCardPayment);
   // Rebuild category picker filtered by transaction type
@@ -1380,7 +1380,7 @@ async function saveTransaction(){
     const uploadedUrl = await uploadTxAttachment(pendingFile, savedId);
     window._txPendingFile = null;
     window._txPendingName = null;
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Salvar'; }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = t('ui.save'); }
     if (!uploadedUrl) {
       // Upload failed — transaction was saved. Existing attachment is preserved; warn the user.
       toast('⚠️ Transação salva, mas o anexo não foi enviado. Verifique o bucket "fintrack-attachments" no Supabase.', 'error');
@@ -1444,7 +1444,7 @@ function _openTxAsCopy(orig) {
       : (orig.family_member_id ? [orig.family_member_id] : []);
     renderFmcMultiPicker('txFamilyMemberPicker', { selected: pre });
   }
-  document.getElementById('txModalTitle').textContent = 'Nova Transação (cópia)';
+  document.getElementById('txModalTitle').textContent = t('tx.copy');
   // txId stays empty → saveTransaction() will INSERT
   openModal('txModal');
 }

@@ -293,12 +293,13 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
 
 function toast(msg,type='info'){
-  // Auto-translate if message exists as direct-text key in i18n builtin
-  if (typeof t === 'function' && msg && typeof msg === 'string') {
-    const translated = t(msg);
-    // t() returns the key itself when not found — only use if actually translated
-    if (translated && translated !== msg) msg = translated;
-  }
+  // Auto-translate: try reverse-map lookup for PT strings when non-PT lang active
+  try {
+    if (msg && typeof _i18nTranslateText==='function' && typeof i18nGetLanguage==='function' && i18nGetLanguage()!=='pt') {
+      const _tr = _i18nTranslateText(String(msg));
+      if (_tr && _tr !== msg) msg = _tr;
+    }
+  } catch(_) {}
   const icons={success:'✓',error:'✕',info:'i'};
   const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span style="font-weight:700">${icons[type]||'i'}</span><span>${msg}</span>`;
   document.getElementById('toast-container').appendChild(el);
@@ -464,18 +465,6 @@ function applyCatSuggestion() {
 // ── payee AC context helpers ─────────────────────────────────────────────────
 // ctx = 'tx' (transaction modal) | 'sc' (scheduled modal)
 function payeeCtx(ctx) {
-  // 'dbt' context: creditor autocomplete inside the debt form modal
-  if (ctx === 'dbt') {
-    return {
-      idEl:     document.getElementById('dbtPayeeId'),
-      nameEl:   document.getElementById('dbtPayeeName'),
-      statusEl: document.getElementById('dbtPayeeStatus'),
-      ddEl:     document.getElementById('dbtPayeeDropdown'),
-      bannerEl: null,
-      typeEl:   null,
-      ctx:      'dbt',
-    };
-  }
   const p = ctx === 'sc' ? 'sc' : 'tx';
   return {
     idEl:     document.getElementById(p + 'PayeeId'),
