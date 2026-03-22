@@ -594,8 +594,18 @@
         <span></span>
         <button onclick="document.getElementById('dashMemberFilter').value='';document.getElementById('dashRelGroup').value='';loadDashboard()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.85rem;padding:0;line-height:1" title="Limpar filtro">✕</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px">
-        <button class="btn btn-ghost btn-sm" onclick="openDashCustomModal()" title="Personalizar dashboard" style="font-size:.75rem;gap:5px;color:var(--muted);padding:5px 10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
+        <!-- Nome da família ativa -->
+        <div id="dashFamilyName" style="display:flex;align-items:center;gap:6px;
+          font-size:.75rem;font-weight:700;color:var(--text2);
+          background:var(--surface2);border:1px solid var(--border);
+          border-radius:var(--r-sm);padding:5px 10px;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--accent)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span id="dashFamilyNameText">—</span>
+        </div>
+        <!-- Personalizar -->
+        <button class="btn btn-ghost btn-sm" onclick="openDashCustomModal()" title="Personalizar dashboard" style="font-size:.75rem;gap:5px;color:var(--muted);padding:5px 10px;flex-shrink:0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
           Personalizar
         </button>
@@ -1642,21 +1652,100 @@
 
       <!-- ── View: Orçamentos ── -->
       <div id="reportBudgetView" style="display:none">
-        <div class="rpt-budget-header mb-4">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+
+        <!-- ── Toolbar ────────────────────────────────────────────────────── -->
+        <div class="rbt-toolbar mb-4">
+          <div class="rbt-toolbar-left">
             <div class="rbt-type-toggle">
               <button class="rbt-type-btn active" id="rbtBtnMonth" onclick="_rbtSetType('monthly')">Mensal</button>
               <button class="rbt-type-btn" id="rbtBtnAnnual" onclick="_rbtSetType('annual')">Anual</button>
             </div>
             <input type="month" id="rbtMonth" class="form-input" style="width:auto">
             <input type="number" id="rbtYear" class="form-input" style="width:90px;display:none" min="2020" max="2035">
-            <button class="btn btn-ghost btn-sm" onclick="_rbtLoad()">↻ Atualizar</button>
+          </div>
+          <div class="rbt-toolbar-right">
+            <!-- Ordenação -->
+            <select id="rbtSort" class="form-select" style="font-size:.78rem;padding:5px 8px;width:auto"
+              onchange="_rbtLoad()">
+              <option value="status">Por status</option>
+              <option value="pct_desc">% maior primeiro</option>
+              <option value="pct_asc">% menor primeiro</option>
+              <option value="used_desc">Maior gasto</option>
+              <option value="name">Nome A→Z</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="_rbtLoad()" style="flex-shrink:0">↻</button>
           </div>
         </div>
-        <!-- KPI strip -->
+
+        <!-- ── KPI strip ──────────────────────────────────────────────────── -->
         <div class="rbt-kpi-strip mb-4" id="rbtKpis"></div>
-        <!-- Budget cards grid -->
-        <div class="rbt-grid" id="rbtGrid"></div>
+
+        <!-- ── Barra de progresso geral ──────────────────────────────────── -->
+        <div id="rbtTotalBar" class="rbt-total-bar mb-4" style="display:none">
+          <div class="rbt-total-bar-header">
+            <span class="rbt-total-bar-label">Consumo total do orçamento</span>
+            <span class="rbt-total-bar-pct" id="rbtTotalPct">0%</span>
+          </div>
+          <div class="rbt-bar-track" style="height:8px">
+            <div class="rbt-bar-fill rbt-total-fill" id="rbtTotalFill" style="width:0%"></div>
+          </div>
+          <div class="rbt-total-bar-sub" id="rbtTotalSub"></div>
+        </div>
+
+        <!-- ── Tabs: Cards / Tabela / Tendência ──────────────────────────── -->
+        <div class="rbt-view-tabs mb-3" id="rbtViewTabs">
+          <button class="rbt-view-tab active" id="rbtTabCards"  onclick="_rbtSwitchView('cards')">
+            ▦ Cards
+          </button>
+          <button class="rbt-view-tab" id="rbtTabTable"  onclick="_rbtSwitchView('table')">
+            ≡ Tabela
+          </button>
+          <button class="rbt-view-tab" id="rbtTabTrend"  onclick="_rbtSwitchView('trend')">
+            ↗ Tendência
+          </button>
+        </div>
+
+        <!-- ── View: Cards ───────────────────────────────────────────────── -->
+        <div id="rbtViewCards">
+          <div class="rbt-grid" id="rbtGrid"></div>
+        </div>
+
+        <!-- ── View: Tabela ──────────────────────────────────────────────── -->
+        <div id="rbtViewTable" style="display:none">
+          <div class="card" style="overflow-x:auto">
+            <table class="rbt-table" id="rbtTable">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th class="rbt-th-num">Limite</th>
+                  <th class="rbt-th-num">Consumido</th>
+                  <th class="rbt-th-num">Disponível</th>
+                  <th class="rbt-th-num">%</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="rbtTableBody"></tbody>
+              <tfoot id="rbtTableFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── View: Tendência (últimos 6 meses) ─────────────────────────── -->
+        <div id="rbtViewTrend" style="display:none">
+          <div class="card mb-3">
+            <div class="card-header">
+              <span class="card-title">Consumo médio vs limite — últimos 6 meses</span>
+            </div>
+            <canvas id="rbtTrendChart" height="220"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Categorias com maior desvio histórico</span>
+            </div>
+            <div id="rbtTrendInsights" style="padding:0 4px 4px"></div>
+          </div>
+        </div>
+
       </div>
 
     </div>
