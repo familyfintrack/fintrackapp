@@ -1743,6 +1743,23 @@
         </div>
       </div>
 
+      <!-- ══ MÓDULOS DA FAMÍLIA ══ -->
+      <!-- Seção dedicada de ativação de módulos — visível para OWNER/admin -->
+      <div class="cfg-section" id="cfgSec_features_wrap" style="display:none">
+        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_features')">
+          <span class="cfg-sec-icon" style="background:var(--green-lt)">🧩</span>
+          <span class="cfg-sec-title" data-i18n="cfg.modules">Módulos</span>
+          <span class="cfg-sec-arr" id="cfgArr_features">▾</span>
+        </button>
+        <div class="cfg-sec-body open" id="cfgSec_features">
+          <p style="font-size:.78rem;color:var(--muted);margin:0 0 14px" id="famModulesMsg">
+            Ative ou desative funcionalidades opcionais para sua família.<br>
+            <em>Apenas o proprietário (owner) pode alterar estas configurações.</em>
+          </p>
+          <div class="fam-features-grid" id="famModulesPillsStandalone"></div>
+        </div>
+      </div>
+
       <!-- ══ APARÊNCIA (admin) ══ -->
       <div class="cfg-section" id="logoSettingsSection" style="display:none">
         <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_aparencia')">
