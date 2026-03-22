@@ -1000,11 +1000,7 @@ function openMyProfile() {
     langSel.value = currentUser.preferred_language || 'pt';
   }
 
-  // Gerenciar Família — visível só para owners (e não para admins globais que já têm o painel completo)
-  // Family mgmt btn: owner role only (admin has full panel)
-  const isFamOwnerOnly = currentUser?.role === 'owner' && _currentUserIsFamilyOwner();
-  const famMgmtBtn = document.getElementById('myProfileFamilyMgmtBtn');
-  if (famMgmtBtn) famMgmtBtn.style.display = isFamOwnerOnly ? '' : 'none';
+  // Gerenciar Família: acessível via user menu (umManageFamilyBtn) — não mais no perfil modal
 
   // Language selector
   const savedLang = currentUser?.preferred_language ||
