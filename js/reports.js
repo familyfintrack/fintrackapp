@@ -1893,23 +1893,35 @@ async function _rbtLoad() {
 
   grid.innerHTML = '<div class="empty-state"><span>⏳</span></div>';
 
-  // Query budgets
+  // Query budgets — defensive: works with old schema (no budget_type) and new schema
+  // Old budgets may have budget_type=NULL; never filter them out
   const hasNew = await _rbtCheckSchema();
-  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)'));
-  if (hasNew) {
-    bq = bq.eq('budget_type', period.type);
-    if (period.type === 'monthly') {
-      bq = bq.eq('month', period.month + '-01');
-    } else {
-      bq = bq.eq('year', period.year);
+  let budgets = null, be = null;
+
+  if (period.type === 'monthly') {
+    const monthStr = (period.month || new Date().toISOString().slice(0,7)) + '-01';
+    // Try with budget_type filter first (new schema)
+    if (hasNew) {
+      ({ data: budgets, error: be } = await famQ(
+        sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)')
+      ).eq('month', monthStr).or('budget_type.eq.monthly,budget_type.is.null'));
+    }
+    // Fallback: query by month only (old schema or if above returned nothing)
+    if (!budgets?.length) {
+      ({ data: budgets, error: be } = await famQ(
+        sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)')
+      ).eq('month', monthStr));
     }
   } else {
-    if (period.type === 'annual') {
+    // Annual view
+    if (!hasNew) {
       grid.innerHTML = '<div class="empty-state"><p>Orçamentos anuais requerem migration do banco.</p></div>'; return;
     }
-    bq = bq.eq('month', (period.month || new Date().toISOString().slice(0,7)) + '-01');
+    ({ data: budgets, error: be } = await famQ(
+      sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)')
+    ).eq('year', period.year).or('budget_type.eq.annual,budget_type.is.null').is('month', null));
   }
-  const { data: budgets, error: be } = await bq;
+
   if (be) { grid.innerHTML = `<div class="empty-state"><p>Erro: ${esc(be.message)}</p></div>`; return; }
   if (!budgets?.length) {
     grid.innerHTML = '<div class="empty-state"><div class="es-icon">🎯</div><p>Nenhum orçamento encontrado para este período.</p></div>';
@@ -2272,15 +2284,21 @@ async function _rbtGetBudgetContext() {
     : { type:'annual',  year: parseInt(document.getElementById('rbtYear')?.value) || new Date().getFullYear() };
 
   const hasNew = await _rbtCheckSchema();
-  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'));
-  if (hasNew) {
-    bq = bq.eq('budget_type', period.type);
-    if (period.type === 'monthly') bq = bq.eq('month', (period.month||'')+'-01');
-    else bq = bq.eq('year', period.year);
-  } else {
-    bq = bq.eq('month', (period.month||'')+'-01');
+  let budgets = null;
+  const monthStr = (period.month || '') + '-01';
+  if (period.type === 'monthly') {
+    if (hasNew) {
+      ({ data: budgets } = await famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'))
+        .eq('month', monthStr).or('budget_type.eq.monthly,budget_type.is.null'));
+    }
+    if (!budgets?.length) {
+      ({ data: budgets } = await famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'))
+        .eq('month', monthStr));
+    }
+  } else if (hasNew) {
+    ({ data: budgets } = await famQ(sb.from('budgets').select('*, categories(id,name,icon,color)'))
+      .eq('year', period.year).or('budget_type.eq.annual,budget_type.is.null').is('month', null));
   }
-  const { data: budgets } = await bq;
   if (!budgets?.length) return null;
 
   let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount')).lt('amount',0);
