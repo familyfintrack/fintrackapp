@@ -3077,7 +3077,7 @@
 </div>
 
 <!-- CHANGE PIN MODAL -->
-<div class="modal-overlay" id="changePinModal" style="display:none">
+<div class="modal-overlay" id="changePinModal">
   <div class="modal" style="max-width:380px"><div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title">Alterar Masterpin</span>
@@ -5493,8 +5493,8 @@
   </div>
 
   <!-- ══ DEBTS MODALS ════════════════════════════════════════════════════════ -->
-  <div class="modal-overlay" id="debtFormModal" style="display:none" onclick="if(event.target===this)closeModal('debtFormModal')">
-    <div class="modal-box" style="max-width:540px">
+  <div class="modal-overlay" id="debtFormModal" onclick="if(event.target===this)closeModal('debtFormModal')">
+    <div class="modal" style="max-width:540px"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title" id="debtFormTitle">Nova Dívida</span>
         <button class="modal-close" onclick="closeModal('debtFormModal')">✕</button>
@@ -5507,8 +5507,8 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="debtDetailModal" style="display:none" onclick="if(event.target===this)closeModal('debtDetailModal')">
-    <div class="modal-box" style="max-width:820px;max-height:90vh;overflow-y:auto">
+  <div class="modal-overlay" id="debtDetailModal" onclick="if(event.target===this)closeModal('debtDetailModal')">
+    <div class="modal" style="max-width:820px;max-height:90vh;overflow-y:auto"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title">Detalhe da Dívida</span>
         <button class="modal-close" onclick="closeModal('debtDetailModal')">✕</button>
@@ -5517,8 +5517,8 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="debtManualModal" style="display:none" onclick="if(event.target===this)closeModal('debtManualModal')">
-    <div class="modal-box" style="max-width:420px">
+  <div class="modal-overlay" id="debtManualModal" onclick="if(event.target===this)closeModal('debtManualModal')">
+    <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title">Lançamento Manual</span>
         <button class="modal-close" onclick="closeModal('debtManualModal')">✕</button>
