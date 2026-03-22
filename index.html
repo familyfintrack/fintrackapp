@@ -5494,15 +5494,17 @@
 
   <!-- ══ DEBTS MODALS ════════════════════════════════════════════════════════ -->
   <div class="modal-overlay" id="debtFormModal" onclick="if(event.target===this)closeModal('debtFormModal')">
-    <div class="modal" style="max-width:540px"><div class="modal-handle"></div>
+    <div class="modal" style="max-width:600px"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title" id="debtFormTitle">Nova Dívida</span>
         <button class="modal-close" onclick="closeModal('debtFormModal')">✕</button>
       </div>
-      <div class="modal-body" id="debtFormBody"></div>
+      <div class="modal-body" id="debtFormBody" style="padding:0;overflow-y:auto"></div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal('debtFormModal')">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveDebt()">Salvar</button>
+        <button class="btn btn-primary" onclick="saveDebt()" style="min-width:120px">
+          💾 Salvar Dívida
+        </button>
       </div>
     </div>
   </div>
