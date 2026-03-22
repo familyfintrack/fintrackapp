@@ -4124,22 +4124,53 @@ function _mfmRenderFeatures(famId) {
 }
 
 async function _mfmToggleFeature(key, famId, label, applyFn) {
-  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-  const wasOn = !!window._familyFeaturesCache[key];
-  const nowOn = !wasOn;
-  window._familyFeaturesCache[key] = nowOn;
-  // Also update _appSettingsCache so isXEnabled() reads the right value immediately
-  if (window._appSettingsCache) window._appSettingsCache[key] = nowOn;
-  try {
-    await saveAppSetting(key, nowOn);
-    if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
-    toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
-  } catch(e) {
-    window._familyFeaturesCache[key] = wasOn;
-    if (window._appSettingsCache) window._appSettingsCache[key] = wasOn;
-    toast('Erro: ' + e.message, 'error');
+  // Apenas OWNER ou admin pode ativar/desativar módulos
+  if (typeof canModifyPreferences === 'function' && !canModifyPreferences()) {
+    toast('Apenas owners podem gerenciar módulos.', 'warning');
+    return;
   }
+
+  if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+  const nowOn = !window._familyFeaturesCache[key];
+
+  // ── Atualização síncrona de todos os caches antes de qualquer await ──────
+  window._familyFeaturesCache[key] = nowOn;
+  if (window._appSettingsCache) window._appSettingsCache[key] = nowOn;
+  try { localStorage.setItem(key, String(nowOn)); } catch(_) {}
+
+  // Aplica feature imediatamente (UI responsiva, sem aguardar DB)
+  if (applyFn && typeof window[applyFn] === 'function') {
+    window[applyFn]().catch(() => {});
+  }
+  toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
   _mfmRenderFeatures(famId);
+
+  // ── Persistência best-effort — 3 caminhos em cascata ────────────────────
+  (async () => {
+    const modKey = key.replace(/_enabled_.*$/, '');
+
+    // 1. family_preferences (RLS owner-safe, tabela dedicada)
+    if (typeof updateFamilyPreferences === 'function') {
+      try { await updateFamilyPreferences({ modules: { [modKey]: nowOn } }); return; } catch(_) {}
+    }
+
+    // 2. families.settings JSONB (owner sempre pode escrever na própria família)
+    if (famId && window.sb) {
+      try {
+        const { data: fRow } = await sb.from('families')
+          .select('settings').eq('id', famId).maybeSingle();
+        const cur  = (typeof fRow?.settings === 'object' && fRow?.settings) ? fRow.settings : {};
+        const next = { ...cur, modules: { ...(cur.modules || {}), [modKey]: nowOn } };
+        const { error } = await sb.from('families').update({ settings: next }).eq('id', famId);
+        if (!error) return;
+      } catch(_) {}
+    }
+
+    // 3. app_settings legado (pode falhar por RLS para owner — localStorage já garantiu)
+    if (typeof saveAppSetting === 'function') {
+      saveAppSetting(key, nowOn).catch(() => {});
+    }
+  })();
 }
 
 async function mfmChangeRole(sel, userId, famId) {

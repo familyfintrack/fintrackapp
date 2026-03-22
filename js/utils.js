@@ -293,6 +293,12 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
 
 function toast(msg,type='info'){
+  // Auto-translate if message exists as direct-text key in i18n builtin
+  if (typeof t === 'function' && msg && typeof msg === 'string') {
+    const translated = t(msg);
+    // t() returns the key itself when not found — only use if actually translated
+    if (translated && translated !== msg) msg = translated;
+  }
   const icons={success:'✓',error:'✕',info:'i'};
   const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span style="font-weight:700">${icons[type]||'i'}</span><span>${msg}</span>`;
   document.getElementById('toast-container').appendChild(el);
