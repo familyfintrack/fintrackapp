@@ -1717,14 +1717,7 @@
             <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
           </div>
 
-          <div class="cfg-row" id="settingsFamilyMgmtRow">
-            <span class="cfg-row-icon" style="background:#dcfce7">🏠</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Gestão da Família</span>
-              <span class="cfg-row-sub">Membros, convites e configurações da família ativa</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="openMyFamilyMgmt()">Abrir</button>
-          </div>
+          <!-- Gestão da família: acessível via menu do usuário (avatar) → Gerenciar minha família -->
 
 
 
@@ -4433,13 +4426,7 @@
           </div>
         </div>
 
-        <!-- Gerenciar família (só para owners) -->
-        <div id="myProfileFamilyMgmtBtn" style="display:none;margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;gap:8px;font-size:.8rem"
-                  onclick="closeModal('myProfileModal');openMyFamilyMgmt()">
-            🏠 Gerenciar minha família
-          </button>
-        </div>
+        <!-- Gerenciar família: via menu do usuário (avatar topbar) → Gerenciar minha família -->
 
         <div id="myProfileError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;
           padding:7px 11px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
@@ -5427,7 +5414,7 @@
         <span>🔑</span><span data-i18n="topbar.change_pwd">Alterar senha</span>
       </button>
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
-              onclick="closeUserMenu();openUserAdmin()">
+              onclick="closeUserMenu();setTimeout(openMyFamilyMgmt,80)">
         <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
