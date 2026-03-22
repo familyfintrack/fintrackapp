@@ -267,9 +267,9 @@ async function openDebtDetail(debtId) {
     ${debt.notes ? `<div class="dbt-meta-row"><span>${t('ui.notes')}</span><p style="margin:0;font-size:.8rem;color:var(--text2)">${esc(debt.notes)}</p></div>` : ''}
 
     <div class="mt-3" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-ghost btn-sm" onclick="openDebtModal('${debt.id}')">✏️ ${t('ui.edit')}</button>
-      <button class="btn btn-ghost btn-sm" onclick="_openDebtManualEntry('${debt.id}')">+ ${t('dbt.manual_entry')}</button>
-      ${debt.status==='active' ? `<button class="btn btn-ghost btn-sm" onclick="_settleDebt('${debt.id}')" style="color:var(--green)">✓ ${t('dbt.settle')}</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('debtDetailModal');setTimeout(()=>openDebtModal('${debt.id}'),120)">✏️ ${t('ui.edit')}</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('debtDetailModal');setTimeout(()=>_openDebtManualEntry('${debt.id}'),120)">+ ${t('dbt.manual_entry')}</button>
+      ${debt.status==='active' ? `<button class="btn btn-ghost btn-sm" onclick="closeModal('debtDetailModal');setTimeout(()=>_settleDebt('${debt.id}'),120)" style="color:var(--green)">✓ ${t('dbt.settle')}</button>` : ''}
       <button class="btn btn-ghost btn-sm" onclick="deleteDebt('${debt.id}','${esc(debt.name).replace(/'/g,'\'')}')"
         style="color:var(--red);margin-left:auto" title="Excluir dívida permanentemente">
         🗑 Excluir
@@ -939,7 +939,7 @@ async function deleteDebt(debtId, debtName) {
       ⚠ As transações de amortização <strong>não serão excluídas</strong> — apenas o vínculo com esta dívida será removido.
     </div>` : ''}
     <div style="font-size:.8rem;color:var(--muted);margin-bottom:14px">
-      Digite <strong style="color:var(--red)">${esc(debtName)}</strong> para confirmar a exclusão permanente:
+      Digite <strong id="debtDeleteExpectedName" style="color:var(--red)">${esc(debtName)}</strong> para confirmar a exclusão permanente:
     </div>
     <input type="text" id="debtDeleteConfirmInput" class="form-input"
       placeholder="Digite o nome da dívida…"
@@ -979,19 +979,15 @@ async function deleteDebt(debtId, debtName) {
 window.deleteDebt = deleteDebt;
 
 function _debtDeleteCheck() {
-  // Enable confirm button only when the name is typed correctly
-  const modal = document.getElementById('debtDeleteConfirmModal');
-  if (!modal) return;
-  const inp = document.getElementById('debtDeleteConfirmInput');
-  const btn = document.getElementById('debtDeleteConfirmBtn');
-  if (!inp || !btn) return;
-  // Extract expected name from the prompt text
-  const prompt = modal.querySelector('strong[style*="red"]');
-  const expected = prompt?.textContent?.trim() || '';
-  const match = inp.value.trim() === expected;
-  btn.disabled = !match;
-  btn.style.opacity = match ? '1' : '.5';
-  btn.style.cursor  = match ? 'pointer' : 'not-allowed';
+  const inp      = document.getElementById('debtDeleteConfirmInput');
+  const btn      = document.getElementById('debtDeleteConfirmBtn');
+  const nameSpan = document.getElementById('debtDeleteExpectedName');
+  if (!inp || !btn || !nameSpan) return;
+  const expected = nameSpan.textContent.trim();
+  const match    = inp.value.trim() === expected;
+  btn.disabled        = !match;
+  btn.style.opacity   = match ? '1' : '.5';
+  btn.style.cursor    = match ? 'pointer' : 'not-allowed';
 }
 window._debtDeleteCheck = _debtDeleteCheck;
 
