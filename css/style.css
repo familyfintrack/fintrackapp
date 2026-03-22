@@ -10014,17 +10014,17 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* On mobile: hide Conta and Beneficiário to give space to Descrição */
 @media (max-width: 640px) {
   .rpt-col-acct, .rpt-col-pay { display: none; }
-  .rpt-td-acct,  .rpt-td-pay  { display: none; }
-  .rpt-col-cat  { width: 90px; }
-  .rpt-col-amt  { width: 90px; }
-  .rpt-col-date { width: 90px; }
+  .rpt-td-acct,  .rpt-td-pay  { display: none !important; }
+  .rpt-col-cat  { width: 80px; }
+  .rpt-col-amt  { width: 88px; }
+  .rpt-col-date { width: 82px; }
 }
 
 /* On very small screens: also hide Categoria */
 @media (max-width: 420px) {
-  .rpt-col-cat, .rpt-td-cat { display: none; }
+  .rpt-col-cat, .rpt-td-cat { display: none !important; }
   .rpt-col-amt  { width: 82px; }
-  .rpt-col-date { width: 84px; }
+  .rpt-col-date { width: 80px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
