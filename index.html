@@ -927,10 +927,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Previsão
           </button>
-          <button class="rpt-view-tab" id="rptBtnBudgets" onclick="setReportView('budgets')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Orçamentos
-          </button>
+
         </div>
       </div>
 
@@ -1091,7 +1088,7 @@
               <thead><tr>
                 <th onclick="rptSortTx('date')" style="cursor:pointer">Data <span id="rptSortDate"></span></th>
                 <th onclick="rptSortTx('description')" style="cursor:pointer">Descrição <span id="rptSortDesc"></span></th>
-                <th>Conta</th><th>Categoria</th><th>Beneficiário</th>
+                <th class="rpt-td-acct">Conta</th><th class="rpt-td-cat">Categoria</th><th class="rpt-td-pay">Beneficiário</th>
                 <th onclick="rptSortTx('amount')" style="cursor:pointer">Valor <span id="rptSortAmt"></span></th>
               </tr></thead>
               <tbody id="reportTxBody"></tbody>
