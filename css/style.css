@@ -12765,3 +12765,185 @@ tr.reconcile-checked td { opacity: 1 !important; }
     width: auto;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEBT FORM MODAL — Redesign moderno v20
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Modal maior para o formulário de dívida */
+#debtFormModal .modal {
+  max-width: 600px;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+/* ── Seções do formulário ────────────────────────────────────────────────── */
+.dbt-form-section {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.dbt-form-section:last-of-type { border-bottom: none; }
+
+.dbt-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.dbt-form-section-icon {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem;
+  flex-shrink: 0;
+}
+
+/* ── Grid 2 colunas responsivo ──────────────────────────────────────────── */
+.dbt-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.dbt-form-grid .full { grid-column: 1 / -1; }
+@media (max-width: 520px) {
+  .dbt-form-grid { grid-template-columns: 1fr; }
+  .dbt-form-grid .full { grid-column: 1; }
+}
+
+/* ── Pill selector (moeda, tipo rápido) ─────────────────────────────────── */
+.dbt-pill-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dbt-pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  line-height: 1;
+}
+.dbt-pill:hover { border-color: var(--accent); color: var(--accent); }
+.dbt-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Amount input com símbolo de moeda ─────────────────────────────────── */
+.dbt-amount-wrap {
+  position: relative;
+}
+.dbt-amount-prefix {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 1;
+}
+.dbt-amount-input {
+  padding-left: 44px !important;
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+}
+
+/* ── Index rate quick-pick chips ────────────────────────────────────────── */
+.dbt-index-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.dbt-index-chip {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  color: var(--text2);
+}
+.dbt-index-chip:hover  { border-color: var(--accent); color: var(--accent); }
+.dbt-index-chip.active {
+  background: var(--accent-lt);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Inline creditor creator ────────────────────────────────────────────── */
+.dbt-creditor-wrap { position: relative; }
+.dbt-add-creditor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 0;
+  margin-top: 4px;
+  transition: opacity .12s;
+}
+.dbt-add-creditor-btn:hover { opacity: .75; }
+
+.dbt-inline-new-creditor {
+  display: none;
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--accent-lt);
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  gap: 8px;
+  flex-direction: column;
+}
+.dbt-inline-new-creditor.visible { display: flex; }
+.dbt-inline-new-creditor-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.dbt-inline-new-creditor label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* ── Fixed rate field reveal ────────────────────────────────────────────── */
+.dbt-rate-reveal {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .25s ease;
+}
+.dbt-rate-reveal.visible { max-height: 80px; }
+
+/* ── Footer with save button ────────────────────────────────────────────── */
+#debtFormModal .modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
