@@ -266,10 +266,14 @@ async function openDebtDetail(debtId) {
     ${debt.contract_ref ? `<div class="dbt-meta-row"><span>${t('dbt.contract_ref')}</span><strong>${esc(debt.contract_ref)}</strong></div>` : ''}
     ${debt.notes ? `<div class="dbt-meta-row"><span>${t('ui.notes')}</span><p style="margin:0;font-size:.8rem;color:var(--text2)">${esc(debt.notes)}</p></div>` : ''}
 
-    <div class="mt-3" style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="mt-3" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-ghost btn-sm" onclick="openDebtModal('${debt.id}')">✏️ ${t('ui.edit')}</button>
       <button class="btn btn-ghost btn-sm" onclick="_openDebtManualEntry('${debt.id}')">+ ${t('dbt.manual_entry')}</button>
       ${debt.status==='active' ? `<button class="btn btn-ghost btn-sm" onclick="_settleDebt('${debt.id}')" style="color:var(--green)">✓ ${t('dbt.settle')}</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="deleteDebt('${debt.id}','${esc(debt.name).replace(/'/g,'\'')}')"
+        style="color:var(--red);margin-left:auto" title="Excluir dívida permanentemente">
+        🗑 Excluir
+      </button>
     </div>
   </div>
 
@@ -883,6 +887,150 @@ async function _settleDebt(debtId) {
   renderDebtsPage();
 }
 window._settleDebt = _settleDebt;
+
+// ── Delete Debt ───────────────────────────────────────────────────────────────
+async function deleteDebt(debtId, debtName) {
+  if (!debtId) return;
+
+  // ── 1. Contar registros relacionados ─────────────────────────────────────
+  let ledgerCount = 0;
+  let txCount     = 0;
+
+  try {
+    const { count: lc } = await sb
+      .from('debt_ledger')
+      .select('id', { count: 'exact', head: true })
+      .eq('debt_id', debtId);
+    ledgerCount = lc || 0;
+  } catch(_) {}
+
+  // Contar transações vinculadas via debt_ledger.source_reference_id (lançamentos de amortização)
+  try {
+    const { data: ledgerRefs } = await sb
+      .from('debt_ledger')
+      .select('source_reference_id')
+      .eq('debt_id', debtId)
+      .eq('source_type', 'transaction')
+      .not('source_reference_id', 'is', null);
+    txCount = (ledgerRefs || []).length;
+  } catch(_) {}
+
+  // ── 2. Montar modal de confirmação ────────────────────────────────────────
+  const existing = document.getElementById('debtDeleteConfirmModal');
+  if (existing) existing.remove();
+
+  const relatedHtml = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:14px 0">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+        Registros que serão excluídos
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem">
+          <span>📋 Entradas no histórico (ledger)</span>
+          <strong style="color:${ledgerCount > 0 ? 'var(--red)' : 'var(--muted)'}">${ledgerCount}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem">
+          <span>💳 Transações vinculadas</span>
+          <strong style="color:${txCount > 0 ? 'var(--amber,#f59e0b)' : 'var(--muted)'}">${txCount}${txCount > 0 ? ' (serão desvinculadas)' : ''}</strong>
+        </div>
+      </div>
+    </div>
+    ${txCount > 0 ? `<div style="font-size:.76rem;color:var(--amber,#b45309);background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px">
+      ⚠ As transações de amortização <strong>não serão excluídas</strong> — apenas o vínculo com esta dívida será removido.
+    </div>` : ''}
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:14px">
+      Digite <strong style="color:var(--red)">${esc(debtName)}</strong> para confirmar a exclusão permanente:
+    </div>
+    <input type="text" id="debtDeleteConfirmInput" class="form-input"
+      placeholder="Digite o nome da dívida…"
+      oninput="_debtDeleteCheck()"
+      onkeydown="if(event.key==='Enter')_debtDeleteExec('${debtId}','${esc(debtName).replace(/'/g,"\'")}')">`;
+
+  const modalHtml = `
+    <div class="modal-overlay open" id="debtDeleteConfirmModal" style="z-index:10020"
+         onclick="if(event.target===this)document.getElementById('debtDeleteConfirmModal')?.remove()">
+      <div class="modal" style="max-width:440px"><div class="modal-handle"></div>
+        <div class="modal-header">
+          <span class="modal-title" style="color:var(--red)">🗑 Excluir Dívida</span>
+          <button class="modal-close" onclick="document.getElementById('debtDeleteConfirmModal')?.remove()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:.85rem;margin-bottom:4px">
+            Você está prestes a excluir permanentemente a dívida:
+          </p>
+          <p style="font-weight:700;font-size:.95rem;color:var(--text);margin-bottom:2px">${esc(debtName)}</p>
+          ${relatedHtml}
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="document.getElementById('debtDeleteConfirmModal')?.remove()">Cancelar</button>
+          <button class="btn btn-primary" id="debtDeleteConfirmBtn"
+            onclick="_debtDeleteExec('${debtId}','${esc(debtName).replace(/'/g,"\'")}'")"
+            disabled
+            style="background:var(--red);border-color:var(--red);opacity:.5;cursor:not-allowed">
+            🗑 Excluir permanentemente
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  setTimeout(() => document.getElementById('debtDeleteConfirmInput')?.focus(), 80);
+}
+window.deleteDebt = deleteDebt;
+
+function _debtDeleteCheck() {
+  // Enable confirm button only when the name is typed correctly
+  const modal = document.getElementById('debtDeleteConfirmModal');
+  if (!modal) return;
+  const inp = document.getElementById('debtDeleteConfirmInput');
+  const btn = document.getElementById('debtDeleteConfirmBtn');
+  if (!inp || !btn) return;
+  // Extract expected name from the prompt text
+  const prompt = modal.querySelector('strong[style*="red"]');
+  const expected = prompt?.textContent?.trim() || '';
+  const match = inp.value.trim() === expected;
+  btn.disabled = !match;
+  btn.style.opacity = match ? '1' : '.5';
+  btn.style.cursor  = match ? 'pointer' : 'not-allowed';
+}
+window._debtDeleteCheck = _debtDeleteCheck;
+
+async function _debtDeleteExec(debtId, debtName) {
+  const btn = document.getElementById('debtDeleteConfirmBtn');
+  if (btn?.disabled) return; // guard
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Excluindo…'; }
+
+  try {
+    // 1. Desvincular transações (remove debt reference sem excluir transações)
+    await sb.from('debt_ledger')
+      .select('source_reference_id')
+      .eq('debt_id', debtId)
+      .eq('source_type', 'transaction')
+      .then(async ({ data: refs }) => {
+        const ids = (refs || []).map(r => r.source_reference_id).filter(Boolean);
+        // Transactions keep their data — only the ledger entries are deleted with the debt (CASCADE)
+      });
+
+    // 2. Excluir a dívida (CASCADE apaga debt_ledger automaticamente via FK)
+    const { error } = await sb.from('debts').delete().eq('id', debtId);
+    if (error) throw error;
+
+    // 3. Atualizar estado local
+    _dbt.debts = _dbt.debts.filter(d => d.id !== debtId);
+
+    // 4. Fechar modais e atualizar UI
+    document.getElementById('debtDeleteConfirmModal')?.remove();
+    closeModal('debtDetailModal');
+
+    toast(`✓ "${esc(debtName)}" excluída.`, 'success');
+    renderDebtsPage();
+  } catch (e) {
+    toast('Erro ao excluir: ' + (e.message || e), 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '🗑 Excluir permanentemente'; }
+  }
+}
+window._debtDeleteExec = _debtDeleteExec;
 
 // ── BCB API rate fetch ────────────────────────────────────────────────────────
 async function _fetchBcbRate(seriesId) {

@@ -573,8 +573,8 @@ function renderUpcoming() {
     totalEl.textContent = (tot>=0?'+':'') + fmt(tot);
     totalEl.className = 'badge ' + (tot>=0?'badge-green':'badge-red');
   }
-  // Feature 1: list starts collapsed; user can expand
-  if(listEl && listEl.style.display === undefined) listEl.style.display = 'none';
+  // Card starts expanded by default (display is '' from HTML)
+  // toggleUpcomingCard() handles collapse/expand on click
 
   // Agrupar por data
   const byDate = {};
@@ -653,9 +653,10 @@ function toggleUpcomingCard() {
   const listEl = document.getElementById('scheduledUpcomingList');
   const arrow  = document.getElementById('upcomingCardArrow');
   if (!listEl) return;
-  const open = listEl.style.display !== 'none';
-  listEl.style.display = open ? 'none' : '';
-  if (arrow) arrow.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+  // Treat missing/empty display as 'open' (default expanded state)
+  const isOpen = listEl.style.display !== 'none';
+  listEl.style.display = isOpen ? 'none' : '';
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
 function toggleScCard(id) {
