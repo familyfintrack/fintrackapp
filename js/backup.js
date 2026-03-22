@@ -852,47 +852,145 @@ async function openFamilyBackupManager(fid, familyName = '') {
       return;
     }
     const resolved = _familyDisplayName?.(fid, familyName || '') || familyName || fid;
-    const backups = await _fetchDbBackupsForFamily(fid, 30);
-    const html = `
-      <div style="display:grid;gap:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <div>
-            <div style="font-weight:700">Família: ${esc(resolved)}</div>
-            <div style="font-size:.82rem;color:var(--muted)">${backups.length} snapshot(s) encontrados.</div>
-          </div>
-          <button class="btn btn-primary" id="familyBackupCreateFromModal">📸 Criar novo snapshot</button>
-        </div>
-        ${_renderFamilyBackupsHtml(backups, fid, resolved)}
-      </div>`;
+    const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
+
+    // ── Build modal shell ──────────────────────────────────────────────────
     const old = document.getElementById('familyBackupManagerModal');
     old?.remove();
     const wrap = document.createElement('div');
     wrap.id = 'familyBackupManagerModal';
-    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
     wrap.innerHTML = `
-      <div style="width:min(980px,96vw);max-height:90vh;overflow:hidden;background:var(--card, #fff);color:var(--text, #111);border:1px solid var(--border, #ddd);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.28);display:flex;flex-direction:column">
-        <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div style="width:min(980px,96vw);max-height:92vh;overflow:hidden;background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--border,#ddd);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.28);display:flex;flex-direction:column">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-shrink:0">
           <div>
             <div style="font-size:1rem;font-weight:800">Snapshots da família</div>
-            <div style="font-size:.82rem;color:var(--muted)">Crie, pré-valide e restaure snapshots desta família específica.</div>
+            <div style="font-size:.8rem;color:var(--muted)">Crie, pré-valide e restaure snapshots desta família específica.</div>
           </div>
-          <button id="familyBackupManagerCloseX" class="btn btn-ghost btn-sm">✕</button>
+          <button id="familyBackupManagerCloseX" class="btn btn-ghost btn-sm" style="flex-shrink:0">✕</button>
         </div>
-        <div style="padding:18px;overflow:auto">${html}</div>
-        <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">
-          <button id="familyBackupManagerClose" class="btn btn-ghost">Fechar</button>
+
+        <!-- Header: nome + contador + botão criar -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-weight:700;font-size:.9rem">Família: ${esc(resolved)}</div>
+              <div id="fbmCount" style="font-size:.78rem;color:var(--muted)">Carregando…</div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="familyBackupCreateFromModal" style="white-space:nowrap">
+              📸 Criar novo snapshot
+            </button>
+          </div>
+          <!-- Label input — oculto por padrão, aparece ao clicar criar -->
+          <div id="fbmLabelRow" style="display:none;margin-top:10px;display:none">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="fbmLabelInput" type="text" class="form-control" placeholder="Nome do snapshot (opcional)"
+                style="flex:1;min-width:160px;font-size:.84rem;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text)">
+              <button id="fbmLabelConfirm" class="btn btn-primary btn-sm">✓ Confirmar</button>
+              <button id="fbmLabelCancel" class="btn btn-ghost btn-sm">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div id="fbmList" style="padding:14px 16px;overflow:auto;flex:1">
+          <div style="text-align:center;padding:30px;color:var(--muted);font-size:.83rem">⏳ Carregando snapshots…</div>
+        </div>
+
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0">
+          <button id="familyBackupManagerClose" class="btn btn-ghost btn-sm">Fechar</button>
         </div>
       </div>`;
     document.body.appendChild(wrap);
+
     const close = () => wrap.remove();
     wrap.querySelector('#familyBackupManagerClose')?.addEventListener('click', close);
     wrap.querySelector('#familyBackupManagerCloseX')?.addEventListener('click', close);
     wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
-    wrap.querySelector('#familyBackupCreateFromModal')?.addEventListener('click', async () => {
-      await openDbBackupCreateForFamily(fid, resolved);
-      close();
-      setTimeout(() => openFamilyBackupManager(fid, resolved), 200);
+
+    // ── Refresh list in-place ──────────────────────────────────────────────
+    async function _refreshList() {
+      const listEl  = wrap.querySelector('#fbmList');
+      const countEl = wrap.querySelector('#fbmCount');
+      if (!listEl) return;
+      listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">⏳ Carregando snapshots…</div>';
+      try {
+        const fresh = await _fetchDbBackupsForFamily(fid, 30);
+        if (countEl) countEl.textContent = `${fresh.length} snapshot(s) encontrado(s).`;
+        listEl.innerHTML = `<div style="display:grid;gap:10px">${_renderFamilyBackupsHtml(fresh, fid, resolved)}</div>`;
+      } catch (err) {
+        listEl.innerHTML = `<div style="color:var(--red);padding:16px">${esc(err.message)}</div>`;
+      }
+    }
+
+    // ── Create button logic ────────────────────────────────────────────────
+    const createBtn = wrap.querySelector('#familyBackupCreateFromModal');
+    const labelRow  = wrap.querySelector('#fbmLabelRow');
+    const labelInput = wrap.querySelector('#fbmLabelInput');
+    const confirmBtn = wrap.querySelector('#fbmLabelConfirm');
+    const cancelBtn  = wrap.querySelector('#fbmLabelCancel');
+
+    const _defaultLabel = () => `Backup — ${resolved} — ${new Date().toLocaleDateString('pt-BR')}`;
+
+    const _doCreate = async () => {
+      const label = (labelInput?.value || '').trim() || _defaultLabel();
+      // Show loading state
+      createBtn.disabled = true;
+      createBtn.textContent = '⏳ Criando…';
+      if (isMobile) document.body.style.cursor = 'wait';
+      if (labelRow) labelRow.style.display = 'none';
+      try {
+        const { payload, counts } = await _collectFamilyBackupPayload(fid);
+        const famRow = _backupTableRows(payload, 'families')[0] || null;
+        const famName = _familyDisplayName?.(fid, resolved || famRow?.name || '') || resolved || famRow?.name || fid;
+        const row = {
+          family_id: fid,
+          label,
+          created_by: currentUser?.name || currentUser?.email || 'sistema',
+          payload,
+          counts,
+          size_kb: Math.round(JSON.stringify(payload).length / 1024),
+          backup_type: 'manual',
+        };
+        const { error } = await sb.from('app_backups').insert(row);
+        if (error) throw error;
+        toast(`✅ Snapshot "${label}" criado!`, 'success');
+        if (labelInput) labelInput.value = '';
+        await _refreshList();
+      } catch (e) {
+        toast('Erro ao criar snapshot: ' + e.message, 'error');
+      } finally {
+        createBtn.disabled = false;
+        createBtn.textContent = '📸 Criar novo snapshot';
+        if (isMobile) document.body.style.cursor = '';
+      }
+    };
+
+    createBtn?.addEventListener('click', () => {
+      if (isMobile) {
+        // Mobile: mostra input inline (sem prompt nativo)
+        if (labelRow) {
+          labelRow.style.display = labelRow.style.display === 'none' ? 'block' : 'none';
+          if (labelRow.style.display === 'block') {
+            if (labelInput) { labelInput.value = _defaultLabel(); labelInput.focus(); labelInput.select(); }
+          }
+        }
+      } else {
+        // Desktop: prompt nativo rápido
+        const label = prompt('Nome/etiqueta para este snapshot (opcional):', _defaultLabel());
+        if (label === null) return;
+        if (labelInput) labelInput.value = label;
+        _doCreate();
+      }
     });
+
+    confirmBtn?.addEventListener('click', _doCreate);
+    cancelBtn?.addEventListener('click', () => { if (labelRow) labelRow.style.display = 'none'; });
+    labelInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') _doCreate(); });
+
+    // ── Initial load ───────────────────────────────────────────────────────
+    await _refreshList();
+
   } catch (e) {
     toast('Erro ao abrir snapshots da família: ' + e.message, 'error');
   }
