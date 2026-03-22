@@ -185,6 +185,18 @@ function _openDashMonthTx(type, memberIds) {
   navigate('transactions');
 }
 async function loadDashboard(){
+  // Atualizar nome da família ativa no topo do dashboard
+  try {
+    const famNameEl = document.getElementById('dashFamilyNameText');
+    if (famNameEl) {
+      const fid = currentUser?.family_id;
+      const name = (typeof _familyDisplayName === 'function' && fid)
+        ? _familyDisplayName(fid, '')
+        : (currentUser?.families?.[0]?.name || '');
+      famNameEl.textContent = name || '—';
+    }
+  } catch(_e) {}
+
   // Aplicar prefs de customização imediatamente (evita flash de cards ocultos)
   try { _dashApplyPrefs(_dashGetPrefs()); } catch(_e) {}
   // Sincronizar prefs do servidor em background
