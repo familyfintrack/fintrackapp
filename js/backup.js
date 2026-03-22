@@ -98,7 +98,7 @@ async function _resolveActiveFamilyId() {
 }
 
 async function _collectFamilyBackupPayload(fid) {
-  const qf = (table) => sb.from(table).select('*').eq('family_id', fid);
+  const qf = (table) => Promise.resolve(sb.from(table).select('*').eq('family_id', fid));
 
   // Core tables — always present
   const [familiesRes, membersRes, compositionRes, groupsRes, accountsRes,
