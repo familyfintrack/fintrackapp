@@ -4091,6 +4091,25 @@ async function _mfmRender() {
 
   // Render feature toggle cards
   _mfmRenderFeatures(_mfmActiveFamilyId);
+
+  // ── Integrantes (family_composition) ──────────────────────────────────────
+  // Carrega pais, filhos, etc. da família ativa no painel
+  const fmcListEl = document.getElementById('mfmFmcList');
+  if (fmcListEl && famId) {
+    if (typeof _loadAndRenderFmcForFamily === 'function') {
+      _loadAndRenderFmcForFamily(famId, 'mfmFmcList').catch(() => {
+        if (fmcListEl) fmcListEl.innerHTML =
+          '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0">Nenhum integrante cadastrado.</div>';
+      });
+    } else {
+      fmcListEl.innerHTML =
+        '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0">Módulo não disponível.</div>';
+    }
+  }
+
+  // ── Nova Família: sempre visível (acesso já validado em openMyFamilyMgmt) ──
+  const newFamSec = document.getElementById('mfmNewFamilySection');
+  if (newFamSec) newFamSec.style.display = '';
 }
 
 function _mfmRenderFeatures(famId) {
@@ -4244,6 +4263,107 @@ async function mfmRemoveMember(userId, userName, famId) {
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   toast(t('toast.member_removed'), 'success');
   await _mfmRender();
+}
+
+// ── Nova família a partir do painel de gerenciamento ─────────────────────────
+
+function mfmScrollToNewFamily() {
+  // Abre o accordion de nova família e faz scroll até ele
+  const panel = document.getElementById('mfmNewFamPanel');
+  const sec   = document.getElementById('mfmNewFamilySection');
+  if (!panel || !sec) return;
+  // Garantir que a seção está visível
+  sec.style.display = '';
+  // Abrir o accordion se fechado
+  if (panel.style.display === 'none' || !panel.style.display) {
+    mfmToggleNewFamPanel();
+  }
+  // Scroll suave até a seção
+  setTimeout(() => {
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
+}
+
+function mfmToggleNewFamPanel() {
+  const panel   = document.getElementById('mfmNewFamPanel');
+  const trigger = document.getElementById('mfmNewFamTrigger');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : '';
+  if (!isOpen) {
+    // Abre: foca o input e limpa estado anterior
+    const inp = document.getElementById('mfmNewFamName');
+    const err = document.getElementById('mfmNewFamError');
+    const btn = document.getElementById('mfmNewFamBtn');
+    if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 80); }
+    if (err) err.style.display = 'none';
+    if (btn) { btn.disabled = false; btn.textContent = '🏠 Criar família'; }
+    if (trigger) { trigger.style.borderColor = 'var(--accent)'; trigger.style.color = 'var(--accent)'; }
+  } else {
+    if (trigger) { trigger.style.borderColor = ''; trigger.style.color = ''; }
+  }
+}
+
+async function mfmCreateNewFamily() {
+  const inp    = document.getElementById('mfmNewFamName');
+  const err    = document.getElementById('mfmNewFamError');
+  const btn    = document.getElementById('mfmNewFamBtn');
+  const name   = (inp?.value || '').trim();
+
+  const showErr = (msg) => {
+    if (err) { err.textContent = msg; err.style.display = ''; }
+    if (btn) { btn.disabled = false; btn.textContent = '🏠 Criar família'; }
+  };
+
+  if (!name) { showErr('Informe o nome da família.'); inp?.focus(); return; }
+  if (name.length < 2) { showErr('Nome deve ter pelo menos 2 caracteres.'); return; }
+
+  if (err) err.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando...'; }
+
+  try {
+    // 1. Criar a família no banco
+    const { data: newFam, error: famErr } = await sb
+      .from('families')
+      .insert({ name })
+      .select('id, name')
+      .single();
+    if (famErr) throw new Error('Erro ao criar família: ' + famErr.message);
+
+    const newFamId = newFam.id;
+
+    // 2. Associar o usuário atual como owner
+    const userId = currentUser?.id;
+    if (userId) {
+      const { error: memErr } = await sb
+        .from('family_members')
+        .upsert({ user_id: userId, family_id: newFamId, role: 'owner' },
+                { onConflict: 'user_id,family_id' });
+      if (memErr) console.warn('[mfmCreateNewFamily] family_members upsert:', memErr.message);
+    }
+
+    // 3. Atualizar currentUser.families localmente (evita reload completo)
+    if (!currentUser.families) currentUser.families = [];
+    currentUser.families.push({ id: newFamId, name, role: 'owner' });
+
+    // 4. Atualizar cache global de famílias
+    if (!window._families) window._families = [];
+    window._families.push({ id: newFamId, name });
+
+    // 5. Fechar painel de criação
+    mfmToggleNewFamPanel();
+    toast(`✓ Família "${esc(name)}" criada!`, 'success');
+
+    // 6. Mudar para nova família automaticamente
+    await switchFamily(newFamId);
+
+    // 7. Reabrir o painel para mostrar a nova família
+    // (pequeno delay para switchFamily terminar suas animações)
+    setTimeout(() => openMyFamilyMgmt(), 600);
+
+  } catch(e) {
+    showErr(e.message || 'Erro ao criar família.');
+  }
 }
 
 async function mfmAddExisting() {

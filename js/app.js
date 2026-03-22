@@ -485,18 +485,13 @@ function setAppLogo(url){
   const clean = (typeof url === 'string') ? url.trim() : '';
   APP_LOGO_URL = clean || DEFAULT_LOGO_URL;
 
-  // For wizard header use logo2 variant (dark background, no filter CSS)
-  // logo2.png is the dark-background variant — use it directly if APP_LOGO_URL is the default
-  // Dark variant: use same logo.jpg (single logo file)
-  const DARK_LOGO_URL = APP_LOGO_URL || DEFAULT_LOGO_URL;
-
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.src = APP_LOGO_URL;
   });
-  // Wizard header uses logo2 (dark green background, no CSS filter)
+  // Wizard usa logo_wizard.png (versão para fundo escuro/verde)
   const wzEl = document.getElementById('wzLogoImg');
-  if(wzEl) wzEl.src = DARK_LOGO_URL;
+  if(wzEl) wzEl.src = 'logo_wizard.png';
 }
 
 // NOTE: txFilter is part of the app's internal contract (used across modules).
