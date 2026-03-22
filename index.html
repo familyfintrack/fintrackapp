@@ -1419,6 +1419,104 @@
 
       <!-- Main list -->
       <div id="scheduledList"></div>
+      <!-- ── View: Orçamentos ── -->
+      <div id="reportBudgetView" style="display:none">
+
+        <!-- ── Toolbar ────────────────────────────────────────────────────── -->
+        <div class="rbt-toolbar mb-4">
+          <div class="rbt-toolbar-left">
+            <div class="rbt-type-toggle">
+              <button class="rbt-type-btn active" id="rbtBtnMonth" onclick="_rbtSetType('monthly')">Mensal</button>
+              <button class="rbt-type-btn" id="rbtBtnAnnual" onclick="_rbtSetType('annual')">Anual</button>
+            </div>
+            <input type="month" id="rbtMonth" class="form-input" style="width:auto">
+            <input type="number" id="rbtYear" class="form-input" style="width:90px;display:none" min="2020" max="2035">
+          </div>
+          <div class="rbt-toolbar-right">
+            <!-- Ordenação -->
+            <select id="rbtSort" class="form-select" style="font-size:.78rem;padding:5px 8px;width:auto"
+              onchange="_rbtLoad()">
+              <option value="status">Por status</option>
+              <option value="pct_desc">% maior primeiro</option>
+              <option value="pct_asc">% menor primeiro</option>
+              <option value="used_desc">Maior gasto</option>
+              <option value="name">Nome A→Z</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="_rbtLoad()" style="flex-shrink:0">↻</button>
+          </div>
+        </div>
+
+        <!-- ── KPI strip ──────────────────────────────────────────────────── -->
+        <div class="rbt-kpi-strip mb-4" id="rbtKpis"></div>
+
+        <!-- ── Barra de progresso geral ──────────────────────────────────── -->
+        <div id="rbtTotalBar" class="rbt-total-bar mb-4" style="display:none">
+          <div class="rbt-total-bar-header">
+            <span class="rbt-total-bar-label">Consumo total do orçamento</span>
+            <span class="rbt-total-bar-pct" id="rbtTotalPct">0%</span>
+          </div>
+          <div class="rbt-bar-track" style="height:8px">
+            <div class="rbt-bar-fill rbt-total-fill" id="rbtTotalFill" style="width:0%"></div>
+          </div>
+          <div class="rbt-total-bar-sub" id="rbtTotalSub"></div>
+        </div>
+
+        <!-- ── Tabs: Cards / Tabela / Tendência ──────────────────────────── -->
+        <div class="rbt-view-tabs mb-3" id="rbtViewTabs">
+          <button class="rbt-view-tab active" id="rbtTabCards"  onclick="_rbtSwitchView('cards')">
+            ▦ Cards
+          </button>
+          <button class="rbt-view-tab" id="rbtTabTable"  onclick="_rbtSwitchView('table')">
+            ≡ Tabela
+          </button>
+          <button class="rbt-view-tab" id="rbtTabTrend"  onclick="_rbtSwitchView('trend')">
+            ↗ Tendência
+          </button>
+        </div>
+
+        <!-- ── View: Cards ───────────────────────────────────────────────── -->
+        <div id="rbtViewCards">
+          <div class="rbt-grid" id="rbtGrid"></div>
+        </div>
+
+        <!-- ── View: Tabela ──────────────────────────────────────────────── -->
+        <div id="rbtViewTable" style="display:none">
+          <div class="card" style="overflow-x:auto">
+            <table class="rbt-table" id="rbtTable">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th class="rbt-th-num">Limite</th>
+                  <th class="rbt-th-num">Consumido</th>
+                  <th class="rbt-th-num">Disponível</th>
+                  <th class="rbt-th-num">%</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="rbtTableBody"></tbody>
+              <tfoot id="rbtTableFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── View: Tendência (últimos 6 meses) ─────────────────────────── -->
+        <div id="rbtViewTrend" style="display:none">
+          <div class="card mb-3">
+            <div class="card-header">
+              <span class="card-title">Consumo médio vs limite — últimos 6 meses</span>
+            </div>
+            <canvas id="rbtTrendChart" height="220"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Categorias com maior desvio histórico</span>
+            </div>
+            <div id="rbtTrendInsights" style="padding:0 4px 4px"></div>
+          </div>
+        </div>
+
+      </div>
+
     </div>    <!-- IMPORT / BACKUP PAGE -->
     <!-- Feature 4: Lista de Mercado -->
     <div class="page" id="page-grocery">
@@ -1650,103 +1748,6 @@
         <div id="stagingContent"></div>
       </div>
 
-      <!-- ── View: Orçamentos ── -->
-      <div id="reportBudgetView" style="display:none">
-
-        <!-- ── Toolbar ────────────────────────────────────────────────────── -->
-        <div class="rbt-toolbar mb-4">
-          <div class="rbt-toolbar-left">
-            <div class="rbt-type-toggle">
-              <button class="rbt-type-btn active" id="rbtBtnMonth" onclick="_rbtSetType('monthly')">Mensal</button>
-              <button class="rbt-type-btn" id="rbtBtnAnnual" onclick="_rbtSetType('annual')">Anual</button>
-            </div>
-            <input type="month" id="rbtMonth" class="form-input" style="width:auto">
-            <input type="number" id="rbtYear" class="form-input" style="width:90px;display:none" min="2020" max="2035">
-          </div>
-          <div class="rbt-toolbar-right">
-            <!-- Ordenação -->
-            <select id="rbtSort" class="form-select" style="font-size:.78rem;padding:5px 8px;width:auto"
-              onchange="_rbtLoad()">
-              <option value="status">Por status</option>
-              <option value="pct_desc">% maior primeiro</option>
-              <option value="pct_asc">% menor primeiro</option>
-              <option value="used_desc">Maior gasto</option>
-              <option value="name">Nome A→Z</option>
-            </select>
-            <button class="btn btn-ghost btn-sm" onclick="_rbtLoad()" style="flex-shrink:0">↻</button>
-          </div>
-        </div>
-
-        <!-- ── KPI strip ──────────────────────────────────────────────────── -->
-        <div class="rbt-kpi-strip mb-4" id="rbtKpis"></div>
-
-        <!-- ── Barra de progresso geral ──────────────────────────────────── -->
-        <div id="rbtTotalBar" class="rbt-total-bar mb-4" style="display:none">
-          <div class="rbt-total-bar-header">
-            <span class="rbt-total-bar-label">Consumo total do orçamento</span>
-            <span class="rbt-total-bar-pct" id="rbtTotalPct">0%</span>
-          </div>
-          <div class="rbt-bar-track" style="height:8px">
-            <div class="rbt-bar-fill rbt-total-fill" id="rbtTotalFill" style="width:0%"></div>
-          </div>
-          <div class="rbt-total-bar-sub" id="rbtTotalSub"></div>
-        </div>
-
-        <!-- ── Tabs: Cards / Tabela / Tendência ──────────────────────────── -->
-        <div class="rbt-view-tabs mb-3" id="rbtViewTabs">
-          <button class="rbt-view-tab active" id="rbtTabCards"  onclick="_rbtSwitchView('cards')">
-            ▦ Cards
-          </button>
-          <button class="rbt-view-tab" id="rbtTabTable"  onclick="_rbtSwitchView('table')">
-            ≡ Tabela
-          </button>
-          <button class="rbt-view-tab" id="rbtTabTrend"  onclick="_rbtSwitchView('trend')">
-            ↗ Tendência
-          </button>
-        </div>
-
-        <!-- ── View: Cards ───────────────────────────────────────────────── -->
-        <div id="rbtViewCards">
-          <div class="rbt-grid" id="rbtGrid"></div>
-        </div>
-
-        <!-- ── View: Tabela ──────────────────────────────────────────────── -->
-        <div id="rbtViewTable" style="display:none">
-          <div class="card" style="overflow-x:auto">
-            <table class="rbt-table" id="rbtTable">
-              <thead>
-                <tr>
-                  <th>Categoria</th>
-                  <th class="rbt-th-num">Limite</th>
-                  <th class="rbt-th-num">Consumido</th>
-                  <th class="rbt-th-num">Disponível</th>
-                  <th class="rbt-th-num">%</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="rbtTableBody"></tbody>
-              <tfoot id="rbtTableFoot"></tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- ── View: Tendência (últimos 6 meses) ─────────────────────────── -->
-        <div id="rbtViewTrend" style="display:none">
-          <div class="card mb-3">
-            <div class="card-header">
-              <span class="card-title">Consumo médio vs limite — últimos 6 meses</span>
-            </div>
-            <canvas id="rbtTrendChart" height="220"></canvas>
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">Categorias com maior desvio histórico</span>
-            </div>
-            <div id="rbtTrendInsights" style="padding:0 4px 4px"></div>
-          </div>
-        </div>
-
-      </div>
 
     </div>
 
