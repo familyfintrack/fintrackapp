@@ -191,10 +191,6 @@ async function forceActivateModule(modKey, enabled, label) {
 
   const lbl = label || modKey;
   toast(nowOn ? `✓ ${lbl} ativado` : `${lbl} desativado`, 'success');
-
-  // Re-renderiza cards e pills
-  initFamModulesRow();
-  initFamModulesStandalone();
 }
 window.forceActivateModule = forceActivateModule;
 
@@ -534,7 +530,7 @@ function advancePinStep() {
     _pinModalStep = 3;
     document.getElementById('pinStep2').classList.remove('active');
     document.getElementById('pinStep3').classList.add('active');
-    document.getElementById('pinStepBtn').textContent = t('settings.save_pin');
+    document.getElementById('pinStepBtn').textContent = 'Salvar PIN';
     document.getElementById('cp3_0')?.focus();
 
   } else if(_pinModalStep === 3) {
@@ -591,11 +587,6 @@ function loadSettings() {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
-
-  // ── Módulos da família: sempre inicializa (OWNER ou admin vê a seção) ──────
-  // initFamModulesStandalone controla internamente quem pode ver/editar
-  initFamModulesStandalone();
-  initFamModulesRow();
 
   if (isAdmin) {
     // Admin: inicializar formulários das novas seções
@@ -1025,8 +1016,6 @@ async function resetSettingsVisibility() {
 // Aplica a visibilidade das seções para usuário não-admin
 function applySettingsVisibility(vis) {
   const isAdmin = (currentUser?.role === 'admin');
-  initFamModulesRow();
-  initFamModulesStandalone();
   if (isAdmin) return; // admins veem tudo — não aplica restrição
 
   vis = vis || _getSettingsVisibility();
@@ -1288,8 +1277,6 @@ async function _cfgToggleModule(key, famId, label, applyFn) {
     window[applyFn]().catch(() => {});
   }
   toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
-  initFamModulesRow();
-  initFamModulesStandalone();
 
   // ── Persistência no banco via saveModuleFlag (tenta todos os caminhos) ──────
   saveModuleFlag(key, nowOn, famId).catch(() => {

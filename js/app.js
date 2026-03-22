@@ -485,18 +485,13 @@ function setAppLogo(url){
   const clean = (typeof url === 'string') ? url.trim() : '';
   APP_LOGO_URL = clean || DEFAULT_LOGO_URL;
 
-  // For wizard header use logo2 variant (dark background, no filter CSS)
-  // logo2.png is the dark-background variant — use it directly if APP_LOGO_URL is the default
-  // Dark variant: use same logo.jpg (single logo file)
-  const DARK_LOGO_URL = APP_LOGO_URL || DEFAULT_LOGO_URL;
-
   ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.src = APP_LOGO_URL;
   });
-  // Wizard header uses logo2 (dark green background, no CSS filter)
+  // Wizard usa logo_wizard.png (versão para fundo escuro/verde)
   const wzEl = document.getElementById('wzLogoImg');
-  if(wzEl) wzEl.src = DARK_LOGO_URL;
+  if(wzEl) wzEl.src = 'logo_wizard.png';
 }
 
 // NOTE: txFilter is part of the app's internal contract (used across modules).
@@ -1003,6 +998,7 @@ document.addEventListener('i18n:changed', () => {
     } else if (page === 'debts') {
       if (typeof renderDebtsPage === 'function') renderDebtsPage();
     } else if (page === 'ai_insights') {
+      // AI Insights: re-apply DOM labels (heavy re-fetch not needed)
       if (typeof i18nApplyToDOM === 'function') {
         const pg = document.getElementById('page-ai_insights');
         if (pg) i18nApplyToDOM(pg);
@@ -1012,21 +1008,7 @@ document.addEventListener('i18n:changed', () => {
         const pg = document.getElementById('page-import');
         if (pg) i18nApplyToDOM(pg);
       }
-    } else if (page === 'debts') {
-      if (typeof renderDebtsPage === 'function') renderDebtsPage();
-    } else if (page === 'forecast') {
-      if (typeof i18nApplyToDOM === 'function') {
-        const pg = document.getElementById('page-reports');
-        if (pg) i18nApplyToDOM(pg);
-      }
     }
-  } catch(_) {}
-
-  // 6. Apply to any open modals (covers dynamically injected modal content)
-  try {
-    document.querySelectorAll('.modal-overlay.open, .modal-overlay[style*="opacity:1"]').forEach(m => {
-      if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(m);
-    });
   } catch(_) {}
 
   // 5. Sempre re-aplica nav sidebar e bottom-nav para labels traduzidos

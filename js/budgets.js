@@ -218,7 +218,7 @@ async function openBudgetDrilldown(budgetId, catName) {
     return;
   }
   if (!data || !data.length) {
-    if (totalEl) totalEl.textContent = t('budget.no_tx');
+    if (totalEl) totalEl.textContent = 'Nenhuma transação no período';
     document.getElementById('budgetDrillBody').innerHTML =
       '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--muted)">Nenhuma transação no período</td></tr>';
     return;
@@ -432,7 +432,7 @@ function openBudgetModal(id = '') {
   const existing = id ? _budgetCache.find(x => x.id === id) : null;
 
   document.getElementById('budgetId').value = id;
-  document.getElementById('budgetModalTitle').textContent = id ? t('budget.edit') : t('budget.new');
+  document.getElementById('budgetModalTitle').textContent = id ? 'Editar Orçamento' : 'Novo Orçamento';
 
   const btype = existing?.budget_type || _budgetView;
   _setBudgetModalType(btype);
@@ -577,7 +577,7 @@ async function saveBudget() {
 
   if (err) { toast(err.message, 'error'); return; }
   const _isNew=!id;
-  toast(id?t('budget.updated'):t('budget.saved'),'success');
+  toast(id?'Orçamento atualizado!':'Orçamento salvo!','success');
   closeModal('budgetModal');
   await loadBudgets();
   if(_isNew) _scrollTopAndHighlight('.budget-card,.budget-item');

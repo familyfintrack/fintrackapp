@@ -271,7 +271,7 @@ function openCategoryModal(id = '', preParentId = '', preType = '') {
   document.getElementById('categoryType').value  = form.type;
   document.getElementById('categoryIcon').value  = form.icon || '📦';
   document.getElementById('categoryColor').value = form.color || '#2a6049';
-  document.getElementById('categoryModalTitle').textContent = id ? t('category.edit') : (preParentId ? t('category.new_sub') : 'Nova Categoria');
+  document.getElementById('categoryModalTitle').textContent = id ? 'Editar Categoria' : (preParentId ? 'Nova Subcategoria' : 'Nova Categoria');
 
   const sel = document.getElementById('categoryParent');
   sel.innerHTML = '<option value="">— Nenhuma (categoria pai) —</option>' +
