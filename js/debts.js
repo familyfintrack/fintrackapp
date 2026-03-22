@@ -318,15 +318,7 @@ function openDebtModal(debtId = null) {
   const curIdx = debt?.adjustment_type || 'fixed';
   const curCur = debt?.currency || 'BRL';
 
-  // Payee options for creditor select
-  const payeeOptions = (state.payees || []).map(p =>
-    `<option value="${p.id}" ${debt?.creditor_payee_id===p.id?'selected':''}>${esc(p.name)}</option>`
-  ).join('');
-
-  // Currency prefix map
-  const _cPrefix = { BRL:'R$', USD:'US$', EUR:'€' };
-
-  // Index type quick chips
+  // Quick chips for index types
   const _quickIdx = ['fixed','cdi','ipca','selic','poupanca'];
   const indexChips = _quickIdx.map(code => {
     const item = DEBT_INDEX_TYPES.find(i => i.code === code);
@@ -334,22 +326,26 @@ function openDebtModal(debtId = null) {
     return `<button type="button" class="dbt-index-chip${curIdx===code?' active':''}"
       onclick="_dbtPickIndex('${code}')">${_dl(item.label)}</button>`;
   }).join('');
-  // "Outro" chip
-  const _otherChip = `<button type="button" class="dbt-index-chip${!_quickIdx.includes(curIdx)?' active':''}"
+  const _otherActive = !_quickIdx.includes(curIdx);
+  const otherChip = `<button type="button" class="dbt-index-chip${_otherActive?' active':''}"
     onclick="_dbtPickIndex('custom')">Manual / Outro</button>`;
 
-  // Periodicity options
+  // Periodicity & status options
   const periodicityOptions = DEBT_PERIODICITIES.map(p =>
-    `<option value="${p.code}" ${debt?.periodicity===p.code?'selected':''} ${!debt&&p.code==='monthly'?'selected':''}>${_dl(p.label)}</option>`
+    `<option value="${p.code}" ${(debt?.periodicity||'monthly')===p.code?'selected':''}>${_dl(p.label)}</option>`
+  ).join('');
+  const statusOptions = DEBT_STATUSES.map(s =>
+    `<option value="${s.code}" ${(debt?.status||'active')===s.code?'selected':''}>${_dl(s.label)}</option>`
   ).join('');
 
-  // Status options
-  const statusOptions = DEBT_STATUSES.map(s =>
-    `<option value="${s.code}" ${debt?.status===s.code?'selected':''} ${!debt&&s.code==='active'?'selected':''}>${_dl(s.label)}</option>`
-  ).join('');
+  // Pre-fill creditor name for autocomplete
+  const creditorPayeeId = debt?.creditor_payee_id || '';
+  const creditorName = creditorPayeeId
+    ? (state.payees.find(p => p.id === creditorPayeeId)?.name || '')
+    : '';
 
   document.getElementById('debtFormBody').innerHTML = `
-<input type="hidden" id="debtFormId" value="${debtId||''}">
+<input type="hidden" id="debtFormId"    value="${debtId||''}">
 <input type="hidden" id="debtFormIndex" value="${curIdx}">
 
 <!-- ── Seção 1: Identificação ─────────────────────────────────────── -->
@@ -364,28 +360,26 @@ function openDebtModal(debtId = null) {
       <input class="form-input" id="debtFormName" value="${esc(debt?.name||'')}"
         placeholder="${t('dbt.name_placeholder')}" autofocus>
     </div>
-    <div class="form-group full dbt-creditor-wrap">
+
+    <!-- Creditor autocomplete -->
+    <div class="form-group full" style="position:relative">
       <label>${t('dbt.creditor')} *</label>
-      <select class="form-select" id="debtFormCreditor">
-        <option value="">— ${t('ui.select')} credor —</option>
-        ${payeeOptions}
-      </select>
-      <button type="button" class="dbt-add-creditor-btn" onclick="_dbtToggleNewCreditor()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Adicionar novo credor
-      </button>
-      <!-- Inline creditor creation — sem conflito de z-index -->
-      <div class="dbt-inline-new-creditor" id="dbtNewCreditorPanel">
-        <label>Nome do credor *</label>
-        <div class="dbt-inline-new-creditor-row">
-          <input type="text" class="form-input" id="dbtNewCreditorName" placeholder="Ex: Banco Bradesco, Caixa…"
-            style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_dbtSaveNewCreditor();}">
-          <button type="button" class="btn btn-primary btn-sm" onclick="_dbtSaveNewCreditor()"
-            id="dbtNewCreditorBtn">Criar</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="_dbtToggleNewCreditor()">✕</button>
-        </div>
-        <div id="dbtNewCreditorErr" style="display:none;font-size:.73rem;color:var(--red);margin-top:4px"></div>
+      <input type="hidden" id="debtFormCreditor" value="${creditorPayeeId}">
+      <div style="position:relative">
+        <input type="text" class="form-input" id="dbtCreditorName"
+          value="${esc(creditorName)}"
+          placeholder="Buscar credor…  (mín. 3 letras)"
+          autocomplete="off"
+          oninput="_dbtOnCreditorInput(this.value)"
+          onkeydown="_dbtOnCreditorKey(event)"
+          onblur="_dbtOnCreditorBlur()"
+          onfocus="if(this.value.length>=3)_dbtOnCreditorInput(this.value)">
+        <span id="dbtCreditorStatus" style="position:absolute;right:10px;top:50%;
+          transform:translateY(-50%);color:var(--green);font-weight:700;
+          pointer-events:none">${creditorPayeeId?'✓':''}</span>
       </div>
+      <div id="dbtCreditorDropdown" class="payee-dropdown" style="display:none;
+        position:absolute;left:0;right:0;z-index:400;top:calc(100% + 2px)"></div>
     </div>
   </div>
 </div>
@@ -400,16 +394,16 @@ function openDebtModal(debtId = null) {
     <div class="form-group">
       <label>${t('dbt.original_amount')} *</label>
       <div class="dbt-amount-wrap">
-        <span class="dbt-amount-prefix" id="dbtAmountPrefix">${_cPrefix[curCur]||'R$'}</span>
-        <input class="form-input dbt-amount-input" id="debtFormAmount" type="number"
-          step="0.01" min="0.01" placeholder="0,00"
-          value="${debt?.original_amount||''}">
+        <span class="dbt-amount-prefix" id="dbtAmountPrefix">${{BRL:'R$',USD:'US$',EUR:'€'}[curCur]||'R$'}</span>
+        <input type="text" inputmode="numeric" class="form-input dbt-amount-input"
+          id="debtFormAmount" placeholder="0,00" autocomplete="off"
+          value="${debt?.original_amount ? Math.abs(debt.original_amount).toFixed(2).replace('.',',') : ''}">
       </div>
     </div>
     <div class="form-group">
       <label>${t('ui.currency')}</label>
       <div class="dbt-pill-group" style="margin-top:4px">
-        ${['BRL','USD','EUR'].map(c => `
+        ${['BRL','USD','EUR'].map(c=>`
           <button type="button" class="dbt-pill${curCur===c?' active':''}"
             onclick="_dbtPickCurrency('${c}')">${c}</button>`).join('')}
       </div>
@@ -439,10 +433,9 @@ function openDebtModal(debtId = null) {
     </label>
     <div class="dbt-index-chips">
       ${indexChips}
-      ${_otherChip}
+      ${otherChip}
     </div>
   </div>
-  <!-- Taxa fixa: só aparece quando índice = 'fixed' -->
   <div class="dbt-rate-reveal${curIdx==='fixed'?' visible':''}" id="dbtRateReveal">
     <div class="form-group" style="max-width:200px">
       <label>${t('dbt.fixed_rate')} (% a.a.) *</label>
@@ -465,66 +458,141 @@ function openDebtModal(debtId = null) {
   <div class="dbt-form-grid">
     <div class="form-group">
       <label>${t('dbt.contract_ref')}</label>
-      <input class="form-input" id="debtFormContractRef" value="${esc(debt?.contract_ref||'')}"
-        placeholder="Nº contrato, referência…">
+      <input class="form-input" id="debtFormContractRef"
+        value="${esc(debt?.contract_ref||'')}" placeholder="Nº contrato…">
     </div>
     <div class="form-group">
       <label>${t('ui.notes')}</label>
-      <input class="form-input" id="debtFormNotes" value="${esc(debt?.notes||'')}"
-        placeholder="Observações opcionais">
+      <input class="form-input" id="debtFormNotes"
+        value="${esc(debt?.notes||'')}" placeholder="Observações opcionais">
     </div>
   </div>
 </div>`;
 
   document.getElementById('debtFormTitle').textContent = isEdit ? t('dbt.edit') : t('dbt.add');
   openModal('debtFormModal');
-  setTimeout(() => document.getElementById('debtFormName')?.focus(), 120);
+
+  // Bind money mask to amount field (same engine as transactions)
+  // debtFormAmount is in the opt-in list in ui_helpers.js
+  setTimeout(() => {
+    const amtEl = document.getElementById('debtFormAmount');
+    if (amtEl && typeof bindMoneyInput === 'function') {
+      amtEl._moneyBound = false; // force rebind (element recreated via innerHTML)
+      bindMoneyInput(amtEl);
+    }
+    document.getElementById('debtFormName')?.focus();
+  }, 80);
 }
 window.openDebtModal = openDebtModal;
 
-// ── Debt form helpers (pill/chip selectors + inline creditor) ─────────────────
+// ── Debt form: currency & index helpers ──────────────────────────────────────
 
 function _dbtPickCurrency(cur) {
   document.getElementById('debtFormCurrency').value = cur;
   document.querySelectorAll('#debtFormBody .dbt-pill').forEach(b => {
     b.classList.toggle('active', b.textContent.trim() === cur);
   });
-  const prefixMap = { BRL:'R$', USD:'US$', EUR:'€' };
+  const pfxMap = { BRL:'R$', USD:'US$', EUR:'€' };
   const pfx = document.getElementById('dbtAmountPrefix');
-  if (pfx) pfx.textContent = prefixMap[cur] || cur;
+  if (pfx) pfx.textContent = pfxMap[cur] || cur;
 }
 
 function _dbtPickIndex(code) {
   document.getElementById('debtFormIndex').value = code;
   document.querySelectorAll('.dbt-index-chip').forEach(b => {
-    const bCode = b.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
-    b.classList.toggle('active', bCode === code);
+    const m = b.getAttribute('onclick')?.match(/'([^']+)'/);
+    b.classList.toggle('active', m?.[1] === code);
   });
   const reveal = document.getElementById('dbtRateReveal');
   if (reveal) reveal.classList.toggle('visible', code === 'fixed');
 }
 
-function _dbtToggleNewCreditor() {
-  const panel = document.getElementById('dbtNewCreditorPanel');
-  if (!panel) return;
-  const isOpen = panel.classList.contains('visible');
-  panel.classList.toggle('visible', !isOpen);
-  if (!isOpen) setTimeout(() => document.getElementById('dbtNewCreditorName')?.focus(), 80);
-}
+// ── Debt form: creditor autocomplete ─────────────────────────────────────────
 
-async function _dbtSaveNewCreditor() {
-  const inp = document.getElementById('dbtNewCreditorName');
-  const btn = document.getElementById('dbtNewCreditorBtn');
-  const err = document.getElementById('dbtNewCreditorErr');
-  const name = (inp?.value || '').trim();
+let _dbtCreditorBlurTimer = null;
 
-  if (!name) {
-    if (err) { err.textContent = 'Informe o nome do credor.'; err.style.display = ''; }
-    inp?.focus();
+function _dbtOnCreditorInput(val) {
+  const hiddenEl = document.getElementById('debtFormCreditor');
+  const statusEl = document.getElementById('dbtCreditorStatus');
+  // Clear selection if user is typing something different
+  if (hiddenEl && hiddenEl.value) {
+    const cur = state.payees.find(p => p.id === hiddenEl.value);
+    if (cur && cur.name !== val) {
+      hiddenEl.value = '';
+      if (statusEl) statusEl.textContent = '';
+    }
+  }
+  if (val.length < 3) {
+    _dbtHideCreditorDd();
     return;
   }
-  if (err) err.style.display = 'none';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  const q = val.toLowerCase();
+  const matches = (state.payees || []).filter(p =>
+    p.name.toLowerCase().includes(q)
+  );
+  _dbtShowCreditorDd(matches, val);
+}
+
+function _dbtShowCreditorDd(matches, typed) {
+  const dd = document.getElementById('dbtCreditorDropdown');
+  if (!dd) return;
+
+  let html = '';
+  matches.slice(0, 8).forEach(p => {
+    // Highlight match safely without regex special char issues
+    const _q = esc(typed);
+    const _n = esc(p.name);
+    const _idx = _n.toLowerCase().indexOf(_q.toLowerCase());
+    const hi = _idx >= 0
+      ? _n.slice(0,_idx) + '<mark style="background:var(--accent-lt);color:var(--accent);border-radius:2px">'
+        + _n.slice(_idx, _idx+_q.length) + '</mark>' + _n.slice(_idx+_q.length)
+      : _n;
+    html += `<div class="payee-opt" onmousedown="event.preventDefault()"
+      onclick="_dbtSelectCreditor('${p.id}','${esc(p.name).replace(/'/g,"\'")}')">
+      <span class="payee-opt-icon">🏦</span>
+      <div>
+        <div class="payee-opt-name">${hi}</div>
+        <div class="payee-opt-sub">Credor existente</div>
+      </div>
+    </div>`;
+  });
+
+  // "Criar novo" option
+  html += `<div class="payee-opt payee-opt-create" onmousedown="event.preventDefault()"
+    onclick="_dbtCreateAndSelectCreditor()">
+    <span class="payee-opt-icon">＋</span>
+    <div>
+      <div class="payee-opt-name">Criar <strong>"${esc(typed)}"</strong> como credor</div>
+      <div class="payee-opt-sub">Novo beneficiário</div>
+    </div>
+  </div>`;
+
+  dd.innerHTML = html;
+  dd.style.display = 'block';
+}
+
+function _dbtHideCreditorDd() {
+  const dd = document.getElementById('dbtCreditorDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function _dbtSelectCreditor(id, name) {
+  document.getElementById('debtFormCreditor').value = id;
+  document.getElementById('dbtCreditorName').value  = name;
+  const st = document.getElementById('dbtCreditorStatus');
+  if (st) st.textContent = '✓';
+  _dbtHideCreditorDd();
+}
+
+async function _dbtCreateAndSelectCreditor() {
+  const inp  = document.getElementById('dbtCreditorName');
+  const name = (inp?.value || '').trim();
+  if (!name) { toast('Informe o nome do credor', 'error'); inp?.focus(); return; }
+
+  _dbtHideCreditorDd();
+  const origPh = inp.placeholder;
+  inp.disabled = true;
+  inp.placeholder = '⏳ Criando…';
 
   try {
     const { data, error } = await sb
@@ -532,34 +600,56 @@ async function _dbtSaveNewCreditor() {
       .insert({ name, type: 'beneficiario', family_id: famId() })
       .select('id,name')
       .single();
-
     if (error) throw error;
 
-    // Refresh state and rebuild select with new option selected
     await loadPayees(true);
-    const sel = document.getElementById('debtFormCreditor');
-    if (sel) {
-      const opt = document.createElement('option');
-      opt.value = data.id;
-      opt.textContent = esc(data.name);
-      opt.selected = true;
-      sel.appendChild(opt);
-      sel.value = data.id;
-    }
-
+    _dbtSelectCreditor(data.id, data.name);
     toast(`✓ "${esc(data.name)}" criado como credor`, 'success');
-    _dbtToggleNewCreditor();
-    if (inp) inp.value = '';
   } catch (e) {
-    if (err) { err.textContent = 'Erro: ' + (e.message || e); err.style.display = ''; }
+    toast('Erro ao criar credor: ' + (e.message || e), 'error');
+    inp.value = name;
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Criar'; }
+    inp.disabled = false;
+    inp.placeholder = origPh;
   }
 }
-window._dbtPickCurrency    = _dbtPickCurrency;
-window._dbtPickIndex       = _dbtPickIndex;
-window._dbtToggleNewCreditor = _dbtToggleNewCreditor;
-window._dbtSaveNewCreditor = _dbtSaveNewCreditor;
+
+function _dbtOnCreditorKey(e) {
+  const dd = document.getElementById('dbtCreditorDropdown');
+  if (!dd || dd.style.display === 'none') return;
+  const opts = dd.querySelectorAll('.payee-opt');
+  if (!opts.length) return;
+  let idx = parseInt(dd.dataset.focusIdx || '-1');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    idx = Math.min(idx + 1, opts.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    idx = Math.max(idx - 1, 0);
+  } else if (e.key === 'Enter' && idx >= 0) {
+    e.preventDefault();
+    opts[idx]?.click();
+    return;
+  } else if (e.key === 'Escape') {
+    _dbtHideCreditorDd();
+    return;
+  }
+  dd.dataset.focusIdx = idx;
+  opts.forEach((o, i) => o.classList.toggle('focused', i === idx));
+  opts[idx]?.scrollIntoView({ block: 'nearest' });
+}
+
+function _dbtOnCreditorBlur() {
+  _dbtCreditorBlurTimer = setTimeout(_dbtHideCreditorDd, 200);
+}
+
+window._dbtPickCurrency         = _dbtPickCurrency;
+window._dbtPickIndex            = _dbtPickIndex;
+window._dbtOnCreditorInput      = _dbtOnCreditorInput;
+window._dbtOnCreditorKey        = _dbtOnCreditorKey;
+window._dbtOnCreditorBlur       = _dbtOnCreditorBlur;
+window._dbtSelectCreditor       = _dbtSelectCreditor;
+window._dbtCreateAndSelectCreditor = _dbtCreateAndSelectCreditor;
 
 function _onDebtIndexChange() {
   const val = document.getElementById('debtFormIndex')?.value;
@@ -617,7 +707,10 @@ async function saveDebt() {
   const id       = document.getElementById('debtFormId').value;
   const name     = document.getElementById('debtFormName').value.trim();
   const creditor = document.getElementById('debtFormCreditor').value;
-  const amount   = parseFloat(document.getElementById('debtFormAmount').value);
+  // debtFormAmount is a money-masked text field — use getAmtField to parse BR format
+  const amount   = (typeof getAmtField === 'function')
+    ? getAmtField('debtFormAmount')
+    : parseFloat((document.getElementById('debtFormAmount')?.value||'').replace(/\./g,'').replace(',','.')) || 0;
   const currency = document.getElementById('debtFormCurrency').value;
   const startDate= document.getElementById('debtFormStartDate').value;
   const status   = document.getElementById('debtFormStatus').value;

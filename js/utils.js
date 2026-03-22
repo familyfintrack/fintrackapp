@@ -464,6 +464,18 @@ function applyCatSuggestion() {
 // ── payee AC context helpers ─────────────────────────────────────────────────
 // ctx = 'tx' (transaction modal) | 'sc' (scheduled modal)
 function payeeCtx(ctx) {
+  // 'dbt' context: creditor autocomplete inside the debt form modal
+  if (ctx === 'dbt') {
+    return {
+      idEl:     document.getElementById('dbtPayeeId'),
+      nameEl:   document.getElementById('dbtPayeeName'),
+      statusEl: document.getElementById('dbtPayeeStatus'),
+      ddEl:     document.getElementById('dbtPayeeDropdown'),
+      bannerEl: null,
+      typeEl:   null,
+      ctx:      'dbt',
+    };
+  }
   const p = ctx === 'sc' ? 'sc' : 'tx';
   return {
     idEl:     document.getElementById(p + 'PayeeId'),
