@@ -10011,20 +10011,45 @@ tr.reconcile-checked td { opacity: 1 !important; }
   font-family: var(--font-serif, inherit);
 }
 
-/* On mobile: hide Conta and Beneficiário to give space to Descrição */
+/* ── Mobile: tabela de transações ocupa 100% sem scroll horizontal ── */
 @media (max-width: 640px) {
-  .rpt-col-acct, .rpt-col-pay { display: none; }
-  .rpt-td-acct,  .rpt-td-pay  { display: none !important; }
-  .rpt-col-cat  { width: 80px; }
-  .rpt-col-amt  { width: 88px; }
-  .rpt-col-date { width: 82px; }
+  /* Wrapper sem overflow-x para não criar scroll lateral */
+  .rpt-tx-table { table-layout: auto !important; width: 100% !important; }
+
+  /* Esconde colunas Conta e Beneficiário (col + th + td) */
+  .rpt-col-acct, .rpt-col-pay          { display: none !important; }
+  .rpt-td-acct,  .rpt-td-pay           { display: none !important; }
+  thead .rpt-td-acct, thead .rpt-td-pay { display: none !important; }
+
+  /* Categoria compacta */
+  .rpt-col-cat  { width: 76px; }
+  .rpt-td-cat   { width: 76px; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Valor alinhado à direita com largura fixa */
+  .rpt-col-amt  { width: 86px; }
+  .rpt-td-amt   { width: 86px; }
+
+  /* Data mais compacta */
+  .rpt-col-date { width: 78px; }
+  .rpt-td-date  { width: 78px; font-size: .74rem; padding: 6px 4px 6px 8px; }
+
+  /* Descrição ocupa todo o espaço restante */
+  .rpt-td-desc  { padding: 6px 4px; }
+  .rpt-desc-cell { font-size: .8rem; }
+
+  /* Padding menor nas células */
+  .rpt-td-amt   { padding: 6px 8px 6px 4px; font-size: .8rem; }
+  .rpt-td-cat   { padding: 6px 4px; }
 }
 
-/* On very small screens: also hide Categoria */
+/* Telas muito pequenas: esconde Categoria também */
 @media (max-width: 420px) {
-  .rpt-col-cat, .rpt-td-cat { display: none !important; }
-  .rpt-col-amt  { width: 82px; }
-  .rpt-col-date { width: 80px; }
+  .rpt-col-cat, .rpt-td-cat            { display: none !important; }
+  thead .rpt-td-cat                     { display: none !important; }
+  .rpt-col-amt  { width: 84px; }
+  .rpt-td-amt   { width: 84px; font-size: .79rem; }
+  .rpt-col-date { width: 76px; }
+  .rpt-td-date  { width: 76px; font-size: .72rem; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -13004,4 +13029,135 @@ tr.reconcile-checked td { opacity: 1 !important; }
   color: var(--muted);
   margin-top: 1px;
   display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FORECAST — Filtro mobile-first + categoria abaixo da descrição
+═══════════════════════════════════════════════════════════════════ */
+
+/* Container do filtro */
+.fc-filter-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Linha 1: datas lado a lado */
+.fc-filter-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Linha 2: contas + opções */
+.fc-filter-row2 {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.fc-filter-field { display: flex; flex-direction: column; gap: 4px; }
+
+.fc-filter-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+
+.fc-filter-input {
+  width: 100%;
+  font-size: .82rem;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+  box-sizing: border-box;
+}
+.fc-filter-input:focus { outline: none; border-color: var(--accent); }
+
+.fc-filter-opts { flex-shrink: 0; }
+
+.fc-filter-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 7px 0;
+  white-space: nowrap;
+  color: var(--text);
+}
+.fc-filter-check input[type=checkbox] {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+/* Categoria abaixo da descrição */
+.forecast-category {
+  font-size: .72rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 0;
+  line-height: 1.2;
+  margin-top: 1px;
+}
+.forecast-cat-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* Linha de beneficiário só aparece se tiver conteúdo */
+.forecast-line.forecast-payee:empty { display: none; }
+
+/* Mobile: filtro e tabela */
+@media (max-width: 480px) {
+  .fc-filter-dates {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fc-filter-row2 {
+    grid-template-columns: 1fr;
+  }
+  .fc-filter-opts {
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .fc-filter-check { padding: 4px 0; }
+
+  /* Tabela forecast mobile: células mais compactas */
+  .forecast-tx-row td { padding: 6px 6px !important; }
+  .forecast-date-cell { width: 66px !important; padding-right: 4px !important; }
+  .forecast-date-main { font-size: .72rem !important; }
+  .forecast-title     { font-size: .82rem !important; }
+  .forecast-category  { font-size: .69rem !important; }
+  .forecast-payee     { font-size: .7rem !important; }
+  .forecast-amount-main { font-size: .82rem !important; }
+  .forecast-run-bal   { font-size: .68rem !important; }
+  .forecast-amount-cell { min-width: 80px !important; }
+}
+
+/* ── Relatório de Transações: sem scroll horizontal no mobile ── */
+@media (max-width: 640px) {
+  #reportTxView .table-wrap {
+    overflow-x: hidden;
+  }
 }
