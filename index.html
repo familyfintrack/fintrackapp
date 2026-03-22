@@ -4907,9 +4907,23 @@
             <div class="mfm2-hero-name" id="mfmFamilyName">Minha Família</div>
             <div class="mfm2-hero-sub" id="mfmFamilyDesc"></div>
           </div>
-          <button class="mfm2-close-btn" onclick="closeModal('myFamilyMgmtModal')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="mfmNewFamQuickBtn"
+                    onclick="mfmScrollToNewFamily()"
+                    title="Criar nova família"
+                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;
+                           border-radius:20px;border:1.5px solid rgba(255,255,255,.35);
+                           background:rgba(255,255,255,.15);color:#fff;font-size:.75rem;
+                           font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap"
+                    onmouseover="this.style.background='rgba(255,255,255,.25)'"
+                    onmouseout="this.style.background='rgba(255,255,255,.15)'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova família
+            </button>
+            <button class="mfm2-close-btn" onclick="closeModal('myFamilyMgmtModal')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         </div>
         <!-- Family tabs (multi-family) -->
         <div id="mfmFamilyTabs" class="mfm2-family-tabs" style="display:none"></div>
@@ -4977,6 +4991,60 @@
             </div>
           </div>
         </div>
+
+        <!-- ── Integrantes da família (pais, filhos, etc) ── -->
+        <div class="mfm2-section" id="mfmFmcSection">
+          <div class="mfm2-section-hd" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div>
+              <span class="mfm2-section-title">👨‍👩‍👧 Integrantes</span>
+              <span class="mfm2-section-sub">Pais, filhos e demais membros da família</span>
+            </div>
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0;white-space:nowrap"
+              onclick="openFamilyMemberFormForFamily(_mfmActiveFamilyId)">+ Adicionar</button>
+          </div>
+          <!-- Lista renderizada dinamicamente por _loadAndRenderFmcForFamily() -->
+          <div id="mfmFmcList" style="min-height:32px">
+            <div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px 0">
+              Carregando integrantes…
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Nova Família ── -->
+        <div class="mfm2-section" id="mfmNewFamilySection" style="display:none">
+          <div class="mfm2-section-hd">
+            <span class="mfm2-section-title">Nova Família</span>
+            <span class="mfm2-section-sub">Crie outra família e alterne entre elas</span>
+          </div>
+
+          <!-- Trigger accordion -->
+          <div class="mfm2-add-accordion" id="mfmNewFamAccordion">
+            <button class="mfm2-add-trigger" onclick="mfmToggleNewFamPanel()" id="mfmNewFamTrigger">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Criar nova família
+            </button>
+            <div id="mfmNewFamPanel" class="mfm2-add-panel" style="display:none">
+              <div class="form-group" style="margin-bottom:0">
+                <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Nome da família *</label>
+                <input type="text" id="mfmNewFamName" class="form-input"
+                  placeholder="Ex: Família Silva"
+                  maxlength="80"
+                  onkeydown="if(event.key==='Enter')mfmCreateNewFamily()">
+              </div>
+              <div id="mfmNewFamError" style="display:none;font-size:.76rem;color:var(--red);
+                padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn btn-ghost btn-sm" onclick="mfmToggleNewFamPanel()">Cancelar</button>
+                <button class="btn btn-primary btn-sm" id="mfmNewFamBtn" onclick="mfmCreateNewFamily()">
+                  🏠 Criar família
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- bottom padding -->
+        <div style="height:20px"></div>
 
       </div><!-- /mfm2-body -->
     </div><!-- /mfm2-sheet -->
@@ -5339,7 +5407,7 @@
     <!-- Header -->
     <div class="wz-header">
       <div class="wz-logo">
-        <img id="wzLogoImg" src="logo.jpg" alt="Family FinTrack" style="height:28px;object-fit:contain">
+        <img id="wzLogoImg" src="logo_wizard.png" alt="Family FinTrack" style="height:28px;object-fit:contain" onerror="this.src='logo.jpg';this.onerror=null">
       </div>
       <button class="wz-close-btn" onclick="_wzDismiss()" title="Pular configuração">✕</button>
     </div>
