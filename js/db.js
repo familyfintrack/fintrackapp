@@ -272,7 +272,23 @@ const _dashboard = {
       const total = state.accounts.reduce((s, a) =>
         s + toBRL(parseFloat(a.balance) || 0, a.currency || 'BRL'), 0);
 
-      return { income, expense, total, pendingCount: pendRes.count || 0 };
+      // Subtrair dívidas ativas do patrimônio (se módulo habilitado)
+      let totalDebt = 0;
+      try {
+        const fid2 = typeof famId === 'function' ? famId() : null;
+        if (fid2) {
+          const { data: debtsData } = await Promise.resolve(
+            sb.from('debts').select('current_balance,original_amount,status,currency')
+              .eq('family_id', fid2).eq('status', 'active')
+          ).catch(() => ({ data: [] }));
+          if (debtsData?.length) {
+            totalDebt = debtsData.reduce((s, d) =>
+              s + toBRL(parseFloat(d.current_balance || d.original_amount) || 0, d.currency || 'BRL'), 0);
+          }
+        }
+      } catch (_) { /* módulo dívidas não habilitado ou sem tabela */ }
+
+      return { income, expense, total: total - totalDebt, pendingCount: pendRes.count || 0 };
     });
   },
 

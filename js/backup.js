@@ -134,27 +134,27 @@ async function _collectFamilyBackupPayload(fid) {
     scheduledIds.length
       ? sb.from('scheduled_occurrences').select('*').in('scheduled_id', scheduledIds)
       : Promise.resolve({ data: [] }),
-    sb.from('scheduled_run_logs').select('*').or([
+    Promise.resolve(sb.from('scheduled_run_logs').select('*').or([
       `family_id.eq.${fid}`,
       scheduledIds.length   ? `scheduled_id.in.(${scheduledIds.join(',')})` : null,
       transactionIds.length ? `transaction_id.in.(${transactionIds.join(',')})` : null,
-    ].filter(Boolean).join(',')).catch(() => ({ data: [] })),
+    ].filter(Boolean).join(','))).catch(() => ({ data: [] })),
     (priceItemIds.length || priceStoreIds.length)
-      ? sb.from('price_history').select('*').or([
+      ? Promise.resolve(sb.from('price_history').select('*').or([
           `family_id.eq.${fid}`,
           priceItemIds.length  ? `item_id.in.(${priceItemIds.join(',')})` : null,
           priceStoreIds.length ? `store_id.in.(${priceStoreIds.join(',')})` : null,
-        ].filter(Boolean).join(','))
+        ].filter(Boolean).join(','))).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
     debtIds.length
-      ? sb.from('debt_ledger').select('*').in('debt_id', debtIds).catch(() => ({ data: [] }))
+      ? Promise.resolve(sb.from('debt_ledger').select('*').in('debt_id', debtIds)).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
     // Investments — optional module
     qf('investment_positions').catch(() => ({ data: [] })),
     qf('investment_transactions').catch(() => ({ data: [] })),
     qf('investment_price_history').catch(() => ({ data: [] })),
     groceryListIds.length
-      ? sb.from('grocery_items').select('*').in('list_id', groceryListIds).catch(() => ({ data: [] }))
+      ? Promise.resolve(sb.from('grocery_items').select('*').in('list_id', groceryListIds)).catch(() => ({ data: [] }))
       : Promise.resolve({ data: [] }),
   ]);
 
