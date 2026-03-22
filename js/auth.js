@@ -3883,8 +3883,22 @@ async function _checkPendingApprovals() {
 let _mfmActiveFamilyId = null;
 
 async function openMyFamilyMgmt() {
-  // Famílias onde o usuário é owner (pega do cache _families ou busca do banco)
-  let ownedFams = (currentUser?.families || []).filter(f => f.role === 'owner');
+  const _isGlobalAdmin = currentUser?.role === 'admin' || currentUser?.can_admin;
+
+  // Famílias onde o usuário é owner ou admin global
+  let ownedFams = (currentUser?.families || []).filter(f =>
+    f.role === 'owner' || f.role === 'admin' || _isGlobalAdmin
+  );
+
+  // Fallback: se currentUser.families está vazio mas o usuário tem family_id e role owner/admin,
+  // cria uma entrada sintética para não bloquear desnecessariamente
+  if (!ownedFams.length && currentUser?.family_id) {
+    const isOwnerRole = currentUser?.role === 'owner' || currentUser?.role === 'admin' || _isGlobalAdmin;
+    if (isOwnerRole) {
+      ownedFams = [{ id: currentUser.family_id, name: '', role: currentUser.role }];
+    }
+  }
+
   if (!ownedFams.length) { toast('Você não é owner de nenhuma família','warning'); return; }
 
   // Garantir que _families está populado (pode estar vazio se veio direto do perfil)
@@ -4119,9 +4133,29 @@ function _mfmRenderFeatures(famId) {
   })();
 }
 
+/**
+ * Verifica se o usuário atual pode gerenciar a família especificada.
+ * Retorna true para: owner da família, admin global, ou owner global.
+ * Usa currentUser.families[] (role por família) em vez de currentUser.role (role ativo global).
+ */
+function _canManageFamily(famId) {
+  if (!window.currentUser) return false;
+  const u = window.currentUser;
+  // Admin ou owner global: pode gerenciar qualquer família
+  if (u.role === 'admin' || u.can_admin) return true;
+  // Verifica o role específico nessa família
+  const familyEntry = (u.families || []).find(f => String(f.id) === String(famId));
+  if (familyEntry?.role === 'owner' || familyEntry?.role === 'admin') return true;
+  // Fallback: se não tem entry mas é o owner global da família ativa
+  if (u.role === 'owner' && (u.family_id === famId || !famId)) return true;
+  return false;
+}
+
 async function _mfmToggleFeature(key, famId, label, applyFn) {
-  // Apenas OWNER ou admin pode ativar/desativar módulos
-  if (typeof canModifyPreferences === 'function' && !canModifyPreferences()) {
+  // Verifica se o usuário é owner DA FAMÍLIA ESPECÍFICA (não da família ativa global)
+  // Isso corrige o caso onde o usuário é owner da família B mas está ativo na família A.
+  const _isOwnerOfThisFamily = _canManageFamily(famId);
+  if (!_isOwnerOfThisFamily) {
     toast('Apenas owners podem gerenciar módulos.', 'warning');
     return;
   }
