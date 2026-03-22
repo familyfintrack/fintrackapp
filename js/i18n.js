@@ -1060,8 +1060,18 @@ function t(key, vars) {
  */
 async function i18nInit() {
   try {
-    // 1. Detecta idioma preferido
-    const savedLang = localStorage.getItem(I18N_CACHE_LANG_KEY) || I18N_DEFAULT_LANG;
+    // 1. Detecta idioma preferido com hierarquia:
+    //    user.preferred_language (DB) → localStorage → family default → 'pt'
+    //
+    //    Nota: auth.js popula localStorage com preferred_language do usuário
+    //    ANTES de chamar bootApp() → i18nInit() sempre encontra o valor certo.
+    //    Aqui mantemos a leitura do localStorage como fonte primária segura.
+    const userLang    = localStorage.getItem(I18N_CACHE_LANG_KEY);
+    // Family default: tenta ler do cache de preferências (carregado por family_prefs.js)
+    const familyLang  = (typeof getFamilyPreferences === 'function')
+      ? null  // será aplicado depois — family_prefs carrega em paralelo com i18nInit
+      : null;
+    const savedLang   = userLang || familyLang || I18N_DEFAULT_LANG;
     _i18nLang = I18N_SUPPORTED.includes(savedLang) ? savedLang : I18N_DEFAULT_LANG;
 
     // 2. Tenta cache local válido
@@ -1070,7 +1080,7 @@ async function i18nInit() {
       _i18nDict  = cached;
       _i18nReady = true;
       _i18nRunCallbacks();
-      // Revalida em background
+      // Revalida em background (não bloqueia boot)
       _i18nLoadFromDB(_i18nLang, true);
       return;
     }
@@ -1094,13 +1104,22 @@ async function i18nSetLanguage(lang) {
     console.warn('[i18n] Unsupported language:', lang);
     return;
   }
+
+  const prevLang = _i18nLang;
   _i18nLang = lang;
   localStorage.setItem(I18N_CACHE_LANG_KEY, lang);
+
+  // ── FIX: invalida reverse-map ao trocar idioma ───────────────────────────
+  // O reverse-map é construído a partir do PT (língua base) e é reutilizável,
+  // mas o dict de DB pode ter mudado → força rebuild na próxima chamada.
+  _i18nReverseMap = null;
 
   // Carrega novas traduções
   const cached = _i18nReadCache(lang);
   if (cached) {
     _i18nDict = cached;
+    // Background revalidation if cache is stale
+    _i18nLoadFromDB(lang, true).catch(() => {});
   } else {
     await _i18nLoadFromDB(lang, false);
   }
@@ -1108,23 +1127,23 @@ async function i18nSetLanguage(lang) {
   // Atualiza todos os elementos data-i18n na página
   i18nApplyToDOM();
 
-  // Persiste no perfil do usuário (best-effort)
+  // Persiste no perfil do usuário (best-effort, não bloqueia)
   if (window.sb && window.currentUser?.id) {
-    try {
-      await sb.from('app_users')
-        .update({ preferred_language: lang })
-        .eq('id', currentUser.id);
-      if (window.currentUser) window.currentUser.preferred_language = lang;
-    } catch(e) {
-      console.warn('[i18n] Could not save language preference:', e.message);
-    }
+    sb.from('app_users')
+      .update({ preferred_language: lang })
+      .eq('id', currentUser.id)
+      .then(() => { if (window.currentUser) currentUser.preferred_language = lang; })
+      .catch(e => console.warn('[i18n] Could not save language preference:', e.message));
   }
 
   // Atualiza o html lang attribute
   document.documentElement.lang = _i18nLangToLocale(lang);
 
   // Dispara evento para que módulos possam re-renderizar
-  document.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang } }));
+  // Só dispara se idioma realmente mudou (evita re-renders duplos no boot)
+  if (lang !== prevLang || !prevLang) {
+    document.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang, prevLang } }));
+  }
 }
 
 /**

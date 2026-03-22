@@ -546,6 +546,10 @@ async function bootApp(){
       DB.preload(),
       loadAppSettings().catch(e => console.warn('[boot] loadAppSettings (não fatal):', e?.message)),
       (typeof i18nInit === 'function' ? i18nInit() : Promise.resolve()),
+      // Carrega preferências e módulos da família (new centralized service)
+      (typeof getFamilyPreferences === 'function'
+        ? getFamilyPreferences().catch(e => console.warn('[boot] getFamilyPreferences (não fatal):', e?.message))
+        : Promise.resolve()),
     ]);
   } catch(e) {
     toast(t('error.load_data')+' '+e.message,'error');
@@ -962,8 +966,8 @@ document.addEventListener('i18n:changed', () => {
   // 4. Apply data-i18n to all static HTML elements + text-node engine
   if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document);
 
-  // 4. Re-render current page content (JS-rendered strings)
-  // Use lightweight re-render that rebuilds HTML without refetching from DB
+  // 4. Re-render current page content (JS-rendered strings).
+  //    Cobre TODAS as páginas para garantia 100% de consistência de idioma.
   const page = state.currentPage;
   try {
     if (page === 'transactions') {
@@ -992,7 +996,33 @@ document.addEventListener('i18n:changed', () => {
       if (typeof renderInvestments === 'function') renderInvestments();
     } else if (page === 'settings') {
       if (typeof loadSettings === 'function') loadSettings();
+    } else if (page === 'grocery') {
+      // Grocery re-renders lists + items in current language
+      if (typeof _renderGroceryLists === 'function') _renderGroceryLists();
+      if (typeof _renderGroceryItems === 'function') _renderGroceryItems();
+    } else if (page === 'debts') {
+      if (typeof renderDebtsPage === 'function') renderDebtsPage();
+    } else if (page === 'ai_insights') {
+      // AI Insights: re-apply DOM labels (heavy re-fetch not needed)
+      if (typeof i18nApplyToDOM === 'function') {
+        const pg = document.getElementById('page-ai_insights');
+        if (pg) i18nApplyToDOM(pg);
+      }
+    } else if (page === 'import') {
+      if (typeof i18nApplyToDOM === 'function') {
+        const pg = document.getElementById('page-import');
+        if (pg) i18nApplyToDOM(pg);
+      }
     }
+  } catch(_) {}
+
+  // 5. Sempre re-aplica nav sidebar e bottom-nav para labels traduzidos
+  try {
+    if (typeof renderSidebarNav === 'function') renderSidebarNav();
+    if (typeof initBottomNav === 'function') initBottomNav();
+    // Re-aplica data-i18n no sidebar explicitamente
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && typeof i18nApplyToDOM === 'function') i18nApplyToDOM(sidebar);
   } catch(_) {}
 });
 

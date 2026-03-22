@@ -1107,12 +1107,28 @@ function initFamModulesRow() {
 }
 
 async function _cfgToggleModule(key, famId, label, applyFn) {
+  // Access control: only OWNER can toggle modules
+  if (typeof canModifyPreferences === 'function' && !canModifyPreferences()) {
+    toast(typeof t === 'function' ? t('auth.only_owners') : 'Apenas owners podem gerenciar módulos.', 'warning');
+    return;
+  }
+
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
   const wasOn = !!window._familyFeaturesCache[key];
   const nowOn = !wasOn;
   window._familyFeaturesCache[key] = nowOn;
+
   try {
-    await saveAppSetting(key, nowOn);
+    // Derive module name: "prices_enabled_<uuid>" -> "prices"
+    const modKey = key.replace(/_enabled_.*$/, '');
+
+    // Try new centralized service first, fall back to legacy
+    if (typeof updateFamilyPreferences === 'function') {
+      await updateFamilyPreferences({ modules: { [modKey]: nowOn } });
+    } else {
+      await saveAppSetting(key, nowOn);
+    }
+
     if (applyFn && typeof window[applyFn] === 'function') await window[applyFn]();
     toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
   } catch (e) {
