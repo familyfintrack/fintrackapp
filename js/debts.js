@@ -944,7 +944,7 @@ async function deleteDebt(debtId, debtName) {
     <input type="text" id="debtDeleteConfirmInput" class="form-input"
       placeholder="Digite o nome da dívida…"
       oninput="_debtDeleteCheck()"
-      onkeydown="if(event.key==='Enter')_debtDeleteExec('${debtId}','${esc(debtName).replace(/'/g,"\'")}')">`;
+      onkeydown="if(event.key==='Enter'&&!document.getElementById('debtDeleteConfirmBtn').disabled)_debtDeleteFromBtn(document.getElementById('debtDeleteConfirmBtn'))">`; 
 
   const modalHtml = `
     <div class="modal-overlay open" id="debtDeleteConfirmModal" style="z-index:10020"
@@ -964,7 +964,9 @@ async function deleteDebt(debtId, debtName) {
         <div class="modal-footer">
           <button class="btn btn-ghost" onclick="document.getElementById('debtDeleteConfirmModal')?.remove()">Cancelar</button>
           <button class="btn btn-primary" id="debtDeleteConfirmBtn"
-            onclick="_debtDeleteExec('${debtId}','${esc(debtName).replace(/'/g,"\'")}'")"
+            data-debt-id="${debtId}"
+            data-debt-name="${esc(debtName)}"
+            onclick="_debtDeleteFromBtn(this)"
             disabled
             style="background:var(--red);border-color:var(--red);opacity:.5;cursor:not-allowed">
             🗑 Excluir permanentemente
@@ -1026,7 +1028,15 @@ async function _debtDeleteExec(debtId, debtName) {
     if (btn) { btn.disabled = false; btn.textContent = '🗑 Excluir permanentemente'; }
   }
 }
-window._debtDeleteExec = _debtDeleteExec;
+// Helper: reads data-attrs from button (avoids quote-escaping issues in template literals)
+function _debtDeleteFromBtn(btn) {
+  const debtId   = btn?.dataset?.debtId   || '';
+  const debtName = btn?.dataset?.debtName || '';
+  if (!debtId) { toast('Erro: ID da dívida não encontrado', 'error'); return; }
+  _debtDeleteExec(debtId, debtName);
+}
+window._debtDeleteFromBtn = _debtDeleteFromBtn;
+window._debtDeleteExec    = _debtDeleteExec;
 
 // ── BCB API rate fetch ────────────────────────────────────────────────────────
 async function _fetchBcbRate(seriesId) {

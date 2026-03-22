@@ -4107,10 +4107,81 @@ async function _mfmRender() {
     }
   }
 
+  // ── Gestão de Dados: backup, snapshot, cópia, exclusão ──────────────────
+  _mfmRenderDataSection(famId);
+
   // ── Nova Família: sempre visível (acesso já validado em openMyFamilyMgmt) ──
   const newFamSec = document.getElementById('mfmNewFamilySection');
   if (newFamSec) newFamSec.style.display = '';
 }
+
+// ── Data management section: backup, snapshot, copy, delete ─────────────────
+function _mfmRenderDataSection(famId) {
+  const el = document.getElementById('mfmDataActions');
+  if (!el || !famId) return;
+
+  const fam = _families.find(f => f.id === famId) ||
+              (currentUser?.families || []).find(f => f.id === famId);
+  const famName = fam?.name || _familyDisplayName?.(famId, '') || '';
+
+  const isOwner = currentUser?.role === 'admin' || currentUser?.role === 'owner' ||
+    currentUser?.can_admin ||
+    (currentUser?.families || []).some(f => String(f.id) === String(famId) &&
+      (f.role === 'owner' || f.role === 'admin'));
+
+  // Backup/Snapshot card — always available if module active
+  const snapshotBtn = `
+    <button class="mfm2-data-btn" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>openFamilyBackupManager('${famId}','${famName.replace(/'/g,"\'")}'),120)">
+      <div class="mfm2-data-icon" style="background:#eff6ff;color:#2563eb">📸</div>
+      <div class="mfm2-data-info">
+        <span class="mfm2-data-label">Snapshots</span>
+        <span class="mfm2-data-sub">Criar e restaurar backups</span>
+      </div>
+    </button>`;
+
+  // Export JSON backup
+  const exportBtn = `
+    <button class="mfm2-data-btn" onclick="closeModal('myFamilyMgmtModal');setTimeout(exportBackup,120)">
+      <div class="mfm2-data-icon" style="background:#f0fdf4;color:#16a34a">⬇️</div>
+      <div class="mfm2-data-info">
+        <span class="mfm2-data-label">Exportar JSON</span>
+        <span class="mfm2-data-sub">Baixar backup completo</span>
+      </div>
+    </button>`;
+
+  // Copy family — owners only
+  const copyBtn = isOwner ? `
+    <button class="mfm2-data-btn" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>openCopyFamilyModal('${famId}','${famName.replace(/'/g,"\'")}'),120)">
+      <div class="mfm2-data-icon" style="background:#fef3c7;color:#d97706">📋</div>
+      <div class="mfm2-data-info">
+        <span class="mfm2-data-label">Copiar família</span>
+        <span class="mfm2-data-sub">Duplicar dados para outra família</span>
+      </div>
+    </button>` : '';
+
+  // Wipe data — owners only, dangerous
+  const wipeBtn = isOwner ? `
+    <button class="mfm2-data-btn warn" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>wipeFamilyData('${famId}','${famName.replace(/'/g,"\'")}'),200)">
+      <div class="mfm2-data-icon" style="background:#fef3c7;color:#d97706">🗑️</div>
+      <div class="mfm2-data-info">
+        <span class="mfm2-data-label">Limpar dados</span>
+        <span class="mfm2-data-sub">Remove transações e histórico</span>
+      </div>
+    </button>` : '';
+
+  // Delete family — owners only, very dangerous
+  const deleteBtn = isOwner ? `
+    <button class="mfm2-data-btn danger" onclick="closeModal('myFamilyMgmtModal');setTimeout(()=>deleteFamily('${famId}','${famName.replace(/'/g,"\'")}'),200)">
+      <div class="mfm2-data-icon" style="background:#fef2f2;color:#dc2626">⛔</div>
+      <div class="mfm2-data-info">
+        <span class="mfm2-data-label">Excluir família</span>
+        <span class="mfm2-data-sub">Remove a família permanentemente</span>
+      </div>
+    </button>` : '';
+
+  el.innerHTML = snapshotBtn + exportBtn + copyBtn + wipeBtn + deleteBtn;
+}
+window._mfmRenderDataSection = _mfmRenderDataSection;
 
 function _mfmRenderFeatures(famId) {
   const container = document.getElementById('mfmFeatCards');
