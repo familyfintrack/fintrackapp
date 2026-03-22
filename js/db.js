@@ -269,26 +269,32 @@ const _dashboard = {
         if (brl > 0) income += brl; else expense += Math.abs(brl);
       });
 
-      const total = state.accounts.reduce((s, a) =>
-        s + toBRL(parseFloat(a.balance) || 0, a.currency || 'BRL'), 0);
+      // Patrimônio Total:
+      //   + saldo de cada conta (cartão de crédito já entra negativo)
+      //   + para contas de investimento: usa _totalPortfolioBalance (inclui market value das posições)
+      //   - dívidas ativas (current_balance convertido em BRL)
+      const accountTotal = state.accounts.reduce((s, a) => {
+        const bal = (a.type === 'investimento' && a._totalPortfolioBalance != null)
+          ? a._totalPortfolioBalance
+          : (parseFloat(a.balance) || 0);
+        return s + toBRL(bal, a.currency || 'BRL');
+      }, 0);
 
-      // Subtrair dívidas ativas do patrimônio (se módulo habilitado)
-      let totalDebt = 0;
+      // Subtrair dívidas ativas (se módulo habilitado)
+      let debtTotal = 0;
       try {
-        const fid2 = typeof famId === 'function' ? famId() : null;
-        if (fid2) {
-          const { data: debtsData } = await Promise.resolve(
-            sb.from('debts').select('current_balance,original_amount,status,currency')
-              .eq('family_id', fid2).eq('status', 'active')
-          ).catch(() => ({ data: [] }));
-          if (debtsData?.length) {
-            totalDebt = debtsData.reduce((s, d) =>
-              s + toBRL(parseFloat(d.current_balance || d.original_amount) || 0, d.currency || 'BRL'), 0);
-          }
+        const { data: debtsData } = await Promise.resolve(
+          famQ(sb.from('debts').select('current_balance,original_amount,currency').eq('status', 'active'))
+        ).catch(() => ({ data: [] }));
+        if (debtsData?.length) {
+          debtTotal = debtsData.reduce((s, d) =>
+            s + toBRL(parseFloat(d.current_balance ?? d.original_amount) || 0, d.currency || 'BRL'), 0);
         }
-      } catch (_) { /* módulo dívidas não habilitado ou sem tabela */ }
+      } catch (_) { /* tabela não existe — módulo desabilitado */ }
 
-      return { income, expense, total: total - totalDebt, pendingCount: pendRes.count || 0 };
+      const total = accountTotal - debtTotal;
+
+      return { income, expense, total, pendingCount: pendRes.count || 0 };
     });
   },
 
