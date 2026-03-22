@@ -12560,3 +12560,208 @@ tr.reconcile-checked td { opacity: 1 !important; }
   padding: 8px 12px;
   border-radius: 8px;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE PAGE HEADERS — Beneficiários & Preços (v12)
+   Redesign responsivo dos títulos sem impactar desktop.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page header container: layout flexível com wrapping ──────────────────── */
+.page-header-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+.page-header-mobile .page-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.page-header-mobile .page-header-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Título principal das páginas ─────────────────────────────────────────── */
+.page-title-main {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--text);
+  line-height: 1.25;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Subtítulo / context label */
+.page-title-sub {
+  font-size: .72rem;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ── Barra de filtros compacta (mobile) ───────────────────────────────────── */
+.page-filters-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* ── MOBILE ≤ 768px: ajustes críticos ────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sticky header para páginas específicas */
+  #page-payees .section-header,
+  #page-prices .section-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--bg);
+    padding-top: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    /* Safe area (notch) */
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+
+  /* Título de página: tamanho reduzido mas legível */
+  #page-payees .section-title,
+  #page-prices  .section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+    /* Nunca trunca em mobile */
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  /* Header: empilha título em cima, ações abaixo */
+  #page-payees .section-header,
+  #page-prices  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* Ações ficam em linha horizontal, não poluem o título */
+  #page-payees .section-header > div,
+  #page-prices  .section-header > div {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  /* Botões de ação: compactos mas tocáveis (min 44px touch target) */
+  #page-payees .section-header .btn,
+  #page-prices  .section-header .btn {
+    font-size: .75rem;
+    padding: 6px 10px;
+    min-height: 34px;
+    flex-shrink: 0;
+  }
+
+  /* Botão primário: destaque visual mantido */
+  #page-payees .section-header .btn-primary,
+  #page-prices  .section-header .btn-primary {
+    margin-left: auto;  /* empurra para direita */
+  }
+
+  /* Barra de filtros: scroll horizontal em telas pequenas */
+  #page-payees .filters,
+  #page-prices  .filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+  }
+
+  #page-payees .filters::-webkit-scrollbar,
+  #page-prices  .filters::-webkit-scrollbar { display: none; }
+
+  #page-payees .filters > *,
+  #page-prices  .filters > * {
+    flex-shrink: 0;
+  }
+
+  /* Search input: largura generosa */
+  #page-payees .search-wrap,
+  #page-prices  .search-wrap {
+    min-width: 200px;
+    flex: 1;
+  }
+
+  /* Select de filtro: não estica demais */
+  #page-payees .filters select,
+  #page-prices  .filters select {
+    max-width: 160px;
+    font-size: .82rem;
+  }
+}
+
+/* ── MOBILE ≤ 480px: extra compacto ──────────────────────────────────────── */
+@media (max-width: 480px) {
+  #page-payees .section-title,
+  #page-prices  .section-title {
+    font-size: 1rem;
+  }
+
+  /* Em telas muito pequenas, botões ghost viram ícone */
+  #page-payees .section-header .btn-ghost,
+  #page-prices  .section-header .btn-ghost {
+    font-size: .7rem;
+    padding: 5px 8px;
+  }
+
+  /* Filtros: full-width stack */
+  #page-payees .filters,
+  #page-prices  .filters {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  #page-payees .search-wrap,
+  #page-prices  .search-wrap {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+}
+
+/* ── DESKTOP ≥ 769px: sem mudanças ───────────────────────────────────────── */
+@media (min-width: 769px) {
+  /* Garante que sticky não afeta desktop */
+  #page-payees .section-header,
+  #page-prices  .section-header {
+    position: static;
+    border-bottom: none;
+  }
+  /* Restaura layout horizontal desktop */
+  #page-payees .section-header,
+  #page-prices  .section-header {
+    flex-direction: row;
+    align-items: center;
+  }
+  #page-payees .section-header > div,
+  #page-prices  .section-header > div {
+    width: auto;
+  }
+}
