@@ -288,7 +288,7 @@
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-primary btn-sm" onclick="createUser()">Criar Usuário</button>
-          <button class="btn btn-ghost btn-sm" onclick="hideAddUserForm()" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="hideAddUserForm()">Cancelar</button>
         </div>
       </div>
 
@@ -324,8 +324,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('editUserModal')" data-i18n="ui.cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveEditUser()" data-i18n="ui.save">Salvar</button>
+      <button class="btn btn-ghost" onclick="closeModal('editUserModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEditUser()">Salvar</button>
     </div>
   </div>
 </div>
@@ -594,8 +594,18 @@
         <span></span>
         <button onclick="document.getElementById('dashMemberFilter').value='';document.getElementById('dashRelGroup').value='';loadDashboard()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.85rem;padding:0;line-height:1" title="Limpar filtro">✕</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px">
-        <button class="btn btn-ghost btn-sm" onclick="openDashCustomModal()" title="Personalizar dashboard" style="font-size:.75rem;gap:5px;color:var(--muted);padding:5px 10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
+        <!-- Nome da família ativa -->
+        <div id="dashFamilyName" style="display:flex;align-items:center;gap:6px;
+          font-size:.75rem;font-weight:700;color:var(--text2);
+          background:var(--surface2);border:1px solid var(--border);
+          border-radius:var(--r-sm);padding:5px 10px;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--accent)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span id="dashFamilyNameText">—</span>
+        </div>
+        <!-- Personalizar -->
+        <button class="btn btn-ghost btn-sm" onclick="openDashCustomModal()" title="Personalizar dashboard" style="font-size:.75rem;gap:5px;color:var(--muted);padding:5px 10px;flex-shrink:0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
           Personalizar
         </button>
@@ -731,8 +741,8 @@
             <div id="dashCustomList" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('dashCustomModal')" data-i18n="ui.close">Fechar</button>
-            <button class="btn btn-primary" onclick="_dashCustomSave()" data-i18n="ui.save">Salvar</button>
+            <button class="btn btn-ghost" onclick="closeModal('dashCustomModal')">Fechar</button>
+            <button class="btn btn-primary" onclick="_dashCustomSave()">Salvar</button>
           </div>
         </div>
       </div>
@@ -832,7 +842,7 @@
             <span id="reconcileSum"   class="reconcile-stat reconcile-sum">R$ 0,00</span>
           </div>
           <div class="reconcile-banner-actions">
-            <button class="btn btn-ghost btn-sm" onclick="exitReconcileMode(false)" data-i18n="ui.cancel">Cancelar</button>
+            <button class="btn btn-ghost btn-sm" onclick="exitReconcileMode(false)">Cancelar</button>
             <button class="btn btn-primary btn-sm" id="btnConfirmReconcile" onclick="confirmReconcileMode()">✓ Confirmar</button>
           </div>
         </div>
@@ -1130,25 +1140,6 @@
         </div>
         <div id="forecastAccountsContainer"></div>
       </div>
-
-      <div id="reportBudgetView" style="display:none">
-        <div class="rpt-budget-header mb-4">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <div class="rbt-type-toggle">
-              <button class="rbt-type-btn active" id="rbtBtnMonth" onclick="_rbtSetType('monthly')">Mensal</button>
-              <button class="rbt-type-btn" id="rbtBtnAnnual" onclick="_rbtSetType('annual')">Anual</button>
-            </div>
-            <input type="month" id="rbtMonth" class="form-input" style="width:auto">
-            <input type="number" id="rbtYear" class="form-input" style="width:90px;display:none" min="2020" max="2035">
-            <button class="btn btn-ghost btn-sm" onclick="_rbtLoad()">↻ Atualizar</button>
-          </div>
-        </div>
-        <!-- KPI strip -->
-        <div class="rbt-kpi-strip mb-4" id="rbtKpis"></div>
-        <!-- Budget cards grid -->
-        <div class="rbt-grid" id="rbtGrid"></div>
-      </div>
-
     </div>
 
     <!-- Print area (hidden, used for print/PDF) -->
@@ -1175,13 +1166,11 @@
           Requer configuração do EmailJS (botão ⚙️ na barra).
         </div>
         <div class="email-popup-row">
-          <button class="btn btn-ghost" onclick="closeEmailPopup()" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost" onclick="closeEmailPopup()">Cancelar</button>
           <button class="btn btn-primary" onclick="sendReportByEmail()" id="emailSendBtn">Enviar PDF</button>
           <span id="emailStatus" style="font-size:.78rem;color:var(--muted);margin-left:4px;align-self:center"></span>
         </div>
       </div>
-
-
     </div>
 
     <!-- BUDGETS -->
@@ -1300,8 +1289,6 @@
       <!-- Grouped containers -->
       <div id="payeeGroups"></div>
     </div>
-
-
 
     <!-- SCHEDULED TRANSACTIONS -->
     <div class="page" id="page-scheduled">
@@ -1422,16 +1409,113 @@
             <span id="scheduledUpcomingTotal" class="badge badge-amber"></span>
             <svg id="upcomingCardArrow" width="14" height="14" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                 style="color:var(--muted);transition:transform .2s;transform:rotate(-90deg)">
+                 style="color:var(--muted);transition:transform .2s;transform:rotate(0deg)">
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </div>
         </div>
-        <div id="scheduledUpcomingList" class="sc-upcoming-list" style="display:none"></div>
+        <div id="scheduledUpcomingList" class="sc-upcoming-list"></div>
       </div>
 
       <!-- Main list -->
       <div id="scheduledList"></div>
+      <!-- ── View: Orçamentos ── -->
+      <div id="reportBudgetView" style="display:none">
+
+        <!-- ── Toolbar ────────────────────────────────────────────────────── -->
+        <div class="rbt-toolbar mb-4">
+          <div class="rbt-toolbar-left">
+            <div class="rbt-type-toggle">
+              <button class="rbt-type-btn active" id="rbtBtnMonth" onclick="_rbtSetType('monthly')">Mensal</button>
+              <button class="rbt-type-btn" id="rbtBtnAnnual" onclick="_rbtSetType('annual')">Anual</button>
+            </div>
+            <input type="month" id="rbtMonth" class="form-input" style="width:auto">
+            <input type="number" id="rbtYear" class="form-input" style="width:90px;display:none" min="2020" max="2035">
+          </div>
+          <div class="rbt-toolbar-right">
+            <!-- Ordenação -->
+            <select id="rbtSort" class="form-select" style="font-size:.78rem;padding:5px 8px;width:auto"
+              onchange="_rbtLoad()">
+              <option value="status">Por status</option>
+              <option value="pct_desc">% maior primeiro</option>
+              <option value="pct_asc">% menor primeiro</option>
+              <option value="used_desc">Maior gasto</option>
+              <option value="name">Nome A→Z</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="_rbtLoad()" style="flex-shrink:0">↻</button>
+          </div>
+        </div>
+
+        <!-- ── KPI strip ──────────────────────────────────────────────────── -->
+        <div class="rbt-kpi-strip mb-4" id="rbtKpis"></div>
+
+        <!-- ── Barra de progresso geral ──────────────────────────────────── -->
+        <div id="rbtTotalBar" class="rbt-total-bar mb-4" style="display:none">
+          <div class="rbt-total-bar-header">
+            <span class="rbt-total-bar-label">Consumo total do orçamento</span>
+            <span class="rbt-total-bar-pct" id="rbtTotalPct">0%</span>
+          </div>
+          <div class="rbt-bar-track" style="height:8px">
+            <div class="rbt-bar-fill rbt-total-fill" id="rbtTotalFill" style="width:0%"></div>
+          </div>
+          <div class="rbt-total-bar-sub" id="rbtTotalSub"></div>
+        </div>
+
+        <!-- ── Tabs: Cards / Tabela / Tendência ──────────────────────────── -->
+        <div class="rbt-view-tabs mb-3" id="rbtViewTabs">
+          <button class="rbt-view-tab active" id="rbtTabCards"  onclick="_rbtSwitchView('cards')">
+            ▦ Cards
+          </button>
+          <button class="rbt-view-tab" id="rbtTabTable"  onclick="_rbtSwitchView('table')">
+            ≡ Tabela
+          </button>
+          <button class="rbt-view-tab" id="rbtTabTrend"  onclick="_rbtSwitchView('trend')">
+            ↗ Tendência
+          </button>
+        </div>
+
+        <!-- ── View: Cards ───────────────────────────────────────────────── -->
+        <div id="rbtViewCards">
+          <div class="rbt-grid" id="rbtGrid"></div>
+        </div>
+
+        <!-- ── View: Tabela ──────────────────────────────────────────────── -->
+        <div id="rbtViewTable" style="display:none">
+          <div class="card" style="overflow-x:auto">
+            <table class="rbt-table" id="rbtTable">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th class="rbt-th-num">Limite</th>
+                  <th class="rbt-th-num">Consumido</th>
+                  <th class="rbt-th-num">Disponível</th>
+                  <th class="rbt-th-num">%</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="rbtTableBody"></tbody>
+              <tfoot id="rbtTableFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── View: Tendência (últimos 6 meses) ─────────────────────────── -->
+        <div id="rbtViewTrend" style="display:none">
+          <div class="card mb-3">
+            <div class="card-header">
+              <span class="card-title">Consumo médio vs limite — últimos 6 meses</span>
+            </div>
+            <canvas id="rbtTrendChart" height="220"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Categorias com maior desvio histórico</span>
+            </div>
+            <div id="rbtTrendInsights" style="padding:0 4px 4px"></div>
+          </div>
+        </div>
+
+      </div>
 
     </div>    <!-- IMPORT / BACKUP PAGE -->
     <!-- Feature 4: Lista de Mercado -->
@@ -1664,7 +1748,6 @@
         <div id="stagingContent"></div>
       </div>
 
-      <!-- ── View: Orçamentos ── -->
 
     </div>
 
@@ -1724,25 +1807,9 @@
             <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
           </div>
 
-          <div class="cfg-row" id="settingsFamilyMgmtRow">
-            <span class="cfg-row-icon" style="background:#dcfce7">🏠</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Gestão da Família</span>
-              <span class="cfg-row-sub">Membros, convites e configurações da família ativa</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="openMyFamilyMgmt()">Abrir</button>
-          </div>
+          <!-- Gestão da família: acessível via menu do usuário (avatar) → Gerenciar minha família -->
 
-          <div class="cfg-row" id="famModulesRow" style="display:none;align-items:flex-start;flex-direction:column;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px;width:100%">
-              <span class="cfg-row-icon" style="background:var(--green-lt)">🧩</span>
-              <div class="cfg-row-info">
-                <span class="cfg-row-label">Módulos da Família</span>
-                <span class="cfg-row-sub">Ative ou desative funcionalidades</span>
-              </div>
-            </div>
-            <div class="fam-mod-pills" id="famModulesPills" style="width:100%;padding-left:38px"></div>
-          </div>
+
 
           <div id="settingsVisibilitySection" style="display:none">
             
@@ -1750,23 +1817,7 @@
         </div>
       </div>
 
-      <!-- ══ MÓDULOS DA FAMÍLIA ══ -->
-      <!-- Seção dedicada de ativação de módulos — visível para OWNER/admin -->
-      <div class="cfg-section" id="cfgSec_features_wrap" style="display:none">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_features')">
-          <span class="cfg-sec-icon" style="background:var(--green-lt)">🧩</span>
-          <span class="cfg-sec-title" data-i18n="cfg.modules">Módulos</span>
-          <span class="cfg-sec-arr" id="cfgArr_features">▾</span>
-        </button>
-        <div class="cfg-sec-body open" id="cfgSec_features">
-          <p style="font-size:.78rem;color:var(--muted);margin:0 0 14px" id="famModulesMsg">
-            Ative ou desative funcionalidades opcionais para sua família.<br>
-            <em>Apenas o proprietário (owner) pode alterar estas configurações.</em>
-          </p>
-          <div class="fam-features-grid" id="famModulesPillsStandalone"></div>
-        </div>
-      </div>
-
+      
       <!-- ══ APARÊNCIA (admin) ══ -->
       <div class="cfg-section" id="logoSettingsSection" style="display:none">
         <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_aparencia')">
@@ -1829,7 +1880,7 @@
               <span class="cfg-row-label">Service Role Key <span style="font-size:.65rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px">Admin</span></span>
               <div style="display:flex;gap:5px;margin-top:4px">
                 <input type="password" id="serviceRoleKeyInput" placeholder="eyJhbGc..." autocomplete="off" style="flex:1;font-size:.75rem;font-family:monospace;min-width:0">
-                <button class="btn btn-ghost btn-sm" onclick="saveServiceRoleKey()" data-i18n="ui.save">Salvar</button>
+                <button class="btn btn-ghost btn-sm" onclick="saveServiceRoleKey()">Salvar</button>
                 <button class="btn btn-ghost btn-sm" onclick="clearServiceRoleKey()" style="color:var(--muted)">✕</button>
               </div>
               <div id="serviceRoleKeyStatus" style="font-size:.7rem;margin-top:3px;color:var(--muted)"></div>
@@ -2592,7 +2643,7 @@
             <input type="hidden" id="uAvatarRemoveFlag" value="">
             <div style="display:flex;gap:8px">
               <button class="btn btn-primary btn-sm" onclick="saveUser()">💾 Salvar</button>
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('userFormArea').style.display='none'" data-i18n="ui.cancel">Cancelar</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('userFormArea').style.display='none'">Cancelar</button>
             </div>
           </div>
           <!-- Users list -->
@@ -2634,7 +2685,7 @@
             </div>
             <div style="display:flex;gap:8px;margin-top:10px">
               <button class="btn btn-primary btn-sm" onclick="saveFamily()">💾 Salvar</button>
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('familyFormArea').style.display='none'" data-i18n="ui.cancel">Cancelar</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('familyFormArea').style.display='none'">Cancelar</button>
             </div>
           </div>
           <!-- Families list -->
@@ -2681,7 +2732,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('aiConfigModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('aiConfigModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveAiConfig()">💾 Salvar chave</button>
     </div>
   </div>
@@ -2779,7 +2830,7 @@
 
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('emailjsModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('emailjsModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveEmailJSConfig()">💾 Salvar configuração</button>
     </div>
   </div>
@@ -3080,8 +3131,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('scheduledModal')" data-i18n="ui.cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveScheduled()" data-i18n="ui.save">Salvar</button>
+      <button class="btn btn-ghost" onclick="closeModal('scheduledModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveScheduled()">Salvar</button>
     </div>
   </div>
 </div>
@@ -3103,7 +3154,7 @@
       <input type="hidden" id="occScId">
     </div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
-      <button class="btn btn-ghost" onclick="closeModal('registerOccModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('registerOccModal')">Cancelar</button>
       <!-- Feature 7: ignore single occurrence -->
       <button class="btn btn-ghost" style="color:var(--muted);font-size:.82rem"
         onclick="ignoreOccurrence(document.getElementById('occScId').value, document.getElementById('occDate').value);closeModal('registerOccModal')"
@@ -3163,7 +3214,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('changePinModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('changePinModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="advancePinStep()" id="pinStepBtn">Próximo</button>
     </div>
   </div>
@@ -3440,7 +3491,7 @@
 
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('txModal')" data-i18n="ui.cancel">Cancelar</button><button class="btn btn-primary" onclick="saveTransaction()" data-i18n="ui.save">Salvar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button><button class="btn btn-primary" onclick="saveTransaction()">Salvar</button></div>
   </div>
 </div>
 
@@ -3494,7 +3545,7 @@
       <div id="consolidateError" style="display:none;color:var(--red);font-size:.82rem;margin-top:6px"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('consolidateModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('consolidateModal')">Cancelar</button>
       <button class="btn btn-primary" id="consolidateSaveBtn" onclick="saveConsolidation()">⚖️ Criar Ajuste</button>
     </div>
   </div>
@@ -3629,7 +3680,7 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')" data-i18n="ui.cancel">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()" data-i18n="ui.save">Salvar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
   </div>
 </div>
 
@@ -3660,7 +3711,7 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
           <button class="btn btn-primary btn-sm" onclick="saveGroup()">💾 Salvar Grupo</button>
-          <button class="btn btn-ghost btn-sm" onclick="cancelGroupEdit()" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="cancelGroupEdit()">Cancelar</button>
         </div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:14px">
@@ -3668,7 +3719,7 @@
         <div id="groupList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('groupModal')" data-i18n="ui.close">Fechar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('groupModal')">Fechar</button></div>
   </div>
 </div>
 
@@ -3809,7 +3860,7 @@
         <div class="form-group"><label>Cor</label><input type="color" id="categoryColor" value="#2a6049"></div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('categoryModal')" data-i18n="ui.cancel">Cancelar</button><button class="btn btn-primary" onclick="saveCategory()" data-i18n="ui.save">Salvar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('categoryModal')">Cancelar</button><button class="btn btn-primary" onclick="saveCategory()">Salvar</button></div>
   </div>
 </div>
 
@@ -3829,7 +3880,7 @@
         </table>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('payeeHistoryModal')" data-i18n="ui.close">Fechar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('payeeHistoryModal')">Fechar</button></div>
   </div>
 </div>
 
@@ -3849,7 +3900,7 @@
         </table>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('categoryHistoryModal')" data-i18n="ui.close">Fechar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('categoryHistoryModal')">Fechar</button></div>
   </div>
 </div>
 
@@ -3869,7 +3920,7 @@
         </table>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('budgetDrilldownModal')" data-i18n="ui.close">Fechar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('budgetDrilldownModal')">Fechar</button></div>
   </div>
 </div>
 
@@ -3950,7 +4001,7 @@
         </div>
       </details>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('payeeModal')" data-i18n="ui.cancel">Cancelar</button><button class="btn btn-primary" onclick="savePayee()" data-i18n="ui.save">Salvar</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('payeeModal')">Cancelar</button><button class="btn btn-primary" onclick="savePayee()">Salvar</button></div>
   </div>
 </div>
 
@@ -4000,7 +4051,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('payeeClipboardModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('payeeClipboardModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="confirmPayeeClipboardImport()" id="payeeClipboardImportBtn" disabled>Importar →</button>
     </div>
   </div>
@@ -4073,7 +4124,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('txClipboardModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('txClipboardModal')">Cancelar</button>
       <button class="btn btn-primary" id="txClipImportBtn" onclick="confirmTxClipImport()" disabled>Importar →</button>
     </div>
   </div>
@@ -4157,8 +4208,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('budgetModal')" data-i18n="ui.cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveBudget()" data-i18n="ui.save">Salvar</button>
+      <button class="btn btn-ghost" onclick="closeModal('budgetModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveBudget()">Salvar</button>
     </div>
   </div>
 </div>
@@ -4191,7 +4242,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('catReassignModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('catReassignModal')">Cancelar</button>
       <button class="btn btn-primary" id="catReassignConfirmBtn"
         style="background:var(--red);border-color:var(--red)"
         onclick="confirmCatReassign()">✅ Transferir e Excluir</button>
@@ -4242,7 +4293,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('payeeReassignModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('payeeReassignModal')">Cancelar</button>
       <button class="btn btn-primary" id="payeeReassignConfirmBtn"
         style="background:var(--red);border-color:var(--red)"
         onclick="confirmPayeeReassign()">✅ Transferir e Excluir</button>
@@ -4323,7 +4374,7 @@
           📧 Um e-mail de boas-vindas será enviado automaticamente ao usuário informando a liberação do acesso e a família vinculada.
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('approvalModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('approvalModal')">Cancelar</button>
           <button class="btn btn-primary btn-sm" onclick="doApproveUser()" style="background:#16a34a">✅ Aprovar e Notificar</button>
         </div>
       </div>
@@ -4353,7 +4404,7 @@
         </div>
         <div id="resetPwdError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('resetPwdModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('resetPwdModal')">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="resetPwdBtn" onclick="doResetUserPwd()">💾 Salvar Nova Senha</button>
         </div>
         <p style="font-size:.75rem;color:var(--muted);margin-top:12px">O usuário será solicitado a trocar a senha no próximo login.</p>
@@ -4465,18 +4516,12 @@
           </div>
         </div>
 
-        <!-- Gerenciar família (só para owners) -->
-        <div id="myProfileFamilyMgmtBtn" style="display:none;margin-bottom:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;gap:8px;font-size:.8rem"
-                  onclick="closeModal('myProfileModal');openMyFamilyMgmt()">
-            🏠 Gerenciar minha família
-          </button>
-        </div>
+        <!-- Gerenciar família: via menu do usuário (avatar topbar) → Gerenciar minha família -->
 
         <div id="myProfileError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;
           padding:7px 11px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('myProfileModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('myProfileModal')">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="myProfileSaveBtn" onclick="saveMyProfile()">💾 Salvar</button>
         </div>
 
@@ -4513,7 +4558,7 @@
           Nenhuma alteração é feita até clicar em <strong>Executar agora</strong>.
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('normalizeNamesPreviewModal')" data-i18n="ui.close">Fechar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('normalizeNamesPreviewModal')">Fechar</button>
           <button class="btn btn-primary btn-sm"
                   onclick="closeModal('normalizeNamesPreviewModal');runNormalizeNames()">▶ Executar agora</button>
         </div>
@@ -4564,7 +4609,7 @@
         </div>
         <div id="pidHistoryList" style="max-height:300px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('priceItemDetailModal')" data-i18n="ui.close">Fechar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('priceItemDetailModal')">Fechar</button>
           <button class="btn btn-ghost btn-sm" id="pidEditBtn" onclick="openEditPriceItem()">✏️ Editar Item</button>
           <button class="btn btn-ghost btn-sm" id="pidDeleteBtn"
                   style="color:var(--red)" onclick="deletePriceItemCurrent()">🗑️ Excluir</button>
@@ -4645,7 +4690,7 @@
 
         <div id="pifError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('priceItemFormModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost" onclick="closeModal('priceItemFormModal')">Cancelar</button>
           <button class="btn btn-primary" onclick="savePriceItem()">💾 Salvar</button>
         </div>
       </div>
@@ -4667,7 +4712,7 @@
       <div id="storePayeeMapBody" style="max-height:65vh;overflow-y:auto;padding:8px 16px"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('storePayeeMapModal')" data-i18n="ui.close">Fechar</button>
+      <button class="btn btn-ghost" onclick="closeModal('storePayeeMapModal')">Fechar</button>
     </div>
   </div>
 </div>
@@ -4719,7 +4764,7 @@
       <input type="hidden" id="ctsType">
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('convertToScheduledModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('convertToScheduledModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveConvertToScheduled()">📅 Criar Programação</button>
     </div>
   </div>
@@ -4768,7 +4813,7 @@
         <div id="rpmItemList" style="max-height:340px;overflow-y:auto;border:1px solid var(--border2);border-radius:var(--r-sm)"></div>
         <div id="rpmError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="closeModal('registerPricesModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost" onclick="closeModal('registerPricesModal')">Cancelar</button>
           <button class="btn btn-primary" id="rpmSaveBtn" onclick="saveRegisterPrices()">💾 Salvar Preços</button>
         </div>
       </div>
@@ -4838,7 +4883,7 @@
         </div>
         <div id="storeFormError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('storeFormModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost" onclick="closeModal('storeFormModal')">Cancelar</button>
           <button class="btn btn-primary" onclick="saveStoreForm()">💾 Salvar</button>
         </div>
       </div>
@@ -4884,7 +4929,7 @@
         </div>
         <div id="aprError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-          <button class="btn btn-ghost" onclick="closeModal('addPriceRecordModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost" onclick="closeModal('addPriceRecordModal')">Cancelar</button>
           <button class="btn btn-primary" id="aprSaveBtn" onclick="saveAddPriceRecord()">💾 Salvar</button>
         </div>
       </div>
@@ -4929,7 +4974,7 @@
           padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
 
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('deleteUserModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('deleteUserModal')">Cancelar</button>
           <button class="btn btn-sm" id="duConfirmBtn"
                   style="background:var(--red);color:#fff;border:none;cursor:pointer;font-family:var(--font-sans)"
                   onclick="confirmDeleteUser()">🗑️ Excluir permanentemente</button>
@@ -4952,9 +4997,23 @@
             <div class="mfm2-hero-name" id="mfmFamilyName">Minha Família</div>
             <div class="mfm2-hero-sub" id="mfmFamilyDesc"></div>
           </div>
-          <button class="mfm2-close-btn" onclick="closeModal('myFamilyMgmtModal')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="mfmNewFamQuickBtn"
+                    onclick="mfmScrollToNewFamily()"
+                    title="Criar nova família"
+                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;
+                           border-radius:20px;border:1.5px solid rgba(255,255,255,.35);
+                           background:rgba(255,255,255,.15);color:#fff;font-size:.75rem;
+                           font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap"
+                    onmouseover="this.style.background='rgba(255,255,255,.25)'"
+                    onmouseout="this.style.background='rgba(255,255,255,.15)'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova família
+            </button>
+            <button class="mfm2-close-btn" onclick="closeModal('myFamilyMgmtModal')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         </div>
         <!-- Family tabs (multi-family) -->
         <div id="mfmFamilyTabs" class="mfm2-family-tabs" style="display:none"></div>
@@ -5002,7 +5061,7 @@
                     <option value="viewer">👁 Visualizador</option>
                     <option value="owner">👑 Owner</option>
                   </select>
-                  <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()" data-i18n="ui.add">Adicionar</button>
+                  <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()">Adicionar</button>
                 </div>
               </div>
               <div id="mfmPaneInvite" class="mfm2-add-pane" style="display:none">
@@ -5022,6 +5081,69 @@
             </div>
           </div>
         </div>
+
+        <!-- ── Integrantes da família (pais, filhos, etc) ── -->
+        <div class="mfm2-section" id="mfmFmcSection">
+          <div class="mfm2-section-hd" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div>
+              <span class="mfm2-section-title">👨‍👩‍👧 Integrantes</span>
+              <span class="mfm2-section-sub">Pais, filhos e demais membros da família</span>
+            </div>
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0;white-space:nowrap"
+              onclick="openFamilyMemberFormForFamily(_mfmActiveFamilyId)">+ Adicionar</button>
+          </div>
+          <!-- Lista renderizada dinamicamente por _loadAndRenderFmcForFamily() -->
+          <div id="mfmFmcList" style="min-height:32px">
+            <div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px 0">
+              Carregando integrantes…
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Gestão de Dados ── -->
+        <div class="mfm2-section" id="mfmDataSection">
+          <div class="mfm2-section-hd">
+            <span class="mfm2-section-title">⚙️ Gestão de Dados</span>
+            <span class="mfm2-section-sub">Backup, snapshots, cópia e exclusão</span>
+          </div>
+          <div id="mfmDataActions" class="mfm2-data-actions"></div>
+        </div>
+
+        <!-- ── Nova Família ── -->
+        <div class="mfm2-section" id="mfmNewFamilySection" style="display:none">
+          <div class="mfm2-section-hd">
+            <span class="mfm2-section-title">Nova Família</span>
+            <span class="mfm2-section-sub">Crie outra família e alterne entre elas</span>
+          </div>
+
+          <!-- Trigger accordion -->
+          <div class="mfm2-add-accordion" id="mfmNewFamAccordion">
+            <button class="mfm2-add-trigger" onclick="mfmToggleNewFamPanel()" id="mfmNewFamTrigger">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Criar nova família
+            </button>
+            <div id="mfmNewFamPanel" class="mfm2-add-panel" style="display:none">
+              <div class="form-group" style="margin-bottom:0">
+                <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Nome da família *</label>
+                <input type="text" id="mfmNewFamName" class="form-input"
+                  placeholder="Ex: Família Silva"
+                  maxlength="80"
+                  onkeydown="if(event.key==='Enter')mfmCreateNewFamily()">
+              </div>
+              <div id="mfmNewFamError" style="display:none;font-size:.76rem;color:var(--red);
+                padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn btn-ghost btn-sm" onclick="mfmToggleNewFamPanel()">Cancelar</button>
+                <button class="btn btn-primary btn-sm" id="mfmNewFamBtn" onclick="mfmCreateNewFamily()">
+                  🏠 Criar família
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- bottom padding -->
+        <div style="height:20px"></div>
 
       </div><!-- /mfm2-body -->
     </div><!-- /mfm2-sheet -->
@@ -5145,7 +5267,7 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeModal('deleteAccountModal')" data-i18n="ui.cancel">Cancelar</button>
+        <button class="btn btn-ghost" onclick="closeModal('deleteAccountModal')">Cancelar</button>
         <button class="btn btn-danger" id="delAccConfirmBtn" onclick="confirmDeleteAccount()" disabled>
           Confirmar Exclusão
         </button>
@@ -5172,7 +5294,7 @@
         </div>
         <div id="changeMyPwdError" style="display:none;color:var(--red);font-size:.82rem;margin-bottom:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="closeModal('changeMyPwdModal')" data-i18n="ui.cancel">Cancelar</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('changeMyPwdModal')">Cancelar</button>
           <button class="btn btn-primary btn-sm" onclick="doChangeMyPwd()">💾 Salvar</button>
         </div>
       </div>
@@ -5220,7 +5342,7 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('normalizePayeesModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('normalizePayeesModal')">Cancelar</button>
       <button class="btn btn-primary" id="normPayeeApplyBtn" onclick="applyNormalizePayees()">✅ Aplicar</button>
     </div>
   </div>
@@ -5242,7 +5364,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('groceryCreateModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('groceryCreateModal')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveGroceryList()">Criar Lista</button>
     </div>
   </div>
@@ -5296,8 +5418,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('groceryAddItemModal')" data-i18n="ui.cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmAddGroceryItem()" data-i18n="ui.add">Adicionar</button>
+      <button class="btn btn-ghost" onclick="closeModal('groceryAddItemModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmAddGroceryItem()">Adicionar</button>
     </div>
   </div>
 </div>
@@ -5325,7 +5447,7 @@
       <div id="groceryReceiptResult" style="display:none"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('groceryReceiptModal')" data-i18n="ui.close">Fechar</button>
+      <button class="btn btn-ghost" onclick="closeModal('groceryReceiptModal')">Fechar</button>
       <button class="btn btn-primary" id="groceryReceiptAiBtn"
               onclick="processGroceryReceiptWithAI()">🤖 Analisar com IA</button>
     </div>
@@ -5362,9 +5484,9 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('addToGroceryModal')" data-i18n="ui.cancel">Cancelar</button>
+      <button class="btn btn-ghost" onclick="closeModal('addToGroceryModal')">Cancelar</button>
       <button class="btn btn-primary" id="addToGroceryConfirmBtn"
-              onclick="confirmAddToGroceryList()" data-i18n="ui.add">Adicionar</button>
+              onclick="confirmAddToGroceryList()">Adicionar</button>
     </div>
   </div>
 </div>
@@ -5384,7 +5506,7 @@
     <!-- Header -->
     <div class="wz-header">
       <div class="wz-logo">
-        <img id="wzLogoImg" src="logo.jpg" alt="Family FinTrack" style="height:28px;object-fit:contain">
+        <img id="wzLogoImg" src="logo_wizard.png" alt="Family FinTrack" style="height:28px;object-fit:contain" onerror="this.src='logo.jpg';this.onerror=null">
       </div>
       <button class="wz-close-btn" onclick="_wzDismiss()" title="Pular configuração">✕</button>
     </div>
@@ -5459,7 +5581,7 @@
         <span>🔑</span><span data-i18n="topbar.change_pwd">Alterar senha</span>
       </button>
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
-              onclick="closeUserMenu();openUserAdmin()">
+              onclick="closeUserMenu();setTimeout(openMyFamilyMgmt,80)">
         <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
@@ -5471,15 +5593,17 @@
 
   <!-- ══ DEBTS MODALS ════════════════════════════════════════════════════════ -->
   <div class="modal-overlay" id="debtFormModal" onclick="if(event.target===this)closeModal('debtFormModal')">
-    <div class="modal" style="max-width:540px"><div class="modal-handle"></div>
+    <div class="modal" style="max-width:600px"><div class="modal-handle"></div>
       <div class="modal-header">
         <span class="modal-title" id="debtFormTitle">Nova Dívida</span>
         <button class="modal-close" onclick="closeModal('debtFormModal')">✕</button>
       </div>
-      <div class="modal-body" id="debtFormBody"></div>
+      <div class="modal-body" id="debtFormBody" style="padding:0;overflow-y:auto"></div>
       <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeModal('debtFormModal')" data-i18n="ui.cancel">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveDebt()" data-i18n="ui.save">Salvar</button>
+        <button class="btn btn-ghost" onclick="closeModal('debtFormModal')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveDebt()" style="min-width:120px">
+          💾 Salvar Dívida
+        </button>
       </div>
     </div>
   </div>
@@ -5502,8 +5626,8 @@
       </div>
       <div class="modal-body" id="debtManualBody"></div>
       <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeModal('debtManualModal')" data-i18n="ui.cancel">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveDebtManualEntry()" data-i18n="ui.save">Salvar</button>
+        <button class="btn btn-ghost" onclick="closeModal('debtManualModal')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveDebtManualEntry()">Salvar</button>
       </div>
     </div>
   </div>
