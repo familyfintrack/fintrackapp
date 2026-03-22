@@ -464,7 +464,11 @@ function setReportView(view) {
   document.getElementById('reportTxView').style.display       = view==='transactions'  ? '' : 'none';
   document.getElementById('reportForecastView').style.display = view==='forecast'      ? '' : 'none';
   document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
-  document.getElementById('reportFilterBar').style.display    = (view==='forecast'||view==='budgets') ? 'none' : '';
+  // Hide the entire filter section (wrapper + bar) for views that don't need filters
+  const _hideFilters = (view === 'forecast' || view === 'budgets');
+  const _filterWrap = document.getElementById('rptFilterWrap');
+  if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
+  document.getElementById('reportFilterBar').style.display = _hideFilters ? 'none' : '';
   ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets'};
