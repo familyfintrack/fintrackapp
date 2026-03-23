@@ -158,7 +158,14 @@ async function initSupabase(){
   const key=document.getElementById('supabaseKey').value.trim();
   if(!url||!key){toast(t('error.supabase_config'),'error');return;}
   try{
-    sb=supabase.createClient(url,key);
+    sb=supabase.createClient(url,key,{
+      auth:{
+        persistSession:true,
+        autoRefreshToken:true,
+        detectSessionInUrl:true,
+        storageKey:'family-fintrack-auth'
+      }
+    });
     const{error}=await sb.from('accounts').select('id').limit(1);
     if(error)throw error;
     localStorage.setItem('sb_url',url);localStorage.setItem('sb_key',key);
@@ -367,7 +374,14 @@ async function tryAutoConnect(){
 
     // Create client FIRST — Supabase JS v2 PKCE needs ?code in
     // window.location.search at this point to exchange it for a session.
-    sb = supabase.createClient(url, key);
+    sb = supabase.createClient(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: 'family-fintrack-auth'
+      }
+    });
 
     // Strip ?code from URL AFTER client creation so a page-refresh
     // doesn't attempt to reuse the (now spent) code.

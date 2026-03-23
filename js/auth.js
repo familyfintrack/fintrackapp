@@ -112,12 +112,37 @@ function famId() {
 // Supabase Auth helpers
 // ─────────────────────────────────────────────
 
-async function _loadCurrentUserContext() {
+async function _loadCurrentUserContext(authCtx = null) {
   if (!sb) throw new Error('Supabase client não inicializado.');
 
-  const { data: uRes, error: uErr } = await sb.auth.getUser();
-  if (uErr) throw uErr;
-  const user = uRes?.user;
+  let user = authCtx?.user || authCtx?.session?.user || null;
+  let session = authCtx?.session || null;
+
+  if (!user) {
+    try {
+      const { data: sRes, error: sErr } = await sb.auth.getSession();
+      if (sErr) throw sErr;
+      session = sRes?.session || null;
+      user = session?.user || null;
+    } catch (_) {}
+  }
+
+  if (!user) {
+    try {
+      const { data: uRes, error: uErr } = await sb.auth.getUser();
+      if (uErr) {
+        const msg = String(uErr?.message || '');
+        if (/auth session missing/i.test(msg)) return null;
+        throw uErr;
+      }
+      user = uRes?.user || null;
+    } catch (err) {
+      const msg = String(err?.message || err || '');
+      if (/auth session missing/i.test(msg)) return null;
+      throw err;
+    }
+  }
+
   if (!user) return null;
 
   // app_users: fonte de verdade para dados pessoais e role global
@@ -470,7 +495,7 @@ async function doLogin() {
   try {
     if (!sb && typeof ensureSupabaseClient === 'function') sb = ensureSupabaseClient();
     if (!sb) { showLoginErr('Sem conexão com o servidor. Verifique a configuração.'); btn.disabled = false; btn.textContent = 'Entrar'; return; }
-    const { error } = await sb.auth.signInWithPassword({ email, password });
+    const { data: authData, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
       const msg = (error.message || '').toLowerCase().includes('confirm')
         ? 'Confirme seu e-mail antes de entrar.'
@@ -506,7 +531,7 @@ async function doLogin() {
       return;
     }
 
-    await _loadCurrentUserContext();
+    await _loadCurrentUserContext(authData);
 
     await onLoginSuccess();
   } catch(e) {
@@ -761,7 +786,7 @@ function _registerMagicLinkGate() {
       }
 
       // All good — proceed into the app
-      await _loadCurrentUserContext();
+      await _loadCurrentUserContext({ session, user: session.user });
       await onLoginSuccess();
     } catch(e) {
       console.error('Magic link gate error:', e);
@@ -1235,7 +1260,7 @@ async function tryRestoreSession() {
     const { data, error } = await sb.auth.getSession();
     if (error) throw error;
     if (!data?.session) return false;
-    await _loadCurrentUserContext();
+    await _loadCurrentUserContext(data);
     return !!currentUser;
   } catch {
     return false;
