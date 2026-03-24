@@ -427,16 +427,16 @@ async function _aiCollectFinancialContext() {
       schedRecurring.push(item);
     }
 
-    if (_schedByType[stype] !== undefined) _schedByType[stype] += monthAmt;
+    if (schedByType[stype] !== undefined) schedByType[stype] += monthAmt;
     if (!schedByCategory[catName]) schedByCategory[catName] = { income:0, expense:0 };
     if (stype === 'income')  schedByCategory[catName].income  += monthAmt;
     if (stype === 'expense') schedByCategory[catName].expense += monthAmt;
   });
 
   const recurringCommitments = {
-    monthly_expense:  +_schedByType.expense.toFixed(2),
-    monthly_income:   +_schedByType.income.toFixed(2),
-    monthly_net:      +(_schedByType.income - _schedByType.expense).toFixed(2),
+    monthly_expense:  +schedByType.expense.toFixed(2),
+    monthly_income:   +schedByType.income.toFixed(2),
+    monthly_net:      +(schedByType.income - schedByType.expense).toFixed(2),
     by_category: Object.entries(schedByCategory)
       .map(([cat, v]) => ({ category:cat, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
       .sort((a,b) => (b.monthly_expense+b.monthly_income) - (a.monthly_expense+a.monthly_income)),
@@ -465,13 +465,13 @@ async function _aiCollectFinancialContext() {
   // Distribuição proporcional de baseExpense por categoria (top categorias)
   const _catDistExp = {};
   const _catDistInc = {};
-  if (ctx?.topCategories?.length && baseExpense > 0) {
-    const topCatTotal = ctx.topCategories.reduce((s,c) => s + c.amount, 0) || 1;
-    ctx.topCategories.forEach(c => {
+  if (topCategories.length && baseExpense > 0) {
+    const topCatTotal = topCategories.reduce((s,c) => s + c.amount, 0) || 1;
+    topCategories.forEach(c => {
       _catDistExp[c.name] = baseExpense * (c.amount / topCatTotal);
     });
   }
-  // Receitas: se há topPayees de income use, senão agrupa como "Receitas diversas"
+  // Receitas base
   if (baseIncome > 0) {
     _catDistInc['Receitas base'] = baseIncome;
   }

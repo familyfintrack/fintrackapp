@@ -5,37 +5,55 @@
 //  Visível para TODOS os usuários autenticados (não apenas admin)
 // ══════════════════════════════════════════════════════════════════════════
 
-// Estado interno
 const _auditState = {
-  allRows:    [],   // todos os registros carregados do banco
-  filtered:   [],   // após filtros locais
-  searchTerm: '',
+  allRows:      [],
+  filtered:     [],
+  _lastStatus:  null,
+  _lastMonth:   null,
+  _monthsBuilt: false,
 };
 
-// ── Entry point ─────────────────────────────────────────────────────────────
-async function loadAuditLogs() {
-  const body     = document.getElementById('auditBody');
-  const countEl  = document.getElementById('auditCount');
-  const footerEl = document.getElementById('auditFooterCount');
-  const btn      = document.getElementById('auditRefreshBtn');
+// ── Popula o select de meses ─────────────────────────────────────────────────
+function _auditInitMonthFilter() {
+  const sel = document.getElementById('auditMonthFilter');
+  if (!sel || _auditState._monthsBuilt) return;
+  _auditState._monthsBuilt = true;
 
-  if (btn) btn.disabled = true;
-  if (body) body.innerHTML = `
-    <tr><td colspan="7" style="text-align:center;padding:36px;color:var(--muted)">
-      <div style="font-size:1.4rem;margin-bottom:8px">⏳</div>
-      <div style="font-size:.85rem">Carregando registros…</div>
-    </td></tr>`;
+  const now  = new Date();
+  const opts = ['<option value="">Todos os meses</option>'];
+  for (let i = 0; i < 13; i++) {
+    const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const lbl = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    opts.push(`<option value="${val}"${i === 0 ? ' selected' : ''}>${lbl.charAt(0).toUpperCase() + lbl.slice(1)}</option>`);
+  }
+  sel.innerHTML = opts.join('');
+  _auditState._lastMonth = sel.value;
+}
+
+// ── Entry point ──────────────────────────────────────────────────────────────
+async function loadAuditLogs() {
+  _auditInitMonthFilter();
+
+  const body     = document.getElementById('auditBody');
+  const cards    = document.getElementById('auditCards');
+  const btn      = document.getElementById('auditRefreshBtn');
+  const loading  = `<div style="text-align:center;padding:36px;color:var(--muted)">
+    <div style="font-size:1.4rem;margin-bottom:8px">⏳</div>
+    <div style="font-size:.85rem">Carregando registros…</div></div>`;
+
+  if (btn)   btn.disabled = true;
+  if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${loading}</td></tr>`;
+  if (cards) cards.innerHTML = loading;
 
   try {
     if (!sb) { toast('Sem conexão com o banco', 'error'); return; }
 
-    // Testa existência da tabela
     const { error: testErr } = await sb.from('scheduled_run_logs').select('id').limit(1);
     if (testErr) throw testErr;
 
-    // Filtro de mês (se preenchido)
-    const monthFilter = document.getElementById('auditMonthFilter')?.value || '';
     const statusFilter = document.getElementById('auditStatusFilter')?.value || '';
+    const monthFilter  = document.getElementById('auditMonthFilter')?.value  || '';
 
     let q = famQ(
       sb.from('scheduled_run_logs')
@@ -46,7 +64,6 @@ async function loadAuditLogs() {
 
     if (statusFilter) q = q.eq('status', statusFilter);
     if (monthFilter) {
-      // filtra pelo mês da data agendada
       const [y, m] = monthFilter.split('-');
       const last = new Date(+y, +m, 0).getDate();
       q = q.gte('scheduled_date', `${y}-${m}-01`)
@@ -56,174 +73,192 @@ async function loadAuditLogs() {
     const { data, error } = await q;
     if (error) throw error;
 
-    _auditState.allRows = data || [];
+    _auditState.allRows    = data || [];
+    _auditState._lastStatus = statusFilter;
+    _auditState._lastMonth  = monthFilter;
+
     _updateAuditCounters(_auditState.allRows);
     _auditApplyLocalFilters();
-
-    if (countEl) countEl.textContent = '';
 
   } catch (e) {
     console.warn('[audit]', e.message);
     const isMissing = /does not exist|relation|not found/i.test(e.message || '');
-    if (body) body.innerHTML = isMissing
-      ? `<tr><td colspan="7"><div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
+    const errHtml = isMissing
+      ? `<div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
           <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada</div>
           <div style="color:var(--text2);margin-bottom:12px">Execute o SQL abaixo no <strong>Supabase SQL Editor</strong> para criar a tabela:</div>
-          <pre id="auditMigrationSql" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;font-size:.7rem;overflow-x:auto;white-space:pre;color:var(--text);cursor:text;user-select:all">${_auditMigrationSql()}</pre>
+          <pre style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;font-size:.7rem;overflow-x:auto;white-space:pre;color:var(--text);user-select:all">${_auditMigrationSql()}</pre>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="_copyAuditMigration()">📋 Copiar SQL</button>
             <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Supabase</button>
             <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Tentar novamente</button>
-          </div>
-        </div></td></tr>`
-      : `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
+          </div></div>`
+      : `<div style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
           ⚠️ Erro: ${esc(e.message)}
-          <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button>
-        </td></tr>`;
+          <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
+
+    if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${errHtml}</td></tr>`;
+    if (cards) cards.innerHTML = errHtml;
   } finally {
     if (btn) btn.disabled = false;
   }
 }
 
-// ── Filtros locais (busca + status via contador) ─────────────────────────────
+// ── Filtro local (busca por texto) ────────────────────────────────────────────
 function _auditApplyLocalFilters() {
-  const body     = document.getElementById('auditBody');
   const countEl  = document.getElementById('auditCount');
   const footerEl = document.getElementById('auditFooterCount');
-
-  const search = (document.getElementById('auditSearch')?.value || '').toLowerCase().trim();
-  _auditState.searchTerm = search;
+  const search   = (document.getElementById('auditSearch')?.value || '').toLowerCase().trim();
 
   let rows = _auditState.allRows;
-
   if (search) {
     rows = rows.filter(r => {
-      const desc   = (r.description || '').toLowerCase();
-      const sched  = (r.scheduled_transactions?.description || '').toLowerCase();
-      const cat    = (r.scheduled_transactions?.categories?.name || '').toLowerCase();
+      const desc  = (r.description || '').toLowerCase();
+      const sched = (r.scheduled_transactions?.description || '').toLowerCase();
+      const cat   = (r.scheduled_transactions?.categories?.name || '').toLowerCase();
       return desc.includes(search) || sched.includes(search) || cat.includes(search);
     });
   }
-
   _auditState.filtered = rows;
 
   const total = rows.length;
-  if (countEl) countEl.textContent = total > 0 ? `${total} registro${total !== 1 ? 's' : ''}` : '';
-  if (footerEl) footerEl.textContent = total > 0 ? `${total} de ${_auditState.allRows.length} registros` : '';
+  if (countEl)  countEl.textContent  = total > 0 ? `${total} registro${total !== 1 ? 's' : ''}` : '';
+  if (footerEl) footerEl.textContent = total > 0 ? `${total} de ${_auditState.allRows.length}` : '';
+
+  const empty = (msg) => `
+    <div style="text-align:center;padding:48px;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:10px">📋</div>
+      <div style="font-size:.85rem">${msg}</div>
+    </div>`;
 
   if (!total) {
     const msg = search || document.getElementById('auditStatusFilter')?.value || document.getElementById('auditMonthFilter')?.value
       ? 'Nenhum registro encontrado com esses filtros.'
       : 'Nenhum auto-registro ainda. Execute uma transação programada automática para ver os logs aqui.';
-    if (body) body.innerHTML = `
-      <tr><td colspan="7" style="text-align:center;padding:48px;color:var(--muted)">
-        <div style="font-size:2rem;margin-bottom:10px">📋</div>
-        <div style="font-size:.85rem">${msg}</div>
-      </td></tr>`;
+    const body  = document.getElementById('auditBody');
+    const cards = document.getElementById('auditCards');
+    if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${empty(msg)}</td></tr>`;
+    if (cards) cards.innerHTML = empty(msg);
     return;
   }
 
-  if (body) body.innerHTML = rows.map(r => _auditRow(r)).join('');
+  // Renderiza tabela desktop
+  const body = document.getElementById('auditBody');
+  if (body) body.innerHTML = rows.map(r => _auditRowDesktop(r)).join('');
+
+  // Renderiza cards mobile
+  const cards = document.getElementById('auditCards');
+  if (cards) cards.innerHTML = rows.map(r => _auditRowMobile(r)).join('');
 }
 
-// ── Clique nos KPI counters para filtrar por status ──────────────────────────
+// ── Clique nos KPI counters ───────────────────────────────────────────────────
 function auditSetStatus(status) {
   const sel = document.getElementById('auditStatusFilter');
-  if (sel) {
-    sel.value = status;
-    loadAuditLogs();
-  }
+  if (sel) { sel.value = status; loadAuditLogs(); }
 }
 window.auditSetStatus = auditSetStatus;
 
-// ── Atualiza contadores dos KPI cards ────────────────────────────────────────
+// ── Atualiza contadores ───────────────────────────────────────────────────────
 function _updateAuditCounters(data) {
-  const total     = data.length;
-  const confirmed = data.filter(r => r.status === 'confirmed').length;
-  const pending   = data.filter(r => r.status === 'pending').length;
-  const errors    = data.filter(r => r.status === 'error').length;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('auditCntTotal',     total);
-  set('auditCntConfirmed', confirmed);
-  set('auditCntPending',   pending);
-  set('auditCntError',     errors);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('auditCntTotal',     data.length);
+  set('auditCntConfirmed', data.filter(r => r.status === 'confirmed').length);
+  set('auditCntPending',   data.filter(r => r.status === 'pending').length);
+  set('auditCntError',     data.filter(r => r.status === 'error').length);
 }
 
-// ── Renderiza uma linha da tabela ────────────────────────────────────────────
-function _auditRow(r) {
-  const amount = r.amount ?? 0;
-  const date   = r.scheduled_date || r.created_at;
-
-  // Badge de status
-  const statusBadge = {
+// ── Helpers partilhados ───────────────────────────────────────────────────────
+function _auditStatusBadge(status) {
+  return {
     confirmed: `<span class="audit-status-badge audit-ok">✅ Confirmada</span>`,
     pending:   `<span class="audit-status-badge audit-pending">⏳ Pendente</span>`,
     error:     `<span class="audit-status-badge audit-error">❌ Erro</span>`,
-  }[r.status || 'confirmed'] || `<span class="audit-status-badge audit-ok">✅ Confirmada</span>`;
+  }[status || 'confirmed'] || `<span class="audit-status-badge audit-ok">✅ Confirmada</span>`;
+}
 
-  // Descrição principal: prioriza scheduled_transactions.description, fallback para r.description
-  const schedTx  = r.scheduled_transactions;
-  const mainDesc = schedTx?.description || r.description || '—';
-  const runDesc  = (r.description && r.description !== mainDesc) ? r.description : null;
-  const catName  = schedTx?.categories?.name || null;
+function _auditFreqLabel(freq) {
+  return { once:'Único', weekly:'Semanal', biweekly:'Quinzenal', monthly:'Mensal',
+           bimonthly:'Bimestral', quarterly:'Trimestral', semiannual:'Semestral',
+           annual:'Anual', custom:'Custom' }[freq] || freq || '—';
+}
 
-  // Frequência do programado
-  const freqLabel = schedTx?.frequency
-    ? { once:'Único', weekly:'Semanal', biweekly:'Quinzenal', monthly:'Mensal',
-        bimonthly:'Bimestral', quarterly:'Trimestral', semiannual:'Semestral',
-        annual:'Anual', custom:'Custom' }[schedTx.frequency] || schedTx.frequency
-    : '—';
-
-  // Tipo do programado
-  const typeIcon = {
-    expense: '💸', income: '💰', transfer: '↔️', card_payment: '💳'
-  }[schedTx?.type || ''] || '';
-
-  // Botão de link para a transação
-  const txLink = r.transaction_id
-    ? `<button class="btn btn-ghost btn-sm" onclick="openTxDetail('${r.transaction_id}')"
+function _auditTxLink(txId) {
+  return txId
+    ? `<button class="btn btn-ghost btn-sm" onclick="openTxDetail('${txId}')"
         style="font-size:.72rem;padding:3px 8px" title="Ver transação">🔍 Ver</button>`
     : `<span style="color:var(--muted);font-size:.78rem">—</span>`;
+}
 
+// ── Linha da tabela desktop ───────────────────────────────────────────────────
+function _auditRowDesktop(r) {
+  const sc       = r.scheduled_transactions;
+  const mainDesc = sc?.description || r.description || '—';
+  const runDesc  = (r.description && r.description !== mainDesc) ? r.description : null;
+  const catName  = sc?.categories?.name || null;
+  const typeIcon = { expense:'💸', income:'💰', transfer:'↔️', card_payment:'💳' }[sc?.type || ''] || '';
+  const amount   = r.amount ?? 0;
   const createdAt = r.created_at
     ? new Date(r.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
     : '—';
 
   return `<tr class="audit-tr-${r.status || 'confirmed'}">
-    <td style="white-space:nowrap;font-size:.82rem;color:var(--text2)">${fmtDate(date)}</td>
-    <td style="max-width:260px">
+    <td style="white-space:nowrap;font-size:.82rem;color:var(--text2)">${fmtDate(r.scheduled_date || r.created_at)}</td>
+    <td style="max-width:240px">
       <div style="font-weight:600;font-size:.875rem;color:var(--text)">${typeIcon} ${esc(mainDesc)}</div>
-      ${catName ? `<div style="font-size:.72rem;color:var(--accent);margin-top:1px">📁 ${esc(catName)}</div>` : ''}
+      ${catName  ? `<div style="font-size:.72rem;color:var(--accent);margin-top:1px">📁 ${esc(catName)}</div>` : ''}
       ${runDesc  ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(runDesc)}</div>` : ''}
     </td>
-    <td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${freqLabel}</td>
-    <td>${statusBadge}</td>
+    <td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${_auditFreqLabel(sc?.frequency)}</td>
+    <td>${_auditStatusBadge(r.status)}</td>
     <td style="text-align:right;white-space:nowrap;font-weight:700"
         class="${amount >= 0 ? 'amount-pos' : 'amount-neg'}">${fmt(amount)}</td>
     <td style="font-size:.74rem;color:var(--muted);white-space:nowrap">${createdAt}</td>
-    <td style="text-align:center">${txLink}</td>
+    <td style="text-align:center">${_auditTxLink(r.transaction_id)}</td>
   </tr>`;
 }
 
-// ── Funções de filtro chamadas pela UI ───────────────────────────────────────
+// ── Card mobile ───────────────────────────────────────────────────────────────
+function _auditRowMobile(r) {
+  const sc       = r.scheduled_transactions;
+  const mainDesc = sc?.description || r.description || '—';
+  const catName  = sc?.categories?.name || null;
+  const typeIcon = { expense:'💸', income:'💰', transfer:'↔️', card_payment:'💳' }[sc?.type || ''] || '';
+  const amount   = r.amount ?? 0;
+  const amtClass = amount >= 0 ? 'amount-pos' : 'amount-neg';
+  const date     = fmtDate(r.scheduled_date || r.created_at);
+  const statusCls = r.status === 'pending' ? 'aud-card-pending'
+                  : r.status === 'error'   ? 'aud-card-error' : '';
+
+  return `<div class="aud-card ${statusCls}">
+    <div class="aud-card-head">
+      <div class="aud-card-title">${typeIcon} ${esc(mainDesc)}</div>
+      <div class="aud-card-amt ${amtClass}">${fmt(amount)}</div>
+    </div>
+    <div class="aud-card-meta">
+      ${_auditStatusBadge(r.status)}
+      <span>📅 ${date}</span>
+      ${_auditFreqLabel(sc?.frequency) !== '—' ? `<span>🔁 ${_auditFreqLabel(sc?.frequency)}</span>` : ''}
+      ${catName ? `<span class="aud-card-cat">📁 ${esc(catName)}</span>` : ''}
+      <span style="margin-left:auto">${_auditTxLink(r.transaction_id)}</span>
+    </div>
+  </div>`;
+}
+
+// ── filterAuditLogs — chamado pela UI ─────────────────────────────────────────
 function filterAuditLogs() {
-  // statusFilter e monthFilter requerem nova query; search é local
   const status = document.getElementById('auditStatusFilter')?.value || '';
   const month  = document.getElementById('auditMonthFilter')?.value  || '';
-
-  // Se mudou status ou mês, recarrega do servidor; senão filtra localmente
-  const needsReload = status !== _auditState._lastStatus || month !== _auditState._lastMonth;
-  _auditState._lastStatus = status;
-  _auditState._lastMonth  = month;
-
-  if (needsReload) {
+  // Se status ou mês mudou precisa recarregar do servidor
+  if (status !== _auditState._lastStatus || month !== _auditState._lastMonth) {
+    _auditState._lastStatus = status;
+    _auditState._lastMonth  = month;
     loadAuditLogs();
   } else {
     _auditApplyLocalFilters();
   }
 }
 
-// ── SQL de migration ─────────────────────────────────────────────────────────
+// ── SQL migration ─────────────────────────────────────────────────────────────
 function _auditMigrationSql() {
   return `CREATE TABLE IF NOT EXISTS public.scheduled_run_logs (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
