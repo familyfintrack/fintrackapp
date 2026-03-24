@@ -412,9 +412,10 @@ function openInvTransactionModal(accountId = null, positionId = null) {
   }
 
   const pos     = positionId ? _inv.positions.find(p => p.id === positionId) : null;
-  const accOpts = (typeof _accountOptions === 'function')
-    ? _accountOptions(invAccs, '', { showCurrency: false, selected: accountId || pos?.account_id || null })
-    : invAccs.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  const accOpts = invAccs.map(a =>
+    `<option value="${a.id}" ${(accountId && a.id === accountId) || (!accountId && !pos) ? '' : ''}>
+      ${esc(a.name)}</option>`
+  ).join('');
   const typeOpts = ASSET_TYPES.map(t =>
     `<option value="${t.value}">${t.emoji} ${t.label} — ${t.hint}</option>`
   ).join('');
