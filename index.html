@@ -2328,8 +2328,10 @@
           <option value="pending">⏳ Pendentes</option>
           <option value="error">❌ Erros</option>
         </select>
-        <input type="month" id="auditMonthFilter" onchange="filterAuditLogs()"
-          style="font-size:.82rem;padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+        <select id="auditMonthFilter" onchange="filterAuditLogs()"
+          style="font-size:.82rem;padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);min-width:130px">
+          <option value="">Todos os meses</option>
+        </select>
         <span id="auditCount" style="font-size:.78rem;color:var(--muted);align-self:center;white-space:nowrap"></span>
       </div>
 
