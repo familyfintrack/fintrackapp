@@ -7,13 +7,35 @@
 
 // Estado interno
 const _auditState = {
-  allRows:    [],   // todos os registros carregados do banco
-  filtered:   [],   // após filtros locais
-  searchTerm: '',
+  allRows:      [],   // todos os registros carregados do banco
+  filtered:     [],   // após filtros locais
+  searchTerm:   '',
+  _lastStatus:  null,
+  _lastMonth:   null,
+  _monthsBuilt: false,
 };
+
+// ── Popula o select de meses com os últimos 13 meses ─────────────────────────
+function _auditInitMonthFilter() {
+  const sel = document.getElementById('auditMonthFilter');
+  if (!sel || _auditState._monthsBuilt) return;
+  _auditState._monthsBuilt = true;
+
+  const now  = new Date();
+  const opts = ['<option value="">Todos os meses</option>'];
+  for (let i = 0; i < 13; i++) {
+    const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    const lbl = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    opts.push(`<option value="${val}"${i === 0 ? ' selected' : ''}>${lbl.charAt(0).toUpperCase() + lbl.slice(1)}</option>`);
+  }
+  sel.innerHTML = opts.join('');
+  _auditState._lastMonth = sel.value;
+}
 
 // ── Entry point ─────────────────────────────────────────────────────────────
 async function loadAuditLogs() {
+  _auditInitMonthFilter();
   const body     = document.getElementById('auditBody');
   const countEl  = document.getElementById('auditCount');
   const footerEl = document.getElementById('auditFooterCount');
