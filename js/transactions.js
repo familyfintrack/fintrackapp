@@ -1992,12 +1992,15 @@ async function convertTxToScheduled(txId) {
   el('ctsMemo').value    = t.memo || '';
   el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
 
-  // Pre-select account
+  // Pre-select account (favorites first)
   const accSel = el('ctsAccountId');
   if (accSel) {
-    accSel.innerHTML = (state.accounts||[]).map(a =>
-      `<option value="${a.id}"${a.id===t.account_id?' selected':''}>${esc(a.name)} (${a.currency})</option>`
-    ).join('');
+    accSel.innerHTML = (typeof _accountOptions === 'function')
+      ? _accountOptions(state.accounts || [], 'Selecione a conta')
+      : (state.accounts||[]).map(a =>
+          `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`
+        ).join('');
+    if (t.account_id) accSel.value = t.account_id;
   }
   // Note: original transaction is kept. The scheduled starts from the chosen date forward.
   const noteEl = el('ctsNote');

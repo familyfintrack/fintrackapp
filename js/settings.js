@@ -588,6 +588,10 @@ function loadSettings() {
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
 
+  // Telemetria — admin only
+  const telSection = document.getElementById('telemetrySection');
+  if (telSection) telSection.style.display = isAdmin ? '' : 'none';
+
   if (isAdmin) {
     // Admin: inicializar formulários das novas seções
     initSettingsVisibilityForm();
@@ -1456,4 +1460,418 @@ async function runNormalizeNames() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '▶ Executar agora'; }
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TELEMETRY DASHBOARD  (admin only)
+   Queries app_telemetry and renders KPIs + charts inside Settings
+══════════════════════════════════════════════════════════════════ */
+
+// Chart instances — destroyed and recreated on each load to avoid canvas reuse errors
+const _telCharts = { daily: null, pages: null };
+
+async function loadTelemetryDashboard() {
+  if (!currentUser?.can_admin) return;
+  if (typeof sb === 'undefined' || !sb) return;
+
+  const days    = parseInt(document.getElementById('telPeriod')?.value || '30', 10);
+  const cutoff  = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const since   = cutoff.toISOString();
+
+  // ── Fetch all rows for the period (no family filter — admin sees all) ──
+  const { data: rows, error } = await sb
+    .from('app_telemetry')
+    .select('event_type,page,ts,user_id,family_id,device_type,device_browser,device_os,payload')
+    .gte('ts', since)
+    .order('ts', { ascending: false })
+    .limit(5000);
+
+  if (error) {
+    _telRenderError('Erro ao carregar telemetria: ' + error.message);
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    _telRenderEmpty();
+    return;
+  }
+
+  _telRenderKpis(rows, days);
+  _telRenderDailyChart(rows, days);
+  _telRenderPagesChart(rows);
+  _telRenderEventTypes(rows);
+  _telRenderDevices(rows);
+  _telRenderErrors(rows);
+  _telRenderAiCalls(rows);
+  _telRenderFamilies(rows);
+}
+window.loadTelemetryDashboard = loadTelemetryDashboard;
+
+function _telRenderError(msg) {
+  const kpi = document.getElementById('telKpis');
+  if (kpi) kpi.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);font-size:.82rem;padding:8px">${msg}</div>`;
+}
+
+function _telRenderEmpty() {
+  const kpi = document.getElementById('telKpis');
+  if (kpi) kpi.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Nenhum dado de telemetria encontrado para o período.<br><span style="font-size:.75rem">Verifique se a tabela app_telemetry existe e a migration foi executada.</span></div>';
+  ['telEventTypes','telDevices','telErrors','telAiCalls','telFamilies'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:4px 0">—</div>';
+  });
+}
+
+// ── KPI cards ─────────────────────────────────────────────────────────────────
+function _telRenderKpis(rows, days) {
+  const total      = rows.length;
+  const sessions   = new Set(rows.map(r => r.payload?.session_id || r.user_id + r.ts?.slice(0,10))).size;
+  const users      = new Set(rows.filter(r => r.user_id).map(r => r.user_id)).size;
+  const families   = new Set(rows.filter(r => r.family_id).map(r => r.family_id)).size;
+  const errors     = rows.filter(r => r.event_type === 'error').length;
+  const aiCalls    = rows.filter(r => r.event_type === 'ai_call').length;
+  const pageViews  = rows.filter(r => r.event_type === 'page_view').length;
+  const perDay     = days > 0 ? (total / days).toFixed(1) : '—';
+
+  const kpiEl = document.getElementById('telKpis');
+  if (!kpiEl) return;
+
+  const kpiStyle = `
+    background:var(--surface2);border-radius:10px;padding:10px 12px;
+    display:flex;flex-direction:column;gap:2px;
+    border:1px solid var(--border)
+  `;
+  const numStyle = `font-size:1.4rem;font-weight:700;color:var(--text);line-height:1.1`;
+  const lblStyle = `font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em`;
+
+  const cards = [
+    { num: total.toLocaleString('pt-BR'),   lbl: 'Total de eventos' },
+    { num: pageViews.toLocaleString('pt-BR'), lbl: 'Page views' },
+    { num: users.toLocaleString('pt-BR'),   lbl: 'Usuários únicos' },
+    { num: families.toLocaleString('pt-BR'), lbl: 'Famílias ativas' },
+    { num: perDay,                           lbl: 'Eventos/dia' },
+    { num: aiCalls.toLocaleString('pt-BR'), lbl: 'Chamadas IA' },
+    { num: errors.toLocaleString('pt-BR'),  lbl: 'Erros', danger: errors > 0 },
+  ];
+
+  kpiEl.innerHTML = cards.map(c => `
+    <div style="${kpiStyle}">
+      <span style="${numStyle}${c.danger ? ';color:var(--danger)' : ''}">${c.num}</span>
+      <span style="${lblStyle}">${c.lbl}</span>
+    </div>
+  `).join('');
+}
+
+// ── Daily events chart ────────────────────────────────────────────────────────
+function _telRenderDailyChart(rows, days) {
+  const canvas = document.getElementById('telDailyChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  // Build day buckets for the last `days` days
+  const buckets = {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    buckets[d.toISOString().slice(0, 10)] = 0;
+  }
+  rows.forEach(r => {
+    const day = (r.ts || '').slice(0, 10);
+    if (day in buckets) buckets[day]++;
+  });
+
+  const labels = Object.keys(buckets).map(d => {
+    const [,m,dd] = d.split('-');
+    return `${dd}/${m}`;
+  });
+  const data = Object.values(buckets);
+
+  if (_telCharts.daily) { _telCharts.daily.destroy(); _telCharts.daily = null; }
+
+  _telCharts.daily = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: 'rgba(59,130,246,.55)',
+        borderColor:     'rgba(59,130,246,.9)',
+        borderWidth: 1,
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: {
+            font: { size: 9 },
+            maxTicksLimit: 10,
+            color: '#888',
+          },
+          grid: { display: false },
+        },
+        y: {
+          ticks: { font: { size: 9 }, color: '#888' },
+          grid: { color: 'rgba(128,128,128,.1)' },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+// ── Top pages chart ──────────────────────────────────────────────────────────
+function _telRenderPagesChart(rows) {
+  const canvas = document.getElementById('telPagesChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const pageRows = rows.filter(r => r.event_type === 'page_view' && r.page);
+  const counts = {};
+  pageRows.forEach(r => { counts[r.page] = (counts[r.page] || 0) + 1; });
+
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  if (!sorted.length) {
+    canvas.parentElement.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:20px 0;text-align:center">—</div>';
+    return;
+  }
+
+  const palette = [
+    'rgba(99,102,241,.7)','rgba(59,130,246,.7)','rgba(16,185,129,.7)',
+    'rgba(245,158,11,.7)','rgba(239,68,68,.7)','rgba(139,92,246,.7)',
+    'rgba(20,184,166,.7)','rgba(249,115,22,.7)',
+  ];
+
+  if (_telCharts.pages) { _telCharts.pages.destroy(); _telCharts.pages = null; }
+
+  _telCharts.pages = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(([k]) => k),
+      datasets: [{ data: sorted.map(([,v]) => v), backgroundColor: palette, borderWidth: 1 }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { font: { size: 9 }, boxWidth: 10, padding: 6, color: '#888' },
+        },
+      },
+    },
+  });
+}
+
+// ── Event types table ─────────────────────────────────────────────────────────
+function _telRenderEventTypes(rows) {
+  const el = document.getElementById('telEventTypes');
+  if (!el) return;
+
+  const counts = {};
+  rows.forEach(r => { counts[r.event_type || 'unknown'] = (counts[r.event_type || 'unknown'] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const total  = rows.length;
+
+  const LABELS = {
+    page_view: '📄 Page view', page_time: '⏱️ Tempo em tela',
+    operation: '⚙️ Operação',  error: '🔴 Erro',
+    ai_call:   '🤖 Chamada IA', metric: '📐 Métrica',
+    toast:     '💬 Toast',      uncaught: '💥 Erro não capturado',
+  };
+
+  el.innerHTML = sorted.map(([type, count]) => {
+    const pct = ((count / total) * 100).toFixed(1);
+    return `
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="flex:1;color:var(--text)">${LABELS[type] || type}</span>
+        <div style="width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px"></div>
+        </div>
+        <span style="min-width:36px;text-align:right;color:var(--muted)">${count.toLocaleString('pt-BR')}</span>
+        <span style="min-width:38px;text-align:right;color:var(--muted)">${pct}%</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Devices table ─────────────────────────────────────────────────────────────
+function _telRenderDevices(rows) {
+  const el = document.getElementById('telDevices');
+  if (!el) return;
+
+  const byType    = {};
+  const byBrowser = {};
+  const byOs      = {};
+
+  rows.forEach(r => {
+    if (r.device_type)    byType[r.device_type]       = (byType[r.device_type] || 0) + 1;
+    if (r.device_browser) byBrowser[r.device_browser] = (byBrowser[r.device_browser] || 0) + 1;
+    if (r.device_os)      byOs[r.device_os]           = (byOs[r.device_os] || 0) + 1;
+  });
+
+  const total = rows.length;
+  const renderGroup = (title, map) => {
+    const sorted = Object.entries(map).sort((a,b) => b[1]-a[1]);
+    if (!sorted.length) return '';
+    return `
+      <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;margin:8px 0 4px">${title}</div>
+      ${sorted.map(([k,v]) => {
+        const pct = ((v / total) * 100).toFixed(1);
+        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
+          <span style="flex:1;color:var(--text);font-size:.78rem">${k}</span>
+          <div style="width:60px;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:var(--accent-sec,var(--accent));border-radius:3px"></div>
+          </div>
+          <span style="min-width:30px;text-align:right;color:var(--muted);font-size:.75rem">${pct}%</span>
+        </div>`;
+      }).join('')}
+    `;
+  };
+
+  el.innerHTML =
+    renderGroup('Tipo', byType) +
+    renderGroup('Navegador', byBrowser) +
+    renderGroup('Sistema', byOs);
+}
+
+// ── Recent errors ─────────────────────────────────────────────────────────────
+function _telRenderErrors(rows) {
+  const el = document.getElementById('telErrors');
+  if (!el) return;
+
+  const errors = rows.filter(r => r.event_type === 'error' || r.event_type === 'uncaught').slice(0, 15);
+
+  if (!errors.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:4px 0">✅ Nenhum erro no período</div>';
+    return;
+  }
+
+  const _esc = s => String(s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+        <thead>
+          <tr style="color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:3px 4px;font-weight:600">Data</th>
+            <th style="text-align:left;padding:3px 4px;font-weight:600">Tipo</th>
+            <th style="text-align:left;padding:3px 4px;font-weight:600">Mensagem</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${errors.map(r => {
+            const msg = r.payload?.message || r.payload?.source || JSON.stringify(r.payload).slice(0, 80);
+            const d   = (r.ts || '').slice(0, 16).replace('T', ' ');
+            return `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:4px;color:var(--muted);white-space:nowrap">${d}</td>
+              <td style="padding:4px;white-space:nowrap"><span style="background:var(--danger-lt,#fee2e2);color:var(--danger);border-radius:4px;padding:1px 5px;font-size:.7rem">${_esc(r.event_type)}</span></td>
+              <td style="padding:4px;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(msg)}">${_esc(msg)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── AI calls ──────────────────────────────────────────────────────────────────
+function _telRenderAiCalls(rows) {
+  const el = document.getElementById('telAiCalls');
+  if (!el) return;
+
+  const ai = rows.filter(r => r.event_type === 'ai_call');
+  if (!ai.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:4px 0">Nenhuma chamada de IA registrada</div>';
+    return;
+  }
+
+  const byFeature = {};
+  let totalIn = 0, totalOut = 0, totalMs = 0, errors = 0;
+  ai.forEach(r => {
+    const f = r.payload?.feature || 'desconhecida';
+    if (!byFeature[f]) byFeature[f] = { count: 0, tokensIn: 0, tokensOut: 0, errors: 0 };
+    byFeature[f].count++;
+    byFeature[f].tokensIn  += r.payload?.tokens_in  || 0;
+    byFeature[f].tokensOut += r.payload?.tokens_out || 0;
+    if (r.payload?.success === false) { byFeature[f].errors++; errors++; }
+    totalIn  += r.payload?.tokens_in  || 0;
+    totalOut += r.payload?.tokens_out || 0;
+    totalMs  += r.payload?.latency_ms || 0;
+  });
+
+  const avgMs = ai.length ? Math.round(totalMs / ai.length) : 0;
+  const rowStyle = 'display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:.78rem';
+
+  el.innerHTML = `
+    <div style="${rowStyle};font-weight:600;color:var(--muted);font-size:.7rem;text-transform:uppercase">
+      <span style="flex:1">Feature</span><span style="min-width:50px;text-align:right">Calls</span>
+      <span style="min-width:70px;text-align:right">Tokens ↑</span>
+      <span style="min-width:70px;text-align:right">Tokens ↓</span>
+      <span style="min-width:40px;text-align:right">Erros</span>
+    </div>
+    ${Object.entries(byFeature).sort((a,b)=>b[1].count-a[1].count).map(([f,s]) => `
+      <div style="${rowStyle}">
+        <span style="flex:1;color:var(--text)">${f}</span>
+        <span style="min-width:50px;text-align:right;color:var(--muted)">${s.count}</span>
+        <span style="min-width:70px;text-align:right;color:var(--muted)">${s.tokensIn.toLocaleString('pt-BR')}</span>
+        <span style="min-width:70px;text-align:right;color:var(--muted)">${s.tokensOut.toLocaleString('pt-BR')}</span>
+        <span style="min-width:40px;text-align:right;${s.errors>0?'color:var(--danger)':'color:var(--muted)'}">${s.errors||'—'}</span>
+      </div>
+    `).join('')}
+    <div style="${rowStyle};color:var(--muted);font-size:.72rem;margin-top:4px">
+      Total: ${ai.length} calls · ${(totalIn+totalOut).toLocaleString('pt-BR')} tokens · Latência média: ${avgMs}ms · ${errors} erros
+    </div>
+  `;
+}
+
+// ── Active families ───────────────────────────────────────────────────────────
+function _telRenderFamilies(rows) {
+  const el = document.getElementById('telFamilies');
+  if (!el) return;
+
+  const famMap = {};
+  rows.forEach(r => {
+    if (!r.family_id) return;
+    if (!famMap[r.family_id]) famMap[r.family_id] = { events: 0, users: new Set(), lastSeen: r.ts };
+    famMap[r.family_id].events++;
+    if (r.user_id) famMap[r.family_id].users.add(r.user_id);
+    if ((r.ts || '') > (famMap[r.family_id].lastSeen || '')) famMap[r.family_id].lastSeen = r.ts;
+  });
+
+  const sorted = Object.entries(famMap).sort((a,b) => b[1].events - a[1].events).slice(0, 20);
+  if (!sorted.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.78rem">—</div>';
+    return;
+  }
+
+  // Enrich with family names if accessible
+  const knownFamilies = typeof state !== 'undefined' && Array.isArray(state.families) ? state.families : [];
+  const famName = id => knownFamilies.find(f => f.id === id)?.name || id.slice(0, 8) + '…';
+  const _esc = s => String(s || '').replace(/</g,'&lt;');
+
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+        <thead>
+          <tr style="color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:3px 6px;font-weight:600">Família</th>
+            <th style="text-align:right;padding:3px 6px;font-weight:600">Eventos</th>
+            <th style="text-align:right;padding:3px 6px;font-weight:600">Usuários</th>
+            <th style="text-align:right;padding:3px 6px;font-weight:600">Último acesso</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(([id, s]) => `
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:4px 6px;color:var(--text)">${_esc(famName(id))}</td>
+              <td style="padding:4px 6px;text-align:right;color:var(--muted)">${s.events.toLocaleString('pt-BR')}</td>
+              <td style="padding:4px 6px;text-align:right;color:var(--muted)">${s.users.size}</td>
+              <td style="padding:4px 6px;text-align:right;color:var(--muted);white-space:nowrap">${(s.lastSeen||'').slice(0,10)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
 }

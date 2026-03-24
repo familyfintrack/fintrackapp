@@ -423,7 +423,9 @@ async function renderCashflowChart(memberIds = null){
   if(sel) {
     const curVal = sel.value;
     sel.innerHTML = `<option value="">${t('dash.all_accounts')}</option>` +
-      state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+      (typeof _accountOptions === 'function'
+        ? _accountOptions(state.accounts, null)
+        : state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join(''));
     if(curVal) sel.value = curVal; // restore selection
   }
   const accId = sel ? sel.value : '';
