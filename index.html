@@ -2335,68 +2335,200 @@
     <!-- ══ TELEMETRIA PAGE ══════════════════════════════════════════════════ -->
     <div class="page" id="page-telemetry">
 
-      <div class="section-header mb-6">
+      <!-- Header + controles globais -->
+      <div class="section-header mb-6" style="flex-wrap:wrap;gap:8px">
         <span class="section-title">📊 Telemetria &amp; Uso</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <select id="telPeriod" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)" onchange="loadTelemetryDashboard()">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <select id="telPeriod" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)" onchange="_telApplyFilters()">
             <option value="7">Últimos 7 dias</option>
             <option value="30" selected>Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Atualizar">↺ Atualizar</button>
+          <select id="telFilterFamily" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);max-width:180px" onchange="_telApplyFilters()">
+            <option value="">Todas as famílias</option>
+          </select>
+          <select id="telFilterUser" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);max-width:180px" onchange="_telApplyFilters()">
+            <option value="">Todos os usuários</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Recarregar dados do servidor">↺ Recarregar</button>
         </div>
       </div>
 
-      <!-- KPI cards -->
-      <div id="telKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">
-        <div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem;grid-column:1/-1">Carregando...</div>
+      <!-- Abas de navegação -->
+      <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
+        <button id="telTab_overview" onclick="_telSetTab('overview')"
+          style="padding:8px 18px;font-size:.85rem;font-weight:600;border:none;background:none;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px;font-family:var(--font-sans)">
+          Visão Geral
+        </button>
+        <button id="telTab_users" onclick="_telSetTab('users')"
+          style="padding:8px 18px;font-size:.85rem;font-weight:600;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;font-family:var(--font-sans)">
+          Usuários
+        </button>
+        <button id="telTab_families" onclick="_telSetTab('families')"
+          style="padding:8px 18px;font-size:.85rem;font-weight:600;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;font-family:var(--font-sans)">
+          Famílias
+        </button>
       </div>
 
-      <!-- Charts row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card" style="padding:16px">
-          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Eventos por dia</div>
-          <div style="position:relative;height:180px"><canvas id="telDailyChart"></canvas></div>
+      <!-- ── ABA: Visão Geral ── -->
+      <div id="telPane_overview">
+
+        <!-- KPI cards -->
+        <div id="telKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">
+          <div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem;grid-column:1/-1">Carregando...</div>
         </div>
-        <div class="card" style="padding:16px">
-          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Páginas mais acessadas</div>
-          <div style="position:relative;height:180px"><canvas id="telPagesChart"></canvas></div>
+
+        <!-- Charts -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div class="card" style="padding:16px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Eventos por dia</div>
+            <div style="position:relative;height:180px"><canvas id="telDailyChart"></canvas></div>
+          </div>
+          <div class="card" style="padding:16px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Páginas mais acessadas</div>
+            <div style="position:relative;height:180px"><canvas id="telPagesChart"></canvas></div>
+          </div>
         </div>
-      </div>
 
-      <!-- Tables row -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="card" style="padding:16px">
-          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Tipos de evento</div>
-          <div id="telEventTypes" style="font-size:.82rem"></div>
+        <!-- Tipos + Dispositivos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div class="card" style="padding:16px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Tipos de evento</div>
+            <div id="telEventTypes" style="font-size:.82rem"></div>
+          </div>
+          <div class="card" style="padding:16px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Dispositivos</div>
+            <div id="telDevices" style="font-size:.82rem"></div>
+          </div>
         </div>
-        <div class="card" style="padding:16px">
-          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Dispositivos</div>
-          <div id="telDevices" style="font-size:.82rem"></div>
+
+        <!-- Erros recentes -->
+        <div class="card" style="padding:16px;margin-bottom:16px">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Erros recentes</div>
+          <div id="telErrors" style="font-size:.82rem"></div>
         </div>
-      </div>
 
-      <!-- Erros recentes -->
-      <div class="card" style="padding:16px;margin-bottom:16px">
-        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Erros recentes</div>
-        <div id="telErrors" style="font-size:.82rem"></div>
-      </div>
+        <!-- Chamadas de IA -->
+        <div class="card" style="padding:16px;margin-bottom:16px">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Chamadas de IA</div>
+          <div id="telAiCalls" style="font-size:.82rem"></div>
+        </div>
 
-      <!-- Chamadas de IA -->
-      <div class="card" style="padding:16px;margin-bottom:16px">
-        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Chamadas de IA</div>
-        <div id="telAiCalls" style="font-size:.82rem"></div>
-      </div>
+      </div><!-- /telPane_overview -->
 
-      <!-- Famílias ativas -->
-      <div class="card" style="padding:16px;margin-bottom:16px">
-        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Famílias ativas no período</div>
-        <div id="telFamilies" style="font-size:.82rem"></div>
-      </div>
+      <!-- ── ABA: Usuários ── -->
+      <div id="telPane_users" style="display:none">
+        <div class="card" style="padding:16px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1">Atividade por usuário</div>
+            <input id="telUserSearch" type="text" placeholder="Filtrar por nome ou email…"
+              oninput="_telFilterUsersTable(this.value)"
+              style="font-size:.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);width:220px">
+          </div>
+          <div style="overflow-x:auto">
+            <table class="table" id="telUsersTable" style="width:100%;font-size:.8rem">
+              <thead>
+                <tr>
+                  <th onclick="_telSortUsers('name')" style="cursor:pointer;user-select:none">Usuário <span id="telUserSort_name"></span></th>
+                  <th onclick="_telSortUsers('family')" style="cursor:pointer;user-select:none">Família <span id="telUserSort_family"></span></th>
+                  <th onclick="_telSortUsers('events')" style="cursor:pointer;user-select:none;text-align:right">Eventos <span id="telUserSort_events">↓</span></th>
+                  <th onclick="_telSortUsers('sessions')" style="cursor:pointer;user-select:none;text-align:right">Sessões <span id="telUserSort_sessions"></span></th>
+                  <th onclick="_telSortUsers('pages')" style="cursor:pointer;user-select:none;text-align:right">Pages <span id="telUserSort_pages"></span></th>
+                  <th onclick="_telSortUsers('errors')" style="cursor:pointer;user-select:none;text-align:right">Erros <span id="telUserSort_errors"></span></th>
+                  <th onclick="_telSortUsers('last')" style="cursor:pointer;user-select:none;text-align:right">Último acesso <span id="telUserSort_last"></span></th>
+                </tr>
+              </thead>
+              <tbody id="telUsersBody">
+                <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-    </div>
+        <!-- Detalhe de usuário selecionado -->
+        <div id="telUserDetail" style="display:none">
+          <div class="card" style="padding:16px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div id="telUserDetailAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--accent);flex-shrink:0"></div>
+              <div style="flex:1">
+                <div id="telUserDetailName" style="font-weight:600;font-size:.9rem"></div>
+                <div id="telUserDetailMeta" style="font-size:.75rem;color:var(--muted)"></div>
+              </div>
+              <button onclick="_telCloseUserDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>
+            </div>
+            <!-- KPIs do usuário -->
+            <div id="telUserDetailKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px"></div>
+            <!-- Páginas visitadas -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Páginas visitadas</div>
+                <div id="telUserDetailPages" style="font-size:.8rem"></div>
+              </div>
+              <div>
+                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Operações realizadas</div>
+                <div id="telUserDetailOps" style="font-size:.8rem"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /telPane_users -->
 
+      <!-- ── ABA: Famílias ── -->
+      <div id="telPane_families" style="display:none">
+        <div class="card" style="padding:16px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1">Atividade por família</div>
+            <input id="telFamilySearch" type="text" placeholder="Filtrar família…"
+              oninput="_telFilterFamiliesTable(this.value)"
+              style="font-size:.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);width:200px">
+          </div>
+          <div style="overflow-x:auto">
+            <table class="table" id="telFamiliesTable" style="width:100%;font-size:.8rem">
+              <thead>
+                <tr>
+                  <th onclick="_telSortFamilies('name')" style="cursor:pointer;user-select:none">Família <span id="telFamSort_name"></span></th>
+                  <th onclick="_telSortFamilies('events')" style="cursor:pointer;user-select:none;text-align:right">Eventos <span id="telFamSort_events">↓</span></th>
+                  <th onclick="_telSortFamilies('users')" style="cursor:pointer;user-select:none;text-align:right">Usuários <span id="telFamSort_users"></span></th>
+                  <th onclick="_telSortFamilies('pages')" style="cursor:pointer;user-select:none;text-align:right">Page Views <span id="telFamSort_pages"></span></th>
+                  <th onclick="_telSortFamilies('errors')" style="cursor:pointer;user-select:none;text-align:right">Erros <span id="telFamSort_errors"></span></th>
+                  <th onclick="_telSortFamilies('ai')" style="cursor:pointer;user-select:none;text-align:right">Chamadas IA <span id="telFamSort_ai"></span></th>
+                  <th onclick="_telSortFamilies('last')" style="cursor:pointer;user-select:none;text-align:right">Último acesso <span id="telFamSort_last"></span></th>
+                </tr>
+              </thead>
+              <tbody id="telFamiliesBody">
+                <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
+        <!-- Detalhe de família selecionada -->
+        <div id="telFamilyDetail" style="display:none">
+          <div class="card" style="padding:16px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">👥</div>
+              <div style="flex:1">
+                <div id="telFamilyDetailName" style="font-weight:600;font-size:.9rem"></div>
+                <div id="telFamilyDetailMeta" style="font-size:.75rem;color:var(--muted)"></div>
+              </div>
+              <button onclick="_telCloseFamilyDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>
+            </div>
+            <div id="telFamilyDetailKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Usuários ativos</div>
+                <div id="telFamilyDetailUsers" style="font-size:.8rem"></div>
+              </div>
+              <div>
+                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Páginas mais usadas</div>
+                <div id="telFamilyDetailPages" style="font-size:.8rem"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /telPane_families -->
+
+    </div><!-- /page-telemetry -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
   <div id="loginScreen" class="login-screen-shell" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0d3d2b 0%,#1e5c42 60%,#0d3d2b 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
