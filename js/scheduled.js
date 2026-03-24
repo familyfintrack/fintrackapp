@@ -702,13 +702,17 @@ function openScheduledModal(id='') {
   setScType(sc?.type||'expense');
   setTimeout(()=>_updateScCurrencyPanel(),30);
 
+  // Ensure the currency selector is always editable for any source account
+  const currentAccount = (state.accounts||[]).find(a => a.id === document.getElementById('scAccountId')?.value);
+  _rebuildScCurrencySelect(currentAccount?.currency || 'BRL', sc?.currency || currentAccount?.currency || 'BRL');
+
   // Restore currency select and conversion mode
   requestAnimationFrame(() => {
     const accId      = document.getElementById('scAccountId')?.value;
     const acc        = (state.accounts||[]).find(a => a.id === accId);
     const accountCur = acc?.currency || 'BRL';
     // Build the select with the right currency pre-selected
-    const savedCur = sc?.currency || accountCur;
+    const savedCur = sc?.currency || _getScSelectedCurrency() || accountCur;
     _rebuildScCurrencySelect(accountCur, savedCur);
     // Restore conversion mode and rate for non-transfer types
     if (sc && sc.type !== 'transfer' && sc.type !== 'card_payment') {
@@ -944,9 +948,9 @@ function _filterScAccountOrigin(excludeCreditCards) {
   const accounts = excludeCreditCards
     ? state.accounts.filter(a => a.type !== 'cartao_credito')
     : state.accounts;
-  sel.innerHTML = (typeof _accountOptions === 'function')
-    ? _accountOptions(accounts, '', { selected: currentVal })
-    : accounts.map(a => `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
+  sel.innerHTML = accounts.map(a =>
+    `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`
+  ).join('');
   if (excludeCreditCards && currentVal) {
     const acct = state.accounts.find(a => a.id === currentVal);
     if (acct && acct.type === 'cartao_credito') sel.value = '';
@@ -1704,9 +1708,10 @@ function _rebuildScCurrencySelect(accountCur, selectedCur) {
   const sel = document.getElementById('scCurrencySelect');
   if (!sel) return;
   const CURRENCIES = ['BRL','USD','EUR','GBP','AED','ARS','CAD','CHF','JPY','MXN','CLP','COP','PEN','UYU'];
-  const list = [...new Set([accountCur, ...CURRENCIES])];
+  const list = [...new Set([accountCur || 'BRL', ...CURRENCIES])];
+  const targetCur = selectedCur || accountCur || 'BRL';
   sel.innerHTML = list.map(c =>
-    `<option value="${c}"${c === (selectedCur || accountCur) ? ' selected' : ''}>${c}</option>`
+    `<option value="${c}"${c === targetCur ? ' selected' : ''}>${c}</option>`
   ).join('');
 }
 

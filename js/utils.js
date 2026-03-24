@@ -272,39 +272,24 @@ function _buildCategoryFilterOptions() {
   return lines.join('');
 }
 
-function _sortAccountsForSelect(accounts) {
-  const list = Array.isArray(accounts) ? [...accounts] : [];
-  const byName = (a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' });
-  const favs = list.filter(a => a?.is_favorite).sort(byName);
-  const rest = list.filter(a => !a?.is_favorite).sort(byName);
-  return { favs, rest, all: [...favs, ...rest] };
-}
+function _accountOptions(accounts, placeholder) {
+  const list = Array.isArray(accounts) ? accounts : [];
+  const favs = list.filter(a => a.is_favorite);
+  const rest = list.filter(a => !a.is_favorite);
+  const renderOpt = (a, isFav=false) => `<option value="${a.id}">${isFav ? '⭐ ' : ''}${esc(a.name)} (${a.currency})</option>`;
 
-function _accountOptionLabel(account, opts = {}) {
-  const options = opts || {};
-  const showCurrency = options.showCurrency !== false;
-  const starFavorites = options.starFavorites !== false;
-  const star = (starFavorites && account?.is_favorite) ? '⭐ ' : '';
-  const currency = showCurrency && account?.currency ? ` (${esc(account.currency)})` : '';
-  return `${star}${esc(account?.name || '')}${currency}`;
-}
-
-function _accountOptions(accounts, placeholder, opts = {}) {
-  const options = opts || {};
-  const selected = options.selected == null ? null : String(options.selected);
-  const separatorLabel = options.separatorLabel || '──────────';
-  const { favs, rest, all } = _sortAccountsForSelect(accounts || []);
   let html = placeholder ? `<option value="">${placeholder}</option>` : '';
-  const optionHtml = (a) => `<option value="${a.id}"${selected === String(a.id) ? ' selected' : ''}>${_accountOptionLabel(a, options)}</option>`;
 
   if (favs.length) {
-    html += favs.map(optionHtml).join('');
-    if (rest.length) html += `<option value="" disabled>──────── ${separatorLabel} ────────</option>`;
-    html += rest.map(optionHtml).join('');
-    return html;
+    html += favs.map(a => renderOpt(a, true)).join('');
+    if (rest.length) {
+      html += `<option value="" disabled>──────────</option>`;
+      html += rest.map(a => renderOpt(a, false)).join('');
+    }
+  } else {
+    html += rest.map(a => renderOpt(a, false)).join('');
   }
 
-  html += all.map(optionHtml).join('');
   return html;
 }
 
