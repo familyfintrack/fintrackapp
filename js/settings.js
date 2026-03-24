@@ -832,9 +832,13 @@ function applyMenuVisibility(vis) {
     ['audit', 'settings', 'telemetry'].forEach(key => {
       const wantVisible = vis[key] !== false;
       document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
-        // Role wins: non-admin users can never see these pages.
-        // Admin users respect the menu_visibility preference.
-        el.style.display = (isAdmin && wantVisible) ? '' : 'none';
+        const show = isAdmin && wantVisible;
+        // Topbar buttons: CSS ID rule with !important blocks style.display — use class
+        if (el.tagName === 'BUTTON' && el.id && el.id.includes('Topbar')) {
+          el.classList.toggle('admin-visible', show);
+        } else {
+          el.style.display = show ? '' : 'none';
+        }
       });
     });
 

@@ -827,13 +827,21 @@ function updateUserUI() {
   }
 
   // Configurações, Auditoria e Telemetria: APENAS admin (sidebar + topbar via data-nav)
-  const adminShow = currentUser.can_admin ? '' : 'none';
-  document.querySelectorAll('[data-nav="audit"]').forEach(el      => el.style.display = adminShow);
-  document.querySelectorAll('[data-nav="settings"]').forEach(el   => el.style.display = adminShow);
-  document.querySelectorAll('[data-nav="telemetry"]').forEach(el  => el.style.display = adminShow);
+  // Topbar buttons usam classe .admin-visible (CSS ID+!important impede style.display de funcionar)
+  // Sidebar items usam style.display normalmente
+  const isAdmin = !!currentUser.can_admin;
+  ['audit', 'settings', 'telemetry'].forEach(key => {
+    document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
+      if (el.tagName === 'BUTTON' && el.id && el.id.includes('Topbar')) {
+        el.classList.toggle('admin-visible', isAdmin);
+      } else {
+        el.style.display = isAdmin ? '' : 'none';
+      }
+    });
+  });
   const adminSec = document.getElementById('adminNavSection');
-  if (adminSec) adminSec.style.display = currentUser.can_admin ? '' : 'none';
-  if (currentUser.can_admin) _checkPendingApprovals();
+  if (adminSec) adminSec.style.display = isAdmin ? '' : 'none';
+  if (isAdmin) _checkPendingApprovals();
 
   // Family switcher (only when user has 2+ families)
   _renderFamilySwitcher();
@@ -868,17 +876,21 @@ function applyPermissions() {
   }
 
 // Hide admin-only screens for non-admin (sidebar + topbar via data-nav)
+['settings', 'audit', 'telemetry'].forEach(key => {
+  document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
+    if (el.tagName === 'BUTTON' && el.id && el.id.includes('Topbar')) {
+      el.classList.toggle('admin-visible', !!p.can_admin);
+    } else {
+      el.style.display = p.can_admin ? '' : 'none';
+    }
+  });
+});
 if (!p.can_admin) {
-  document.querySelectorAll('[data-nav="settings"]').forEach(el => el.style.display='none');
-  document.querySelectorAll('[data-nav="audit"]').forEach(el => el.style.display='none');
-  document.querySelectorAll('[data-nav="telemetry"]').forEach(el => el.style.display='none');
   const adminSec = document.getElementById('adminNavSection');
-  if (adminSec) adminSec.style.display='none';
+  if (adminSec) adminSec.style.display = 'none';
 } else {
-  // Admin: restore visibility (menu_visibility preference may override later)
-  document.querySelectorAll('[data-nav="audit"]').forEach(el => el.style.display='');
-  document.querySelectorAll('[data-nav="settings"]').forEach(el => el.style.display='');
-  document.querySelectorAll('[data-nav="telemetry"]').forEach(el => el.style.display='');
+  const adminSec = document.getElementById('adminNavSection');
+  if (adminSec) adminSec.style.display = '';
 }
 
   // Módulos por família: visibilidade depende de feature flag
