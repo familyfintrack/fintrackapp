@@ -903,7 +903,7 @@ async function fetchScSuggestedFxRate() {
   if (sugg) sugg.style.display = 'none';
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const res = await fetch(`https://api.frankfurter.app/${today}?base=${src}&to=${dst}`);
+    const res = await fetch(`${window.FX_API_BASE || 'https://api.frankfurter.dev/v1'}/${today}?base=${src}&to=${dst}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const rate = json?.rates?.[dst];

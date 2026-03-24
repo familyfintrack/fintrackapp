@@ -2,7 +2,8 @@
    FX_RATES.JS — Cache de cotações de moedas estrangeiras → BRL
    ─────────────────────────────────────────────────────────────────────────
    • Cotações armazenadas em app_settings (TTL 4 h) + memória
-   • Fonte: api.frankfurter.app (gratuita, sem chave)
+   • Fonte primária: api.frankfurter.dev/v1 (gratuita, sem chave)
+   • Fallback: api.frankfurter.app (domínio legado)
    • Chamada única por sessão se cache válido; revalidação silenciosa
    ─────────────────────────────────────────────────────────────────────────
    API pública:
@@ -17,7 +18,14 @@
 const _FX_CACHE_KEY   = 'fx_rates_cache';
 const _FX_TS_KEY      = 'fx_rates_ts';
 const _FX_TTL_MIN     = 240;              // 4 horas
-const _FX_API         = 'https://api.frankfurter.app';
+
+// URL primária (novo domínio oficial) e fallback (legado)
+const _FX_API_PRIMARY  = 'https://api.frankfurter.dev/v1';
+const _FX_API_FALLBACK = 'https://api.frankfurter.app';
+
+// Expõe a URL base para transactions.js e scheduled.js usarem
+// Eles sobrescrevem com FX_API_BASE se já declarado, senão usa a primária
+window.FX_API_BASE = window.FX_API_BASE || _FX_API_PRIMARY;
 
 // Estado em memória
 window._fxRates   = { BRL: 1 };
@@ -136,12 +144,28 @@ async function _loadCached() {
 
 async function _fetchOneCurrency(cur) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4000);
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const res  = await fetch(`${_FX_API}/latest?base=${cur}&symbols=BRL`,
-                              { signal: controller.signal });
+    // Tenta URL primária (frankfurter.dev/v1)
+    let res = null;
+    try {
+      res = await fetch(
+        `${_FX_API_PRIMARY}/latest?base=${cur}&to=BRL`,
+        { signal: controller.signal }
+      );
+    } catch (_) {
+      // Rede falhou na primária — tenta fallback
+    }
+    // Fallback para domínio legado se necessário
+    if (!res || !res.ok) {
+      res = await fetch(
+        `${_FX_API_FALLBACK}/latest?base=${cur}&symbols=BRL`,
+        { signal: controller.signal }
+      );
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    // Ambas as APIs retornam { rates: { BRL: ... } }
     return data?.rates?.BRL || null;
   } catch(e) {
     console.warn(`[FX] ${cur}→BRL falhou:`, e.message);

@@ -727,7 +727,21 @@ async function openTransactionModal(id=''){
   resetTxModal();
   document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
   document.getElementById('txModalTitle').textContent='Nova Transação';
-  if(id) editTransaction(id); else openModal('txModal');
+  if(id) {
+    editTransaction(id);
+  } else {
+    // Pre-select the account that is currently filtered (single-account filter only)
+    const filteredAccId = state.txFilter?.account || '';
+    if (filteredAccId) {
+      const sel = document.getElementById('txAccountId');
+      if (sel) {
+        sel.value = filteredAccId;
+        // Trigger all side-effects: IOF check, currency panel, etc.
+        _onTxSourceAccountChange(filteredAccId);
+      }
+    }
+    openModal('txModal');
+  }
 }
 function resetTxModal(){
   ['txId','txDesc','txMemo','txTags'].forEach(f=>document.getElementById(f).value='');
@@ -736,6 +750,8 @@ function resetTxModal(){
   document.getElementById('txTypeField').value='expense';
   _hideTxCurrencyPanel();
   setTxType('expense');clearPayeeField('tx');hideCatSuggestion();setCatPickerValue(null);
+  // Always populate full currency list on open — user can pick currency before selecting account
+  _rebuildTxCurrencySelect('BRL', 'BRL');
   // Reset attachment — clear pending file AND all UI state
   window._txPendingFile = null;
   window._txPendingName = null;
@@ -856,9 +872,10 @@ function setTxType(type){
 
 // ── FX / Exchange-rate helpers ─────────────────────────────────────────────
 
-// frankfurter.app: free, no key, CORS-correct, ECB data
-// Endpoint: GET https://api.frankfurter.app/YYYY-MM-DD?base=EUR&to=BRL
-const FX_API_BASE = 'https://api.frankfurter.app';
+// frankfurter.dev/v1: free, no key, CORS-correct, ECB data
+// Endpoint: GET https://api.frankfurter.dev/v1/YYYY-MM-DD?base=EUR&to=BRL
+// FX_API_BASE is set by fx_rates.js (loaded before this file); fallback here for safety
+const FX_API_BASE = window.FX_API_BASE || 'https://api.frankfurter.dev/v1';
 
 function _getTransferCurrencies() {
   const srcId  = document.getElementById('txAccountId').value;

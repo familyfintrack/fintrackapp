@@ -829,7 +829,7 @@ function applyMenuVisibility(vis) {
   if (typeof currentUser !== 'undefined' && currentUser) {
     const isAdmin = !!(currentUser.can_admin);
 
-    ['audit', 'settings'].forEach(key => {
+    ['audit', 'settings', 'telemetry'].forEach(key => {
       const wantVisible = vis[key] !== false;
       document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
         // Role wins: non-admin users can never see these pages.
@@ -841,7 +841,7 @@ function applyMenuVisibility(vis) {
     // adminNavSection wrapper: show if either audit or settings is visible
     const adminSec = document.getElementById('adminNavSection');
     if (adminSec) {
-      const anyAdmin = ['audit', 'settings'].some(key => vis[key] !== false);
+      const anyAdmin = ['audit', 'settings', 'telemetry'].some(key => vis[key] !== false);
       adminSec.style.display = (isAdmin && anyAdmin) ? '' : 'none';
     }
   }
@@ -1593,8 +1593,7 @@ function _telSetTab(tab) {
     if (!pane || !btn) return;
     const active = t === tab;
     pane.style.display = active ? '' : 'none';
-    btn.style.color       = active ? 'var(--accent)' : 'var(--muted)';
-    btn.style.borderBottom = active ? '2px solid var(--accent)' : '2px solid transparent';
+    btn.classList.toggle('active', active);
   });
   _telRenderCurrentTab();
 }
