@@ -879,7 +879,8 @@ function clearFamilyScopedUI() {
 
 function navigate(page){
   // Guard: settings/audit/telemetry são admin-only
-  if((page==='settings'||page==='audit'||page==='telemetry') && currentUser?.role !== 'admin'){
+  // Guard: settings/telemetry são admin-only; audit é acessível a todos
+  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
     toast(t('error.admin_only'),'warning');
     return;
   }

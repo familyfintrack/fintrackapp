@@ -826,11 +826,10 @@ function updateUserUI() {
       : 'Gerenciar minha família · Owner';
   }
 
-  // Configurações, Auditoria e Telemetria: APENAS admin (sidebar + topbar via data-nav)
-  // Topbar buttons usam classe .admin-visible (CSS ID+!important impede style.display de funcionar)
-  // Sidebar items usam style.display normalmente
+  // Configurações e Telemetria: APENAS admin (sidebar + topbar via data-nav)
+  // Auditoria: visível para TODOS os usuários autenticados
   const isAdmin = !!currentUser.can_admin;
-  ['audit', 'settings', 'telemetry'].forEach(key => {
+  ['settings', 'telemetry'].forEach(key => {
     document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
       if (el.tagName === 'BUTTON' && el.id && el.id.includes('Topbar')) {
         el.classList.toggle('admin-visible', isAdmin);
@@ -838,6 +837,10 @@ function updateUserUI() {
         el.style.display = isAdmin ? '' : 'none';
       }
     });
+  });
+  // Audit: sempre visível — apenas garante que não esteja escondido
+  document.querySelectorAll('[data-nav="audit"]').forEach(el => {
+    el.style.display = '';
   });
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display = isAdmin ? '' : 'none';
@@ -875,8 +878,8 @@ function applyPermissions() {
     document.querySelectorAll('[data-nav="import"]').forEach(el => el.style.display='none');
   }
 
-// Hide admin-only screens for non-admin (sidebar + topbar via data-nav)
-['settings', 'audit', 'telemetry'].forEach(key => {
+// Configurações e Telemetria: admin-only. Auditoria: todos os usuários.
+['settings', 'telemetry'].forEach(key => {
   document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
     if (el.tagName === 'BUTTON' && el.id && el.id.includes('Topbar')) {
       el.classList.toggle('admin-visible', !!p.can_admin);
@@ -885,6 +888,8 @@ function applyPermissions() {
     }
   });
 });
+// Audit sempre visível para todos os usuários autenticados
+document.querySelectorAll('[data-nav="audit"]').forEach(el => { el.style.display = ''; });
 if (!p.can_admin) {
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display = 'none';

@@ -822,18 +822,15 @@ function applyMenuVisibility(vis) {
     });
   });
 
-  // audit + settings: only apply menu_visibility AFTER currentUser is loaded,
-  // because these pages are admin-only by role — we must not show them to
-  // non-admin users even if menu_visibility says "true".
+  // settings/telemetry: admin-only. audit: visível para todos.
   // If currentUser is not ready yet, auth.js updateUserUI() will call us again.
   if (typeof currentUser !== 'undefined' && currentUser) {
     const isAdmin = !!(currentUser.can_admin);
 
-    ['audit', 'settings', 'telemetry'].forEach(key => {
+    ['settings', 'telemetry'].forEach(key => {
       const wantVisible = vis[key] !== false;
       document.querySelectorAll('[data-nav="' + key + '"]').forEach(el => {
         const show = isAdmin && wantVisible;
-        // Topbar buttons: CSS ID rule with !important blocks style.display — use class
         if (el.tagName === 'BUTTON' && el.id && el.id.includes('Topbar')) {
           el.classList.toggle('admin-visible', show);
         } else {
@@ -842,10 +839,13 @@ function applyMenuVisibility(vis) {
       });
     });
 
-    // adminNavSection wrapper: show if either audit or settings is visible
+    // audit: sempre visível para todos os autenticados
+    document.querySelectorAll('[data-nav="audit"]').forEach(el => { el.style.display = ''; });
+
+    // adminNavSection wrapper: visível se settings ou telemetry estiver visível
     const adminSec = document.getElementById('adminNavSection');
     if (adminSec) {
-      const anyAdmin = ['audit', 'settings', 'telemetry'].some(key => vis[key] !== false);
+      const anyAdmin = ['settings', 'telemetry'].some(key => vis[key] !== false);
       adminSec.style.display = (isAdmin && anyAdmin) ? '' : 'none';
     }
   }
@@ -867,7 +867,7 @@ function _renderMenuVisibilityForm() {
     ['categories',  'Categorias'],
     ['payees',      'Beneficiários'],
     ['import',      'Importar'],
-    ['audit',       'Auditoria (admin)'],
+    ['audit',       'Auditoria'],
     ['settings',    'Configurações (admin)'],
   ];
 

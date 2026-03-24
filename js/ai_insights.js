@@ -455,39 +455,87 @@ async function _aiCollectFinancialContext() {
   // Eventos futuros por mês: programados únicos e recorrentes
   const _today = new Date();
   const projMonths = [];
+
+  // Breakdown por categoria no histórico recente (base para projeção)
+  const _baseCatExpense = {}; // catName -> avg mensal
+  const _baseCatIncome  = {};
+  recentMonths.forEach(m => {
+    // m não tem breakdown por cat — usamos topCategories ponderadas
+  });
+  // Distribuição proporcional de baseExpense por categoria (top categorias)
+  const _catDistExp = {};
+  const _catDistInc = {};
+  if (ctx?.topCategories?.length && baseExpense > 0) {
+    const topCatTotal = ctx.topCategories.reduce((s,c) => s + c.amount, 0) || 1;
+    ctx.topCategories.forEach(c => {
+      _catDistExp[c.name] = baseExpense * (c.amount / topCatTotal);
+    });
+  }
+  // Receitas: se há topPayees de income use, senão agrupa como "Receitas diversas"
+  if (baseIncome > 0) {
+    _catDistInc['Receitas base'] = baseIncome;
+  }
+
   for (let i = 1; i <= 6; i++) {
     const d   = new Date(_today.getFullYear(), _today.getMonth() + i, 1);
     const ym  = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     const dEnd = new Date(d.getFullYear(), d.getMonth()+1, 0);
     const ymEnd = dEnd.toISOString().slice(0,10);
 
-    // Soma programados únicos que caem neste mês
+    // ── Programados únicos deste mês ──────────────────────────────────
+    const onceThisMonth = schedOnce.filter(s =>
+      s.next_date && s.next_date >= ym + '-01' && s.next_date <= ymEnd
+    );
+
     let projExtraIncome = 0, projExtraExpense = 0;
-    schedOnce.forEach(s => {
-      if (!s.next_date) return;
-      if (s.next_date >= ym + '-01' && s.next_date <= ymEnd) {
-        if (s.type === 'income')  projExtraIncome  += s.amount;
-        if (s.type === 'expense') projExtraExpense += s.amount;
-      }
+    // Breakdown de categorias projetadas (base + programados)
+    const projExpCat = { ...Object.fromEntries(Object.entries(_catDistExp).map(([k,v]) => [k, +v.toFixed(2)])) };
+    const projIncCat = { ...Object.fromEntries(Object.entries(_catDistInc).map(([k,v]) => [k, +v.toFixed(2)])) };
+
+    onceThisMonth.forEach(s => {
+      if (s.type === 'income')  { projExtraIncome  += s.amount; projIncCat[s.category || s.description] = (projIncCat[s.category || s.description] || 0) + s.amount; }
+      if (s.type === 'expense') { projExtraExpense += s.amount; projExpCat[s.category || s.description] = (projExpCat[s.category || s.description] || 0) + s.amount; }
     });
-    // Programados mensais e recorrentes somam equivalente mensal
+
     schedMonthly.forEach(s => {
-      if (s.type === 'income')  projExtraIncome  += s.monthly_equiv;
-      if (s.type === 'expense') projExtraExpense += s.monthly_equiv;
+      if (s.type === 'income')  { projExtraIncome  += s.monthly_equiv; projIncCat[s.category || s.description] = (projIncCat[s.category || s.description] || 0) + s.monthly_equiv; }
+      if (s.type === 'expense') { projExtraExpense += s.monthly_equiv; projExpCat[s.category || s.description] = (projExpCat[s.category || s.description] || 0) + s.monthly_equiv; }
     });
+
     schedRecurring.forEach(s => {
-      if (s.type === 'income')  projExtraIncome  += s.monthly_equiv;
-      if (s.type === 'expense') projExtraExpense += s.monthly_equiv;
+      if (s.type === 'income')  { projExtraIncome  += s.monthly_equiv; projIncCat[s.category || s.description] = (projIncCat[s.category || s.description] || 0) + s.monthly_equiv; }
+      if (s.type === 'expense') { projExtraExpense += s.monthly_equiv; projExpCat[s.category || s.description] = (projExpCat[s.category || s.description] || 0) + s.monthly_equiv; }
     });
 
     const projIncome  = +(baseIncome  + projExtraIncome).toFixed(2);
     const projExpense = +(baseExpense + projExtraExpense).toFixed(2);
+
     projMonths.push({
       month:             ym,
       projected_income:  projIncome,
       projected_expense: projExpense,
       projected_net:     +(projIncome - projExpense).toFixed(2),
-      one_time_events:   schedOnce.filter(s => s.next_date >= ym+'-01' && s.next_date <= ymEnd).length,
+      one_time_events:   onceThisMonth.length,
+      // Detalhamento para o painel de UI
+      _detail: {
+        one_time_items: onceThisMonth.map(s => ({
+          description: s.description,
+          category:    s.category,
+          type:        s.type,
+          amount:      s.amount,
+          date:        s.next_date,
+        })),
+        expense_by_cat: Object.entries(projExpCat)
+          .sort((a,b) => b[1]-a[1]).slice(0, 8)
+          .map(([cat, amt]) => ({ cat, amt: +amt.toFixed(2) })),
+        income_by_cat: Object.entries(projIncCat)
+          .sort((a,b) => b[1]-a[1]).slice(0, 6)
+          .map(([cat, amt]) => ({ cat, amt: +amt.toFixed(2) })),
+        scheduled_items: [
+          ...schedMonthly.filter(s => s.type==='expense' || s.type==='income').slice(0,6),
+          ...schedRecurring.filter(s => s.type==='expense' || s.type==='income').slice(0,4),
+        ].map(s => ({ description: s.description, amount: s.monthly_equiv, type: s.type, frequency: s.frequency, category: s.category })),
+      },
     });
   }
 
@@ -908,6 +956,24 @@ REGRAS FINAIS:
 
 // ── Renderização da análise ───────────────────────────────────────────────
 
+// Converte frequência interna em label legível
+function _fmtFreqLabel(freq) {
+  return { once:'único', weekly:'semanal', biweekly:'quinzenal', monthly:'mensal',
+           bimonthly:'bimestral', quarterly:'trimestral', semiannual:'semestral',
+           annual:'anual', custom:'personalizado' }[freq] || freq || '';
+}
+
+// Toggle do painel de detalhe mensal no prognóstico
+function _aiToggleProjMonth(ym) {
+  const det  = document.getElementById('air-proj-detail-' + ym);
+  const chev = document.getElementById('air-proj-chev-' + ym);
+  if (!det) return;
+  const open = det.style.display !== 'none';
+  det.style.display = open ? 'none' : '';
+  if (chev) chev.textContent = open ? '▼' : '▲';
+}
+window._aiToggleProjMonth = _aiToggleProjMonth;
+
 // ── Member card toggle ─────────────────────────────────────────────────────
 function _aiToggleMember(idx) {
   const body  = document.getElementById('ai-mem-body-' + idx);
@@ -1042,19 +1108,7 @@ function _aiRenderAnalysis(r) {
       high:   { color:'#ef4444', bg:'#1c0000', label:'Risco Alto',   icon:'🔥' },
     }[riskLevel] || { color:'#60a5fa', bg:'#0c1a2e', label:'', icon:'📊' };
 
-    let projRows = '';
-    if (proj?.months?.length) {
-      projRows = proj.months.map(m => {
-        const isPos = m.projected_net >= 0;
-        return `<div class="air-proj-row">
-          <span class="air-proj-month">${m.month}</span>
-          <span class="air-proj-val air-green">${fmtN(m.projected_income)}</span>
-          <span class="air-proj-val air-red">${fmtN(m.projected_expense)}</span>
-          <span class="air-proj-net" style="color:${isPos?'#22c55e':'#ef4444'}">${isPos?'+':''}${fmtN(m.projected_net)}</span>
-        </div>`;
-      }).join('');
-    }
-
+    // ── KPIs de compromissos recorrentes ─────────────────────────────
     let rcmKpis = '';
     if (rcm?.monthly_expense || rcm?.monthly_income) {
       const rcmNetColor = rcm.monthly_net >= 0 ? '#22c55e' : '#ef4444';
@@ -1065,6 +1119,117 @@ function _aiRenderAnalysis(r) {
       </div>`;
     }
 
+    // ── Tabela de projeção mensal com detalhamento ────────────────────
+    let projHtml = '';
+    if (proj?.months?.length) {
+      const months = proj.months;
+
+      // Cabeçalho resumo (sempre visível)
+      const summaryRows = months.map(m => {
+        const isPos = m.projected_net >= 0;
+        const hasOnce = m.one_time_events > 0;
+        return `<div class="air-proj-row ${hasOnce ? 'air-proj-row-has-once' : ''}" onclick="_aiToggleProjMonth('${m.month}')" style="cursor:pointer">
+          <span class="air-proj-month">
+            ${m.month}
+            ${hasOnce ? `<span class="air-proj-once-badge" title="${m.one_time_events} evento(s) único(s)">★${m.one_time_events}</span>` : ''}
+          </span>
+          <span class="air-proj-val air-green">${fmtN(m.projected_income)}</span>
+          <span class="air-proj-val air-red">${fmtN(m.projected_expense)}</span>
+          <span class="air-proj-net" style="color:${isPos?'#22c55e':'#ef4444'}">${isPos?'+':''}${fmtN(m.projected_net)}</span>
+          <span class="air-proj-chevron" id="air-proj-chev-${m.month}">▼</span>
+        </div>
+        <div class="air-proj-detail" id="air-proj-detail-${m.month}" style="display:none">
+          <div class="air-proj-detail-inner">
+            ${(() => {
+              const det = m._detail;
+              if (!det) return '';
+              let html = '';
+
+              // Eventos únicos deste mês
+              if (det.one_time_items?.length) {
+                html += `<div class="air-proj-det-section">
+                  <div class="air-proj-det-title">★ Eventos únicos em ${m.month}</div>
+                  ${det.one_time_items.map(e => `
+                    <div class="air-proj-det-row">
+                      <span class="air-proj-det-icon">${e.type==='income'?'💰':'💸'}</span>
+                      <span class="air-proj-det-label">${esc(e.description)}${e.category ? ` <em>(${esc(e.category)})</em>` : ''}</span>
+                      <span class="air-proj-det-amt ${e.type==='income'?'air-green':'air-red'}">${fmtN(e.amount)}</span>
+                    </div>`).join('')}
+                </div>`;
+              }
+
+              // Detalhamento de despesas por categoria
+              if (det.expense_by_cat?.length) {
+                const totalExp = det.expense_by_cat.reduce((s,c)=>s+c.amt,0) || 1;
+                html += `<div class="air-proj-det-section">
+                  <div class="air-proj-det-title">💸 Despesas projetadas por categoria</div>
+                  ${det.expense_by_cat.map(c => {
+                    const pct = (c.amt / totalExp * 100).toFixed(0);
+                    return `<div class="air-proj-det-row">
+                      <span class="air-proj-det-icon">📁</span>
+                      <span class="air-proj-det-label">${esc(c.cat)}</span>
+                      <div class="air-proj-det-bar-wrap">
+                        <div class="air-proj-det-bar" style="width:${pct}%;background:#ef4444"></div>
+                      </div>
+                      <span class="air-proj-det-pct">${pct}%</span>
+                      <span class="air-proj-det-amt air-red">${fmtN(c.amt)}</span>
+                    </div>`;
+                  }).join('')}
+                </div>`;
+              }
+
+              // Detalhamento de receitas por origem
+              if (det.income_by_cat?.length) {
+                const totalInc = det.income_by_cat.reduce((s,c)=>s+c.amt,0) || 1;
+                html += `<div class="air-proj-det-section">
+                  <div class="air-proj-det-title">💰 Receitas projetadas por origem</div>
+                  ${det.income_by_cat.map(c => {
+                    const pct = (c.amt / totalInc * 100).toFixed(0);
+                    return `<div class="air-proj-det-row">
+                      <span class="air-proj-det-icon">📥</span>
+                      <span class="air-proj-det-label">${esc(c.cat)}</span>
+                      <div class="air-proj-det-bar-wrap">
+                        <div class="air-proj-det-bar" style="width:${pct}%;background:#22c55e"></div>
+                      </div>
+                      <span class="air-proj-det-pct">${pct}%</span>
+                      <span class="air-proj-det-amt air-green">${fmtN(c.amt)}</span>
+                    </div>`;
+                  }).join('')}
+                </div>`;
+              }
+
+              // Programados que compõem a projeção (apenas no primeiro mês expandido, não repete)
+              if (det.scheduled_items?.length) {
+                html += `<div class="air-proj-det-section">
+                  <div class="air-proj-det-title">🔁 Programados incluídos na projeção</div>
+                  ${det.scheduled_items.map(s => `
+                    <div class="air-proj-det-row">
+                      <span class="air-proj-det-icon">${s.type==='income'?'💰':'💸'}</span>
+                      <span class="air-proj-det-label">${esc(s.description)}${s.category?` <em>(${esc(s.category)})</em>`:''} <span class="air-proj-det-freq">${_fmtFreqLabel(s.frequency)}</span></span>
+                      <span class="air-proj-det-amt ${s.type==='income'?'air-green':'air-red'}">${fmtN(s.amount)}/mês</span>
+                    </div>`).join('')}
+                </div>`;
+              }
+
+              return html || '<div class="air-proj-det-empty">Sem detalhamento adicional.</div>';
+            })()}
+          </div>
+        </div>`;
+      }).join('');
+
+      projHtml = `
+      <div class="air-proj-table">
+        <div class="air-proj-header">
+          <span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado</span><span></span>
+        </div>
+        ${summaryRows}
+      </div>
+      <div style="font-size:.7rem;color:rgba(255,255,255,.4);margin-top:6px;text-align:center">
+        Clique em cada mês para ver o detalhamento de receitas e despesas
+      </div>`;
+    }
+
+    // ── Análise IA: riscos e oportunidades ────────────────────────────
     let keyRisksHtml = (fc?.key_risks||[]).map(k => `
       <div class="air-risk-item">
         <span class="air-risk-bullet">▸</span>
@@ -1077,24 +1242,44 @@ function _aiRenderAnalysis(r) {
         <div><strong>${esc(o.opportunity)}</strong>${o.action?`<span class="air-opp-act"> — ${esc(o.action)}</span>`:''}</div>
       </div>`).join('');
 
+    // ── Alertas de eventos únicos ─────────────────────────────────────
+    let onceAlertsHtml = '';
+    const onceAlerts = fc?.one_time_payment_alerts || [];
+    if (onceAlerts.length) {
+      onceAlertsHtml = `<div class="air-forecast-section-title">★ Pagamentos únicos relevantes</div>
+        <div class="air-once-list">
+          ${onceAlerts.map(a => `
+            <div class="air-once-item">
+              <span class="air-once-month">${a.month}</span>
+              <span class="air-once-desc">${esc(a.description)}</span>
+              <span class="air-once-impact air-once-${a.impact||'medio'}">${a.impact||'—'}</span>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    // ── Insight de sazonalidade da IA ─────────────────────────────────
+    let seasonHtml = '';
+    if (fc?.seasonality_insight) {
+      seasonHtml = `<div class="air-forecast-section-title">📅 Sazonalidade</div>
+        <div class="air-season-insight">${esc(fc.seasonality_insight)}</div>`;
+    }
+
     forecastBannerHtml = `
 <div class="air-forecast" style="--fc:${riskMeta.color};--fcbg:${riskMeta.bg}">
   <div class="air-forecast-head">
     <span class="air-forecast-icon">${trendMeta.icon}</span>
-    <div>
-      <div class="air-forecast-title">Prognóstico Financeiro</div>
+    <div style="flex:1;min-width:0">
+      <div class="air-forecast-title">Prognóstico Financeiro — 6 meses</div>
       ${fc?.outlook ? `<p class="air-forecast-outlook">${esc(fc.outlook)}</p>` : ''}
     </div>
     <span class="air-risk-chip" style="color:${riskMeta.color}">${riskMeta.icon} ${riskMeta.label}</span>
   </div>
   ${rcmKpis}
-  ${projRows ? `
-  <div class="air-proj-table">
-    <div class="air-proj-header"><span>Mês</span><span>Receitas</span><span>Despesas</span><span>Resultado</span></div>
-    ${projRows}
-  </div>` : ''}
-  ${keyRisksHtml ? `<div class="air-forecast-section-title">Riscos</div><div class="air-risks-list">${keyRisksHtml}</div>` : ''}
-  ${oppsHtml ? `<div class="air-forecast-section-title">Oportunidades</div><div class="air-opps-list">${oppsHtml}</div>` : ''}
+  ${projHtml}
+  ${onceAlertsHtml}
+  ${seasonHtml}
+  ${keyRisksHtml ? `<div class="air-forecast-section-title">⚠️ Riscos</div><div class="air-risks-list">${keyRisksHtml}</div>` : ''}
+  ${oppsHtml ? `<div class="air-forecast-section-title">🎯 Oportunidades</div><div class="air-opps-list">${oppsHtml}</div>` : ''}
 </div>`;
   }
 

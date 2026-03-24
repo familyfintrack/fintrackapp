@@ -1,70 +1,72 @@
 
-// ── Auditoria de Auto-registros ──────────────────────────────────────────
-// A tabela scheduled_run_logs é preenchida pelo auto-register (scheduled.js)
-// cada vez que uma transação programada é executada automaticamente.
-// Se a tabela não existir, execute a migration exibida na tela.
+// ══════════════════════════════════════════════════════════════════════════
+//  AUDIT.JS — Histórico de auto-registros de transações programadas
+//  Tabela: scheduled_run_logs (preenchida por auto_register.js)
+//  Visível para TODOS os usuários autenticados (não apenas admin)
+// ══════════════════════════════════════════════════════════════════════════
 
-let _auditSearchTerm = '';
+// Estado interno
+const _auditState = {
+  allRows:    [],   // todos os registros carregados do banco
+  filtered:   [],   // após filtros locais
+  searchTerm: '',
+};
 
+// ── Entry point ─────────────────────────────────────────────────────────────
 async function loadAuditLogs() {
-  const body    = document.getElementById('auditBody');
-  const countEl = document.getElementById('auditCount');
+  const body     = document.getElementById('auditBody');
+  const countEl  = document.getElementById('auditCount');
+  const footerEl = document.getElementById('auditFooterCount');
+  const btn      = document.getElementById('auditRefreshBtn');
+
+  if (btn) btn.disabled = true;
   if (body) body.innerHTML = `
-    <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted)">
-      <span style="font-size:.85rem">⟳ Carregando…</span>
+    <tr><td colspan="7" style="text-align:center;padding:36px;color:var(--muted)">
+      <div style="font-size:1.4rem;margin-bottom:8px">⏳</div>
+      <div style="font-size:.85rem">Carregando registros…</div>
     </td></tr>`;
 
   try {
     if (!sb) { toast('Sem conexão com o banco', 'error'); return; }
 
+    // Testa existência da tabela
     const { error: testErr } = await sb.from('scheduled_run_logs').select('id').limit(1);
     if (testErr) throw testErr;
 
+    // Filtro de mês (se preenchido)
+    const monthFilter = document.getElementById('auditMonthFilter')?.value || '';
     const statusFilter = document.getElementById('auditStatusFilter')?.value || '';
-    const typeFilter   = document.getElementById('auditTypeFilter')?.value   || '';
-    _auditSearchTerm   = (document.getElementById('auditSearch')?.value || '').toLowerCase().trim();
 
     let q = famQ(
       sb.from('scheduled_run_logs')
-        .select('*')
+        .select('*, scheduled_transactions(description,frequency,type,category_id,categories:category_id(name))')
         .order('created_at', { ascending: false })
-        .limit(300)
+        .limit(500)
     );
+
     if (statusFilter) q = q.eq('status', statusFilter);
+    if (monthFilter) {
+      // filtra pelo mês da data agendada
+      const [y, m] = monthFilter.split('-');
+      const last = new Date(+y, +m, 0).getDate();
+      q = q.gte('scheduled_date', `${y}-${m}-01`)
+           .lte('scheduled_date', `${y}-${m}-${String(last).padStart(2,'0')}`);
+    }
 
     const { data, error } = await q;
     if (error) throw error;
 
-    _updateAuditCounters(data || []);
+    _auditState.allRows = data || [];
+    _updateAuditCounters(_auditState.allRows);
+    _auditApplyLocalFilters();
 
-    let rows = data || [];
-    if (_auditSearchTerm) {
-      rows = rows.filter(r =>
-        (r.description || '').toLowerCase().includes(_auditSearchTerm)
-      );
-    }
+    if (countEl) countEl.textContent = '';
 
-    if (countEl) countEl.textContent = `${rows.length} registro${rows.length !== 1 ? 's' : ''}`;
-
-    if (!rows.length) {
-      const msg = _auditSearchTerm || statusFilter
-        ? 'Nenhum registro encontrado com esses filtros.'
-        : 'Nenhum auto-registro ainda. Execute uma transação programada automática para ver logs aqui.';
-      if (body) body.innerHTML = `
-        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">
-          <div style="font-size:1.8rem;margin-bottom:8px">📋</div>
-          <div style="font-size:.85rem">${msg}</div>
-        </td></tr>`;
-      return;
-    }
-
-    if (body) body.innerHTML = rows.map(r => _auditRow(r)).join('');
-
-  } catch(e) {
+  } catch (e) {
     console.warn('[audit]', e.message);
     const isMissing = /does not exist|relation|not found/i.test(e.message || '');
     if (body) body.innerHTML = isMissing
-      ? `<tr><td colspan="6"><div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
+      ? `<tr><td colspan="7"><div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
           <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada</div>
           <div style="color:var(--text2);margin-bottom:12px">Execute o SQL abaixo no <strong>Supabase SQL Editor</strong> para criar a tabela:</div>
           <pre id="auditMigrationSql" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;font-size:.7rem;overflow-x:auto;white-space:pre;color:var(--text);cursor:text;user-select:all">${_auditMigrationSql()}</pre>
@@ -74,13 +76,67 @@ async function loadAuditLogs() {
             <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Tentar novamente</button>
           </div>
         </div></td></tr>`
-      : `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--red);font-size:.85rem">
-          Erro: ${esc(e.message)}
-          <br><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="loadAuditLogs()">↻ Tentar novamente</button>
+      : `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
+          ⚠️ Erro: ${esc(e.message)}
+          <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button>
         </td></tr>`;
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
+// ── Filtros locais (busca + status via contador) ─────────────────────────────
+function _auditApplyLocalFilters() {
+  const body     = document.getElementById('auditBody');
+  const countEl  = document.getElementById('auditCount');
+  const footerEl = document.getElementById('auditFooterCount');
+
+  const search = (document.getElementById('auditSearch')?.value || '').toLowerCase().trim();
+  _auditState.searchTerm = search;
+
+  let rows = _auditState.allRows;
+
+  if (search) {
+    rows = rows.filter(r => {
+      const desc   = (r.description || '').toLowerCase();
+      const sched  = (r.scheduled_transactions?.description || '').toLowerCase();
+      const cat    = (r.scheduled_transactions?.categories?.name || '').toLowerCase();
+      return desc.includes(search) || sched.includes(search) || cat.includes(search);
+    });
+  }
+
+  _auditState.filtered = rows;
+
+  const total = rows.length;
+  if (countEl) countEl.textContent = total > 0 ? `${total} registro${total !== 1 ? 's' : ''}` : '';
+  if (footerEl) footerEl.textContent = total > 0 ? `${total} de ${_auditState.allRows.length} registros` : '';
+
+  if (!total) {
+    const msg = search || document.getElementById('auditStatusFilter')?.value || document.getElementById('auditMonthFilter')?.value
+      ? 'Nenhum registro encontrado com esses filtros.'
+      : 'Nenhum auto-registro ainda. Execute uma transação programada automática para ver os logs aqui.';
+    if (body) body.innerHTML = `
+      <tr><td colspan="7" style="text-align:center;padding:48px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:10px">📋</div>
+        <div style="font-size:.85rem">${msg}</div>
+      </td></tr>`;
+    return;
+  }
+
+  if (body) body.innerHTML = rows.map(r => _auditRow(r)).join('');
+}
+
+// ── Clique nos KPI counters para filtrar por status ──────────────────────────
+function auditSetStatus(status) {
+  const sel = document.getElementById('auditStatusFilter');
+  if (sel) {
+    sel.value = status;
+    loadAuditLogs();
+  }
+}
+window.auditSetStatus = auditSetStatus;
+
+// ── Atualiza contadores dos KPI cards ────────────────────────────────────────
 function _updateAuditCounters(data) {
   const total     = data.length;
   const confirmed = data.filter(r => r.status === 'confirmed').length;
@@ -93,38 +149,81 @@ function _updateAuditCounters(data) {
   set('auditCntError',     errors);
 }
 
+// ── Renderiza uma linha da tabela ────────────────────────────────────────────
 function _auditRow(r) {
-  const desc   = r.description || '—';
   const amount = r.amount ?? 0;
   const date   = r.scheduled_date || r.created_at;
-  const status = r.status || 'confirmed';
-  const badge  = {
-    confirmed: `<span class="audit-status-badge audit-ok">✅ confirmada</span>`,
-    pending:   `<span class="audit-status-badge audit-pending">⏳ pendente</span>`,
-    error:     `<span class="audit-status-badge audit-error">❌ erro</span>`,
-  }[status] || `<span class="audit-status-badge audit-ok">✅ confirmada</span>`;
 
-  const txLink = r.transaction_id
-    ? `<button class="btn btn-ghost btn-sm" onclick="openTxDetail('${r.transaction_id}')" style="font-size:.72rem;padding:3px 8px">Ver</button>`
-    : `<span style="color:var(--muted);font-size:.8rem">—</span>`;
+  // Badge de status
+  const statusBadge = {
+    confirmed: `<span class="audit-status-badge audit-ok">✅ Confirmada</span>`,
+    pending:   `<span class="audit-status-badge audit-pending">⏳ Pendente</span>`,
+    error:     `<span class="audit-status-badge audit-error">❌ Erro</span>`,
+  }[r.status || 'confirmed'] || `<span class="audit-status-badge audit-ok">✅ Confirmada</span>`;
 
-  const createdAt = r.created_at
-    ? new Date(r.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+  // Descrição principal: prioriza scheduled_transactions.description, fallback para r.description
+  const schedTx  = r.scheduled_transactions;
+  const mainDesc = schedTx?.description || r.description || '—';
+  const runDesc  = (r.description && r.description !== mainDesc) ? r.description : null;
+  const catName  = schedTx?.categories?.name || null;
+
+  // Frequência do programado
+  const freqLabel = schedTx?.frequency
+    ? { once:'Único', weekly:'Semanal', biweekly:'Quinzenal', monthly:'Mensal',
+        bimonthly:'Bimestral', quarterly:'Trimestral', semiannual:'Semestral',
+        annual:'Anual', custom:'Custom' }[schedTx.frequency] || schedTx.frequency
     : '—';
 
-  return `<tr>
-    <td style="white-space:nowrap;font-size:.82rem">${fmtDate(date)}</td>
-    <td>
-      <div style="font-weight:500;font-size:.875rem">${esc(desc)}</div>
-      ${r.notes ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(r.notes)}</div>` : ''}
+  // Tipo do programado
+  const typeIcon = {
+    expense: '💸', income: '💰', transfer: '↔️', card_payment: '💳'
+  }[schedTx?.type || ''] || '';
+
+  // Botão de link para a transação
+  const txLink = r.transaction_id
+    ? `<button class="btn btn-ghost btn-sm" onclick="openTxDetail('${r.transaction_id}')"
+        style="font-size:.72rem;padding:3px 8px" title="Ver transação">🔍 Ver</button>`
+    : `<span style="color:var(--muted);font-size:.78rem">—</span>`;
+
+  const createdAt = r.created_at
+    ? new Date(r.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+    : '—';
+
+  return `<tr class="audit-tr-${r.status || 'confirmed'}">
+    <td style="white-space:nowrap;font-size:.82rem;color:var(--text2)">${fmtDate(date)}</td>
+    <td style="max-width:260px">
+      <div style="font-weight:600;font-size:.875rem;color:var(--text)">${typeIcon} ${esc(mainDesc)}</div>
+      ${catName ? `<div style="font-size:.72rem;color:var(--accent);margin-top:1px">📁 ${esc(catName)}</div>` : ''}
+      ${runDesc  ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(runDesc)}</div>` : ''}
     </td>
-    <td>${badge}</td>
-    <td style="text-align:right;white-space:nowrap" class="${amount >= 0 ? 'amount-pos' : 'amount-neg'}">${fmt(amount)}</td>
-    <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${createdAt}</td>
+    <td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${freqLabel}</td>
+    <td>${statusBadge}</td>
+    <td style="text-align:right;white-space:nowrap;font-weight:700"
+        class="${amount >= 0 ? 'amount-pos' : 'amount-neg'}">${fmt(amount)}</td>
+    <td style="font-size:.74rem;color:var(--muted);white-space:nowrap">${createdAt}</td>
     <td style="text-align:center">${txLink}</td>
   </tr>`;
 }
 
+// ── Funções de filtro chamadas pela UI ───────────────────────────────────────
+function filterAuditLogs() {
+  // statusFilter e monthFilter requerem nova query; search é local
+  const status = document.getElementById('auditStatusFilter')?.value || '';
+  const month  = document.getElementById('auditMonthFilter')?.value  || '';
+
+  // Se mudou status ou mês, recarrega do servidor; senão filtra localmente
+  const needsReload = status !== _auditState._lastStatus || month !== _auditState._lastMonth;
+  _auditState._lastStatus = status;
+  _auditState._lastMonth  = month;
+
+  if (needsReload) {
+    loadAuditLogs();
+  } else {
+    _auditApplyLocalFilters();
+  }
+}
+
+// ── SQL de migration ─────────────────────────────────────────────────────────
 function _auditMigrationSql() {
   return `CREATE TABLE IF NOT EXISTS public.scheduled_run_logs (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -154,7 +253,5 @@ function _copyAuditMigration() {
   const sql = _auditMigrationSql().replace(/&lt;/g,'<').replace(/&gt;/g,'>');
   navigator.clipboard.writeText(sql)
     .then(() => toast('SQL copiado!', 'success'))
-    .catch(() => toast('Selecione o texto acima e copie', 'info'));
+    .catch(() => toast('Selecione o texto acima e copie manualmente', 'info'));
 }
-
-function filterAuditLogs() { loadAuditLogs(); }
