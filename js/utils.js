@@ -272,16 +272,39 @@ function _buildCategoryFilterOptions() {
   return lines.join('');
 }
 
-function _accountOptions(accounts, placeholder) {
-  const favs = accounts.filter(a => a.is_favorite);
-  const rest = accounts.filter(a => !a.is_favorite);
+function _sortAccountsForSelect(accounts) {
+  const list = Array.isArray(accounts) ? [...accounts] : [];
+  const byName = (a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' });
+  const favs = list.filter(a => a?.is_favorite).sort(byName);
+  const rest = list.filter(a => !a?.is_favorite).sort(byName);
+  return { favs, rest, all: [...favs, ...rest] };
+}
+
+function _accountOptionLabel(account, opts = {}) {
+  const options = opts || {};
+  const showCurrency = options.showCurrency !== false;
+  const starFavorites = options.starFavorites !== false;
+  const star = (starFavorites && account?.is_favorite) ? '⭐ ' : '';
+  const currency = showCurrency && account?.currency ? ` (${esc(account.currency)})` : '';
+  return `${star}${esc(account?.name || '')}${currency}`;
+}
+
+function _accountOptions(accounts, placeholder, opts = {}) {
+  const options = opts || {};
+  const selected = options.selected == null ? null : String(options.selected);
+  const separatorLabel = options.separatorLabel || '──────────';
+  const { favs, rest, all } = _sortAccountsForSelect(accounts || []);
   let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+  const optionHtml = (a) => `<option value="${a.id}"${selected === String(a.id) ? ' selected' : ''}>${_accountOptionLabel(a, options)}</option>`;
+
   if (favs.length) {
-    html += `<optgroup label="⭐ Favoritas">${favs.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
-    if (rest.length) html += `<optgroup label="Outras contas">${rest.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
-  } else {
-    html += accounts.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    html += favs.map(optionHtml).join('');
+    if (rest.length) html += `<option value="" disabled>──────── ${separatorLabel} ────────</option>`;
+    html += rest.map(optionHtml).join('');
+    return html;
   }
+
+  html += all.map(optionHtml).join('');
   return html;
 }
 

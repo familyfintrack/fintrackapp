@@ -377,11 +377,10 @@ async function deleteAccount(id) {
 
   // Populate target account select (other active accounts)
   const sel = document.getElementById('delAccTargetSelect');
-  sel.innerHTML = '<option value="">— Selecione a conta —</option>' +
-    state.accounts
-      .filter(a => a.id !== id && a.active !== false)
-      .map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`)
-      .join('');
+  const targetAccounts = state.accounts.filter(a => a.id !== id && a.active !== false);
+  sel.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(targetAccounts, '— Selecione a conta —')
+    : '<option value="">— Selecione a conta —</option>' + targetAccounts.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
 
   // Reset options
   document.querySelectorAll('input[name="delAccAction"]').forEach(r => r.checked = false);

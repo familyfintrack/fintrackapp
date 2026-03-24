@@ -10,8 +10,9 @@ function openTxClipboardImport() {
 
   // Populate default account selector
   const sel = document.getElementById('txClipDefaultAccount');
-  sel.innerHTML = '<option value="">— usar coluna conta —</option>' +
-    (state.accounts || []).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  sel.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(state.accounts || [], '— usar coluna conta —', { showCurrency: false })
+    : '<option value="">— usar coluna conta —</option>' + (state.accounts || []).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
 
   openModal('txClipboardModal');
 }
@@ -810,8 +811,9 @@ function _filterTxAccountOrigin(excludeCreditCards) {
   const accounts = excludeCreditCards
     ? state.accounts.filter(a => a.type !== 'cartao_credito')
     : state.accounts;
-  sel.innerHTML = '<option value="">Selecione a conta</option>' +
-    accounts.map(a => `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
+  sel.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(accounts, 'Selecione a conta', { selected: currentVal })
+    : '<option value="">Selecione a conta</option>' + accounts.map(a => `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
   if (excludeCreditCards && currentVal) {
     const acct = state.accounts.find(a => a.id === currentVal);
     if (acct && acct.type === 'cartao_credito') sel.value = '';
@@ -1992,9 +1994,9 @@ async function convertTxToScheduled(txId) {
   // Pre-select account
   const accSel = el('ctsAccountId');
   if (accSel) {
-    accSel.innerHTML = (state.accounts||[]).map(a =>
-      `<option value="${a.id}"${a.id===t.account_id?' selected':''}>${esc(a.name)} (${a.currency})</option>`
-    ).join('');
+    accSel.innerHTML = (typeof _accountOptions === 'function')
+      ? _accountOptions(state.accounts || [], '', { selected: t.account_id })
+      : (state.accounts||[]).map(a => `<option value="${a.id}"${a.id===t.account_id?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
   }
   // Note: original transaction is kept. The scheduled starts from the chosen date forward.
   const noteEl = el('ctsNote');
