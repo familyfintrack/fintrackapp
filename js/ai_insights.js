@@ -145,8 +145,11 @@ function _aiPopulateFilters() {
 //  SEÇÃO 2 — COLETA E AGREGAÇÃO DE DADOS FINANCEIROS (pelo app, não pela IA)
 // ══════════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════════
+//  SEÇÃO 2 — COLETA E AGREGAÇÃO DE DADOS FINANCEIROS (pelo app, não pela IA)
+// ══════════════════════════════════════════════════════════════════════════
+
 async function _aiCollectFinancialContext() {
-  // Lê filtros da UI
   const dateFrom   = document.getElementById('aiDateFrom')?.value   || '';
   const dateTo     = document.getElementById('aiDateTo')?.value     || '';
   const memberId   = document.getElementById('aiMemberFilter')?.value || '';
@@ -154,105 +157,195 @@ async function _aiCollectFinancialContext() {
   const categoryId = document.getElementById('aiCategoryFilter')?.value || '';
   const payeeId    = document.getElementById('aiPayeeFilter')?.value   || '';
 
-  // Busca transações no período
+  // ── 1. Transações do período selecionado ─────────────────────────────
   let q = famQ(sb.from('transactions').select(
-    'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,family_member_id,currency,exchange_rate'
+    'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,' +
+    'description,memo,category_id,payee_id,account_id,transfer_to_account_id,' +
+    'family_member_id,family_member_ids,currency,exchange_rate,check_number,tags'
   ).eq('status', 'confirmed'));
 
-  if (dateFrom) q = q.gte('date', dateFrom);
-  if (dateTo)   q = q.lte('date', dateTo);
+  if (dateFrom)   q = q.gte('date', dateFrom);
+  if (dateTo)     q = q.lte('date', dateTo);
   if (accountId)  q = q.eq('account_id', accountId);
   if (payeeId)    q = q.eq('payee_id', payeeId);
   if (categoryId) q = q.eq('category_id', categoryId);
-
-  q = q.order('date', { ascending: false }).limit(2000);
+  q = q.order('date', { ascending: false }).limit(3000);
 
   const { data: txs, error } = await q;
   if (error) throw new Error('Erro ao carregar transações: ' + error.message);
 
+  // ── 2. Histórico dos 12 meses anteriores ao período (para tendência) ─
+  let histRows = [];
+  if (dateFrom) {
+    const histFrom = new Date(dateFrom);
+    histFrom.setMonth(histFrom.getMonth() - 12);
+    const histFromStr = histFrom.toISOString().slice(0, 10);
+    const histDateTo  = new Date(dateFrom);
+    histDateTo.setDate(histDateTo.getDate() - 1);
+    const histToStr = histDateTo.toISOString().slice(0, 10);
+    const { data: hd } = await famQ(sb.from('transactions').select(
+      'id,date,amount,brl_amount,is_transfer,is_card_payment,category_id,payee_id,account_id,family_member_id,currency,exchange_rate'
+    ).eq('status', 'confirmed')).gte('date', histFromStr).lte('date', histToStr)
+      .order('date', { ascending: false }).limit(2000);
+    histRows = hd || [];
+  }
+
+  // ── 3. Lookups ────────────────────────────────────────────────────────
+  const catMap  = Object.fromEntries((state.categories || []).map(c => [c.id, { name: c.name, type: c.type, parent_id: c.parent_id, icon: c.icon }]));
+  const payMap  = Object.fromEntries((state.payees     || []).map(p => [p.id, { name: p.name, type: p.type }]));
+  const accMap  = Object.fromEntries((state.accounts   || []).map(a => [a.id, { name: a.name, currency: a.currency, type: a.type, is_credit_card: a.type === 'cartao_credito' }]));
+
+  // ── 4. Classificação de cada transação ──────────────────────────────
+  function _classifyTx(t) {
+    const rawAmt = parseFloat(t.amount || 0);
+    const brlVal = typeof txToBRL === 'function' ? txToBRL(t)
+                 : parseFloat(t.brl_amount ?? t.amount_brl ?? t.amount ?? 0);
+    const acc = accMap[t.account_id];
+    const destAcc = t.transfer_to_account_id ? accMap[t.transfer_to_account_id] : null;
+
+    // Cartão de crédito: o próprio gasto no cartão é despesa real
+    // O pagamento da fatura (is_card_payment=true) é transferência contábil — NÃO é despesa
+    if (t.is_card_payment) return { type: 'card_payment', brlAmt: Math.abs(brlVal), rawAmt };
+
+    // Transferência entre contas da mesma família: não é receita nem despesa
+    if (t.is_transfer) return { type: 'transfer', brlAmt: Math.abs(brlVal), rawAmt };
+
+    // Receita ou despesa
+    if (rawAmt >= 0) return { type: 'income',  brlAmt: brlVal,            rawAmt };
+    return             { type: 'expense', brlAmt: Math.abs(brlVal), rawAmt };
+  }
+
   const rows = txs || [];
-
-  // Helpers para mapear IDs → nomes
-  const catMap  = Object.fromEntries((state.categories || []).map(c => [c.id, c.name]));
-  const payMap  = Object.fromEntries((state.payees     || []).map(p => [p.id, p.name]));
-  const accMap  = Object.fromEntries((state.accounts   || []).map(a => [a.id, { name: a.name, currency: a.currency }]));
-
-  // Filtro por membro (family_member_id)
   const filtered = memberId ? rows.filter(t => t.family_member_id === memberId) : rows;
 
-  // Agregações (feitas pelo app, não pela IA)
+  // ── 5. Agregações do período ──────────────────────────────────────────
   let totalIncome = 0, totalExpense = 0;
   const byCategory  = {};
   const byPayee     = {};
-  const byMember    = {};       // { memId: totalExpense }
-  const byMemberCat = {};       // { memId: { catName: amount } }
-  const byMemberPay = {};       // { memId: { payName: amount } }
-  const byMemberInc = {};       // { memId: totalIncome }
+  const byMember    = {};
+  const byMemberCat = {};
+  const byMemberPay = {};
+  const byMemberInc = {};
   const byMonth     = {};
+  // Agrupamento de gastos por cartão de crédito (fatura real vs pagamento)
+  const cardSpend   = {}; // accId -> total gasto real no cartão
+  const cardPayment = {}; // accId -> total pago de fatura
+  let transferCount = 0, cardPaymentCount = 0;
 
   filtered.forEach(t => {
-    // Use txToBRL for correct BRL conversion (handles FX, null brl_amount, etc.)
-    const brlVal = typeof txToBRL === 'function'
-      ? txToBRL(t)
-      : parseFloat(t.brl_amount ?? t.amount_brl ?? t.amount ?? 0);
-    const amt = Math.abs(brlVal);
-    // Derive type from amount sign and flags (no 'type' column in schema)
-    const rawAmt = parseFloat(t.amount || 0);
-    const type = t.is_transfer
-      ? (t.is_card_payment ? 'card_payment' : 'transfer')
-      : rawAmt >= 0 ? 'income' : 'expense';
+    const cls      = _classifyTx(t);
+    const catInfo  = catMap[t.category_id] || {};
+    const catName  = catInfo.name || 'Sem categoria';
+    const payName  = payMap[t.payee_id]?.name || null;
+    const memId    = t.family_member_id || null;
+    const month    = (t.date || '').slice(0, 7);
 
-    const memId  = t.family_member_id || null;
-    const catName = catMap[t.category_id] || 'Sem categoria';
-    const payName = payMap[t.payee_id]   || null;
-
-    if (type === 'income') {
-      totalIncome += amt;
-      if (memId) {
-        byMemberInc[memId] = (byMemberInc[memId] || 0) + amt;
+    if (cls.type === 'transfer') {
+      transferCount++;
+      // Registra no byMonth mas separado — não some em despesas
+      if (month) {
+        if (!byMonth[month]) byMonth[month] = { income:0, expense:0, transfers:0, card_payments:0 };
+        byMonth[month].transfers += cls.brlAmt;
       }
-    } else if (type === 'expense') {
-      totalExpense += amt;
+      return;
+    }
 
-      // Global por categoria e beneficiário
-      byCategory[catName] = (byCategory[catName] || 0) + amt;
-      if (payName) byPayee[payName] = (byPayee[payName] || 0) + amt;
+    if (cls.type === 'card_payment') {
+      cardPaymentCount++;
+      // O pagamento de fatura vai para accMap do destino (o cartão)
+      const destId = t.transfer_to_account_id || t.account_id;
+      cardPayment[destId] = (cardPayment[destId] || 0) + cls.brlAmt;
+      if (month) {
+        if (!byMonth[month]) byMonth[month] = { income:0, expense:0, transfers:0, card_payments:0 };
+        byMonth[month].card_payments += cls.brlAmt;
+      }
+      return;
+    }
 
-      // Por membro — total
+    // Gasto real no cartão de crédito (não é pagamento de fatura)
+    if (accMap[t.account_id]?.is_credit_card && cls.type === 'expense') {
+      cardSpend[t.account_id] = (cardSpend[t.account_id] || 0) + cls.brlAmt;
+    }
+
+    if (!byMonth[month]) byMonth[month] = { income:0, expense:0, transfers:0, card_payments:0 };
+
+    if (cls.type === 'income') {
+      totalIncome += cls.brlAmt;
+      byMonth[month].income += cls.brlAmt;
+      if (memId) byMemberInc[memId] = (byMemberInc[memId] || 0) + cls.brlAmt;
+    } else {
+      totalExpense += cls.brlAmt;
+      byMonth[month].expense += cls.brlAmt;
+      byCategory[catName] = (byCategory[catName] || 0) + cls.brlAmt;
+      if (payName) byPayee[payName] = (byPayee[payName] || 0) + cls.brlAmt;
       if (memId) {
-        byMember[memId] = (byMember[memId] || 0) + amt;
-
-        // Por membro — por categoria
+        byMember[memId] = (byMember[memId] || 0) + cls.brlAmt;
         if (!byMemberCat[memId]) byMemberCat[memId] = {};
-        byMemberCat[memId][catName] = (byMemberCat[memId][catName] || 0) + amt;
-
-        // Por membro — por beneficiário
+        byMemberCat[memId][catName] = (byMemberCat[memId][catName] || 0) + cls.brlAmt;
         if (payName) {
           if (!byMemberPay[memId]) byMemberPay[memId] = {};
-          byMemberPay[memId][payName] = (byMemberPay[memId][payName] || 0) + amt;
+          byMemberPay[memId][payName] = (byMemberPay[memId][payName] || 0) + cls.brlAmt;
         }
       }
     }
-
-    // Por mês (todas as transações)
-    const month = (t.date || '').slice(0, 7);
-    if (month) {
-      if (!byMonth[month]) byMonth[month] = { income: 0, expense: 0 };
-      if (type === 'income') byMonth[month].income += amt;
-      else if (type === 'expense') byMonth[month].expense += amt;
-    }
   });
 
-  // Top categorias e beneficiários
+  // ── 6. Resumo de cartões de crédito ──────────────────────────────────
+  const creditCardSummary = Object.entries(accMap)
+    .filter(([,a]) => a.is_credit_card)
+    .map(([id, a]) => ({
+      account: a.name,
+      real_spending:   +(cardSpend[id]   || 0).toFixed(2),
+      invoice_payment: +(cardPayment[id] || 0).toFixed(2),
+      note: 'O pagamento da fatura é uma transferência contábil e NÃO representa despesa adicional. A despesa real é o gasto no cartão.',
+    }))
+    .filter(c => c.real_spending > 0 || c.invoice_payment > 0);
+
+  // ── 7. Histórico mensal (período + 12 meses anteriores) ──────────────
+  // Agregar histórico
+  const histByMonth = {};
+  (histRows || []).forEach(t => {
+    const cls   = _classifyTx(t);
+    const month = (t.date || '').slice(0, 7);
+    if (!month) return;
+    if (!histByMonth[month]) histByMonth[month] = { income:0, expense:0 };
+    if (cls.type === 'income')  histByMonth[month].income  += cls.brlAmt;
+    if (cls.type === 'expense') histByMonth[month].expense += cls.brlAmt;
+  });
+
+  const monthlyTrend = Object.entries(byMonth)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, v]) => ({
+      month,
+      income:        +v.income.toFixed(2),
+      expense:       +v.expense.toFixed(2),
+      net:           +(v.income - v.expense).toFixed(2),
+      transfers:     +v.transfers.toFixed(2),
+      card_payments: +v.card_payments.toFixed(2),
+    }));
+
+  const historicalTrend = Object.entries(histByMonth)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, v]) => ({
+      month,
+      income:  +v.income.toFixed(2),
+      expense: +v.expense.toFixed(2),
+      net:     +(v.income - v.expense).toFixed(2),
+    }));
+
+  // Média mensal histórica (12 meses anteriores)
+  const histAvgIncome  = historicalTrend.length ? historicalTrend.reduce((s,m)=>s+m.income,0)  / historicalTrend.length : null;
+  const histAvgExpense = historicalTrend.length ? historicalTrend.reduce((s,m)=>s+m.expense,0) / historicalTrend.length : null;
+
+  // ── 8. Topo de categorias, beneficiários e membros ───────────────────
   const topCategories = Object.entries(byCategory)
-    .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([name, amount]) => ({ name, amount: +amount.toFixed(2), pct: totalExpense ? +(amount/totalExpense*100).toFixed(1) : 0 }));
 
   const topPayees = Object.entries(byPayee)
-    .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([name, amount]) => ({ name, amount: +amount.toFixed(2) }));
 
-  // Membro → nome (family_composition.id → m.name)
   const memberMap = {};
   const _fmcMembers = (typeof getFamilyMembers === 'function') ? getFamilyMembers() : [];
   _fmcMembers.forEach(m => { memberMap[m.id] = m.name || m.display_name || '—'; });
@@ -262,189 +355,257 @@ async function _aiCollectFinancialContext() {
     .map(([id, expense]) => {
       const name = memberMap[id] || '—';
       if (name === '—') return null;
-
-      // Top 5 categories for this member
-      const topCats = Object.entries(byMemberCat[id] || {})
-        .sort((a, b) => b[1] - a[1]).slice(0, 5)
-        .map(([cat, amt]) => ({
-          name: cat,
-          amount: +amt.toFixed(2),
-          pct: expense > 0 ? +(amt / expense * 100).toFixed(1) : 0,
-        }));
-
-      // Top 5 payees for this member
-      const topPays = Object.entries(byMemberPay[id] || {})
-        .sort((a, b) => b[1] - a[1]).slice(0, 5)
-        .map(([pay, amt]) => ({ name: pay, amount: +amt.toFixed(2) }));
-
       return {
-        id,
-        name,
-        expense:  +expense.toFixed(2),
-        income:   +(byMemberInc[id] || 0).toFixed(2),
-        topCategories: topCats,
-        topPayees:     topPays,
-        // Legacy field for backward compat
+        id, name,
+        expense: +expense.toFixed(2),
+        income:  +(byMemberInc[id] || 0).toFixed(2),
+        topCategories: Object.entries(byMemberCat[id] || {})
+          .sort((a,b)=>b[1]-a[1]).slice(0,5)
+          .map(([cat, amt]) => ({ name:cat, amount:+amt.toFixed(2), pct: expense>0?+(amt/expense*100).toFixed(1):0 })),
+        topPayees: Object.entries(byMemberPay[id] || {})
+          .sort((a,b)=>b[1]-a[1]).slice(0,5)
+          .map(([pay, amt]) => ({ name:pay, amount:+amt.toFixed(2) })),
         amount: +expense.toFixed(2),
       };
-    })
-    .filter(Boolean);
+    }).filter(Boolean);
 
-  // ── Transações programadas — previsão futura ────────────────────────────
-  // Use state.scheduled if already loaded (richer data incl categories/payees)
-  const _stSched = (state.scheduled || []).filter(s => s.status !== 'finished' && s.status !== 'paused');
+  // ── 9. Transações programadas — detalhe completo ──────────────────────
+  const _stSched = (state.scheduled || []).filter(s => s.status === 'active');
 
-  // Projection helpers
-  const _freqMonthly = { daily:30, weekly:4.33, biweekly:2.17, monthly:1, bimonthly:0.5, quarterly:0.33, semiannual:0.17, annual:1/12 };
-  function _monthlyFactor(freq) { return _freqMonthly[freq] || 1; }
+  // Frequências → fator mensal
+  const _freqFactor = {
+    once:0, weekly:4.33, biweekly:2.17, monthly:1, bimonthly:0.5,
+    quarterly:0.33, semiannual:0.17, annual:1/12, custom:1,
+  };
+  function _monthlyFactor(freq, customInterval, customUnit) {
+    if (freq === 'once') return 0;
+    if (freq === 'custom' && customInterval && customUnit) {
+      const unitToMonth = { days:30, weeks:4.33, months:1, years:1/12 };
+      return (unitToMonth[customUnit] || 1) / customInterval;
+    }
+    return _freqFactor[freq] ?? 1;
+  }
   function _schedAmt(s) { return Math.abs(parseFloat(s.brl_amount || s.amount || 0)); }
 
-  // Monthly commitment summary (recurring obligations)
-  const _schedByType = { expense:0, income:0, transfer:0 };
-  const _schedByCategory = {};
+  // Categorizar programados: únicos, mensais, irregulares, anuais
+  const schedOnce      = [];  // pagamento único
+  const schedMonthly   = [];  // mensais exatos
+  const schedRecurring = [];  // outras frequências regulares
+  const schedByType    = { expense:0, income:0, transfer:0, card_payment:0 };
+  const schedByCategory = {};
 
   _stSched.forEach(s => {
-    const factor = _monthlyFactor(s.frequency);
-    const monthlyAmt = _schedAmt(s) * factor;
-    const stype = s.type || (parseFloat(s.amount||0)<0 ? 'expense' : 'income');
-    if (_schedByType[stype] !== undefined) _schedByType[stype] += monthlyAmt;
-    const catName = s.categories?.name || 'Sem categoria';
-    if (!_schedByCategory[catName]) _schedByCategory[catName] = { income:0, expense:0 };
-    if (stype === 'income')  _schedByCategory[catName].income  += monthlyAmt;
-    if (stype === 'expense') _schedByCategory[catName].expense += monthlyAmt;
+    const factor   = _monthlyFactor(s.frequency, s.custom_interval, s.custom_unit);
+    const rawAmt   = _schedAmt(s);
+    const monthAmt = rawAmt * factor;
+    const stype    = s.type || (parseFloat(s.amount||0) < 0 ? 'expense' : 'income');
+    const catName  = s.categories?.name || catMap[s.category_id]?.name || 'Sem categoria';
+    const payName  = s.payees?.name || payMap[s.payee_id]?.name || null;
+
+    const item = {
+      description:    s.description,
+      category:       catName,
+      payee:          payName,
+      type:           stype,
+      frequency:      s.frequency,
+      custom_interval: s.custom_interval || null,
+      custom_unit:    s.custom_unit || null,
+      amount:         +rawAmt.toFixed(2),
+      monthly_equiv:  +monthAmt.toFixed(2),
+      start_date:     s.start_date,
+      end_date:       s.end_date || null,
+      next_date:      typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : null,
+      account:        accMap[s.account_id]?.name || null,
+      is_card_payment: stype === 'card_payment',
+    };
+
+    if (s.frequency === 'once') {
+      schedOnce.push(item);
+    } else if (s.frequency === 'monthly') {
+      schedMonthly.push(item);
+    } else {
+      schedRecurring.push(item);
+    }
+
+    if (_schedByType[stype] !== undefined) _schedByType[stype] += monthAmt;
+    if (!schedByCategory[catName]) schedByCategory[catName] = { income:0, expense:0 };
+    if (stype === 'income')  schedByCategory[catName].income  += monthAmt;
+    if (stype === 'expense') schedByCategory[catName].expense += monthAmt;
   });
 
-  // 6-month forward projection (month by month)
+  const recurringCommitments = {
+    monthly_expense:  +_schedByType.expense.toFixed(2),
+    monthly_income:   +_schedByType.income.toFixed(2),
+    monthly_net:      +(_schedByType.income - _schedByType.expense).toFixed(2),
+    by_category: Object.entries(schedByCategory)
+      .map(([cat, v]) => ({ category:cat, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
+      .sort((a,b) => (b.monthly_expense+b.monthly_income) - (a.monthly_expense+a.monthly_income)),
+  };
+
+  // ── 10. Projeção mensal para 6 meses ─────────────────────────────────
+  // Base: média dos últimos 3 meses do período (ou hist) para income/expense
+  const recentMonths = monthlyTrend.slice(-3);
+  const baseIncome  = recentMonths.length
+    ? recentMonths.reduce((s,m)=>s+m.income,0)  / recentMonths.length
+    : (histAvgIncome || totalIncome);
+  const baseExpense = recentMonths.length
+    ? recentMonths.reduce((s,m)=>s+m.expense,0) / recentMonths.length
+    : (histAvgExpense || totalExpense);
+
+  // Eventos futuros por mês: programados únicos e recorrentes
   const _today = new Date();
-  const _projMonths = [];
+  const projMonths = [];
   for (let i = 1; i <= 6; i++) {
-    const d = new Date(_today.getFullYear(), _today.getMonth() + i, 1);
-    const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    // Base: use last known month from byMonth (available here, monthlyTrend built later)
-    const _sortedMonths = Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]));
-    const _lastMonth = _sortedMonths.length ? _sortedMonths[_sortedMonths.length-1][1] : null;
-    const baseIncome  = _lastMonth ? _lastMonth.income  : totalIncome;
-    const baseExpense = _lastMonth ? _lastMonth.expense : totalExpense;
-    // Add scheduled recurring delta
-    const projIncome  = +(baseIncome  + _schedByType.income).toFixed(2);
-    const projExpense = +(baseExpense + _schedByType.expense).toFixed(2);
-    _projMonths.push({
-      month:   ym,
+    const d   = new Date(_today.getFullYear(), _today.getMonth() + i, 1);
+    const ym  = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const dEnd = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    const ymEnd = dEnd.toISOString().slice(0,10);
+
+    // Soma programados únicos que caem neste mês
+    let projExtraIncome = 0, projExtraExpense = 0;
+    schedOnce.forEach(s => {
+      if (!s.next_date) return;
+      if (s.next_date >= ym + '-01' && s.next_date <= ymEnd) {
+        if (s.type === 'income')  projExtraIncome  += s.amount;
+        if (s.type === 'expense') projExtraExpense += s.amount;
+      }
+    });
+    // Programados mensais e recorrentes somam equivalente mensal
+    schedMonthly.forEach(s => {
+      if (s.type === 'income')  projExtraIncome  += s.monthly_equiv;
+      if (s.type === 'expense') projExtraExpense += s.monthly_equiv;
+    });
+    schedRecurring.forEach(s => {
+      if (s.type === 'income')  projExtraIncome  += s.monthly_equiv;
+      if (s.type === 'expense') projExtraExpense += s.monthly_equiv;
+    });
+
+    const projIncome  = +(baseIncome  + projExtraIncome).toFixed(2);
+    const projExpense = +(baseExpense + projExtraExpense).toFixed(2);
+    projMonths.push({
+      month:             ym,
       projected_income:  projIncome,
       projected_expense: projExpense,
       projected_net:     +(projIncome - projExpense).toFixed(2),
+      one_time_events:   schedOnce.filter(s => s.next_date >= ym+'-01' && s.next_date <= ymEnd).length,
     });
   }
 
-  // Top scheduled items (most impactful)
-  const scheduledSummary = _stSched
-    .map(s => ({
-      description: s.description,
-      category:    s.categories?.name || null,
-      payee:       s.payees?.name || null,
-      amount_monthly: +(_schedAmt(s) * _monthlyFactor(s.frequency)).toFixed(2),
-      amount_raw:   +_schedAmt(s).toFixed(2),
-      frequency:   s.frequency,
-      type:        s.type || (parseFloat(s.amount||0)<0 ? 'expense' : 'income'),
-      next_date:   typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : s.next_date,
-      status:      s.status,
-    }))
-    .sort((a,b) => b.amount_monthly - a.amount_monthly)
-    .slice(0, 20);
-
-  // Recurring financial commitments (fixed monthly obligations)
-  const recurringCommitments = {
-    monthly_expense: +_schedByType.expense.toFixed(2),
-    monthly_income:  +_schedByType.income.toFixed(2),
-    monthly_net:     +(_schedByType.income - _schedByType.expense).toFixed(2),
-    by_category: Object.entries(_schedByCategory)
-      .map(([cat, v]) => ({ category:cat, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
-      .sort((a,b) => (b.monthly_expense+b.monthly_income)-(a.monthly_expense+a.monthly_income)),
-  };
-
-  // 6-month financial projection
   const financialProjection = {
-    horizon: '6 meses',
-    months:  _projMonths,
-    trend_direction: _projMonths.every(m=>m.projected_net>=0) ? 'positive'
-                   : _projMonths.every(m=>m.projected_net<0)  ? 'negative' : 'mixed',
-    avg_projected_net: +(_projMonths.reduce((s,m)=>s+m.projected_net,0)/_projMonths.length).toFixed(2),
+    horizon:              '6 meses',
+    months:               projMonths,
+    base_monthly_income:  +baseIncome.toFixed(2),
+    base_monthly_expense: +baseExpense.toFixed(2),
+    historical_avg_income:  histAvgIncome  ? +histAvgIncome.toFixed(2)  : null,
+    historical_avg_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null,
+    trend_direction: projMonths.every(m=>m.projected_net>=0) ? 'positive'
+                   : projMonths.every(m=>m.projected_net<0)  ? 'negative' : 'mixed',
+    avg_projected_net: +(projMonths.reduce((s,m)=>s+m.projected_net,0)/projMonths.length).toFixed(2),
   };
 
-  // Saldos atuais das contas (do state — computados pelo app)
-  const accountBalances = (state.accounts || [])
-    .filter(a => !accountId || a.id === accountId)
-    .map(a => ({ name: a.name, balance: a.balance || 0, currency: a.currency }));
-
-  // Anomalias simples: despesas > 2x a média do mesmo beneficiário/categoria no período
-  const anomalies = _aiDetectAnomalies(filtered, catMap, payMap);
-
-  // Tendência mensal
-  const monthlyTrend = Object.entries(byMonth)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, v]) => ({ month, income: +v.income.toFixed(2), expense: +v.expense.toFixed(2), net: +(v.income - v.expense).toFixed(2) }));
-
-  // Top transactions individuais (para o chat responder com precisão)
+  // ── 11. Top transações individuais (despesas e receitas reais) ────────
   const topTransactions = filtered
-    .filter(t => !t.is_transfer)
+    .filter(t => { const cls = _classifyTx(t); return cls.type === 'expense' || cls.type === 'income'; })
     .map(t => {
-      const brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
+      const cls = _classifyTx(t);
       return {
-        date: t.date,
+        date:        t.date,
         description: t.description || '—',
-        amount_brl: +Math.abs(brl).toFixed(2),
-        type: parseFloat(t.amount||0) >= 0 ? 'income' : 'expense',
-        category: catMap[t.category_id] || null,
-        payee: payMap[t.payee_id] || null,
-        account: accMap[t.account_id]?.name || null,
-        currency: t.currency || 'BRL',
-        memo: t.memo || null,
+        amount_brl:  +cls.brlAmt.toFixed(2),
+        type:        cls.type,
+        category:    catMap[t.category_id]?.name || null,
+        payee:       payMap[t.payee_id]?.name    || null,
+        account:     accMap[t.account_id]?.name  || null,
+        currency:    t.currency || 'BRL',
+        memo:        t.memo || null,
+        tags:        t.tags || null,
       };
     })
     .sort((a, b) => b.amount_brl - a.amount_brl)
-    .slice(0, 30); // top 30 por valor
+    .slice(0, 40);
 
-  // Resumo por conta (receita e despesa por conta)
+  // Lista de todas as transações do período (para chat / análise detalhada)
+  const allTransactions = filtered
+    .filter(t => { const cls = _classifyTx(t); return cls.type === 'expense' || cls.type === 'income'; })
+    .map(t => {
+      const cls = _classifyTx(t);
+      return {
+        date:        t.date,
+        description: t.description || '—',
+        amount_brl:  +cls.brlAmt.toFixed(2),
+        type:        cls.type,
+        category:    catMap[t.category_id]?.name || null,
+        payee:       payMap[t.payee_id]?.name    || null,
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // ── 12. Saldos e resumo por conta ─────────────────────────────────────
+  const accountBalances = (state.accounts || [])
+    .filter(a => !accountId || a.id === accountId)
+    .map(a => ({
+      name:     a.name,
+      balance:  +(a.balance || 0).toFixed(2),
+      currency: a.currency,
+      type:     a.type,
+      is_credit_card: a.type === 'cartao_credito',
+    }));
+
   const byAccount = {};
-  filtered.filter(t => !t.is_transfer).forEach(t => {
+  filtered.forEach(t => {
+    const cls     = _classifyTx(t);
     const accName = accMap[t.account_id]?.name || 'Desconhecida';
-    if (!byAccount[accName]) byAccount[accName] = { income: 0, expense: 0 };
-    const brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
-    if (brl >= 0) byAccount[accName].income += brl;
-    else          byAccount[accName].expense += Math.abs(brl);
+    if (!byAccount[accName]) byAccount[accName] = { income:0, expense:0, transfers:0 };
+    if (cls.type === 'income')   byAccount[accName].income   += cls.brlAmt;
+    if (cls.type === 'expense')  byAccount[accName].expense  += cls.brlAmt;
+    if (cls.type === 'transfer') byAccount[accName].transfers += cls.brlAmt;
   });
   const accountSummary = Object.entries(byAccount).map(([name, v]) => ({
     name,
-    income:  +v.income.toFixed(2),
-    expense: +v.expense.toFixed(2),
-    net:     +(v.income - v.expense).toFixed(2),
+    income:    +v.income.toFixed(2),
+    expense:   +v.expense.toFixed(2),
+    net:       +(v.income - v.expense).toFixed(2),
+    transfers: +v.transfers.toFixed(2),
   }));
 
-  // Budget data — loaded from budgets table for current period
+  // ── 13. Anomalias ─────────────────────────────────────────────────────
+  const anomalies = _aiDetectAnomalies(
+    filtered, catMap, payMap,
+    historicalTrend, byCategory
+  );
+
+  // ── 14. Orçamentos ────────────────────────────────────────────────────
   let budgetContext = null;
   try {
     if (typeof _rbtGetBudgetContext === 'function') {
       budgetContext = await _rbtGetBudgetContext();
     }
     if (!budgetContext) {
-      // Fallback: query budgets for the selected period directly
-      const now = new Date();
-      const curMonth = now.toISOString().slice(0,7);
+      const curMonth = new Date().toISOString().slice(0,7);
       const { data: bdata } = await famQ(
-        sb.from('budgets').select('amount, categories(name)')
+        sb.from('budgets').select('amount,category_id,categories(name)')
       ).eq('month', curMonth + '-01');
       if (bdata?.length) {
         const rawSpend = {};
-        filtered.filter(t => t.category_id).forEach(t => {
-          const v = typeof txToBRL==='function' ? Math.abs(txToBRL(t)) : Math.abs(parseFloat(t.amount||0));
-          rawSpend[t.category_id] = (rawSpend[t.category_id]||0) + v;
+        filtered.forEach(t => {
+          const cls = _classifyTx(t);
+          if (cls.type === 'expense' && t.category_id) {
+            rawSpend[t.category_id] = (rawSpend[t.category_id]||0) + cls.brlAmt;
+          }
         });
         budgetContext = {
           period: { type:'monthly', month: curMonth },
-          budgets: (bdata||[]).map(b => {
+          budgets: bdata.map(b => {
             const limit = parseFloat(b.amount||0);
             const used  = rawSpend[b.category_id] || 0;
-            return { category:b.categories?.name||'—', limit:+limit.toFixed(2), used:+used.toFixed(2), available:+Math.max(0,limit-used).toFixed(2), pct:limit>0?+(used/limit*100).toFixed(1):0, over:used>limit&&limit>0 };
+            return {
+              category:  b.categories?.name || '—',
+              limit:     +limit.toFixed(2),
+              used:      +used.toFixed(2),
+              available: +Math.max(0, limit - used).toFixed(2),
+              pct:       limit > 0 ? +(used/limit*100).toFixed(1) : 0,
+              over:      used > limit && limit > 0,
+            };
           }),
         };
       }
@@ -454,22 +615,37 @@ async function _aiCollectFinancialContext() {
   const ctx = {
     period: { from: dateFrom || 'início', to: dateTo || 'hoje' },
     summary: {
-      totalIncome:   +totalIncome.toFixed(2),
-      totalExpense:  +totalExpense.toFixed(2),
-      netResult:     +(totalIncome - totalExpense).toFixed(2),
-      txCount:       filtered.length,
-      transferCount: filtered.filter(t => t.is_transfer).length,
+      totalIncome:      +totalIncome.toFixed(2),
+      totalExpense:     +totalExpense.toFixed(2),
+      netResult:        +(totalIncome - totalExpense).toFixed(2),
+      txCount:          filtered.filter(t => { const c=_classifyTx(t); return c.type==='income'||c.type==='expense'; }).length,
+      transferCount,
+      cardPaymentCount,
+      note_transfers:   'Transferências entre contas foram EXCLUÍDAS das despesas e receitas — são movimentações internas.',
+      note_card_payment:'Pagamentos de fatura de cartão foram EXCLUÍDOS das despesas — evitando dupla contagem com os gastos reais no cartão.',
     },
     topCategories,
     topPayees,
     memberInsights,
     monthlyTrend,
-    scheduledSummary,
+    historicalTrend,
+    historicalAvg: {
+      monthly_income:  histAvgIncome  ? +histAvgIncome.toFixed(2)  : null,
+      monthly_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null,
+    },
+    scheduledItems: {
+      once:      schedOnce.sort((a,b)=>{ const d=a.next_date||''; const e=b.next_date||''; return d.localeCompare(e); }),
+      monthly:   schedMonthly.sort((a,b)=>b.monthly_equiv-a.monthly_equiv),
+      recurring: schedRecurring.sort((a,b)=>b.monthly_equiv-a.monthly_equiv),
+      total_count: _stSched.length,
+    },
     recurringCommitments,
     financialProjection,
+    creditCardSummary,
     accountBalances,
     accountSummary,
     topTransactions,
+    allTransactions,
     anomalies,
     budgets: budgetContext,
     filters: { dateFrom, dateTo, memberId, accountId, categoryId, payeeId },
@@ -479,27 +655,35 @@ async function _aiCollectFinancialContext() {
   return ctx;
 }
 
-function _aiDetectAnomalies(txs, catMap, payMap) {
-  // Agrupa por beneficiário e calcula média e desvio padrão
+function _aiDetectAnomalies(txs, catMap, payMap, historicalTrend, byCategory) {
   const payeeAmounts = {};
-  txs.filter(t => { const r=parseFloat(t.amount||0); return !t.is_transfer && r < 0; }).forEach(t => {
-    const name = payMap[t.payee_id] || 'Sem beneficiário';
+  txs.forEach(t => {
+    const rawAmt = parseFloat(t.amount || 0);
+    if (t.is_transfer || t.is_card_payment || rawAmt >= 0) return;
+    const name = payMap[t.payee_id]?.name || 'Sem beneficiário';
     if (!payeeAmounts[name]) payeeAmounts[name] = [];
-    const _brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
-    payeeAmounts[name].push(Math.abs(_brl));
+    const brl = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount ?? 0);
+    payeeAmounts[name].push(Math.abs(brl));
   });
 
   const anomalies = [];
+
+  // Gastos acima de 2.5x a média com o mesmo beneficiário
   Object.entries(payeeAmounts).forEach(([payee, amounts]) => {
     if (amounts.length < 2) return;
     const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
     const max = Math.max(...amounts);
     if (max > avg * 2.5 && max > 50) {
-      anomalies.push({ type: 'high_spend', payee, average: +avg.toFixed(2), max: +max.toFixed(2) });
+      anomalies.push({ type:'high_spend', payee, average:+avg.toFixed(2), max:+max.toFixed(2) });
     }
   });
 
-  return anomalies.slice(0, 5);
+  // Comparação com média histórica por categoria
+  if (historicalTrend?.length >= 3 && byCategory) {
+    // (extendable: compare current period per-category vs historical average)
+  }
+
+  return anomalies.slice(0, 8);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -564,104 +748,132 @@ function _aiSetAnalysisState(state, msg) {
 }
 
 async function _callGeminiAnalysis(apiKey, ctx) {
-  // Build structured prompt data (exclude topTransactions from main JSON to keep size manageable)
   const promptData = {
-    period: ctx.period,
-    summary: ctx.summary,
-    topCategories: ctx.topCategories,
-    topPayees: ctx.topPayees,
-    memberInsights: ctx.memberInsights,
-    monthlyTrend: ctx.monthlyTrend,
-    scheduledSummary: ctx.scheduledSummary,
-    recurringCommitments: ctx.recurringCommitments,
-    financialProjection: ctx.financialProjection,
-    budgets: ctx.budgets,
-    accountBalances: ctx.accountBalances,
-    accountSummary: ctx.accountSummary || [],
-    anomalies: ctx.anomalies,
-    topTransactions: (ctx.topTransactions || []).slice(0, 20),
+    periodo:          ctx.period,
+    resumo_financeiro: {
+      ...ctx.summary,
+      aviso_metodologia: [
+        'TRANSFERÊNCIAS ENTRE CONTAS: NÃO são receitas nem despesas. São movimentações internas.',
+        'PAGAMENTO DE FATURA DE CARTÃO: NÃO é despesa. O gasto real já está registrado como despesa no cartão.',
+        'GASTOS NO CARTÃO DE CRÉDITO: SÃO despesas reais e constam em topCategorias/topBeneficiarios.',
+      ],
+    },
+    top_categorias_despesa: ctx.topCategories,
+    top_beneficiarios:       ctx.topPayees,
+    por_membro_familia:      ctx.memberInsights,
+    tendencia_mensal_periodo: ctx.monthlyTrend,
+    historico_12_meses:       ctx.historicalTrend,
+    media_historica_mensal:   ctx.historicalAvg,
+    cartoes_credito:          ctx.creditCardSummary,
+    programados: {
+      pagamentos_unicos:         ctx.scheduledItems?.once     || [],
+      recorrentes_mensais:       ctx.scheduledItems?.monthly  || [],
+      recorrentes_outras_frequencias: ctx.scheduledItems?.recurring || [],
+      total_programados_ativos:  ctx.scheduledItems?.total_count || 0,
+      compromissos_mensais:      ctx.recurringCommitments,
+    },
+    projecao_6_meses:         ctx.financialProjection,
+    saldos_contas:            ctx.accountBalances,
+    resumo_por_conta:         ctx.accountSummary,
+    orcamentos:               ctx.budgets,
+    anomalias_detectadas:     ctx.anomalies,
+    top_40_transacoes:        ctx.topTransactions,
   };
 
-  const prompt = `Você é um consultor financeiro pessoal analisando dados financeiros de uma família brasileira.
-Os dados abaixo foram COMPUTADOS pelo sistema financeiro (valores em BRL) e são 100% precisos. Sua função é INTERPRETAR, não recalcular.
+  const prompt = `Você é um consultor financeiro pessoal sênior analisando as finanças de uma família brasileira.
+Os dados abaixo foram COMPUTADOS pelo sistema (valores em BRL) e são 100% precisos. Sua função é INTERPRETAR e PROGNOSTICAR, nunca recalcular.
 Responda SOMENTE com JSON válido, sem markdown, sem texto antes ou depois.
 
-DADOS FINANCEIROS DO PERÍODO ${ctx.period.from} a ${ctx.period.to}:
+═══ REGRAS CRÍTICAS DE ANÁLISE ═══
+1. TRANSFERÊNCIAS ENTRE CONTAS (is_transfer=true): NÃO são receitas nem despesas. São apenas movimentações internas entre contas da mesma família. IGNORE-AS nas despesas.
+2. PAGAMENTO DE FATURA DE CARTÃO (is_card_payment=true): NÃO é despesa adicional. É uma transferência contábil para pagar o cartão. Os gastos REAIS já estão registrados como despesas individuais no cartão. NUNCA some pagamento de fatura + gastos no cartão — isso geraria dupla contagem.
+3. GASTOS NO CARTÃO DE CRÉDITO: SÃO despesas reais. Já estão em top_categorias_despesa e top_beneficiarios.
+4. O campo creditCardSummary mostra: real_spending (despesa real) vs invoice_payment (pagamento da fatura). Use apenas real_spending para análise de gastos.
+
+═══ REGRAS DE PROGNÓSTICO ═══
+5. Para PAGAMENTOS ÚNICOS (schedOnce): considere o impacto pontual no mês em que ocorrem — não os distribua como mensais.
+6. Para RECORRENTES MENSAIS (schedMonthly): some ao fluxo mensal projetado de forma consistente.
+7. Para RECORRENTES OUTRAS FREQUÊNCIAS (schedRecurring): use monthly_equiv para distribuição mensal, mas destaque meses com picos (ex: pagamento trimestral).
+8. A projeção já considera a base histórica + programados. Analise se o prognóstico é sustentável.
+9. Use historico_12_meses para identificar sazonalidade e comparar o período atual com a média histórica.
+
+DADOS FINANCEIROS — PERÍODO ${ctx.period.from} a ${ctx.period.to}:
 ${JSON.stringify(promptData, null, 0)}
 
-RETORNE EXATAMENTE ESTE JSON:
+RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
 {
-  "summary": "2-3 frases resumindo o período financeiro de forma clara e humana",
+  "summary": "2-3 frases resumindo o período de forma clara e humana",
   "overview": {
     "income_comment": "comentário sobre as receitas (máx 1 frase)",
-    "expense_comment": "comentário sobre as despesas (máx 1 frase)",
-    "net_comment": "avaliação do resultado líquido (positivo/negativo/neutro) (máx 1 frase)"
+    "expense_comment": "comentário sobre as despesas REAIS — excluindo transferências e pagamentos de fatura (máx 1 frase)",
+    "net_comment": "avaliação do resultado líquido (máx 1 frase)"
   },
   "member_insights": [
-    { "name": "nome do membro", "insight": "observação personalizada sobre os gastos deste membro" }
+    { "name": "nome", "insight": "observação personalizada sobre os gastos deste membro" }
   ],
   "category_insights": [
-    { "category": "nome", "insight": "o que esse padrão de gasto indica", "action": "sugestão de ação (opcional)" }
+    { "category": "nome", "insight": "o que este padrão indica", "action": "sugestão concreta (opcional)" }
   ],
   "anomalies": [
-    { "title": "título curto", "description": "descrição do que foi detectado", "severity": "low|medium|high" }
+    { "title": "título curto", "description": "descrição do detectado", "severity": "low|medium|high" }
   ],
   "savings_opportunities": [
-    { "title": "oportunidade de economia", "description": "como economizar", "estimated_saving": "ex: R$150/mês (estimativa)" }
+    { "title": "oportunidade", "description": "como economizar", "estimated_saving": "ex: R$150/mês" }
   ],
   "recommendations": [
-    { "title": "recomendação", "description": "ação concreta recomendada", "priority": "high|medium|low" }
+    { "title": "recomendação", "description": "ação concreta", "priority": "high|medium|low" }
   ],
   "cashflow_alerts": [
     { "type": "warning|info|ok", "message": "alerta de fluxo de caixa" }
   ],
   "chart_suggestions": [
-    { "type": "bar|pie|line|donut", "title": "título do gráfico sugerido", "rationale": "por que este gráfico seria útil" }
+    { "type": "bar|pie|line|donut", "title": "título", "rationale": "por que este gráfico seria útil" }
   ],
   "classification_suggestions": [
     {
       "description": "descrição da transação sem categoria clara",
-      "suggested_category": "categoria sugerida da lista",
-      "suggested_payee": "nome normalizado do beneficiário",
-      "purpose": "propósito inferido da transação",
+      "suggested_category": "categoria sugerida",
+      "suggested_payee": "beneficiário normalizado",
+      "purpose": "propósito inferido",
       "confidence": 0.85,
       "explanation": "justificativa breve"
     }
-  ]
-}
-
-- recurringCommitments: compromissos financeiros mensais fixos provenientes dos programados (receitas e despesas recorrentes)
-- financialProjection: projeção de 6 meses calculada com base no histórico + programados ativos
-- budgets: dados de orçamentos vs realizado do período
-
-ADICIONE AO JSON OS SEGUINTES CAMPOS OBRIGATÓRIOS:
+  ],
   "forecast": {
-    "outlook": "resumo executivo em 2-3 frases do prognóstico financeiro para os próximos meses",
-    "trend": "positive | negative | mixed | stable",
-    "risk_level": "low | medium | high",
-    "monthly_commitment_insight": "análise dos compromissos mensais fixos (contas recorrentes, salários, etc.)",
+    "outlook": "resumo executivo em 2-3 frases do prognóstico para os próximos meses — considerando histórico, sazonalidade e programados",
+    "trend": "positive|negative|mixed|stable",
+    "risk_level": "low|medium|high",
+    "methodology_note": "explique brevemente como o prognóstico foi calculado (base histórica + programados)",
+    "monthly_commitment_insight": "análise dos compromissos mensais fixos e seu impacto no fluxo de caixa",
+    "one_time_payment_alerts": [
+      { "month": "YYYY-MM", "description": "pagamento único relevante neste mês", "amount_approx": 0, "impact": "alto|médio|baixo" }
+    ],
+    "seasonality_insight": "padrões sazonais identificados no histórico de 12 meses (se houver dados históricos)",
     "projection_highlights": [
       { "month": "YYYY-MM", "highlight": "observação relevante sobre este mês projetado" }
     ],
     "key_risks": [
-      { "risk": "descrição do risco financeiro futuro", "mitigation": "como mitigar" }
+      { "risk": "descrição do risco", "mitigation": "como mitigar" }
     ],
     "opportunities": [
-      { "opportunity": "oportunidade financeira identificada", "action": "ação recomendada" }
-    ]
+      { "opportunity": "oportunidade identificada", "action": "ação recomendada" }
+    ],
+    "card_credit_note": "análise específica dos gastos em cartão de crédito vs pagamentos de fatura (se aplicável)"
   },
   "budget_analysis": [
-    { "category": "nome", "status": "ok|near|over", "insight": "análise do orçamento desta categoria" }
+    { "category": "nome", "status": "ok|near|over", "insight": "análise do orçamento" }
   ]
+}
 
-REGRAS IMPORTANTES:
-- NÃO invente números ou totais — use apenas os dados fornecidos
+REGRAS FINAIS:
+- NÃO invente números — use apenas os dados fornecidos
 - Seja específico e acionável, não genérico
-- Respeite o contexto brasileiro (BRL, hábitos locais)
-- member_insights: apenas se houver dados por membro, lista vazia se não houver
-- classification_suggestions: apenas para transações sem categoria ou com categoria genérica (máx 5)
-- forecast.projection_highlights: apenas para meses com algo relevante a destacar (máx 3)
-- budget_analysis: lista vazia se não houver dados de orçamento
+- Contexto brasileiro (BRL, hábitos locais, sazonalidade brasileira)
+- member_insights: lista vazia se não houver dados por membro
+- classification_suggestions: máx 5, apenas sem categoria ou categoria genérica
+- forecast.projection_highlights: máx 4, apenas meses com algo relevante
+- forecast.one_time_payment_alerts: apenas pagamentos únicos relevantes (>R$200)
+- budget_analysis: lista vazia se não houver orçamentos
 - Todos os textos em português brasileiro`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
@@ -671,7 +883,7 @@ REGRAS IMPORTANTES:
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 4000, temperature: 0.3 },
+      generationConfig: { maxOutputTokens: 6000, temperature: 0.2 },
     }),
   });
 
@@ -692,6 +904,7 @@ REGRAS IMPORTANTES:
 
   return parsed;
 }
+
 
 // ── Renderização da análise ───────────────────────────────────────────────
 
