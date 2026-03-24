@@ -826,10 +826,11 @@ function updateUserUI() {
       : 'Gerenciar minha família · Owner';
   }
 
-  // Configurações e Auditoria: APENAS admin (sidebar + topbar via data-nav)
+  // Configurações, Auditoria e Telemetria: APENAS admin (sidebar + topbar via data-nav)
   const adminShow = currentUser.can_admin ? '' : 'none';
-  document.querySelectorAll('[data-nav="audit"]').forEach(el    => el.style.display = adminShow);
-  document.querySelectorAll('[data-nav="settings"]').forEach(el => el.style.display = adminShow);
+  document.querySelectorAll('[data-nav="audit"]').forEach(el      => el.style.display = adminShow);
+  document.querySelectorAll('[data-nav="settings"]').forEach(el   => el.style.display = adminShow);
+  document.querySelectorAll('[data-nav="telemetry"]').forEach(el  => el.style.display = adminShow);
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display = currentUser.can_admin ? '' : 'none';
   if (currentUser.can_admin) _checkPendingApprovals();
@@ -870,12 +871,14 @@ function applyPermissions() {
 if (!p.can_admin) {
   document.querySelectorAll('[data-nav="settings"]').forEach(el => el.style.display='none');
   document.querySelectorAll('[data-nav="audit"]').forEach(el => el.style.display='none');
+  document.querySelectorAll('[data-nav="telemetry"]').forEach(el => el.style.display='none');
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display='none';
 } else {
   // Admin: restore visibility (menu_visibility preference may override later)
   document.querySelectorAll('[data-nav="audit"]').forEach(el => el.style.display='');
   document.querySelectorAll('[data-nav="settings"]').forEach(el => el.style.display='');
+  document.querySelectorAll('[data-nav="telemetry"]').forEach(el => el.style.display='');
 }
 
   // Módulos por família: visibilidade depende de feature flag

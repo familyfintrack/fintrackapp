@@ -633,6 +633,7 @@ const _pageIconsSVG = {
   ai_insights:  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".7"/></svg>',
   help:         '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   audit:        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  telemetry:    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><polyline points="22 20 2 20"/></svg>',
 };
 async function togglePrivacy(){
   state.privacyMode=!state.privacyMode;
@@ -877,8 +878,8 @@ function clearFamilyScopedUI() {
 }
 
 function navigate(page){
-  // Guard: settings/audit são admin-only
-  if((page==='settings'||page==='audit') && currentUser?.role !== 'admin'){
+  // Guard: settings/audit/telemetry são admin-only
+  if((page==='settings'||page==='audit'||page==='telemetry') && currentUser?.role !== 'admin'){
     toast(t('error.admin_only'),'warning');
     return;
   }
@@ -913,6 +914,7 @@ function navigate(page){
   else if(page==='import')initImportPage();
   else if(page==='settings')loadSettings();
   else if(page==='audit')loadAuditLogs();
+  else if(page==='telemetry')loadTelemetryDashboard?.();
   else if(page==='investments')loadInvestmentsPage?.();
   else if(page==='debts')loadDebtsPage?.();
   else if(page==='prices')initPricesPage();

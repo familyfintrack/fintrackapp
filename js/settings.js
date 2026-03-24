@@ -588,10 +588,6 @@ function loadSettings() {
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
 
-  // Telemetria — admin only
-  const telSection = document.getElementById('telemetrySection');
-  if (telSection) telSection.style.display = isAdmin ? '' : 'none';
-
   if (isAdmin) {
     // Admin: inicializar formulários das novas seções
     initSettingsVisibilityForm();
