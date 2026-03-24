@@ -810,8 +810,11 @@ function _filterTxAccountOrigin(excludeCreditCards) {
   const accounts = excludeCreditCards
     ? state.accounts.filter(a => a.type !== 'cartao_credito')
     : state.accounts;
-  sel.innerHTML = '<option value="">Selecione a conta</option>' +
-    accounts.map(a => `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
+  sel.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(accounts, 'Selecione a conta')
+    : '<option value="">Selecione a conta</option>' +
+      accounts.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  sel.value = currentVal || '';
   if (excludeCreditCards && currentVal) {
     const acct = state.accounts.find(a => a.id === currentVal);
     if (acct && acct.type === 'cartao_credito') sel.value = '';

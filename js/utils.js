@@ -273,15 +273,23 @@ function _buildCategoryFilterOptions() {
 }
 
 function _accountOptions(accounts, placeholder) {
-  const favs = accounts.filter(a => a.is_favorite);
-  const rest = accounts.filter(a => !a.is_favorite);
+  const list = Array.isArray(accounts) ? accounts : [];
+  const favs = list.filter(a => a.is_favorite);
+  const rest = list.filter(a => !a.is_favorite);
+  const renderOpt = (a, isFav=false) => `<option value="${a.id}">${isFav ? '⭐ ' : ''}${esc(a.name)} (${a.currency})</option>`;
+
   let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+
   if (favs.length) {
-    html += `<optgroup label="⭐ Favoritas">${favs.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
-    if (rest.length) html += `<optgroup label="Outras contas">${rest.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('')}</optgroup>`;
+    html += favs.map(a => renderOpt(a, true)).join('');
+    if (rest.length) {
+      html += `<option value="" disabled>──────────</option>`;
+      html += rest.map(a => renderOpt(a, false)).join('');
+    }
   } else {
-    html += accounts.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    html += rest.map(a => renderOpt(a, false)).join('');
   }
+
   return html;
 }
 
