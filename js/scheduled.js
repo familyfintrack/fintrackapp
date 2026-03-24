@@ -676,27 +676,19 @@ function openScheduledModal(id='') {
 
   // Populate account select (favorites first)
   const aEl = document.getElementById('scAccountId');
-  if (typeof populateAccountSelectSafe === 'function') {
-    populateAccountSelectSafe(aEl, state.accounts || [], { placeholder: 'Selecione a conta', selectedValue: sc?.account_id || '', showCurrency: true, showFavoriteStar: true });
-  } else {
-    aEl.innerHTML = (typeof _accountOptions === 'function')
-      ? _accountOptions(state.accounts, 'Selecione a conta')
-      : state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-    if(sc?.account_id) aEl.value = sc.account_id;
-  }
+  aEl.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(state.accounts, 'Selecione a conta')
+    : state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+  if(sc?.account_id) aEl.value = sc.account_id;
 
   // Populate transfer-to account select (favorites first)
   const trEl = document.getElementById('scTransferToAccountId');
   if(trEl) {
-    if (typeof populateAccountSelectSafe === 'function') {
-      populateAccountSelectSafe(trEl, state.accounts || [], { placeholder: '— Selecionar conta destino —', selectedValue: sc?.transfer_to_account_id || '', showCurrency: true, showFavoriteStar: true });
-    } else {
-      const trOpts = (typeof _accountOptions === 'function')
-        ? _accountOptions(state.accounts, '— Selecionar conta destino —')
-        : '<option value="">— Selecionar conta destino —</option>' + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-      trEl.innerHTML = trOpts;
-      if(sc?.transfer_to_account_id) trEl.value = sc.transfer_to_account_id;
-    }
+    const trOpts = (typeof _accountOptions === 'function')
+      ? _accountOptions(state.accounts, '— Selecionar conta destino —')
+      : '<option value="">— Selecionar conta destino —</option>' + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    trEl.innerHTML = trOpts;
+    if(sc?.transfer_to_account_id) trEl.value = sc.transfer_to_account_id;
   }
 
   // Populate category picker (same as transaction modal)
@@ -952,13 +944,9 @@ function _filterScAccountOrigin(excludeCreditCards) {
   const accounts = excludeCreditCards
     ? state.accounts.filter(a => a.type !== 'cartao_credito')
     : state.accounts;
-  if (typeof populateAccountSelectSafe === 'function') {
-    populateAccountSelectSafe(sel, accounts, { placeholder: 'Selecione a conta', selectedValue: currentVal, showCurrency: true, showFavoriteStar: true });
-  } else {
-    sel.innerHTML = accounts.map(a =>
-      `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`
-    ).join('');
-  }
+  sel.innerHTML = (typeof _accountOptions === 'function')
+    ? _accountOptions(accounts, '', { selected: currentVal })
+    : accounts.map(a => `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
   if (excludeCreditCards && currentVal) {
     const acct = state.accounts.find(a => a.id === currentVal);
     if (acct && acct.type === 'cartao_credito') sel.value = '';

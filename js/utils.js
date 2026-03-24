@@ -272,80 +272,40 @@ function _buildCategoryFilterOptions() {
   return lines.join('');
 }
 
-function _getOrderedAccountLists(accounts, opts = {}) {
+function _sortAccountsForSelect(accounts) {
   const list = Array.isArray(accounts) ? [...accounts] : [];
-  const visible = opts.excludeCreditCards
-    ? list.filter(a => a?.type !== 'cartao_credito')
-    : list;
-  return {
-    favorites: visible.filter(a => !!a?.is_favorite),
-    others: visible.filter(a => !a?.is_favorite),
-  };
+  const byName = (a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' });
+  const favs = list.filter(a => a?.is_favorite).sort(byName);
+  const rest = list.filter(a => !a?.is_favorite).sort(byName);
+  return { favs, rest, all: [...favs, ...rest] };
 }
 
-function _buildAccountOptionLabel(account, opts = {}) {
-  if (!account) return '';
-  const name = esc(account.name || '');
-  const currency = opts.showCurrency === false ? '' : ` (${account.currency || 'BRL'})`;
-  const star = opts.showFavoriteStar !== false && account.is_favorite ? '⭐ ' : '';
-  return `${star}${name}${currency}`;
+function _accountOptionLabel(account, opts = {}) {
+  const options = opts || {};
+  const showCurrency = options.showCurrency !== false;
+  const starFavorites = options.starFavorites !== false;
+  const star = (starFavorites && account?.is_favorite) ? '⭐ ' : '';
+  const currency = showCurrency && account?.currency ? ` (${esc(account.currency)})` : '';
+  return `${star}${esc(account?.name || '')}${currency}`;
 }
 
-function populateAccountSelectSafe(target, accounts, opts = {}) {
-  const sel = typeof target === 'string' ? document.getElementById(target) : target;
-  if (!sel || sel.tagName !== 'SELECT') return false;
+function _accountOptions(accounts, placeholder, opts = {}) {
+  const options = opts || {};
+  const selected = options.selected == null ? null : String(options.selected);
+  const separatorLabel = options.separatorLabel || '──────────';
+  const { favs, rest, all } = _sortAccountsForSelect(accounts || []);
+  let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+  const optionHtml = (a) => `<option value="${a.id}"${selected === String(a.id) ? ' selected' : ''}>${_accountOptionLabel(a, options)}</option>`;
 
-  const preserveCurrent = opts.preserveCurrent !== false;
-  const selectedValue = Object.prototype.hasOwnProperty.call(opts, 'selectedValue')
-    ? (opts.selectedValue ?? '')
-    : (preserveCurrent ? (sel.value || '') : '');
-  const placeholder = Object.prototype.hasOwnProperty.call(opts, 'placeholder') ? (opts.placeholder ?? '') : '';
-
-  const { favorites, others } = _getOrderedAccountLists(accounts, opts);
-  sel.innerHTML = '';
-
-  if (placeholder !== null && placeholder !== undefined && placeholder !== '') {
-    const ph = document.createElement('option');
-    ph.value = '';
-    ph.textContent = String(placeholder);
-    sel.appendChild(ph);
+  if (favs.length) {
+    html += favs.map(optionHtml).join('');
+    if (rest.length) html += `<option value="" disabled>──────── ${separatorLabel} ────────</option>`;
+    html += rest.map(optionHtml).join('');
+    return html;
   }
 
-  const appendOptions = (parent, list) => {
-    list.forEach(account => {
-      const opt = document.createElement('option');
-      opt.value = account.id;
-      opt.textContent = _buildAccountOptionLabel(account, opts).replace(/<[^>]*>/g, '');
-      if (String(account.id) === String(selectedValue)) opt.selected = true;
-      parent.appendChild(opt);
-    });
-  };
-
-  const useGroups = favorites.length > 0 && others.length > 0;
-  if (useGroups) {
-    const favGroup = document.createElement('optgroup');
-    favGroup.label = '⭐ Favoritas';
-    appendOptions(favGroup, favorites);
-    sel.appendChild(favGroup);
-
-    const otherGroup = document.createElement('optgroup');
-    otherGroup.label = '────────── Outras contas';
-    appendOptions(otherGroup, others);
-    sel.appendChild(otherGroup);
-  } else {
-    appendOptions(sel, favorites.length ? favorites : others);
-  }
-
-  if (selectedValue && !Array.from(sel.options).some(o => o.value === String(selectedValue))) {
-    sel.value = '';
-  }
-  return true;
-}
-
-function _accountOptions(accounts, placeholder) {
-  const temp = document.createElement('select');
-  populateAccountSelectSafe(temp, accounts, { placeholder, showCurrency: true, showFavoriteStar: true });
-  return temp.innerHTML;
+  html += all.map(optionHtml).join('');
+  return html;
 }
 
 // populateSelects is defined in reports.js (always loaded).

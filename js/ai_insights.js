@@ -120,12 +120,9 @@ function _aiPopulateFilters() {
   // Accounts
   const accSel = document.getElementById('aiAccountFilter');
   if (accSel) {
-    if (typeof populateAccountSelectSafe === 'function') {
-      populateAccountSelectSafe(accSel, state.accounts || [], { placeholder: 'Todas as contas', showCurrency: false, showFavoriteStar: true });
-    } else {
-      accSel.innerHTML = '<option value="">Todas as contas</option>' +
-        (state.accounts || []).map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
-    }
+    accSel.innerHTML = (typeof _accountOptions === 'function')
+      ? _accountOptions(state.accounts || [], 'Todas as contas', { showCurrency: false })
+      : '<option value="">Todas as contas</option>' + (state.accounts || []).map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
   }
 
   // Categories
