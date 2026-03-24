@@ -49,15 +49,20 @@ async function loadAuditLogs() {
   try {
     if (!sb) { toast('Sem conexão com o banco', 'error'); return; }
 
+    // Testa existência da tabela com query simples (sem JOIN)
     const { error: testErr } = await sb.from('scheduled_run_logs').select('id').limit(1);
-    if (testErr) throw testErr;
+    if (testErr) {
+      const isMissing = /does not exist|relation|not found/i.test(testErr.message || '');
+      throw { message: testErr.message, isMissing };
+    }
 
     const statusFilter = document.getElementById('auditStatusFilter')?.value || '';
     const monthFilter  = document.getElementById('auditMonthFilter')?.value  || '';
 
+    // Query principal SEM JOIN para evitar problemas de RLS em scheduled_transactions
     let q = famQ(
       sb.from('scheduled_run_logs')
-        .select('*, scheduled_transactions(description,frequency,type,category_id,categories:category_id(name))')
+        .select('id,family_id,scheduled_id,transaction_id,scheduled_date,status,amount,description,notes,created_at')
         .order('created_at', { ascending: false })
         .limit(500)
     );
@@ -71,9 +76,27 @@ async function loadAuditLogs() {
     }
 
     const { data, error } = await q;
-    if (error) throw error;
+    if (error) throw { message: error.message, isMissing: false };
 
-    _auditState.allRows    = data || [];
+    const rows = data || [];
+
+    // Busca dados dos programados separadamente (sem JOIN, evita RLS)
+    const schedIds = [...new Set(rows.map(r => r.scheduled_id).filter(Boolean))];
+    const schedMap = {};
+    if (schedIds.length > 0) {
+      const { data: sdata } = await famQ(
+        sb.from('scheduled_transactions')
+          .select('id,description,frequency,type,category_id,categories:category_id(name)')
+      ).in('id', schedIds.slice(0, 100));
+      (sdata || []).forEach(s => { schedMap[s.id] = s; });
+    }
+
+    // Enriquecer rows com dados do programado
+    rows.forEach(r => {
+      r.scheduled_transactions = schedMap[r.scheduled_id] || null;
+    });
+
+    _auditState.allRows     = rows;
     _auditState._lastStatus = statusFilter;
     _auditState._lastMonth  = monthFilter;
 
@@ -81,8 +104,10 @@ async function loadAuditLogs() {
     _auditApplyLocalFilters();
 
   } catch (e) {
-    console.warn('[audit]', e.message);
-    const isMissing = /does not exist|relation|not found/i.test(e.message || '');
+    console.warn('[audit]', e.message || e);
+    const isMissing = e.isMissing ?? /does not exist|relation|not found/i.test(e.message || '');
+    const realMsg   = e.message || String(e);
+
     const errHtml = isMissing
       ? `<div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
           <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada</div>
@@ -94,8 +119,9 @@ async function loadAuditLogs() {
             <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Tentar novamente</button>
           </div></div>`
       : `<div style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
-          ⚠️ Erro: ${esc(e.message)}
-          <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
+          ⚠️ Erro ao carregar auditoria:<br>
+          <code style="font-size:.78rem;display:block;margin:8px 0;padding:8px;background:var(--surface2);border-radius:6px;color:var(--danger)">${esc(realMsg)}</code>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
 
     if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${errHtml}</td></tr>`;
     if (cards) cards.innerHTML = errHtml;
@@ -103,6 +129,7 @@ async function loadAuditLogs() {
     if (btn) btn.disabled = false;
   }
 }
+
 
 // ── Filtro local (busca por texto) ────────────────────────────────────────────
 function _auditApplyLocalFilters() {
