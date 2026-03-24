@@ -465,13 +465,13 @@ async function _aiCollectFinancialContext() {
   // Distribuição proporcional de baseExpense por categoria (top categorias)
   const _catDistExp = {};
   const _catDistInc = {};
-  if (ctx?.topCategories?.length && baseExpense > 0) {
-    const topCatTotal = ctx.topCategories.reduce((s,c) => s + c.amount, 0) || 1;
-    ctx.topCategories.forEach(c => {
+  if (topCategories.length && baseExpense > 0) {
+    const topCatTotal = topCategories.reduce((s,c) => s + c.amount, 0) || 1;
+    topCategories.forEach(c => {
       _catDistExp[c.name] = baseExpense * (c.amount / topCatTotal);
     });
   }
-  // Receitas: se há topPayees de income use, senão agrupa como "Receitas diversas"
+  // Receitas base
   if (baseIncome > 0) {
     _catDistInc['Receitas base'] = baseIncome;
   }
