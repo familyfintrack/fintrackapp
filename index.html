@@ -2291,6 +2291,75 @@
     </div>
     <div class="page" id="page-audit">
 
+      <style>
+        /* ── Audit — layout responsivo ─────────────────────────────── */
+
+        /* Filtros: 2 colunas no mobile, flex em desktop */
+        .aud-filters {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+        .aud-search { grid-column: 1 / -1; } /* busca: linha inteira */
+        .aud-count  { grid-column: 1 / -1; font-size:.78rem; color:var(--muted); }
+
+        @media (min-width: 600px) {
+          .aud-filters { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+          .aud-search  { flex:1; min-width:200px; grid-column:auto; }
+          .aud-count   { grid-column:auto; align-self:center; }
+        }
+
+        .aud-select {
+          width:100%; padding:7px 10px; font-size:.82rem;
+          border-radius:8px; border:1px solid var(--border);
+          background:var(--surface); color:var(--text);
+          font-family:var(--font-sans);
+        }
+        @media (min-width: 600px) { .aud-select { width:auto; min-width:130px; } }
+
+        /* Tabela: visível apenas em desktop */
+        .aud-table-wrap { display:none; }
+        @media (min-width: 600px) {
+          .aud-table-wrap { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        }
+        #auditTableDesktop { min-width:580px; }
+        #auditTableDesktop thead th {
+          position:sticky; top:0;
+          background:var(--surface2); z-index:1;
+        }
+
+        /* Cards: visíveis apenas em mobile */
+        .aud-cards { display:block; }
+        @media (min-width: 600px) { .aud-cards { display:none; } }
+
+        .aud-card {
+          background:var(--surface);
+          border:1px solid var(--border);
+          border-radius:var(--r);
+          padding:12px 14px;
+          margin-bottom:8px;
+        }
+        .aud-card-pending { border-left:3px solid var(--amber); }
+        .aud-card-error   { border-left:3px solid var(--red);   }
+        .aud-card-head {
+          display:flex; align-items:flex-start;
+          justify-content:space-between; gap:8px; margin-bottom:6px;
+        }
+        .aud-card-title  { font-weight:600; font-size:.875rem; color:var(--text); flex:1; min-width:0; }
+        .aud-card-amt    { font-weight:700; white-space:nowrap; flex-shrink:0; font-size:.9rem; }
+        .aud-card-meta   {
+          display:flex; flex-wrap:wrap; gap:5px;
+          align-items:center; font-size:.75rem; color:var(--muted);
+        }
+        .aud-card-cat    { color:var(--accent); font-size:.72rem; }
+
+        /* KPI counters */
+        .audit-counter { cursor:pointer; transition:box-shadow .15s, transform .1s; }
+        .audit-counter:hover  { transform:translateY(-1px); }
+        .audit-counter:active { transform:translateY(0); }
+      </style>
+
       <div class="section-header mb-6">
         <span class="section-title">📋 Histórico de Auto-registros</span>
         <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()" id="auditRefreshBtn">↺ Atualizar</button>
@@ -2298,67 +2367,69 @@
 
       <!-- KPI counters -->
       <div class="audit-counters">
-        <div class="audit-counter audit-counter-total" onclick="auditSetStatus('')" style="cursor:pointer">
+        <div class="audit-counter audit-counter-total"   onclick="auditSetStatus('')">
           <div class="audit-counter-value" id="auditCntTotal">—</div>
           <div class="audit-counter-label">Total</div>
         </div>
-        <div class="audit-counter audit-counter-ok" onclick="auditSetStatus('confirmed')" style="cursor:pointer">
+        <div class="audit-counter audit-counter-ok"      onclick="auditSetStatus('confirmed')">
           <div class="audit-counter-value" id="auditCntConfirmed">—</div>
           <div class="audit-counter-label">Confirmadas</div>
         </div>
-        <div class="audit-counter audit-counter-pending" onclick="auditSetStatus('pending')" style="cursor:pointer">
+        <div class="audit-counter audit-counter-pending" onclick="auditSetStatus('pending')">
           <div class="audit-counter-value" id="auditCntPending">—</div>
           <div class="audit-counter-label">Pendentes</div>
         </div>
-        <div class="audit-counter audit-counter-error" onclick="auditSetStatus('error')" style="cursor:pointer">
+        <div class="audit-counter audit-counter-error"   onclick="auditSetStatus('error')">
           <div class="audit-counter-value" id="auditCntError">—</div>
           <div class="audit-counter-label">Erros</div>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="filters" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div class="search-wrap" style="flex:1;min-width:160px">
+      <!-- Filtros -->
+      <div class="aud-filters">
+        <div class="search-wrap aud-search">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" id="auditSearch" placeholder="Buscar descrição ou programado…" oninput="filterAuditLogs()">
         </div>
-        <select id="auditStatusFilter" onchange="filterAuditLogs()" style="min-width:140px">
+        <select id="auditStatusFilter" class="aud-select" onchange="filterAuditLogs()">
           <option value="">Todos os status</option>
           <option value="confirmed">✅ Confirmadas</option>
           <option value="pending">⏳ Pendentes</option>
           <option value="error">❌ Erros</option>
         </select>
-        <select id="auditMonthFilter" onchange="filterAuditLogs()"
-          style="font-size:.82rem;padding:5px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);min-width:130px">
+        <select id="auditMonthFilter" class="aud-select" onchange="filterAuditLogs()">
           <option value="">Todos os meses</option>
         </select>
-        <span id="auditCount" style="font-size:.78rem;color:var(--muted);align-self:center;white-space:nowrap"></span>
+        <span id="auditCount" class="aud-count"></span>
       </div>
 
-      <!-- Table card -->
-      <div class="card" style="padding:0;overflow:hidden">
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-          <table class="table tx-table" id="auditTable" style="min-width:620px">
-            <thead>
-              <tr>
-                <th style="width:90px">Data</th>
-                <th>Programado / Descrição</th>
-                <th style="width:100px">Frequência</th>
-                <th style="width:90px">Status</th>
-                <th style="text-align:right;width:100px">Valor</th>
-                <th style="width:110px">Executado em</th>
-                <th style="text-align:center;width:60px">Tx</th>
-              </tr>
-            </thead>
-            <tbody id="auditBody">
-              <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Carregando...</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <!-- Tabela desktop (≥ 600px) -->
+      <div class="card aud-table-wrap" style="padding:0;overflow:hidden">
+        <table class="table tx-table" id="auditTableDesktop">
+          <thead>
+            <tr>
+              <th style="width:88px">Data</th>
+              <th>Programado / Descrição</th>
+              <th style="width:96px">Frequência</th>
+              <th style="width:88px">Status</th>
+              <th style="text-align:right;width:96px">Valor</th>
+              <th style="width:110px">Executado em</th>
+              <th style="text-align:center;width:52px">Tx</th>
+            </tr>
+          </thead>
+          <tbody id="auditBody">
+            <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Carregando...</td></tr>
+          </tbody>
+        </table>
         <div style="padding:10px 18px;border-top:1px solid var(--border);font-size:.74rem;color:var(--muted);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <span>Mostra até 500 execuções automáticas de transações programadas.</span>
+          <span>Mostra até 500 execuções automáticas.</span>
           <span id="auditFooterCount" style="font-weight:600"></span>
         </div>
+      </div>
+
+      <!-- Cards mobile (< 600px) -->
+      <div id="auditCards" class="aud-cards">
+        <div style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Carregando...</div>
       </div>
 
     </div>
