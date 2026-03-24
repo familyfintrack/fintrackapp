@@ -272,25 +272,80 @@ function _buildCategoryFilterOptions() {
   return lines.join('');
 }
 
-function _accountOptions(accounts, placeholder) {
-  const list = Array.isArray(accounts) ? accounts : [];
-  const favs = list.filter(a => a.is_favorite);
-  const rest = list.filter(a => !a.is_favorite);
-  const renderOpt = (a, isFav=false) => `<option value="${a.id}">${isFav ? '⭐ ' : ''}${esc(a.name)} (${a.currency})</option>`;
+function _getOrderedAccountLists(accounts, opts = {}) {
+  const list = Array.isArray(accounts) ? [...accounts] : [];
+  const visible = opts.excludeCreditCards
+    ? list.filter(a => a?.type !== 'cartao_credito')
+    : list;
+  return {
+    favorites: visible.filter(a => !!a?.is_favorite),
+    others: visible.filter(a => !a?.is_favorite),
+  };
+}
 
-  let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+function _buildAccountOptionLabel(account, opts = {}) {
+  if (!account) return '';
+  const name = esc(account.name || '');
+  const currency = opts.showCurrency === false ? '' : ` (${account.currency || 'BRL'})`;
+  const star = opts.showFavoriteStar !== false && account.is_favorite ? '⭐ ' : '';
+  return `${star}${name}${currency}`;
+}
 
-  if (favs.length) {
-    html += favs.map(a => renderOpt(a, true)).join('');
-    if (rest.length) {
-      html += `<option value="" disabled>──────────</option>`;
-      html += rest.map(a => renderOpt(a, false)).join('');
-    }
-  } else {
-    html += rest.map(a => renderOpt(a, false)).join('');
+function populateAccountSelectSafe(target, accounts, opts = {}) {
+  const sel = typeof target === 'string' ? document.getElementById(target) : target;
+  if (!sel || sel.tagName !== 'SELECT') return false;
+
+  const preserveCurrent = opts.preserveCurrent !== false;
+  const selectedValue = Object.prototype.hasOwnProperty.call(opts, 'selectedValue')
+    ? (opts.selectedValue ?? '')
+    : (preserveCurrent ? (sel.value || '') : '');
+  const placeholder = Object.prototype.hasOwnProperty.call(opts, 'placeholder') ? (opts.placeholder ?? '') : '';
+
+  const { favorites, others } = _getOrderedAccountLists(accounts, opts);
+  sel.innerHTML = '';
+
+  if (placeholder !== null && placeholder !== undefined && placeholder !== '') {
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = String(placeholder);
+    sel.appendChild(ph);
   }
 
-  return html;
+  const appendOptions = (parent, list) => {
+    list.forEach(account => {
+      const opt = document.createElement('option');
+      opt.value = account.id;
+      opt.textContent = _buildAccountOptionLabel(account, opts).replace(/<[^>]*>/g, '');
+      if (String(account.id) === String(selectedValue)) opt.selected = true;
+      parent.appendChild(opt);
+    });
+  };
+
+  const useGroups = favorites.length > 0 && others.length > 0;
+  if (useGroups) {
+    const favGroup = document.createElement('optgroup');
+    favGroup.label = '⭐ Favoritas';
+    appendOptions(favGroup, favorites);
+    sel.appendChild(favGroup);
+
+    const otherGroup = document.createElement('optgroup');
+    otherGroup.label = '────────── Outras contas';
+    appendOptions(otherGroup, others);
+    sel.appendChild(otherGroup);
+  } else {
+    appendOptions(sel, favorites.length ? favorites : others);
+  }
+
+  if (selectedValue && !Array.from(sel.options).some(o => o.value === String(selectedValue))) {
+    sel.value = '';
+  }
+  return true;
+}
+
+function _accountOptions(accounts, placeholder) {
+  const temp = document.createElement('select');
+  populateAccountSelectSafe(temp, accounts, { placeholder, showCurrency: true, showFavoriteStar: true });
+  return temp.innerHTML;
 }
 
 // populateSelects is defined in reports.js (always loaded).

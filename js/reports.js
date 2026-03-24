@@ -105,8 +105,12 @@ function populateReportFilters() {
     const el = document.getElementById(id); if(!el) return;
     const cur = el.value;
     const placeholder = id==='forecastAccountFilter' ? 'Todas as contas' : 'Todas';
-    el.innerHTML = _accountOptions(state.accounts, placeholder);
-    el.value = cur;
+    if (typeof populateAccountSelectSafe === 'function') {
+      populateAccountSelectSafe(el, state.accounts || [], { placeholder, selectedValue: cur, showCurrency: true, showFavoriteStar: true });
+    } else {
+      el.innerHTML = _accountOptions(state.accounts, placeholder);
+      el.value = cur;
+    }
   });
   const catEl = document.getElementById('rptCategory');
   if(catEl) {
@@ -1834,8 +1838,18 @@ function populateSelects(){
   try { populateReportFilters(); } catch(e) { console.warn('[populateSelects] reportFilters:', e?.message); }
   try {
     const accs = state.accounts || [];
-    ['txAccountId','txTransferTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=(typeof _accountOptions==='function')?_accountOptions(accs,'Selecione a conta'):'<option value="">Selecione a conta</option>'+accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');});
-    const txAF=document.getElementById('txAccount');if(txAF)txAF.innerHTML=(typeof _accountOptions==='function')?_accountOptions(accs,'Todas as contas'):'<option value="">Todas as contas</option>'+accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+    ['txAccountId','txTransferTo'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      const cur = el.value;
+      if (typeof populateAccountSelectSafe === 'function') {
+        populateAccountSelectSafe(el, accs, { placeholder:'Selecione a conta', selectedValue: cur, showCurrency:true, showFavoriteStar:true });
+      } else {
+        el.innerHTML=(typeof _accountOptions==='function')?_accountOptions(accs,'Selecione a conta'):'<option value="">Selecione a conta</option>'+accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
+        el.value = cur;
+      }
+    });
+    const txAF=document.getElementById('txAccount');if(txAF){const cur=txAF.value;if(typeof populateAccountSelectSafe==='function'){populateAccountSelectSafe(txAF,accs,{placeholder:'Todas as contas',selectedValue:cur,showCurrency:true,showFavoriteStar:true});}else{txAF.innerHTML=(typeof _accountOptions==='function')?_accountOptions(accs,'Todas as contas'):'<option value="">Todas as contas</option>'+accs.map(a=>`<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');txAF.value=cur;}}
     const catF=document.getElementById('txCategoryFilter');if(catF){const cur=catF.value;catF.innerHTML='<option value="">Categoria</option>'+((typeof _buildCategoryFilterOptions==='function')?_buildCategoryFilterOptions():(state.categories||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join(''));catF.value=cur;}
   } catch(e) { console.warn('[populateSelects] accounts/cats:', e?.message); }
   try { if(typeof buildCatPicker==='function') buildCatPicker(); } catch(e) {}

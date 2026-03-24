@@ -422,10 +422,13 @@ async function renderCashflowChart(memberIds = null){
   const sel = document.getElementById('cashflowAccountFilter');
   if(sel) {
     const curVal = sel.value;
-    sel.innerHTML = (typeof _accountOptions === 'function')
-      ? _accountOptions(state.accounts || [], t('dash.all_accounts'), { showCurrency: false })
-      : `<option value="">${t('dash.all_accounts')}</option>` + state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
-    if(curVal) sel.value = curVal; // restore selection
+    if (typeof populateAccountSelectSafe === 'function') {
+      populateAccountSelectSafe(sel, state.accounts || [], { placeholder: t('dash.all_accounts'), selectedValue: curVal, showCurrency: false, showFavoriteStar: true });
+    } else {
+      sel.innerHTML = `<option value="">${t('dash.all_accounts')}</option>` +
+        state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+      if(curVal) sel.value = curVal; // restore selection
+    }
   }
   const accId = sel ? sel.value : '';
   const labels=[];

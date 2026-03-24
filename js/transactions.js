@@ -10,8 +10,12 @@ function openTxClipboardImport() {
 
   // Populate default account selector
   const sel = document.getElementById('txClipDefaultAccount');
-  sel.innerHTML = '<option value="">— usar coluna conta —</option>' +
-    (state.accounts || []).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  if (typeof populateAccountSelectSafe === 'function') {
+    populateAccountSelectSafe(sel, state.accounts || [], { placeholder: '— usar coluna conta —', showCurrency: false, showFavoriteStar: true });
+  } else {
+    sel.innerHTML = '<option value="">— usar coluna conta —</option>' +
+      (state.accounts || []).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  }
 
   openModal('txClipboardModal');
 }
@@ -810,11 +814,12 @@ function _filterTxAccountOrigin(excludeCreditCards) {
   const accounts = excludeCreditCards
     ? state.accounts.filter(a => a.type !== 'cartao_credito')
     : state.accounts;
-  sel.innerHTML = (typeof _accountOptions === 'function')
-    ? _accountOptions(accounts, 'Selecione a conta')
-    : '<option value="">Selecione a conta</option>' +
-      accounts.map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
-  sel.value = currentVal || '';
+  if (typeof populateAccountSelectSafe === 'function') {
+    populateAccountSelectSafe(sel, accounts, { placeholder: 'Selecione a conta', selectedValue: currentVal, showCurrency: true, showFavoriteStar: true });
+  } else {
+    sel.innerHTML = '<option value="">Selecione a conta</option>' +
+      accounts.map(a => `<option value="${a.id}"${a.id===currentVal?' selected':''}>${esc(a.name)} (${a.currency})</option>`).join('');
+  }
   if (excludeCreditCards && currentVal) {
     const acct = state.accounts.find(a => a.id === currentVal);
     if (acct && acct.type === 'cartao_credito') sel.value = '';

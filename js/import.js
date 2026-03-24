@@ -169,9 +169,12 @@ function initImportPage() {
 
   const sel = document.getElementById('importAccountFilter');
   if (sel) {
-    sel.innerHTML = (typeof _accountOptions === 'function')
-      ? _accountOptions(state.accounts || [], '— Detectar automaticamente —', { showCurrency: false })
-      : '<option value="">— Detectar automaticamente —</option>' + (state.accounts||[]).map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+    if (typeof populateAccountSelectSafe === 'function') {
+      populateAccountSelectSafe(sel, state.accounts || [], { placeholder: '— Detectar automaticamente —', showCurrency: false, showFavoriteStar: true });
+    } else {
+      sel.innerHTML = '<option value="">— Detectar automaticamente —</option>' +
+        (state.accounts||[]).map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+    }
   }
   ['accounts','categories','payees','transactions'].forEach(s =>
     document.getElementById('isc-' + s)?.classList.remove('disabled'));
@@ -802,9 +805,13 @@ function showFieldMapScreen(parsedData) {
     ? `<span class="map-badge-exists">Existente</span>`
     : `<span class="map-badge-new">Novo</span>`;
 
-  const accOptsList = (typeof _accountOptions === 'function')
-    ? _accountOptions(state.accounts || [], '— Criar automaticamente —', { showCurrency: false })
-    : '<option value="">— Criar automaticamente —</option>' + (state.accounts||[]).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  const accOptsList = (() => {
+    if (typeof _accountOptions === 'function') {
+      return _accountOptions(state.accounts || [], '— Criar automaticamente —').replace(/ \([A-Z]{3}\)<\/option>/g, '</option>');
+    }
+    return '<option value="">— Criar automaticamente —</option>' +
+      (state.accounts||[]).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  })();
 
   // Accounts
   let newAccN=0, accHtml='';
@@ -871,7 +878,15 @@ function showFieldMapScreen(parsedData) {
       <td style="text-align:center">${xferTxCount[xname]||0}</td>
       <td>${exInApp ? `<span class="map-badge-exists">Mapeada</span>` : `<span class="map-badge-new">Não existe</span>`}</td>
       <td><select class="map-select" onchange="setFieldMap('transfer','${esc(xname)}',this.value)">
-        ${typeof _accountOptions === 'function' ? _accountOptions(state.accounts || [], '— Ignorar —', { showCurrency: false, selected: exInApp && exInApp.id ? exInApp.id : null }) : '<option value="">— Ignorar —</option>' + (state.accounts||[]).map(a=>`<option value="${a.id}"${exInApp&&exInApp.id===a.id?' selected':''}>${esc(a.name)}</option>`).join('')}
+        <option value="">— Ignorar —</option>
+        ${(() => {
+          const temp = document.createElement('select');
+          if (typeof populateAccountSelectSafe === 'function') {
+            populateAccountSelectSafe(temp, state.accounts || [], { showCurrency: false, showFavoriteStar: true, selectedValue: exInApp?.id || '' });
+            return temp.innerHTML.replace(/^<option value=""><\/option>/, '');
+          }
+          return (state.accounts||[]).map(a=>`<option value="${a.id}"${exInApp&&exInApp.id===a.id?' selected':''}>${esc(a.name)}</option>`).join('');
+        })()}
       </select></td></tr>`;
   });
   document.getElementById('fmTransfersBody').innerHTML = xferHtml ||
