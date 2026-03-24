@@ -541,6 +541,10 @@
         <button class="topbar-icon-btn" id="auditNavTopbar"  data-nav="audit" onclick="navigate('audit')" title="Auditoria" style="display:none">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </button>
+        <!-- Telemetria (admin only) -->
+        <button class="topbar-icon-btn" id="telemetryNavTopbar" data-nav="telemetry" onclick="navigate('telemetry')" title="Telemetria" style="display:none">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><polyline points="22 20 2 20"/></svg>
+        </button>
         <!-- Configurações (admin only) -->
         <button class="topbar-icon-btn" id="settingsNavTopbar" data-nav="settings" onclick="navigate('settings')" title="Configurações" style="display:none">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -2102,67 +2106,6 @@
         </div>
       </div>
 
-      <!-- ══ TELEMETRIA (admin only) ══ -->
-      <div class="cfg-section" id="telemetrySection" style="display:none">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_telemetry'); if(document.getElementById('cfgSec_telemetry').classList.contains('open')) loadTelemetryDashboard();">
-          <span class="cfg-sec-icon" style="background:#e0f2fe">📊</span>
-          <span class="cfg-sec-title">Telemetria &amp; Uso</span>
-          <span class="cfg-sec-arr" id="cfgArr_telemetry">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_telemetry">
-          <!-- Controles -->
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            <select id="telPeriod" class="form-select" style="font-size:.8rem;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);min-width:140px" onchange="loadTelemetryDashboard()">
-              <option value="7">Últimos 7 dias</option>
-              <option value="30" selected>Últimos 30 dias</option>
-              <option value="90">Últimos 90 dias</option>
-            </select>
-            <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Atualizar" style="font-size:.78rem">↺ Atualizar</button>
-          </div>
-          <!-- KPI cards -->
-          <div id="telKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:16px">
-            <div style="text-align:center;padding:20px;color:var(--muted);font-size:.8rem;grid-column:1/-1">Carregando...</div>
-          </div>
-          <!-- Charts row -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px" id="telChartsRow">
-            <div>
-              <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Eventos por dia</div>
-              <div style="position:relative;height:140px"><canvas id="telDailyChart"></canvas></div>
-            </div>
-            <div>
-              <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Páginas mais acessadas</div>
-              <div style="position:relative;height:140px"><canvas id="telPagesChart"></canvas></div>
-            </div>
-          </div>
-          <!-- Tables row -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="telTablesRow">
-            <div>
-              <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Tipos de evento</div>
-              <div id="telEventTypes" style="font-size:.8rem"></div>
-            </div>
-            <div>
-              <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Dispositivos</div>
-              <div id="telDevices" style="font-size:.8rem"></div>
-            </div>
-          </div>
-          <!-- Erros recentes -->
-          <div style="margin-top:16px">
-            <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Erros recentes</div>
-            <div id="telErrors" style="font-size:.8rem"></div>
-          </div>
-          <!-- Chamadas de IA -->
-          <div style="margin-top:16px">
-            <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Chamadas de IA</div>
-            <div id="telAiCalls" style="font-size:.8rem"></div>
-          </div>
-          <!-- Famílias ativas -->
-          <div style="margin-top:16px">
-            <div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Famílias ativas no período</div>
-            <div id="telFamilies" style="font-size:.8rem"></div>
-          </div>
-        </div>
-      </div>
-
       <div class="cfg-section">
         <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_sobre')">
           <span class="cfg-sec-icon" style="background:var(--surface2)">ℹ️</span>
@@ -2389,10 +2332,71 @@
       </div>
     </div>
 
-  </div>
-</div>
+    <!-- ══ TELEMETRIA PAGE ══════════════════════════════════════════════════ -->
+    <div class="page" id="page-telemetry">
 
-<!-- EMAILJS CONFIG MODAL -->
+      <div class="section-header mb-6">
+        <span class="section-title">📊 Telemetria &amp; Uso</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <select id="telPeriod" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)" onchange="loadTelemetryDashboard()">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30" selected>Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Atualizar">↺ Atualizar</button>
+        </div>
+      </div>
+
+      <!-- KPI cards -->
+      <div id="telKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem;grid-column:1/-1">Carregando...</div>
+      </div>
+
+      <!-- Charts row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card" style="padding:16px">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Eventos por dia</div>
+          <div style="position:relative;height:180px"><canvas id="telDailyChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Páginas mais acessadas</div>
+          <div style="position:relative;height:180px"><canvas id="telPagesChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tables row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="card" style="padding:16px">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Tipos de evento</div>
+          <div id="telEventTypes" style="font-size:.82rem"></div>
+        </div>
+        <div class="card" style="padding:16px">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Dispositivos</div>
+          <div id="telDevices" style="font-size:.82rem"></div>
+        </div>
+      </div>
+
+      <!-- Erros recentes -->
+      <div class="card" style="padding:16px;margin-bottom:16px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Erros recentes</div>
+        <div id="telErrors" style="font-size:.82rem"></div>
+      </div>
+
+      <!-- Chamadas de IA -->
+      <div class="card" style="padding:16px;margin-bottom:16px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Chamadas de IA</div>
+        <div id="telAiCalls" style="font-size:.82rem"></div>
+      </div>
+
+      <!-- Famílias ativas -->
+      <div class="card" style="padding:16px;margin-bottom:16px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Famílias ativas no período</div>
+        <div id="telFamilies" style="font-size:.82rem"></div>
+      </div>
+
+    </div>
+
+
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
   <div id="loginScreen" class="login-screen-shell" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0d3d2b 0%,#1e5c42 60%,#0d3d2b 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
