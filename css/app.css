@@ -1340,3 +1340,28 @@ body.tx-compact .tx-table .badge{
     font-weight:700;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUDIT PAGE — UX melhorada
+══════════════════════════════════════════════════════════════════════ */
+
+/* Linha colorida por status */
+.audit-tr-confirmed td { border-left: none; }
+.audit-tr-pending td:first-child  { border-left: 3px solid var(--amber); }
+.audit-tr-error   td:first-child  { border-left: 3px solid var(--red);   }
+
+/* KPI counters clicáveis — feedback visual */
+.audit-counter { transition: box-shadow .15s, transform .1s; }
+.audit-counter:hover { transform: translateY(-1px); }
+.audit-counter:active { transform: translateY(0); }
+
+/* Filtro de mês alinhado com os demais selects */
+#auditMonthFilter::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; }
+
+/* Tabela: header sticky em scroll vertical */
+#auditTable thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface2);
+  z-index: 1;
+}

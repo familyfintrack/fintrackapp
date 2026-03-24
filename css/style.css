@@ -12026,7 +12026,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 }
 .air-proj-header {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
   padding: 8px 12px;
   background: rgba(255,255,255,.07);
   color: rgba(255,255,255,.5);
@@ -12037,16 +12037,78 @@ tr.reconcile-checked td { opacity: 1 !important; }
 }
 .air-proj-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
   padding: 9px 12px;
   border-top: 1px solid rgba(255,255,255,.06);
   align-items: center;
   transition: background .1s;
+  cursor: pointer;
+  user-select: none;
 }
-.air-proj-row:hover { background: rgba(255,255,255,.04); }
-.air-proj-month { color: rgba(255,255,255,.7); font-weight: 600; }
+.air-proj-row:hover { background: rgba(255,255,255,.06); }
+.air-proj-row-has-once { border-left: 3px solid #f59e0b; }
+.air-proj-month { color: rgba(255,255,255,.7); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.air-proj-once-badge {
+  font-size: .6rem; background: rgba(245,158,11,.3); color: #fbbf24;
+  border-radius: 4px; padding: 1px 4px; font-weight: 700;
+}
 .air-proj-val { font-weight: 600; }
 .air-proj-net { font-weight: 800; }
+.air-proj-chevron { color: rgba(255,255,255,.35); font-size: .7rem; text-align: right; }
+
+/* Painel de detalhe expansível por mês */
+.air-proj-detail {
+  background: rgba(0,0,0,.25);
+  border-top: 1px dashed rgba(255,255,255,.08);
+}
+.air-proj-detail-inner { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
+.air-proj-det-section {}
+.air-proj-det-title {
+  font-size: .65rem; font-weight: 700; color: rgba(255,255,255,.45);
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px;
+}
+.air-proj-det-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 0; font-size: .77rem; color: rgba(255,255,255,.75);
+}
+.air-proj-det-icon { flex-shrink: 0; width: 16px; text-align: center; }
+.air-proj-det-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.air-proj-det-label em { color: rgba(255,255,255,.4); font-style: normal; }
+.air-proj-det-freq {
+  font-size: .66rem; background: rgba(255,255,255,.1); border-radius: 3px;
+  padding: 1px 4px; color: rgba(255,255,255,.45); white-space: nowrap;
+}
+.air-proj-det-bar-wrap {
+  width: 60px; height: 4px; background: rgba(255,255,255,.12);
+  border-radius: 2px; overflow: hidden; flex-shrink: 0;
+}
+.air-proj-det-bar { height: 100%; border-radius: 2px; }
+.air-proj-det-pct { min-width: 28px; text-align: right; font-size: .7rem; color: rgba(255,255,255,.4); }
+.air-proj-det-amt { min-width: 80px; text-align: right; font-weight: 600; white-space: nowrap; }
+.air-proj-det-empty { font-size: .75rem; color: rgba(255,255,255,.3); padding: 4px 0; }
+
+/* Eventos únicos relevantes */
+.air-once-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px; }
+.air-once-item {
+  display: flex; align-items: center; gap: 8px; font-size: .77rem;
+  padding: 5px 10px; background: rgba(245,158,11,.1);
+  border-radius: 6px; border: 1px solid rgba(245,158,11,.2);
+}
+.air-once-month { color: #fbbf24; font-weight: 700; min-width: 58px; }
+.air-once-desc  { flex: 1; color: rgba(255,255,255,.8); }
+.air-once-impact { font-size: .65rem; font-weight: 700; border-radius: 4px; padding: 1px 5px; }
+.air-once-alto   { background: rgba(239,68,68,.25); color: #fca5a5; }
+.air-once-médio  { background: rgba(245,158,11,.25); color: #fcd34d; }
+.air-once-baixo  { background: rgba(34,197,94,.2);  color: #86efac; }
+
+/* Sazonalidade */
+.air-season-insight {
+  font-size: .78rem; color: rgba(255,255,255,.7); line-height: 1.6;
+  background: rgba(255,255,255,.04); border-radius: 6px;
+  padding: 8px 12px; margin-bottom: 4px;
+  border-left: 2px solid rgba(96,165,250,.5);
+}
+
 
 .air-forecast-section-title {
   font-size: .65rem;
