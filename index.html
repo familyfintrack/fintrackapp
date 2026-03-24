@@ -2335,138 +2335,201 @@
     <!-- ══ TELEMETRIA PAGE ══════════════════════════════════════════════════ -->
     <div class="page" id="page-telemetry">
 
-      <!-- Header + controles globais -->
-      <div class="section-header mb-6" style="flex-wrap:wrap;gap:8px">
-        <span class="section-title">📊 Telemetria &amp; Uso</span>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <select id="telPeriod" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)" onchange="_telApplyFilters()">
-            <option value="7">Últimos 7 dias</option>
-            <option value="30" selected>Últimos 30 dias</option>
-            <option value="90">Últimos 90 dias</option>
+      <!-- ── Estilos responsivos da página de telemetria ── -->
+      <style>
+        .tel-header { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+        .tel-header-title { font-size:1.1rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
+        .tel-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+        .tel-filters select {
+          font-size:.82rem; padding:6px 10px; border-radius:8px;
+          border:1px solid var(--border); background:var(--surface); color:var(--text);
+          flex:1; min-width:120px; max-width:100%;
+        }
+        @media (min-width:640px) {
+          .tel-header { flex-direction:row; align-items:center; justify-content:space-between; }
+          .tel-filters select { flex:0 1 auto; max-width:180px; }
+        }
+        .tel-tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .tel-tab-btn {
+          padding:9px 16px; font-size:.83rem; font-weight:600;
+          border:none; background:none; cursor:pointer; color:var(--muted);
+          border-bottom:2px solid transparent; margin-bottom:-2px;
+          font-family:var(--font-sans); white-space:nowrap; flex-shrink:0;
+        }
+        .tel-tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tel-kpi-grid {
+          display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;
+        }
+        @media (min-width:600px) { .tel-kpi-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); } }
+        .tel-kpi-card {
+          background:var(--surface2); border-radius:10px; padding:10px 12px;
+          border:1px solid var(--border); display:flex; flex-direction:column; gap:2px;
+        }
+        .tel-kpi-val { font-size:1.35rem; font-weight:700; color:var(--text); line-height:1.1; }
+        .tel-kpi-val.danger { color:var(--danger); }
+        .tel-kpi-lbl { font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+        .tel-charts-row { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px; }
+        @media (min-width:640px) { .tel-charts-row { grid-template-columns:1fr 1fr; } }
+        .tel-pair { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px; }
+        @media (min-width:640px) { .tel-pair { grid-template-columns:1fr 1fr; } }
+        .tel-card-label { font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+        .tel-row { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); font-size:.8rem; }
+        .tel-row:last-child { border-bottom:none; }
+        .tel-row-label { flex:1; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tel-row-bar { width:60px; height:5px; background:var(--border); border-radius:3px; overflow:hidden; flex-shrink:0; }
+        .tel-row-bar-fill { height:100%; background:var(--accent); border-radius:3px; }
+        .tel-row-val { min-width:34px; text-align:right; color:var(--muted); font-size:.75rem; }
+        .tel-row-pct { min-width:36px; text-align:right; color:var(--muted); font-size:.72rem; }
+        .tel-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .tel-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+        .tel-table th {
+          padding:6px 8px; text-align:left; font-size:.7rem; font-weight:600;
+          color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+          border-bottom:2px solid var(--border); cursor:pointer; user-select:none; white-space:nowrap;
+        }
+        .tel-table th.r { text-align:right; }
+        .tel-table td { padding:8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .tel-table tr:last-child td { border-bottom:none; }
+        .tel-table tbody tr { cursor:pointer; }
+        .tel-table tbody tr:hover { background:var(--bg2); }
+        .tel-hide-xs { display:none; }
+        .tel-hide-sm { display:none; }
+        @media (min-width:480px) { .tel-hide-xs { display:table-cell; } }
+        @media (min-width:640px) { .tel-hide-sm { display:table-cell; } }
+        .tel-detail-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+        .tel-detail-avatar {
+          width:38px; height:38px; border-radius:50%; background:var(--accent-lt);
+          display:flex; align-items:center; justify-content:center;
+          font-size:1rem; font-weight:700; color:var(--accent); flex-shrink:0;
+        }
+        .tel-detail-name { font-weight:600; font-size:.9rem; color:var(--text); }
+        .tel-detail-meta { font-size:.74rem; color:var(--muted); }
+        .tel-detail-pair { display:grid; grid-template-columns:1fr; gap:12px; }
+        @media (min-width:480px) { .tel-detail-pair { grid-template-columns:1fr 1fr; } }
+        .tel-search {
+          font-size:.82rem; padding:6px 10px; border-radius:8px;
+          border:1px solid var(--border); background:var(--bg2);
+          color:var(--text); width:100%; box-sizing:border-box; margin-bottom:12px;
+        }
+        .tel-err-table { width:100%; border-collapse:collapse; font-size:.78rem; }
+        .tel-err-table th { padding:4px 6px; text-align:left; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+        .tel-err-table td { padding:5px 6px; border-bottom:1px solid var(--border); }
+        .tel-err-table tr:last-child td { border-bottom:none; }
+        .tel-err-col-user { display:none; }
+        @media (min-width:520px) { .tel-err-col-user { display:table-cell; } }
+        .tel-err-col-msg { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        @media (min-width:520px) { .tel-err-col-msg { max-width:260px; } }
+        @media (min-width:768px) { .tel-err-col-msg { max-width:400px; } }
+        .tel-ai-table { width:100%; border-collapse:collapse; font-size:.78rem; }
+        .tel-ai-table th { padding:4px 6px; text-align:left; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+        .tel-ai-col-r { text-align:right; }
+        .tel-ai-table td { padding:5px 6px; border-bottom:1px solid var(--border); }
+        .tel-ai-table tr:last-child td { border-bottom:none; }
+        .tel-ai-col-tokens { display:none; }
+        @media (min-width:560px) { .tel-ai-col-tokens { display:table-cell; } }
+      </style>
+
+      <!-- Header + filtros -->
+      <div class="tel-header">
+        <div class="tel-header-title">📊 Telemetria &amp; Uso</div>
+        <div class="tel-filters">
+          <select id="telPeriod" onchange="_telApplyFilters()">
+            <option value="7">7 dias</option>
+            <option value="30" selected>30 dias</option>
+            <option value="90">90 dias</option>
           </select>
-          <select id="telFilterFamily" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);max-width:180px" onchange="_telApplyFilters()">
+          <select id="telFilterFamily" onchange="_telApplyFilters()">
             <option value="">Todas as famílias</option>
           </select>
-          <select id="telFilterUser" style="font-size:.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);max-width:180px" onchange="_telApplyFilters()">
+          <select id="telFilterUser" onchange="_telApplyFilters()">
             <option value="">Todos os usuários</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Recarregar dados do servidor">↺ Recarregar</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Recarregar">↺</button>
         </div>
       </div>
 
-      <!-- Abas de navegação -->
-      <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px">
-        <button id="telTab_overview" onclick="_telSetTab('overview')"
-          style="padding:8px 18px;font-size:.85rem;font-weight:600;border:none;background:none;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px;font-family:var(--font-sans)">
-          Visão Geral
-        </button>
-        <button id="telTab_users" onclick="_telSetTab('users')"
-          style="padding:8px 18px;font-size:.85rem;font-weight:600;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;font-family:var(--font-sans)">
-          Usuários
-        </button>
-        <button id="telTab_families" onclick="_telSetTab('families')"
-          style="padding:8px 18px;font-size:.85rem;font-weight:600;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;font-family:var(--font-sans)">
-          Famílias
-        </button>
+      <!-- Abas -->
+      <div class="tel-tabs">
+        <button id="telTab_overview" class="tel-tab-btn active" onclick="_telSetTab('overview')">Visão Geral</button>
+        <button id="telTab_users"    class="tel-tab-btn"        onclick="_telSetTab('users')">Usuários</button>
+        <button id="telTab_families" class="tel-tab-btn"        onclick="_telSetTab('families')">Famílias</button>
       </div>
 
       <!-- ── ABA: Visão Geral ── -->
       <div id="telPane_overview">
-
-        <!-- KPI cards -->
-        <div id="telKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">
-          <div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem;grid-column:1/-1">Carregando...</div>
+        <div id="telKpis" class="tel-kpi-grid">
+          <div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Carregando...</div>
         </div>
-
-        <!-- Charts -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-          <div class="card" style="padding:16px">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Eventos por dia</div>
-            <div style="position:relative;height:180px"><canvas id="telDailyChart"></canvas></div>
+        <div class="tel-charts-row">
+          <div class="card" style="padding:14px">
+            <div class="tel-card-label">Eventos por dia</div>
+            <div style="position:relative;height:160px"><canvas id="telDailyChart"></canvas></div>
           </div>
-          <div class="card" style="padding:16px">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Páginas mais acessadas</div>
-            <div style="position:relative;height:180px"><canvas id="telPagesChart"></canvas></div>
+          <div class="card" style="padding:14px">
+            <div class="tel-card-label">Páginas mais acessadas</div>
+            <div style="position:relative;height:160px"><canvas id="telPagesChart"></canvas></div>
           </div>
         </div>
-
-        <!-- Tipos + Dispositivos -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-          <div class="card" style="padding:16px">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Tipos de evento</div>
-            <div id="telEventTypes" style="font-size:.82rem"></div>
+        <div class="tel-pair">
+          <div class="card" style="padding:14px">
+            <div class="tel-card-label">Tipos de evento</div>
+            <div id="telEventTypes"></div>
           </div>
-          <div class="card" style="padding:16px">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Dispositivos</div>
-            <div id="telDevices" style="font-size:.82rem"></div>
+          <div class="card" style="padding:14px">
+            <div class="tel-card-label">Dispositivos</div>
+            <div id="telDevices"></div>
           </div>
         </div>
-
-        <!-- Erros recentes -->
-        <div class="card" style="padding:16px;margin-bottom:16px">
-          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Erros recentes</div>
-          <div id="telErrors" style="font-size:.82rem"></div>
+        <div class="card" style="padding:14px;margin-bottom:14px">
+          <div class="tel-card-label">Erros recentes</div>
+          <div id="telErrors"></div>
         </div>
-
-        <!-- Chamadas de IA -->
-        <div class="card" style="padding:16px;margin-bottom:16px">
-          <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Chamadas de IA</div>
-          <div id="telAiCalls" style="font-size:.82rem"></div>
+        <div class="card" style="padding:14px;margin-bottom:14px">
+          <div class="tel-card-label">Chamadas de IA</div>
+          <div id="telAiCalls"></div>
         </div>
-
       </div><!-- /telPane_overview -->
 
       <!-- ── ABA: Usuários ── -->
       <div id="telPane_users" style="display:none">
-        <div class="card" style="padding:16px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1">Atividade por usuário</div>
-            <input id="telUserSearch" type="text" placeholder="Filtrar por nome ou email…"
-              oninput="_telFilterUsersTable(this.value)"
-              style="font-size:.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);width:220px">
-          </div>
-          <div style="overflow-x:auto">
-            <table class="table" id="telUsersTable" style="width:100%;font-size:.8rem">
-              <thead>
-                <tr>
-                  <th onclick="_telSortUsers('name')" style="cursor:pointer;user-select:none">Usuário <span id="telUserSort_name"></span></th>
-                  <th onclick="_telSortUsers('family')" style="cursor:pointer;user-select:none">Família <span id="telUserSort_family"></span></th>
-                  <th onclick="_telSortUsers('events')" style="cursor:pointer;user-select:none;text-align:right">Eventos <span id="telUserSort_events">↓</span></th>
-                  <th onclick="_telSortUsers('sessions')" style="cursor:pointer;user-select:none;text-align:right">Sessões <span id="telUserSort_sessions"></span></th>
-                  <th onclick="_telSortUsers('pages')" style="cursor:pointer;user-select:none;text-align:right">Pages <span id="telUserSort_pages"></span></th>
-                  <th onclick="_telSortUsers('errors')" style="cursor:pointer;user-select:none;text-align:right">Erros <span id="telUserSort_errors"></span></th>
-                  <th onclick="_telSortUsers('last')" style="cursor:pointer;user-select:none;text-align:right">Último acesso <span id="telUserSort_last"></span></th>
-                </tr>
-              </thead>
+        <div class="card" style="padding:14px;margin-bottom:14px">
+          <input id="telUserSearch" class="tel-search" type="text"
+            placeholder="Filtrar por nome ou email…" oninput="_telFilterUsersTable(this.value)">
+          <div class="tel-table-wrap">
+            <table class="tel-table" id="telUsersTable">
+              <thead><tr>
+                <th onclick="_telSortUsers('name')">Usuário <span id="telUserSort_name"></span></th>
+                <th onclick="_telSortUsers('family')" class="tel-hide-xs">Família <span id="telUserSort_family"></span></th>
+                <th onclick="_telSortUsers('events')" class="r">Eventos <span id="telUserSort_events">↓</span></th>
+                <th onclick="_telSortUsers('pages')" class="r tel-hide-sm">PV <span id="telUserSort_pages"></span></th>
+                <th onclick="_telSortUsers('errors')" class="r">Erros <span id="telUserSort_errors"></span></th>
+                <th onclick="_telSortUsers('last')" class="r tel-hide-sm">Último acesso <span id="telUserSort_last"></span></th>
+              </tr></thead>
               <tbody id="telUsersBody">
-                <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
+                <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
               </tbody>
             </table>
           </div>
         </div>
-
-        <!-- Detalhe de usuário selecionado -->
         <div id="telUserDetail" style="display:none">
-          <div class="card" style="padding:16px;margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-              <div id="telUserDetailAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:var(--accent);flex-shrink:0"></div>
-              <div style="flex:1">
-                <div id="telUserDetailName" style="font-weight:600;font-size:.9rem"></div>
-                <div id="telUserDetailMeta" style="font-size:.75rem;color:var(--muted)"></div>
+          <div class="card" style="padding:14px;margin-bottom:14px">
+            <div class="tel-detail-header">
+              <div class="tel-detail-avatar" id="telUserDetailAvatar"></div>
+              <div style="flex:1;min-width:0">
+                <div class="tel-detail-name" id="telUserDetailName"></div>
+                <div class="tel-detail-meta" id="telUserDetailMeta"></div>
               </div>
-              <button onclick="_telCloseUserDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>
+              <button onclick="_telCloseUserDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;flex-shrink:0">✕</button>
             </div>
-            <!-- KPIs do usuário -->
-            <div id="telUserDetailKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px"></div>
-            <!-- Páginas visitadas -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div id="telUserDetailKpis" class="tel-kpi-grid" style="margin-bottom:14px"></div>
+            <div class="tel-detail-pair">
               <div>
-                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Páginas visitadas</div>
-                <div id="telUserDetailPages" style="font-size:.8rem"></div>
+                <div class="tel-card-label">Páginas visitadas</div>
+                <div id="telUserDetailPages"></div>
               </div>
               <div>
-                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Operações realizadas</div>
-                <div id="telUserDetailOps" style="font-size:.8rem"></div>
+                <div class="tel-card-label">Operações realizadas</div>
+                <div id="telUserDetailOps"></div>
               </div>
             </div>
           </div>
@@ -2475,53 +2538,45 @@
 
       <!-- ── ABA: Famílias ── -->
       <div id="telPane_families" style="display:none">
-        <div class="card" style="padding:16px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1">Atividade por família</div>
-            <input id="telFamilySearch" type="text" placeholder="Filtrar família…"
-              oninput="_telFilterFamiliesTable(this.value)"
-              style="font-size:.8rem;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);width:200px">
-          </div>
-          <div style="overflow-x:auto">
-            <table class="table" id="telFamiliesTable" style="width:100%;font-size:.8rem">
-              <thead>
-                <tr>
-                  <th onclick="_telSortFamilies('name')" style="cursor:pointer;user-select:none">Família <span id="telFamSort_name"></span></th>
-                  <th onclick="_telSortFamilies('events')" style="cursor:pointer;user-select:none;text-align:right">Eventos <span id="telFamSort_events">↓</span></th>
-                  <th onclick="_telSortFamilies('users')" style="cursor:pointer;user-select:none;text-align:right">Usuários <span id="telFamSort_users"></span></th>
-                  <th onclick="_telSortFamilies('pages')" style="cursor:pointer;user-select:none;text-align:right">Page Views <span id="telFamSort_pages"></span></th>
-                  <th onclick="_telSortFamilies('errors')" style="cursor:pointer;user-select:none;text-align:right">Erros <span id="telFamSort_errors"></span></th>
-                  <th onclick="_telSortFamilies('ai')" style="cursor:pointer;user-select:none;text-align:right">Chamadas IA <span id="telFamSort_ai"></span></th>
-                  <th onclick="_telSortFamilies('last')" style="cursor:pointer;user-select:none;text-align:right">Último acesso <span id="telFamSort_last"></span></th>
-                </tr>
-              </thead>
+        <div class="card" style="padding:14px;margin-bottom:14px">
+          <input id="telFamilySearch" class="tel-search" type="text"
+            placeholder="Filtrar família…" oninput="_telFilterFamiliesTable(this.value)">
+          <div class="tel-table-wrap">
+            <table class="tel-table" id="telFamiliesTable">
+              <thead><tr>
+                <th onclick="_telSortFamilies('name')">Família <span id="telFamSort_name"></span></th>
+                <th onclick="_telSortFamilies('events')" class="r">Eventos <span id="telFamSort_events">↓</span></th>
+                <th onclick="_telSortFamilies('users')" class="r tel-hide-sm">Usuários <span id="telFamSort_users"></span></th>
+                <th onclick="_telSortFamilies('pages')" class="r tel-hide-sm">PV <span id="telFamSort_pages"></span></th>
+                <th onclick="_telSortFamilies('errors')" class="r">Erros <span id="telFamSort_errors"></span></th>
+                <th onclick="_telSortFamilies('ai')" class="r tel-hide-sm">IA <span id="telFamSort_ai"></span></th>
+                <th onclick="_telSortFamilies('last')" class="r tel-hide-xs">Último acesso <span id="telFamSort_last"></span></th>
+              </tr></thead>
               <tbody id="telFamiliesBody">
                 <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
               </tbody>
             </table>
           </div>
         </div>
-
-        <!-- Detalhe de família selecionada -->
         <div id="telFamilyDetail" style="display:none">
-          <div class="card" style="padding:16px;margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-              <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-lt);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">👥</div>
-              <div style="flex:1">
-                <div id="telFamilyDetailName" style="font-weight:600;font-size:.9rem"></div>
-                <div id="telFamilyDetailMeta" style="font-size:.75rem;color:var(--muted)"></div>
+          <div class="card" style="padding:14px;margin-bottom:14px">
+            <div class="tel-detail-header">
+              <div class="tel-detail-avatar">👥</div>
+              <div style="flex:1;min-width:0">
+                <div class="tel-detail-name" id="telFamilyDetailName"></div>
+                <div class="tel-detail-meta" id="telFamilyDetailMeta"></div>
               </div>
-              <button onclick="_telCloseFamilyDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>
+              <button onclick="_telCloseFamilyDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;flex-shrink:0">✕</button>
             </div>
-            <div id="telFamilyDetailKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:14px"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div id="telFamilyDetailKpis" class="tel-kpi-grid" style="margin-bottom:14px"></div>
+            <div class="tel-detail-pair">
               <div>
-                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Usuários ativos</div>
-                <div id="telFamilyDetailUsers" style="font-size:.8rem"></div>
+                <div class="tel-card-label">Usuários ativos</div>
+                <div id="telFamilyDetailUsers"></div>
               </div>
               <div>
-                <div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Páginas mais usadas</div>
-                <div id="telFamilyDetailPages" style="font-size:.8rem"></div>
+                <div class="tel-card-label">Páginas mais usadas</div>
+                <div id="telFamilyDetailPages"></div>
               </div>
             </div>
           </div>
@@ -2529,6 +2584,7 @@
       </div><!-- /telPane_families -->
 
     </div><!-- /page-telemetry -->
+
 
   </div><!-- /content -->
 </div><!-- /mainApp -->
