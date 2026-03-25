@@ -646,6 +646,7 @@ body.sidebar-open .fab{
   .form-group.full{grid-column:1;}
   .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
   .topbar{padding:0 16px;}.topbar-title{font-size:1.05rem;}
+  color: #ffffff;
   table th:nth-child(4),table td:nth-child(4){display:none;}
 }
 @media(max-width:390px){
@@ -15263,13 +15264,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Hero header ── */
 .dbt-hero {
-  background:
-    radial-gradient(120% 140% at 0% 0%, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 38%),
-    linear-gradient(180deg, var(--brand-bg, #0d2318) 0%, var(--accent, #2a6049) 100%);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.06),
-    0 10px 28px rgba(13,35,24,.14);
+  background: var(--brand-bg, #0d2318);
   border-radius: 16px;
   padding: 20px 22px 16px;
   margin-bottom: 18px;
@@ -15282,15 +15277,8 @@ tr.reconcile-checked td { opacity: 1 !important; }
   position: absolute;
   top: -40px; right: -40px;
   width: 150px; height: 150px;
-  background: rgba(255,255,255,.05);
+  background: rgba(255,255,255,.04);
   border-radius: 50%;
-}
-.dbt-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0) 28%);
 }
 .dbt-hero-label {
   font-size: .68rem;
@@ -15355,7 +15343,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 }
 .dbt-hero-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #6ee7a0, var(--accent, #2a6049));
+  background: linear-gradient(90deg, #a78bfa, #7c3aed);
   border-radius: 100px;
   transition: width .5s ease;
 }
