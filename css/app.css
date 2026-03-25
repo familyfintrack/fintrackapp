@@ -1365,22 +1365,3 @@ body.tx-compact .tx-table .badge{
   background: var(--surface2);
   z-index: 1;
 }
-
-
-/* === THEME UPDATE === */
-.topbar, .header, .app-header {
-  background: linear-gradient(135deg, #0E3B2B 0%, #145238 52%, #1C6A49 100%) !important;
-  color: #F7FAF8;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-
-.page-titlebar {
-  background: #305E4E !important;
-  color: #F7FAF8;
-}
-
-.fx-bar {
-  background: #F4FBF7;
-  color: #23483B;
-  border-bottom: 1px solid #D8EADF;
-}
