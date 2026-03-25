@@ -16245,21 +16245,7 @@ section[data-page="transactions"] .content {
 
 
 
-/* Animated gradient border under topbar */
-.topbar::after,
-.header::after,
-.app-header::after {
-  content: "";
-  display: block;
-  height: 3px;
-  width: 100%;
-  background: linear-gradient(90deg, #22c55e, #b7db4a, #22c55e);
-  background-size: 200% 100%;
-  animation: fxBorderMove 4s linear infinite;
-}
 
-@keyframes fxBorderMove {
-  0% { background-position: 0% 0; }
   100% { background-position: 200% 0; }
 }
 
@@ -16323,4 +16309,22 @@ section[data-page="transactions"] .content {
 .header .icon-btn:hover {
   background: rgba(255,255,255,0.22) !important;
   border-color: rgba(255,255,255,0.30) !important;
+}
+
+
+/* Force topbar layout with actions on right */
+.topbar,
+.header,
+.app-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.topbar .user-actions,
+.header .user-actions,
+.app-header .user-actions {
+  margin-left: auto !important;
+  display: flex !important;
+  gap: 8px;
 }
