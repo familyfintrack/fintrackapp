@@ -3545,7 +3545,21 @@
 
       <div class="form-grid">
         <!-- Basic info -->
-        <div class="form-group full"><label>Descrição *</label><input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."></div>
+        <div class="form-group full">
+          <label>Descrição *</label>
+          <input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."
+            oninput="_aiSmartDebounce(this.value,'sc')"
+            onblur="_aiSmartTrigger(this.value,'sc')">
+          <div id="scAiSuggestionsPanel" style="display:none;margin-top:7px">
+            <div class="ai-suggest-panel">
+              <div class="ai-suggest-header">
+                <span class="ai-suggest-title">🤖 Sugestões</span>
+                <button class="ai-suggest-dismiss" onclick="_aiDismissAll('sc')" title="Dispensar todas">✕</button>
+              </div>
+              <div id="scAiSuggestChips" class="ai-suggest-chips"></div>
+            </div>
+          </div>
+        </div>
         <div class="form-group">
           <label>Valor *</label>
           <div style="display:flex;align-items:center;gap:6px">
@@ -4044,29 +4058,22 @@
         <div class="form-group full">
           <label>Descrição *</label>
           <input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"
-            oninput="_aiPayeeDebounce(this.value)"
-            onblur="_aiSuggestPayeeFromDesc(this.value)">
-          <div id="txAiPayeeSuggestion" style="display:none;margin-top:5px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="color:var(--muted)">🤖 Beneficiário:</span>
-            <button id="txAiPayeeBtn" onclick="_applyAiPayeeSuggestion()"
-              style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
-            <button onclick="_dismissAiPayeeSuggestion()"
-              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
+            oninput="_aiSmartDebounce(this.value,'tx')"
+            onblur="_aiSmartTrigger(this.value,'tx')">
+          <!-- AI suggestions panel — shown after typing description -->
+          <div id="txAiSuggestionsPanel" style="display:none;margin-top:7px">
+            <div class="ai-suggest-panel">
+              <div class="ai-suggest-header">
+                <span class="ai-suggest-title">🤖 Sugestões</span>
+                <button class="ai-suggest-dismiss" onclick="_aiDismissAll('tx')" title="Dispensar todas">✕</button>
+              </div>
+              <div id="txAiSuggestChips" class="ai-suggest-chips"></div>
+            </div>
           </div>
-          <div id="txAiAccountSuggestion" style="display:none;margin-top:4px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="color:var(--muted)">🏦 Conta:</span>
-            <button id="txAiAccountBtn" onclick="_applyAiAccountSuggestion()"
-              style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
-            <button onclick="_dismissAiAccountSuggestion()"
-              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
-          </div>
-          <div id="txAiMemberSuggestion" style="display:none;margin-top:4px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="color:var(--muted)">👤 Membro:</span>
-            <button id="txAiMemberBtn" onclick="_applyAiMemberSuggestion()"
-              style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit"></button>
-            <button onclick="_dismissAiMemberSuggestion()"
-              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;margin-left:auto;padding:2px 4px" title="Dispensar">✕</button>
-          </div>
+          <!-- Legacy individual banners (kept for backward compat, hidden by new panel) -->
+          <div id="txAiPayeeSuggestion" style="display:none"></div>
+          <div id="txAiAccountSuggestion" style="display:none"></div>
+          <div id="txAiMemberSuggestion" style="display:none"></div>
         </div>
 
                 <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
