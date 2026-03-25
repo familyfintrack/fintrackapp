@@ -13666,3 +13666,343 @@ tr.reconcile-checked td { opacity: 1 !important; }
     overflow-x: hidden;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE FORM REDESIGN — Transaction & Scheduled Modals
+   Applies on max-width: 640px (phones)
+   Touches: modal shell, tab-bar, form-group labels/inputs, amount field,
+            category picker, payee, recurrence grid, section dividers, footer
+═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ── Modal shell: full bottom-sheet, taller, tighter header ── */
+  #txModal .modal,
+  #scheduledModal .modal {
+    max-height: 96dvh;
+    max-height: 96vh;
+    border-radius: 22px 22px 0 0;
+  }
+  #txModal .modal-handle,
+  #scheduledModal .modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border2);
+    border-radius: 100px;
+    margin: 10px auto 2px;
+  }
+
+  /* ── Header: smaller, cleaner ── */
+  #txModal .modal-header,
+  #scheduledModal .modal-header {
+    padding: 10px 18px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  #txModal .modal-title,
+  #scheduledModal .modal-title {
+    font-size: .97rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+  }
+  #txModal .modal-close,
+  #scheduledModal .modal-close {
+    width: 30px;
+    height: 30px;
+    font-size: .8rem;
+  }
+
+  /* ── Body: tighter padding ── */
+  #txModal .modal-body,
+  #scheduledModal .modal-body {
+    padding: 14px 16px 4px;
+  }
+
+  /* ── Tab bar: pill style, full width, even split ── */
+  #txModal .tab-bar,
+  #scheduledModal .tab-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 3px;
+    margin-bottom: 14px;
+    width: 100%;
+  }
+  #txModal .tab,
+  #scheduledModal .tab {
+    padding: 7px 4px;
+    font-size: .72rem;
+    font-weight: 500;
+    border-radius: 9px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #txModal .tab.active,
+  #scheduledModal .tab.active {
+    font-weight: 700;
+    font-size: .73rem;
+  }
+
+  /* ── Form grid: single column ── */
+  #txModal .form-grid,
+  #scheduledModal .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* ── Labels: smaller, uppercase, spaced ── */
+  #txModal .form-group > label:first-child,
+  #scheduledModal .form-group > label:first-child {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .055em;
+    color: var(--text2);
+    margin-bottom: 3px;
+  }
+
+  /* ── Inputs & selects: comfortable tap target, modern radius ── */
+  #txModal .form-group input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+  #txModal .form-group select,
+  #txModal .form-group textarea,
+  #scheduledModal .form-group input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),
+  #scheduledModal .form-group select,
+  #scheduledModal .form-group textarea {
+    font-size: .9rem;
+    padding: 11px 13px;
+    border-radius: 11px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    transition: border-color .15s, box-shadow .15s;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 1.4;
+  }
+  #txModal .form-group input:focus,
+  #txModal .form-group select:focus,
+  #txModal .form-group textarea:focus,
+  #scheduledModal .form-group input:focus,
+  #scheduledModal .form-group select:focus,
+  #scheduledModal .form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    outline: none;
+  }
+
+  /* ── Amount field: taller, bigger font ── */
+  #txModal .amt-wrap,
+  #scheduledModal .amt-wrap {
+    border-radius: 11px;
+    overflow: hidden;
+  }
+  #txModal .amt-sign-btn,
+  #scheduledModal .amt-sign-btn {
+    min-width: 50px;
+    font-size: 1.25rem;
+    padding: 0 14px;
+    border-radius: 11px 0 0 11px;
+    border: 1.5px solid var(--border);
+    border-right: none;
+  }
+  #txModal #txAmount,
+  #scheduledModal #scAmount {
+    font-size: 1.35rem !important;
+    font-weight: 700;
+    padding: 13px 14px !important;
+    border-radius: 0 11px 11px 0 !important;
+    letter-spacing: -.01em;
+  }
+
+  /* ── Currency select next to amount: same height ── */
+  #txModal #txCurrencySelect,
+  #scheduledModal #scCurrencySelect {
+    padding: 11px 10px !important;
+    border-radius: 11px !important;
+    font-size: .82rem !important;
+    min-width: 68px;
+  }
+
+  /* ── Description: slightly larger ── */
+  #txModal #txDesc {
+    font-size: .95rem !important;
+  }
+
+  /* ── Category picker button: same height as inputs ── */
+  #txModal .cat-picker-btn,
+  #scheduledModal .cat-picker-btn {
+    padding: 11px 13px;
+    border-radius: 11px;
+    font-size: .9rem;
+    border: 1.5px solid var(--border);
+  }
+
+  /* ── Payee input wrap ── */
+  #txModal .payee-input-wrap input,
+  #scheduledModal .payee-input-wrap input {
+    font-size: .9rem !important;
+    padding: 11px 36px 11px 13px !important;
+    border-radius: 11px !important;
+  }
+
+  /* ── Section dividers in scheduled modal: styled pill ── */
+  #scheduledModal .form-grid > .full[style*="border-top"] {
+    margin: 4px -16px;
+    padding: 10px 16px 2px !important;
+    background: var(--bg2);
+    border-top: 1px solid var(--border) !important;
+  }
+  #scheduledModal .form-grid > .full[style*="border-top"] > span {
+    font-size: .65rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  /* ── Recurrence grid: 3 cols on mobile, pill chips ── */
+  .sc-recurrence-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    margin-top: 8px;
+  }
+  .sc-freq-opt {
+    padding: 9px 6px;
+    border-radius: 11px;
+    font-size: .78rem;
+    justify-content: center;
+    text-align: center;
+    gap: 0;
+    border-width: 1.5px;
+  }
+  .sc-freq-opt:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-lt);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* ── End condition options ── */
+  .sc-end-grid {
+    gap: 7px;
+  }
+  .sc-end-opt {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 8px;
+    border-radius: 11px;
+    font-size: .8rem;
+    border-width: 1.5px;
+  }
+  .sc-end-opt:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-lt);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* ── Preview block ── */
+  .sc-preview {
+    border-radius: 11px;
+    font-size: .78rem;
+    padding: 10px 13px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Checkbox toggles in scheduled: bigger tap area ── */
+  #scheduledModal label[style*="display:flex"],
+  #scheduledModal label[class*="iof-intl-toggle"] {
+    padding: 12px 13px;
+    background: var(--surface2);
+    border-radius: 11px;
+    border: 1.5px solid var(--border);
+  }
+  #scheduledModal input[type=checkbox] {
+    width: 18px !important;
+    height: 18px !important;
+    accent-color: var(--accent);
+  }
+  #scheduledModal #scAutoConfirmHint {
+    font-size: .7rem;
+    margin: -8px 0 4px 4px;
+  }
+
+  /* ── Footer: full width save button, cancel as ghost ── */
+  #txModal .modal-footer,
+  #scheduledModal .modal-footer {
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 10px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  #txModal .modal-footer .btn-primary,
+  #scheduledModal .modal-footer .btn-primary {
+    flex: 1;
+    padding: 14px;
+    font-size: .95rem;
+    font-weight: 700;
+    border-radius: 13px;
+    letter-spacing: .01em;
+  }
+  #txModal .modal-footer .btn-ghost,
+  #scheduledModal .modal-footer .btn-ghost {
+    padding: 14px 18px;
+    font-size: .88rem;
+    border-radius: 13px;
+    border: 1.5px solid var(--border);
+    color: var(--text2);
+  }
+
+  /* ── AI suggestion chips: compact ── */
+  #txAiPayeeSuggestion,
+  #txAiAccountSuggestion,
+  #txAiMemberSuggestion {
+    border-radius: 11px !important;
+    padding: 8px 11px !important;
+    font-size: .76rem !important;
+  }
+
+  /* ── Card payment / FX panels ── */
+  #txCardPaymentBadge,
+  #scCardPaymentBadge {
+    border-radius: 11px !important;
+    font-size: .78rem !important;
+    padding: 9px 12px !important;
+  }
+  #txCurrencyPanel,
+  #scCurrencyPanel,
+  #txFxPanel,
+  #scFxPanel {
+    border-radius: 11px !important;
+    padding: 12px 13px !important;
+    font-size: .8rem !important;
+  }
+
+  /* ── Best card suggestion ── */
+  #txBestCardSuggestion {
+    border-radius: 11px !important;
+    padding: 10px 13px !important;
+    font-size: .8rem !important;
+  }
+
+  /* ── Memo / textarea: shorter on mobile ── */
+  #txMemo,
+  #scMemo {
+    min-height: 60px;
+    font-size: .88rem !important;
+    line-height: 1.5;
+  }
+
+  /* ── Attachment area: compact ── */
+  #txModal .tx-attachment-area {
+    padding: 14px 12px;
+    border-radius: 11px;
+    font-size: .8rem;
+  }
+}
