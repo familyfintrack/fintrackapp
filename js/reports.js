@@ -467,7 +467,11 @@ function setReportView(view) {
   const _hideFilters = (view === 'forecast' || view === 'budgets');
   const _filterWrap = document.getElementById('rptFilterWrap');
   if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
-  document.getElementById('reportFilterBar').style.display = _hideFilters ? 'none' : '';
+  // Keep filter bar collapsed when switching views — user opens it manually
+  if (_hideFilters) {
+    document.getElementById('reportFilterBar').style.display = 'none';
+  }
+  // If not hiding, leave bar in its current collapsed/expanded state (don't force open)
   ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets'};
