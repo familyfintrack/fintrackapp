@@ -2349,3 +2349,19 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+// === Handle navigation from dashboard forecast ===
+(function handleForecastFromDashboard() {
+  const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  if (params.get('tab') === 'forecast') {
+    try {
+      if (typeof setReportTab === 'function') setReportTab('forecast');
+      if (params.get('range') === '90d' && typeof setForecastRange === 'function') {
+        setForecastRange(90);
+      }
+    } catch(e) {
+      console.warn('Forecast navigation failed', e);
+    }
+  }
+})();

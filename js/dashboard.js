@@ -1532,3 +1532,14 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+// === Navigate to forecast report on chart click ===
+function attachForecastNavigation(chartInstance) {
+  if (!chartInstance) return;
+  chartInstance.options.onClick = function(evt, elements) {
+    // navigate regardless of specific point clicked
+    const url = '#/reports?tab=forecast&range=90d&source=dashboard';
+    window.location.href = url;
+  };
+}
