@@ -231,7 +231,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 
 /* TOPBAR */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;}
-.topbar{height:var(--topbar-h);min-height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);gap:12px;position:sticky;top:0;z-index:100;}
+.topbar{height:var(--topbar-h);min-height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background: linear-gradient(135deg, #3f6f5a, #2f8f6b);border-bottom:1px solid var(--border);gap:12px;position:sticky;top:0;z-index:100;
+  color: #ffffff;}
 .topbar-left{display:flex;align-items:center;gap:12px;}
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:var(--r-sm);color:var(--muted);flex-shrink:0;}
 .hamburger:hover{background:var(--bg2);color:var(--text);}
@@ -646,7 +647,6 @@ body.sidebar-open .fab{
   .form-group.full{grid-column:1;}
   .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
   .topbar{padding:0 16px;}.topbar-title{font-size:1.05rem;}
-  color: #ffffff;
   table th:nth-child(4),table td:nth-child(4){display:none;}
 }
 @media(max-width:390px){
