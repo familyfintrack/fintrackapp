@@ -416,10 +416,10 @@ function _scCardHtml(sc) {
   const occList  = generateOccurrences(sc, 8);
   const registered = (sc.occurrences||[]).reduce((m,o)=>{m[o.scheduled_date]=o;return m;},{});
 
-  // Compact meta: frequency chip · account · payee
-  const freqClass = `sc-freq-${(sc.frequency || 'once').replace(/[^a-z0-9_-]/gi,'-')}`;
-  const freqChip = `<span class="sc-freq-chip ${freqClass}">${esc(scFreqLabel(sc))}</span>`;
-  const metaParts = [freqChip];
+  // Compact meta: frequency pill + account/payee
+  const freqKey = (sc.frequency || 'once').toLowerCase();
+  const freqPill = `<span class="sc-freq-pill sc-freq-${freqKey}">${esc(scFreqLabel(sc))}</span>`;
+  const metaParts = [];
   if (acct) metaParts.push(esc(acct.name));
   if (sc.payees) metaParts.push(esc(sc.payees.name));
   const meta = metaParts.join(' · ');
@@ -461,7 +461,7 @@ function _scCardHtml(sc) {
       <div class="sc-card-icon" style="background:${iconBg}">${icon}</div>
       <div class="sc-card-mid">
         <div class="sc-card-title2">${esc(sc.description)}</div>
-        <div class="sc-card-meta">${meta}${catChip ? ' · ' + catChip : ''}${memberChips ? '<div class="sc-member-chips">' + memberChips + '</div>' : ''}</div>
+        <div class="sc-card-meta">${freqPill}${meta ? `<span class="sc-card-meta-text">${meta}</span>` : ''}${catChip}${memberChips ? '<div class="sc-member-chips">' + memberChips + '</div>' : ''}</div>
       </div>
       <div class="sc-card-end">
         <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount))}</div>
