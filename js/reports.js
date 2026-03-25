@@ -1021,7 +1021,7 @@ function _pdfSummaryBox(doc, y, txs) {
   doc.text('Resumo do período', 19, y + 7);
   doc.setFont('helvetica', 'normal'); doc.setTextColor(...PDF_GRAY);
   doc.text(
-    `Receitas: ${fmt(totInc)}     Despesas: ${fmt(totExp)}     Saldo: ${fmt(bal)}     Transações: ${txs.length}`,
+    `Receitas: ${fmt(totInc)}     Despesas: ${fmt(totExp)}     ${fmt(bal)}     Transações: ${txs.length}`,
     19, y + 13
   );
   return y + 24;

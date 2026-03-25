@@ -18,6 +18,7 @@
 const _FX_CACHE_KEY   = 'fx_rates_cache';
 const _FX_TS_KEY      = 'fx_rates_ts';
 const _FX_TTL_MIN     = 240;              // 4 horas
+const _FX_BAR_PINNED  = ['USD'];          // sempre exibir USD→BRL na barra
 
 // URL primária (novo domínio oficial) e fallback (legado)
 const _FX_API_PRIMARY  = 'https://api.frankfurter.dev/v1';
@@ -97,11 +98,12 @@ async function refreshFxRates() {
 // INTERNOS
 // ─────────────────────────────────────────────────────────────────────────
 function _usedCurrencies() {
-  return [...new Set(
-    (state?.accounts || [])
+  return [...new Set([
+    ..._FX_BAR_PINNED,
+    ...(state?.accounts || [])
       .map(a => (a.currency || 'BRL').toUpperCase())
       .filter(c => c !== 'BRL')
-  )];
+  ])].filter(c => c && c !== 'BRL');
 }
 
 function _fxAgeMin() {
@@ -207,7 +209,10 @@ function _renderFxBadge() {
   const refreshEl= document.getElementById('fxBarRefreshBtn');
   if (!el) return;
 
-  const pairs = Object.entries(window._fxRates).filter(([c]) => c !== 'BRL');
+  const wanted = _usedCurrencies();
+  const pairs = wanted
+    .map(c => [c, window._fxRates[c]])
+    .filter(([, rate]) => rate != null);
   if (!pairs.length) { el.style.display = 'none'; return; }
 
   const age    = _fxAgeMin();
