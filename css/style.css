@@ -14006,3 +14006,167 @@ tr.reconcile-checked td { opacity: 1 !important; }
     font-size: .8rem;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCHEDULED PAGE — Mobile redesign
+   Replaces cramped header row / filter bar with stacked, touch-friendly layout
+═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ── Section header: stack vertically instead of cramming side by side ── */
+  #page-scheduled .section-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* Row 1: view toggle takes full width */
+  #page-scheduled .section-header > div {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* View toggle: full-width, even 3-column grid */
+  #page-scheduled .sc-view-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    width: 100%;
+    border-radius: 12px;
+    padding: 3px;
+    gap: 3px;
+  }
+  #page-scheduled .sc-view-btn {
+    justify-content: center;
+    padding: 9px 6px;
+    border-radius: 9px;
+    font-size: .78rem;
+    font-weight: 500;
+  }
+  #page-scheduled .sc-view-lbl {
+    display: inline !important; /* always show labels on sched page */
+    font-size: .75rem;
+  }
+  #page-scheduled .sc-view-btn.active {
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* "+ Programar" button: full width, tall, prominent */
+  #page-scheduled .section-header .btn-primary {
+    width: 100%;
+    padding: 13px 16px;
+    font-size: .95rem;
+    font-weight: 700;
+    border-radius: 13px;
+    letter-spacing: .01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* ── Filter bar: stack search above chips ── */
+  .sc-filter-bar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 12px;
+  }
+  .sc-filter-bar .search-wrap {
+    width: 100%;
+    min-width: unset;
+  }
+  .sc-filter-bar .search-wrap input {
+    font-size: .88rem;
+    padding: 10px 12px 10px 36px;
+    border-radius: 11px;
+  }
+
+  /* Filter chips row: scrollable, slightly larger taps */
+  .sc-filter-chips {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding-bottom: 3px;
+  }
+  .sc-chip {
+    padding: 7px 14px;
+    font-size: .78rem;
+    flex-shrink: 0;
+    border-radius: 100px;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Type select: full width */
+  .sc-type-select {
+    width: 100%;
+    padding: 10px 13px;
+    border-radius: 11px;
+    font-size: .88rem;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* ── Scheduled cards: slightly better mobile touch targets ── */
+  .sc-card {
+    border-radius: 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  }
+  .sc-card:active { transform: scale(.988); }
+
+  .sc-card-header {
+    padding: 12px 14px;
+    gap: 10px;
+    align-items: center;
+  }
+  .sc-card-type {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: .9rem;
+    flex-shrink: 0;
+  }
+  .sc-card-title  { font-size: .875rem; }
+  .sc-card-amount { font-size: .97rem;  }
+  .sc-card-sub    { font-size: .72rem; gap: 4px; }
+
+  /* Card actions: icon-only buttons on mobile */
+  .sc-card-actions {
+    gap: 4px;
+  }
+  .sc-card-actions .btn {
+    padding: 7px 10px;
+    font-size: .75rem;
+    border-radius: 9px;
+    min-height: 32px;
+  }
+
+  /* Card footer (next occurrence row) */
+  .sc-card-footer {
+    padding: 8px 14px;
+    font-size: .75rem;
+  }
+
+  /* ── Upcoming items: bigger tap area ── */
+  .sc-upcoming-item {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .sc-upcoming-desc { font-size: .85rem; }
+  .sc-upcoming-date { font-size: .7rem; }
+  .sc-upcoming-amt  { font-size: .95rem; }
+  .sc-upcoming-btn  { padding: 7px 12px; font-size: .74rem; }
+
+  /* ── Summary bar badges ── */
+  .sc-summary-bar { gap: 6px; margin-bottom: 10px; }
+  .sc-summary-bar .badge { font-size: .74rem; padding: 5px 11px; }
+}
