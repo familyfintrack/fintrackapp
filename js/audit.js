@@ -1,4 +1,3 @@
-
 // ══════════════════════════════════════════════════════════════════════════
 //  AUDIT.JS — Histórico de auto-registros de transações programadas
 //  Tabela: scheduled_run_logs (preenchida por auto_register.js)
@@ -49,20 +48,15 @@ async function loadAuditLogs() {
   try {
     if (!sb) { toast('Sem conexão com o banco', 'error'); return; }
 
-    // Testa existência da tabela com query simples (sem JOIN)
     const { error: testErr } = await sb.from('scheduled_run_logs').select('id').limit(1);
-    if (testErr) {
-      const isMissing = /does not exist|relation|not found/i.test(testErr.message || '');
-      throw { message: testErr.message, isMissing };
-    }
+    if (testErr) throw testErr;
 
     const statusFilter = document.getElementById('auditStatusFilter')?.value || '';
     const monthFilter  = document.getElementById('auditMonthFilter')?.value  || '';
 
-    // Query principal SEM JOIN para evitar problemas de RLS em scheduled_transactions
     let q = famQ(
       sb.from('scheduled_run_logs')
-        .select('id,family_id,scheduled_id,transaction_id,scheduled_date,status,amount,description,notes,created_at')
+        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at, scheduled_transactions(description,frequency,type,category_id,categories:category_id(name))')
         .order('created_at', { ascending: false })
         .limit(500)
     );
@@ -76,27 +70,9 @@ async function loadAuditLogs() {
     }
 
     const { data, error } = await q;
-    if (error) throw { message: error.message, isMissing: false };
+    if (error) throw error;
 
-    const rows = data || [];
-
-    // Busca dados dos programados separadamente (sem JOIN, evita RLS)
-    const schedIds = [...new Set(rows.map(r => r.scheduled_id).filter(Boolean))];
-    const schedMap = {};
-    if (schedIds.length > 0) {
-      const { data: sdata } = await famQ(
-        sb.from('scheduled_transactions')
-          .select('id,description,frequency,type,category_id,categories:category_id(name)')
-      ).in('id', schedIds.slice(0, 100));
-      (sdata || []).forEach(s => { schedMap[s.id] = s; });
-    }
-
-    // Enriquecer rows com dados do programado
-    rows.forEach(r => {
-      r.scheduled_transactions = schedMap[r.scheduled_id] || null;
-    });
-
-    _auditState.allRows     = rows;
+    _auditState.allRows    = data || [];
     _auditState._lastStatus = statusFilter;
     _auditState._lastMonth  = monthFilter;
 
@@ -104,14 +80,12 @@ async function loadAuditLogs() {
     _auditApplyLocalFilters();
 
   } catch (e) {
-    console.warn('[audit]', e.message || e);
-    const isMissing = e.isMissing ?? /does not exist|relation|not found/i.test(e.message || '');
-    const realMsg   = e.message || String(e);
-
+    console.warn('[audit]', e.message);
+    const isMissing = /does not exist|relation|not found/i.test(e.message || '');
     const errHtml = isMissing
       ? `<div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
-          <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada</div>
-          <div style="color:var(--text2);margin-bottom:12px">Execute o SQL abaixo no <strong>Supabase SQL Editor</strong> para criar a tabela:</div>
+          <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada ou desatualizada</div>
+          <div style="color:var(--text2);margin-bottom:12px">Execute o SQL abaixo no <strong>Supabase SQL Editor</strong> para criar ou atualizar a tabela:</div>
           <pre style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;font-size:.7rem;overflow-x:auto;white-space:pre;color:var(--text);user-select:all">${_auditMigrationSql()}</pre>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="_copyAuditMigration()">📋 Copiar SQL</button>
@@ -119,9 +93,8 @@ async function loadAuditLogs() {
             <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Tentar novamente</button>
           </div></div>`
       : `<div style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
-          ⚠️ Erro ao carregar auditoria:<br>
-          <code style="font-size:.78rem;display:block;margin:8px 0;padding:8px;background:var(--surface2);border-radius:6px;color:var(--danger)">${esc(realMsg)}</code>
-          <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
+          ⚠️ Erro: ${esc(e.message)}
+          <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
 
     if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${errHtml}</td></tr>`;
     if (cards) cards.innerHTML = errHtml;
@@ -129,7 +102,6 @@ async function loadAuditLogs() {
     if (btn) btn.disabled = false;
   }
 }
-
 
 // ── Filtro local (busca por texto) ────────────────────────────────────────────
 function _auditApplyLocalFilters() {
@@ -300,6 +272,8 @@ function _auditMigrationSql() {
   notes          TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Adiciona coluna notes caso a tabela já exista sem ela
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notes TEXT;
 CREATE INDEX IF NOT EXISTS idx_srl_family  ON public.scheduled_run_logs(family_id);
 CREATE INDEX IF NOT EXISTS idx_srl_created ON public.scheduled_run_logs(created_at DESC);
 ALTER TABLE public.scheduled_run_logs ENABLE ROW LEVEL SECURITY;
