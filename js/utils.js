@@ -624,8 +624,11 @@ function checkSimilarPayee(typed) {
       <button class="btn btn-primary btn-sm" onmousedown="event.preventDefault()" onclick="confirmSimilarPayee('${best.p.id}','${esc(best.p.name)}')">
         Sim, usar "${esc(best.p.name)}"
       </button>
+      <button class="btn btn-ghost btn-sm" onmousedown="event.preventDefault()" onclick="cancelPayeeCreation('tx')">
+        Não, escolher outro
+      </button>
       <button class="btn btn-ghost btn-sm" onmousedown="event.preventDefault()" onclick="createPayeeFromInput('tx')">
-        Não, criar novo
+        Criar novo
       </button>
     </div>`;
   banner.style.display = 'block';
@@ -640,11 +643,26 @@ function showCreateNewBanner(typed) {
       <button class="btn btn-primary btn-sm" onmousedown="event.preventDefault()" onclick="createPayeeFromInput('tx')">
         Criar agora
       </button>
-      <button class="btn btn-ghost btn-sm" onmousedown="event.preventDefault()" onclick="clearPayeeField('tx')">
-        Cancelar
+      <button class="btn btn-ghost btn-sm" onmousedown="event.preventDefault()" onclick="cancelPayeeCreation('tx')">
+        Escolher existente
       </button>
     </div>`;
   banner.style.display = 'block';
+}
+
+function cancelPayeeCreation(ctx) {
+  // Hide the banner but keep the typed text so user can edit and pick from dropdown
+  hidePayeeSimilar();
+  const c = payeeCtx(ctx);
+  // Re-focus the name input so the dropdown can reappear
+  if (c.nameEl) {
+    c.nameEl.focus();
+    // Trigger dropdown with current value
+    const val = c.nameEl.value;
+    if (val && val.length >= 2) {
+      onPayeeInput(val, ctx);
+    }
+  }
 }
 
 function confirmSimilarPayee(id, name) {

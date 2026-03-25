@@ -1523,243 +1523,343 @@ function _openTxAsCopy(orig) {
   // txId stays empty → saveTransaction() will INSERT
   openModal('txModal');
 }
-// ── AI Payee Suggestion ───────────────────────────────────────────────────
-let _aiPayeeTimer = null;
-let _aiPayeePending = null; // { id, name } of last suggestion
+// ══════════════════════════════════════════════════════════════════════════════
+//  SMART AI SUGGESTIONS ENGINE — v2
+//  Single Gemini call returns payee + category + account + member together.
+//  Also triggers when payee is selected (to suggest category).
+//  Supports both 'tx' (transaction) and 'sc' (scheduled) contexts.
+// ══════════════════════════════════════════════════════════════════════════════
 
-function _aiPayeeDebounce(val) {
-  if (_aiPayeeTimer) clearTimeout(_aiPayeeTimer);
-  // Hide previous suggestion while user types
-  _dismissAiPayeeSuggestion(false);
-  if (!val || val.length < 5) return;
-  _aiPayeeTimer = setTimeout(() => _aiSuggestPayeeFromDesc(val), 800);
-  // Also trigger account and member suggestions
-  _aiAccountDebounce(val);
-  _aiMemberDebounce(val);
+const _aiSuggest = {
+  timer:   { tx: null, sc: null },
+  pending: { tx: null, sc: null },  // { payee, category, account, member }
+  loading: { tx: false, sc: false },
+};
+
+// Keep legacy vars to avoid breaking any external references
+let _aiPayeeTimer = null, _aiPayeePending = null;
+let _aiAccountTimer = null, _aiAccountPending = null;
+let _aiMemberTimer = null, _aiMemberPending = null;
+
+// ── Entry points (called from HTML oninput / onblur) ─────────────────────────
+
+function _aiSmartDebounce(val, ctx = 'tx') {
+  if (_aiSuggest.timer[ctx]) clearTimeout(_aiSuggest.timer[ctx]);
+  _aiHideSuggestPanel(ctx);
+  if (!val || val.trim().length < 4) return;
+  _aiSuggest.timer[ctx] = setTimeout(() => _aiSmartRun(val.trim(), ctx), 750);
 }
 
-async function _aiSuggestPayeeFromDesc(desc) {
-  if (_aiPayeeTimer) { clearTimeout(_aiPayeeTimer); _aiPayeeTimer = null; }
-  // Don't suggest if payee already selected
-  const curPayeeId = document.getElementById('txPayeeId')?.value;
-  if (curPayeeId) return;
-  if (!desc || desc.trim().length < 5) return;
-  if (!state.payees?.length) return;
+function _aiSmartTrigger(val, ctx = 'tx') {
+  if (!val || val.trim().length < 4) return;
+  if (_aiSuggest.timer[ctx]) { clearTimeout(_aiSuggest.timer[ctx]); _aiSuggest.timer[ctx] = null; }
+  _aiSmartRun(val.trim(), ctx);
+}
 
-  // Get Gemini key (same setting as receipt_ai.js)
-  const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
-  if (!apiKey || !apiKey.startsWith('AIza')) {
-    // Fallback: simple fuzzy match client-side
-    _aiPayeeFuzzyFallback(desc);
-    return;
-  }
+// ── Core: build context and call Gemini (or fallback) ────────────────────────
 
-  // Call Gemini to match description to existing payee
-  const payeeList = state.payees.slice(0, 80).map(p => p.name).join(', ');
-  const prompt = `Given this transaction description: "${desc.trim()}"
-Find the BEST matching payee from this list: ${payeeList}
-Reply with ONLY the exact payee name from the list, or "none" if no good match exists.
-Do not explain. One word or short phrase only.`;
+async function _aiSmartRun(desc, ctx) {
+  if (_aiSuggest.loading[ctx]) return;
 
+  // Don't suggest fields already filled
+  const payeeAlreadySet = !!document.getElementById(ctx + 'PayeeId')?.value;
+  const catAlreadySet   = !!(ctx === 'tx'
+    ? document.getElementById('txCategoryId')?.value
+    : document.getElementById('scCategoryId')?.value);
+  const accAlreadySet   = !!document.getElementById(ctx === 'tx' ? 'txAccountId' : 'scAccountId')?.value;
+  const memberAlreadySet = ctx === 'tx'
+    ? document.querySelectorAll('#txFamilyMemberPicker .fmc-pick-chip').length > 0
+    : false;
+
+  if (payeeAlreadySet && catAlreadySet && accAlreadySet && memberAlreadySet) return;
+
+  _aiSuggest.loading[ctx] = true;
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 30, temperature: 0 } }),
-    });
-    if (!resp.ok) { _aiPayeeFuzzyFallback(desc); return; }
-    const json = await resp.json();
-    const suggestion = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!suggestion || suggestion.toLowerCase() === 'none' || suggestion.toLowerCase() === 'nenhum') return;
-    // Find the matching payee in state
-    const matched = state.payees.find(p => p.name.toLowerCase() === suggestion.toLowerCase())
-      || state.payees.find(p => p.name.toLowerCase().includes(suggestion.toLowerCase()))
-      || state.payees.find(p => suggestion.toLowerCase().includes(p.name.toLowerCase()));
-    if (matched) _showAiPayeeSuggestion(matched);
-  } catch(_) {
-    // Silent fail — try fuzzy fallback
-    _aiPayeeFuzzyFallback(desc);
-  }
-}
-
-function _aiPayeeFuzzyFallback(desc) {
-  // Simple substring match for common cases when no API key
-  const d = desc.toLowerCase();
-  const matched = state.payees.find(p => {
-    const n = p.name.toLowerCase();
-    return n.length >= 3 && (d.includes(n) || n.includes(d.split(' ')[0]));
-  });
-  if (matched) _showAiPayeeSuggestion(matched);
-}
-
-function _showAiPayeeSuggestion(payee) {
-  // Don't overwrite if user already selected a payee
-  const curId = document.getElementById('txPayeeId')?.value;
-  if (curId) return;
-  _aiPayeePending = { id: payee.id, name: payee.name };
-  const chip = document.getElementById('txAiPayeeSuggestion');
-  const btn  = document.getElementById('txAiPayeeBtn');
-  if (!chip || !btn) return;
-  btn.textContent = payee.name;
-  chip.style.display = 'flex';
-}
-
-function _applyAiPayeeSuggestion() {
-  if (!_aiPayeePending) return;
-  // Don't overwrite if payee already manually selected
-  const curId = document.getElementById('txPayeeId')?.value;
-  if (curId && curId !== _aiPayeePending.id) { _dismissAiPayeeSuggestion(); return; }
-  selectPayee(_aiPayeePending.id, _aiPayeePending.name, 'tx');
-  _dismissAiPayeeSuggestion();
-}
-
-function _dismissAiPayeeSuggestion(clearPending = true) {
-  const chip = document.getElementById('txAiPayeeSuggestion');
-  if (chip) chip.style.display = 'none';
-  if (clearPending) _aiPayeePending = null;
-}
-
-// ── Sugestão IA de Conta e Membro ─────────────────────────────────────────
-let _aiAccountTimer = null;
-let _aiAccountPending = null;
-
-function _aiAccountDebounce(val) {
-  if (_aiAccountTimer) clearTimeout(_aiAccountTimer);
-  _dismissAiAccountSuggestion(false);
-  if (!val || val.length < 4) return;
-  _aiAccountTimer = setTimeout(() => _aiSuggestAccountFromDesc(val), 900);
-}
-
-function _aiSuggestAccountFromDesc(desc) {
-  if (_aiAccountTimer) { clearTimeout(_aiAccountTimer); _aiAccountTimer = null; }
-  // Don't suggest if account already selected
-  const curAccId = document.getElementById('txAccountId')?.value;
-  if (curAccId) return;
-  if (!desc || desc.trim().length < 4) return;
-  if (!state.accounts?.length || !state.transactions?.length) return;
-
-  // Build frequency map: for each account, count recent txs whose description
-  // shares at least one significant word with the input description
-  const words = desc.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
-  if (!words.length) return;
-
-  const scores = {};
-  const recent = state.transactions.slice(0, 300); // look at last 300 txs
-  for (const tx of recent) {
-    if (!tx.account_id || !tx.description) continue;
-    const txWords = tx.description.toLowerCase().split(/\s+/);
-    const match = words.some(w => txWords.some(tw => tw.includes(w) || w.includes(tw)));
-    if (match) {
-      scores[tx.account_id] = (scores[tx.account_id] || 0) + 1;
+    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    if (apiKey?.startsWith('AIza')) {
+      await _aiSmartGemini(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
+    } else {
+      _aiSmartFallback(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
     }
+  } catch (_) {
+    _aiSmartFallback(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
+  } finally {
+    _aiSuggest.loading[ctx] = false;
   }
-
-  // Find account with highest score
-  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-  if (!best || best[1] < 1) return;
-
-  const account = state.accounts.find(a => a.id === best[0]);
-  if (!account) return;
-  _showAiAccountSuggestion(account);
 }
 
-function _showAiAccountSuggestion(account) {
-  const curId = document.getElementById('txAccountId')?.value;
-  if (curId) return;
-  _aiAccountPending = { id: account.id, name: account.name };
-  const chip = document.getElementById('txAiAccountSuggestion');
-  const btn  = document.getElementById('txAiAccountBtn');
-  if (!chip || !btn) return;
-  btn.textContent = account.name;
-  chip.style.display = 'flex';
+async function _aiSmartGemini(desc, ctx, flags) {
+  const payees    = (state.payees    || []).slice(0, 100).map(p => p.name);
+  const cats      = (state.categories || []).filter(c => c.type !== 'transferencia').slice(0, 80).map(c => c.name);
+  const accounts  = (state.accounts  || []).slice(0, 20).map(a => a.name);
+  const members   = typeof getFamilyMembers === 'function' ? getFamilyMembers().map(m => m.name) : [];
+
+  // Build a minimal recent history snapshot for smarter matching
+  const recentSnap = (state.transactions || []).slice(0, 60)
+    .filter(t => t.description)
+    .map(t => {
+      const cat = (state.categories || []).find(c => c.id === t.category_id)?.name;
+      const acc = (state.accounts   || []).find(a => a.id === t.account_id)?.name;
+      const pay = (state.payees     || []).find(p => p.id === t.payee_id)?.name;
+      return [t.description, pay, cat, acc].filter(Boolean).join('|');
+    }).slice(0, 30).join('\n');
+
+  const prompt = `You are a financial assistant helping fill a transaction form.
+
+Transaction description typed by user: "${desc}"
+
+Available data:
+PAYEES: ${payees.join(', ') || 'none'}
+CATEGORIES: ${cats.join(', ') || 'none'}
+ACCOUNTS: ${accounts.join(', ') || 'none'}
+FAMILY MEMBERS: ${members.join(', ') || 'none'}
+
+Recent transaction history (desc|payee|category|account):
+${recentSnap || 'none'}
+
+Based on the description and history, suggest the BEST match for each field.
+If no good match exists for a field, use null.
+Respond ONLY with valid JSON, no explanation:
+{
+  "payee": "exact name from PAYEES list or null",
+  "category": "exact name from CATEGORIES list or null",
+  "account": "exact name from ACCOUNTS list or null",
+  "member": "exact name from FAMILY MEMBERS list or null",
+  "confidence": "high|medium|low"
+}`;
+
+  const apiKey = await getAppSetting('gemini_api_key', '');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 80, temperature: 0 },
+    }),
+  });
+  if (!resp.ok) { _aiSmartFallback(desc, ctx, flags); return; }
+
+  const json = await resp.json();
+  let raw = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  // Strip markdown code fences if present
+  raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+
+  let result;
+  try { result = JSON.parse(raw); } catch (_) { _aiSmartFallback(desc, ctx, flags); return; }
+
+  _aiSmartApplySuggestions(result, ctx, flags);
 }
 
-function _applyAiAccountSuggestion() {
-  if (!_aiAccountPending) return;
-  const sel = document.getElementById('txAccountId');
-  if (!sel) return;
-  const curVal = sel.value;
-  if (curVal && curVal !== _aiAccountPending.id) { _dismissAiAccountSuggestion(); return; }
-  sel.value = _aiAccountPending.id;
-  sel.dispatchEvent(new Event('change'));
-  _dismissAiAccountSuggestion();
-}
-
-function _dismissAiAccountSuggestion(clearPending = true) {
-  const chip = document.getElementById('txAiAccountSuggestion');
-  if (chip) chip.style.display = 'none';
-  if (clearPending) _aiAccountPending = null;
-}
-
-// ── Sugestão IA de Membro da Família ──────────────────────────────────────
-let _aiMemberTimer = null;
-let _aiMemberPending = null;
-
-function _aiMemberDebounce(val) {
-  if (_aiMemberTimer) clearTimeout(_aiMemberTimer);
-  _dismissAiMemberSuggestion(false);
-  if (!val || val.length < 4) return;
-  _aiMemberTimer = setTimeout(() => _aiSuggestMemberFromDesc(val), 900);
-}
-
-function _aiSuggestMemberFromDesc(desc) {
-  if (_aiMemberTimer) { clearTimeout(_aiMemberTimer); _aiMemberTimer = null; }
-  if (!desc || desc.trim().length < 4) return;
-  const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
-  if (!members.length || !state.transactions?.length) return;
-  // Don't suggest if member already selected
-  const existingPicks = document.querySelectorAll('#txFamilyMemberPicker .fmc-pick-chip');
-  if (existingPicks.length > 0) return;
-
+function _aiSmartFallback(desc, ctx, flags) {
+  // Pure client-side fallback — frequency analysis on recent transactions
   const words = desc.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
   if (!words.length) return;
 
-  const scores = {};
-  const recent = state.transactions.slice(0, 300);
+  const recent = (state.transactions || []).slice(0, 300);
+  const payeeScores = {}, catScores = {}, accScores = {}, memberScores = {};
+
   for (const tx of recent) {
     if (!tx.description) continue;
-    const memberIds = tx.family_member_ids?.length ? tx.family_member_ids
-      : (tx.family_member_id ? [tx.family_member_id] : []);
-    if (!memberIds.length) continue;
     const txWords = tx.description.toLowerCase().split(/\s+/);
-    const match = words.some(w => txWords.some(tw => tw.includes(w) || w.includes(tw)));
-    if (match) {
-      for (const mid of memberIds) {
-        scores[mid] = (scores[mid] || 0) + 1;
-      }
+    const matchCount = words.filter(w => txWords.some(tw => tw.includes(w) || w.includes(tw))).length;
+    if (!matchCount) continue;
+    const weight = matchCount;
+    if (tx.payee_id)    payeeScores[tx.payee_id]   = (payeeScores[tx.payee_id]   || 0) + weight;
+    if (tx.category_id) catScores[tx.category_id]  = (catScores[tx.category_id]  || 0) + weight;
+    if (tx.account_id)  accScores[tx.account_id]   = (accScores[tx.account_id]   || 0) + weight;
+    const mids = tx.family_member_ids?.length ? tx.family_member_ids : (tx.family_member_id ? [tx.family_member_id] : []);
+    for (const mid of mids) memberScores[mid] = (memberScores[mid] || 0) + weight;
+  }
+
+  const topPayee  = Object.entries(payeeScores).sort((a,b)=>b[1]-a[1])[0];
+  const topCat    = Object.entries(catScores).sort((a,b)=>b[1]-a[1])[0];
+  const topAcc    = Object.entries(accScores).sort((a,b)=>b[1]-a[1])[0];
+  const topMember = Object.entries(memberScores).sort((a,b)=>b[1]-a[1])[0];
+
+  const payeeObj  = topPayee?.[1] >= 1 ? (state.payees    || []).find(p => p.id === topPayee[0])  : null;
+  const catObj    = topCat?.[1]   >= 1 ? (state.categories|| []).find(c => c.id === topCat[0])    : null;
+  const accObj    = topAcc?.[1]   >= 1 ? (state.accounts  || []).find(a => a.id === topAcc[0])    : null;
+  const members   = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+  const memberObj = topMember?.[1] >= 2 ? members.find(m => m.id === topMember[0]) : null;
+
+  _aiSmartApplySuggestions({
+    payee:    payeeObj?.name   || null,
+    category: catObj?.name    || null,
+    account:  accObj?.name    || null,
+    member:   memberObj?.name || null,
+    confidence: 'medium',
+  }, ctx, flags);
+}
+
+function _aiSmartApplySuggestions(result, ctx, flags) {
+  const suggestions = [];
+
+  // Payee suggestion
+  if (!flags.payeeAlreadySet && result.payee) {
+    const matched = (state.payees || []).find(p =>
+      p.name.toLowerCase() === result.payee.toLowerCase() ||
+      p.name.toLowerCase().includes(result.payee.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'payee', icon: '👤', label: 'Beneficiário',
+        value: matched.name, id: matched.id,
+        apply: () => {
+          selectPayee(matched.id, matched.name, ctx);
+          // After selecting payee, trigger category suggestion from payee history
+          if (ctx === 'tx' && typeof suggestCategoryForPayee === 'function') {
+            suggestCategoryForPayee(matched.id);
+          }
+        },
+      });
     }
   }
 
-  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-  if (!best || best[1] < 2) return; // require at least 2 matches for member
-
-  const member = members.find(m => m.id === best[0]);
-  if (!member) return;
-  _showAiMemberSuggestion(member);
-}
-
-function _showAiMemberSuggestion(member) {
-  _aiMemberPending = { id: member.id, name: member.name };
-  const chip = document.getElementById('txAiMemberSuggestion');
-  const btn  = document.getElementById('txAiMemberBtn');
-  if (!chip || !btn) return;
-  btn.textContent = member.name;
-  chip.style.display = 'flex';
-}
-
-function _applyAiMemberSuggestion() {
-  if (!_aiMemberPending) return;
-  if (typeof renderFmcMultiPicker === 'function') {
-    renderFmcMultiPicker('txFamilyMemberPicker', { selected: [_aiMemberPending.id] });
+  // Category suggestion
+  if (!flags.catAlreadySet && result.category) {
+    const matched = (state.categories || []).find(c =>
+      c.name.toLowerCase() === result.category.toLowerCase() ||
+      c.name.toLowerCase().includes(result.category.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'category', icon: matched.icon || '📂', label: 'Categoria',
+        value: matched.name, id: matched.id, color: matched.color,
+        apply: () => {
+          if (ctx === 'tx') {
+            setCatPickerValue(matched.id);
+            hideCatSuggestion();
+          } else if (ctx === 'sc' && typeof setCatPickerValue === 'function') {
+            setCatPickerValue(matched.id, 'sc');
+          }
+        },
+      });
+    }
   }
-  _dismissAiMemberSuggestion();
+
+  // Account suggestion
+  if (!flags.accAlreadySet && result.account) {
+    const accSelId = ctx === 'tx' ? 'txAccountId' : 'scAccountId';
+    const matched = (state.accounts || []).find(a =>
+      a.name.toLowerCase() === result.account.toLowerCase() ||
+      a.name.toLowerCase().includes(result.account.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'account', icon: matched.icon || '🏦', label: 'Conta',
+        value: matched.name, id: matched.id,
+        apply: () => {
+          const sel = document.getElementById(accSelId);
+          if (sel) { sel.value = matched.id; sel.dispatchEvent(new Event('change')); }
+        },
+      });
+    }
+  }
+
+  // Member suggestion (tx only for now)
+  if (ctx === 'tx' && !flags.memberAlreadySet && result.member) {
+    const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+    const matched = members.find(m =>
+      m.name.toLowerCase() === result.member.toLowerCase() ||
+      m.name.toLowerCase().includes(result.member.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'member', icon: '👤', label: 'Membro',
+        value: matched.name, id: matched.id,
+        apply: () => {
+          if (typeof renderFmcMultiPicker === 'function') {
+            renderFmcMultiPicker('txFamilyMemberPicker', { selected: [matched.id] });
+          }
+        },
+      });
+    }
+  }
+
+  if (!suggestions.length) return;
+
+  _aiSuggest.pending[ctx] = suggestions;
+  _aiRenderSuggestPanel(ctx, suggestions);
 }
 
-function _dismissAiMemberSuggestion(clearPending = true) {
-  const chip = document.getElementById('txAiMemberSuggestion');
-  if (chip) chip.style.display = 'none';
-  if (clearPending) _aiMemberPending = null;
+// ── Render the suggestion panel ───────────────────────────────────────────────
+
+function _aiRenderSuggestPanel(ctx, suggestions) {
+  const panelId = ctx + 'AiSuggestionsPanel';
+  const chipsId = ctx + 'AiSuggestChips';
+  const panel = document.getElementById(panelId);
+  const chips = document.getElementById(chipsId);
+  if (!panel || !chips) return;
+
+  chips.innerHTML = suggestions.map((s, i) => {
+    const colorStyle = s.color ? `border-left: 3px solid ${s.color}` : '';
+    return `<div class="ai-suggest-chip" style="${colorStyle}">
+      <span class="ai-suggest-chip-label">${s.label}</span>
+      <button class="ai-suggest-chip-value" onclick="_aiApplySuggestion('${ctx}',${i})"
+        title="Aplicar sugestão">
+        ${s.icon} ${esc(s.value)}
+      </button>
+      <button class="ai-suggest-chip-dismiss" onclick="_aiDismissSuggestion('${ctx}',${i})"
+        title="Ignorar">✕</button>
+    </div>`;
+  }).join('');
+
+  panel.style.display = 'block';
+}
+
+function _aiHideSuggestPanel(ctx) {
+  const panel = document.getElementById(ctx + 'AiSuggestionsPanel');
+  if (panel) panel.style.display = 'none';
+  _aiSuggest.pending[ctx] = null;
+}
+
+function _aiApplySuggestion(ctx, idx) {
+  const suggestions = _aiSuggest.pending[ctx];
+  if (!suggestions?.[idx]) return;
+  suggestions[idx].apply();
+  // Remove this chip from the panel
+  suggestions.splice(idx, 1);
+  if (!suggestions.length) {
+    _aiHideSuggestPanel(ctx);
+  } else {
+    _aiRenderSuggestPanel(ctx, suggestions);
+  }
+}
+
+function _aiDismissSuggestion(ctx, idx) {
+  const suggestions = _aiSuggest.pending[ctx];
+  if (!suggestions) return;
+  suggestions.splice(idx, 1);
+  if (!suggestions.length) {
+    _aiHideSuggestPanel(ctx);
+  } else {
+    _aiRenderSuggestPanel(ctx, suggestions);
+  }
+}
+
+function _aiDismissAll(ctx) {
+  _aiHideSuggestPanel(ctx);
+}
+
+// ── Legacy compatibility shims (kept so old HTML references still work) ───────
+
+function _aiPayeeDebounce(val)       { _aiSmartDebounce(val, 'tx'); }
+function _aiAccountDebounce(val)     { /* absorbed into _aiSmartDebounce */ }
+function _aiMemberDebounce(val)      { /* absorbed into _aiSmartDebounce */ }
+function _aiSuggestPayeeFromDesc(v)  { _aiSmartTrigger(v, 'tx'); }
+function _applyAiPayeeSuggestion()   { /* legacy — now handled by chip buttons */ }
+function _dismissAiPayeeSuggestion() { _aiHideSuggestPanel('tx'); }
+function _applyAiAccountSuggestion() { /* legacy */ }
+function _dismissAiAccountSuggestion(){ _aiHideSuggestPanel('tx'); }
+function _applyAiMemberSuggestion()  { /* legacy */ }
+function _dismissAiMemberSuggestion(){ _aiHideSuggestPanel('tx'); }
+
+// ── Trigger from payee selection (category suggestion based on payee history) ─
+
+function _aiSuggestFromPayee(payeeId, ctx) {
+  if (!payeeId || ctx !== 'tx') return;
+  // suggestCategoryForPayee already called by selectPayee → handled there
 }
 
 
