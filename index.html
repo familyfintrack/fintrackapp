@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="FinTrack">
-<meta name="theme-color" content="#183828">
+<meta name="theme-color" content="#0d2318">
 <!-- Apple Touch Icon — usado pelo iPhone ao adicionar à tela inicial -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -878,10 +878,10 @@
               <th class="tx-v2-th-date" onclick="sortTx('date')" data-i18n="tx.col_date">Data ⇅</th>
               <th class="tx-v2-th-body" data-i18n="tx.col_desc">Descrição</th>
               <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>
-              
+              <th class="tx-v2-th-act"></th>
             </tr></thead>
             <tbody id="txBody">
-              <tr><td colspan="7" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Carregando...</td></tr>
+              <tr><td colspan="4" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Carregando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -919,6 +919,9 @@
     </div>
 
     <div class="page" id="page-investments">
+      <div class="section-header mb-4">
+        <button class="btn btn-ghost btn-sm" onclick="loadInvestmentsPage()">🔄 Atualizar</button>
+      </div>
       <div id="investmentsContent">
         <div style="text-align:center;padding:48px;color:var(--muted)">Carregando…</div>
       </div>
