@@ -617,11 +617,12 @@ function renderTransactions(){
 
   // ── FLAT VIEW ──
   const body = document.getElementById('txBody');
-  if(!txs.length){body.innerHTML='<tr><td colspan="7" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Nenhuma transação encontrada</td></tr>';return;}
+  if(!txs.length){body.innerHTML='<tr><td colspan="4" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Nenhuma transação encontrada</td></tr>';return;}
   const pending   = txs.filter(t => (t.status||'confirmed')==='pending');
   const confirmed = txs.filter(t => (t.status||'confirmed')!=='pending');
+  const sepColspan = state.reconcileMode ? 5 : 4;
   const sep = (pending.length && confirmed.length)
-    ? `<tr><td colspan="4" class="tx-v2-sep">CONFIRMADAS</td></tr>` : '';
+    ? `<tr><td colspan="${sepColspan}" class="tx-v2-sep">CONFIRMADAS</td></tr>` : '';
 
   // Running balance: only when a single account is selected
   const singleAccId = state.txFilter?.account || '';
@@ -683,7 +684,7 @@ function renderTransactions(){
         else label = `${dayNames[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]} ${d.getFullYear()}`;
         bandIndex++;
         const bandClass = bandIndex % 2 === 0 ? 'tx-date-band-alt' : 'tx-date-band';
-        const colspan = state.reconcileMode ? 4 : 4;
+        const colspan = state.reconcileMode ? 5 : 4;
         html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell">${label}</td></tr>`;
         lastDate = txDateStr;
       }
