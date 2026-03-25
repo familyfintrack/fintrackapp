@@ -788,7 +788,11 @@ function openScheduledModal(id='') {
     neEl.checked = sc?.notify_email || false;
     if(ndDiv) ndDiv.style.display = neEl.checked ? '' : 'none';
   }
-  if(naEl) naEl.value = sc?.notify_email_addr || '';
+  if(naEl) {
+    // Pre-fill: saved addr → emailDefault config → currentUser email
+    const _cfg = typeof getAutoCheckConfig === 'function' ? getAutoCheckConfig() : {};
+    naEl.value = sc?.notify_email_addr || _cfg.emailDefault || currentUser?.email || '';
+  }
   if(ndEl) ndEl.value = sc?.notify_days_before ?? 1;
 
   // Render family member multi-picker

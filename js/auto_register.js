@@ -47,7 +47,8 @@ function loadAutoCheckConfig() {
   if(enEl) enEl.checked = cfg.enabled;
   if(intEl) intEl.value = cfg.intervalMinutes;
   if(dayEl) dayEl.value = cfg.daysAhead;
-  if(emEl)  emEl.value  = cfg.emailDefault;
+  // Pre-fill with currentUser email if not configured yet
+  if(emEl)  emEl.value  = cfg.emailDefault || (typeof currentUser !== 'undefined' ? currentUser?.email || '' : '');
   if(mEl)   mEl.value   = cfg.method;
   updateAutoCheckUI(cfg);
   applyAutoCheckTimer(cfg);
