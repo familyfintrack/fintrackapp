@@ -56,7 +56,7 @@ async function loadAuditLogs() {
 
     let q = famQ(
       sb.from('scheduled_run_logs')
-        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at, scheduled_transactions(description,frequency,type,category_id,categories:category_id(name))')
+        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at')
         .order('created_at', { ascending: false })
         .limit(500)
     );
@@ -72,7 +72,21 @@ async function loadAuditLogs() {
     const { data, error } = await q;
     if (error) throw error;
 
-    _auditState.allRows    = data || [];
+    // Fetch scheduled_transactions separately to avoid FK schema cache issue (PGRST200)
+    let rows = data || [];
+    const schedIds = [...new Set(rows.map(r => r.scheduled_id).filter(Boolean))];
+    if (schedIds.length > 0) {
+      const { data: scData } = await sb
+        .from('scheduled_transactions')
+        .select('id, description, frequency, type, category_id, categories:category_id(name)')
+        .in('id', schedIds);
+      if (scData) {
+        const scMap = Object.fromEntries(scData.map(s => [s.id, s]));
+        rows = rows.map(r => ({ ...r, scheduled_transactions: scMap[r.scheduled_id] || null }));
+      }
+    }
+
+    _auditState.allRows    = rows;
     _auditState._lastStatus = statusFilter;
     _auditState._lastMonth  = monthFilter;
 
@@ -81,11 +95,11 @@ async function loadAuditLogs() {
 
   } catch (e) {
     console.warn('[audit]', e.message);
-    const isMissing = false // DEBUG: show real error always;
-    const errHtml = isMissing
+    const isTableMissing = /relation.*does not exist/i.test(e.message || '');
+    const errHtml = isTableMissing
       ? `<div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
-          <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada ou desatualizada</div>
-          <div style="color:var(--text2);margin-bottom:12px">Execute o SQL abaixo no <strong>Supabase SQL Editor</strong> para criar ou atualizar a tabela:</div>
+          <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada</div>
+          <div style="color:var(--text2);margin-bottom:12px">Execute o SQL abaixo no <strong>Supabase SQL Editor</strong> para criar a tabela:</div>
           <pre style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;font-size:.7rem;overflow-x:auto;white-space:pre;color:var(--text);user-select:all">${_auditMigrationSql()}</pre>
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="_copyAuditMigration()">📋 Copiar SQL</button>
@@ -93,8 +107,7 @@ async function loadAuditLogs() {
             <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()">↻ Tentar novamente</button>
           </div></div>`
       : `<div style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
-          ⚠️ Erro: ${esc(e.message)}
-          <br><small style="color:var(--muted);font-size:.75rem">Code: ${esc(String(e.code||''))} | Hint: ${esc(e.hint||'')} | Details: ${esc(e.details||'')}</small>
+          ⚠️ Erro ao carregar auditoria: ${esc(e.message)}
           <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
 
     if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${errHtml}</td></tr>`;
