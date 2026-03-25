@@ -1,7 +1,8 @@
 // ── Settings tab navigation (defined here so it works regardless of HTML version) ──
 function cfgShowPane(paneId) {
   document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.cfg-nav-item').forEach(b => b.classList.remove('active'));
+  // Support both class names (cfg-tab = new design, cfg-nav-item = legacy)
+  document.querySelectorAll('.cfg-tab, .cfg-nav-item').forEach(b => b.classList.remove('active'));
   const pane = document.getElementById(paneId);
   if (pane) pane.classList.add('active');
   const tab = paneId.replace('pane-', '');
@@ -10,6 +11,8 @@ function cfgShowPane(paneId) {
   if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
     initTranslationsAdmin();
   }
+  // Scroll active tab into view on mobile
+  if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 window.cfgShowPane = cfgShowPane;
 
