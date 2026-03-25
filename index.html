@@ -1771,372 +1771,674 @@
 
     <!-- SETTINGS PAGE -->
     <div class="page" id="page-settings">
+      <style>
+        /* ══ SETTINGS REDESIGN ══════════════════════════════════════════════ */
+        .cfg-shell {
+          display: flex;
+          gap: 0;
+          min-height: 100%;
+        }
 
-      <!-- ══ PERFIL ══ -->
-      <div class="cfg-section" id="currentUserSection">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_conta')">
-          <span class="cfg-sec-icon" style="background:var(--accent-lt)">👤</span>
-          <span class="cfg-sec-title">Conta &amp; Segurança</span>
-          <span class="cfg-sec-arr" id="cfgArr_conta">▾</span>
-        </button>
-        <div class="cfg-sec-body open" id="cfgSec_conta">
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--bg2)">🖼️</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Foto de Perfil</span>
-              <span class="cfg-row-sub" id="settingsCurrentUser">—</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="openMyProfile()">Alterar</button>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--bg2)">🔑</span>
-            <span class="cfg-row-label">Senha</span>
-            <button class="btn btn-ghost btn-sm" onclick="showChangeMyPwd()">Alterar</button>
-          </div>
-        </div>
-      </div>
+        /* ── Side nav ── */
+        .cfg-nav {
+          width: 200px;
+          flex-shrink: 0;
+          background: var(--surface);
+          border-right: 1px solid var(--border);
+          padding: 8px 6px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          position: sticky;
+          top: 0;
+          align-self: flex-start;
+          /* bleed out of content padding on left */
+          margin: -24px 0 -24px -24px;
+          padding-top: 20px;
+          min-height: calc(100vh - var(--topbar-h) - 28px);
+        }
+        .cfg-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 8px 10px;
+          border-radius: 9px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-family: var(--font-sans);
+          font-size: .8rem;
+          font-weight: 500;
+          color: var(--text2);
+          text-align: left;
+          width: 100%;
+          transition: background .12s, color .12s;
+          position: relative;
+        }
+        .cfg-nav-item:hover {
+          background: var(--surface2);
+          color: var(--text);
+        }
+        .cfg-nav-item.active {
+          background: var(--accent-lt);
+          color: var(--accent);
+          font-weight: 700;
+        }
+        .cfg-nav-item.active::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 20%; bottom: 20%;
+          width: 3px;
+          background: var(--accent);
+          border-radius: 0 3px 3px 0;
+        }
+        .cfg-nav-icon {
+          width: 22px; height: 22px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          opacity: .6;
+        }
+        .cfg-nav-item.active .cfg-nav-icon { opacity: 1; }
+        .cfg-nav-divider {
+          height: 1px;
+          background: var(--border);
+          margin: 6px 4px;
+        }
+        .cfg-nav-label {
+          font-size: .6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: .1em;
+          color: var(--muted);
+          padding: 8px 10px 2px;
+        }
 
-      <!-- ══ FAMÍLIA & USUÁRIOS (admin) ══ -->
-      <div class="cfg-section" id="userMgmtSection" style="display:none">
-        <div id="pendingApprovalsAlert" style="display:none">
-          <div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:12px;padding:0;margin-bottom:8px;overflow:hidden">
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #fde68a">
-              <span style="font-size:1.1rem">⏳</span>
-              <div style="flex:1">
-                <div style="font-size:.84rem;font-weight:700;color:#92400e" id="pendingApprovalsAlertText">Aprovações pendentes</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="openUserAdmin()" style="font-size:.72rem;color:#92400e;border-color:#f59e0b">Ver →</button>
-            </div>
-            <div id="inlinePendingList" style="padding:8px 12px"></div>
-          </div>
-        </div>
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_familia')">
-          <span class="cfg-sec-icon" style="background:#e0f2fe">👥</span>
-          <span class="cfg-sec-title">Família &amp; Usuários</span>
-          <span class="cfg-sec-arr" id="cfgArr_familia">▾</span>
-        </button>
-        <div class="cfg-sec-body open" id="cfgSec_familia">
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:#e0f2fe">👥</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Gerenciar Usuários</span>
-              <span class="cfg-row-sub" id="userMgmtSub">Controle de acesso e permissões</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
-          </div>
+        /* ── Content area ── */
+        .cfg-content {
+          flex: 1;
+          min-width: 0;
+          padding: 16px 0 16px 20px;
+        }
+        .cfg-pane { display: none; }
+        .cfg-pane.active { display: block; animation: cfgFadeIn .18s ease; }
+        @keyframes cfgFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
 
-          <!-- Gestão da família: acessível via menu do usuário (avatar) → Gerenciar minha família -->
+        /* ── Pane heading ── */
+        .cfg-pane-title {
+          font-size: .95rem;
+          font-weight: 700;
+          color: var(--text);
+          margin-bottom: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid var(--border);
+        }
+        .cfg-pane-title svg { opacity: .5; }
 
+        /* ── Card groups ── */
+        .cfg-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          overflow: hidden;
+          margin-bottom: 12px;
+          box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        }
+        .cfg-card-title {
+          font-size: .67rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: .1em;
+          color: var(--muted);
+          padding: 10px 14px 6px;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface2);
+        }
 
+        /* ── Rows ── */
+        .cfg-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          border-bottom: 1px solid var(--border);
+          min-height: 46px;
+          transition: background .1s;
+        }
+        .cfg-row:last-child { border-bottom: none; }
+        .cfg-row:hover { background: var(--surface2); }
+        .cfg-row-icon {
+          width: 30px; height: 30px;
+          border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          background: var(--surface2);
+        }
+        .cfg-row-icon svg { opacity: .7; }
+        .cfg-row-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .cfg-row-label { font-size: .845rem; font-weight: 600; color: var(--text); }
+        .cfg-row-sub   { font-size: .71rem; color: var(--muted); }
 
-          <div id="settingsVisibilitySection" style="display:none">
-            
-          </div>
-        </div>
-      </div>
+        /* ── Controls ── */
+        .cfg-select {
+          font-size: .8rem;
+          padding: 5px 8px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: var(--surface);
+          color: var(--text);
+          font-family: var(--font-sans);
+          max-width: 160px;
+        }
+        .cfg-input {
+          font-size: .8rem;
+          padding: 5px 9px;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: var(--surface);
+          color: var(--text);
+          font-family: var(--font-sans);
+          max-width: 200px;
+          width: 100%;
+        }
+        .cfg-toggle-wrap {
+          position: relative; display: inline-block;
+          width: 40px; height: 22px; flex-shrink: 0;
+        }
+        .cfg-toggle-wrap input { opacity:0; width:0; height:0; }
+        .cfg-toggle-track {
+          position: absolute; cursor: pointer; inset: 0;
+          background: #d1d5db; border-radius: 100px; transition: .25s;
+        }
+        .cfg-toggle-wrap input:checked + .cfg-toggle-track { background: var(--accent); }
+        .cfg-toggle-track::before {
+          content: ''; position: absolute;
+          left: 3px; top: 3px;
+          width: 16px; height: 16px;
+          border-radius: 50%; background: #fff;
+          transition: .25s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+        }
+        .cfg-toggle-wrap input:checked + .cfg-toggle-track::before { transform: translateX(18px); }
 
-      
-      <!-- ══ APARÊNCIA (admin) ══ -->
-      <div class="cfg-section" id="logoSettingsSection" style="display:none">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_aparencia')">
-          <span class="cfg-sec-icon" style="background:var(--amber-lt)">🎨</span>
-          <span class="cfg-sec-title">Aparência</span>
-          <span class="cfg-sec-arr" id="cfgArr_aparencia">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_aparencia">
-          <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px;width:100%">
-              <span class="cfg-row-icon" style="background:var(--amber-lt)">🖼️</span>
-              <span class="cfg-row-label">Logotipo da aplicação</span>
-            </div>
-            <input id="appLogoUrl" type="text" placeholder="URL ou DataURL do logo" style="width:100%">
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <input id="appLogoFile" type="file" accept="image/*" style="max-width:240px">
-              <button class="btn btn-primary btn-sm" onclick="saveAppLogo()">💾 Salvar</button>
-              <button class="btn btn-ghost btn-sm" onclick="resetAppLogo()">↺ Padrão</button>
-            </div>
-            <img id="appLogoPreview" alt="" style="height:36px;max-width:200px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:4px;background:var(--surface)">
-          </div>
+        /* ── Status badge ── */
+        .cfg-status {
+          font-size: .68rem;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 20px;
+          flex-shrink: 0;
+        }
+        .cfg-status.ok  { background: var(--green-lt); color: var(--green); }
+        .cfg-status.err { background: #fee2e2; color: var(--danger); }
 
-          <!-- Cursor image URL -->
-          <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px;width:100%">
-              <span class="cfg-row-icon" style="background:var(--amber-lt)">🖱️</span>
-              <div class="cfg-row-info">
-                <span class="cfg-row-label">Imagem do cursor animado</span>
-                <span class="cfg-row-sub">URL da imagem exibida no cursor de carregamento. Padrão: logocursor.png</span>
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;width:100%;flex-wrap:wrap">
-              <input id="cursorImgUrl" type="text" placeholder="logocursor.png" class="form-input" style="flex:1;min-width:200px">
-              <button class="btn btn-primary btn-sm" onclick="saveCursorImgUrl()">💾 Salvar</button>
-              <button class="btn btn-ghost btn-sm" onclick="resetCursorImgUrl()">↺ Padrão</button>
-            </div>
-          </div>
-        </div>
-      </div>
+        /* ── Danger zone ── */
+        .cfg-danger-card {
+          border-color: rgba(220,38,38,.25);
+          background: #fff5f5;
+        }
+        .cfg-danger-card .cfg-card-title {
+          background: #fef2f2;
+          color: var(--danger);
+          border-color: rgba(220,38,38,.15);
+        }
 
-      <!-- ══ CONEXÃO & INTEGRAÇÕES ══ -->
-      <div class="cfg-section">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_conexao')">
-          <span class="cfg-sec-icon" style="background:var(--blue-lt,#eff6ff)">🔗</span>
-          <span class="cfg-sec-title">Conexão &amp; Integrações</span>
-          <span class="cfg-sec-arr" id="cfgArr_conexao">▾</span>
-        </button>
-        <div class="cfg-sec-body open" id="cfgSec_conexao">
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--blue-lt,#eff6ff)">🗄️</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Supabase</span>
-              <span class="cfg-row-sub" id="supabaseStatusLabel">Verificando...</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('setupScreen').style.display='flex'">Config</button>
-          </div>
-          <div class="cfg-row" id="serviceRoleRow" style="display:none">
-            <span class="cfg-row-icon" style="background:#fef3c7">🔑</span>
-            <div class="cfg-row-info" style="flex:1;min-width:0">
-              <span class="cfg-row-label">Service Role Key <span style="font-size:.65rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px">Admin</span></span>
-              <div style="display:flex;gap:5px;margin-top:4px">
-                <input type="password" id="serviceRoleKeyInput" placeholder="eyJhbGc..." autocomplete="off" style="flex:1;font-size:.75rem;font-family:monospace;min-width:0">
-                <button class="btn btn-ghost btn-sm" onclick="saveServiceRoleKey()">Salvar</button>
-                <button class="btn btn-ghost btn-sm" onclick="clearServiceRoleKey()" style="color:var(--muted)">✕</button>
-              </div>
-              <div id="serviceRoleKeyStatus" style="font-size:.7rem;margin-top:3px;color:var(--muted)"></div>
-            </div>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--green-lt)">📧</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">EmailJS</span>
-              <span class="cfg-row-sub" id="ejSettingsSub">Envio de relatórios e notificações</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()">Config</button>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:#f5f3ff">🤖</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label" style="display:flex;align-items:center;gap:5px">
-                IA — Leitura de Recibos
-                <span id="aiStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0"></span>
-              </span>
-              <span class="cfg-row-sub" id="aiSettingsSub">Gemini Vision — leitura de recibos</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Config</button>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--bg2)">🗑️</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Cache local</span>
-              <span class="cfg-row-sub">Limpar dados em cache no navegador</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearAppCache()">Limpar</button>
-          </div>
-        </div>
-      </div>
+        /* ── Mobile: tabs on top ── */
+        @media (max-width: 700px) {
+          .cfg-shell { flex-direction: column; }
+          .cfg-nav {
+            width: 100%;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+            min-height: auto;
+            margin: -24px -24px 0 -24px;
+            width: calc(100% + 48px);
+            padding: 8px 12px;
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            gap: 4px;
+            position: relative;
+            top: auto;
+          }
+          .cfg-nav::-webkit-scrollbar { display: none; }
+          .cfg-nav-item {
+            white-space: nowrap;
+            padding: 6px 10px;
+            flex-shrink: 0;
+            border-radius: 8px;
+          }
+          .cfg-nav-item.active::before { display: none; }
+          .cfg-nav-item.active {
+            border-bottom: 2px solid var(--accent);
+            border-radius: 8px 8px 0 0;
+          }
+          .cfg-nav-divider { display: none; }
+          .cfg-nav-label { display: none; }
+          .cfg-nav-icon { width: 16px; height: 16px; }
+          .cfg-content { padding: 14px 0 0; }
+        }
 
-      <!-- ══ AUTOMAÇÃO ══ -->
-      <div class="cfg-section">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_auto')">
-          <span class="cfg-sec-icon" style="background:var(--green-lt)">⚙️</span>
-          <span class="cfg-sec-title">Automação de Programados</span>
-          <span class="cfg-sec-arr" id="cfgArr_auto">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_auto">
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--green-lt)">🤖</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Verificação Automática</span>
-              <span class="cfg-row-sub">Registra transações quando a data chegar</span>
-            </div>
-            <label style="position:relative;display:inline-block;width:38px;height:20px;flex-shrink:0">
-              <input type="checkbox" id="autoCheckEnabled" onchange="saveAutoCheckConfig()" style="opacity:0;width:0;height:0">
-              <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:100px;transition:.3s" id="autoCheckToggle"></span>
-            </label>
-          </div>
-          <div class="cfg-row" id="autoCheckFreqRow">
-            <span class="cfg-row-icon" style="background:var(--bg2)">⏱️</span>
-            <span class="cfg-row-label">Frequência</span>
-            <select id="autoCheckInterval" onchange="saveAutoCheckConfig()" class="cfg-select">
-              <option value="15">15 min</option>
-              <option value="30">30 min</option>
-              <option value="60" selected>1 hora</option>
-              <option value="360">6 horas</option>
-              <option value="720">12 horas</option>
-              <option value="1440">1 dia</option>
-            </select>
-          </div>
-          <div class="cfg-row" id="autoCheckDaysRow">
-            <span class="cfg-row-icon" style="background:var(--bg2)">📅</span>
-            <span class="cfg-row-label">Antecipar registro</span>
-            <select id="autoCheckDaysAhead" onchange="saveAutoCheckConfig()" class="cfg-select">
-              <option value="0" selected>No dia</option>
-              <option value="1">1 dia antes</option>
-              <option value="2">2 dias antes</option>
-              <option value="3">3 dias antes</option>
-              <option value="7">1 semana</option>
-            </select>
-          </div>
-          <div class="cfg-row" id="autoCheckEmailRow">
-            <span class="cfg-row-icon" style="background:var(--bg2)">📧</span>
-            <span class="cfg-row-label">E-mail notificações</span>
-            <input type="email" id="autoCheckEmailDefault" placeholder="email@…" oninput="saveAutoCheckConfig()" class="cfg-input">
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--bg2)">🔧</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Método</span>
-              <span class="cfg-row-sub" id="autoCheckMethodSub"></span>
-            </div>
-            <select id="autoCheckMethod" onchange="onAutoCheckMethodChange()" class="cfg-select">
-              <option value="browser">Navegador</option>
-              <option value="supabase_cron">pg_cron</option>
-              <option value="supabase_edge">Edge Function</option>
-            </select>
-          </div>
-          <div id="autoCheckSupabaseInfo" style="display:none;padding:10px 14px;background:var(--accent-lt);border-radius:var(--r-sm);margin:6px 14px;border-left:3px solid var(--accent)">
-            <div style="font-size:.78rem;font-weight:600;color:var(--accent);margin-bottom:6px">📋 SQL para Supabase</div>
-            <pre id="autoCheckSqlCode" style="font-size:.68rem;background:var(--surface);padding:8px;border-radius:6px;overflow-x:auto;border:1px solid var(--border);white-space:pre-wrap;word-break:break-all"></pre>
-            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="copyAutoCheckSql()">📋 Copiar</button>
-              <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Supabase</button>
-            </div>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-icon" style="background:var(--bg2)">📊</span>
-            <div class="cfg-row-info">
-              <span class="cfg-row-label">Última verificação</span>
-              <span class="cfg-row-sub" id="autoCheckLastRun">Nunca executada</span>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="runAutoRegister(true)">▶ Executar</button>
-          </div>
-        </div>
-      </div>
+        /* ── Legacy sections hidden — admin show/hide still works ── */
+        #currentUserSection, #userMgmtSection, #logoSettingsSection { display:none !important; }
+      </style>
 
-      <!-- ══ DADOS & BACKUP (admin) ══ -->
-      <div class="cfg-section">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_dados')">
-          <span class="cfg-sec-icon" style="background:var(--blue-lt,#eff6ff)">💾</span>
-          <span class="cfg-sec-title">Dados &amp; Backup</span>
-          <span class="cfg-sec-arr" id="cfgArr_dados">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_dados">
-          <div class="cfg-section" id="dbBackupSection" style="display:none;border:0;padding:0;box-shadow:none">
-            <div class="cfg-row">
-              <span class="cfg-row-icon" style="background:var(--blue-lt,#eff6ff)">📸</span>
-              <div class="cfg-row-info">
-                <span class="cfg-row-label">Snapshots no Supabase</span>
-                <span class="cfg-row-sub">Até 20 snapshots por família</span>
-              </div>
-              <button class="btn btn-primary btn-sm" id="dbBackupCreateBtn" onclick="openDbBackupCreate()">📸 Criar</button>
-            </div>
-            <div id="dbBackupMigrationHint" style="display:none;margin:4px 14px 8px;padding:10px 12px;background:var(--amber-lt);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.78rem;line-height:1.5">
-              ⚠️ Execute <code>migration_db_backup.sql</code> no Supabase para habilitar esta funcionalidade.
-              <button class="btn btn-ghost btn-sm" style="margin-top:6px;display:block" onclick="window.open('https://supabase.com/dashboard','_blank')">🔗 Abrir Supabase</button>
-            </div>
-            <div style="padding:0 14px 8px">
-              <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Snapshots salvos</div>
-              <div id="dbBackupList"><div style="color:var(--muted);font-size:.8rem">Carregando…</div></div>
-            </div>
-          </div>
-          <div id="normalizeNamesSection" style="display:none">
-            <div class="cfg-row">
-              <span class="cfg-row-icon" style="background:#f0fdf4">🔤</span>
-              <div class="cfg-row-info">
-                <span class="cfg-row-label">Normalizar nomes</span>
-                <span class="cfg-row-sub" id="normalizeNamesSub">Padronizar beneficiários e categorias (Title Case)</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-                <button class="btn btn-ghost btn-sm" onclick="openNormalizeNamesPreview()">🔍 Prévia</button>
-                <button class="btn btn-primary btn-sm" id="normalizeNamesRunBtn" onclick="runNormalizeNames()">▶ Executar</button>
-              </div>
-            </div>
-            <div id="normalizeNamesLastRun" style="display:none;margin:0 14px 6px;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);font-size:.75rem;color:var(--muted)"></div>
-            <div id="normalizeNamesCronHint" style="display:none;margin:0 14px 6px;padding:10px 12px;background:var(--amber-lt);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.75rem;line-height:1.5">
-              ⚠️ <strong>pg_cron não detectado.</strong> Habilite em Supabase → Database → Extensions → pg_cron.
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="cfg-shell">
 
-      <!-- ══ VARREDURA DE REGISTROS ÓRFÃOS ══ -->
-      <div class="cfg-section" id="orphanScanSection" style="display:none">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_orphan')">
-          <span class="cfg-sec-icon" style="background:#fef2f2">🔍</span>
-          <span class="cfg-sec-title">Varredura de Registros Órfãos</span>
-          <span class="cfg-sec-arr" id="cfgArr_orphan">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_orphan">
-          <div style="font-size:.8rem;color:var(--muted);margin-bottom:14px;line-height:1.55">
-            Identifica registros sem vínculo válido no banco de dados: usuários sem família,
-            categorias de família inexistente, transações sem conta, e outros.
-            A exclusão é irreversível — revise a prévia antes de confirmar.
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-            <button class="btn btn-primary btn-sm" id="orphanScanBtn" onclick="runOrphanScan()">
-              🔍 Executar Varredura
-            </button>
-            <button class="btn btn-ghost btn-sm" id="orphanDeleteBtn"
-              onclick="confirmOrphanDelete()"
-              style="display:none;color:var(--red);border-color:var(--red)">
-              🗑 Excluir Selecionados
-            </button>
-          </div>
-          <div id="orphanScanResults"></div>
-        </div>
-      </div>
-
-            <!-- ══ VERIFICAÇÃO DE ANEXOS ══ -->
-      <div class="cfg-section">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_attach')">
-          <span class="cfg-sec-icon">📎</span>
-          <span class="cfg-sec-title">Verificação de Anexos Órfãos</span>
-          <span class="cfg-caret">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_attach">
-          <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
-            Verifica se as transações com <code>attachment_url</code> preenchido apontam para arquivos que realmente existem no Storage do Supabase.
-            Útil após operações de cópia de família, restauração de backup ou exclusões manuais no bucket.
-          </p>
-          <button id="attachScanBtn" class="btn btn-primary btn-sm" onclick="scanOrphanAttachments()">
-            🔍 Verificar Anexos
+        <!-- ── Side nav ── -->
+        <nav class="cfg-nav" id="cfgNav">
+          <div class="cfg-nav-label">Pessoal</div>
+          <button class="cfg-nav-item active" onclick="cfgShowPane('pane-conta')" id="cfgNavBtn-conta">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            Conta
           </button>
-          <div id="attachScanResults" style="margin-top:14px"></div>
-        </div>
-      </div>
 
-      <!-- ══ SOBRE ══ -->
-      <!-- ══ TRANSLATIONS ADMIN (admin only) ══════════════════════════════ -->
-      <div class="cfg-section" id="translationsSection" style="display:none">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_i18n')">
-          <span class="cfg-sec-icon" style="background:#1e3a5f">🌐</span>
-          <span class="cfg-sec-title">Traduções</span>
-          <span class="cfg-sec-arr" id="cfgArr_i18n">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_i18n" style="padding:0">
-          <div id="translationsAdminWrap" style="padding:4px 0 8px">
-            <div style="padding:24px;text-align:center;color:var(--muted)">
-              Abra esta seção para carregar o painel de traduções.
+          <div class="cfg-nav-divider"></div>
+          <div class="cfg-nav-label">Sistema</div>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-conexao')" id="cfgNavBtn-conexao">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+            Conexão
+          </button>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-auto')" id="cfgNavBtn-auto">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+            Automação
+          </button>
+
+          <div class="cfg-nav-divider"></div>
+          <div class="cfg-nav-label">Admin</div>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-familia')" id="cfgNavBtn-familia" style="display:none">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            Família
+          </button>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-dados')" id="cfgNavBtn-dados">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
+            Dados
+          </button>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-aparencia')" id="cfgNavBtn-aparencia" style="display:none">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg></span>
+            Aparência
+          </button>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-avancado')" id="cfgNavBtn-avancado" style="display:none">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+            Avançado
+          </button>
+
+          <div class="cfg-nav-divider"></div>
+          <button class="cfg-nav-item" onclick="cfgShowPane('pane-sobre')" id="cfgNavBtn-sobre">
+            <span class="cfg-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+            Sobre
+          </button>
+        </nav>
+
+        <!-- ── Content panes ── -->
+        <div class="cfg-content">
+
+          <!-- CONTA -->
+          <div class="cfg-pane active" id="pane-conta">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Conta &amp; Segurança
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Perfil</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-1a5 5 0 0 1 10 0v1"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Foto de Perfil</span>
+                  <span class="cfg-row-sub" id="settingsCurrentUser">—</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="openMyProfile()">Alterar</button>
+              </div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Senha</span>
+                  <span class="cfg-row-sub">Altere sua senha de acesso</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="showChangeMyPwd()">Alterar</button>
+              </div>
+            </div>
+
+            <!-- Aprovações pendentes (admin) -->
+            <div id="pendingApprovalsAlert" style="display:none">
+              <div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:12px;padding:0;margin-bottom:12px;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #fde68a">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div style="flex:1"><div style="font-size:.84rem;font-weight:700;color:#92400e" id="pendingApprovalsAlertText">Aprovações pendentes</div></div>
+                  <button class="btn btn-ghost btn-sm" onclick="openUserAdmin()" style="font-size:.72rem;color:#92400e;border-color:#f59e0b">Ver →</button>
+                </div>
+                <div id="inlinePendingList" style="padding:8px 12px"></div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="cfg-section">
-        <button class="cfg-sec-hdr" onclick="toggleCfgSection('cfgSec_sobre')">
-          <span class="cfg-sec-icon" style="background:var(--surface2)">ℹ️</span>
-          <span class="cfg-sec-title">Sobre</span>
-          <span class="cfg-sec-arr" id="cfgArr_sobre">▾</span>
-        </button>
-        <div class="cfg-sec-body" id="cfgSec_sobre">
-          <div class="cfg-row" style="gap:12px">
-            <img id="settingsLogoImg" src="logo.jpg" alt="Family FinTrack" style="height:32px;object-fit:contain">
-            <div>
-              <div style="font-weight:700;font-size:.9rem">Family FinTrack</div>
-              <div style="font-size:.72rem;color:var(--muted)">Família inteligente, finanças sob controle</div>
+          <!-- CONEXÃO -->
+          <div class="cfg-pane" id="pane-conexao">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Conexão &amp; Integrações
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Banco de dados</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#eff6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Supabase</span>
+                  <span class="cfg-row-sub" id="supabaseStatusLabel">Verificando...</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="document.getElementById('setupScreen').style.display='flex'">Configurar</button>
+              </div>
+              <div class="cfg-row" id="serviceRoleRow" style="display:none">
+                <div class="cfg-row-icon" style="background:#fef3c7"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                <div class="cfg-row-info" style="flex:1;min-width:0">
+                  <span class="cfg-row-label">Service Role Key <span style="font-size:.65rem;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:1px 5px">Admin</span></span>
+                  <div style="display:flex;gap:5px;margin-top:4px">
+                    <input type="password" id="serviceRoleKeyInput" placeholder="eyJhbGc..." autocomplete="off" style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:var(--surface)">
+                    <button class="btn btn-ghost btn-sm" onclick="saveServiceRoleKey()">Salvar</button>
+                    <button class="btn btn-ghost btn-sm" onclick="clearServiceRoleKey()" style="color:var(--muted)">✕</button>
+                  </div>
+                  <div id="serviceRoleKeyStatus" style="font-size:.7rem;margin-top:3px;color:var(--muted)"></div>
+                </div>
+              </div>
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Notificações &amp; IA</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:var(--green-lt)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">EmailJS</span>
+                  <span class="cfg-row-sub" id="ejSettingsSub">Envio de relatórios e notificações</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()">Configurar</button>
+              </div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#f5f3ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="#7c3aed" stroke="none" opacity=".8"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label" style="display:flex;align-items:center;gap:6px">
+                    IA — Leitura de Recibos
+                    <span id="aiStatusDot" style="width:7px;height:7px;border-radius:50%;background:#d1d5db;flex-shrink:0"></span>
+                  </span>
+                  <span class="cfg-row-sub" id="aiSettingsSub">Gemini Vision — leitura de recibos</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Configurar</button>
+              </div>
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Cache</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Cache local</span>
+                  <span class="cfg-row-sub">Limpar dados em cache no navegador</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearAppCache()">Limpar</button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+
+          <!-- AUTOMAÇÃO -->
+          <div class="cfg-pane" id="pane-auto">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Automação de Programados
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Verificação automática</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:var(--green-lt)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Verificação Automática</span>
+                  <span class="cfg-row-sub">Registra transações quando a data chegar</span>
+                </div>
+                <label class="cfg-toggle-wrap">
+                  <input type="checkbox" id="autoCheckEnabled" onchange="saveAutoCheckConfig()">
+                  <span class="cfg-toggle-track" id="autoCheckToggle"></span>
+                </label>
+              </div>
+              <div class="cfg-row" id="autoCheckFreqRow">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <span class="cfg-row-label">Frequência</span>
+                <select id="autoCheckInterval" onchange="saveAutoCheckConfig()" class="cfg-select">
+                  <option value="15">15 min</option>
+                  <option value="30">30 min</option>
+                  <option value="60" selected>1 hora</option>
+                  <option value="360">6 horas</option>
+                  <option value="720">12 horas</option>
+                  <option value="1440">1 dia</option>
+                </select>
+              </div>
+              <div class="cfg-row" id="autoCheckDaysRow">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                <span class="cfg-row-label">Antecipar registro</span>
+                <select id="autoCheckDaysAhead" onchange="saveAutoCheckConfig()" class="cfg-select">
+                  <option value="0" selected>No dia</option>
+                  <option value="1">1 dia antes</option>
+                  <option value="2">2 dias antes</option>
+                  <option value="3">3 dias antes</option>
+                  <option value="7">1 semana</option>
+                </select>
+              </div>
+              <div class="cfg-row" id="autoCheckEmailRow">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+                <span class="cfg-row-label">E-mail notificações</span>
+                <input type="email" id="autoCheckEmailDefault" placeholder="email@…" oninput="saveAutoCheckConfig()" class="cfg-input">
+              </div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Método</span>
+                  <span class="cfg-row-sub" id="autoCheckMethodSub"></span>
+                </div>
+                <select id="autoCheckMethod" onchange="onAutoCheckMethodChange()" class="cfg-select">
+                  <option value="browser">Navegador</option>
+                  <option value="supabase_cron">pg_cron</option>
+                  <option value="supabase_edge">Edge Function</option>
+                </select>
+              </div>
+            </div>
+            <div id="autoCheckSupabaseInfo" style="display:none;padding:10px 14px;background:var(--accent-lt);border-radius:var(--r);margin-bottom:12px;border-left:3px solid var(--accent)">
+              <div style="font-size:.78rem;font-weight:600;color:var(--accent);margin-bottom:6px">SQL para Supabase</div>
+              <pre id="autoCheckSqlCode" style="font-size:.68rem;background:var(--surface);padding:8px;border-radius:6px;overflow-x:auto;border:1px solid var(--border);white-space:pre-wrap;word-break:break-all"></pre>
+              <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick="copyAutoCheckSql()">Copiar SQL</button>
+                <button class="btn btn-ghost btn-sm" onclick="window.open('https://supabase.com/dashboard','_blank')">Supabase →</button>
+              </div>
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Status</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Última verificação</span>
+                  <span class="cfg-row-sub" id="autoCheckLastRun">Nunca executada</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="runAutoRegister(true)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:3px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Executar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAMÍLIA (admin) -->
+          <div class="cfg-pane" id="pane-familia">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Família &amp; Usuários
+            </div>
+            <div class="cfg-card" id="userMgmtSection2">
+              <div class="cfg-card-title">Gestão de acesso</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#e0f2fe"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Gerenciar Usuários</span>
+                  <span class="cfg-row-sub" id="userMgmtSub">Controle de acesso e permissões</span>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="userMgmtBadgeBtn" onclick="openUserAdmin()">Gerenciar</button>
+              </div>
+            </div>
+            <div id="settingsVisibilitySection" style="display:none"></div>
+          </div>
+
+          <!-- DADOS -->
+          <div class="cfg-pane" id="pane-dados">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              Dados &amp; Backup
+            </div>
+            <div class="cfg-card" id="dbBackupSection">
+              <div class="cfg-card-title">Snapshots no Supabase</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#eff6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Criar snapshot</span>
+                  <span class="cfg-row-sub">Até 20 snapshots por família</span>
+                </div>
+                <button class="btn btn-primary btn-sm" id="dbBackupCreateBtn" onclick="openDbBackupCreate()">Criar</button>
+              </div>
+              <div id="dbBackupMigrationHint" style="display:none;margin:0 14px 10px;padding:10px 12px;background:var(--amber-lt);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.78rem;line-height:1.5">
+                ⚠️ Execute <code>migration_db_backup.sql</code> no Supabase para habilitar.
+                <button class="btn btn-ghost btn-sm" style="margin-top:6px;display:block" onclick="window.open('https://supabase.com/dashboard','_blank')">Abrir Supabase →</button>
+              </div>
+              <div style="padding:0 14px 10px">
+                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Snapshots salvos</div>
+                <div id="dbBackupList"><div style="color:var(--muted);font-size:.8rem">Carregando…</div></div>
+              </div>
+            </div>
+            <div class="cfg-card" id="normalizeNamesSection" style="display:none">
+              <div class="cfg-card-title">Qualidade de dados</div>
+              <div class="cfg-row">
+                <div class="cfg-row-icon" style="background:#f0fdf4"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+                <div class="cfg-row-info">
+                  <span class="cfg-row-label">Normalizar nomes</span>
+                  <span class="cfg-row-sub" id="normalizeNamesSub">Padronizar beneficiários e categorias (Title Case)</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+                  <button class="btn btn-ghost btn-sm" onclick="openNormalizeNamesPreview()">Prévia</button>
+                  <button class="btn btn-primary btn-sm" id="normalizeNamesRunBtn" onclick="runNormalizeNames()">Executar</button>
+                </div>
+              </div>
+              <div id="normalizeNamesLastRun" style="display:none;margin:0 14px 6px;padding:8px 12px;background:var(--surface2);border-radius:var(--r-sm);font-size:.75rem;color:var(--muted)"></div>
+              <div id="normalizeNamesCronHint" style="display:none;margin:0 14px 6px;padding:10px 12px;background:var(--amber-lt);border:1px solid var(--amber);border-radius:var(--r-sm);font-size:.75rem;line-height:1.5">
+                ⚠️ <strong>pg_cron não detectado.</strong> Habilite em Supabase → Database → Extensions → pg_cron.
+              </div>
+            </div>
+          </div>
+
+          <!-- APARÊNCIA (admin) -->
+          <div class="cfg-pane" id="pane-aparencia">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+              Aparência
+            </div>
+            <div class="cfg-card" id="logoSettingsSection2">
+              <div class="cfg-card-title">Logotipo</div>
+              <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px;padding:12px 14px">
+                <label style="font-size:.82rem;font-weight:600;color:var(--text)">URL ou arquivo do logo</label>
+                <input id="appLogoUrl" type="text" placeholder="URL ou DataURL do logo" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:.82rem;background:var(--surface);color:var(--text)">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                  <input id="appLogoFile" type="file" accept="image/*" style="max-width:240px;font-size:.8rem">
+                  <button class="btn btn-primary btn-sm" onclick="saveAppLogo()">Salvar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="resetAppLogo()">↺ Padrão</button>
+                </div>
+                <img id="appLogoPreview" alt="" style="height:36px;max-width:200px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:4px;background:var(--surface)">
+              </div>
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Cursor animado</div>
+              <div class="cfg-row" style="align-items:flex-start;flex-direction:column;gap:8px;padding:12px 14px">
+                <label style="font-size:.82rem;font-weight:600;color:var(--text)">URL da imagem do cursor</label>
+                <span style="font-size:.72rem;color:var(--muted)">Imagem exibida no cursor de carregamento. Padrão: logocursor.png</span>
+                <div style="display:flex;gap:8px;align-items:center;width:100%;flex-wrap:wrap">
+                  <input id="cursorImgUrl" type="text" placeholder="logocursor.png" class="form-input" style="flex:1;min-width:200px">
+                  <button class="btn btn-primary btn-sm" onclick="saveCursorImgUrl()">Salvar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="resetCursorImgUrl()">↺ Padrão</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AVANÇADO (admin) -->
+          <div class="cfg-pane" id="pane-avancado">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Ferramentas Avançadas
+            </div>
+            <div class="cfg-card" id="orphanScanSection2">
+              <div class="cfg-card-title">Varredura de registros órfãos</div>
+              <div style="padding:12px 14px">
+                <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;line-height:1.55">Identifica registros sem vínculo válido: usuários sem família, categorias de família inexistente, transações sem conta. A exclusão é irreversível — revise a prévia antes de confirmar.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-primary btn-sm" id="orphanScanBtn" onclick="runOrphanScan()">Executar varredura</button>
+                  <button class="btn btn-ghost btn-sm" id="orphanDeleteBtn" onclick="confirmOrphanDelete()" style="display:none;color:var(--danger);border-color:var(--danger)">Excluir selecionados</button>
+                </div>
+                <div id="orphanScanResults" style="margin-top:12px"></div>
+              </div>
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-card-title">Verificação de anexos órfãos</div>
+              <div style="padding:12px 14px">
+                <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;line-height:1.55">Verifica se transações com <code>attachment_url</code> apontam para arquivos que existem no Storage do Supabase.</p>
+                <button id="attachScanBtn" class="btn btn-primary btn-sm" onclick="scanOrphanAttachments()">Verificar anexos</button>
+                <div id="attachScanResults" style="margin-top:12px"></div>
+              </div>
+            </div>
+            <div class="cfg-card" id="translationsSection2">
+              <div class="cfg-card-title">Traduções</div>
+              <div id="translationsAdminWrap" style="padding:4px 0 8px">
+                <div style="padding:24px;text-align:center;color:var(--muted)">Carregando painel de traduções…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SOBRE -->
+          <div class="cfg-pane" id="pane-sobre">
+            <div class="cfg-pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Sobre
+            </div>
+            <div class="cfg-card">
+              <div class="cfg-row" style="gap:14px;padding:16px 14px">
+                <img id="settingsLogoImg" src="logo.jpg" alt="Family FinTrack" style="height:40px;object-fit:contain;border-radius:8px">
+                <div>
+                  <div style="font-weight:700;font-size:.95rem;color:var(--text)">Family FinTrack</div>
+                  <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Família inteligente, finanças sob controle</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /cfg-content -->
+      </div><!-- /cfg-shell -->
+
+      <script>
+        // ── Tab navigation ────────────────────────────────────────────────────
+        function cfgShowPane(paneId) {
+          document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
+          document.querySelectorAll('.cfg-nav-item').forEach(b => b.classList.remove('active'));
+          const pane = document.getElementById(paneId);
+          if (pane) pane.classList.add('active');
+          const tab = paneId.replace('pane-', '');
+          const btn = document.getElementById('cfgNavBtn-' + tab);
+          if (btn) btn.classList.add('active');
+          // lazy init translations
+          if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
+            initTranslationsAdmin();
+          }
+        }
+        // ── Show admin-only nav items ────────────────────────────────────────
+        function _cfgApplyAdminNav() {
+          const isAdmin = (typeof currentUser !== 'undefined') && currentUser?.role === 'admin';
+          ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isAdmin ? '' : 'none';
+          });
+        }
+        // Called from loadSettings()
+        document.addEventListener('DOMContentLoaded', _cfgApplyAdminNav);
+      </script>
 
     </div>
 
