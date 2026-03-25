@@ -330,7 +330,7 @@ function renderForecastTables(allItems, accounts) {
             ? `<div class="forecast-amount-brl">${fmt(t.brl_amount,'BRL')}</div>`
             : (a.currency === 'BRL' ? '' : `<div class="forecast-amount-brl">&nbsp;</div>`)
           }
-          <div class="forecast-run-bal ${isNeg?'amount-neg':isPos?'amount-pos':''}">${fmt(runningBalance,a.currency)}</div>
+          <div class="forecast-run-bal ${isNeg?'amount-neg':isPos?'amount-pos':''}">Saldo: ${fmt(runningBalance,a.currency)}</div>
         </td>
       </tr>`;
     }).join('');
@@ -354,11 +354,16 @@ function renderForecastTables(allItems, accounts) {
       <div class="forecast-table-wrap" id="forecastBody-${a.id}">
         ${txs.length ? `
         <div class="table-wrap" style="margin:0">
-          <table class="resizable-table" id="forecastTable-${a.id}">
+          <table class="resizable-table forecast-grid-table" id="forecastTable-${a.id}">
+            <colgroup>
+              <col class="forecast-col-date">
+              <col class="forecast-col-desc">
+              <col class="forecast-col-amount">
+            </colgroup>
             <thead><tr>
-              <th style="width:96px;border-right:1px solid var(--border)">${t("fc.date")}</th>
-              <th>${t("fc.description")}</th>
-              <th style="text-align:right;width:100px">${t("fc.amount")}</th>
+              <th class="forecast-head-date">${t("fc.date")}</th>
+              <th class="forecast-head-desc">${t("fc.description")}</th>
+              <th class="forecast-head-amount">${t("fc.amount")}</th>
             </tr></thead>
             <tbody>${rows}</tbody>
             <tfoot>

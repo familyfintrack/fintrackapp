@@ -210,9 +210,14 @@ function _renderInvestmentsPage() {
 
     <!-- Actions bar -->
     <div class="inv-actions-bar">
-      <button class="btn btn-primary" onclick="openInvTransactionModal()">+ Movimentação</button>
-      <button class="btn btn-ghost" id="invUpdatePricesBtn" onclick="updateAllPrices()">🔄 Cotações</button>
-      <span id="invPriceUpdateStatus" style="font-size:.75rem;color:var(--muted)"></span>
+      <div class="inv-actions-left">
+        <button class="btn btn-primary" onclick="openInvTransactionModal()">+ Movimentação</button>
+      </div>
+      <div class="inv-actions-right">
+        <button class="btn btn-ghost" onclick="loadInvestmentsPage()">↻ Atualizar</button>
+        <button class="btn btn-ghost" id="invUpdatePricesBtn" onclick="updateAllPrices()">🔄 Cotações</button>
+        <span id="invPriceUpdateStatus" class="inv-price-update-status"></span>
+      </div>
     </div>
 
     <!-- Per-account portfolios -->
