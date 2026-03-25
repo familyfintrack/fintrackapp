@@ -640,7 +640,55 @@ function renderTransactions(){
     }
   }
 
-  body.innerHTML = pending.map(t => txRow(t, !singleAccId, null)).join('') + sep + confirmed.map(renderRow).join('');
+  // ── Group confirmed rows by date with alternating date bands ──
+  function renderWithDateGroups(txList, showAcc, balMapArg) {
+    if (!txList.length) return '';
+    let html = '';
+    let lastDate = null;
+    let bandIndex = 0;
+    const TODAY_STR = new Date().toISOString().slice(0,10);
+    const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    txList.forEach(tx => {
+      const txDateStr = tx.date || '';
+      if (txDateStr !== lastDate) {
+        // Compute a human-friendly label
+        const d = txDateStr ? new Date(txDateStr + 'T12:00:00') : new Date();
+        const _lang = (typeof i18n !== 'undefined' && i18n.lang) ? i18n.lang : 'pt';
+        const _DAY = {
+          pt:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+          en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+          es:['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+          fr:['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
+        };
+        const _MON = {
+          pt:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+          en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+          es:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+          fr:['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'],
+        };
+        const dayNames = _DAY[_lang] || _DAY.pt;
+        const MON_FULL = _MON[_lang] || _MON.pt;
+        const _todayLbl = typeof t === 'function' ? t('tx.date_today') : 'Hoje';
+        const _yestLbl  = typeof t === 'function' ? t('tx.date_yesterday') : 'Ontem';
+        let label;
+        if (txDateStr === TODAY_STR)     label = `${_todayLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
+        else if (txDateStr === YESTERDAY_STR) label = `${_yestLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
+        else label = `${dayNames[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]} ${d.getFullYear()}`;
+        bandIndex++;
+        const bandClass = bandIndex % 2 === 0 ? 'tx-date-band-alt' : 'tx-date-band';
+        const colspan = state.reconcileMode ? 4 : 4;
+        html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell">${label}</td></tr>`;
+        lastDate = txDateStr;
+      }
+      const runningBal = (balMapArg && Object.prototype.hasOwnProperty.call(balMapArg, tx.id)) ? balMapArg[tx.id] : null;
+      html += txRow(tx, showAcc, runningBal);
+    });
+    return html;
+  }
+
+  const pendingHtml  = pending.length  ? pending.map(t => txRow(t, !singleAccId, null)).join('') : '';
+  const confirmedHtml = renderWithDateGroups(confirmed, !singleAccId, balMap);
+  body.innerHTML = pendingHtml + sep + confirmedHtml;
   const total=state.txTotal, page=state.txPage, ps=state.txPageSize;
   document.getElementById('txPagination').innerHTML=`<span>${page*ps+1}–${Math.min((page+1)*ps,total)} de ${total}</span><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" ${page===0?'disabled':''} onclick="changePage(-1)">${t('tx.prev_page')}</button><button class="btn btn-ghost btn-sm" ${(page+1)*ps>=total?'disabled':''} onclick="changePage(1)">${t('tx.next_page')}</button></div>`;
 

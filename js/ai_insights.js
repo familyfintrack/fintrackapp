@@ -210,6 +210,12 @@ async function _aiCollectFinancialContext() {
     // Transferência entre contas da mesma família: não é receita nem despesa
     if (t.is_transfer) return { type: 'transfer', brlAmt: Math.abs(brlVal), rawAmt };
 
+    // Ajuste de saldo: correção técnica — NÃO é receita nem despesa real
+    const _desc = (t.description || '').trim().toLowerCase();
+    if (_desc === 'ajuste de saldo' || _desc.startsWith('ajuste de saldo ')) {
+      return { type: 'balance_adjustment', brlAmt: Math.abs(brlVal), rawAmt };
+    }
+
     // Receita ou despesa
     if (rawAmt >= 0) return { type: 'income',  brlAmt: brlVal,            rawAmt };
     return             { type: 'expense', brlAmt: Math.abs(brlVal), rawAmt };
@@ -440,6 +446,51 @@ async function _aiCollectFinancialContext() {
     by_category: Object.entries(schedByCategory)
       .map(([cat, v]) => ({ category:cat, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
       .sort((a,b) => (b.monthly_expense+b.monthly_income) - (a.monthly_expense+a.monthly_income)),
+  };
+
+  // ── 9b. Projeção de gastos em cartões de crédito ───────────────────
+  // Inclui apenas programados do tipo expense/income/once em contas cartão
+  // NÃO inclui card_payment (pagamento de fatura) nem ajuste de saldo
+  const ccAccIds = Object.entries(accMap)
+    .filter(([, a]) => a.is_credit_card)
+    .map(([id]) => id);
+
+  const creditCardScheduledItems = _stSched.filter(s => {
+    const isOnCcAcc = ccAccIds.includes(s.account_id);
+    const isBillPayment = s.type === 'card_payment';
+    return isOnCcAcc && !isBillPayment;
+  });
+
+  const _ccByCard = {};
+  creditCardScheduledItems.forEach(s => {
+    const accName = accMap[s.account_id]?.name || 'Cartão';
+    if (!_ccByCard[accName]) _ccByCard[accName] = { items: [], monthly_total: 0 };
+    const factor   = _monthlyFactor(s.frequency, s.custom_interval, s.custom_unit);
+    const rawAmt   = _schedAmt(s);
+    const monthly  = rawAmt * factor;
+    const catName  = catMap[s.category_id]?.name || null;
+    const nextDate = typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : null;
+    _ccByCard[accName].items.push({
+      description:    s.description,
+      category:       catName,
+      type:           s.type,
+      frequency:      s.frequency,
+      amount:         +rawAmt.toFixed(2),
+      monthly_equiv:  +monthly.toFixed(2),
+      next_date:      nextDate,
+      is_once:        s.frequency === 'once',
+    });
+    _ccByCard[accName].monthly_total += monthly;
+  });
+
+  const creditCardProjection = {
+    note: 'Gastos programados em cartões de crédito. NÃO inclui pagamento de fatura (is_card_payment). Use para avaliar compromissos futuros no cartão.',
+    cards: Object.entries(_ccByCard).map(([card, v]) => ({
+      card,
+      monthly_total:    +v.monthly_total.toFixed(2),
+      scheduled_items:  v.items.sort((a,b) => b.monthly_equiv - a.monthly_equiv),
+    })),
+    grand_monthly_total: +Object.values(_ccByCard).reduce((s, v) => s + v.monthly_total, 0).toFixed(2),
   };
 
   // ── 10. Projeção mensal para 6 meses ─────────────────────────────────
@@ -690,6 +741,7 @@ async function _aiCollectFinancialContext() {
     recurringCommitments,
     financialProjection,
     creditCardSummary,
+    creditCardProjection,
     accountBalances,
     accountSummary,
     topTransactions,
@@ -804,6 +856,7 @@ async function _callGeminiAnalysis(apiKey, ctx) {
         'TRANSFERÊNCIAS ENTRE CONTAS: NÃO são receitas nem despesas. São movimentações internas.',
         'PAGAMENTO DE FATURA DE CARTÃO: NÃO é despesa. O gasto real já está registrado como despesa no cartão.',
         'GASTOS NO CARTÃO DE CRÉDITO: SÃO despesas reais e constam em topCategorias/topBeneficiarios.',
+        'AJUSTE DE SALDO (type=balance_adjustment): Correção técnica. NÃO é receita nem despesa. IGNORAR no prognóstico.',
       ],
     },
     top_categorias_despesa: ctx.topCategories,
@@ -820,12 +873,13 @@ async function _callGeminiAnalysis(apiKey, ctx) {
       total_programados_ativos:  ctx.scheduledItems?.total_count || 0,
       compromissos_mensais:      ctx.recurringCommitments,
     },
-    projecao_6_meses:         ctx.financialProjection,
-    saldos_contas:            ctx.accountBalances,
-    resumo_por_conta:         ctx.accountSummary,
-    orcamentos:               ctx.budgets,
-    anomalias_detectadas:     ctx.anomalies,
-    top_40_transacoes:        ctx.topTransactions,
+    projecao_cartoes_credito:  ctx.creditCardProjection,
+    projecao_6_meses:          ctx.financialProjection,
+    saldos_contas:             ctx.accountBalances,
+    resumo_por_conta:          ctx.accountSummary,
+    orcamentos:                ctx.budgets,
+    anomalias_detectadas:      ctx.anomalies,
+    top_40_transacoes:         ctx.topTransactions,
   };
 
   const prompt = `Você é um consultor financeiro pessoal sênior analisando as finanças de uma família brasileira.
@@ -837,13 +891,22 @@ Responda SOMENTE com JSON válido, sem markdown, sem texto antes ou depois.
 2. PAGAMENTO DE FATURA DE CARTÃO (is_card_payment=true): NÃO é despesa adicional. É uma transferência contábil para pagar o cartão. Os gastos REAIS já estão registrados como despesas individuais no cartão. NUNCA some pagamento de fatura + gastos no cartão — isso geraria dupla contagem.
 3. GASTOS NO CARTÃO DE CRÉDITO: SÃO despesas reais. Já estão em top_categorias_despesa e top_beneficiarios.
 4. O campo creditCardSummary mostra: real_spending (despesa real) vs invoice_payment (pagamento da fatura). Use apenas real_spending para análise de gastos.
+5. AJUSTE DE SALDO (type='balance_adjustment'): São correções técnicas de registro. NÃO são receita nem despesa. NUNCA mencione ajustes de saldo como padrão de gastos, receita ou tendência no prognóstico.
 
 ═══ REGRAS DE PROGNÓSTICO ═══
-5. Para PAGAMENTOS ÚNICOS (schedOnce): considere o impacto pontual no mês em que ocorrem — não os distribua como mensais.
-6. Para RECORRENTES MENSAIS (schedMonthly): some ao fluxo mensal projetado de forma consistente.
-7. Para RECORRENTES OUTRAS FREQUÊNCIAS (schedRecurring): use monthly_equiv para distribuição mensal, mas destaque meses com picos (ex: pagamento trimestral).
-8. A projeção já considera a base histórica + programados. Analise se o prognóstico é sustentável.
-9. Use historico_12_meses para identificar sazonalidade e comparar o período atual com a média histórica.
+6. Para PAGAMENTOS ÚNICOS (pagamentos_unicos): considere o impacto PONTUAL no mês em que ocorrem — NÃO os trate como recorrentes mensais no prognóstico nem na tendência.
+7. Para RECORRENTES MENSAIS (recorrentes_mensais): some ao fluxo mensal projetado de forma consistente.
+8. Para RECORRENTES OUTRAS FREQUÊNCIAS (recorrentes_outras_frequencias): use monthly_equiv para distribuição mensal, mas destaque meses com picos (ex: pagamento trimestral).
+9. A projeção já considera a base histórica + programados. Analise se o prognóstico é sustentável.
+10. Use historico_12_meses para identificar sazonalidade e comparar o período atual com a média histórica.
+
+═══ ANÁLISE OBRIGATÓRIA DE CARTÕES DE CRÉDITO ═══
+11. O campo projecao_cartoes_credito contém gastos PROGRAMADOS em cartões (NÃO inclui pagamento de fatura).
+12. Inclua OBRIGATORIAMENTE a seção "credit_card_projection" no JSON de resposta com:
+    - Análise dos gastos programados por cartão
+    - Avaliação de sustentabilidade (gastos vs receita recorrente mensal)
+    - Alerta se total projetado supera 30% da receita recorrente mensal
+    - Identificação de gastos únicos vs recorrentes no cartão
 
 DADOS FINANCEIROS — PERÍODO ${ctx.period.from} a ${ctx.period.to}:
 ${JSON.stringify(promptData, null, 0)}
@@ -907,6 +970,23 @@ RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
       { "opportunity": "oportunidade identificada", "action": "ação recomendada" }
     ],
     "card_credit_note": "análise específica dos gastos em cartão de crédito vs pagamentos de fatura (se aplicável)"
+  },
+  "credit_card_projection": {
+    "summary": "análise geral dos compromissos programados em cartões de crédito",
+    "sustainability": "ok|warning|critical",
+    "sustainability_note": "avaliação se os gastos projetados no cartão são sustentáveis com a receita recorrente",
+    "total_monthly_projected": 0,
+    "pct_of_recurring_income": 0,
+    "cards": [
+      {
+        "card": "nome do cartão",
+        "monthly_total": 0,
+        "highlights": "principais gastos programados neste cartão",
+        "one_time_items": "gastos únicos relevantes (se houver)",
+        "alert": "alerta específico para este cartão (se aplicável)"
+      }
+    ],
+    "recommendations": ["recomendação 1 sobre uso do cartão", "recomendação 2"]
   },
   "budget_analysis": [
     { "category": "nome", "status": "ok|near|over", "insight": "análise do orçamento" }
@@ -1374,6 +1454,54 @@ function _aiRenderAnalysis(r) {
 </div>`;
   }
 
+  // ── Credit Card Projection section ────────────────────────────────────
+  let ccProjHtml = '';
+  const ccProj = r.credit_card_projection;
+  const ctxCcProj = ctx?.creditCardProjection;
+  if (ccProj && (ctxCcProj?.cards?.length || ccProj.cards?.length)) {
+    const sustMeta = {
+      ok:       { icon:'✅', color:'#22c55e', label:'Sustentável' },
+      warning:  { icon:'⚠️', color:'#f59e0b', label:'Atenção' },
+      critical: { icon:'🚨', color:'#ef4444', label:'Crítico' },
+    }[ccProj.sustainability || 'ok'] || { icon:'ℹ️', color:'#60a5fa', label:'—' };
+
+    const fmtN = v => {
+      if (v === undefined || v === null) return '—';
+      return 'R$ ' + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    };
+
+    const cardRows = (ccProj.cards || []).map(c => `
+      <div class="air-cc-proj-card">
+        <div class="air-cc-proj-card-header">
+          <span class="air-cc-proj-card-name">💳 ${esc(c.card)}</span>
+          <span class="air-cc-proj-card-total">${fmtN(c.monthly_total)}<small>/mês</small></span>
+        </div>
+        ${c.highlights ? `<p class="air-cc-proj-detail">${esc(c.highlights)}</p>` : ''}
+        ${c.one_time_items ? `<p class="air-cc-proj-once">★ Único: ${esc(c.one_time_items)}</p>` : ''}
+        ${c.alert ? `<div class="air-cc-proj-alert">⚠️ ${esc(c.alert)}</div>` : ''}
+      </div>`).join('');
+
+    const recList = (ccProj.recommendations || []).map(rec =>
+      `<li class="air-cc-proj-rec">${esc(rec)}</li>`
+    ).join('');
+
+    ccProjHtml = `
+<div class="air-section air-cc-proj-section">
+  <div class="air-section-title">💳 Projeção de Gastos — Cartões de Crédito</div>
+  <div class="air-cc-proj-header">
+    <div class="air-cc-proj-status" style="--scolor:${sustMeta.color}">
+      <span>${sustMeta.icon} ${sustMeta.label}</span>
+      <span class="air-cc-proj-total-label">Total mensal projetado: <strong>${fmtN(ccProj.total_monthly_projected || ctxCcProj?.grand_monthly_total)}</strong></span>
+      ${ccProj.pct_of_recurring_income ? `<span class="air-cc-proj-pct">${ccProj.pct_of_recurring_income}% da receita recorrente</span>` : ''}
+    </div>
+    ${ccProj.summary ? `<p class="air-cc-proj-summary">${esc(ccProj.summary)}</p>` : ''}
+    ${ccProj.sustainability_note ? `<p class="air-cc-proj-sustain">${esc(ccProj.sustainability_note)}</p>` : ''}
+  </div>
+  ${cardRows ? `<div class="air-cc-proj-cards">${cardRows}</div>` : ''}
+  ${recList ? `<ul class="air-cc-proj-recs">${recList}</ul>` : ''}
+</div>`;}
+
+
   // ── Members ───────────────────────────────────────────────────────────
   let memberHtml = '';
   if (ctx?.memberInsights?.length) {
@@ -1478,6 +1606,7 @@ function _aiRenderAnalysis(r) {
   ${aiVoiceHtml}
   ${alertsHtml}
   ${forecastBannerHtml}
+  ${ccProjHtml}
   ${actionsHtml}
   ${catHtml}
   ${budgetHtml}

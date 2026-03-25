@@ -1023,6 +1023,7 @@ document.addEventListener('i18n:changed', () => {
       if (typeof populateTxMonthFilter === 'function') populateTxMonthFilter();
       if (typeof populateSelects === 'function') populateSelects();
       if (typeof renderTxTable === 'function') renderTxTable(state.transactions);
+      if (typeof renderTransactions === 'function') renderTransactions();
     } else if (page === 'accounts') {
       if (typeof renderAccounts === 'function') renderAccounts();
     } else if (page === 'categories') {
