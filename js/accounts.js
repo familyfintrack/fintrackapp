@@ -24,8 +24,24 @@ function openConsolidateModal(accountId) {
   document.getElementById('consolidateDesc').value = 'Consolidação de saldo';
   document.getElementById('consolidatePreview').style.display = 'none';
   document.getElementById('consolidateError').style.display = 'none';
+  // Reset sign state to positive
+  if (typeof _amtSignState !== 'undefined') _amtSignState['consolidateAmount'] = false;
+  const signBtn = document.getElementById('consolidateAmountSignBtn');
+  if (signBtn) { signBtn.textContent = '+'; signBtn.classList.remove('negative'); signBtn.classList.add('positive'); }
   openModal('consolidateModal');
+  // Bind the same decimal money mask used in tx/sched modals
+  setTimeout(() => {
+    const amtEl = document.getElementById('consolidateAmount');
+    if (amtEl && typeof bindMoneyInput === 'function') {
+      amtEl._moneyBound = false; // force rebind in case of re-open
+      bindMoneyInput(amtEl);
+      amtEl.value = '0,00';
+    }
+  }, 60);
 }
+
+// ── Decimal auto-format for consolidate amount — handled by bindMoneyInput ──
+// (see ui_helpers.js — consolidateAmount is in the initMoneyInputs list)
 
 function _updateConsolidatePreview() {
   const accId = document.getElementById('consolidateAccountId')?.value;

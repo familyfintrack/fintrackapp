@@ -488,7 +488,7 @@ function setCatPickerValue(catId, ctx) {
   function _shouldMask(el){
     if(!el || el.disabled || el.readOnly) return false;
     // opt-in by id (surgical: no CSS/class refactor)
-    const ids = ['txAmount','scAmount','accountBalance','budgetAmount','debtFormAmount'];
+    const ids = ['txAmount','scAmount','accountBalance','budgetAmount','debtFormAmount','consolidateAmount'];
     return ids.includes(el.id);
   }
 
@@ -536,7 +536,7 @@ function setCatPickerValue(catId, ctx) {
   }
 
   function initMoneyInputs(){
-    ['txAmount','scAmount','accountBalance','budgetAmount','debtFormAmount'].forEach(function(id){
+    ['txAmount','scAmount','accountBalance','budgetAmount','debtFormAmount','consolidateAmount'].forEach(function(id){
       const el = document.getElementById(id);
       if(el) bindMoneyInput(el);
     });
