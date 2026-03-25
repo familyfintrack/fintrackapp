@@ -3996,6 +3996,88 @@ html, body{
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   PAGE HEADER — faixa verde escura padrão abaixo do fx-bar
+══════════════════════════════════════════════════════════════════════════ */
+.page-header-bar {
+  background: #0d2318;
+  padding: 0 16px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  /* bleed out of .content padding to fill full width */
+  margin: -24px -24px 16px -24px;
+  width: calc(100% + 48px);
+}
+.page-header-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.page-header-bar-icon {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,.10);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: rgba(255,255,255,.8);
+}
+.page-header-bar-icon svg { display: block; }
+.page-header-bar-title {
+  font-size: .95rem;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.page-header-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Slot para botões de ação (ex: Atualizar, + Novo) injetados por cada página */
+.page-header-action {
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.85);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-sans);
+  transition: background .15s, border-color .15s;
+}
+.page-header-action:hover {
+  background: rgba(255,255,255,.18);
+  border-color: rgba(255,255,255,.35);
+}
+@media (max-width: 768px) {
+  .page-header-bar {
+    margin: -16px -16px 14px -16px;
+    width: calc(100% + 32px);
+  }
+}
+@media (max-width: 480px) {
+  .page-header-bar { height: 42px; padding: 0 12px; }
+  .page-header-bar-title { font-size: .88rem; }
+  .page-header-bar-icon { width: 24px; height: 24px; border-radius: 6px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    FX RATES BAR — barra de cotações abaixo da topbar
 ══════════════════════════════════════════════════════════════════════════ */
 /* ── FX bar palette (dark-green, dark-mode-safe) ─── */
