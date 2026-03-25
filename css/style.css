@@ -15688,7 +15688,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* === THEME UPDATE === */
 .topbar, .header, .app-header {
-  background: linear-gradient(135deg, #1F6B4F, #2A8A66) !important;
+  background: linear-gradient(135deg, #0E3B2B 0%, #145238 52%, #1C6A49 100%) !important;
   color: #F7FAF8;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
@@ -15826,4 +15826,87 @@ tr.reconcile-checked td { opacity: 1 !important; }
   #page-transactions #txMainTable {
     table-layout: auto !important;
   }
+}
+
+
+/* Transactions list full-width fix */
+.transactions-page .table-wrap,
+.transactions-page .transactions-table-wrap,
+.transactions-page .transactions-list,
+.transactions-page .transactions-grid,
+.transactions-page .card-table,
+.transactions-page .list-card,
+#transactions-page .table-wrap,
+#transactions-page .transactions-table-wrap,
+#transactions-page .transactions-list,
+#transactions-page .transactions-grid,
+#transactions-page .card-table,
+#transactions-page .list-card,
+[data-page="transactions"] .table-wrap,
+[data-page="transactions"] .transactions-table-wrap,
+[data-page="transactions"] .transactions-list,
+[data-page="transactions"] .transactions-grid,
+[data-page="transactions"] .card-table,
+[data-page="transactions"] .list-card,
+section[data-page="transactions"] .table-wrap,
+section[data-page="transactions"] .transactions-table-wrap,
+section[data-page="transactions"] .transactions-list,
+section[data-page="transactions"] .transactions-grid,
+section[data-page="transactions"] .card-table,
+section[data-page="transactions"] .list-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.transactions-page table,
+.transactions-page .transactions-table,
+#transactions-page table,
+#transactions-page .transactions-table,
+[data-page="transactions"] table,
+[data-page="transactions"] .transactions-table,
+section[data-page="transactions"] table,
+section[data-page="transactions"] .transactions-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.transactions-page tbody tr,
+#transactions-page tbody tr,
+[data-page="transactions"] tbody tr,
+section[data-page="transactions"] tbody tr {
+  width: 100% !important;
+}
+
+.transactions-page th:last-child,
+.transactions-page td:last-child,
+#transactions-page th:last-child,
+#transactions-page td:last-child,
+[data-page="transactions"] th:last-child,
+[data-page="transactions"] td:last-child,
+section[data-page="transactions"] th:last-child,
+section[data-page="transactions"] td:last-child {
+  width: 220px !important;
+  min-width: 220px !important;
+}
+
+.transactions-page th:nth-child(2),
+.transactions-page td:nth-child(2),
+#transactions-page th:nth-child(2),
+#transactions-page td:nth-child(2),
+[data-page="transactions"] th:nth-child(2),
+[data-page="transactions"] td:nth-child(2),
+section[data-page="transactions"] th:nth-child(2),
+section[data-page="transactions"] td:nth-child(2) {
+  width: auto !important;
+}
+
+.transactions-page .content,
+#transactions-page .content,
+[data-page="transactions"] .content,
+section[data-page="transactions"] .content {
+  width: 100% !important;
+  max-width: 100% !important;
 }
