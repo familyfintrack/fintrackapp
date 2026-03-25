@@ -15054,3 +15054,179 @@ tr.reconcile-checked td { opacity: 1 !important; }
     border: 1.5px solid var(--border);
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLET / iPAD — Transactions page layout fix
+   Breakpoint 641px–1024px: sidebar is hidden, content is full-width,
+   but previous CSS only had desktop (>768) and phone (≤640) rules.
+   This fills the gap so the transactions page uses the space correctly.
+═══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 641px) and (max-width: 1024px) {
+
+  /* ── Content area: use full width since sidebar is hidden ── */
+  .content {
+    padding: 16px 18px;
+    padding-bottom: calc(var(--bottom-h, 64px) + 24px + env(safe-area-inset-bottom));
+  }
+
+  /* ── Transactions page header ── */
+  .tx-page-header {
+    flex-wrap: nowrap;
+    margin-bottom: 10px;
+    gap: 10px;
+  }
+
+  /* ── Filter bar: single row on tablet (enough space) ── */
+  .tx-filter-bar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  /* Search: takes flexible space, not full width */
+  .tx-search-wrap {
+    flex: 1;
+    min-width: 160px;
+    max-width: 280px;
+  }
+
+  /* Chips row: scrollable on tablet instead of wrapping */
+  .tx-filter-chips-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+  .tx-filter-chips-row::-webkit-scrollbar { display: none; }
+
+  .tx-chip-select {
+    font-size: .76rem;
+    padding: 5px 26px 5px 11px;
+    max-width: 140px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .tx-view-btns {
+    flex-shrink: 0;
+    margin-left: 0;
+  }
+
+  /* ── Transaction table: proper desktop layout, not the card/block layout ── */
+  /* Undo any phone-only block overrides that might bleed into tablet */
+  #page-transactions table,
+  #page-transactions tbody,
+  #page-transactions tr,
+  #page-transactions td {
+    display: revert !important;
+    width: revert !important;
+  }
+  #page-transactions #txFlatCard table thead { display: revert !important; }
+  #page-transactions #txFlatCard .table-wrap { overflow: auto; }
+
+  /* Standard table row (not card) */
+  #page-transactions tbody tr {
+    display: table-row !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    grid-template-columns: unset !important;
+    transform: none !important;
+  }
+  #page-transactions tbody tr:hover { background: var(--surface2) !important; }
+  #page-transactions tbody td {
+    display: table-cell !important;
+    width: revert !important;
+    padding: 8px 10px !important;
+    border: none !important;
+    vertical-align: middle;
+  }
+
+  /* Date header rows stay as flex rows */
+  #page-transactions tbody tr.tx-date-header-row {
+    display: flex !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 14px 0 4px !important;
+    margin: 0 !important;
+  }
+
+  /* Keep band colouring light on tablet */
+  tr.tx-date-band:not(.tx-date-header-row) { border-left: none !important; }
+  tr.tx-date-band-alt:not(.tx-date-header-row) {
+    border-left: none !important;
+    background: color-mix(in srgb, var(--surface2) 50%, transparent) !important;
+  }
+
+  /* Pending row */
+  #page-transactions tbody tr.tx-pending {
+    background: rgba(251,191,36,.05) !important;
+    border-left: 3px solid #f59e0b !important;
+  }
+
+  /* Show/hide action buttons on tablet */
+  #page-transactions tbody td.tx-v2-act { display: table-cell !important; }
+  .tx-reconcile-btn { display: inline-flex !important; }
+
+  /* Table header visible */
+  #page-transactions thead { display: table-header-group !important; }
+
+  /* Table column widths for tablet viewport */
+  .tx-v2-th-date  { width: 72px; }
+  .tx-v2-th-right { width: 100px; }
+  .tx-v2-th-act   { width: 76px; }
+
+  /* Typography: between desktop and phone */
+  .tx-v2-title  { font-size: .875rem; }
+  .tx-v2-meta   { font-size: .71rem;  }
+  .tx-v2-amt    { font-size: .92rem;  }
+  .tx-date-day  { font-size: .82rem;  }
+  .tx-date-mon  { font-size: .6rem;   }
+
+  /* Separator rows (CONFIRMADAS) */
+  #page-transactions tbody tr:has(.tx-v2-sep) {
+    display: table-row !important;
+    background: var(--surface2) !important;
+  }
+
+  /* Pagination bar */
+  .tx-pagination {
+    padding: 8px 12px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  /* Summary bar */
+  #txSummaryBar { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+  /* Group view: tighter cards */
+  .tx-group-wrap { margin-bottom: 10px; }
+
+  /* Page header green bar: full width */
+  .page-header-bar {
+    margin: -16px -18px 14px -18px;
+    width: calc(100% + 36px);
+  }
+}
+
+/* ── iPAD landscape (1024px+): ensure sidebar can show if user opens it ── */
+@media (min-width: 1025px) {
+  /* Restore desktop layout — sidebar visible, content with sidebar offset */
+  .content {
+    padding: 24px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+}
