@@ -942,6 +942,9 @@ function navigate(page){
     const fxBar = document.getElementById('fxRatesBadge');
     if (fxBar) {
       pageEl.insertBefore(fxBar, bar.nextSibling);
+      if (typeof _renderFxBadge === 'function') {
+        try { _renderFxBadge(); } catch (_) {}
+      }
     }
   })(page);
   state.currentPage=page;closeSidebar();

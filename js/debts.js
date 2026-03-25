@@ -218,6 +218,17 @@ function renderDebtsPage() {
         '</button>' +
       '</div>';
     page.insertBefore(_bar, page.firstChild);
+
+    // Re-inject FX bar below the page title bar.
+    // The debts page rebuilds its innerHTML, which removes the shared FX bar
+    // from the DOM if we do not place it back explicitly.
+    const _fxBar = document.getElementById('fxRatesBadge');
+    if (_fxBar) {
+      page.insertBefore(_fxBar, _bar.nextSibling);
+      _fxBar.style.display = '';
+    } else if (typeof _renderFxBadge === 'function') {
+      try { _renderFxBadge(); } catch (_) {}
+    }
   }
 }
 
