@@ -152,7 +152,9 @@ function renderDebtsPage() {
   const page = document.getElementById('page-debts');
   if (!page) return;
 
-  const active   = _dbt.debts.filter(d => d.status === 'active');
+  
+  const preservedFxBar = document.getElementById('fxRatesBadge');
+const active   = _dbt.debts.filter(d => d.status === 'active');
   const settled  = _dbt.debts.filter(d => d.status === 'settled');
   const totalActive = active.reduce((s, d) => s + _debtCurrentBalance(d), 0);
   const totalOrig   = active.reduce((s, d) => s + parseFloat(d.original_amount || 0), 0);
@@ -222,12 +224,20 @@ function renderDebtsPage() {
     // Re-inject FX bar below the page title bar.
     // The debts page rebuilds its innerHTML, which removes the shared FX bar
     // from the DOM if we do not place it back explicitly.
-    const _fxBar = document.getElementById('fxRatesBadge');
+    const _fxBar = preservedFxBar || document.getElementById('fxRatesBadge');
     if (_fxBar) {
       page.insertBefore(_fxBar, _bar.nextSibling);
       _fxBar.style.display = '';
+      if (typeof _renderFxBadge === 'function') {
+        try { _renderFxBadge(); } catch (_) {}
+      }
     } else if (typeof _renderFxBadge === 'function') {
       try { _renderFxBadge(); } catch (_) {}
+      const recreatedFxBar = document.getElementById('fxRatesBadge');
+      if (recreatedFxBar) {
+        page.insertBefore(recreatedFxBar, _bar.nextSibling);
+        recreatedFxBar.style.display = '';
+      }
     }
   }
 }

@@ -939,9 +939,14 @@ function navigate(page){
     pageEl.insertBefore(bar, pageEl.firstChild);
 
     // Keep FX bar directly below the page title bar
-    const fxBar = document.getElementById('fxRatesBadge');
+    let fxBar = document.getElementById('fxRatesBadge');
+    if (!fxBar && typeof _renderFxBadge === 'function') {
+      try { _renderFxBadge(); } catch (_) {}
+      fxBar = document.getElementById('fxRatesBadge');
+    }
     if (fxBar) {
       pageEl.insertBefore(fxBar, bar.nextSibling);
+      fxBar.style.display = '';
       if (typeof _renderFxBadge === 'function') {
         try { _renderFxBadge(); } catch (_) {}
       }
