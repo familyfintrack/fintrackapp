@@ -532,9 +532,9 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <img id="topbarLogoImg" src="" alt="Family FinTrack" style="height:36px;width:auto;object-fit:contain;display:none">
-      <!-- Mobile: icon only. Desktop: text title -->
-      <span class="topbar-page-icon" id="pageIcon" aria-hidden="true">⊞</span>
-      <span class="topbar-title" id="pageTitle">Dashboard</span>
+      <!-- pageIcon and pageTitle removed: title shown in page-header-bar -->
+      <span class="topbar-page-icon" id="pageIcon" aria-hidden="true" style="display:none"></span>
+      <span class="topbar-title" id="pageTitle" style="display:none">Dashboard</span>
     </div>
     <div class="topbar-actions">
       <button id="privacyToggleBtn" onclick="togglePrivacy()" title="Ocultar valores" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--muted);display:flex;align-items:center;transition:color 0.2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
@@ -774,7 +774,7 @@
       <!-- Header row: title + actions -->
       <div class="tx-page-header">
         <div class="tx-page-title-area">
-          <span id="txCount" class="tx-page-count">Transações</span>
+          <span id="txCount" class="tx-page-count"></span>
           <div class="tx-page-totals">
             <span id="txTotalIncome"  class="badge badge-green"></span>
             <span id="txTotalExpense" class="badge badge-red"></span>
@@ -893,7 +893,7 @@
     <!-- ACCOUNTS -->
     <div class="page" id="page-accounts">
       <div class="section-header mb-6">
-        <span class="section-title">Minhas Contas<button onclick="navigate('help');setTimeout(()=>helpShowArticle('accounts','accounts-types'),200)" class="help-ctx-btn" title="Ajuda">?</button></span>
+
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openGroupModal()" title="Gerenciar grupos">🗂️ Grupos</button>
           <button class="btn btn-primary" onclick="openAccountModal()">+ Nova Conta</button>
@@ -919,7 +919,6 @@
 
     <div class="page" id="page-investments">
       <div class="section-header mb-4">
-        <span class="section-title">📈 Carteira de Investimentos</span>
         <button class="btn btn-ghost btn-sm" onclick="loadInvestmentsPage()">🔄 Atualizar</button>
       </div>
       <div id="investmentsContent">
@@ -933,7 +932,6 @@
       <!-- ── Reports page header ── -->
       <div class="rpt-page-header mb-4">
         <div class="rpt-header-left">
-          <span class="section-title" style="font-size:1.15rem">Relatórios</span>
         </div>
         <div class="rpt-view-tabs">
           <button class="rpt-view-tab active" id="rptBtnRegular"  onclick="setReportView('regular')">
@@ -1238,7 +1236,7 @@
     <div class="page" id="page-categories">
       <!-- Header -->
       <div class="section-header mb-6">
-        <span class="section-title">Categorias<button onclick="navigate('help');setTimeout(()=>helpShowArticle('categories','categories-intro'),200)" class="help-ctx-btn" title="Ajuda">?</button></span>
+
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">+ Despesa</button>
           <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','receita')">+ Receita</button>
@@ -1286,7 +1284,7 @@
     <!-- PAYEES -->
     <div class="page" id="page-payees">
       <div class="section-header mb-6">
-        <span class="section-title">Beneficiários &amp; Fontes Pagadoras</span>
+
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost" onclick="openNormalizePayeesModal()" title="Padronizar Title Case em todos os nomes">🔤 Normalizar Nomes</button>
           <button class="btn btn-ghost" onclick="openPayeeClipboardImport()">📋 Importar</button>
@@ -1315,7 +1313,7 @@
     <div class="page" id="page-scheduled">
       <!-- Mobile header -->
       <div class="section-header mb-6">
-        <span class="section-title">Programados<button onclick="navigate('help');setTimeout(()=>helpShowArticle('scheduled','scheduled-intro'),200)" class="help-ctx-btn" title="Ajuda">?</button></span>
+
         <div style="display:flex;gap:8px;align-items:center">
           <!-- View toggle: list / calendar -->
           <div class="sc-view-toggle" id="scViewToggle">
@@ -1444,7 +1442,7 @@
     <!-- Feature 4: Lista de Mercado -->
     <div class="page" id="page-grocery">
       <div class="section-header mb-6">
-        <span class="section-title">🛒 Lista de Mercado</span>
+
         <button class="btn btn-primary" onclick="openCreateGroceryList()">+ Nova Lista</button>
       </div>
       <div id="groceryListsContainer"></div>
@@ -2147,7 +2145,7 @@
     <!-- ══ PRICES PAGE ══════════════════════════════════════════════════════ -->
     <div class="page" id="page-prices">
       <div class="section-header mb-6">
-        <span class="section-title">🏷️ Gestão de Preços</span>
+
         <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openPricesStoreManager()">🏪 Estabelecimentos</button>
@@ -2360,10 +2358,7 @@
         .audit-counter:active { transform:translateY(0); }
       </style>
 
-      <div class="section-header mb-6">
-        <span class="section-title">📋 Histórico de Auto-registros</span>
-        <button class="btn btn-ghost btn-sm" onclick="loadAuditLogs()" id="auditRefreshBtn">↺ Atualizar</button>
-      </div>
+
 
       <!-- KPI counters -->
       <div class="audit-counters">
@@ -2533,7 +2528,6 @@
 
       <!-- Header + filtros -->
       <div class="tel-header">
-        <div class="tel-header-title">📊 Telemetria &amp; Uso</div>
         <div class="tel-filters">
           <select id="telPeriod" onchange="_telApplyFilters()">
             <option value="7">7 dias</option>
