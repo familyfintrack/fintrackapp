@@ -16237,20 +16237,6 @@ section[data-page="transactions"] .content {
   text-align: center !important;
 }
 
-/* Darker topbar action buttons */
-.topbar .user-actions button,
-.topbar button,
-.app-header .user-actions button,
-.header .user-actions button,
-.topbar .btn,
-.app-header .btn,
-.header .btn {
-  background: #1a3d32 !important;
-  border-color: rgba(255,255,255,.14) !important;
-  color: #F7FAF8 !important;
-}
-
-
 /* Lime accent border between topbar and title bar */
 .topbar, .header, .app-header {
   border-bottom: 3px solid #22c55e !important;
@@ -16296,10 +16282,45 @@ section[data-page="transactions"] .content {
   margin: 0 auto;
 }
 
-/* Topbar matches investment/debt banner style */
+
+
+
+/* Topbar gradient restored */
 .topbar,
 .header,
 .app-header {
-  background: linear-gradient(135deg, #062e1f 0%, #0b3d2a 40%, #14532d 100%) !important;
+  background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
   color: #F7FAF8;
+}
+
+
+/* Topbar buttons aligned to privacy button style */
+.topbar .user-actions button,
+.topbar button,
+.app-header .user-actions button,
+.header .user-actions button,
+.topbar .btn,
+.app-header .btn,
+.header .btn,
+.topbar .icon-btn,
+.app-header .icon-btn,
+.header .icon-btn {
+  background: rgba(255,255,255,0.14) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  color: #F7FAF8 !important;
+  box-shadow: none !important;
+}
+
+.topbar .user-actions button:hover,
+.topbar button:hover,
+.app-header .user-actions button:hover,
+.header .user-actions button:hover,
+.topbar .btn:hover,
+.app-header .btn:hover,
+.header .btn:hover,
+.topbar .icon-btn:hover,
+.app-header .icon-btn:hover,
+.header .icon-btn:hover {
+  background: rgba(255,255,255,0.22) !important;
+  border-color: rgba(255,255,255,0.30) !important;
 }
