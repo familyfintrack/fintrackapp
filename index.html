@@ -22,6 +22,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2860,6 +2861,58 @@
         .tel-ai-table tr:last-child td { border-bottom:none; }
         .tel-ai-col-tokens { display:none; }
         @media (min-width:560px) { .tel-ai-col-tokens { display:table-cell; } }
+
+        /* ── Telemetry error list — expandable cards ── */
+        .tel-error-list { display:flex; flex-direction:column; gap:6px; }
+        .tel-error-item {
+          border:1px solid var(--border); border-radius:9px; overflow:hidden;
+          background:var(--surface);
+        }
+        .tel-error-header {
+          display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+          padding:8px 12px; cursor:pointer; user-select:none;
+          transition:background .12s; gap:6px;
+        }
+        .tel-error-header:hover { background:var(--surface2); }
+        .tel-error-main { flex:1; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .tel-error-type {
+          background:#fee2e2; color:#dc2626; font-size:.68rem; font-weight:700;
+          padding:2px 7px; border-radius:5px; white-space:nowrap; flex-shrink:0;
+        }
+        .tel-error-msg {
+          font-size:.78rem; color:var(--text); overflow:hidden; text-overflow:ellipsis;
+          white-space:nowrap; flex:1; min-width:0;
+        }
+        .tel-error-meta { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+        .tel-error-date { font-size:.7rem; color:var(--muted); white-space:nowrap; }
+        .tel-error-user { font-size:.7rem; color:var(--muted); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tel-error-toggle { font-size:.65rem; color:var(--muted); width:14px; text-align:center; flex-shrink:0; }
+        .tel-error-detail {
+          border-top:1px solid var(--border); padding:10px 12px;
+          background:var(--surface2);
+        }
+        .tel-error-detail-grid {
+          display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-bottom:10px;
+        }
+        @media (max-width:480px) { .tel-error-detail-grid { grid-template-columns:1fr; } }
+        .tel-error-dl { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); display:block; }
+        .tel-error-dd { font-size:.76rem; color:var(--text2); }
+        .tel-error-payload-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
+        .tel-error-payload {
+          background:var(--bg); border:1px solid var(--border); border-radius:6px;
+          padding:8px 10px; font-size:.7rem; font-family:monospace;
+          overflow-x:auto; max-height:160px; overflow-y:auto;
+          color:var(--text2); line-height:1.5; margin:0 0 8px 0; white-space:pre;
+        }
+        .tel-error-actions { display:flex; align-items:center; gap:8px; }
+        .tel-copy-btn {
+          display:inline-flex; align-items:center; gap:5px;
+          padding:5px 12px; border-radius:7px; border:1.5px solid var(--accent);
+          background:var(--accent-lt); color:var(--accent);
+          font-size:.75rem; font-weight:700; cursor:pointer; font-family:inherit;
+          transition:background .12s;
+        }
+        .tel-copy-btn:hover { background:var(--accent); color:#fff; }
       </style>
 
       <!-- Header + filtros -->
