@@ -1626,8 +1626,8 @@ function _telRenderCurrentTab() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const _telEsc = s => String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const _telFamName  = id => _telDash.allFams.find(f => f.id === id)?.name  || id?.slice(0,8)+'…';
-const _telUserName = id => { const u = _telDash.allUsers.find(u => u.id === id); return u ? (u.name || u.email) : (id?.slice(0,8)+'…'); };
+const _telFamName   = id => _telDash.allFams.find(f => f.id === id)?.name  || '—';
+const _telUserName  = id => { const u = _telDash.allUsers.find(u => u.id === id); return u ? (u.name || u.email || '—') : '—'; };
 const _telUserEmail = id => _telDash.allUsers.find(u => u.id === id)?.email || '';
 
 function _telRenderEmpty() {
@@ -1779,7 +1779,7 @@ function _telRenderErrors(rows) {
       const usr = r.user_id ? _telUserName(r.user_id) : '—';
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:4px;color:var(--muted);white-space:nowrap">${d}</td>
-        <td style="padding:4px;color:var(--muted);white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis">${_telEsc(usr)}</td>
+        <td style="padding:4px;color:var(--muted);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${_telEsc(r.user_id ? _telUserEmail(r.user_id) : '')}">${_telEsc(usr)}</td>
         <td style="padding:4px;white-space:nowrap"><span style="background:var(--danger-lt,#fee2e2);color:var(--danger);border-radius:4px;padding:1px 5px;font-size:.7rem">${_telEsc(r.event_type)}</span></td>
         <td style="padding:4px;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_telEsc(msg)}">${_telEsc(msg)}</td>
       </tr>`;
