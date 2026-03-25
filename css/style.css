@@ -235,7 +235,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .topbar-left{display:flex;align-items:center;gap:12px;}
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:var(--r-sm);color:var(--muted);flex-shrink:0;}
 .hamburger:hover{background:var(--bg2);color:var(--text);}
-.topbar-title{font-family:var(--font-serif);font-size:1.15rem;font-weight:500;color:var(--text);letter-spacing:-.01em;}
+.topbar-title{font-family:var(--font-serif);font-size:1.15rem;font-weight:500;color:var(--text);letter-spacing:-.01em;display:none!important;}
 .topbar-actions{display:flex;gap:8px;align-items:center;}
 
 /* BUTTONS */
@@ -5855,6 +5855,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 
 /* ── Topbar page icon (mobile only) ────────────────────────────────── */
 .topbar-page-icon {
+  display:none!important;
   display: none;           /* hidden on desktop */
   align-items: center;
   justify-content: center;
