@@ -15688,7 +15688,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* === THEME UPDATE === */
 .topbar, .header, .app-header {
-  background: linear-gradient(135deg, #0E3B2B 0%, #145238 52%, #1C6A49 100%) !important;
+  background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
   color: #F7FAF8;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
@@ -16269,4 +16269,13 @@ section[data-page="transactions"] .content {
 /* Lime accent border between topbar and title bar */
 .topbar, .header, .app-header {
   border-bottom: 3px solid #22c55e !important;
+}
+
+
+/* Topbar gradient tuned from Family Fintrack logo tones */
+.topbar,
+.header,
+.app-header {
+  background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
+  color: #F7FAF8;
 }
