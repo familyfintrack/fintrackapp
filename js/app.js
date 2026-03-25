@@ -614,7 +614,9 @@ const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Co
   grocery:'Lista de Mercado',
   ai_insights:'AI Insights',
   debts:'Dívidas',
-  help:'Ajuda'};
+  help:'Ajuda',
+  audit:'Auditoria de Programadas',
+  telemetry:'Telemetria'};
 
 // SVG icons used in the mobile topbar (replaces text title on small screens)
 const _pageIconsSVG = {

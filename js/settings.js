@@ -581,8 +581,12 @@ function loadSettings() {
 
 
 
-  // Seções admin-only
-  const adminSections = ['settingsVisibilitySection', 'userMgmtSection', 'normalizeNamesSection', 'orphanScanSection'];
+  // Apply admin nav tabs
+  if (typeof _cfgApplyAdminNav === 'function') _cfgApplyAdminNav();
+
+  // Seções admin-only (new design uses *2 IDs, legacy IDs kept for JS compat)
+  const adminSections = ['settingsVisibilitySection', 'userMgmtSection2', 'normalizeNamesSection',
+                         'orphanScanSection', 'orphanScanSection2', 'translationsSection2', 'logoSettingsSection2'];
   adminSections.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
@@ -617,7 +621,7 @@ function loadSettings() {
 function initLogoSettings() {
   // Admin-only section: show/hide
   const isAdmin = (currentUser?.role==='admin');
-  const sec = document.getElementById('logoSettingsSection');
+  const sec = document.getElementById('logoSettingsSection2') || document.getElementById('logoSettingsSection');
   if(sec) sec.style.display = isAdmin ? '' : 'none';
   if(!isAdmin) return;
 
@@ -911,19 +915,10 @@ async function resetMenuVisibility() {
 // ═══════════════════════════════════════════════════════════════════
 // ── Configurações: expand/collapse section ──────────────────────────
 function toggleCfgSection(bodyId) {
-  const body = document.getElementById(bodyId);
-  if (!body) return;
-  const isOpen = body.classList.toggle('open');
-  // Arrow indicator
-  const arrId = 'cfgArr_' + bodyId.replace('cfgSec_', '');
-  const arr = document.getElementById(arrId);
-  if (arr) arr.textContent = isOpen ? '▾' : '▸';
-
-  // Lazy-init translations admin when section is opened
-  if (bodyId === 'cfgSec_i18n' && isOpen) {
-    if (typeof initTranslationsAdmin === 'function') {
-      initTranslationsAdmin();
-    }
+  // Legacy accordion toggle — no-op in new tabbed design
+  // Translations lazy-init still needed
+  if (bodyId === 'cfgSec_i18n') {
+    if (typeof initTranslationsAdmin === 'function') initTranslationsAdmin();
   }
 }
 
