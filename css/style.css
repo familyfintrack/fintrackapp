@@ -4030,7 +4030,7 @@ html, body{
 }
 .page-header-bar-icon svg { display: block; }
 .page-header-bar-title {
-  font-size: .95rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: #ffffff;
   letter-spacing: -.01em;
@@ -4073,7 +4073,7 @@ html, body{
 }
 @media (max-width: 480px) {
   .page-header-bar { height: 42px; padding: 0 12px; }
-  .page-header-bar-title { font-size: .88rem; }
+  .page-header-bar-title { font-size: .97rem; }
   .page-header-bar-icon { width: 24px; height: 24px; border-radius: 6px; }
 }
 
