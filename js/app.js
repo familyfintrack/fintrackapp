@@ -938,11 +938,10 @@ function navigate(page){
     bar.innerHTML = `<div class="page-header-bar-left"><div class="page-header-bar-icon">${icon}</div><span class="page-header-bar-title">${title}</span></div><div class="page-header-bar-right">${actions[pg]||''}</div>`;
     pageEl.insertBefore(bar, pageEl.firstChild);
 
+    // Keep FX bar directly below the page title bar
     const fxBar = document.getElementById('fxRatesBadge');
     if (fxBar) {
-      const afterHeader = bar.nextSibling;
-      if (afterHeader) pageEl.insertBefore(fxBar, afterHeader);
-      else pageEl.appendChild(fxBar);
+      pageEl.insertBefore(fxBar, bar.nextSibling);
     }
   })(page);
   state.currentPage=page;closeSidebar();
@@ -1204,4 +1203,16 @@ function _i18nUpdateTopbarLabel() {
   });
   // Also update profile selector if open
   if (typeof profileSelectLang === 'function') profileSelectLang(lang, true);
+}
+
+
+// === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
 }
