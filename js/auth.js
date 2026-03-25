@@ -1558,8 +1558,9 @@ async function _renderPendingTab() {
   }
 
   // Montar opções de família para o select inline
-  const famOptions = '<option value="">— Nenhuma (admin global) —</option>'
-    + (_families || []).map(f => '<option value="' + esc(f.id) + '">' + esc(f.name) + '</option>').join('');
+  const famOptions = '<option value="" disabled selected style="color:var(--muted)">— Selecione uma família —</option>'
+    + (_families || []).map(f => '<option value="' + esc(f.id) + '">' + esc(f.name) + '</option>').join('')
+    + '<option value="__new_family__">➕ Criar nova família (será Owner)</option>';
 
   let html = '<div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">'
     + pendingUsers.length + ' solicitação(ões) aguardando aprovação</div>'
@@ -1602,8 +1603,16 @@ async function _renderPendingTab() {
 // Aprovação direta da aba Pendentes (sem abrir approvalModal)
 async function _inlineApprove(userId, userName) {
   const famSel = document.getElementById('pendingFam_' + userId);
-  const familyId   = famSel?.value || null;
+  const rawVal = famSel?.value || '';
+  // Special value: user will create their own family after first login
+  const createNewFamily = rawVal === '__new_family__';
+  const familyId   = (rawVal && !createNewFamily) ? rawVal : null;
   const familyName = _families?.find(f => f.id === familyId)?.name || null;
+  // Validate selection
+  if (!rawVal) {
+    toast('Selecione uma família ou escolha "Criar nova família".', 'warning');
+    return;
+  }
 
     document.querySelectorAll('[data-uid="' + userId + '"]').forEach(b => { b.disabled = true; });
 
@@ -1617,13 +1626,19 @@ async function _inlineApprove(userId, userName) {
     const displayName = userRow.name || userName;
 
     // Aprovar no app_users
-    const { error: updErr } = await sb.from('app_users').update({
-      active: true, approved: true, family_id: familyId, must_change_pwd: true,
-    }).eq('id', userId);
+    // createNewFamily=true: aprovar sem family_id, wizard cria família no primeiro login
+    const updatePayload = {
+      active: true, approved: true, must_change_pwd: true,
+      family_id: createNewFamily ? null : familyId,
+      role: createNewFamily ? 'user' : undefined,
+    };
+    // Remove undefined keys
+    Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
+    const { error: updErr } = await sb.from('app_users').update(updatePayload).eq('id', userId);
     if (updErr) throw new Error('Erro ao aprovar: ' + updErr.message);
 
-    // family_members
-    if (familyId) {
+    // family_members — skip if user will create their own family
+    if (familyId && !createNewFamily) {
       const { error: fmErr } = await sb.from('family_members').upsert(
         { user_id: userId, family_id: familyId, role: 'user' },
         { onConflict: 'user_id,family_id' }
@@ -1632,7 +1647,7 @@ async function _inlineApprove(userId, userName) {
     }
 
     // RPC confirma email no Supabase Auth
-    const { error: rpcApproveErr } = await sb.rpc('approve_user', { p_user_id: userId, p_family_id: familyId || null });
+    const { error: rpcApproveErr } = await sb.rpc('approve_user', { p_user_id: userId, p_family_id: createNewFamily ? null : (familyId || null) });
     if (rpcApproveErr) console.warn('[approve] RPC:', rpcApproveErr.message);
 
     // signUp se não existe no Auth
@@ -1644,7 +1659,7 @@ async function _inlineApprove(userId, userName) {
     // Email de boas-vindas
     await _sendApprovalEmail(userEmail, displayName, familyName);
 
-    toast('✓ ' + displayName + ' aprovado!' + (familyName ? ' Família: ' + familyName : ''), 'success');
+    toast('✓ ' + displayName + ' aprovado!' + (createNewFamily ? ' Criará família no primeiro login.' : familyName ? ' Família: ' + familyName : ''), 'success');
     await _checkPendingApprovals();
     await _renderPendingTab();
 
@@ -3198,7 +3213,7 @@ async function doApproveUser() {
           <div style="font-size:.78rem;color:var(--muted);margin-top:10px">📧 E-mail de boas-vindas enviado.</div>
         </div>`;
     }
-    toast('✓ ' + displayName + ' aprovado!' + (familyName ? ' Família: ' + familyName : ''), 'success');
+    toast('✓ ' + displayName + ' aprovado!' + (createNewFamily ? ' Criará família no primeiro login.' : familyName ? ' Família: ' + familyName : ''), 'success');
     await loadUsersList();
     await _checkPendingApprovals();
     if (document.getElementById('uaPending')?.style.display !== 'none') _renderPendingTab();
