@@ -374,10 +374,17 @@ async function buildAccountRunningBalanceMap(accountId) {
 function txRow(t, showAccount=true, runningBalance=null) {
   const isPending = (t.status||'confirmed') === 'pending';
 
-  // Compact date: "13 Mar"
+  // Two-line date: day number + month abbrev — renders compactly on mobile
   const d   = t.date ? new Date(t.date + 'T12:00:00') : new Date();
-  const MON = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const dateStr = `${d.getDate()} ${MON[d.getMonth()]}`;
+  const _lang = (typeof i18n !== 'undefined' && i18n.lang) ? i18n.lang : 'pt';
+  const _MONS = {
+    pt:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+    en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    es:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    fr:['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+  };
+  const MON = _MONS[_lang] || _MONS.pt;
+  const dateStr = `<span class="tx-date-day">${d.getDate()}</span><span class="tx-date-mon">${MON[d.getMonth()]}</span>`;
 
   const _catIcon  = t.categories?.icon  || '';
   const _catColor = t.categories?.color || '';
