@@ -146,12 +146,40 @@ function _renderPricesPage() {
     items = items.filter(i => i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q));
   }
   if (_px.catFilter)   items = items.filter(i => i.category_id === _px.catFilter);
-  if (_px.storeFilter && _px.groupBy !== 'store') {
-    // store filter when not in store-group mode: filter by storeFilter (noop at item level — applied in history)
-    // items don't carry store_id directly; keep all and let detail show filtered history
-  }
+
   const countEl = document.getElementById('pricesCount');
   if (countEl) countEl.textContent = items.length + (items.length !== 1 ? ' itens' : ' item');
+
+  // ── Summary hero strip ────────────────────────────────────────────────
+  const heroEl = document.getElementById('pricesHero');
+  if (heroEl && _px.items.length) {
+    const allWithPrice  = [..._px.items].filter(i => i.last_price != null);
+    const totalItems    = _px.items.length;
+    const totalRecords  = _px.items.reduce((s, i) => s + (i.record_count || 0), 0);
+    const sorted        = [...allWithPrice].sort((a,b) => a.last_price - b.last_price);
+    const cheapest      = sorted[0];
+    const priciest      = sorted[sorted.length - 1];
+    heroEl.innerHTML = `
+      <div class="px-hero-kpi">
+        <div class="px-hero-kpi-val">${totalItems}</div>
+        <div class="px-hero-kpi-lbl">Itens cadastrados</div>
+      </div>
+      <div class="px-hero-kpi">
+        <div class="px-hero-kpi-val">${totalRecords}</div>
+        <div class="px-hero-kpi-lbl">Registros de preço</div>
+      </div>
+      ${cheapest ? `<div class="px-hero-kpi">
+        <div class="px-hero-kpi-val" style="color:var(--green)">${fmt(cheapest.last_price)}</div>
+        <div class="px-hero-kpi-lbl">Mais barato · ${esc(cheapest.name)}</div>
+      </div>` : ''}
+      ${priciest && priciest !== cheapest ? `<div class="px-hero-kpi">
+        <div class="px-hero-kpi-val">${fmt(priciest.last_price)}</div>
+        <div class="px-hero-kpi-lbl">Mais caro · ${esc(priciest.name)}</div>
+      </div>` : ''}
+    `;
+    heroEl.style.display = 'grid';
+  }
+
   if (!items.length) {
     listEl.innerHTML = `
       <div class="prices-empty">

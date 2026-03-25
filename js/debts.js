@@ -153,32 +153,35 @@ function renderDebtsPage() {
   if (!page) return;
 
   const active   = _dbt.debts.filter(d => d.status === 'active');
+  const settled  = _dbt.debts.filter(d => d.status === 'settled');
   const totalActive = active.reduce((s, d) => s + _debtCurrentBalance(d), 0);
+  const totalOrig   = active.reduce((s, d) => s + parseFloat(d.original_amount || 0), 0);
+  const totalAmort  = totalOrig - totalActive;
+  const pctPaid     = totalOrig > 0 ? Math.min(100, (totalAmort / totalOrig) * 100) : 0;
 
   page.innerHTML = `
 <div class="page-inner">
-  <!-- Header: section-title removed — page-header-bar injected below -->
-  <!-- KPI strip -->
-  <div class="dbt-kpi-strip mb-4">
-    <div class="dbt-kpi">
-      <span class="dbt-kpi-label">${t('dbt.kpi_total_active')}</span>
-      <span class="dbt-kpi-value">${fmt(totalActive)}</span>
-    </div>
-    <div class="dbt-kpi">
-      <span class="dbt-kpi-label">${t('dbt.kpi_count')}</span>
-      <span class="dbt-kpi-value">${active.length}</span>
-    </div>
-    <div class="dbt-kpi">
-      <span class="dbt-kpi-label">${t('dbt.kpi_settled')}</span>
-      <span class="dbt-kpi-value">${_dbt.debts.filter(d=>d.status==='settled').length}</span>
-    </div>
-  </div>
 
-  <!-- Update all button -->
-  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-    <button class="btn btn-ghost btn-sm" onclick="runDebtUpdateJob()" id="debtUpdateAllBtn">
-      ↻ ${t('dbt.update_now')}
-    </button>
+  <!-- Hero header -->
+  <div class="dbt-hero">
+    <div class="dbt-hero-main">
+      <div class="dbt-hero-label">Dívidas Ativas — Saldo Total</div>
+      <div class="dbt-hero-value">${fmt(totalActive)}</div>
+      <div class="dbt-hero-sub">
+        <span>Original: ${fmt(totalOrig)}</span>
+        <span class="dbt-hero-sep">·</span>
+        <span style="color:#6ee7a0">Amortizado: ${fmt(totalAmort)}</span>
+      </div>
+    </div>
+    <div class="dbt-hero-kpis">
+      <div class="dbt-hero-kpi"><div class="dbt-hero-kpi-val">${active.length}</div><div class="dbt-hero-kpi-lbl">Ativas</div></div>
+      <div class="dbt-hero-kpi"><div class="dbt-hero-kpi-val">${settled.length}</div><div class="dbt-hero-kpi-lbl">Quitadas</div></div>
+      <div class="dbt-hero-kpi"><div class="dbt-hero-kpi-val">${pctPaid.toFixed(0)}%</div><div class="dbt-hero-kpi-lbl">Amortizado</div></div>
+    </div>
+    ${totalOrig > 0 ? `
+    <div class="dbt-hero-progress">
+      <div class="dbt-hero-progress-bar" style="width:${pctPaid.toFixed(1)}%"></div>
+    </div>` : ''}
   </div>
 
   <!-- List -->
@@ -221,33 +224,58 @@ function renderDebtsPage() {
 function _renderDebtCard(d) {
   const balance = _debtCurrentBalance(d);
   const orig    = parseFloat(d.original_amount || 0);
-  const pct     = orig > 0 ? Math.min(100, (1 - balance / orig) * 100) : 0;
-  const statusObj = DEBT_STATUSES.find(s => s.code === d.status) || DEBT_STATUSES[0];
-  const indexObj  = DEBT_INDEX_TYPES.find(i => i.code === d.adjustment_type) || DEBT_INDEX_TYPES[0];
-  const statusColor = { active:'var(--red)', settled:'var(--green)', suspended:'var(--amber)', renegotiated:'#7c3aed', archived:'var(--muted)' }[d.status] || 'var(--muted)';
+  const amort   = orig - balance;
+  const pct     = orig > 0 ? Math.min(100, (amort / orig) * 100) : 0;
+  const statusObj  = DEBT_STATUSES.find(s => s.code === d.status) || DEBT_STATUSES[0];
+  const indexObj   = DEBT_INDEX_TYPES.find(i => i.code === d.adjustment_type) || DEBT_INDEX_TYPES[0];
+  const statusColors = {
+    active:       { bg:'#dc2626', lt:'#fef2f2', txt:'#dc2626' },
+    settled:      { bg:'#16a34a', lt:'#f0fdf4', txt:'#16a34a' },
+    suspended:    { bg:'#b45309', lt:'#fffbeb', txt:'#b45309' },
+    renegotiated: { bg:'#7c3aed', lt:'#f5f3ff', txt:'#7c3aed' },
+    archived:     { bg:'#8c8278', lt:'#f9f8f6', txt:'#8c8278' },
+  };
+  const sc = statusColors[d.status] || statusColors.archived;
+  const isSettled = d.status === 'settled';
 
   return `
-<div class="card mb-3 dbt-card" onclick="openDebtDetail('${d.id}')" style="cursor:pointer">
-  <div class="dbt-card-header">
-    <div>
-      <div class="dbt-card-name">${esc(d.name)}</div>
-      <div class="dbt-card-creditor">${esc(d.creditor?.name || d.creditor_name || '—')}</div>
+<div class="dbt-card2" onclick="openDebtDetail('${d.id}')">
+  <div class="dbt-card2-accent" style="background:${sc.bg}"></div>
+  <div class="dbt-card2-body">
+    <div class="dbt-card2-top">
+      <div class="dbt-card2-left">
+        <div class="dbt-card2-name">${esc(d.name)}</div>
+        <div class="dbt-card2-creditor">🏦 ${esc(d.creditor?.name || d.creditor_name || '—')}</div>
+      </div>
+      <div class="dbt-card2-right">
+        <div class="dbt-card2-balance" style="color:${isSettled ? '#16a34a' : sc.txt}">${fmt(balance, d.currency)}</div>
+        <span class="dbt-badge2" style="background:${sc.lt};color:${sc.txt}">${_dl(statusObj.label)}</span>
+      </div>
     </div>
-    <div style="text-align:right">
-      <div class="dbt-card-balance">${fmt(balance, d.currency)}</div>
-      <span class="dbt-badge" style="background:${statusColor}22;color:${statusColor}">${_dl(statusObj.label)}</span>
+    <div class="dbt-card2-progress-wrap">
+      <div class="dbt-card2-progress">
+        <div class="dbt-card2-progress-fill" style="width:${pct.toFixed(1)}%;background:${sc.bg}"></div>
+      </div>
+      <span class="dbt-card2-pct">${pct.toFixed(0)}%</span>
     </div>
-  </div>
-  <div class="dbt-progress-bar">
-    <div class="dbt-progress-fill" style="width:${pct.toFixed(1)}%"></div>
-  </div>
-  <div class="dbt-card-meta">
-    <span>${_dl(indexObj.label)}</span>
-    <span>${t('dbt.original')}: ${fmt(orig, d.currency)}</span>
-    <span>${t('dbt.amortized')}: ${fmt(orig - balance, d.currency)}</span>
+    <div class="dbt-card2-meta">
+      <div class="dbt-card2-meta-item">
+        <span class="dbt-card2-meta-lbl">Original</span>
+        <span class="dbt-card2-meta-val">${fmt(orig, d.currency)}</span>
+      </div>
+      <div class="dbt-card2-meta-item">
+        <span class="dbt-card2-meta-lbl">Amortizado</span>
+        <span class="dbt-card2-meta-val" style="color:#16a34a">${fmt(amort, d.currency)}</span>
+      </div>
+      <div class="dbt-card2-meta-item">
+        <span class="dbt-card2-meta-lbl">Índice</span>
+        <span class="dbt-card2-meta-val">${_dl(indexObj.label)}</span>
+      </div>
+    </div>
   </div>
 </div>`;
 }
+
 
 // ── Debt detail ───────────────────────────────────────────────────────────────
 async function openDebtDetail(debtId) {
