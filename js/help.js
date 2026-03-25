@@ -306,6 +306,25 @@ function initHelpPage() {
 
   _helpRenderNav();
   helpShowHome();
+
+  // Mobile: tap nav header to expand/collapse
+  const navHeader = document.querySelector('.help-nav-header');
+  if (navHeader) {
+    navHeader.addEventListener('click', () => {
+      const nav = document.querySelector('.help-nav');
+      if (window.innerWidth <= 700 && nav) {
+        nav.classList.toggle('expanded');
+      }
+    });
+  }
+}
+
+// Collapse nav after selecting an article on mobile
+function _helpCollapseNavMobile() {
+  if (window.innerWidth <= 700) {
+    const nav = document.querySelector('.help-nav');
+    if (nav) nav.classList.remove('expanded');
+  }
 }
 
 function _helpRenderNav() {
@@ -597,6 +616,7 @@ window.hh2SetTip = function(idx) {
 
 
 function helpShowSection(sectionId) {
+  _helpCollapseNavMobile();
   const sections = _helpContent();
   const sec = sections.find(s => s.id === sectionId);
   if (!sec) return;
@@ -629,6 +649,7 @@ function helpShowSection(sectionId) {
 }
 
 function helpShowArticle(sectionId, articleId) {
+  _helpCollapseNavMobile();
   const sections = _helpContent();
   const sec = sections.find(s => s.id === sectionId);
   if (!sec) return;
