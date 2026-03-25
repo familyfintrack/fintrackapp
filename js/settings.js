@@ -1,3 +1,27 @@
+// ── Settings tab navigation (defined here so it works regardless of HTML version) ──
+function cfgShowPane(paneId) {
+  document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.cfg-nav-item').forEach(b => b.classList.remove('active'));
+  const pane = document.getElementById(paneId);
+  if (pane) pane.classList.add('active');
+  const tab = paneId.replace('pane-', '');
+  const btn = document.getElementById('cfgNavBtn-' + tab);
+  if (btn) btn.classList.add('active');
+  if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
+    initTranslationsAdmin();
+  }
+}
+window.cfgShowPane = cfgShowPane;
+
+function _cfgApplyAdminNav() {
+  const isAdmin = (typeof currentUser !== 'undefined') && currentUser?.role === 'admin';
+  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isAdmin ? '' : 'none';
+  });
+}
+window._cfgApplyAdminNav = _cfgApplyAdminNav;
+
 let _appSettingsCache = null; // in-memory cache after first load
 
 async function loadAppSettings() {
