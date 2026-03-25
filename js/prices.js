@@ -91,8 +91,8 @@ async function initPricesPage() {
   _px.search = _px.catFilter = _px.storeFilter = '';
   const searchEl = document.getElementById('pricesSearch');
   if (searchEl) searchEl.value = '';
-  _populatePricesCatFilter();
   await _loadPricesData();
+  _populatePricesCatFilter();
   _populatePricesStoreFilter();
   _renderPricesPage();
 }
@@ -100,9 +100,13 @@ async function initPricesPage() {
 function _populatePricesCatFilter() {
   const sel = document.getElementById('pricesCatFilter');
   if (!sel) return;
-  const exp = (state.categories || []).filter(c => c.type !== 'income');
+  // Only show categories that have at least one price_item record
+  const usedCatIds = new Set(_px.items.map(i => i.category_id).filter(Boolean));
+  const cats = (state.categories || [])
+    .filter(c => c.type !== 'income' && usedCatIds.has(c.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
   sel.innerHTML = '<option value="">Todas as categorias</option>' +
-    exp.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
 function _populatePricesStoreFilter() {
