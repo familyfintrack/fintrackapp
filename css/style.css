@@ -4763,6 +4763,35 @@ html, body{
   text-transform: uppercase;
 }
 
+/* ── Date grouping headers ──────────────────────────────────────────── */
+tr.tx-date-header-row { pointer-events: none; }
+td.tx-date-header-cell {
+  padding: 5px 12px 4px !important;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-top: 1px solid var(--border) !important;
+  border-bottom: 1px solid var(--border) !important;
+  line-height: 1.3;
+}
+tr.tx-date-band td.tx-date-header-cell {
+  background: var(--surface, #f8fafc);
+}
+tr.tx-date-band-alt td.tx-date-header-cell {
+  background: var(--surface2, #f1f5f9);
+}
+/* Row tinting per date band — rows following a band header inherit it */
+tr.tx-date-band ~ tr:not(.tx-date-header-row):not(.tx-pending) {
+  background: transparent;
+}
+tr.tx-date-band-alt ~ tr:not(.tx-date-header-row):not(.tx-pending) {
+  background: var(--surface2, #f9fafb);
+}
+/* Stripe reset on next band header */
+tr.tx-date-band-alt + tr.tx-date-band ~ tr:not(.tx-date-header-row) { background: transparent; }
+
 /* Tighter table rows */
 .tx-table tbody tr { border-bottom: 1px solid var(--border); }
 .tx-table tbody tr:last-child { border-bottom: none; }
@@ -5196,6 +5225,11 @@ label { font-size: .7rem; }
   letter-spacing: .07em;
   text-transform: uppercase;
 }
+
+/* Date band overrides for dark mode / alternate theme */
+[data-theme="dark"] tr.tx-date-band td.tx-date-header-cell { background: rgba(255,255,255,.03); }
+[data-theme="dark"] tr.tx-date-band-alt td.tx-date-header-cell { background: rgba(255,255,255,.07); }
+[data-theme="dark"] tr.tx-date-band-alt ~ tr:not(.tx-date-header-row):not(.tx-pending) { background: rgba(255,255,255,.02); }
 
 /* Row hover + pending */
 .tx-table tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
@@ -12426,6 +12460,38 @@ tr.reconcile-checked td { opacity: 1 !important; }
 }
 .air-budget-icon  { font-size: .95rem; flex-shrink: 0; margin-top: 2px; }
 .air-budget-insight { font-size: .75rem; color: var(--text2); margin: 3px 0 0; line-height: 1.5; }
+
+/* ── Credit Card Projection ─────────────────────────────────────────────── */
+.air-cc-proj-section { border-left: 3px solid #6366f1; }
+.air-cc-proj-header { margin-bottom: 10px; }
+.air-cc-proj-status {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--scolor) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--scolor) 30%, transparent);
+  font-size: .82rem; font-weight: 600; color: var(--scolor);
+  margin-bottom: 8px;
+}
+.air-cc-proj-total-label { font-weight: 400; color: var(--text2); }
+.air-cc-proj-total-label strong { color: var(--text1); }
+.air-cc-proj-pct { font-size: .75rem; background: var(--surface2); color: var(--muted); padding: 2px 8px; border-radius: 20px; }
+.air-cc-proj-summary, .air-cc-proj-sustain { font-size: .82rem; color: var(--text2); margin: 4px 0 0; line-height: 1.5; }
+.air-cc-proj-cards { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.air-cc-proj-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+}
+.air-cc-proj-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.air-cc-proj-card-name { font-weight: 600; font-size: .85rem; color: var(--text1); }
+.air-cc-proj-card-total { font-weight: 700; font-size: .9rem; color: #6366f1; }
+.air-cc-proj-card-total small { font-size: .7rem; font-weight: 400; color: var(--muted); margin-left: 2px; }
+.air-cc-proj-detail { font-size: .78rem; color: var(--text2); margin: 2px 0 0; line-height: 1.4; }
+.air-cc-proj-once { font-size: .75rem; color: #f59e0b; margin: 3px 0 0; }
+.air-cc-proj-alert { font-size: .75rem; color: #ef4444; background: #fef2f2; border-radius: 4px; padding: 4px 8px; margin-top: 5px; }
+.air-cc-proj-recs { margin: 8px 0 0; padding-left: 18px; }
+.air-cc-proj-rec { font-size: .8rem; color: var(--text2); margin-bottom: 4px; line-height: 1.4; }
 
 /* ── Members ────────────────────────────────────────────────────────────── */
 .air-member-list  { display: flex; flex-direction: column; gap: 8px; }
