@@ -1776,7 +1776,7 @@
         .cfg-shell {
           display: flex;
           gap: 0;
-          min-height: 100%;
+          /* No min-height - natural height based on content */
         }
 
         /* ── Side nav ── */
@@ -1785,17 +1785,14 @@
           flex-shrink: 0;
           background: var(--surface);
           border-right: 1px solid var(--border);
-          padding: 8px 6px;
+          padding: 20px 6px 24px;
           display: flex;
           flex-direction: column;
           gap: 2px;
-          position: sticky;
-          top: 0;
-          align-self: flex-start;
-          /* bleed out of content padding on left */
+          /* bleed out of content padding on left/top/bottom */
           margin: -24px 0 -24px -24px;
-          padding-top: 20px;
-          min-height: calc(100vh - var(--topbar-h) - 28px);
+          /* full height via align-self stretch — no sticky (broken inside overflow:auto) */
+          align-self: stretch;
         }
         .cfg-nav-item {
           display: flex;
@@ -1988,17 +1985,10 @@
         @media (max-width: 700px) {
           .cfg-shell {
             flex-direction: column;
-            /* prevent overflow from clipping the tab bar */
-            overflow: visible;
           }
           .cfg-nav {
-            /* Reset desktop sticky/sizing */
-            position: static !important;
-            width: 100% !important;
-            min-height: auto !important;
-            /* Bleed to full width accounting for .content padding (16px mobile) */
-            margin: -16px -16px 0 -16px !important;
             width: calc(100% + 32px) !important;
+            margin: 0 -16px 0 -16px !important;
             /* Horizontal scroll tab bar */
             flex-direction: row;
             flex-wrap: nowrap;
@@ -2031,7 +2021,7 @@
           .cfg-nav-divider { display: none; }
           .cfg-nav-label { display: none; }
           .cfg-nav-icon { width: 15px; height: 15px; }
-          .cfg-content { padding: 14px 0 0; }
+          .cfg-content { padding: 16px 0 0; }
         }
 
         /* ── Legacy sections hidden — admin show/hide still works ── */
