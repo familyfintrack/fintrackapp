@@ -16194,7 +16194,18 @@ section[data-page="transactions"] .content {
 }
 
 
-
+/* FX BAR FULL WIDTH FIX */
+.fx-bar,
+#fxRatesBadge,
+.fx-rates-badge {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  margin-left: calc(-1 * var(--content-padding, 16px)) !important;
+  margin-right: calc(-1 * var(--content-padding, 16px)) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
 
 .fx-bar > *,
 #fxRatesBadge > * {
@@ -16267,29 +16278,4 @@ section[data-page="transactions"] .content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-
-/* FINAL FX FULL WIDTH FIX (container-safe) */
-.fx-bar,
-#fxRatesBadge,
-.fx-rates-badge {
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw !important;
-  margin-right: -50vw !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
-  box-sizing: border-box;
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-/* keep content centered */
-.fx-bar > *,
-#fxRatesBadge > * {
-  max-width: 1200px;
-  margin: 0 auto;
-  text-align: center;
 }
