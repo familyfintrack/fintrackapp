@@ -5974,6 +5974,13 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   padding: 7px 14px 7px 6px;
   vertical-align: middle;
 }
+/* All block children inside the amount cell must explicitly right-align */
+.forecast-amount-cell > *,
+.forecast-balance-cell > * {
+  text-align: right;
+  display: block;
+  width: 100%;
+}
 .forecast-amount-main {
   display: block;
   text-align: right;
@@ -8178,7 +8185,7 @@ body.ft-platform-windows .modal-close {
 }
 
 /* ── Forecast: saldo por linha ────────────────────────────────── */
-.forecast-run-bal { display:block; margin-top:3px; font-size:.71rem; line-height:1.15; white-space:nowrap; color:var(--muted); font-variant-numeric:tabular-nums; }
+.forecast-run-bal { display:block; text-align:right; margin-top:3px; font-size:.71rem; line-height:1.15; white-space:nowrap; color:var(--muted); font-variant-numeric:tabular-nums; }
 .forecast-run-bal.amount-neg { color:var(--red,#dc2626); font-weight:600; }
 .forecast-run-bal.amount-pos { color:var(--green,#16a34a); }
 
@@ -8497,7 +8504,7 @@ body.ft-platform-windows .modal-close {
 
 /* ── Forecast: saldo por linha ───────────────────────────────── */
 .forecast-run-bal {
-  display: block; margin-top: 3px; font-size: .71rem; line-height: 1.15;
+  display: block; text-align: right; margin-top: 3px; font-size: .71rem; line-height: 1.15;
   white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .forecast-run-bal.amount-neg { color: var(--red,#dc2626); font-weight: 600; }
