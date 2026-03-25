@@ -14,6 +14,7 @@
   --font-serif:'Lora',Georgia,serif;
   --font-sans:'Outfit',system-ui,sans-serif;
   --sidebar-w:240px;--topbar-h:58px;--bottom-h:64px;
+  --brand-bg:#0d2318;   /* single source of truth — sidebar + page header bar */
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{font-size:15px;-webkit-text-size-adjust:100%;}
@@ -26,7 +27,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: #0d2318;          /* deep brand-green — extracted from logo */
+  background: var(--brand-bg, #0d2318);   /* deep brand-green — single source of truth */
   display: flex;
   flex-direction: column;
   z-index: 200;
@@ -54,7 +55,6 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   display: block;
   flex-shrink: 1;
   min-width: 0;
-  filter: brightness(1.05);
 }
 .sb-close {
   display: none;               /* desktop: hidden; mobile: shown via media query */
@@ -3999,7 +3999,7 @@ html, body{
    PAGE HEADER — faixa verde escura padrão abaixo do fx-bar
 ══════════════════════════════════════════════════════════════════════════ */
 .page-header-bar {
-  background: #0d2318;
+  background: var(--brand-bg, #0d2318);
   padding: 0 16px;
   height: 46px;
   display: flex;
@@ -5164,9 +5164,10 @@ label { font-size: .7rem; }
 @media (min-width: 769px) {
   .content { padding: 20px 24px; }
 
-  /* Sidebar nav items tighter */
-  .nav-item { padding: 7px 10px; font-size: .835rem; }
-  .nav-label { padding: 6px 10px 3px; }
+  /* Sidebar nav items — readable on desktop/tablet */
+  .nav-item { padding: 8px 10px; font-size: .925rem; }
+  .nav-label { padding: 7px 10px 3px; font-size: .65rem; }
+  .ni-icon { width: 30px; height: 30px; }
 
   /* Settings rows tighter on desktop too */
   .settings-row { padding: 11px 16px; min-height: 52px; }
