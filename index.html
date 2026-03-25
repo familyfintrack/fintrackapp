@@ -1773,26 +1773,26 @@
     <div class="page" id="page-settings">
       <style>
         /* ══ SETTINGS REDESIGN ══════════════════════════════════════════════ */
+
+        /* Shell: simple flex row, no overflow tricks */
         .cfg-shell {
           display: flex;
           gap: 0;
-          /* No min-height - natural height based on content */
+          /* Pull back content padding so nav goes edge-to-edge on left */
+          margin: -24px -24px -24px -24px;
+          min-height: 600px;
         }
 
         /* ── Side nav ── */
         .cfg-nav {
-          width: 200px;
+          width: 188px;
           flex-shrink: 0;
           background: var(--surface);
           border-right: 1px solid var(--border);
-          padding: 20px 6px 24px;
+          padding: 16px 6px 24px;
           display: flex;
           flex-direction: column;
           gap: 2px;
-          /* bleed out of content padding on left/top/bottom */
-          margin: -24px 0 -24px -24px;
-          /* full height via align-self stretch — no sticky (broken inside overflow:auto) */
-          align-self: stretch;
         }
         .cfg-nav-item {
           display: flex;
@@ -1812,10 +1812,7 @@
           transition: background .12s, color .12s;
           position: relative;
         }
-        .cfg-nav-item:hover {
-          background: var(--surface2);
-          color: var(--text);
-        }
+        .cfg-nav-item:hover { background: var(--surface2); color: var(--text); }
         .cfg-nav-item.active {
           background: var(--accent-lt);
           color: var(--accent);
@@ -1836,25 +1833,19 @@
           opacity: .6;
         }
         .cfg-nav-item.active .cfg-nav-icon { opacity: 1; }
-        .cfg-nav-divider {
-          height: 1px;
-          background: var(--border);
-          margin: 6px 4px;
-        }
+        .cfg-nav-divider { height: 1px; background: var(--border); margin: 6px 4px; }
         .cfg-nav-label {
-          font-size: .6rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: .1em;
-          color: var(--muted);
-          padding: 8px 10px 2px;
+          font-size: .6rem; font-weight: 700;
+          text-transform: uppercase; letter-spacing: .1em;
+          color: var(--muted); padding: 8px 10px 2px;
         }
 
         /* ── Content area ── */
         .cfg-content {
           flex: 1;
           min-width: 0;
-          padding: 16px 0 16px 20px;
+          padding: 20px 24px 40px 20px;
+          overflow-y: auto;
         }
         .cfg-pane { display: none; }
         .cfg-pane.active { display: block; animation: cfgFadeIn .18s ease; }
@@ -1862,13 +1853,9 @@
 
         /* ── Pane heading ── */
         .cfg-pane-title {
-          font-size: .95rem;
-          font-weight: 700;
-          color: var(--text);
+          font-size: .95rem; font-weight: 700; color: var(--text);
           margin-bottom: 14px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
+          display: flex; align-items: center; gap: 8px;
           padding-bottom: 10px;
           border-bottom: 1px solid var(--border);
         }
@@ -1884,10 +1871,8 @@
           box-shadow: 0 1px 3px rgba(0,0,0,.04);
         }
         .cfg-card-title {
-          font-size: .67rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: .1em;
+          font-size: .67rem; font-weight: 700;
+          text-transform: uppercase; letter-spacing: .1em;
           color: var(--muted);
           padding: 10px 14px 6px;
           border-bottom: 1px solid var(--border);
@@ -1896,9 +1881,7 @@
 
         /* ── Rows ── */
         .cfg-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
+          display: flex; align-items: center; gap: 10px;
           padding: 10px 14px;
           border-bottom: 1px solid var(--border);
           min-height: 46px;
@@ -1907,11 +1890,9 @@
         .cfg-row:last-child { border-bottom: none; }
         .cfg-row:hover { background: var(--surface2); }
         .cfg-row-icon {
-          width: 30px; height: 30px;
-          border-radius: 8px;
+          width: 30px; height: 30px; border-radius: 8px;
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-          background: var(--surface2);
+          flex-shrink: 0; background: var(--surface2);
         }
         .cfg-row-icon svg { opacity: .7; }
         .cfg-row-info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -1920,25 +1901,16 @@
 
         /* ── Controls ── */
         .cfg-select {
-          font-size: .8rem;
-          padding: 5px 8px;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          background: var(--surface);
-          color: var(--text);
-          font-family: var(--font-sans);
-          max-width: 160px;
+          font-size: .8rem; padding: 5px 8px;
+          border: 1px solid var(--border); border-radius: 8px;
+          background: var(--surface); color: var(--text);
+          font-family: var(--font-sans); max-width: 160px;
         }
         .cfg-input {
-          font-size: .8rem;
-          padding: 5px 9px;
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          background: var(--surface);
-          color: var(--text);
-          font-family: var(--font-sans);
-          max-width: 200px;
-          width: 100%;
+          font-size: .8rem; padding: 5px 9px;
+          border: 1px solid var(--border); border-radius: 8px;
+          background: var(--surface); color: var(--text);
+          font-family: var(--font-sans); max-width: 200px; width: 100%;
         }
         .cfg-toggle-wrap {
           position: relative; display: inline-block;
@@ -1959,57 +1931,39 @@
         }
         .cfg-toggle-wrap input:checked + .cfg-toggle-track::before { transform: translateX(18px); }
 
-        /* ── Status badge ── */
         .cfg-status {
-          font-size: .68rem;
-          font-weight: 700;
-          padding: 2px 8px;
-          border-radius: 20px;
-          flex-shrink: 0;
+          font-size: .68rem; font-weight: 700;
+          padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
         }
         .cfg-status.ok  { background: var(--green-lt); color: var(--green); }
         .cfg-status.err { background: #fee2e2; color: var(--danger); }
-
-        /* ── Danger zone ── */
-        .cfg-danger-card {
-          border-color: rgba(220,38,38,.25);
-          background: #fff5f5;
-        }
-        .cfg-danger-card .cfg-card-title {
-          background: #fef2f2;
-          color: var(--danger);
-          border-color: rgba(220,38,38,.15);
-        }
 
         /* ── Mobile: tabs on top ── */
         @media (max-width: 700px) {
           .cfg-shell {
             flex-direction: column;
+            margin: -16px -16px -16px -16px;
+            min-height: auto;
           }
           .cfg-nav {
-            width: calc(100% + 32px) !important;
-            margin: 0 -16px 0 -16px !important;
-            /* Horizontal scroll tab bar */
+            width: 100%;
             flex-direction: row;
             flex-wrap: nowrap;
             overflow-x: auto;
-            overflow-y: visible;
             scrollbar-width: none;
             -ms-overflow-style: none;
-            padding: 6px 12px;
+            padding: 6px 10px;
             border-right: none;
             border-bottom: 2px solid var(--border);
-            background: var(--surface);
             gap: 2px;
-            align-self: auto;
           }
           .cfg-nav::-webkit-scrollbar { display: none; }
           .cfg-nav-item {
             white-space: nowrap;
-            padding: 7px 12px;
+            padding: 7px 10px;
             flex-shrink: 0;
             border-radius: 8px 8px 0 0;
-            font-size: .8rem;
+            font-size: .78rem;
           }
           .cfg-nav-item.active::before { display: none; }
           .cfg-nav-item.active {
@@ -2021,10 +1975,10 @@
           .cfg-nav-divider { display: none; }
           .cfg-nav-label { display: none; }
           .cfg-nav-icon { width: 15px; height: 15px; }
-          .cfg-content { padding: 16px 0 0; }
+          .cfg-content { padding: 16px 14px 40px; overflow-y: visible; }
         }
 
-        /* ── Legacy sections hidden — admin show/hide still works ── */
+        /* ── Legacy sections hidden ── */
         #currentUserSection, #userMgmtSection, #logoSettingsSection { display:none !important; }
       </style>
 
