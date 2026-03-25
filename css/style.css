@@ -15749,3 +15749,81 @@ tr.reconcile-checked td { opacity: 1 !important; }
 .fx-bar-age {
   margin-left: auto;
 }
+
+
+/* === 2026-03-25 patch: forecast + transactions width === */
+/* Forecast: avoid repeating "Saldo:" on every row */
+.forecast-run-bal::before{content:none !important;}
+
+/* Transactions desktop: force table to occupy full available width */
+#page-transactions #txFlatCard,
+#page-transactions #txFlatCard .table-wrap,
+#page-transactions #txMainTable {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#page-transactions #txMainTable {
+  table-layout: fixed !important;
+  border-collapse: collapse;
+}
+
+#page-transactions #txMainTable thead,
+#page-transactions #txMainTable tbody {
+  width: 100% !important;
+}
+
+#page-transactions #txMainTable thead th.tx-v2-th-date,
+#page-transactions #txMainTable tbody td.tx-v2-date {
+  width: 72px !important;
+  min-width: 72px !important;
+}
+
+#page-transactions #txMainTable thead th.tx-v2-th-right,
+#page-transactions #txMainTable tbody td.tx-v2-right {
+  width: 180px !important;
+  min-width: 180px !important;
+}
+
+#page-transactions #txMainTable thead th.tx-v2-th-act,
+#page-transactions #txMainTable tbody td.tx-v2-act {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  display: none !important;
+}
+
+#page-transactions #txMainTable thead th.tx-v2-th-body,
+#page-transactions #txMainTable tbody td.tx-v2-body {
+  width: auto !important;
+}
+
+#page-transactions #txMainTable tbody tr {
+  display: table-row !important;
+}
+
+#page-transactions #txMainTable tbody td {
+  display: table-cell !important;
+  vertical-align: top;
+}
+
+#page-transactions #txMainTable .tx-v2-body,
+#page-transactions #txMainTable .tx-v2-title,
+#page-transactions #txMainTable .tx-v2-category,
+#page-transactions #txMainTable .tx-v2-meta {
+  min-width: 0;
+}
+
+#page-transactions #txMainTable .tx-v2-title,
+#page-transactions #txMainTable .tx-v2-category,
+#page-transactions #txMainTable .tx-v2-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1024px) {
+  #page-transactions #txMainTable {
+    table-layout: auto !important;
+  }
+}
