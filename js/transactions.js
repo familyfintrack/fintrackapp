@@ -412,7 +412,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
 
   // Meta line: Conta · Beneficiário
   const metaParts = [];
-  if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct">${esc(t.accounts.name)}</span>`);
+  if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
   if (t.payees?.name)                  metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
   const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
 
@@ -463,8 +463,8 @@ function txRow(t, showAccount=true, runningBalance=null) {
     <td class="tx-v2-right">
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
       ${balHtml}
+      <div class="tx-v2-inline-actions" onclick="event.stopPropagation()">${reconcileBtn}</div>
     </td>
-    <td class="tx-v2-act">${reconcileBtn}</td>
   </tr>`;
 }
 
@@ -617,11 +617,12 @@ function renderTransactions(){
 
   // ── FLAT VIEW ──
   const body = document.getElementById('txBody');
-  if(!txs.length){body.innerHTML='<tr><td colspan="4" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Nenhuma transação encontrada</td></tr>';return;}
+  const colCount = state.reconcileMode ? 4 : 3;
+  if(!txs.length){body.innerHTML=`<tr><td colspan="${colCount}" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Nenhuma transação encontrada</td></tr>`;return;}
   const pending   = txs.filter(t => (t.status||'confirmed')==='pending');
   const confirmed = txs.filter(t => (t.status||'confirmed')!=='pending');
   const sep = (pending.length && confirmed.length)
-    ? `<tr><td colspan="4" class="tx-v2-sep">CONFIRMADAS</td></tr>` : '';
+    ? `<tr><td colspan="${colCount}" class="tx-v2-sep">CONFIRMADAS</td></tr>` : '';
 
   // Running balance: only when a single account is selected
   const singleAccId = state.txFilter?.account || '';
@@ -634,17 +635,17 @@ function renderTransactions(){
     return txRow(t, !singleAccId, runningBal);
   };
 
-  // Ajusta cabeçalho da tabela conforme modo
-  const thead = document.querySelector('#txMainTable thead tr');
-  if (thead) {
-    const hasChkCol = !!thead.querySelector('.th-chk');
-    if (state.reconcileMode && !hasChkCol) {
-      const th = document.createElement('th');
-      th.className = 'th-chk'; th.style.width = '36px';
-      thead.insertBefore(th, thead.firstChild);
-    } else if (!state.reconcileMode && hasChkCol) {
-      thead.querySelector('.th-chk').remove();
-    }
+  // Ajusta cabeçalho da tabela conforme modo e mantém número de colunas consistente
+  const theadRow = document.querySelector('#txMainTable thead tr');
+  if (theadRow) {
+    theadRow.innerHTML = state.reconcileMode
+      ? `<th class="th-chk" style="width:36px"></th>
+         <th class="tx-v2-th-date" onclick="sortTx('date')" data-i18n="tx.col_date">Data ⇅</th>
+         <th class="tx-v2-th-body" data-i18n="tx.col_desc">Descrição</th>
+         <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>`
+      : `<th class="tx-v2-th-date" onclick="sortTx('date')" data-i18n="tx.col_date">Data ⇅</th>
+         <th class="tx-v2-th-body" data-i18n="tx.col_desc">Descrição</th>
+         <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>`;
   }
 
   // ── Group confirmed rows by date with alternating date bands ──
@@ -683,7 +684,7 @@ function renderTransactions(){
         else label = `${dayNames[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]} ${d.getFullYear()}`;
         bandIndex++;
         const bandClass = bandIndex % 2 === 0 ? 'tx-date-band-alt' : 'tx-date-band';
-        const colspan = 4;
+        const colspan = colCount;
         html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell">${label}</td></tr>`;
         lastDate = txDateStr;
       }
@@ -2341,4 +2342,16 @@ function _applyCardSuggestion(cardId) {
     _onTxSourceAccountChange(cardId);
   }
   suggestBestCard();
+}
+
+
+// === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
 }

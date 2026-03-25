@@ -590,7 +590,7 @@ function loadSettings() {
   }
   const tl = document.getElementById('topbarLogoImg');
   const pt = document.getElementById('pageTitle');
-  if (tl && pt) { tl.style.display='block'; pt.style.display='none'; }
+  if (tl && pt) { tl.style.display='none'; pt.style.display=''; }
   if (typeof initLogoSettings === 'function') initLogoSettings();
 
   const isAdmin = (currentUser?.role==='admin');
@@ -2171,3 +2171,15 @@ window._telOpenFamilyDetail = _telOpenFamilyDetail;
 
 function _telCloseFamilyDetail() { document.getElementById('telFamilyDetail').style.display = 'none'; }
 window._telCloseFamilyDetail = _telCloseFamilyDetail;
+
+
+// === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
