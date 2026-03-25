@@ -14635,3 +14635,207 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .inv-pos-actions { grid-column: 2; grid-row: 2 / 4; align-self: center; flex-direction: column; }
   .inv-type-label { padding: 6px 14px 2px; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAYEES PAGE — Mobile redesign completo
+   Transforma tabela em cards individuais, sem alterar JS
+═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ── Header: botões empilhados, + Novo em destaque ── */
+  #page-payees .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  #page-payees .section-header > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 7px;
+    width: 100%;
+  }
+  #page-payees .section-header .btn {
+    font-size: .78rem;
+    padding: 9px 8px;
+    border-radius: 11px;
+    min-height: 38px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  #page-payees .section-header .btn-primary {
+    grid-column: 3;
+    padding: 9px 14px;
+    font-weight: 700;
+    font-size: .85rem;
+  }
+
+  /* ── Filter bar: search full-width, select below ── */
+  #page-payees .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    overflow: visible;
+  }
+  #page-payees .search-wrap {
+    width: 100%;
+    min-width: unset;
+    flex: unset;
+  }
+  #page-payees .search-wrap input {
+    font-size: .9rem;
+    padding: 10px 12px 10px 36px;
+    border-radius: 11px;
+  }
+  #page-payees .filters select {
+    width: 100%;
+    max-width: unset;
+    font-size: .88rem;
+    padding: 10px 13px;
+    border-radius: 11px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* ── Summary chips: horizontal scroll ── */
+  #payeeSummaryBar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 7px !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 2px;
+  }
+  #payeeSummaryBar::-webkit-scrollbar { display: none; }
+  .payee-summary-chip {
+    flex-shrink: 0;
+    padding: 7px 13px;
+    border-radius: 100px;
+    font-size: .78rem;
+  }
+
+  /* ── Group wrapper: tighter radius ── */
+  .payee-group-wrap {
+    border-radius: 14px;
+    margin-bottom: 10px;
+  }
+  .payee-group-header {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .payee-group-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: .95rem;
+  }
+  .payee-group-title { font-size: .88rem; }
+
+  /* ── Table → card list: hide table chrome ── */
+  #page-payees .table-wrap { overflow: visible; margin: 0; }
+  #page-payees table { display: block; }
+  #page-payees thead { display: none; }
+  #page-payees tbody { display: flex; flex-direction: column; gap: 0; }
+
+  /* ── Each row → card ── */
+  #page-payees .payee-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+    cursor: default;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #page-payees .payee-row:last-child { border-bottom: none; }
+  #page-payees .payee-row:active { background: var(--surface2); }
+
+  /* All TD become visible block/flex */
+  #page-payees .payee-row td {
+    display: contents; /* let children flow into flex */
+  }
+
+  /* Avatar: left anchor */
+  #page-payees .payee-row-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: .8rem;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  /* Name + meta: takes all remaining space */
+  #page-payees .payee-row td:first-child > div {
+    flex: 1;
+    min-width: 0;
+  }
+  #page-payees .payee-row td:first-child > div > div:first-child {
+    font-size: .88rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Contact chips: wrap under name */
+  #page-payees .payee-row td:first-child > div > div:nth-child(2) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 3px;
+  }
+
+  /* Default category column: shown as small badge under name */
+  #page-payees .payee-row td:nth-child(2) {
+    display: none; /* hidden — shown inline via JS already as chip */
+  }
+
+  /* TX count badge: compact, right side */
+  #page-payees .payee-row td:nth-child(3) {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  #page-payees .payee-row td:nth-child(3) .badge {
+    font-size: .7rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  /* Actions: icon buttons, stacked ── */
+  #page-payees .payee-row td:last-child {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  #page-payees .payee-row td:last-child > div {
+    display: flex;
+    gap: 4px;
+    flex-direction: row;
+  }
+  #page-payees .btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: background .12s;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+  }
+  #page-payees .btn-icon:active { background: var(--bg2); }
+}
