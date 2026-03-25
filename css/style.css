@@ -231,12 +231,12 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 
 /* TOPBAR */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;}
-
-
+.topbar{height:var(--topbar-h);min-height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:linear-gradient(135deg,#0f5132 0%, #16803d 52%, #22a06b 100%);border-bottom:1px solid rgba(255,255,255,.10);gap:12px;position:sticky;top:0;z-index:110;box-shadow:0 8px 24px rgba(5,34,20,.18);}
+.topbar-left{display:flex;align-items:center;gap:12px;}
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:var(--r-sm);color:var(--muted);flex-shrink:0;}
 .hamburger:hover{background:var(--bg2);color:var(--text);}
-
-
+.topbar-title{font-family:var(--font-serif);font-size:1.15rem;font-weight:500;color:#ffffff;letter-spacing:-.01em;display:none!important;}
+.topbar-actions{display:flex;gap:8px;align-items:center;}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);font-family:var(--font-sans);font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;border:none;white-space:nowrap;}
@@ -645,7 +645,7 @@ body.sidebar-open .fab{
   .form-grid{grid-template-columns:1fr;}
   .form-group.full{grid-column:1;}
   .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
-  
+  .topbar{padding:0 16px;}.topbar-title{font-size:1.05rem;}
   table th:nth-child(4),table td:nth-child(4){display:none;}
 }
 @media(max-width:390px){
@@ -1250,7 +1250,7 @@ body.sidebar-open .fab{
 .pin-input-box:focus { border-color: var(--accent); }
 
 @media(max-width:768px){
-  
+  .topbar-logo-mobile { display: block!important; }
 }
 
 /* ─── CHART LEGEND INTERACTION ─── */
@@ -1630,10 +1630,17 @@ canvas { cursor: default; }
 .role-editor { background:var(--accent-lt);color:var(--accent); }
 .role-viewer { background:var(--bg2);color:var(--muted); }
 .user-actions { display:flex;gap:6px;flex-shrink:0; }
-
-
-
-
+.topbar-user {
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  padding:4px 10px;border-radius:100px;transition:background .15s;
+}
+.topbar-user:hover { background:var(--bg2); }
+.topbar-user-avatar {
+  width:28px;height:28px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;
+}
+.topbar-user-name { font-size:.78rem;font-weight:600;color:var(--text2); }
 
 /* ══════════════════════════════════════════════════════════════════
    TRANSACTIONS PAGE — desktop layout
@@ -3063,7 +3070,7 @@ html, body{
    USER MENU DROPDOWN & PROFILE AVATAR
 ══════════════════════════════════════════════════════════════════ */
 
-
+.topbar-user:hover { opacity: 1; border-color: rgba(255,255,255,0.34); background: rgba(255,255,255,0.18); transform: translateY(-1px); }
 
 /* Dropdown menu item */
 .user-menu-item {
@@ -5142,8 +5149,8 @@ label { font-size: .7rem; }
 /* ── 20. Topbar: reduce height slightly on mobile ───────────────────── */
 @media (max-width: 768px) {
   :root { --topbar-h: 48px; }
-  
-  
+  .topbar { padding: 0 12px; }
+  .topbar-title { font-size: 1rem; }
 }
 
 /* ── DESKTOP refinements ─────────────────────────────────────────────── */
@@ -6085,12 +6092,23 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 
 /* ── Topbar page icon (mobile only) ────────────────────────────────── */
-
-
+.topbar-page-icon {
+  display:none!important;
+  display: none;           /* hidden on desktop */
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-lt);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.topbar-page-icon svg { display: block; }
 
 @media (max-width: 768px) {
-     /* show icon on mobile */
-     /* hide text on mobile */
+  .topbar-page-icon { display: flex; }   /* show icon on mobile */
+  .topbar-title     { display: none; }   /* hide text on mobile */
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -9835,10 +9853,30 @@ tr.reconcile-checked td { opacity: 1 !important; }
    TOPBAR LANGUAGE BADGE — green active-language indicator
    Sits at bottom-right of the globe topbar-icon-btn
 ═══════════════════════════════════════════════════════════════════ */
-
+.topbar-lang-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--accent, #22c55e);
+  color: #fff;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 16px;
+  text-align: center;
+  border: 1.5px solid var(--surface, #fff);
+  pointer-events: none;
+  font-family: inherit;
+}
 
 /* Keep font-size override from topbar-icon-btn from hiding the badge text */
-
+.topbar-icon-btn .topbar-lang-badge {
+  font-size: .58rem !important;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    HELP — Central de Ajuda
@@ -15634,9 +15672,16 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 
 /* === THEME UPDATE === */
+.topbar, .header, .app-header {
+  background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
+  color: #F7FAF8;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
 
-
-
+.page-titlebar {
+  background: #305E4E !important;
+  color: #F7FAF8;
+}
 
 .fx-bar {
   background: #F4FBF7;
@@ -15646,8 +15691,11 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 
 /* === 2026-03 header refresh === */
-
-
+.topbar-left { gap: 10px; }
+.topbar .hamburger,
+#topbarBackBtn {
+  color: #f7fff9;
+}
 #topbarBackBtn {
   background: rgba(255,255,255,0.16) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
@@ -15656,7 +15704,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   -webkit-backdrop-filter: blur(10px) saturate(140%);
 }
 #topbarBackBtn:hover { background: rgba(255,255,255,0.22) !important; }
-
+.topbar-quick-actions { gap: 8px !important; }
 #privacyToggleBtn {
   background: rgba(255,255,255,0.12) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
@@ -15901,7 +15949,11 @@ section[data-page="transactions"] .content {
 /* === 2026-03 transactions / topbar / mobile refinement === */
 
 /* Invert visual hierarchy: topbar medium green, title bar gradient */
-
+.topbar{
+  background:#166534 !important;
+  border-bottom:1px solid rgba(255,255,255,.14) !important;
+  box-shadow:0 6px 18px rgba(7,32,20,.14) !important;
+}
 .page-header-bar{
   background:linear-gradient(135deg,#0e3b2b 0%, #145238 52%, #1c6a49 100%) !important;
   border-bottom:1px solid rgba(255,255,255,.10) !important;
@@ -16149,7 +16201,9 @@ section[data-page="transactions"] .content {
 
 /* Tiny phones */
 @media (max-width: 420px){
-  
+  .topbar{
+    padding:0 12px !important;
+  }
   .page-header-bar{
     padding:0 12px !important;
   }
@@ -16184,7 +16238,9 @@ section[data-page="transactions"] .content {
 }
 
 /* Lime accent border between topbar and title bar */
-
+.topbar, .header, .app-header {
+  border-bottom: 3px solid #22c55e !important;
+}
 
 
 
@@ -16216,19 +16272,62 @@ section[data-page="transactions"] .content {
 
 
 /* Topbar gradient restored */
-
+.topbar,
+.header,
+.app-header {
+  background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
+  color: #F7FAF8;
+}
 
 
 /* Topbar buttons aligned to privacy button style */
+.topbar .user-actions button,
+.topbar button,
+.app-header .user-actions button,
+.header .user-actions button,
+.topbar .btn,
+.app-header .btn,
+.header .btn,
+.topbar .icon-btn,
+.app-header .icon-btn,
+.header .icon-btn {
+  background: rgba(255,255,255,0.14) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  color: #F7FAF8 !important;
+  box-shadow: none !important;
+}
 
-
-
+.topbar .user-actions button:hover,
+.topbar button:hover,
+.app-header .user-actions button:hover,
+.header .user-actions button:hover,
+.topbar .btn:hover,
+.app-header .btn:hover,
+.header .btn:hover,
+.topbar .icon-btn:hover,
+.app-header .icon-btn:hover,
+.header .icon-btn:hover {
+  background: rgba(255,255,255,0.22) !important;
+  border-color: rgba(255,255,255,0.30) !important;
+}
 
 
 /* Force topbar layout with actions on right */
+.topbar,
+.header,
+.app-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
 
-
-
+.topbar .user-actions,
+.header .user-actions,
+.app-header .user-actions {
+  margin-left: auto !important;
+  display: flex !important;
+  gap: 8px;
+}
 
 
 /* Align debts banner background exactly with investments banner */
@@ -16240,42 +16339,4 @@ section[data-page="transactions"] .content {
 .active-debts-banner {
   background: linear-gradient(135deg, #062e1f 0%, #0b3d2a 40%, #14532d 100%) !important;
   color: #F7FAF8 !important;
-}
-
-
-/* Topbar now uses previous title style (softer gradient) */
-.topbar,
-.header,
-.app-header {
-  background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
-  color: #F7FAF8;
-}
-
-/* Title bar now uses strong premium gradient */
-.page-titlebar,
-.title-bar,
-.page-header {
-  background: linear-gradient(135deg, #062e1f 0%, #0b3d2a 40%, #14532d 100%) !important;
-  color: #F7FAF8;
-}
-
-
-/* Forecast date styled like transactions date */
-.forecast-date,
-.report-forecast-date,
-.forecast-row .date {
-  font-weight: 600 !important;
-  font-size: 13px !important;
-  color: #6b7280 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 6px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* spacing alignment like transactions */
-.forecast-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
