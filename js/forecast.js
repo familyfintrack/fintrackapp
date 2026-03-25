@@ -355,7 +355,11 @@ function renderForecastTables(allItems, accounts) {
         ${txs.length ? `
         <div class="table-wrap" style="margin:0">
           <table class="resizable-table" id="forecastTable-${a.id}">
-            <thead><tr><th style="width:68px">${t("fc.date")}</th><th>${t("fc.description")}</th><th style="text-align:right">${t("fc.amount")}</th></tr></thead>
+            <thead><tr>
+              <th style="width:96px;border-right:1px solid var(--border)">${t("fc.date")}</th>
+              <th>${t("fc.description")}</th>
+              <th style="text-align:right;width:100px">${t("fc.amount")}</th>
+            </tr></thead>
             <tbody>${rows}</tbody>
             <tfoot>
               <tr style="background:var(--surface2);font-weight:600">

@@ -1807,27 +1807,99 @@ function _telRenderDevices(rows) {
 // ── Recent errors ─────────────────────────────────────────────────────────────
 function _telRenderErrors(rows) {
   const el = document.getElementById('telErrors'); if (!el) return;
-  const errors = rows.filter(r => r.event_type === 'error' || r.event_type === 'uncaught').slice(0,15);
+  const errors = rows.filter(r => r.event_type === 'error' || r.event_type === 'uncaught' || r.event_type === 'unhandled_promise').slice(0, 30);
   if (!errors.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:4px 0">✅ Nenhum erro no período</div>'; return; }
-  el.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.75rem">
-    <thead><tr style="color:var(--muted);font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)">
-      <th style="text-align:left;padding:3px 4px;font-weight:600">Data</th>
-      <th style="text-align:left;padding:3px 4px;font-weight:600">Usuário</th>
-      <th style="text-align:left;padding:3px 4px;font-weight:600">Tipo</th>
-      <th style="text-align:left;padding:3px 4px;font-weight:600">Mensagem</th>
-    </tr></thead>
-    <tbody>${errors.map(r => {
-      const msg = r.payload?.message || r.payload?.source || JSON.stringify(r.payload).slice(0,80);
+
+  const _evtMap = _telBuildUserMap(rows);
+
+  el.innerHTML = `<div class="tel-error-list">
+    ${errors.map((r, i) => {
       const d   = (r.ts||'').slice(0,16).replace('T',' ');
-      const _evtMap = _telBuildUserMap(rows);
       const usr = r.user_id ? _telUserName(r.user_id, _evtMap) : '—';
-      return `<tr style="border-bottom:1px solid var(--border)">
-        <td style="padding:4px;color:var(--muted);white-space:nowrap">${d}</td>
-        <td style="padding:4px;color:var(--muted);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${_telEsc(r.user_id ? _telUserEmail(r.user_id) : '')}">${_telEsc(usr)}</td>
-        <td style="padding:4px;white-space:nowrap"><span style="background:var(--danger-lt,#fee2e2);color:var(--danger);border-radius:4px;padding:1px 5px;font-size:.7rem">${_telEsc(r.event_type)}</span></td>
-        <td style="padding:4px;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_telEsc(msg)}">${_telEsc(msg)}</td>
-      </tr>`;
-    }).join('')}</tbody></table></div>`;
+      const email = r.user_id ? _telUserEmail(r.user_id) : '';
+      const msg = r.payload?.message || r.payload?.source || r.payload?.error_msg || '';
+      const file = r.payload?.file ? ` @ ${r.payload.file}` : '';
+      const line = r.payload?.line ? `:${r.payload.line}` : '';
+      const shortMsg = msg.slice(0, 90) + (msg.length > 90 ? '…' : '');
+      const fullPayload = JSON.stringify(r.payload || {}, null, 2);
+      // Build the Claude prompt for this error
+      const claudePrompt = `Encontrei este erro no app FintTrack:
+
+**Tipo:** ${r.event_type}
+**Data:** ${d}
+**Usuário:** ${usr}${email ? ` (${email})` : ''}
+**Página:** ${r.page || '—'}
+
+**Mensagem:** ${msg || '—'}
+**Arquivo:** ${r.payload?.file || '—'}${line}
+
+**Payload completo:**
+\`\`\`json
+${fullPayload}
+\`\`\`
+
+Por favor, analise o erro e sugira a correção.`;
+
+      return `<div class="tel-error-item" id="telErr-${i}">
+        <div class="tel-error-header" onclick="_telToggleError(${i})">
+          <div class="tel-error-main">
+            <span class="tel-error-type">${_telEsc(r.event_type)}</span>
+            <span class="tel-error-msg" title="${_telEsc(msg)}">${_telEsc(shortMsg || '(sem mensagem)')}</span>
+          </div>
+          <div class="tel-error-meta">
+            <span class="tel-error-date">${d}</span>
+            <span class="tel-error-user" title="${_telEsc(email)}">${_telEsc(usr)}</span>
+            <span class="tel-error-toggle" id="telErrArrow-${i}">▼</span>
+          </div>
+        </div>
+        <div class="tel-error-detail" id="telErrDetail-${i}" style="display:none">
+          <div class="tel-error-detail-grid">
+            <div><span class="tel-error-dl">Página</span><span class="tel-error-dd">${_telEsc(r.page || '—')}</span></div>
+            <div><span class="tel-error-dl">Arquivo</span><span class="tel-error-dd">${_telEsc((r.payload?.file||'—') + line)}</span></div>
+            <div><span class="tel-error-dl">Dispositivo</span><span class="tel-error-dd">${_telEsc([r.device_type, r.device_os, r.device_browser].filter(Boolean).join(' / ') || '—')}</span></div>
+            <div><span class="tel-error-dl">Sessão</span><span class="tel-error-dd" style="font-family:monospace;font-size:.7rem">${_telEsc(r.session_id?.slice(0,12)||'—')}</span></div>
+          </div>
+          <div class="tel-error-payload-label">Payload completo:</div>
+          <pre class="tel-error-payload">${_telEsc(fullPayload)}</pre>
+          <div class="tel-error-actions">
+            <button class="tel-copy-btn" onclick="event.stopPropagation();_telCopyErrorToClipboard(${i})" data-payload="${_telEsc(claudePrompt).replace(/"/g,'&quot;')}">
+              📋 Copiar para o Claude
+            </button>
+            <span class="tel-copy-confirm" id="telCopyOk-${i}" style="display:none;color:var(--green);font-size:.75rem">✓ Copiado!</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function _telToggleError(i) {
+  const detail = document.getElementById('telErrDetail-' + i);
+  const arrow  = document.getElementById('telErrArrow-' + i);
+  if (!detail) return;
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▼' : '▲';
+}
+
+function _telCopyErrorToClipboard(i) {
+  const btn = document.querySelector(`#telErr-${i} .tel-copy-btn`);
+  const payload = btn?.getAttribute('data-payload') || '';
+  // Decode HTML entities
+  const decoded = payload.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  navigator.clipboard.writeText(decoded).then(() => {
+    const ok = document.getElementById('telCopyOk-' + i);
+    if (ok) { ok.style.display = 'inline'; setTimeout(() => { ok.style.display = 'none'; }, 2500); }
+  }).catch(() => {
+    // Fallback: select text
+    const pre = document.querySelector(`#telErr-${i} .tel-error-payload`);
+    if (pre) {
+      const range = document.createRange();
+      range.selectNode(pre);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+    }
+  });
 }
 
 // ── AI calls ──────────────────────────────────────────────────────────────────

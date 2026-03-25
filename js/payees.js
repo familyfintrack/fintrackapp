@@ -209,9 +209,9 @@ function payeeRow(p) {
     <td style="font-size:.82rem;color:var(--text2)">${p.categories?.name||'<span style="color:var(--muted)">—</span>'}</td>
     <td style="text-align:center">${txBadge}</td>
     <td>
-      <div style="display:flex;gap:5px;justify-content:flex-end">
-        <button class="btn-icon" onclick="event.stopPropagation();openPayeeModal('${p.id}')" title="Editar">✏️</button>
-        <button class="btn-icon" onclick="event.stopPropagation();deletePayee('${p.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
+      <div class="payee-row-actions" style="display:flex;gap:5px;justify-content:flex-end">
+        <button class="btn-icon payee-edit-btn" onclick="event.stopPropagation();openPayeeModal('${p.id}')" title="Editar" aria-label="Editar beneficiário">✏️</button>
+        <button class="btn-icon payee-delete-btn" onclick="event.stopPropagation();deletePayee('${p.id}')" title="Excluir" style="color:var(--red)" aria-label="Excluir beneficiário">🗑️</button>
       </div>
     </td>
   </tr>`;
