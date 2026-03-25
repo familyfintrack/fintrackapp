@@ -176,21 +176,25 @@
   justify-content: center !important;
   width: 36px !important;
   height: 36px !important;
-  border-radius: 10px !important;
-  border: 1.5px solid rgba(42,96,73,0.20) !important;
-  background: #f0faf4 !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  background: rgba(255,255,255,0.12) !important;
+  backdrop-filter: blur(10px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
   cursor: pointer !important;
-  color: #1e6040 !important;
+  color: #f7fff9 !important;
   text-decoration: none !important;
-  transition: background .15s, border-color .15s, box-shadow .15s !important;
+  transition: background .18s, border-color .18s, box-shadow .18s, transform .18s !important;
   font-size: 0 !important; /* esconde emoji fallback se tiver SVG */
   position: relative !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .topbar-icon-btn:hover {
-  background: #ddf2e8 !important;
-  border-color: #3dba78 !important;
-  box-shadow: 0 0 0 3px rgba(61,186,120,0.15) !important;
-  color: #0d3d2b !important;
+  background: rgba(255,255,255,0.18) !important;
+  border-color: rgba(255,255,255,0.32) !important;
+  box-shadow: 0 10px 24px rgba(5,34,20,0.18), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
 }
 /* Botão sair na topbar mantém vermelho */
 #logoutTopbarBtn {
@@ -532,7 +536,6 @@
         onmouseover="this.style.background='var(--border2)'" onmouseout="this.style.background='var(--surface2)'">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-      <img id="topbarLogoImg" src="" alt="Family FinTrack" style="height:36px;width:auto;object-fit:contain;display:none">
       <!-- pageIcon and pageTitle removed: title shown in page-header-bar -->
       <span class="topbar-page-icon" id="pageIcon" aria-hidden="true" style="display:none"></span>
       <span class="topbar-title" id="pageTitle" style="display:none">Dashboard</span>
@@ -878,10 +881,9 @@
               <th class="tx-v2-th-date" onclick="sortTx('date')" data-i18n="tx.col_date">Data ⇅</th>
               <th class="tx-v2-th-body" data-i18n="tx.col_desc">Descrição</th>
               <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>
-              <th class="tx-v2-th-act"></th>
             </tr></thead>
             <tbody id="txBody">
-              <tr><td colspan="4" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Carregando...</td></tr>
+              <tr><td colspan="3" class="text-muted" style="text-align:center;padding:32px;font-size:.83rem">Carregando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -919,9 +921,6 @@
     </div>
 
     <div class="page" id="page-investments">
-      <div class="section-header mb-4">
-        <button class="btn btn-ghost btn-sm" onclick="loadInvestmentsPage()">🔄 Atualizar</button>
-      </div>
       <div id="investmentsContent">
         <div style="text-align:center;padding:48px;color:var(--muted)">Carregando…</div>
       </div>
