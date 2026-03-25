@@ -9975,34 +9975,114 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Mobile responsive ─────────────────────────────────────────── */
 @media (max-width: 700px) {
-  .help-shell { flex-direction: column; height: auto; overflow: visible; }
+  /* Shell stacks vertically, no fixed height */
+  .help-shell {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
 
+  /* Nav becomes a collapsible top bar */
   .help-nav {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    max-height: 280px;
-    overflow-y: auto;
+    max-height: 52px;          /* collapsed: shows only header */
+    overflow: hidden;
     flex-shrink: 0;
+    transition: max-height .3s cubic-bezier(.4,0,.2,1);
+  }
+  .help-nav.expanded { max-height: 70vh; overflow-y: auto; }
+
+  /* Nav header acts as toggle */
+  .help-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .help-nav-header::after {
+    content: '☰';
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  .help-nav.expanded .help-nav-header::after { content: '✕'; }
+
+  /* Search always below header, shown after expand */
+  .help-search-wrap { padding: 8px 12px 6px; }
+  .help-search-results {
+    position: fixed;
+    top: auto;
+    left: 8px; right: 8px;
+    z-index: 600;
   }
 
+  /* Content scrolls naturally */
   .help-content { overflow: visible; }
-
   .help-back-btn { display: flex; }
 
-  .help-home { padding: 16px; }
-  .help-section-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  /* Article — comfortable reading */
+  .help-article-wrap {
+    padding: 16px 18px 80px;
+  }
+  .help-article-title {
+    font-size: 1.15rem;
+    margin-bottom: 16px;
+  }
+  .help-article-body {
+    font-size: .93rem;         /* larger for mobile reading */
+    line-height: 1.75;
+  }
+  .help-article-body h4 {
+    font-size: .93rem;
+    margin: 18px 0 8px;
+  }
+  .help-article-body li { margin-bottom: 7px; }
 
-  .help-article-wrap { padding: 0 16px 60px; }
-  .help-article-title { font-size: 1.1rem; }
+  /* Tips and warnings — easier to read */
+  .help-tip, .help-warning {
+    font-size: .88rem;
+    padding: 12px 14px;
+  }
 
-  .help-card-grid { grid-template-columns: 1fr 1fr; }
+  /* Mini cards — 1 column for easy reading */
+  .help-card-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .help-mini-card {
+    font-size: .84rem;
+    padding: 12px 14px;
+  }
+
+  /* Prev/next nav — full width buttons */
+  .help-article-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .help-prev-next {
+    max-width: 100%;
+    padding: 12px 16px;
+    font-size: .82rem;
+  }
+  .help-next { text-align: left; margin-left: 0; }
+
+  /* Breadcrumb — keep it compact */
+  .help-breadcrumb { flex-wrap: wrap; gap: 4px; }
+
+  /* Home section grid */
+  .help-home { padding: 14px; }
+  .help-section-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .help-section-card { padding: 12px 10px; }
+  .help-section-card-icon { font-size: 1.3rem; }
 }
 
 @media (max-width: 480px) {
   .help-section-grid { grid-template-columns: 1fr 1fr; }
-  .help-nav { max-height: 240px; }
-  .help-card-grid { grid-template-columns: 1fr; }
+  .help-article-body { font-size: .9rem; }
+  .help-article-wrap { padding: 14px 14px 80px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -10956,16 +11036,60 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .hh2-hero { padding: 32px 20px 28px; }
-  .hh2-hero-title { font-size: 1.4rem; }
-  .hh2-section { padding: 0 16px; }
-  .hh2-why-grid { grid-template-columns: 1fr; }
-  .hh2-docs-grid { grid-template-columns: 1fr 1fr; }
-  .hh2-lang-strip { flex-direction: column; gap: 14px; }
-  .hh2-tip-card { flex-direction: column; }
-  .hh2-tip-right { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+  .hh2-root { padding-bottom: 32px; }
+  .hh2-hero {
+    padding: 28px 18px 24px;
+    margin-bottom: 24px;
+    border-radius: 0 0 16px 16px;
+  }
+  .hh2-hero-title { font-size: 1.3rem; margin-bottom: 10px; }
+  .hh2-hero-sub { font-size: .82rem; margin-bottom: 20px; }
+  .hh2-hero-badge { font-size: .65rem; padding: 3px 10px; margin-bottom: 12px; }
+  .hh2-cta-primary { padding: 10px 18px; font-size: .82rem; }
+  .hh2-cta-ghost { padding: 9px 14px; font-size: .78rem; }
+  .hh2-hero-modules { margin-top: 20px; padding-top: 16px; gap: 6px; }
+  .hh2-module-pill { font-size: .7rem; padding: 4px 10px; }
+
+  .hh2-section { padding: 0 14px; margin-bottom: 26px; }
+  .hh2-section-title { font-size: .62rem; }
+
+  /* Why cards: 1 column on small screens */
+  .hh2-why-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hh2-why-card { padding: 12px 12px; }
+  .hh2-why-icon { font-size: 1.3rem; margin-bottom: 6px; }
+  .hh2-why-title { font-size: .78rem; }
+  .hh2-why-text { font-size: .72rem; }
+
+  /* Journey — compact */
+  .hh2-journey-step { padding: 12px 10px 12px 12px; gap: 10px; }
+  .hh2-journey-icon { font-size: 1.2rem; }
+  .hh2-journey-title { font-size: .8rem; }
+  .hh2-journey-desc { font-size: .71rem; }
+
+  /* Docs: 1 column */
+  .hh2-docs-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hh2-doc-card { padding: 12px; gap: 5px; }
+  .hh2-doc-icon { font-size: 1.2rem; }
+  .hh2-doc-title { font-size: .78rem; }
+  .hh2-doc-art { font-size: .67rem; }
+
+  /* Tip card */
+  .hh2-tip-card { padding: 16px; flex-direction: column; gap: 12px; }
+  .hh2-tip-icon-wrap { font-size: 1.3rem; }
+  .hh2-tip-text { font-size: .82rem; }
+  .hh2-tip-right {
+    flex-direction: row; align-items: center;
+    width: 100%; justify-content: space-between;
+  }
+
+  /* Lang strip */
+  .hh2-lang-strip { flex-direction: column; gap: 12px; padding: 14px 16px; }
+  .hh2-lang-pill { padding: 6px 11px; font-size: .75rem; }
+
+  .hh2-footer { margin: 0 14px; padding-top: 8px; }
 }
 @media (max-width: 400px) {
+  .hh2-why-grid { grid-template-columns: 1fr; }
   .hh2-docs-grid { grid-template-columns: 1fr; }
   .hh2-hero-actions { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
