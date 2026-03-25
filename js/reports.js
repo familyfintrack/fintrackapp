@@ -384,15 +384,14 @@ async function renderTrendChart(from, to) {
     cur.setMonth(cur.getMonth()+1);
   }
   if(months.length<=1){
-    const wkMap={};
+    const wkMap={1:{inc:0,exp:0},2:{inc:0,exp:0},3:{inc:0,exp:0},4:{inc:0,exp:0}};
     rptState.txData.forEach(t=>{
       const d=new Date(t.date+'T12:00');
-      const w='Sem '+Math.ceil(d.getDate()/7);
-      if(!wkMap[w]) wkMap[w]={inc:0,exp:0};
-      if(t.amount<0) wkMap[w].exp+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):Math.abs(t.brl_amount??t.amount??0)); else wkMap[w].inc+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):parseFloat(t.brl_amount??t.amount)??0);
+      const wn=Math.min(Math.ceil(d.getDate()/7),4);
+      if(t.amount<0) wkMap[wn].exp+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):Math.abs(t.brl_amount??t.amount??0)); else wkMap[wn].inc+=(typeof txToBRL==="function"?Math.abs(txToBRL(t)):parseFloat(t.brl_amount??t.amount)??0);
     });
-    const wks=Object.entries(wkMap);
-    if(wks.length) renderChart('reportTrendChart','bar',wks.map(w=>w[0]),[
+    const wks=[[1,wkMap[1]],[2,wkMap[2]],[3,wkMap[3]],[4,wkMap[4]]].filter(w=>w[1].inc>0||w[1].exp>0);
+    if(wks.length) renderChart('reportTrendChart','bar',wks.map(w=>'Sem '+w[0]),[
       {label:'Receitas',data:wks.map(w=>+w[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
       {label:'Despesas',data:wks.map(w=>+w[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
     ]);
