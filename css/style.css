@@ -16230,3 +16230,43 @@ section[data-page="transactions"] .content {
     font-size:.96rem;
   }
 }
+
+
+/* FX bar centered */
+.fx-bar,
+#fxRatesBadge,
+.fx-rates-badge {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.fx-bar .fx-item,
+#fxRatesBadge .fx-item,
+.fx-rates-badge .fx-item,
+#fxRatesBadge span,
+.fx-bar span {
+  text-align: center !important;
+}
+
+/* Darker topbar action buttons */
+.topbar .user-actions button,
+.topbar button,
+.app-header .user-actions button,
+.header .user-actions button,
+.topbar .btn,
+.app-header .btn,
+.header .btn {
+  background: #1a3d32 !important;
+  border-color: rgba(255,255,255,.14) !important;
+  color: #F7FAF8 !important;
+}
+
+
+/* Lime accent border between topbar and title bar */
+.topbar, .header, .app-header {
+  border-bottom: 3px solid #22c55e !important;
+}
