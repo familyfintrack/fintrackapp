@@ -130,6 +130,10 @@ async function _telFlush() {
       if (error.code === '42P01') {
         _tel.enabled = false; // desabilita até próxima sessão
         console.info('[telemetry] tabela não existe — execute migration_telemetry.sql');
+      } else if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('RLS') || error.message?.includes('permission')) {
+        // RLS bloqueando INSERT — execute migration_telemetry_rls.sql no Supabase
+        _tel.enabled = false;
+        console.warn('[telemetry] INSERT bloqueado por RLS. Execute migration_telemetry_rls.sql no Supabase SQL Editor para corrigir.');
       }
       // outros erros: descarta silenciosamente (não re-queue para evitar acúmulo)
     }
