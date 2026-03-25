@@ -81,7 +81,7 @@ async function loadAuditLogs() {
 
   } catch (e) {
     console.warn('[audit]', e.message);
-    const isMissing = /does not exist|relation|not found/i.test(e.message || '');
+    const isMissing = false // DEBUG: show real error always;
     const errHtml = isMissing
       ? `<div style="margin:12px;padding:18px 20px;background:var(--amber-lt);border:1.5px solid var(--amber);border-radius:var(--r);font-size:.85rem;line-height:1.7">
           <div style="font-weight:700;color:var(--amber);margin-bottom:10px">⚠️ Tabela <code>scheduled_run_logs</code> não encontrada ou desatualizada</div>
@@ -94,6 +94,7 @@ async function loadAuditLogs() {
           </div></div>`
       : `<div style="text-align:center;padding:28px;color:var(--danger);font-size:.85rem">
           ⚠️ Erro: ${esc(e.message)}
+          <br><small style="color:var(--muted);font-size:.75rem">Code: ${esc(String(e.code||''))} | Hint: ${esc(e.hint||'')} | Details: ${esc(e.details||'')}</small>
           <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
 
     if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${errHtml}</td></tr>`;
