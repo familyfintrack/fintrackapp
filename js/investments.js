@@ -214,6 +214,7 @@ function _renderInvestmentsPage() {
         <button class="btn btn-primary" onclick="openInvTransactionModal()">+ Movimentação</button>
       </div>
       <div class="inv-actions-right">
+        <button class="btn btn-ghost" onclick="loadInvestmentsPage()">↻ Atualizar</button>
         <button class="btn btn-ghost" id="invUpdatePricesBtn" onclick="updateAllPrices()">🔄 Cotações</button>
         <span id="invPriceUpdateStatus" class="inv-price-update-status"></span>
       </div>

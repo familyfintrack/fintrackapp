@@ -2038,15 +2038,3 @@ function _scCatsSetEmpty(msg) {
   const canvas = document.getElementById('scCatsChart');
   if (canvas) canvas.style.display = 'none';
 }
-
-
-// === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
-}

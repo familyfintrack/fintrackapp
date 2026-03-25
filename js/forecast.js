@@ -330,7 +330,7 @@ function renderForecastTables(allItems, accounts) {
             ? `<div class="forecast-amount-brl">${fmt(t.brl_amount,'BRL')}</div>`
             : (a.currency === 'BRL' ? '' : `<div class="forecast-amount-brl">&nbsp;</div>`)
           }
-          <div class="forecast-run-bal ${isNeg?'amount-neg':isPos?'amount-pos':''}">${fmt(runningBalance,a.currency)}</div>
+          <div class="forecast-run-bal ${isNeg?'amount-neg':isPos?'amount-pos':''}">Saldo: ${fmt(runningBalance,a.currency)}</div>
         </td>
       </tr>`;
     }).join('');
@@ -392,16 +392,4 @@ function toggleForecastSection(id) {
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : '';
   if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
-}
-
-
-// === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
 }
