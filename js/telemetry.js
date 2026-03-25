@@ -66,9 +66,11 @@ function _telGetDevice() {
 function _telCtx() {
   const u = typeof currentUser !== 'undefined' ? currentUser : null;
   return {
-    user_id:   u?.id   || null,
-    family_id: u?.family_id || (typeof famId === 'function' ? famId() : null),
-    user_role: u?.role || null,
+    user_id:    u?.id    || null,
+    user_name:  u?.name  || null,
+    user_email: u?.email || null,
+    family_id:  u?.family_id || (typeof famId === 'function' ? famId() : null),
+    user_role:  u?.role  || null,
   };
 }
 
@@ -86,7 +88,10 @@ function telTrack(event_type, payload = {}) {
       ts:           new Date().toISOString(),
       device:       _telGetDevice(),
       ...ctx,
-      payload:      payload || {},
+      payload: {
+        ...(payload || {}),
+        _u: { name: ctx.user_name, email: ctx.user_email },
+      },
     });
     if (_tel.queue.length >= _tel.BATCH_SIZE) _telFlush();
   } catch (_) { /* silencioso */ }

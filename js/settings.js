@@ -1542,10 +1542,20 @@ function _telPopulateFilterSelects() {
   const usersInData = new Set(_telDash.rawRows.filter(r => r.user_id).map(r => r.user_id));
   const userSel = document.getElementById('telFilterUser');
   if (userSel) {
+    // Build name from events for users not found in app_users
+    const evtUserMap = _telBuildUserMap(_telDash.rawRows);
+    const knownIds = new Set(_telDash.allUsers.map(u => u.id));
+    const extraUsers = [...usersInData]
+      .filter(uid => !knownIds.has(uid))
+      .map(uid => ({ id: uid, name: evtUserMap[uid]?._name || null, email: evtUserMap[uid]?._email || null }))
+      .filter(u => u.name || u.email);
+    const allUsersForFilter = [
+      ..._telDash.allUsers.filter(u => usersInData.has(u.id)),
+      ...extraUsers,
+    ];
     userSel.innerHTML = '<option value="">Todos os usuários</option>' +
-      _telDash.allUsers
-        .filter(u => usersInData.has(u.id))
-        .map(u => `<option value="${u.id}">${_esc(u.name || u.email)}</option>`)
+      allUsersForFilter
+        .map(u => `<option value="${u.id}">${_esc(u.name || u.email || u.id.slice(0,8))}</option>`)
         .join('');
   }
 }
@@ -1626,9 +1636,20 @@ function _telRenderCurrentTab() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const _telEsc = s => String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const _telFamName   = id => _telDash.allFams.find(f => f.id === id)?.name  || '—';
-const _telUserName  = id => { const u = _telDash.allUsers.find(u => u.id === id); return u ? (u.name || u.email || '—') : '—'; };
-const _telUserEmail = id => _telDash.allUsers.find(u => u.id === id)?.email || '';
+const _telFamName   = id => _telDash.allFams.find(f => f.id === id)?.name || '—';
+// _telUserName/_telUserEmail: lookup by app_users.id first, then fall back to data embedded in events
+const _telUserName  = (id, evtMap) => {
+  const u = _telDash.allUsers.find(u => u.id === id);
+  if (u) return u.name || u.email || '—';
+  const em = evtMap ? evtMap[id] : null;
+  return em?._name || em?._email || '—';
+};
+const _telUserEmail = (id, evtMap) => {
+  const u = _telDash.allUsers.find(u => u.id === id);
+  if (u) return u.email || '';
+  const em = evtMap ? evtMap[id] : null;
+  return em?._email || '';
+};
 
 function _telRenderEmpty() {
   const kpi = document.getElementById('telKpis');
@@ -1776,7 +1797,8 @@ function _telRenderErrors(rows) {
     <tbody>${errors.map(r => {
       const msg = r.payload?.message || r.payload?.source || JSON.stringify(r.payload).slice(0,80);
       const d   = (r.ts||'').slice(0,16).replace('T',' ');
-      const usr = r.user_id ? _telUserName(r.user_id) : '—';
+      const _evtMap = _telBuildUserMap(rows);
+      const usr = r.user_id ? _telUserName(r.user_id, _evtMap) : '—';
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:4px;color:var(--muted);white-space:nowrap">${d}</td>
         <td style="padding:4px;color:var(--muted);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${_telEsc(r.user_id ? _telUserEmail(r.user_id) : '')}">${_telEsc(usr)}</td>
@@ -1830,8 +1852,11 @@ function _telBuildUserMap(rows) {
   const map = {};
   rows.forEach(r => {
     const uid = r.user_id; if (!uid) return;
-    if (!map[uid]) map[uid] = { events:0, pages:0, errors:0, ai:0, ops:0, sessions:new Set(), lastSeen:r.ts, family_id:r.family_id, pageCount:{}, opCount:{} };
+    if (!map[uid]) map[uid] = { events:0, pages:0, errors:0, ai:0, ops:0, sessions:new Set(), lastSeen:r.ts, family_id:r.family_id, pageCount:{}, opCount:{}, _name:null, _email:null };
     map[uid].events++;
+    // Capture name/email from payload._u (stored since telemetry v2)
+    if (!map[uid]._name  && r.payload?._u?.name)  map[uid]._name  = r.payload._u.name;
+    if (!map[uid]._email && r.payload?._u?.email) map[uid]._email = r.payload._u.email;
     if (r.event_type === 'page_view')               { map[uid].pages++; map[uid].pageCount[r.page||'?'] = (map[uid].pageCount[r.page||'?']||0)+1; }
     if (r.event_type === 'error' || r.event_type === 'uncaught') map[uid].errors++;
     if (r.event_type === 'ai_call')                 map[uid].ai++;
@@ -1846,7 +1871,7 @@ function _telBuildUserMap(rows) {
 function _telRenderUsersTable(rows) {
   const body = document.getElementById('telUsersBody'); if (!body) return;
   const map = _telBuildUserMap(rows);
-  let entries = Object.entries(map).map(([id, s]) => ({ id, ...s, sessions: s.sessions.size, name: _telUserName(id), email: _telUserEmail(id), famName: _telFamName(s.family_id) }));
+  let entries = Object.entries(map).map(([id, s]) => ({ id, ...s, sessions: s.sessions.size, name: _telUserName(id, map), email: _telUserEmail(id, map), famName: _telFamName(s.family_id) }));
 
   // Sort
   const { col, dir } = _telDash.userSort;
@@ -1904,8 +1929,8 @@ function _telOpenUserDetail(uid) {
   const map = _telBuildUserMap(_telDash.filtered);
   const u = map[uid]; if (!u) return;
 
-  const name  = _telUserName(uid);
-  const email = _telUserEmail(uid);
+  const name  = _telUserName(uid, map);
+  const email = _telUserEmail(uid, map);
 
   document.getElementById('telUserDetailAvatar').textContent = (name||'?')[0].toUpperCase();
   document.getElementById('telUserDetailName').textContent   = name;
@@ -2035,7 +2060,7 @@ function _telOpenFamilyDetail(fid) {
   const topUsers = Object.entries(userCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('telFamilyDetailUsers').innerHTML = topUsers.length
     ? topUsers.map(([uid, cnt]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:.78rem">
-        <span style="color:var(--text)">${_telEsc(_telUserName(uid))}</span>
+        <span style="color:var(--text)">${_telEsc(_telUserName(uid, map))}</span>
         <span style="color:var(--muted)">${cnt} eventos</span></div>`).join('')
     : '<div style="color:var(--muted);font-size:.78rem">—</div>';
 

@@ -157,12 +157,7 @@ function renderDebtsPage() {
 
   page.innerHTML = `
 <div class="page-inner">
-  <!-- Header -->
-  <div class="section-header mb-4">
-    <span class="section-title">${t('dbt.title')}</span>
-    <button class="btn btn-primary btn-sm" onclick="openDebtModal()">+ ${t('dbt.add')}</button>
-  </div>
-
+  <!-- Header: section-title removed — page-header-bar injected below -->
   <!-- KPI strip -->
   <div class="dbt-kpi-strip mb-4">
     <div class="dbt-kpi">
@@ -194,6 +189,20 @@ function renderDebtsPage() {
     }
   </div>
 </div>`;
+  // Re-inject page-header-bar (renderDebtsPage overwrites innerHTML)
+  if (typeof _pageIconsSVG !== 'undefined' && typeof pageTitles !== 'undefined') {
+    const _old = page.querySelector('.page-header-bar');
+    if (_old) _old.remove();
+    const _icon = _pageIconsSVG['debts'] || '';
+    const _title = pageTitles['debts'] || t('dbt.title') || 'Dívidas';
+    const _bar = document.createElement('div');
+    _bar.className = 'page-header-bar';
+    _bar.innerHTML = '<div class="page-header-bar-left"><div class="page-header-bar-icon">' + _icon + '</div><span class="page-header-bar-title">' + _title + '</span></div>'
+      + '<div class="page-header-bar-right"><button class="page-header-action" onclick="openDebtModal()">'
+      + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+      + t('dbt.add') + '</button></div>';
+    page.insertBefore(_bar, page.firstChild);
+  }
 }
 
 function _renderDebtCard(d) {
