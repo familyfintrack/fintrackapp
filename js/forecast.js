@@ -231,10 +231,33 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
         x: { type: 'category', ticks: { maxTicksLimit: 12, color: '#8c8278' }, grid: { color: '#e8e4de44' } },
         y: {
           ticks: { callback: v => fmt(v), color: '#8c8278' },
-          grid: { color: ctx => ctx.tick.value === 0 ? 'rgba(220,38,38,0.25)' : '#e8e4de44' }
+          grid: {
+            color: ctx => ctx.tick.value === 0 ? 'rgba(220,38,38,0.7)' : '#e8e4de44',
+            lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1,
+          }
         }
       }
-    }
+    },
+    plugins: [{
+      id: 'zeroBaseline',
+      afterDraw(chart) {
+        const yScale = chart.scales.y;
+        if (!yScale) return;
+        const yZero = yScale.getPixelForValue(0);
+        const min = yScale.min, max = yScale.max;
+        if (yZero === undefined || yZero < yScale.top || yZero > yScale.bottom) return;
+        const ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(chart.chartArea.left, yZero);
+        ctx2.lineTo(chart.chartArea.right, yZero);
+        ctx2.strokeStyle = 'rgba(220,38,38,0.8)';
+        ctx2.lineWidth = 2;
+        ctx2.setLineDash([6, 4]);
+        ctx2.stroke();
+        ctx2.restore();
+      }
+    }]
   });
 }
 
