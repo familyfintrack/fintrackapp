@@ -5966,7 +5966,31 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-category { font-size:.74rem; color:var(--text2); margin-top:1px; }
 .forecast-payee { font-size:.71rem; color:var(--muted); margin-top:1px; }
 .forecast-amount-cell,
-.forecast-balance-cell { width:100px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; padding: 7px 12px 7px 8px; }
+.forecast-balance-cell {
+  width: 100px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding: 7px 14px 7px 6px;
+  vertical-align: middle;
+}
+.forecast-amount-main {
+  display: block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.forecast-amount-brl {
+  display: block;
+  text-align: right;
+  font-size: .68rem;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
   .forecast-date-cell { width:68px; padding:5px 6px; border-right:none; }
@@ -5999,7 +6023,6 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 
 
 /* ── Forecast mobile: show running balance line-by-line under amount ── */
-.forecast-amount-main { display:block; }
 .forecast-balance-mobile { display:none !important; }
 @media (max-width: 640px) {
   .forecast-balance-head,
@@ -6388,13 +6411,7 @@ tr.tx-row-new td:first-child {
   transform: scale(1.08);
 }
 
-/* ── Forecast: BRL equivalent line under foreign-currency amounts ─── */
-.forecast-amount-brl {
-  font-size: .72rem;
-  color: var(--muted);
-  font-weight: 400;
-  margin-top: 1px;
-}
+/* ── Forecast: BRL equivalent line — defined with amount-cell above ─── */
 
 /* ── Dashboard: favorite account cards ──────────────────────────── */
 .dash-acc-favs-grid {
@@ -15230,4 +15247,339 @@ tr.reconcile-checked td { opacity: 1 !important; }
     padding: 24px;
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEBTS — Hero header + redesigned cards (dbt-hero-*, dbt-card2-*)
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero header ── */
+.dbt-hero {
+  background: linear-gradient(135deg, #1a1225 0%, #2d1a3d 50%, #1e1530 100%);
+  border-radius: 16px;
+  padding: 20px 22px 16px;
+  margin-bottom: 18px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.dbt-hero::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 150px; height: 150px;
+  background: rgba(124,58,237,.15);
+  border-radius: 50%;
+}
+.dbt-hero-label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 5px;
+}
+.dbt-hero-value {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: #fff;
+  font-family: var(--font-serif, monospace);
+  line-height: 1.1;
+}
+.dbt-hero-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: .78rem;
+  color: rgba(255,255,255,.55);
+  flex-wrap: wrap;
+}
+.dbt-hero-sep { opacity: .3; }
+.dbt-hero-kpis {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.dbt-hero-kpi {
+  flex: 1;
+  min-width: 60px;
+  background: rgba(255,255,255,.09);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: center;
+}
+.dbt-hero-kpi-val {
+  font-size: .95rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+}
+.dbt-hero-kpi-lbl {
+  font-size: .62rem;
+  color: rgba(255,255,255,.5);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.dbt-hero-progress {
+  height: 5px;
+  background: rgba(255,255,255,.12);
+  border-radius: 100px;
+  margin-top: 14px;
+  overflow: hidden;
+}
+.dbt-hero-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #a78bfa, #7c3aed);
+  border-radius: 100px;
+  transition: width .5s ease;
+}
+
+/* ── Debt card v2 ── */
+.dbt-card2 {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: box-shadow .15s, transform .12s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.dbt-card2:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.09);
+  transform: translateY(-1px);
+}
+.dbt-card2:active { transform: scale(.99); }
+.dbt-card2-accent {
+  width: 5px;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+.dbt-card2-body {
+  flex: 1;
+  padding: 13px 15px 11px;
+  min-width: 0;
+}
+.dbt-card2-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.dbt-card2-left { min-width: 0; flex: 1; }
+.dbt-card2-name {
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.dbt-card2-creditor {
+  font-size: .73rem;
+  color: var(--muted);
+}
+.dbt-card2-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.dbt-card2-balance {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-family: var(--font-serif, monospace);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 3px;
+}
+.dbt-badge2 {
+  display: inline-block;
+  font-size: .63rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.dbt-card2-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.dbt-card2-progress {
+  flex: 1;
+  height: 5px;
+  background: var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.dbt-card2-progress-fill {
+  height: 100%;
+  border-radius: 100px;
+  opacity: .75;
+  transition: width .35s ease;
+}
+.dbt-card2-pct {
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 30px;
+  text-align: right;
+}
+.dbt-card2-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.dbt-card2-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dbt-card2-meta-lbl {
+  font-size: .62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.dbt-card2-meta-val {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile debts */
+@media (max-width: 640px) {
+  .dbt-hero { padding: 16px 16px 14px; border-radius: 14px; }
+  .dbt-hero-value { font-size: 1.6rem; }
+  .dbt-hero-kpis { gap: 6px; }
+  .dbt-hero-kpi { padding: 7px 10px; }
+  .dbt-hero-kpi-val { font-size: .85rem; }
+  .dbt-card2-body { padding: 11px 13px 10px; }
+  .dbt-card2-name { font-size: .87rem; }
+  .dbt-card2-balance { font-size: .97rem; }
+  .dbt-card2-meta { gap: 10px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRICES — Hero summary strip + improved cards
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero strip ── */
+.px-hero-strip {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.px-hero-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.px-hero-kpi-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.px-hero-kpi-lbl {
+  font-size: .62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Improved price card ── */
+.px-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 13px 14px 11px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  position: relative;
+  overflow: hidden;
+}
+.px-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--px-clr, var(--accent));
+  border-radius: 14px 14px 0 0;
+  opacity: .75;
+}
+.px-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.09);
+  border-color: var(--px-clr, var(--accent));
+}
+.px-card:active { transform: scale(.98); }
+
+/* Prices row: horizontal stats */
+.px-prices {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 1px;
+}
+.px-price-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 4px 5px;
+  border-right: 1px solid var(--border);
+  background: var(--surface2);
+}
+.px-price-col:last-child { border-right: none; }
+.px-price-lbl {
+  font-size: .58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+.px-price-val {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.px-price-val.accent { color: var(--accent); }
+
+/* Mobile prices */
+@media (max-width: 640px) {
+  .px-hero-strip { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .px-hero-kpi { padding: 9px 11px; }
+  .px-hero-kpi-val { font-size: .95rem; }
 }
