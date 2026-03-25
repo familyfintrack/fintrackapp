@@ -5935,30 +5935,40 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 
 /* ── Forecast: fixed layout and always three lines ─────────────────── */
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
-.forecast-tx-row td { padding:6px 8px; vertical-align:top; }
-.forecast-date-cell { width:110px; padding-right:24px; color:var(--muted); }
-.forecast-date-main { font-size:.75rem; line-height:1.1; font-weight:600; white-space:nowrap; }
+.forecast-tx-row td { padding:7px 10px; vertical-align:middle; }
+.forecast-date-cell {
+  width:96px;
+  padding: 7px 10px 7px 12px;
+  color: var(--muted);
+  vertical-align: middle;
+  border-right: 1px solid var(--border);
+}
+.forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
 /* Forecast category icon in date column */
 .forecast-cat-icon {
-  font-size: .88rem;
+  font-size: .82rem;
   line-height: 1;
-  display: block;
+  display: inline;
+  margin-right: 2px;
 }
 .forecast-date-flag,
-.forecast-date-today { display:block; font-size:.66rem; line-height:1.05; min-height:12px; white-space:nowrap; }
+.forecast-date-today { display:block; font-size:.63rem; line-height:1.1; min-height:11px; white-space:nowrap; margin-top:1px; }
 .forecast-date-cell--today .forecast-date-main,
 .forecast-date-cell--today .forecast-date-today { color:var(--accent); }
-.forecast-desc-cell { min-width:0; }
-.forecast-line { display:block; margin:0; padding:0; min-height:14px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.forecast-desc-cell {
+  min-width:0;
+  padding: 7px 12px;
+}
+.forecast-line { display:block; margin:0; padding:0; min-height:0; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .forecast-title { font-size:.84rem; color:var(--text); font-weight:500; }
-.forecast-category { font-size:.78rem; color:var(--text2); }
-.forecast-payee { font-size:.75rem; color:var(--muted); }
+.forecast-category { font-size:.74rem; color:var(--text2); margin-top:1px; }
+.forecast-payee { font-size:.71rem; color:var(--muted); margin-top:1px; }
 .forecast-amount-cell,
-.forecast-balance-cell { width:96px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; }
+.forecast-balance-cell { width:100px; text-align:right; white-space:nowrap; font-variant-numeric: tabular-nums; padding: 7px 12px 7px 8px; }
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
-  .forecast-date-cell { width:72px; padding-right:8px; }
+  .forecast-date-cell { width:68px; padding:5px 6px; border-right:none; }
   .forecast-amount-cell { width:auto !important; font-size:.8rem; }
   .forecast-balance-head,
   .forecast-balance-cell {
@@ -14952,4 +14962,95 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .ai-suggest-chip-value { padding: 6px 12px; font-size: .82rem; }
   .ai-suggest-chip-label { min-width: 70px; font-size: .67rem; }
   .ai-suggest-chip-dismiss { padding: 5px 8px; font-size: .82rem; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAYEES — Mobile edit action buttons always visible
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Desktop: keep existing behaviour (hidden until hover) */
+.payee-row-actions .payee-delete-btn { opacity: .5; transition: opacity .15s; }
+.payee-row:hover .payee-delete-btn   { opacity: 1; }
+
+@media (max-width: 640px) {
+  /* On mobile the action td uses flex via the display:contents trick — */
+  /* make both buttons always visible and easy to tap */
+  #page-payees .payee-row td:last-child .payee-edit-btn,
+  #page-payees .payee-row td:last-child .payee-delete-btn {
+    opacity: 1 !important;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .9rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+  #page-payees .payee-row td:last-child .payee-edit-btn {
+    background: var(--accent-lt);
+    border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  }
+  #page-payees .payee-row td:last-child .payee-delete-btn {
+    background: var(--red-lt, #fef2f2);
+    border-color: color-mix(in srgb, var(--red, #dc2626) 25%, var(--border));
+    color: var(--red, #dc2626) !important;
+  }
+  #page-payees .payee-row td:last-child .payee-edit-btn:active,
+  #page-payees .payee-row td:last-child .payee-delete-btn:active {
+    transform: scale(.92);
+  }
+}
+
+
+/* Payee modal — mobile form optimizations */
+@media (max-width: 640px) {
+  #payeeModal .modal { border-radius: 22px 22px 0 0; max-height: 96dvh; }
+  #payeeModal .modal-body { padding: 14px 16px; }
+  #payeeModal .modal-header { padding: 10px 18px; }
+  #payeeModal .modal-title { font-size: .97rem; font-weight: 600; }
+  #payeeModal .form-grid { grid-template-columns: 1fr; gap: 12px; }
+  #payeeModal .form-group > label:first-child {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .055em; color: var(--text2); margin-bottom: 2px;
+  }
+  #payeeModal .form-group input,
+  #payeeModal .form-group select,
+  #payeeModal .form-group textarea {
+    font-size: .9rem; padding: 11px 13px; border-radius: 11px;
+    border: 1.5px solid var(--border);
+  }
+  #payeeModal .form-group input:focus,
+  #payeeModal .form-group select:focus,
+  #payeeModal .form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+    outline: none;
+  }
+  #payeeModal #payeeCatPickerBtn {
+    padding: 11px 13px; border-radius: 11px; font-size: .9rem;
+    border: 1.5px solid var(--border);
+  }
+  #payeeModal details {
+    border-radius: 11px; margin-top: 8px;
+  }
+  #payeeModal details summary {
+    padding: 10px 13px; font-size: .76rem;
+  }
+  #payeeModal .modal-footer {
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+    flex-direction: row-reverse; gap: 10px;
+  }
+  #payeeModal .modal-footer .btn-primary {
+    flex: 1; padding: 14px; font-size: .95rem; font-weight: 700; border-radius: 13px;
+  }
+  #payeeModal .modal-footer .btn-ghost {
+    padding: 14px 18px; font-size: .88rem; border-radius: 13px;
+    border: 1.5px solid var(--border);
+  }
 }
