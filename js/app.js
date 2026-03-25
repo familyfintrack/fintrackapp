@@ -611,10 +611,10 @@ async function bootApp(){
 }
 
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
-  grocery:'🛒 Lista de Mercado',
-  ai_insights:'🤖 AI Insights',
-  debts:'💳 Dívidas',
-  help:'❓ Ajuda'};
+  grocery:'Lista de Mercado',
+  ai_insights:'AI Insights',
+  debts:'Dívidas',
+  help:'Ajuda'};
 
 // SVG icons used in the mobile topbar (replaces text title on small screens)
 const _pageIconsSVG = {
