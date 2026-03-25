@@ -1986,38 +1986,51 @@
 
         /* ── Mobile: tabs on top ── */
         @media (max-width: 700px) {
-          .cfg-shell { flex-direction: column; }
+          .cfg-shell {
+            flex-direction: column;
+            /* prevent overflow from clipping the tab bar */
+            overflow: visible;
+          }
           .cfg-nav {
-            width: 100%;
+            /* Reset desktop sticky/sizing */
+            position: static !important;
+            width: 100% !important;
+            min-height: auto !important;
+            /* Bleed to full width accounting for .content padding (16px mobile) */
+            margin: -16px -16px 0 -16px !important;
+            width: calc(100% + 32px) !important;
+            /* Horizontal scroll tab bar */
             flex-direction: row;
             flex-wrap: nowrap;
             overflow-x: auto;
+            overflow-y: visible;
             scrollbar-width: none;
-            min-height: auto;
-            margin: -24px -24px 0 -24px;
-            width: calc(100% + 48px);
-            padding: 8px 12px;
+            -ms-overflow-style: none;
+            padding: 6px 12px;
             border-right: none;
-            border-bottom: 1px solid var(--border);
-            gap: 4px;
-            position: relative;
-            top: auto;
+            border-bottom: 2px solid var(--border);
+            background: var(--surface);
+            gap: 2px;
+            align-self: auto;
           }
           .cfg-nav::-webkit-scrollbar { display: none; }
           .cfg-nav-item {
             white-space: nowrap;
-            padding: 6px 10px;
+            padding: 7px 12px;
             flex-shrink: 0;
-            border-radius: 8px;
+            border-radius: 8px 8px 0 0;
+            font-size: .8rem;
           }
           .cfg-nav-item.active::before { display: none; }
           .cfg-nav-item.active {
+            background: var(--accent-lt);
+            color: var(--accent);
             border-bottom: 2px solid var(--accent);
-            border-radius: 8px 8px 0 0;
+            margin-bottom: -2px;
           }
           .cfg-nav-divider { display: none; }
           .cfg-nav-label { display: none; }
-          .cfg-nav-icon { width: 16px; height: 16px; }
+          .cfg-nav-icon { width: 15px; height: 15px; }
           .cfg-content { padding: 14px 0 0; }
         }
 
