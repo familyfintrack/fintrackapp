@@ -14170,3 +14170,468 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .sc-summary-bar { gap: 6px; margin-bottom: 10px; }
   .sc-summary-bar .badge { font-size: .74rem; padding: 5px 11px; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCHEDULED MODAL — Automation section redesign
+   Replaces bare checkbox labels with styled toggle cards
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Section divider: "Automação" heading ── */
+#scheduledModal .form-grid > .full[style*="border-top"] {
+  margin-left: -2px;
+  margin-right: -2px;
+  padding: 14px 2px 6px !important;
+  border-top: none !important;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#scheduledModal .form-grid > .full[style*="border-top"]::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  opacity: .7;
+}
+#scheduledModal .form-grid > .full[style*="border-top"]::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  opacity: .7;
+}
+#scheduledModal .form-grid > .full[style*="border-top"] > span {
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: var(--accent);
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Auto-register toggle card ── */
+#scheduledModal .form-group:has(#scAutoRegister) {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 15px !important;
+  gap: 0 !important;
+  transition: border-color .15s, box-shadow .15s;
+}
+#scheduledModal .form-group:has(#scAutoRegister:checked) {
+  border-color: var(--accent);
+  background: var(--accent-lt, #eaf5ef);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Main label row inside the card */
+#scheduledModal .form-group:has(#scAutoRegister) > label[style*="display:flex"] {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer;
+}
+#scheduledModal .form-group:has(#scAutoRegister) > label[style*="display:flex"] input[type=checkbox] {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 6px;
+}
+#scheduledModal .form-group:has(#scAutoRegister) > label > div > div:first-child {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+#scheduledModal .form-group:has(#scAutoRegister) > label > div > div:last-child {
+  font-size: .73rem;
+  color: var(--text2);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Auto-confirm toggle: nested inside auto-register card */
+#scheduledModal .form-group:has(#scAutoRegister) .iof-intl-toggle {
+  margin-top: 10px !important;
+  margin-left: 32px;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: background .12s;
+}
+#scheduledModal .form-group:has(#scAutoRegister) .iof-intl-toggle:hover {
+  background: var(--surface2);
+}
+#scheduledModal .form-group:has(#scAutoRegister) .iof-intl-toggle input[type=checkbox] {
+  width: 16px !important;
+  height: 16px !important;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+#scAutoConfirmHint {
+  font-size: .7rem;
+  font-weight: 600;
+  margin: 4px 0 0 32px !important;
+  color: var(--green, #16a34a);
+}
+
+/* ── Notify email toggle card ── */
+#scheduledModal .form-group:has(#scNotifyEmail) {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 15px !important;
+  gap: 0 !important;
+  transition: border-color .15s, box-shadow .15s;
+}
+#scheduledModal .form-group:has(#scNotifyEmail:checked) {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+}
+#scheduledModal .form-group:has(#scNotifyEmail) > label[style*="display:flex"] {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+#scheduledModal .form-group:has(#scNotifyEmail) > label[style*="display:flex"] input[type=checkbox] {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: #3b82f6;
+  flex-shrink: 0;
+}
+#scheduledModal .form-group:has(#scNotifyEmail) > label > div > div:first-child {
+  font-size: .88rem;
+  font-weight: 700;
+}
+#scheduledModal .form-group:has(#scNotifyEmail) > label > div > div:last-child {
+  font-size: .73rem;
+  color: var(--text2);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* Email details panel */
+#scNotifyEmailDetails {
+  margin-top: 10px !important;
+  margin-left: 32px;
+  border-radius: 10px !important;
+  padding: 12px 13px !important;
+  background: var(--accent-lt, #eaf5ef) !important;
+  border: 1px solid rgba(42,96,73,.18) !important;
+}
+#scNotifyEmailDetails label {
+  font-size: .7rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .05em !important;
+  color: var(--text2) !important;
+}
+#scNotifyEmailDetails input,
+#scNotifyEmailDetails select {
+  font-size: .85rem !important;
+  padding: 8px 11px !important;
+  border-radius: 9px !important;
+}
+
+/* Mobile: stack email details full width */
+@media (max-width: 640px) {
+  #scheduledModal .form-group:has(#scAutoRegister) .iof-intl-toggle,
+  #scAutoConfirmHint,
+  #scNotifyEmailDetails {
+    margin-left: 0;
+  }
+  #scNotifyEmailDetails > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INVESTMENTS PAGE — redesigned hero, portfolio card, position rows
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero header: total portfolio value ── */
+.inv-hero {
+  background: linear-gradient(135deg, #0d2318 0%, #1a3d2a 60%, #2a6049 100%);
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  margin-bottom: 18px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.inv-hero::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 140px; height: 140px;
+  background: rgba(255,255,255,.04);
+  border-radius: 50%;
+}
+.inv-hero-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 6px;
+}
+.inv-hero-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: #fff;
+  line-height: 1.1;
+  font-family: var(--font-serif, monospace);
+}
+.inv-hero-pnl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: .82rem;
+  flex-wrap: wrap;
+}
+.inv-hero-pnl.pos { color: #6ee7a0; }
+.inv-hero-pnl.neg { color: #fca5a5; }
+.inv-hero-pct { font-weight: 700; }
+.inv-hero-cost { color: rgba(255,255,255,.45); font-size: .74rem; }
+.inv-hero-kpis {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.inv-hero-kpis .inv-kpi-card {
+  flex: 1;
+  min-width: 80px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.inv-hero-kpis .inv-kpi-label { color: rgba(255,255,255,.55); }
+.inv-hero-kpis .inv-kpi-value { color: #fff; font-size: .95rem; }
+
+/* ── Asset type distribution bar ── */
+.inv-type-bar-wrap { margin-top: 14px; }
+.inv-type-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 100px;
+  overflow: hidden;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.inv-type-bar > div { border-radius: 100px; transition: flex .3s; }
+.inv-type-bar-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.inv-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .7rem;
+  color: rgba(255,255,255,.7);
+}
+.inv-legend-item > span {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Actions bar ── */
+.inv-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+/* ── Portfolio card per account ── */
+.inv-portfolio-card { margin-bottom: 18px; overflow: hidden; }
+.inv-portfolio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.inv-portfolio-account-name {
+  font-weight: 700;
+  font-size: .97rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.inv-portfolio-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.inv-portfolio-meta-item {
+  font-size: .76rem;
+  color: var(--muted);
+}
+.inv-portfolio-meta-item strong { color: var(--text2); }
+.inv-portfolio-pnl {
+  text-align: right;
+  flex-shrink: 0;
+}
+.inv-portfolio-pnl.pos { color: var(--green, #16a34a); }
+.inv-portfolio-pnl.neg { color: var(--red, #dc2626); }
+.inv-portfolio-pnl-amt { font-weight: 700; font-size: .95rem; }
+.inv-portfolio-pnl-pct { font-size: .78rem; font-weight: 600; opacity: .85; }
+
+/* ── Position table ── */
+.inv-positions-table { font-size: .82rem; overflow-x: auto; }
+.inv-pos-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr 90px 72px;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--surface2);
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.inv-pos-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr 90px 72px;
+  gap: 8px;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  transition: background .1s;
+}
+.inv-pos-row:hover { background: var(--surface2); }
+.inv-pos-row:last-child { border-bottom: none; }
+.inv-pos-ticker {
+  font-weight: 800;
+  font-size: .92rem;
+  color: var(--text);
+  display: block;
+  letter-spacing: .01em;
+}
+.inv-pos-desc {
+  font-size: .7rem;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+.inv-pos-type-badge {
+  display: inline-block;
+  font-size: .62rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
+  color: var(--text2);
+}
+.inv-pos-cell { color: var(--text2); }
+.inv-pos-alloc-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+}
+.inv-pos-alloc-bar {
+  height: 4px;
+  background: var(--accent);
+  border-radius: 100px;
+  opacity: .6;
+  min-width: 2px;
+  max-width: 60px;
+}
+.inv-pos-alloc-pct { font-size: .65rem; color: var(--muted); }
+.inv-pos-return {
+  font-weight: 700;
+  font-size: .84rem;
+  padding: 4px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.inv-pos-return.pos {
+  color: var(--green, #16a34a);
+  background: var(--green-lt, #f0fdf4);
+}
+.inv-pos-return.neg {
+  color: var(--red, #dc2626);
+  background: var(--red-lt, #fef2f2);
+}
+.inv-pos-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.inv-type-group { margin-bottom: 4px; }
+.inv-type-label {
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  padding: 6px 18px 2px;
+  background: color-mix(in srgb, var(--surface2) 60%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+.inv-price-stale { color: var(--amber, #b45309); }
+
+/* ── Mobile investments ── */
+@media (max-width: 640px) {
+  .inv-hero { padding: 18px 16px 16px; border-radius: 14px; }
+  .inv-hero-value { font-size: 1.6rem; }
+  .inv-hero-kpis { gap: 6px; }
+  .inv-hero-kpis .inv-kpi-card { padding: 8px 10px; min-width: 70px; }
+  .inv-hero-kpis .inv-kpi-value { font-size: .85rem; }
+
+  .inv-portfolio-header { padding: 12px 14px; }
+  .inv-portfolio-account-name { font-size: .9rem; }
+
+  .inv-pos-header { display: none; }
+  .inv-pos-row {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+    gap: 4px 8px;
+    padding: 12px 14px;
+  }
+  .inv-pos-name   { grid-column: 1; grid-row: 1; }
+  .inv-pos-return { grid-column: 2; grid-row: 1; align-self: start; }
+  .inv-pos-cell:nth-child(3),  /* qty */
+  .inv-pos-cell:nth-child(4),  /* cost */
+  .inv-pos-cell:nth-child(5) { /* price */
+    grid-column: 1; font-size: .76rem; color: var(--muted);
+    display: inline;
+  }
+  .inv-pos-cell:nth-child(6) { /* value + bar */
+    grid-column: 1; grid-row: 3;
+  }
+  .inv-pos-actions { grid-column: 2; grid-row: 2 / 4; align-self: center; flex-direction: column; }
+  .inv-type-label { padding: 6px 14px 2px; }
+}
