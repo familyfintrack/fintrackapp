@@ -3,7 +3,9 @@ Arquivos atualizados:
 - app.css
 - transactions.js
 
-Ajuste aplicado:
-- centralização do chip/nome da conta nos cards mobile de Transações
-- badge da conta com alinhamento central e largura máxima controlada
-- sem impacto no desktop
+Ajustes aplicados no mobile da lista de transações:
+- rebalanceamento das colunas data / descrição / valor
+- descrição usa mais largura útil antes de truncar
+- título pode ocupar até 2 linhas antes do ellipsis
+- coluna do valor deixa de roubar espaço excessivo
+- conta continua truncando corretamente no chip
