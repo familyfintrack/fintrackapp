@@ -36,7 +36,7 @@ async function applyAiInsightsFeature() {
 
 const _ai = {
   // Filtros ativos da tela de Análise
-  filters: { dateFrom: '', dateTo: '', memberId: '', accountId: '', accountIds: [], categoryId: '', categoryIds: [], payeeId: '' },
+  filters: { dateFrom: '', dateTo: '', memberId: '', accountId: '', accountIds: [], categoryId: '', categoryIds: [], payeeId: '', extraContext: '' },
   // Resultado da última análise
   analysisResult: null,
   // Histórico do chat
@@ -232,6 +232,7 @@ function _aiGetFilters() {
     categoryIds,
     categoryId: categoryIds[0] || '',
     payeeId: document.getElementById('aiPayeeFilter')?.value || '',
+    extraContext: (document.getElementById('aiExtraContext')?.value || '').trim(),
   };
   _ai.filters = { ...filters };
   return filters;
@@ -315,6 +316,7 @@ function _aiRenderSnapshotsList() {
     const created = new Date(s.created_at).toLocaleString('pt-BR');
     const confidence = s.confidence_score != null ? `${Math.round(parseFloat(s.confidence_score || 0))}/100` : '—';
     const summary = s.ai_summary?.summary || s.ai_summary?.overview?.net_comment || 'Snapshot salvo com contexto factual e narrativa da IA.';
+    const userNote = (s.filters?.extraContext || '').trim();
     const deleting = _ai.snapshotDeletingId === s.id;
     return `<div class="card" style="margin-bottom:12px;padding:14px 14px 12px;border:1px solid rgba(255,255,255,.08)">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
@@ -322,6 +324,7 @@ function _aiRenderSnapshotsList() {
           <div style="font-weight:800;font-size:.98rem">${esc(s.title || `AI Insights ${s.period_from} → ${s.period_to}`)}</div>
           <div style="font-size:.78rem;color:var(--muted);margin-top:4px">${esc(String(s.period_from || ''))} → ${esc(String(s.period_to || ''))} · ${esc(created)} · confiança ${esc(confidence)}</div>
           <div style="margin-top:8px;font-size:.86rem;line-height:1.45;color:var(--text)">${esc(String(summary || ''))}</div>
+          ${userNote ? `<div style="margin-top:8px;font-size:.78rem;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px"><strong>Contexto adicional:</strong> ${esc(String(userNote))}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button type="button" class="btn btn-primary btn-sm" onclick="openAiSnapshot('${s.id}')">Abrir</button>
@@ -425,6 +428,8 @@ async function openAiSnapshot(snapshotId) {
   _ai.currentContext = ctx;
   _ai.analysisResult = result;
   _ai.currentSnapshotId = row.id;
+  const extraContextEl = document.getElementById('aiExtraContext');
+  if (extraContextEl) extraContextEl.value = ctx?.filters?.extraContext || '';
   _aiRenderAnalysis(result);
   _aiRefreshSnapshotButton();
   _aiShowTab('analysis');
@@ -434,7 +439,7 @@ window.openAiSnapshot = openAiSnapshot;
 
 async function _aiCollectFinancialContext() {
   const filters = _aiGetFilters();
-  const { dateFrom, dateTo, memberId, accountIds = [], categoryIds = [], payeeId } = filters;
+  const { dateFrom, dateTo, memberId, accountIds = [], categoryIds = [], payeeId, extraContext = '' } = filters;
 
   let q = famQ(sb.from('transactions').select(
     'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,' +
@@ -488,7 +493,7 @@ async function _aiCollectFinancialContext() {
   const filtered = txs || [];
   if (!filtered.length) {
     _ai.financialContext = null;
-    return { period:{ from:dateFrom || 'início', to:dateTo || 'hoje' }, summary:{ totalIncome:0,totalExpense:0,netResult:0,txCount:0,transferCount:0,cardPaymentCount:0 }, filters };
+    return { period:{ from:dateFrom || 'início', to:dateTo || 'hoje' }, summary:{ totalIncome:0,totalExpense:0,netResult:0,txCount:0,transferCount:0,cardPaymentCount:0 }, filters, userContext:{ extraContext } };
   }
 
   let totalIncome=0, totalExpense=0, transferCount=0, cardPaymentCount=0;
@@ -795,6 +800,7 @@ async function _aiCollectFinancialContext() {
     topCategories, topPayees, memberInsights, monthlyTrend, historicalTrend, historicalAvg:{ monthly_income: histAvgIncome ? +histAvgIncome.toFixed(2) : null, monthly_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null },
     scheduledItems:{ once:schedOnce.sort((a,b)=>(a.next_date || '').localeCompare(b.next_date || '')), monthly:schedMonthly.sort((a,b)=>b.monthly_equiv-a.monthly_equiv), recurring:schedRecurring.sort((a,b)=>b.monthly_equiv-a.monthly_equiv), total_count:_stSched.length },
     recurringCommitments, financialProjection, creditCardSummary, creditCardProjection, accountBalances, accountSummary, topTransactions, allTransactions, anomalies, budgets:budgetContext, filters,
+    userContext:{ extraContext },
     meta:{ confidence_score: confidenceScore, closed_months_used: closedMonthKeys.length, recurring_coverage_ratio:+coverageRatio.toFixed(3), engine_version:'ai-insights-engine-v2' },
   };
 
@@ -1009,6 +1015,7 @@ async function _callGeminiAnalysis(apiKey, ctx) {
     orcamentos:                ctx.budgets,
     anomalias_detectadas:      ctx.anomalies,
     top_40_transacoes:         ctx.topTransactions,
+    contexto_adicional_usuario: ctx.userContext?.extraContext || ctx.filters?.extraContext || '',
   };
 
   const prompt = `Você é um consultor financeiro pessoal sênior analisando as finanças de uma família brasileira.
@@ -1028,10 +1035,11 @@ Responda SOMENTE com JSON válido, sem markdown, sem texto antes ou depois.
 8. Para RECORRENTES OUTRAS FREQUÊNCIAS (recorrentes_outras_frequencias): use monthly_equiv para distribuição mensal, mas destaque meses com picos (ex: pagamento trimestral).
 9. A projeção já considera a base histórica + programados. Analise se o prognóstico é sustentável.
 10. Use historico_12_meses para identificar sazonalidade e comparar o período atual com a média histórica.
+11. Se houver contexto_adicional_usuario, use-o como orientação complementar para interpretar os fatos e gerar recomendações mais úteis. Nunca deixe esse contexto sobrescrever os números, filtros e fatos computados pelo sistema. Se houver conflito, priorize os dados do sistema e trate o contexto apenas como hipótese ou observação.
 
 ═══ ANÁLISE OBRIGATÓRIA DE CARTÕES DE CRÉDITO ═══
-11. O campo projecao_cartoes_credito contém gastos PROGRAMADOS em cartões (NÃO inclui pagamento de fatura).
-12. Inclua OBRIGATORIAMENTE a seção "credit_card_projection" no JSON de resposta com:
+12. O campo projecao_cartoes_credito contém gastos PROGRAMADOS em cartões (NÃO inclui pagamento de fatura).
+13. Inclua OBRIGATORIAMENTE a seção "credit_card_projection" no JSON de resposta com:
     - Análise dos gastos programados por cartão
     - Avaliação de sustentabilidade (gastos vs receita recorrente mensal)
     - Alerta se total projetado supera 30% da receita recorrente mensal
