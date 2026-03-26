@@ -3873,6 +3873,62 @@
           </div>
         </div>
 
+        <!-- WhatsApp notification -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="scNotifyWhatsapp" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="toggleScheduledWhatsappDetails(this.checked)">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Notificar por WhatsApp</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Enviar lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente</div>
+            </div>
+          </label>
+        </div>
+        <div class="form-group full" id="scNotifyWhatsappDetails" style="display:none;padding:12px;background:rgba(34,197,94,.08);border-radius:var(--r-sm);border:1px solid rgba(34,197,94,.18)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label>Número WhatsApp</label>
+              <input type="tel" id="scNotifyWhatsappNumber" placeholder="5511999999999">
+              <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Use formato internacional com DDI. Ex.: 5511999999999</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Avisar com antecedência</label>
+              <select id="scNotifyWhatsappDaysBefore">
+                <option value="0">No dia</option>
+                <option value="1" selected>1 dia antes</option>
+                <option value="2">2 dias antes</option>
+                <option value="3">3 dias antes</option>
+                <option value="7">1 semana antes</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Template</label>
+              <select id="scNotifyWhatsappTemplate">
+                <option value="scheduled_upcoming">Lembrete agendado</option>
+                <option value="scheduled_processed">Confirmação de execução</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Idioma</label>
+              <select id="scNotifyWhatsappLang">
+                <option value="pt_BR" selected>Português (Brasil)</option>
+                <option value="en_US">English (US)</option>
+                <option value="fr_FR">Français</option>
+                <option value="es_ES">Español</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyWhatsappUpcoming" checked />
+              🔔 Avisar antes da data
+            </label>
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyWhatsappProcessed" checked />
+              ✅ Avisar após auto-registro
+            </label>
+          </div>
+        </div>
+
       </div>
     </div>
     <div class="modal-footer">
