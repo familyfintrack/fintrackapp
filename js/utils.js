@@ -696,3 +696,64 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+// === AI SHORT DESCRIPTION HELPERS ==========================================
+function _normalizeShortDescText(v) {
+  return String(v || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([|,.;:!?])/g, '$1')
+    .trim();
+}
+
+function buildFallbackShortDescription({ categoryName = '', payeeName = '', memberName = '' } = {}) {
+  const cat = _normalizeShortDescText(categoryName);
+  const pay = _normalizeShortDescText(payeeName);
+  const mem = _normalizeShortDescText(memberName);
+  if (cat && pay && mem) return `${cat} do ${mem} no ${pay}`;
+  if (cat && pay) return `${cat} no ${pay}`;
+  if (cat && mem) return `${cat} do ${mem}`;
+  return cat || pay || mem || 'Lançamento';
+}
+
+async function generateShortTransactionDescription({ categoryName = '', payeeName = '', memberName = '' } = {}) {
+  const fallback = buildFallbackShortDescription({ categoryName, payeeName, memberName });
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    if (!apiKey || !apiKey.startsWith('AIza')) return fallback;
+
+    const prompt = `Create a very short transaction description in Brazilian Portuguese.
+Rules:
+- Use category, payee and family member if provided.
+- Maximum 7 words.
+- No quotes.
+- No punctuation at the end.
+- Natural phrasing for a finance app.
+- Prefer patterns like "Supermercado no Pão de Açúcar" and "Supermercado do Décio no Pão de Açúcar".
+- If one field is missing, adapt naturally.
+Return only the final description.
+
+Category: ${categoryName || 'none'}
+Payee: ${payeeName || 'none'}
+Member: ${memberName || 'none'}`;
+
+    const model = (typeof RECEIPT_AI_MODEL !== 'undefined' && RECEIPT_AI_MODEL) ? RECEIPT_AI_MODEL : 'gemini-2.5-flash-lite';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 40, temperature: 0.2 }
+      })
+    });
+    if (!resp.ok) return fallback;
+    const json = await resp.json();
+    let text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    text = _normalizeShortDescText(text.replace(/^['"`]+|['"`]+$/g, ''));
+    if (!text) return fallback;
+    return text;
+  } catch (_) {
+    return fallback;
+  }
+}

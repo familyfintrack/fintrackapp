@@ -391,9 +391,6 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const _catIconHtml = _catIcon
     ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
     : '';
-  const categoryLine = t.categories?.name
-    ? `<div class="tx-v2-category">${_catIconHtml}${esc(t.categories.name)}</div>`
-    : '';
 
   // Amount
   const cur = (t.currency || t.accounts?.currency || 'BRL').toUpperCase();
@@ -410,11 +407,14 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-bal ${runningBalance >= 0 ? '' : 'neg'}">${fmt(runningBalance, balCur)}</div>`
     : '';
 
-  // Meta line: Conta · Beneficiário
+  // Meta line on mobile: Beneficiário | Categoria. Account stays in its own chip line.
   const metaParts = [];
-  if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
-  if (t.payees?.name)                  metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
-  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
+  if (t.payees?.name) metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
+  if (t.categories?.name) metaParts.push(`<span class="tx-v2-cat-inline">${_catIconHtml}${esc(t.categories.name)}</span>`);
+  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-sep"> | </span>')}</div>` : '';
+  const accountLine = (showAccount && t.accounts?.name)
+    ? `<div class="tx-v2-account-row"><span class="tx-v2-acct tx-v2-acct-pill" title="${esc(t.accounts.name)}">${esc(t.accounts.name)}</span></div>`
+    : '';
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
   const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';
@@ -438,8 +438,8 @@ function txRow(t, showAccount=true, runningBalance=null) {
       <td class="tx-v2-date">${dateStr}${pendDot}</td>
       <td class="tx-v2-body">
         <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
-        ${categoryLine}
         ${meta}
+        ${accountLine}
       </td>
       <td class="tx-v2-right">
         <div class="tx-v2-amt-wrap">${amtHtml}</div>
@@ -1345,9 +1345,29 @@ async function saveTransaction(){
     }
   }
 
+  let generatedDescription = document.getElementById('txDesc').value.trim();
+  if (!generatedDescription) {
+    const categoryName = (state.categories || []).find(c => c.id === (document.getElementById('txCategoryId').value || null))?.name || '';
+    const payeeName = isTransfer ? '' : ((state.payees || []).find(p => p.id === (document.getElementById('txPayeeId').value || null))?.name || '');
+    const memberIds = typeof getFmcMultiPickerSelected === 'function'
+      ? getFmcMultiPickerSelected('txFamilyMemberPicker')
+      : [];
+    const memberName = (() => {
+      const firstId = memberIds[0] || document.getElementById('txFamilyMember')?.value || null;
+      if (!firstId) return '';
+      if (typeof getFamilyMembers === 'function') {
+        return getFamilyMembers().find(m => m.id === firstId)?.name || '';
+      }
+      const opt = document.querySelector(`#txFamilyMember option[value="${firstId}"]`);
+      return opt?.textContent?.trim() || '';
+    })();
+    generatedDescription = await generateShortTransactionDescription({ categoryName, payeeName, memberName });
+    document.getElementById('txDesc').value = generatedDescription;
+  }
+
   const data={
     date:document.getElementById('txDate').value,
-    description:document.getElementById('txDesc').value.trim(),
+    description:generatedDescription,
     amount,
     currency: txCurrency,
     brl_amount: brlAmount,
