@@ -1384,15 +1384,3 @@ body.tx-compact .tx-table .badge{
   color: #23483B;
   border-bottom: 1px solid #D8EADF;
 }
-
-
-
-/* ── Professional title font (financial app tone) ─────────────────────── */
-.page-header-bar-title,
-.page-title-main,
-.tx-page-count,
-.topbar-title {
-  font-family: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.02em !important;
-}
