@@ -391,8 +391,16 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const _catIconHtml = _catIcon
     ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
     : '';
-  const categoryLine = t.categories?.name
-    ? `<div class="tx-v2-category">${_catIconHtml}${esc(t.categories.name)}</div>`
+
+  const infoParts = [];
+  if (t.payees?.name) {
+    infoParts.push(`<span class="tx-v2-inline-pay">${esc(t.payees.name)}</span>`);
+  }
+  if (t.categories?.name) {
+    infoParts.push(`<span class="tx-v2-inline-cat">${_catIconHtml}${esc(t.categories.name)}</span>`);
+  }
+  const categoryLine = infoParts.length
+    ? `<div class="tx-v2-category">${infoParts.join('<span class="tx-v2-pipe"> | </span>')}</div>`
     : '';
 
   // Amount
@@ -410,11 +418,10 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-bal ${runningBalance >= 0 ? '' : 'neg'}">${fmt(runningBalance, balCur)}</div>`
     : '';
 
-  // Meta line: Conta · Beneficiário
+  // Meta line: account only. Payee now appears ahead of category for a denser mobile layout.
   const metaParts = [];
   if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
-  if (t.payees?.name)                  metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
-  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
+  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('')}</div>` : '';
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
   const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';
@@ -1345,25 +1352,9 @@ async function saveTransaction(){
     }
   }
 
-  const _txMemberIds = typeof getFmcMultiPickerSelected === 'function'
-    ? getFmcMultiPickerSelected('txFamilyMemberPicker')
-    : [];
-  const _txMemberId = _txMemberIds[0] || document.getElementById('txFamilyMember')?.value || null;
-  let txDescription = document.getElementById('txDesc').value.trim();
-  if (!txDescription && typeof generateAutoDescription === 'function') {
-    const _catId = document.getElementById('txCategoryId').value || null;
-    const _payId = isTransfer ? null : (document.getElementById('txPayeeId').value || null);
-    const _catName = (state.categories || []).find(c => c.id === _catId)?.name || '';
-    const _payName = (state.payees || []).find(p => p.id === _payId)?.name || '';
-    const _memberName = (typeof getFamilyMemberById === 'function' ? getFamilyMemberById(_txMemberId)?.name : '') || '';
-    txDescription = await generateAutoDescription({ categoryName: _catName, payeeName: _payName, memberName: _memberName });
-    const _descEl = document.getElementById('txDesc');
-    if (_descEl && txDescription) _descEl.value = txDescription;
-  }
-
   const data={
     date:document.getElementById('txDate').value,
-    description:txDescription,
+    description:document.getElementById('txDesc').value.trim(),
     amount,
     currency: txCurrency,
     brl_amount: brlAmount,
@@ -1381,8 +1372,16 @@ async function saveTransaction(){
     attachment_name: existingName,
     updated_at:new Date().toISOString(),
     family_id:famId(),
-    family_member_ids: _txMemberIds,
-    family_member_id: _txMemberId
+    family_member_ids: typeof getFmcMultiPickerSelected === 'function'
+      ? getFmcMultiPickerSelected('txFamilyMemberPicker')
+      : [],
+    family_member_id: (()=>{
+      if (typeof getFmcMultiPickerSelected === 'function') {
+        const ids = getFmcMultiPickerSelected('txFamilyMemberPicker');
+        return ids[0] || null;
+      }
+      return document.getElementById('txFamilyMember')?.value || null;
+    })()
   };
   if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
   let err,txResult;
