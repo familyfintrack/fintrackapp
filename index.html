@@ -5,6 +5,7 @@
 <link rel="manifest" href="manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="FinTrack">
 <meta name="theme-color" content="#0d2318">
@@ -3082,7 +3083,7 @@
         </div>
 
         <!-- Password login panel -->
-        <div id="loginPanelPassword">
+        <form id="loginPanelPassword" onsubmit="event.preventDefault(); doLogin();">
           <div class="form-group" style="margin-bottom:16px">
             <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block" data-i18n="auth.label_email">E-mail</label>
             <input type="email" id="loginEmail" class="login-input" placeholder="seu@email.com"
@@ -3094,23 +3095,23 @@
             <input type="password" id="loginPassword" class="login-input" placeholder="••••••••"
               style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box;padding-right:44px"
               onkeydown="if(event.key==='Enter')doLogin()">
-            <button onclick="toggleLoginPwd()" style="position:absolute;right:12px;bottom:11px;background:none;border:none;cursor:pointer;font-size:1rem;color:#9ca3af">👁</button>
+            <button type="button" onclick="toggleLoginPwd()" style="position:absolute;right:12px;bottom:11px;background:none;border:none;cursor:pointer;font-size:1rem;color:#9ca3af">👁</button>
           </div>
           <div style="display:flex;align-items:center;margin-bottom:16px;gap:8px">
             <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
             <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none" data-i18n="auth.remember_me">Lembrar meu e-mail e senha</label>
           </div>
-          <button onclick="doLogin()" id="loginBtn" class="login-btn"
+          <button type="submit" id="loginBtn" class="login-btn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
             <span data-i18n="auth.btn_enter">Entrar</span>
           </button>
           <div style="text-align:center;margin-top:10px">
-            <button onclick="showForgotPwdForm()" style="background:none;border:none;color:#6b7280;font-size:.78rem;cursor:pointer;text-decoration:underline" data-i18n="auth.forgot_password">Esqueci minha senha</button>
+            <button type="button" onclick="showForgotPwdForm()" style="background:none;border:none;color:#6b7280;font-size:.78rem;cursor:pointer;text-decoration:underline" data-i18n="auth.forgot_password">Esqueci minha senha</button>
           </div>
-        </div>
+        </form>
 
         <!-- Magic link panel -->
-        <div id="loginPanelMagic" style="display:none">
+        <form id="loginPanelMagic" style="display:none" onsubmit="event.preventDefault(); doMagicLink();">
           <div style="text-align:center;margin-bottom:16px">
             <div style="font-size:.83rem;color:#6b7280;line-height:1.5">
               Informe seu e-mail e enviaremos um link para entrar sem senha.
@@ -3123,7 +3124,7 @@
              
               onkeydown="if(event.key==='Enter')doMagicLink()">
           </div>
-          <button onclick="doMagicLink()" id="magicLinkBtn"
+          <button type="submit" id="magicLinkBtn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
             <span data-i18n="auth.btn_send_link">✉️ Enviar Link de Acesso</span>
           </button>
@@ -3132,12 +3133,12 @@
             <div style="font-size:1.5rem;margin-bottom:6px">📬</div>
             <div style="font-size:.85rem;font-weight:600;color:#166534;margin-bottom:4px">Link enviado!</div>
             <div style="font-size:.78rem;color:#15803d;line-height:1.5">Verifique sua caixa de entrada e clique no link para entrar.</div>
-            <button onclick="doMagicLink()" id="magicResendBtn"
+            <button type="button" onclick="doMagicLink()" id="magicResendBtn"
               style="margin-top:10px;background:none;border:1px solid #86efac;color:#16a34a;font-size:.75rem;font-weight:600;padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit">
               Reenviar
             </button>
           </div>
-        </div>
+        </form>
 
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
@@ -3147,7 +3148,7 @@
       </div>
 
       <!-- Forgot password form -->
-      <div id="forgotPwdArea" style="display:none">
+      <form id="forgotPwdArea" style="display:none" onsubmit="event.preventDefault(); doForgotPwd();">
         <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:8px">🔑 Recuperar Senha</div>
         <div style="font-size:.82rem;color:#6b7280;text-align:center;margin-bottom:20px">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
         <div class="form-group" style="margin-bottom:20px">
@@ -3163,12 +3164,12 @@
         </button>
         <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:14px">
-          <button onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
+          <button type="button" onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
         </div>
-      </div>
+      </form>
 
       <!-- Password recovery form (shown after clicking reset link from email) -->
-      <div id="recoveryPwdArea" style="display:none">
+      <form id="recoveryPwdArea" style="display:none" onsubmit="event.preventDefault(); doRecoveryPwd();">
         <div style="text-align:center;margin-bottom:16px">
           <div style="font-size:2rem;margin-bottom:8px">🔐</div>
           <div style="font-size:1rem;font-weight:700;color:#1e5c42">Definir Nova Senha</div>
@@ -3193,10 +3194,10 @@
           <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
         </button>
         <div id="recoveryPwdError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
-      </div>
+      </form>
 
       <!-- Register form -->
-      <div id="registerFormArea" style="display:none">
+      <form id="registerFormArea" style="display:none" onsubmit="event.preventDefault(); doRegister();">
         <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:16px">📝 Solicitar Acesso</div>
         <div class="form-group" style="margin-bottom:12px">
           <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nome completo</label>
@@ -3239,9 +3240,9 @@
         </button>
         <div id="regError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:14px">
-          <button onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
+          <button type="button" onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
         </div>
-      </div>
+      </form>
 
       <!-- Pending approval screen -->
       <div id="pendingApprovalArea" style="display:none;text-align:center">
