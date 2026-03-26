@@ -16365,144 +16365,59 @@ section[data-page="transactions"] .content {
   color: #F7FAF8 !important;
 }
 
-
-/* === 2026-03-25 surgical patch: header background swap + mobile tx density + reconcile gating === */
-/* Keep swap limited to background fill only */
+/* === 2026-03-26 surgical header/fx final overrides === */
+/* Keep only the background fill swapped: topbar gets former title solid, title bar gets former topbar gradient */
 .topbar,
 .header,
 .app-header {
   background: #166534 !important;
-  background-image: none !important;
-  border-bottom: 1px solid rgba(255,255,255,.08) !important;
 }
 
 .page-header-bar,
 .page-titlebar {
   background: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
-  background-image: linear-gradient(135deg, #163d35 0%, #2f7f63 48%, #b7db4a 100%) !important;
 }
 
-/* Reconciliation controls stay hidden outside reconcile mode */
-#page-transactions .tx-v2-inline-actions,
-#page-transactions .tx-reconcile-btn,
-#page-transactions .tx-v2-act {
-  display: none !important;
-}
-body.reconcile-mode #page-transactions .tx-v2-chk,
-#page-transactions.reconcile-mode .tx-v2-chk {
-  display: table-cell !important;
+/* FX bar must span the full content width, flush to both edges under the header area */
+.fx-bar,
+#fxRatesBadge,
+.fx-rates-badge {
+  display: block !important;
+  width: calc(100% + 48px) !important;
+  max-width: none !important;
+  margin: 0 -24px 16px -24px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
 }
 
-/* Mobile-only compaction for transactions list */
+.fx-bar-inner {
+  width: 100% !important;
+  max-width: none !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  box-sizing: border-box !important;
+}
+
 @media (max-width: 768px) {
-  #page-transactions #txFlatCard .table-wrap {
-    overflow: visible !important;
+  .fx-bar,
+  #fxRatesBadge,
+  .fx-rates-badge {
+    width: calc(100% + 32px) !important;
+    margin: 0 -16px 14px -16px !important;
   }
 
-  #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
-    grid-template-columns: 34px minmax(0,1fr) auto !important;
-    gap: 0 8px !important;
-    padding: 8px 10px !important;
-    margin: 3px 0 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,.05) !important;
-  }
-
-  #page-transactions tbody td.tx-v2-date {
-    width: 34px !important;
-    min-width: 34px !important;
-  }
-
-  #page-transactions .tx-date-day {
-    font-size: .76rem !important;
-    line-height: 1 !important;
-  }
-
-  #page-transactions .tx-date-mon {
-    font-size: .53rem !important;
-    margin-top: 1px !important;
-    line-height: 1 !important;
-  }
-
-  #page-transactions tbody td.tx-v2-right {
-    gap: 1px !important;
-  }
-
-  #page-transactions .tx-v2-title {
-    font-size: .83rem !important;
-    line-height: 1.16 !important;
-    margin: 0 !important;
-  }
-
-  #page-transactions .tx-v2-category {
-    font-size: .67rem !important;
-    line-height: 1.1 !important;
-    margin-top: 2px !important;
-  }
-
-  #page-transactions .tx-v2-meta {
-    font-size: .65rem !important;
-    line-height: 1.1 !important;
-    margin-top: 2px !important;
-    gap: 2px !important;
-  }
-
-  #page-transactions .tx-v2-amt {
-    font-size: .92rem !important;
-    line-height: 1.05 !important;
-  }
-
-  #page-transactions .tx-v2-brl,
-  #page-transactions .tx-v2-bal {
-    font-size: .62rem !important;
-    line-height: 1.05 !important;
-    margin-top: 1px !important;
-  }
-
-  #page-transactions .tx-v2-acct-pill {
-    padding: 1px 5px !important;
-    border-radius: 999px !important;
-  }
-
-  #page-transactions .tx-reconcile-badge {
-    font-size: .55rem !important;
-    padding: 1px 4px !important;
-    margin-left: 4px !important;
-  }
-
-  #page-transactions tbody tr.tx-date-header-row {
-    padding: 10px 0 2px !important;
+  .fx-bar-inner {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
 }
 
 @media (max-width: 480px) {
-  #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
-    grid-template-columns: 32px minmax(0,1fr) auto !important;
-    gap: 0 7px !important;
-    padding: 7px 9px !important;
-    border-radius: 11px !important;
-  }
-
-  #page-transactions tbody td.tx-v2-date {
-    width: 32px !important;
-    min-width: 32px !important;
-  }
-
-  #page-transactions .tx-v2-title {
-    font-size: .8rem !important;
-  }
-
-  #page-transactions .tx-v2-category,
-  #page-transactions .tx-v2-meta {
-    font-size: .63rem !important;
-  }
-
-  #page-transactions .tx-v2-amt {
-    font-size: .88rem !important;
-  }
-
-  #page-transactions .tx-v2-brl,
-  #page-transactions .tx-v2-bal {
-    font-size: .6rem !important;
+  .fx-bar,
+  #fxRatesBadge,
+  .fx-rates-badge {
+    width: calc(100% + 24px) !important;
+    margin: 0 -12px 14px -12px !important;
   }
 }
