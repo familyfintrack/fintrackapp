@@ -374,7 +374,7 @@ async function buildAccountRunningBalanceMap(accountId) {
 function txRow(t, showAccount=true, runningBalance=null) {
   const isPending = (t.status||'confirmed') === 'pending';
 
-  // Two-line date: day number + month abbrev — renders compactly on mobile
+  // Two-line date: day number + month abbrev — renders compactly on desktop
   const d   = t.date ? new Date(t.date + 'T12:00:00') : new Date();
   const _lang = (typeof i18n !== 'undefined' && i18n.lang) ? i18n.lang : 'pt';
   const _MONS = {
@@ -388,11 +388,18 @@ function txRow(t, showAccount=true, runningBalance=null) {
 
   const _catIcon  = t.categories?.icon  || '';
   const _catColor = t.categories?.color || '';
+
+  // Mobile: colored icon bubble shown inside body column
+  const catBubble = _catIcon
+    ? `<span class="tx-v2-cat-bubble" style="background:${_catColor ? _catColor + '20' : 'var(--bg2)'};">`
+      + `<span style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span></span>`
+    : '';
+
   const _catIconHtml = _catIcon
     ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
     : '';
   const categoryLine = t.categories?.name
-    ? `<div class="tx-v2-category">${_catIconHtml}${esc(t.categories.name)}</div>`
+    ? `<div class="tx-v2-category"${_catColor ? ` style="color:${_catColor}"` : ''}>${_catIconHtml}${esc(t.categories.name)}</div>`
     : '';
 
   // Amount
@@ -417,10 +424,15 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
-  const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';
+  // Pending: compact inline badge for mobile, dot icon for desktop
+  const pendDot   = isPending ? '<span class="tx-v2-pend tx-pend-desktop">⏳</span>' : '';
+  const pendBadge = isPending ? '<span class="tx-pend-badge">PEND.</span>' : '';
 
   const isReconciled = !!t.is_reconciled;
   const reconcileBadge = isReconciled ? '<span class="tx-reconcile-badge" title="Reconciliada">✓REC</span>' : '';
+
+  // Left-border color style from category
+  const borderStyle = _catColor ? ` style="border-left-color:${_catColor} !important"` : '';
 
   // ── Modo Reconciliação ──
   if (state.reconcileMode) {
@@ -433,13 +445,15 @@ function txRow(t, showAccount=true, runningBalance=null) {
           onchange="toggleReconcileCheck('${t.id}',this)">
       </label>
     </td>`;
-    return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${reconciledCls}${checkedCls}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
+    return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${reconciledCls}${checkedCls}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')"${borderStyle}>
       ${checkboxCell}
       <td class="tx-v2-date">${dateStr}${pendDot}</td>
       <td class="tx-v2-body">
-        <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
-        ${categoryLine}
-        ${meta}
+        <div class="tx-v2-body-inner">${catBubble}<div class="tx-v2-body-text">
+          <div class="tx-v2-title">${pendBadge}${esc(t.description||'—')}${attach}${reconcileBadge}</div>
+          ${categoryLine}
+          ${meta}
+        </div></div>
       </td>
       <td class="tx-v2-right">
         <div class="tx-v2-amt-wrap">${amtHtml}</div>
@@ -449,12 +463,14 @@ function txRow(t, showAccount=true, runningBalance=null) {
   }
 
   // ── Modo normal ──
-  return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${isReconciled?' tx-reconciled':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
+  return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${isReconciled?' tx-reconciled':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')"${borderStyle}>
     <td class="tx-v2-date">${dateStr}${pendDot}</td>
     <td class="tx-v2-body">
-      <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
-      ${categoryLine}
-      ${meta}
+      <div class="tx-v2-body-inner">${catBubble}<div class="tx-v2-body-text">
+        <div class="tx-v2-title">${pendBadge}${esc(t.description||'—')}${attach}${reconcileBadge}</div>
+        ${categoryLine}
+        ${meta}
+      </div></div>
     </td>
     <td class="tx-v2-right">
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
@@ -655,6 +671,20 @@ function renderTransactions(){
     let bandIndex = 0;
     const TODAY_STR = new Date().toISOString().slice(0,10);
     const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+    // Pre-group to compute daily totals (for mobile header badges)
+    const dailyTotals = {};
+    txList.forEach(tx => {
+      const ds = tx.date || '';
+      if (!dailyTotals[ds]) dailyTotals[ds] = { inc: 0, exp: 0 };
+      const st = (tx.status || 'confirmed');
+      if (st !== 'pending') {
+        const brl = typeof txToBRL === 'function' ? txToBRL(tx) : parseFloat(tx.brl_amount ?? tx.amount ?? 0);
+        if (brl > 0) dailyTotals[ds].inc += brl;
+        else         dailyTotals[ds].exp += brl;
+      }
+    });
+
     txList.forEach(tx => {
       const txDateStr = tx.date || '';
       if (txDateStr !== lastDate) {
@@ -678,13 +708,21 @@ function renderTransactions(){
         const _todayLbl = typeof t === 'function' ? t('tx.date_today') : 'Hoje';
         const _yestLbl  = typeof t === 'function' ? t('tx.date_yesterday') : 'Ontem';
         let label;
-        if (txDateStr === TODAY_STR)     label = `${_todayLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
+        if (txDateStr === TODAY_STR)          label = `${_todayLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
         else if (txDateStr === YESTERDAY_STR) label = `${_yestLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
         else label = `${dayNames[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]} ${d.getFullYear()}`;
         bandIndex++;
         const bandClass = bandIndex % 2 === 0 ? 'tx-date-band-alt' : 'tx-date-band';
         const colspan = colCount;
-        html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell">${label}</td></tr>`;
+
+        // Daily totals badges (visible only on mobile via CSS)
+        const dt = dailyTotals[txDateStr] || { inc: 0, exp: 0 };
+        const incBadge = dt.inc > 0 ? `<span class="tx-date-inc">${fmt(dt.inc)}</span>` : '';
+        const expBadge = dt.exp < 0 ? `<span class="tx-date-exp">${fmt(dt.exp)}</span>` : '';
+        const totalsHtml = (incBadge || expBadge)
+          ? `<span class="tx-date-totals">${incBadge}${expBadge}</span>` : '';
+
+        html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell"><span class="tx-date-label">${label}</span>${totalsHtml}</td></tr>`;
         lastDate = txDateStr;
       }
       const runningBal = (balMapArg && Object.prototype.hasOwnProperty.call(balMapArg, tx.id)) ? balMapArg[tx.id] : null;
@@ -693,10 +731,9 @@ function renderTransactions(){
     return html;
   }
 
-  const pendingHtml   = renderWithDateGroups(pending, !singleAccId, null);
+  const pendingHtml  = pending.length  ? pending.map(t => txRow(t, !singleAccId, null)).join('') : '';
   const confirmedHtml = renderWithDateGroups(confirmed, !singleAccId, balMap);
   body.innerHTML = pendingHtml + sep + confirmedHtml;
-  try{ enhanceTransactionsMobileLayout(); }catch(e){}
   const total=state.txTotal, page=state.txPage, ps=state.txPageSize;
   document.getElementById('txPagination').innerHTML=`<span>${page*ps+1}–${Math.min((page+1)*ps,total)} de ${total}</span><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" ${page===0?'disabled':''} onclick="changePage(-1)">${t('tx.prev_page')}</button><button class="btn btn-ghost btn-sm" ${(page+1)*ps>=total?'disabled':''} onclick="changePage(1)">${t('tx.next_page')}</button></div>`;
 
@@ -2059,76 +2096,6 @@ async function toggleTxDetailStatus() {
 // Mobile UX: swipe to confirm + compact view
 // ─────────────────────────────────────────────
 let _txSwipeBound = false;
-
-function enhanceTransactionsMobileLayout(){
-  const page = document.getElementById('page-transactions');
-  if (!page) return;
-
-  const header = page.querySelector('.tx-page-header');
-  const filterBar = page.querySelector('.tx-filter-bar');
-  const chipsRow = page.querySelector('.tx-filter-chips-row');
-  const searchWrap = page.querySelector('.tx-search-wrap');
-  const searchInput = document.getElementById('txSearch');
-  const actionsWrap = header?.lastElementChild;
-
-  if (header) header.classList.add('tx-mobile-refined-header');
-  if (actionsWrap) actionsWrap.classList.add('tx-mobile-header-actions');
-  if (filterBar) filterBar.classList.add('tx-mobile-refined-filters');
-  if (chipsRow) chipsRow.classList.add('tx-mobile-refined-grid');
-  if (searchWrap) searchWrap.classList.add('tx-mobile-search-shell');
-  if (searchInput && window.innerWidth <= 720) {
-    searchInput.placeholder = 'Buscar transação';
-  }
-
-  const controls = [
-    ['txMonth', 'Período'],
-    ['txAccount', 'Conta'],
-    ['txCategoryFilter', 'Categoria'],
-    ['txType', 'Tipo'],
-    ['txStatusFilter', 'Status'],
-    ['txMemberPicker', 'Pessoa'],
-    ['txReconcileFilter', 'Conciliação'],
-    ['btnEnterReconcile', 'Modo de conciliação'],
-  ];
-
-  controls.forEach(([id, label]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const wrap = el.closest('.tx-filter-chip-wrap') || el;
-    wrap.dataset.mobileLabel = label;
-    wrap.classList.add('tx-mobile-filter-cell');
-    if (id === 'btnEnterReconcile' || id === 'txReconcileFilter') {
-      wrap.classList.add('tx-mobile-span-2');
-    }
-  });
-
-  const viewBtns = page.querySelector('.tx-view-btns');
-  if (viewBtns) {
-    viewBtns.dataset.mobileLabel = 'Visualização';
-    viewBtns.classList.add('tx-mobile-filter-cell', 'tx-mobile-span-2');
-  }
-
-  if (chipsRow) {
-    const desiredOrder = [
-      'txMonth',
-      'txAccount',
-      'txCategoryFilter',
-      'txType',
-      'txStatusFilter',
-      'txMemberPicker',
-      'txReconcileFilter',
-      'btnEnterReconcile',
-    ];
-    desiredOrder.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const node = el.closest('.tx-filter-chip-wrap') || el;
-      if (node.parentElement === chipsRow) chipsRow.appendChild(node);
-    });
-    if (viewBtns && viewBtns.parentElement === chipsRow) chipsRow.appendChild(viewBtns);
-  }
-}
-
 function initTxMobileUX(){
   // Bind once using event delegation
   if(_txSwipeBound) return;
