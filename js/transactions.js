@@ -391,16 +391,8 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const _catIconHtml = _catIcon
     ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
     : '';
-
-  const infoParts = [];
-  if (t.payees?.name) {
-    infoParts.push(`<span class="tx-v2-inline-pay">${esc(t.payees.name)}</span>`);
-  }
-  if (t.categories?.name) {
-    infoParts.push(`<span class="tx-v2-inline-cat">${_catIconHtml}${esc(t.categories.name)}</span>`);
-  }
-  const categoryLine = infoParts.length
-    ? `<div class="tx-v2-category">${infoParts.join('<span class="tx-v2-pipe"> | </span>')}</div>`
+  const categoryLine = t.categories?.name
+    ? `<div class="tx-v2-category">${_catIconHtml}${esc(t.categories.name)}</div>`
     : '';
 
   // Amount
@@ -418,10 +410,11 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-bal ${runningBalance >= 0 ? '' : 'neg'}">${fmt(runningBalance, balCur)}</div>`
     : '';
 
-  // Meta line: account only. Payee now appears ahead of category for a denser mobile layout.
+  // Meta line: Conta · Beneficiário
   const metaParts = [];
   if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
-  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('')}</div>` : '';
+  if (t.payees?.name)                  metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
+  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
   const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';

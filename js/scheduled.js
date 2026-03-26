@@ -1040,24 +1040,8 @@ async function saveScheduled() {
     fxRate = (fxMode === 'fixed' && raw > 0) ? raw : null;
   }
 
-  const _scMemberIds = typeof getFmcMultiPickerSelected === 'function'
-    ? getFmcMultiPickerSelected('scFamilyMemberPicker')
-    : [];
-  const _scMemberId = _scMemberIds[0] || null;
-  let scDescription = document.getElementById('scDesc').value.trim();
-  if (!scDescription && typeof generateAutoDescription === 'function') {
-    const _catId = document.getElementById('scCategoryId').value || null;
-    const _payId = isScTransfer ? null : (document.getElementById('scPayeeId').value || null);
-    const _catName = (state.categories || []).find(c => c.id === _catId)?.name || '';
-    const _payName = (state.payees || []).find(p => p.id === _payId)?.name || '';
-    const _memberName = (typeof getFamilyMemberById === 'function' ? getFamilyMemberById(_scMemberId)?.name : '') || '';
-    scDescription = await generateAutoDescription({ categoryName: _catName, payeeName: _payName, memberName: _memberName });
-    const _descEl = document.getElementById('scDesc');
-    if (_descEl && scDescription) _descEl.value = scDescription;
-  }
-
   const data = {
-    description: scDescription,
+    description: document.getElementById('scDesc').value.trim(),
     type,
     amount: (type==='expense'||isScTransfer) ? -Math.abs(amount) : Math.abs(amount),
     currency: _getScSelectedCurrency() || (()=>{const _a=(state.accounts||[]).find(a=>a.id===document.getElementById('scAccountId').value);return _a?.currency||'BRL';})(),
@@ -1082,8 +1066,16 @@ async function saveScheduled() {
     fx_mode:  fxVisible ? fxMode : null,
     fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
-    family_member_ids: _scMemberIds,
-    family_member_id: _scMemberId,
+    family_member_ids: typeof getFmcMultiPickerSelected === 'function'
+      ? getFmcMultiPickerSelected('scFamilyMemberPicker')
+      : [],
+    family_member_id: (() => {
+      if (typeof getFmcMultiPickerSelected === 'function') {
+        const ids = getFmcMultiPickerSelected('scFamilyMemberPicker');
+        return ids[0] || null;
+      }
+      return null;
+    })(),
   };
 
   if(!data.description) { toast('Informe a descrição', 'error'); return; }
