@@ -117,6 +117,43 @@ function _aiShowTab(tab) {
 }
 
 
+
+function _aiCurrentFamilyId() {
+  return currentUser?.family_id || null;
+}
+
+async function _aiHasSnapshotAccess(familyId) {
+  const famId = familyId || _aiCurrentFamilyId();
+  const userId = currentUser?.id || null;
+  if (!sb || !famId || !userId) return false;
+  if (currentUser?.role === 'admin' || currentUser?.role === 'owner' || currentUser?.app_role === 'admin' || currentUser?.app_role === 'owner') return true;
+  try {
+    const { count, error: fmErr } = await sb.from('family_members')
+      .select('id', { head: true, count: 'exact' })
+      .eq('family_id', famId)
+      .eq('user_id', userId);
+    if (!fmErr && (count || 0) > 0) return true;
+  } catch (_) {}
+  try {
+    const { data: appRow, error: appErr } = await sb.from('app_users')
+      .select('family_id,role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!appErr && (appRow?.family_id === famId || ['admin','owner'].includes(String(appRow?.role || '').toLowerCase()))) return true;
+  } catch (_) {}
+  return false;
+}
+
+async function _aiAssertSnapshotAccess() {
+  const famId = _aiCurrentFamilyId();
+  if (!famId) throw new Error('Nenhuma família ativa selecionada.');
+  const ok = await _aiHasSnapshotAccess(famId);
+  if (!ok) {
+    throw new Error('Seu usuário não tem permissão de snapshot para a família ativa. Aplique o SQL atualizado e confirme o vínculo em family_members ou app_users.family_id.');
+  }
+  return famId;
+}
+
 function _aiRefreshSnapshotButton() {
   const btn = document.getElementById('aiSaveSnapshotBtn');
   if (!btn) return;
@@ -249,7 +286,7 @@ function _aiComputeProjectionConfidence(closedMonths, scheduledCoverageRatio, fi
 }
 
 async function _aiLoadSnapshotRows() {
-  const famId = currentUser?.family_id;
+  const famId = _aiCurrentFamilyId();
   if (!famId) return [];
   const { data, error } = await sb.from('ai_insight_snapshots')
     .select('id,family_id,title,period_from,period_to,status,filters,source_metrics,projection_metrics,recommendation_summary,ai_summary,confidence_score,created_at,created_by,engine_version,model_name,prompt_version')
@@ -302,6 +339,9 @@ async function loadAiSnapshots() {
     _ai.snapshots = await _aiLoadSnapshotRows();
   } catch (e) {
     console.warn('[AIInsights] load snapshots:', e?.message || e);
+    if ((e?.code === '42501') || /row-level security|permission denied|403/.test(String(e?.message || e))) {
+      toast('Snapshots bloqueados para esta família. Rode o SQL atualizado e valide o vínculo do usuário.', 'warning');
+    }
   } finally {
     _ai.snapshotsLoading = false;
     _aiRenderSnapshotsList();
@@ -309,7 +349,7 @@ async function loadAiSnapshots() {
 }
 
 async function _aiSaveSnapshot(ctx, result) {
-  const famId = currentUser?.family_id;
+  const famId = await _aiAssertSnapshotAccess();
   const userId = currentUser?.id;
   if (!famId || !userId || !ctx || !result) return null;
   const recSummary = [
@@ -850,7 +890,7 @@ async function saveCurrentAiSnapshot() {
     }
     const snapshotId = await _aiSaveSnapshot(ctx, result);
     if (!snapshotId) {
-      toast('Não foi possível salvar o snapshot. Verifique se o SQL foi aplicado no Supabase.', 'warning');
+      toast('Não foi possível salvar o snapshot. Verifique o SQL atualizado e as permissões da família no Supabase.', 'warning');
       return;
     }
     await loadAiSnapshots();
@@ -858,7 +898,12 @@ async function saveCurrentAiSnapshot() {
     toast('Snapshot da família salvo com sucesso.', 'success');
   } catch (err) {
     console.warn('[AIInsights] manual snapshot save:', err?.message || err);
-    toast('Erro ao salvar snapshot: ' + (err?.message || err), 'error');
+    const msg = String(err?.message || err || 'Erro desconhecido');
+    if (/row-level security|permission denied|403/i.test(msg)) {
+      toast('Snapshot bloqueado por permissão. Rode o SQL atualizado e confirme que seu usuário pertence à família ativa.', 'error');
+    } else {
+      toast('Erro ao salvar snapshot: ' + msg, 'error');
+    }
   } finally {
     if (btn) btn.innerHTML = prevHtml || '💾 Salvar snapshot';
     _aiRefreshSnapshotButton();
