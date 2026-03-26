@@ -4930,17 +4930,21 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     flex-shrink: 0;
   }
 
-  /* ── 3. Card de transação: grid ícone · corpo · valor ── */
+  /* ── 3. Card de transação: grid ícone · corpo · valor ──────────────
+     Coluna body cresce livremente; valor tem largura mínima garantida
+     para não espremer o texto da descrição.
+  ── */
   #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
     display: grid !important;
-    grid-template-columns: 44px 1fr auto !important;
-    align-items: center !important;
-    gap: 0 11px !important;
+    /* ícone fixo · body cresce · valor com min 80px */
+    grid-template-columns: 40px minmax(0, 1fr) minmax(80px, auto) !important;
+    align-items: start !important;        /* alinha pelo topo quando body tem 2 linhas */
+    gap: 0 10px !important;
     border: 1px solid var(--border, #e8e4de) !important;
     border-left: 3px solid var(--accent, #2a6049) !important;
     border-radius: 14px !important;
     background: var(--surface, #fff) !important;
-    padding: 11px 14px 11px 11px !important;
+    padding: 11px 12px 11px 10px !important;
     margin: 0 0 5px !important;
     box-shadow: 0 1px 4px rgba(0,0,0,.05) !important;
     transition: transform .12s, box-shadow .12s;
@@ -4963,44 +4967,70 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     padding: 4px 2px !important; margin: 6px 0 2px !important;
   }
 
-  /* ── 4. Ícone de categoria (col 1) ── */
+  /* ── 4. Ícone de categoria (col 1) — centralizado verticalmente ── */
   .tx-v2-cat-bubble {
     display: flex !important;
     grid-column: 1; grid-row: 1;
+    margin-top: 2px;             /* alinha visualmente com a primeira linha de texto */
   }
 
-  /* ── 5. Body wrapper → grid para ocupar col 2 ── */
+  /* ── 5. Body wrapper — ocupa col 2 inteira ── */
   #page-transactions tbody td.tx-v2-body {
     grid-column: 2 !important; grid-row: 1 !important;
     padding: 0 !important; min-width: 0 !important;
-    align-self: center !important; display: block !important;
+    align-self: start !important; display: block !important;
   }
   .tx-v2-body-inner {
     display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
+    align-items: flex-start !important;
+    gap: 9px !important;
   }
-  .tx-v2-body-text  { display: block !important; min-width: 0; flex: 1; }
+  .tx-v2-body-text { display: block !important; min-width: 0; flex: 1; }
 
-  /* ── 6. Valor (col 3) ── */
+  /* ── 6. Valor (col 3) — alinhado ao topo com o título ── */
   #page-transactions tbody td.tx-v2-right {
     grid-column: 3 !important; grid-row: 1 !important;
     padding: 0 !important; text-align: right !important;
-    align-self: center !important; width: auto !important;
-    display: block !important;
+    align-self: start !important; width: auto !important;
+    display: block !important; margin-top: 2px;
   }
 
   /* Ações: ocultas — tap abre detalhe */
   #page-transactions tbody td.tx-v2-act { display: none !important; }
 
-  /* ── 7. Tipografia compacta ── */
-  .tx-v2-title    { font-size: .875rem !important; line-height: 1.25 !important; font-weight: 600 !important;
-                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tx-v2-meta     { font-size: .7rem   !important; margin-top: 3px !important; }
-  .tx-v2-category { font-size: .7rem   !important; margin-top: 2px !important; }
-  .tx-v2-amt      { font-size: .95rem  !important; font-weight: 700 !important; }
-  .tx-v2-brl      { font-size: .65rem  !important; }
-  .tx-v2-bal      { font-size: .68rem  !important; }
+  /* ── 7. Tipografia ── */
+  /* Título: quebra em até 2 linhas em vez de truncar com ellipsis */
+  .tx-v2-title {
+    font-size: .875rem !important;
+    line-height: 1.3 !important;
+    font-weight: 600 !important;
+    white-space: normal !important;        /* permite quebra de linha */
+    overflow: visible !important;
+    text-overflow: unset !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;      /* máx 2 linhas */
+    -webkit-box-orient: vertical !important;
+    word-break: break-word;
+  }
+  /* Meta linha (conta · beneficiário): NUNCA trunca — texto inteiro */
+  .tx-v2-meta {
+    font-size: .7rem !important;
+    margin-top: 3px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+  }
+  /* Beneficiário e conta: sempre inteiros */
+  .tx-v2-pay, .tx-v2-acct {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    word-break: break-word;
+  }
+  .tx-v2-category { font-size: .7rem !important; margin-top: 2px !important; }
+  .tx-v2-amt      { font-size: .95rem !important; font-weight: 700 !important; white-space: nowrap; }
+  .tx-v2-brl      { font-size: .65rem !important; }
+  .tx-v2-bal      { font-size: .68rem !important; white-space: nowrap; }
 
   /* Conta como sub-label abaixo do valor */
   .tx-v2-acct-pill {
@@ -15950,189 +15980,158 @@ section[data-page="transactions"] .content {
   #page-transactions{
     width:100%;
   }
+
+  /* ══════════════════════════════════════════════
+     CABEÇALHO MOBILE — 2 linhas compactas
+     Linha 1: título + totais (receita/despesa)
+     Linha 2: botão "+ Nova" em largura total
+  ══════════════════════════════════════════════ */
   #page-transactions .tx-page-header{
-    flex-direction:column;
-    align-items:stretch;
-    gap:10px;
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-template-rows: auto !important;
+    align-items: center !important;
+    gap: 0 10px !important;
+    margin-bottom: 10px !important;
+    flex-wrap: unset !important;
   }
-  #page-transactions .tx-page-title-area,
+  /* Área de título + totais ocupa linha 1, col 1 */
+  #page-transactions .tx-page-title-area{
+    grid-column: 1; grid-row: 1;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+  }
+  /* Botões ação (clipboard + nova): col 2, alinhados ao topo */
+  #page-transactions .tx-page-header > div:last-child {
+    grid-column: 2; grid-row: 1;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+  /* Esconde botão clipboard no mobile — economiza espaço */
+  #page-transactions .tx-page-header > div:last-child > button:first-child {
+    display: none !important;
+  }
+  /* Botão "+ Nova": mais fácil de tocar */
+  #page-transactions .tx-page-header > div:last-child > button:last-child {
+    padding: 9px 18px !important;
+    font-size: .88rem !important;
+    border-radius: 10px !important;
+  }
+  /* Contagem de transações */
+  #page-transactions .tx-page-count{
+    font-size: .72rem !important;
+    letter-spacing: .05em !important;
+  }
+  /* Totais (badges receita/despesa) em linha */
   #page-transactions .tx-page-totals{
-    width:100%;
-    min-width:0;
-    flex-wrap:wrap;
+    display: flex !important;
+    gap: 5px !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
   }
-  #page-transactions .tx-filter-bar{
-    gap:10px;
-  }
-  #page-transactions .tx-filter-chips-row{
-    width:100%;
-    overflow-x:auto;
-    padding-bottom:2px;
-    flex-wrap:nowrap;
-  }
-  #page-transactions .tx-filter-chip-wrap,
-  #page-transactions .tx-chip-filter-btn{
-    flex:0 0 auto;
+  #page-transactions .tx-page-totals .badge{
+    font-size: .78rem !important;
+    padding: 3px 9px !important;
+    border-radius: 20px !important;
+    white-space: nowrap !important;
   }
 
+  /* ══════════════════════════════════════════════
+     BARRA DE FILTROS MOBILE — 2 linhas limpas
+     Linha 1: busca em largura total
+     Linha 2: chips horizontais com scroll suave
+     (view toggle fixo à direita)
+  ══════════════════════════════════════════════ */
+  #page-transactions .tx-filter-bar{
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+  }
+  /* Busca: largura total, altura confortável para toque */
+  #page-transactions .tx-search-wrap{
+    width: 100% !important;
+    padding: 9px 14px !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+  }
+  #page-transactions .tx-search-input{
+    font-size: .9rem !important;
+  }
+  /* Linha 2: chips + view-toggle numa fileira scrollável */
+  #page-transactions .tx-filter-chips-row{
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 3px !important;   /* espaço para o scrollbar sumir */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none !important;
+  }
+  #page-transactions .tx-filter-chips-row::-webkit-scrollbar{ display:none; }
+  /* Cada chip: tamanho mínimo confortável, não encolhe */
+  #page-transactions .tx-filter-chip-wrap,
+  #page-transactions .tx-chip-filter-btn{
+    flex: 0 0 auto !important;
+  }
+  #page-transactions .tx-chip-select{
+    font-size: .78rem !important;
+    padding: 7px 26px 7px 11px !important;
+    border-radius: 20px !important;
+    height: auto !important;
+    white-space: nowrap !important;
+    max-width: none !important;
+  }
+  /* View toggle: fixo à direita sem scroll */
+  #page-transactions .tx-view-btns{
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+  }
+
+  /* ══════════════════════════════════════════════
+     CARD TABLE WRAPPER — sem padding extra
+  ══════════════════════════════════════════════ */
   #page-transactions #txFlatCard{
-    border-radius:14px;
-    overflow:visible;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
   }
   #page-transactions #txFlatCard .table-wrap{
-    overflow:visible;
+    overflow: visible !important;
   }
   #page-transactions #txMainTable,
   #page-transactions #txMainTable tbody,
   #page-transactions #txMainTable tr,
   #page-transactions #txMainTable td{
-    display:block;
-    width:100%;
+    display: block;
+    width: 100%;
   }
   #page-transactions #txMainTable thead{
-    display:none;
+    display: none;
   }
 
-  /* Preserve date separators as separators, not cards */
-  #page-transactions #txBody tr.tx-date-header-row{
-    display:block;
-    margin:12px 0 8px;
-    border:none;
-    background:transparent;
-    padding:0;
-    box-shadow:none;
-  }
-  #page-transactions #txBody tr.tx-date-header-row td{
-    display:block;
-    width:100%;
-    padding:0 2px !important;
-    border:none !important;
-    background:transparent !important;
-  }
-  #page-transactions #txBody tr.tx-date-header-row .tx-date-header-cell{
-    font-size:.78rem;
-    font-weight:800;
-    letter-spacing:.03em;
-  }
-
-  /* Regular rows become tighter mobile cards */
-  #page-transactions #txBody tr.tx-row-clickable{
-    display:grid !important;
-    grid-template-columns:48px minmax(0,1fr);
-    grid-template-areas:
-      "date right"
-      "body body";
-    gap:5px 8px;
-    align-items:start;
-    margin:6px 0;
-    padding:9px 10px;
-    border:1px solid var(--border);
-    border-radius:12px;
-    background:var(--surface);
-    box-shadow:0 1px 3px rgba(0,0,0,.035);
-  }
-  #page-transactions #txBody tr.tx-row-clickable td{
-    padding:0 !important;
-    border:none !important;
-    min-width:0;
-    width:auto !important;
-  }
-  #page-transactions #txBody td.tx-v2-date{
-    grid-area:date;
-    width:48px !important;
-    text-align:center;
-    padding-top:1px !important;
-  }
-  #page-transactions #txBody td.tx-v2-date .tx-date-day{
-    font-size:.98rem;
-    line-height:.95;
-  }
-  #page-transactions #txBody td.tx-v2-date .tx-date-mon{
-    margin-top:1px;
-    font-size:.58rem;
-    letter-spacing:.06em;
-  }
-  #page-transactions #txBody td.tx-v2-right{
-    grid-area:right;
-    width:auto !important;
-    text-align:right;
-    justify-self:end;
-    white-space:normal;
-  }
-  #page-transactions #txBody td.tx-v2-right{
-    min-width:92px;
-  }
-  #page-transactions #txBody td.tx-v2-body{
-    grid-area:body;
-    width:auto !important;
-    max-width:100%;
-  }
-
-  #page-transactions .tx-v2-title{
-    white-space:normal;
-    overflow:visible;
-    text-overflow:clip;
-    line-height:1.18;
-    font-size:.84rem;
-    align-items:flex-start;
-    flex-wrap:wrap;
-    gap:4px;
-  }
-  #page-transactions .tx-v2-category{
-    margin-top:2px;
-    white-space:normal;
-    overflow:visible;
-    text-overflow:clip;
-    font-size:.72rem;
-    line-height:1.15;
-  }
-  #page-transactions .tx-v2-meta{
-    margin-top:3px;
-    flex-wrap:wrap;
-    white-space:normal;
-    overflow:visible;
-    row-gap:2px;
-    column-gap:4px;
-    font-size:.68rem;
-    line-height:1.1;
-  }
-  #page-transactions .tx-v2-acct-pill{
-    max-width:100%;
-  }
-  #page-transactions .tx-v2-pay{
-    max-width:100%;
-  }
-  #page-transactions .tx-v2-amt{
-    font-size:.92rem;
-    line-height:1;
-  }
-  #page-transactions .tx-v2-amt-wrap{
-    align-items:flex-end;
-    gap:2px;
-  }
-  #page-transactions .tx-v2-bal{
-    margin-top:1px;
-    font-size:.7rem;
-    line-height:1.05;
-  }
-  #page-transactions .tx-v2-inline-actions{
-    margin-top:5px;
-  }
-  #page-transactions #txMainTable .tx-reconcile-btn{
-    font-size:.64rem;
-    padding:3px 7px;
-    min-height:auto;
-  }
+  /* ── Paginação compacta ── */
   #page-transactions #txPagination{
-    padding:10px 12px;
-    flex-direction:column;
-    gap:8px;
-    align-items:flex-start;
+    padding: 10px 2px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: .8rem !important;
   }
 
-  /* Reconcile mode stays usable on mobile */
+  /* Reconcile mode: usável no mobile */
   #page-transactions #txBody tr.tx-row-clickable.reconcile-checked{
-    box-shadow:0 0 0 2px rgba(22,101,52,.16);
+    box-shadow: 0 0 0 2px rgba(22,101,52,.18) !important;
   }
 }
 
@@ -16144,13 +16143,19 @@ section[data-page="transactions"] .content {
   .page-header-bar{
     padding:0 12px !important;
   }
-  #page-transactions #txBody tr.tx-row-clickable{
-    grid-template-columns:44px minmax(0,1fr);
-    gap:4px 7px;
-    padding:8px 9px;
+  /* Cards: ícone ligeiramente menor, gap ajustado */
+  #page-transactions #txBody tr.tx-row-clickable,
+  #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)){
+    grid-template-columns: 36px minmax(0,1fr) minmax(72px,auto) !important;
+    gap: 0 8px !important;
+    padding: 10px 10px 10px 9px !important;
+  }
+  .tx-v2-cat-bubble{
+    width: 36px !important; height: 36px !important;
+    border-radius: 10px !important; font-size: 1rem !important;
   }
   #page-transactions .tx-v2-amt{
-    font-size:.88rem;
+    font-size: .88rem !important;
   }
 }
 
