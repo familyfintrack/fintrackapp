@@ -412,15 +412,17 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const amtClass = t.amount >= 0 ? 'amount-pos' : 'amount-neg';
   let amtHtml = `<span class="tx-v2-amt ${amtClass}">${mainAmt}</span>`;
 
-  // Only show secondary converted value when:
-  //  1) transaction currency was explicitly set,
-  //  2) it is a foreign currency (not BRL), and
-  //  3) it differs from the account default currency.
-  // This avoids showing a redundant / misleading conversion for BRL transactions
-  // or for transactions already in the account native currency.
-  const showConvertedAmount = !!txCur && txCur !== 'BRL' && txCur !== accountCur && t.brl_amount != null;
+  // Secondary converted value rules:
+  //  - If no single account filter is active in the flat list, show BRL conversion for foreign-currency transactions.
+  //  - If a single account is filtered, only show conversion when the transaction currency differs from the account currency.
+  //  - Never show a secondary line for BRL transactions.
+  const hasSingleAccountFilter = !!(state?.txFilter?.account);
+  const hasBrlConversion = t.brl_amount != null && !Number.isNaN(parseFloat(t.brl_amount));
+  const showConvertedAmount = !!txCur && txCur !== 'BRL' && hasBrlConversion && (
+    !hasSingleAccountFilter || txCur !== accountCur
+  );
   if (showConvertedAmount) {
-    amtHtml += `<span class="tx-v2-brl">${fmt(t.brl_amount, accountCur || 'BRL')}</span>`;
+    amtHtml += `<span class="tx-v2-brl">${fmt(t.brl_amount, 'BRL')}</span>`;
   }
 
   // Running balance — use account's native currency (balance is stored in account currency)
