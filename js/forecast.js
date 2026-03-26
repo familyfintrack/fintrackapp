@@ -308,6 +308,7 @@ function _forecastDateParts(iso){
       realSum +
       txs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
+    let currentDateGroup = null;
     const rows = txs.map(t => {
       runningBalance += parseFloat(t.amount) || 0;
       const isPast   = t.date < today;
@@ -316,17 +317,23 @@ function _forecastDateParts(iso){
       const isPos    = runningBalance > 0;
       const rowClass = isPast ? 'forecast-row-past' : isToday ? 'forecast-row-today' : '';
       const balClass = isNeg ? 'forecast-row-negative' : '';
-      // Category icon: show emoji from category if available, else 📅 for scheduled
       const _catIcon = t.categories?.icon || null;
       const _catColor = t.categories?.color || 'var(--accent)';
-      const dateMeta = t.isScheduled
-        ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon || '📅'}</span>`
-        : (_catIcon
-            ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon}</span>`
-            : '<span class="forecast-date-flag">&nbsp;</span>');
       const todayMarker = isToday ? '<span class="forecast-date-today">Hoje</span>' : '';
       const dateParts = _forecastDateParts(t.date);
-      // Category shown as separate line below description
+      const groupHeader = currentDateGroup !== t.date
+        ? (() => {
+            currentDateGroup = t.date;
+            return `<tr class="forecast-date-group-row ${isToday ? 'forecast-date-group-row--today' : ''}">
+              <td colspan="3">
+                <div class="forecast-date-group-pill">
+                  <span class="forecast-date-group-main">${dateParts.weekday} · ${dateParts.short}</span>
+                  ${todayMarker}
+                </div>
+              </td>
+            </tr>`;
+          })()
+        : '';
       const _catName  = t.categories?.name ? esc(t.categories.name) : null;
       const _catLine  = _catName
         ? `<div class="forecast-line forecast-category" style="color:${_catColor}"><span class="forecast-cat-dot" style="background:${_catColor}"></span>${_catIcon ? _catIcon + ' ' : ''}${_catName}</div>`
@@ -334,15 +341,13 @@ function _forecastDateParts(iso){
       const payeeLine = t.payees?.name
         ? `<div class="forecast-line forecast-payee">${esc(t.payees.name)}</div>`
         : '';
-      return `<tr class="${rowClass} ${balClass} forecast-tx-row">
+      return `${groupHeader}<tr class="${rowClass} ${balClass} forecast-tx-row">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">
-          <div class="forecast-date-card" aria-label="${dateParts.short}">
-            <div class="forecast-date-weekday">${dateParts.weekday}</div>
+          <div class="forecast-date-card forecast-date-card--compact" aria-label="${dateParts.short}">
             <div class="forecast-date-daynum">${dateParts.day}</div>
             <div class="forecast-date-monthyear">${dateParts.monthYear}</div>
           </div>
           <div class="forecast-date-meta">
-            ${dateMeta}
             ${todayMarker}
           </div>
         </td>
