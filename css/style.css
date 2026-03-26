@@ -1760,23 +1760,8 @@ canvas { cursor: default; }
   #page-transactions #txFlatCard .table-wrap{ overflow: visible; }
   #page-transactions #txFlatCard table thead{ display:none; }
 
-  #page-transactions #txFlatCard table,
-  #page-transactions #txFlatCard tbody,
-  #page-transactions #txFlatCard tr,
-  #page-transactions #txFlatCard td{
-    display:block;
-    width:100%;
-  }
-
-  /* Cada linha vira um card */
-  #page-transactions #txBody tr{
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    padding: 12px;
-    margin: 10px 0;
-  }
-  #page-transactions #txBody td{ padding:0; border:0; }
+  /* LEGACY BLOCK NEUTRALIZED — ver bloco principal em ~4855 */
+  #page-transactions #txFlatCard table thead{ display:none; }
 
   /* old 7-col grid removed — using .tx-v2 layout */
 
@@ -1885,13 +1870,7 @@ canvas { cursor: default; }
 
 @media (max-width:640px){
 
-  /* estrutura do card */
-  #page-transactions #txBody tr{
-    display:grid;
-    grid-template-columns: 1fr auto;
-    gap:8px 10px;
-    align-items:start;
-  }
+  /* LEGACY BLOCK NEUTRALIZED — ver bloco principal em ~4855 */
 
   /* DATA */
   
@@ -1933,48 +1912,7 @@ canvas { cursor: default; }
   #page-transactions .table-wrap{ overflow: visible; }
   #page-transactions table thead{ display:none; }
 
-  #page-transactions table,
-  #page-transactions tbody,
-  #page-transactions tr,
-  #page-transactions td{
-    display:block;
-    width:100%;
-  }
-
-  /* Linha padrão vira card */
-  #page-transactions tbody tr{
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    padding: 12px;
-    margin: 10px 0;
-  }
-  #page-transactions tbody td{ padding:0; border:0; }
-
-  /* EXCEÇÃO: linhas de "título do grupo" (nome da conta)
-     Normalmente são linhas com 1 célula ocupando tudo (colspan)
-     ou com classe/estilo diferenciado. Este seletor cobre o caso
-     mais comum: apenas 1 <td> na linha.
-  */
-  #page-transactions tbody tr:has(> td:only-child){
-    border: 0;
-    background: transparent;
-    padding: 6px 4px;
-    margin: 14px 0 6px;
-  }
-  #page-transactions tbody tr:has(> td:only-child) td{
-    font-weight: 750;
-    font-size: 1rem;
-    color: var(--text);
-  }
-
-  /* Grid para linhas "normais" (as que têm colunas) */
-  #page-transactions tbody tr:not(:has(> td:only-child)){
-    display:grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px 10px;
-    align-items:start;
-  }
+  /* LEGACY BLOCK NEUTRALIZED — ver bloco principal em ~4855 */
 
   /* Mapeamento por ordem de colunas (igual ao modo lista):
      1 Data, 2 Conta, 3 Descrição, 4 Beneficiário, 5 Categoria, 6 Valor, 7 Ações
@@ -2017,25 +1955,7 @@ canvas { cursor: default; }
 
 @media (max-width:640px){
 
-  /* valor da transação */
-  #page-transactions td:nth-child(6){
-    font-size:1.65rem;
-    font-weight:900;
-    text-align:right;
-    justify-self:end;
-    white-space:nowrap;
-  }
-
-  /* reforço para qualquer classe usada para valores */
-  #page-transactions .amount,
-  #page-transactions .tx-amount,
-  #page-transactions .value{
-    font-size:1.65rem;
-    font-weight:900;
-    text-align:right;
-    justify-self:end;
-    white-space:nowrap;
-  }
+  /* LEGACY nth-child value overrides NEUTRALIZED */
 
 }
 
@@ -2046,25 +1966,7 @@ canvas { cursor: default; }
 
 @media (max-width:640px){
 
-  /* valor da transação */
-  #page-transactions td:nth-child(6){
-    font-size:1.65rem;
-    font-weight:900;
-    text-align:right;
-    justify-self:end;
-    white-space:nowrap;
-  }
-
-  /* reforço para qualquer classe usada para valores */
-  #page-transactions .amount,
-  #page-transactions .tx-amount,
-  #page-transactions .value{
-    font-size:1.65rem;
-    font-weight:900;
-    text-align:right;
-    justify-self:end;
-    white-space:nowrap;
-  }
+  /* LEGACY nth-child value overrides NEUTRALIZED */
 
 }
 
@@ -2078,48 +1980,7 @@ canvas { cursor: default; }
   #page-transactions .table-wrap{ overflow: visible; }
   #page-transactions table thead{ display:none; }
 
-  #page-transactions table,
-  #page-transactions tbody,
-  #page-transactions tr,
-  #page-transactions td{
-    display:block;
-    width:100%;
-  }
-
-  /* Linha padrão vira card */
-  #page-transactions tbody tr{
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    padding: 12px;
-    margin: 10px 0;
-  }
-  #page-transactions tbody td{ padding:0; border:0; }
-
-  /* EXCEÇÃO: linhas de "título do grupo" (nome da conta)
-     Normalmente são linhas com 1 célula ocupando tudo (colspan)
-     ou com classe/estilo diferenciado. Este seletor cobre o caso
-     mais comum: apenas 1 <td> na linha.
-  */
-  #page-transactions tbody tr:has(> td:only-child){
-    border: 0;
-    background: transparent;
-    padding: 6px 4px;
-    margin: 14px 0 6px;
-  }
-  #page-transactions tbody tr:has(> td:only-child) td{
-    font-weight: 750;
-    font-size: 1rem;
-    color: var(--text);
-  }
-
-  /* Grid para linhas "normais" (as que têm colunas) */
-  #page-transactions tbody tr:not(:has(> td:only-child)){
-    display:grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px 10px;
-    align-items:start;
-  }
+  /* LEGACY BLOCK NEUTRALIZED — ver bloco principal em ~4855 */
 
   /* Mapeamento por ordem de colunas (igual ao modo lista):
      1 Data, 2 Conta, 3 Descrição, 4 Beneficiário, 5 Categoria, 6 Valor, 7 Ações
@@ -2162,25 +2023,7 @@ canvas { cursor: default; }
 
 @media (max-width:640px){
 
-  /* valor da transação */
-  #page-transactions td:nth-child(6){
-    font-size:1.65rem;
-    font-weight:900;
-    text-align:right;
-    justify-self:end;
-    white-space:nowrap;
-  }
-
-  /* reforço para qualquer classe usada para valores */
-  #page-transactions .amount,
-  #page-transactions .tx-amount,
-  #page-transactions .value{
-    font-size:1.65rem;
-    font-weight:900;
-    text-align:right;
-    justify-self:end;
-    white-space:nowrap;
-  }
+  /* LEGACY nth-child value overrides NEUTRALIZED */
 
 }
 
@@ -16117,13 +15960,6 @@ section[data-page="transactions"] .content {
   }
   #page-transactions #txFlatCard .table-wrap{
     overflow: visible !important;
-  }
-  #page-transactions #txMainTable,
-  #page-transactions #txMainTable tbody,
-  #page-transactions #txMainTable tr,
-  #page-transactions #txMainTable td{
-    display: block;
-    width: 100%;
   }
   #page-transactions #txMainTable thead{
     display: none;
