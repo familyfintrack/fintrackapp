@@ -16104,13 +16104,14 @@ section[data-page="transactions"] .content {
   /* Regular rows become tighter mobile cards */
   #page-transactions #txBody tr.tx-row-clickable{
     display:grid !important;
-    grid-template-columns:52px minmax(0,1fr) max-content;
-    gap:6px 10px;
+    grid-template-columns:56px minmax(0,1fr) max-content;
+    grid-template-areas:"date body right";
+    gap:0 10px;
     align-items:center;
     margin:6px 0;
-    padding:10px 11px;
+    padding:8px 12px;
     border:1px solid var(--border);
-    border-radius:14px;
+    border-radius:12px;
     background:var(--surface);
     box-shadow:0 1px 3px rgba(0,0,0,.035);
   }
@@ -16121,72 +16122,101 @@ section[data-page="transactions"] .content {
     width:auto !important;
   }
   #page-transactions #txBody td.tx-v2-date{
-    width:52px !important;
-    text-align:left;
-    align-self:start;
-    padding-top:2px !important;
+    grid-area:date;
+    width:56px !important;
+    min-height:100%;
+    display:flex !important;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:0 !important;
   }
   #page-transactions #txBody td.tx-v2-date .tx-date-day{
-    font-size:1.02rem;
+    font-size:.98rem;
     line-height:.95;
   }
   #page-transactions #txBody td.tx-v2-date .tx-date-mon{
     margin-top:1px;
-    font-size:.59rem;
-    letter-spacing:.08em;
+    font-size:.58rem;
+    letter-spacing:.06em;
+  }
+  #page-transactions #txBody td.tx-v2-right{
+    grid-area:right;
+    width:auto !important;
+    min-width:max-content;
+    text-align:right;
+    justify-self:end;
+    align-self:center;
+    white-space:nowrap;
   }
   #page-transactions #txBody td.tx-v2-body{
+    grid-area:body;
     width:auto !important;
     max-width:100%;
     min-width:0;
-    padding-right:4px !important;
-  }
-  #page-transactions #txBody td.tx-v2-right{
-    width:auto !important;
-    min-width:96px;
-    text-align:right;
-    justify-self:end;
-    align-self:start;
-    white-space:normal;
+    align-self:center;
   }
 
   #page-transactions .tx-v2-title{
     white-space:normal;
     overflow:visible;
     text-overflow:clip;
-    line-height:1.16;
+    line-height:1.14;
     font-size:.86rem;
     align-items:flex-start;
     flex-wrap:wrap;
     gap:4px;
+    margin-right:2px;
   }
   #page-transactions .tx-v2-category{
+    display:flex;
+    align-items:center;
+    gap:4px;
     margin-top:2px;
-    white-space:normal;
-    overflow:visible;
-    text-overflow:clip;
-    font-size:.72rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:.715rem;
     line-height:1.12;
+    color:var(--muted);
+    min-width:0;
+  }
+  #page-transactions .tx-v2-category .tx-v2-inline-pay,
+  #page-transactions .tx-v2-category .tx-v2-inline-cat{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  #page-transactions .tx-v2-category .tx-v2-inline-cat{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+  }
+  #page-transactions .tx-v2-category .tx-v2-pipe{
+    color:color-mix(in srgb, var(--muted) 80%, transparent);
+    flex:0 0 auto;
   }
   #page-transactions .tx-v2-meta{
-    margin-top:3px;
+    margin-top:4px;
     display:flex;
-    flex-wrap:wrap;
-    white-space:normal;
-    overflow:visible;
-    row-gap:2px;
-    column-gap:4px;
+    align-items:center;
+    min-width:0;
+    white-space:nowrap;
+    overflow:hidden;
     font-size:.68rem;
-    line-height:1.08;
-  }
-  #page-transactions .tx-v2-meta .tx-v2-dot{
-    opacity:.45;
+    line-height:1.1;
   }
   #page-transactions .tx-v2-acct-pill{
+    display:inline-flex;
+    align-items:center;
     max-width:100%;
-  }
-  #page-transactions .tx-v2-pay{
-    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    padding:3px 10px;
+    border-radius:999px;
   }
   #page-transactions .tx-v2-amt{
     font-size:.92rem;
@@ -16231,8 +16261,8 @@ section[data-page="transactions"] .content {
     padding:0 12px !important;
   }
   #page-transactions #txBody tr.tx-row-clickable{
-    grid-template-columns:48px minmax(0,1fr) max-content;
-    gap:4px 8px;
+    grid-template-columns:44px minmax(0,1fr);
+    gap:4px 7px;
     padding:8px 9px;
   }
   #page-transactions .tx-v2-amt{
