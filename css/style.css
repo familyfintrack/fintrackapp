@@ -4817,149 +4817,214 @@ tr.tx-date-band-alt + tr.tx-date-band ~ tr:not(.tx-date-header-row) { background
 /* Pending row tint */
 tr.tx-pending { background: rgba(251,191,36,.06); }
 
-/* ── Mobile TX: cards ─────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  /* Reset all old v1 mobile overrides that used nth-child */
-  #page-transactions #txFlatCard table thead { display: none; }
-  #page-transactions #txFlatCard .table-wrap { overflow: visible; }
+/* ══════════════════════════════════════════════════════════════
+   Mobile TX — UX elegante, cozy e compacta  (≤ 640 px)
+   - Data aparece UMA vez como header de grupo (sem repetição)
+   - Cards em grid 3 colunas: ícone · body · valor
+   - Borda esquerda colorida pela categoria
+   - Totais do dia no header do grupo
+══════════════════════════════════════════════════════════════ */
 
+/* Elementos desktop escondidos no mobile via JS já existem;
+   garantimos que o card date column fique oculto */
+.tx-pend-desktop { display: inline; }
+.tx-pend-badge   { display: none; }
+
+/* ── Bubble do ícone de categoria (visível só no mobile) ── */
+.tx-v2-cat-bubble {
+  display: none;
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  align-items: center; justify-content: center;
+  font-size: 1.15rem; flex-shrink: 0;
+}
+/* body wrapper para ícone + texto */
+.tx-v2-body-inner { display: contents; }
+.tx-v2-body-text  { display: contents; }
+
+/* ── Totais de data no header — ocultos no desktop ── */
+.tx-date-label  { display: inline; }
+.tx-date-totals { display: none; }
+.tx-date-inc, .tx-date-exp { font-size: .68rem; font-weight: 700; }
+.tx-date-inc    { color: var(--green, #2a7a4a); }
+.tx-date-exp    { color: var(--red,   #c0392b); }
+
+/* Cor da categoria na linha category */
+.tx-v2-category { font-weight: 600; }
+
+@media (max-width: 640px) {
+
+  /* ── 0. Reset table → block ── */
+  #page-transactions #txFlatCard table thead { display: none !important; }
+  #page-transactions #txFlatCard .table-wrap { overflow: visible !important; padding: 0 !important; }
   #page-transactions table,
   #page-transactions tbody { display: block; width: 100%; }
 
-  /* Card rows become block — but NOT the date header rows */
-  #page-transactions tr:not(.tx-date-header-row),
-  #page-transactions td:not(.tx-date-header-cell) { display: block; width: 100%; }
+  /* Card wrapper sem padding extra */
+  .tx-table-card {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
 
-  /* ── Date header row: single-line pill with trailing rule ── */
+  /* ── 1. Data: HIDDEN na célula individual — aparece só no header do grupo ── */
+  #page-transactions tbody td.tx-v2-date { display: none !important; }
+
+  /* Desktop pending dot → oculto; badge inline → visível */
+  .tx-pend-desktop { display: none !important; }
+  .tx-pend-badge {
+    display: inline-flex !important;
+    align-items: center;
+    font-size: .58rem; font-weight: 800;
+    letter-spacing: .05em; text-transform: uppercase;
+    background: #f59e0b; color: #fff;
+    border-radius: 4px; padding: 1px 5px;
+    margin-right: 5px; flex-shrink: 0;
+    vertical-align: middle;
+  }
+
+  /* ── 2. Header de data: label + linha + totais do dia ── */
   #page-transactions tbody tr.tx-date-header-row {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 16px 0 5px !important;
-    margin: 0 !important;
-    width: 100% !important;
+    border: none !important; box-shadow: none !important;
+    padding: 14px 0 6px !important;
+    margin: 0 !important; width: 100% !important;
   }
   #page-transactions tbody tr.tx-date-header-row td.tx-date-header-cell {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    width: auto !important;
-    min-width: 0 !important;
-    padding: 0 8px 0 2px !important;
-    font-size: .67rem !important;
-    font-weight: 800 !important;
-    letter-spacing: .07em !important;
-    text-transform: uppercase !important;
+    width: 100% !important;
+    padding: 0 !important;
     border: none !important;
     background: transparent !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    line-height: 1 !important;
+    gap: 8px;
+  }
+  .tx-date-label {
+    font-size: .67rem !important;
+    font-weight: 800 !important;
+    letter-spacing: .09em !important;
+    text-transform: uppercase !important;
+    white-space: nowrap;
+    color: var(--accent, #2a6049);
     flex-shrink: 0;
   }
-  /* Trailing line after the date label */
+  /* Linha divisória que cresce */
+  .tx-date-label::after {
+    content: none; /* removida daqui — usamos pseudo no td */
+  }
   #page-transactions tbody tr.tx-date-header-row td.tx-date-header-cell::after {
     content: '';
-    display: block;
-    height: 1px;
-    background: var(--border);
-    opacity: .55;
-    min-width: 20px;
-    width: 9999px; /* extends to fill row */
-    margin-left: 8px;
-    flex-shrink: 1;
+    display: block; height: 1px;
+    background: var(--border, #e8e4de);
+    opacity: .5; flex: 1; min-width: 16px;
   }
-  /* Band accent colours on label */
-  tr.tx-date-band td.tx-date-header-cell { color: var(--accent, #2a6049); }
-  tr.tx-date-band-alt td.tx-date-header-cell { color: var(--text2); }
+  /* Totais do dia: visíveis no mobile */
+  .tx-date-totals {
+    display: flex !important;
+    gap: 6px; align-items: center;
+    flex-shrink: 0;
+  }
 
-  /* ── Transaction card shell ── */
-  #page-transactions tbody tr {
+  /* ── 3. Card de transação: grid ícone · corpo · valor ── */
+  #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
     display: grid !important;
-    grid-template-columns: 38px 1fr auto;
-    grid-template-rows: 1fr;
-    gap: 0 10px;
-    align-items: center;
-    border: 1px solid var(--border) !important;
+    grid-template-columns: 44px 1fr auto !important;
+    align-items: center !important;
+    gap: 0 11px !important;
+    border: 1px solid var(--border, #e8e4de) !important;
+    border-left: 3px solid var(--accent, #2a6049) !important;
     border-radius: 14px !important;
-    background: var(--surface) !important;
-    padding: 11px 13px !important;
-    margin: 4px 0 !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
-    transition: box-shadow .15s, transform .12s;
+    background: var(--surface, #fff) !important;
+    padding: 11px 14px 11px 11px !important;
+    margin: 0 0 5px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05) !important;
+    transition: transform .12s, box-shadow .12s;
+    cursor: pointer !important;
   }
-  #page-transactions tbody tr:active {
-    transform: scale(.982);
+  #page-transactions tbody tr:not(.tx-date-header-row):active {
+    transform: scale(.983) !important;
     box-shadow: none !important;
   }
-
-  /* Colour-coded left border by date band */
-  tr.tx-date-band:not(.tx-date-header-row) {
-    border-left: 3px solid var(--accent, #2a6049) !important;
-  }
-  tr.tx-date-band-alt:not(.tx-date-header-row) {
-    border-left: 3px solid color-mix(in srgb, var(--accent, #2a6049) 35%, var(--border)) !important;
-    background: color-mix(in srgb, var(--surface2, #f8fafc) 70%, var(--surface)) !important;
-  }
-
-  /* Pending tint */
+  /* Pending: fundo âmbar suave */
   #page-transactions tbody tr.tx-pending {
-    background: rgba(251,191,36,.07) !important;
-    border-color: rgba(251,191,36,.4) !important;
+    background: rgba(245,158,11,.06) !important;
+    border-color: rgba(245,158,11,.3) !important;
     border-left-color: #f59e0b !important;
   }
-
-  /* Separator rows (CONFIRMADAS label) */
+  /* Separador CONFIRMADAS */
   #page-transactions tbody tr:has(.tx-v2-sep) {
-    display: block !important;
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 4px 2px !important;
-    margin: 6px 0 2px !important;
+    display: block !important; border: 0 !important;
+    background: transparent !important; box-shadow: none !important;
+    padding: 4px 2px !important; margin: 6px 0 2px !important;
   }
 
-  /* Col 1: date — centred two-line stack */
-  #page-transactions tbody td.tx-v2-date {
+  /* ── 4. Ícone de categoria (col 1) ── */
+  .tx-v2-cat-bubble {
+    display: flex !important;
     grid-column: 1; grid-row: 1;
-    padding: 0 !important;
-    align-self: center;
-    text-align: center;
-    width: 38px !important;
-    min-width: 38px;
   }
 
-  /* Col 2: body */
+  /* ── 5. Body wrapper → grid para ocupar col 2 ── */
   #page-transactions tbody td.tx-v2-body {
-    grid-column: 2; grid-row: 1;
-    padding: 0 !important;
-    min-width: 0;
-    max-width: none;
-    align-self: center;
+    grid-column: 2 !important; grid-row: 1 !important;
+    padding: 0 !important; min-width: 0 !important;
+    align-self: center !important; display: block !important;
   }
+  .tx-v2-body-inner {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  .tx-v2-body-text  { display: block !important; min-width: 0; flex: 1; }
 
-  /* Col 3: amount */
+  /* ── 6. Valor (col 3) ── */
   #page-transactions tbody td.tx-v2-right {
-    grid-column: 3; grid-row: 1;
-    padding: 0 !important;
-    text-align: right;
-    align-self: center;
-    width: auto !important;
+    grid-column: 3 !important; grid-row: 1 !important;
+    padding: 0 !important; text-align: right !important;
+    align-self: center !important; width: auto !important;
+    display: block !important;
   }
 
-  /* Actions: hidden — tap row to open detail */
+  /* Ações: ocultas — tap abre detalhe */
   #page-transactions tbody td.tx-v2-act { display: none !important; }
 
-  /* Typography */
-  .tx-v2-title  { font-size: .875rem; line-height: 1.3; }
-  .tx-v2-meta   { font-size: .71rem; }
-  .tx-v2-amt    { font-size: 1rem !important; }
-  .tx-v2-brl    { font-size: .65rem !important; }
-  .tx-v2-category { font-size: .7rem; }
-}
+  /* ── 7. Tipografia compacta ── */
+  .tx-v2-title    { font-size: .875rem !important; line-height: 1.25 !important; font-weight: 600 !important;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-v2-meta     { font-size: .7rem   !important; margin-top: 3px !important; }
+  .tx-v2-category { font-size: .7rem   !important; margin-top: 2px !important; }
+  .tx-v2-amt      { font-size: .95rem  !important; font-weight: 700 !important; }
+  .tx-v2-brl      { font-size: .65rem  !important; }
+  .tx-v2-bal      { font-size: .68rem  !important; }
+
+  /* Conta como sub-label abaixo do valor */
+  .tx-v2-acct-pill {
+    font-size: .67rem !important;
+    background: none !important; border: none !important;
+    padding: 0 !important; color: var(--muted2, #b5afa8) !important;
+    font-weight: 400 !important;
+  }
+
+  /* ── 8. Filtros compactos ── */
+  .tx-filter-chips-row { overflow-x: auto !important; flex-wrap: nowrap !important; }
+  .tx-chip-select      { font-size: .78rem !important; padding: 6px 11px !important; border-radius: 20px !important; }
+
+  /* ── 9. Paginação compacta ── */
+  .tx-pagination {
+    display: flex !important;
+    justify-content: space-between !important; align-items: center !important;
+    padding: 10px 4px !important; font-size: .8rem !important; color: var(--muted) !important;
+  }
+
+  /* ── 10. Sem borda no card-wrapper da tabela ── */
+  #txFlatCard { padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important; }
+
+} /* fim @media 640px */
 
 /* ── 4. Compact filter bar ──────────────────────────────────────────── */
 .tx-filter-bar   { gap: 5px; margin-bottom: 8px; }
@@ -5348,158 +5413,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .tx-v2-th-right { width: 120px; text-align: right; }
 .tx-v2-th-act   { width: 86px; text-align: center; }
 
-/* ── Mobile card layout ──────────────────────────────────────────── */
-@media (max-width: 640px) {
-  #page-transactions #txFlatCard table thead { display: none; }
-  #page-transactions #txFlatCard .table-wrap { overflow: visible; }
-
-  #page-transactions table,
-  #page-transactions tbody { display: block; width: 100%; }
-
-  /* Card rows become block — but NOT date header rows */
-  #page-transactions tr:not(.tx-date-header-row),
-  #page-transactions td:not(.tx-date-header-cell) { display: block; width: 100%; }
-
-  /* ── Date header: single-line with trailing rule — NEVER breaks ── */
-  #page-transactions tbody tr.tx-date-header-row {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 16px 0 5px !important;
-    margin: 0 !important;
-    width: 100% !important;
-  }
-  #page-transactions tbody tr.tx-date-header-row td.tx-date-header-cell {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    width: auto !important;
-    min-width: 0 !important;
-    padding: 0 8px 0 2px !important;
-    font-size: .67rem !important;
-    font-weight: 800 !important;
-    letter-spacing: .07em !important;
-    text-transform: uppercase !important;
-    border: none !important;
-    background: transparent !important;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    line-height: 1 !important;
-    flex-shrink: 0;
-  }
-  #page-transactions tbody tr.tx-date-header-row td.tx-date-header-cell::after {
-    content: '';
-    display: block;
-    height: 1px;
-    background: var(--border);
-    opacity: .5;
-    min-width: 20px;
-    width: 9999px;
-    margin-left: 8px;
-    flex-shrink: 1;
-  }
-  tr.tx-date-band td.tx-date-header-cell { color: var(--accent, #2a6049) !important; }
-  tr.tx-date-band-alt td.tx-date-header-cell { color: var(--text2) !important; }
-
-  /* ── Card shell ── */
-  #page-transactions tbody tr {
-    display: grid !important;
-    grid-template-columns: 38px 1fr auto;
-    grid-template-rows: 1fr;
-    gap: 0 10px;
-    align-items: center;
-    border: 1px solid var(--border) !important;
-    border-radius: 14px !important;
-    background: var(--surface) !important;
-    padding: 11px 13px !important;
-    margin: 4px 0 !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
-    transition: box-shadow .15s, transform .12s;
-  }
-  #page-transactions tbody tr:active {
-    transform: scale(.982);
-    box-shadow: none !important;
-  }
-
-  /* Colour-coded left border per date band */
-  tr.tx-date-band:not(.tx-date-header-row) {
-    border-left: 3px solid var(--accent, #2a6049) !important;
-  }
-  tr.tx-date-band-alt:not(.tx-date-header-row) {
-    border-left: 3px solid color-mix(in srgb, var(--accent, #2a6049) 35%, var(--border)) !important;
-    background: color-mix(in srgb, var(--surface2, #f8fafc) 70%, var(--surface)) !important;
-  }
-
-  /* Pending */
-  #page-transactions tbody tr.tx-pending {
-    background: rgba(251,191,36,.06) !important;
-    border-color: rgba(251,191,36,.35) !important;
-    border-left-color: #f59e0b !important;
-  }
-
-  /* Separator (CONFIRMADAS label) */
-  #page-transactions tbody tr:has(.tx-v2-sep) {
-    display: block !important;
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 3px 2px !important;
-    margin: 4px 0 2px !important;
-  }
-
-  /* Date col */
-  #page-transactions tbody td.tx-v2-date {
-    grid-column: 1;
-    padding: 0 !important;
-    align-self: center;
-    text-align: center;
-    width: 38px !important;
-    min-width: 38px;
-  }
-
-  /* Body col */
-  #page-transactions tbody td.tx-v2-body {
-    grid-column: 2;
-    padding: 0 !important;
-    min-width: 0;
-    max-width: none;
-    align-self: center;
-  }
-
-  /* Right col: amount */
-  #page-transactions tbody td.tx-v2-right {
-    grid-column: 3;
-    padding: 0 !important;
-    text-align: right;
-    align-self: center;
-    display: flex !important;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-    width: auto !important;
-  }
-
-  /* Actions hidden */
-  #page-transactions tbody td.tx-v2-act { display: none !important; }
-
-  /* Typography */
-  .tx-v2-title  { font-size: .875rem; line-height: 1.3; }
-  .tx-v2-meta   { font-size: .71rem; }
-  .tx-v2-amt    { font-size: 1rem !important; }
-  .tx-v2-brl    { font-size: .65rem !important; }
-  .tx-v2-category { font-size: .7rem; }
-
-  /* Category chip on mobile */
-  .tx-cat-chip {
-    font-size: .62rem;
-    padding: 1px 6px;
-    max-width: 90px;
-    margin-bottom: 2px;
-  }
-}
+/* ── Mobile card layout: ver bloco principal acima (4821) ── */
 
 /* ── Modern filter bar ───────────────────────────────────────────── */
 .tx-filter-bar {
@@ -16778,154 +16692,4 @@ section[data-page="transactions"] .content {
   .forecast-date-group-main{ font-size:.58rem !important; }
   .forecast-date-group-sub{ font-size:.7rem; }
   .forecast-date-today{ font-size:.52rem !important; }
-}
-
-/* Mobile transactions header + filters refinement: compact and symmetric */
-@media (max-width: 640px){
-  #page-transactions .tx-page-header{
-    gap:8px;
-    margin-bottom:10px;
-  }
-  #page-transactions .tx-page-title-area{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    gap:8px;
-  }
-  #page-transactions .tx-page-count{
-    font-size:1rem;
-    line-height:1.05;
-    letter-spacing:.05em;
-  }
-  #page-transactions .tx-page-totals{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-  }
-  #page-transactions .tx-page-header > div:last-child{
-    display:grid !important;
-    grid-template-columns:1fr 1fr;
-    gap:8px !important;
-    width:100%;
-  }
-  #page-transactions .tx-page-header > div:last-child .btn{
-    width:100%;
-    min-width:0;
-    min-height:42px;
-    justify-content:center;
-    padding:0 12px;
-    border-radius:14px;
-    font-size:.84rem;
-  }
-
-  #page-transactions .tx-filter-bar{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    margin-bottom:10px;
-  }
-  #page-transactions .tx-search-wrap{
-    width:100%;
-    max-width:none;
-    min-width:0;
-    min-height:42px;
-    border-radius:14px;
-  }
-  #page-transactions .tx-search-input{
-    font-size:.84rem;
-  }
-
-  #page-transactions .tx-filter-chips-row{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    overflow:visible;
-    width:100%;
-    padding-bottom:0;
-    align-items:stretch;
-  }
-  #page-transactions .tx-filter-chip-wrap,
-  #page-transactions .tx-view-btns{
-    width:100%;
-    min-width:0;
-  }
-  #page-transactions .tx-chip-select,
-  #page-transactions #btnEnterReconcile{
-    width:100%;
-    max-width:none;
-    min-width:0;
-    min-height:40px;
-    height:40px;
-    padding:0 34px 0 12px !important;
-    border-radius:12px;
-    font-size:.8rem;
-    line-height:1.1;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-  #page-transactions #btnEnterReconcile{
-    justify-content:center;
-    gap:6px;
-  }
-  #page-transactions .tx-filter-chip-wrap select{
-    appearance:none;
-    -webkit-appearance:none;
-    background-position:right 12px center;
-    background-size:12px;
-  }
-
-  #page-transactions #txMemberFilterWrap[style*="display:none"]{
-    display:none !important;
-  }
-
-  #page-transactions .tx-view-btns{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin-left:0;
-  }
-  #page-transactions .tx-view-btn{
-    width:100%;
-    min-height:40px;
-    height:40px;
-    border-radius:12px;
-  }
-
-  /* More deliberate ordering for mobile scan */
-  #page-transactions .tx-filter-chip-wrap:nth-child(1){ order:1; } /* month */
-  #page-transactions .tx-filter-chip-wrap:nth-child(2){ order:2; } /* account */
-  #page-transactions .tx-filter-chip-wrap:nth-child(3){ order:3; } /* category */
-  #page-transactions .tx-filter-chip-wrap:nth-child(4){ order:4; } /* type */
-  #page-transactions .tx-filter-chip-wrap:nth-child(5){ order:5; } /* status */
-  #page-transactions .tx-filter-chip-wrap:nth-child(7){ order:6; } /* member */
-  #page-transactions .tx-filter-chip-wrap:nth-child(6){ order:7; } /* reconcile */
-  #page-transactions .tx-view-btns{ order:8; }
-
-  /* When member filter is hidden, keep last row visually balanced */
-  #page-transactions #txMemberFilterWrap[style*="display:none"] + .tx-view-btns,
-  #page-transactions .tx-view-btns:last-child{
-    align-self:stretch;
-  }
-}
-
-@media (max-width: 420px){
-  #page-transactions .tx-page-count{
-    font-size:.95rem;
-  }
-  #page-transactions .tx-page-header > div:last-child .btn,
-  #page-transactions .tx-chip-select,
-  #page-transactions #btnEnterReconcile,
-  #page-transactions .tx-view-btn,
-  #page-transactions .tx-search-wrap{
-    min-height:38px;
-    height:38px;
-    border-radius:12px;
-  }
-  #page-transactions .tx-filter-chips-row{
-    gap:7px;
-  }
 }
