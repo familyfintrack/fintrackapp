@@ -203,40 +203,65 @@ async function _fetchRates(currencies) {
 }
 
 function _renderFxBadge() {
-  const el       = document.getElementById('fxRatesBadge');
-  const ratesEl  = document.getElementById('fxBarRates');
-  const ageEl    = document.getElementById('fxBarAge');
-  const refreshEl= document.getElementById('fxBarRefreshBtn');
-  if (!el) return;
+  const el        = document.getElementById('fxRatesBadge');
+  const ratesEl   = document.getElementById('fxBarRates');
+  const ageEl     = document.getElementById('fxBarAge');
+  const refreshEl = document.getElementById('fxBarRefreshBtn');
+  const headerEl  = document.getElementById('pageHeaderFx');
 
   const wanted = _usedCurrencies();
   const pairs = wanted
     .map(c => [c, window._fxRates[c]])
     .filter(([, rate]) => rate != null);
-  if (!pairs.length) { el.style.display = 'none'; return; }
+
+  if (!pairs.length) {
+    if (el) el.style.display = 'none';
+    if (headerEl) {
+      headerEl.innerHTML = '';
+      headerEl.style.display = 'none';
+    }
+    return;
+  }
 
   const age    = _fxAgeMin();
   const stale  = age > _FX_TTL_MIN;
   const ageRnd = Math.round(age);
   const ageStr = age === Infinity ? '' : age < 60 ? `há ${ageRnd}min` : `há ${Math.round(age/60)}h`;
 
-  el.style.display = '';
-
-  if (ratesEl) {
-    ratesEl.innerHTML = pairs.map(([c, r]) =>
-      `<span class="fx-chip${stale?' fx-chip-stale':''}" title="1 ${c} = ${r.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})} BRL">`
-      + `<span class="fx-chip-cur">${c}</span>`
-      + `<span class="fx-chip-sep">=</span>`
-      + `<span class="fx-chip-val">${r.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})}</span>`
-      + `</span>`
-    ).join('');
+  if (el) {
+    el.style.display = 'none';
+    if (ratesEl) {
+      ratesEl.innerHTML = pairs.map(([c, r]) =>
+        `<span class="fx-chip${stale?' fx-chip-stale':''}" title="1 ${c} = ${r.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})} BRL">`
+        + `<span class="fx-chip-cur">${c}</span>`
+        + `<span class="fx-chip-sep">=</span>`
+        + `<span class="fx-chip-val">${r.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})}</span>`
+        + `</span>`
+      ).join('');
+    }
+    if (ageEl) ageEl.textContent = ageStr;
+    if (refreshEl) {
+      refreshEl.textContent = stale ? '⚠️' : '🔄';
+      refreshEl.title = stale ? 'Cotações desatualizadas — clique para atualizar' : 'Atualizar cotações';
+      refreshEl.classList.toggle('fx-bar-stale', stale);
+    }
   }
 
-  if (ageEl)     ageEl.textContent   = ageStr;
-  if (refreshEl) {
-    refreshEl.textContent = stale ? '⚠️' : '🔄';
-    refreshEl.title       = stale ? 'Cotações desatualizadas — clique para atualizar' : 'Atualizar cotações';
-    refreshEl.classList.toggle('fx-bar-stale', stale);
+  if (headerEl) {
+    headerEl.style.display = '';
+    headerEl.innerHTML = `
+      <div class="page-header-fx-inner${stale ? ' is-stale' : ''}">
+        <div class="page-header-fx-rates">
+          ${pairs.map(([c, r]) => `
+            <span class="page-header-fx-chip" title="1 ${c} = ${r.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})} BRL">
+              <span class="page-header-fx-cur">${c}</span>
+              <span class="page-header-fx-sep">=</span>
+              <span class="page-header-fx-val">${r.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})}</span>
+            </span>`).join('')}
+        </div>
+        <button class="page-header-fx-refresh${stale ? ' is-stale' : ''}" onclick="refreshFxRates()" title="${stale ? 'Cotações desatualizadas — clique para atualizar' : 'Atualizar cotações'}">${stale ? '⚠️' : '🔄'}</button>
+        ${ageStr ? `<span class="page-header-fx-age">${ageStr}</span>` : ''}
+      </div>`;
   }
 }
 

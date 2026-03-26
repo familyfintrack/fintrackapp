@@ -211,33 +211,23 @@ const active   = _dbt.debts.filter(d => d.status === 'active');
         '<span class="page-header-bar-title">' + (t('dbt.title') || 'Dívidas') + '</span>' +
       '</div>' +
       '<div class="page-header-bar-right">' +
-        '<button class="page-header-action" onclick="openDebtModal()">' +
-          '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
-            '<line x1="12" y1="5" x2="12" y2="19"/>' +
-            '<line x1="5" y1="12" x2="19" y2="12"/>' +
-          '</svg>' +
-          (t('dbt.add') || 'Nova Dívida') +
-        '</button>' +
+        '<div class="page-header-bar-actions">' +
+          '<button class="page-header-action" onclick="openDebtModal()">' +
+            '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+              '<line x1="12" y1="5" x2="12" y2="19"/>' +
+              '<line x1="5" y1="12" x2="19" y2="12"/>' +
+            '</svg>' +
+            (t('dbt.add') || 'Nova Dívida') +
+          '</button>' +
+        '</div>' +
+        '<div class="page-header-fx" id="pageHeaderFx" style="display:none" aria-label="Cotações de câmbio"></div>' +
       '</div>';
     page.insertBefore(_bar, page.firstChild);
 
-    // Re-inject FX bar below the page title bar.
-    // The debts page rebuilds its innerHTML, which removes the shared FX bar
-    // from the DOM if we do not place it back explicitly.
     const _fxBar = preservedFxBar || document.getElementById('fxRatesBadge');
-    if (_fxBar) {
-      page.insertBefore(_fxBar, _bar.nextSibling);
-      _fxBar.style.display = '';
-      if (typeof _renderFxBadge === 'function') {
-        try { _renderFxBadge(); } catch (_) {}
-      }
-    } else if (typeof _renderFxBadge === 'function') {
+    if (_fxBar) _fxBar.style.display = 'none';
+    if (typeof _renderFxBadge === 'function') {
       try { _renderFxBadge(); } catch (_) {}
-      const recreatedFxBar = document.getElementById('fxRatesBadge');
-      if (recreatedFxBar) {
-        page.insertBefore(recreatedFxBar, _bar.nextSibling);
-        recreatedFxBar.style.display = '';
-      }
     }
   }
 }

@@ -935,21 +935,21 @@ function navigate(page){
     };
     const bar = document.createElement('div');
     bar.className = 'page-header-bar';
-    bar.innerHTML = `<div class="page-header-bar-left"><div class="page-header-bar-icon">${icon}</div><span class="page-header-bar-title">${title}</span></div><div class="page-header-bar-right">${actions[pg]||''}</div>`;
+    bar.innerHTML = `
+      <div class="page-header-bar-left">
+        <div class="page-header-bar-icon">${icon}</div>
+        <span class="page-header-bar-title">${title}</span>
+      </div>
+      <div class="page-header-bar-right">
+        <div class="page-header-bar-actions">${actions[pg]||''}</div>
+        <div class="page-header-fx" id="pageHeaderFx" style="display:none" aria-label="Cotações de câmbio"></div>
+      </div>`;
     pageEl.insertBefore(bar, pageEl.firstChild);
 
-    // Keep FX bar directly below the page title bar
-    let fxBar = document.getElementById('fxRatesBadge');
-    if (!fxBar && typeof _renderFxBadge === 'function') {
+    const fxBar = document.getElementById('fxRatesBadge');
+    if (fxBar) fxBar.style.display = 'none';
+    if (typeof _renderFxBadge === 'function') {
       try { _renderFxBadge(); } catch (_) {}
-      fxBar = document.getElementById('fxRatesBadge');
-    }
-    if (fxBar) {
-      pageEl.insertBefore(fxBar, bar.nextSibling);
-      fxBar.style.display = '';
-      if (typeof _renderFxBadge === 'function') {
-        try { _renderFxBadge(); } catch (_) {}
-      }
     }
   })(page);
   state.currentPage=page;closeSidebar();
