@@ -412,22 +412,22 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const amtClass = t.amount >= 0 ? 'amount-pos' : 'amount-neg';
   let amtHtml = `<span class="tx-v2-amt ${amtClass}">${mainAmt}</span>`;
 
-  // Only show secondary converted value when:
-  //  1) transaction currency was explicitly set,
-  //  2) it is a foreign currency (not BRL), and
-  //  3) it differs from the account default currency.
-  // This avoids showing a redundant / misleading conversion for BRL transactions
-  // or for transactions already in the account native currency.
-  const showConvertedAmount = !!txCur && txCur !== 'BRL' && txCur !== accountCur && t.brl_amount != null;
+  // Secondary amount rules:
+  // A) mixed-account list (no account filter, flat/date-grouped view):
+  //    for any foreign-currency transaction, always show the BRL equivalent below.
+  // B) single-account / other contexts:
+  //    only show secondary value when transaction currency differs from the account currency.
+  const hasSingleAccountFilter = !!(state?.txFilter?.account || '');
+  const isFlatDateList = state?.txView === 'flat';
+  const shouldShowBrlInMixedList = !hasSingleAccountFilter && isFlatDateList && !!txCur && txCur !== 'BRL';
+  const shouldShowConvertedVsAccount = !!txCur && txCur !== 'BRL' && txCur !== accountCur;
+  const secondaryAmount = shouldShowBrlInMixedList
+    ? ((accountCur === 'BRL' && t.brl_amount != null) ? t.brl_amount : (typeof toBRL === 'function' ? toBRL(t.amount, txCur) : t.brl_amount))
+    : t.brl_amount;
+  const secondaryCurrency = shouldShowBrlInMixedList ? 'BRL' : (accountCur || 'BRL');
+  const showConvertedAmount = (shouldShowBrlInMixedList || shouldShowConvertedVsAccount) && secondaryAmount != null;
   if (showConvertedAmount) {
-    const secondaryAmt = (accountCur === 'BRL')
-      ? (Number.isFinite(Number(t.brl_amount)) ? Number(t.brl_amount) : null)
-      : (Number.isFinite(Number(t.amount)) && Number.isFinite(Number(t.exchange_rate))
-          ? (Number(t.amount) * Number(t.exchange_rate))
-          : (Number.isFinite(Number(t.brl_amount)) ? Number(t.brl_amount) : null));
-    if (secondaryAmt !== null) {
-      amtHtml += `<span class="tx-v2-brl">${fmt(secondaryAmt, accountCur || 'BRL')}</span>`;
-    }
+    amtHtml += `<span class="tx-v2-brl">${fmt(secondaryAmount, secondaryCurrency)}</span>`;
   }
 
   // Running balance — use account's native currency (balance is stored in account currency)

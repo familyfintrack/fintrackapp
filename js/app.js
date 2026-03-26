@@ -1112,27 +1112,6 @@ document.addEventListener('i18n:changed', () => {
 })();
 
 
-
-
-// ── Hard remove topbar language picker (legacy defensive cleanup) ────────────
-function _removeLegacyTopbarLang() {
-  const selectors = [
-    '#topbarLangPicker',
-    '#topbarLangDropdown',
-    '#topbarLangBadge',
-    '#topbarLangLabel',
-    '[onclick*="toggleLangPicker"]',
-    '.topbar-lang-badge'
-  ];
-  selectors.forEach(sel => {
-    document.querySelectorAll(sel).forEach(el => el.remove());
-  });
-}
-
-document.addEventListener('DOMContentLoaded', _removeLegacyTopbarLang);
-window.addEventListener('load', _removeLegacyTopbarLang);
-document.addEventListener('i18n:changed', _removeLegacyTopbarLang);
-
 // ── Language picker (topbar) ─────────────────────────────────────────────────
 function toggleLangPicker() {
   const dd = document.getElementById('topbarLangDropdown');
@@ -1245,3 +1224,34 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+// Remove any legacy topbar language picker injected by older builds/components
+(function(){
+  function _removeTopbarLangArtifacts(){
+    const selectors = [
+      '#topbarLangPicker',
+      '#topbarLangDropdown',
+      '#topbarLangBadge',
+      '#topbarLangLabel',
+      '.topbar-lang-badge',
+      '.topbar [onclick*="toggleLangPicker"]',
+      '.topbar button[title*="Idioma"]',
+      '.topbar button[title*="idioma"]',
+      '.topbar button[title*="Language"]',
+      '.topbar button[aria-label*="Idioma"]',
+      '.topbar button[aria-label*="Language"]'
+    ];
+    selectors.forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
+    document.querySelectorAll('.topbar button').forEach(btn => {
+      const badge = btn.querySelector('#topbarLangBadge, .topbar-lang-badge');
+      const txt = (btn.textContent || '').trim().toUpperCase();
+      const title = ((btn.getAttribute('title') || '') + ' ' + (btn.getAttribute('aria-label') || '')).toLowerCase();
+      if (badge || /(PT|EN|ES|FR)/.test(txt) || title.includes('idioma') || title.includes('language')) btn.remove();
+    });
+  }
+  document.addEventListener('DOMContentLoaded', _removeTopbarLangArtifacts);
+  window.addEventListener('load', _removeTopbarLangArtifacts);
+  const mo = new MutationObserver(() => _removeTopbarLangArtifacts());
+  try { mo.observe(document.documentElement, { childList:true, subtree:true }); } catch(_) {}
+})();
