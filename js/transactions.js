@@ -393,12 +393,15 @@ function txRow(t, showAccount=true, runningBalance=null) {
     : '';
   const categoryName = t.categories?.name ? esc(t.categories.name) : '';
   const payeeName = t.payees?.name ? esc(t.payees.name) : '';
-  const categoryLine = categoryName
+  const categoryOnlyLine = categoryName
     ? `<div class="tx-v2-category">${_catIconHtml}${categoryName}</div>`
     : '';
-  const mobileMetaText = [payeeName, categoryName].filter(Boolean).join(' | ');
-  const mobileMeta = mobileMetaText
-    ? `<div class="tx-v2-mobile-meta">${mobileMetaText}</div>`
+  const flatMetaText = [categoryName, payeeName].filter(Boolean).join(' | ');
+  const flatMetaLine = flatMetaText
+    ? `<div class="tx-v2-mobile-meta">${flatMetaText}</div>`
+    : '';
+  const payeeOnlyLine = payeeName
+    ? `<div class="tx-v2-payee-line">${payeeName}</div>`
     : '';
 
   // Amount
@@ -416,14 +419,13 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-bal ${runningBalance >= 0 ? '' : 'neg'}">${fmt(runningBalance, balCur)}</div>`
     : '';
 
-  // Meta line: desktop keeps account + beneficiary, mobile gets beneficiary | category and account below
-  const metaParts = [];
-  if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
-  if (payeeName)                       metaParts.push(`<span class="tx-v2-pay">${payeeName}</span>`);
-  const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
   const accountLine = (showAccount && t.accounts?.name)
     ? `<div class="tx-v2-account-line"><span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span></div>`
     : '';
+  const isGroupView = state.txView === 'group';
+  const detailLines = isGroupView
+    ? `${categoryOnlyLine}${payeeOnlyLine}`
+    : `${flatMetaLine}${accountLine}`;
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
   const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';
@@ -447,10 +449,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
       <td class="tx-v2-date">${dateStr}${pendDot}</td>
       <td class="tx-v2-body">
         <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
-        ${categoryLine}
-        ${mobileMeta}
-        ${meta}
-        ${accountLine}
+        ${detailLines}
       </td>
       <td class="tx-v2-right">
         <div class="tx-v2-amt-wrap">${amtHtml}</div>
@@ -464,8 +463,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
     <td class="tx-v2-date">${dateStr}${pendDot}</td>
     <td class="tx-v2-body">
       <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
-      ${categoryLine}
-      ${meta}
+      ${detailLines}
     </td>
     <td class="tx-v2-right">
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
@@ -768,7 +766,7 @@ function renderTransactionsGrouped(txs) {
       <div id="txGroupBody-${k}" class="tx-group-body">
         <div class="table-wrap" style="margin:0">
           <table style="border-radius:0">
-            <thead><tr><th class="tx-th-date" onclick="sortTx('date')">Data ⇅</th><th class="tx-th-acct" style="display:none">Conta</th><th class="tx-th-desc">Descrição</th><th class="tx-th-pay">Beneficiário</th><th class="tx-th-cat">Categoria</th><th class="tx-th-amt" onclick="sortTx('amount')">Valor ⇅</th><th class="tx-th-act"></th></tr></thead>
+            <thead><tr><th class="tx-th-date" onclick="sortTx('date')">Data ⇅</th><th class="tx-th-desc">Descrição</th><th class="tx-th-amt" onclick="sortTx('amount')">Valor ⇅</th></tr></thead>
             <tbody>${g.txs.map(t => txRow(t, false)).join('')}</tbody>
           </table>
         </div>
