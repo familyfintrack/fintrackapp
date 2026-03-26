@@ -740,6 +740,71 @@ function renderTransactions(){
   try{ initTxMobileUX(); }catch(e){}
 }
 
+// ── Helper: date-grouped rows for the "by account" view ─────────────────────
+// Mirrors the inner renderWithDateGroups() used in flat view but lives at
+// module scope so renderTransactionsGrouped() can call it.
+function renderWithDateGroupsForGroup(txList) {
+  if (!txList.length) return '';
+  let html = '';
+  let lastDate = null;
+  const TODAY_STR     = new Date().toISOString().slice(0,10);
+  const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const _lang = (typeof i18n !== 'undefined' && i18n.lang) ? i18n.lang : 'pt';
+  const _DAY = {
+    pt:['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+    en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    es:['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+    fr:['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
+  };
+  const _MON = {
+    pt:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+    en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    es:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    fr:['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'],
+  };
+  const dayNames = _DAY[_lang] || _DAY.pt;
+  const MON_FULL = _MON[_lang] || _MON.pt;
+
+  // Pre-compute daily totals for mobile badges
+  const dailyTotals = {};
+  txList.forEach(tx => {
+    const ds = tx.date || '';
+    if (!dailyTotals[ds]) dailyTotals[ds] = { inc: 0, exp: 0 };
+    const st = (tx.status || 'confirmed');
+    if (st !== 'pending') {
+      const brl = typeof txToBRL === 'function' ? txToBRL(tx) : parseFloat(tx.brl_amount ?? tx.amount ?? 0);
+      if (brl > 0) dailyTotals[ds].inc += brl;
+      else         dailyTotals[ds].exp += brl;
+    }
+  });
+
+  let bandIndex = 0;
+  txList.forEach(tx => {
+    const txDateStr = tx.date || '';
+    if (txDateStr !== lastDate) {
+      const d = txDateStr ? new Date(txDateStr + 'T12:00:00') : new Date();
+      const _todayLbl = typeof t === 'function' ? t('tx.date_today') : 'Hoje';
+      const _yestLbl  = typeof t === 'function' ? t('tx.date_yesterday') : 'Ontem';
+      let label;
+      if (txDateStr === TODAY_STR)          label = `${_todayLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
+      else if (txDateStr === YESTERDAY_STR) label = `${_yestLbl} · ${d.getDate()} ${MON_FULL[d.getMonth()]}`;
+      else label = `${dayNames[d.getDay()]}, ${d.getDate()} ${MON_FULL[d.getMonth()]} ${d.getFullYear()}`;
+      bandIndex++;
+      const bandClass = bandIndex % 2 === 0 ? 'tx-date-band-alt' : 'tx-date-band';
+      // Daily totals for mobile header badge
+      const dt = dailyTotals[txDateStr] || { inc: 0, exp: 0 };
+      const incBadge = dt.inc > 0 ? `<span class="tx-date-inc">${fmt(dt.inc)}</span>` : '';
+      const expBadge = dt.exp < 0 ? `<span class="tx-date-exp">${fmt(dt.exp)}</span>` : '';
+      const totalsHtml = (incBadge || expBadge)
+        ? `<span class="tx-date-totals">${incBadge}${expBadge}</span>` : '';
+      html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="3" class="tx-date-header-cell"><span class="tx-date-label">${label}</span>${totalsHtml}</td></tr>`;
+      lastDate = txDateStr;
+    }
+    html += txRow(tx, false, null);
+  });
+  return html;
+}
+
 function renderTransactionsGrouped(txs) {
   const container = document.getElementById('txGroupContainer');
   if(!txs.length){container.innerHTML='<div class="card" style="text-align:center;padding:32px;color:var(--muted);font-size:.83rem">Nenhuma transação encontrada</div>';return;}
@@ -793,9 +858,9 @@ function renderTransactionsGrouped(txs) {
       </div>
       <div id="txGroupBody-${k}" class="tx-group-body">
         <div class="table-wrap" style="margin:0">
-          <table style="border-radius:0">
-            <thead><tr><th class="tx-th-date" onclick="sortTx('date')">Data ⇅</th><th class="tx-th-acct" style="display:none">Conta</th><th class="tx-th-desc">Descrição</th><th class="tx-th-pay">Beneficiário</th><th class="tx-th-cat">Categoria</th><th class="tx-th-amt" onclick="sortTx('amount')">Valor ⇅</th><th class="tx-th-act"></th></tr></thead>
-            <tbody>${g.txs.map(t => txRow(t, false)).join('')}</tbody>
+          <table class="tx-table" style="border-radius:0" id="txGroupTable-${k}">
+            <thead><tr><th class="tx-v2-th-date" onclick="sortTx('date')">Data ⇅</th><th class="tx-v2-th-body">Descrição</th><th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th></tr></thead>
+            <tbody>${renderWithDateGroupsForGroup(g.txs)}</tbody>
           </table>
         </div>
       </div>
