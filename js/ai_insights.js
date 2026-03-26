@@ -162,27 +162,6 @@ function _aiRefreshSnapshotButton() {
   btn.title = canSave ? 'Salvar snapshot da família' : 'Gere uma análise primeiro';
 }
 
-
-function _aiBindActionButtons() {
-  const analyzeBtn = document.querySelector('#aiInsightsPage button[onclick="runAiAnalysis()"]');
-  if (analyzeBtn && !analyzeBtn.dataset.aiBound) {
-    analyzeBtn.dataset.aiBound = '1';
-    analyzeBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      runAiAnalysis();
-    });
-  }
-  const saveBtn = document.getElementById('aiSaveSnapshotBtn');
-  if (saveBtn && !saveBtn.dataset.aiBound) {
-    saveBtn.dataset.aiBound = '1';
-    saveBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      saveCurrentAiSnapshot();
-    });
-  }
-  _aiRefreshSnapshotButton();
-}
-
 function _aiPopulateFilters() {
   // Members — use getFamilyMembers() from family_members_composition.js
   const memSel = document.getElementById('aiMemberFilter');
@@ -336,6 +315,7 @@ function _aiRenderSnapshotsList() {
     const created = new Date(s.created_at).toLocaleString('pt-BR');
     const confidence = s.confidence_score != null ? `${Math.round(parseFloat(s.confidence_score || 0))}/100` : '—';
     const summary = s.ai_summary?.summary || s.ai_summary?.overview?.net_comment || 'Snapshot salvo com contexto factual e narrativa da IA.';
+    const deleting = _ai.snapshotDeletingId === s.id;
     return `<div class="card" style="margin-bottom:12px;padding:14px 14px 12px;border:1px solid rgba(255,255,255,.08)">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
         <div style="min-width:240px;flex:1">
@@ -344,8 +324,9 @@ function _aiRenderSnapshotsList() {
           <div style="margin-top:8px;font-size:.86rem;line-height:1.45;color:var(--text)">${esc(String(summary || ''))}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="openAiSnapshot('${s.id}')">Abrir</button>
-          <button class="btn btn-ghost btn-sm" onclick="_aiShowTab('analysis')">Nova análise</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openAiSnapshot('${s.id}')">Abrir</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="_aiShowTab('analysis')">Nova análise</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="deleteAiSnapshot('${s.id}')" ${deleting ? 'disabled' : ''}>${deleting ? 'Excluindo…' : 'Excluir'}</button>
         </div>
       </div>
     </div>`;
@@ -889,13 +870,12 @@ async function runAiAnalysis() {
     console.error('[AIInsights] analysis error:', e);
   } finally {
     _ai.analysisLoading = false;
-    _aiRefreshSnapshotButton();
   }
 }
 
 
 async function saveCurrentAiSnapshot() {
-  if (_ai.analysisLoading) return;
+  if (_ai.analysisLoading || _ai.snapshotSaving) return;
   const ctx = _ai.currentContext || _ai.financialContext;
   const result = _ai.analysisResult;
   if (!ctx || !result) {
@@ -903,6 +883,11 @@ async function saveCurrentAiSnapshot() {
     _aiRefreshSnapshotButton();
     return;
   }
+  if (_ai.currentSnapshotId) {
+    toast('Esta análise já foi salva como snapshot.', 'info');
+    return;
+  }
+  _ai.snapshotSaving = true;
   const btn = document.getElementById('aiSaveSnapshotBtn');
   const prevHtml = btn ? btn.innerHTML : '';
   try {
@@ -915,8 +900,8 @@ async function saveCurrentAiSnapshot() {
       toast('Não foi possível salvar o snapshot. Verifique o SQL atualizado e as permissões da família no Supabase.', 'warning');
       return;
     }
-    await loadAiSnapshots();
     _ai.currentSnapshotId = snapshotId;
+    await loadAiSnapshots();
     toast('Snapshot da família salvo com sucesso.', 'success');
   } catch (err) {
     console.warn('[AIInsights] manual snapshot save:', err?.message || err);
@@ -927,8 +912,37 @@ async function saveCurrentAiSnapshot() {
       toast('Erro ao salvar snapshot: ' + msg, 'error');
     }
   } finally {
+    _ai.snapshotSaving = false;
     if (btn) btn.innerHTML = prevHtml || '💾 Salvar snapshot';
     _aiRefreshSnapshotButton();
+  }
+}
+
+async function deleteAiSnapshot(snapshotId) {
+  const famId = _aiCurrentFamilyId();
+  if (!snapshotId || !famId || _ai.snapshotDeletingId === snapshotId) return;
+  const ok = window.confirm('Excluir este snapshot da família? Esta ação não pode ser desfeita.');
+  if (!ok) return;
+  _ai.snapshotDeletingId = snapshotId;
+  _aiRenderSnapshotsList();
+  try {
+    const { error } = await sb.from('ai_insight_snapshots').delete().eq('id', snapshotId).eq('family_id', famId);
+    if (error) throw error;
+    _ai.snapshots = (_ai.snapshots || []).filter(s => s.id !== snapshotId);
+    if (_ai.currentSnapshotId === snapshotId) _ai.currentSnapshotId = null;
+    _aiRenderSnapshotsList();
+    toast('Snapshot excluído com sucesso.', 'success');
+  } catch (err) {
+    console.warn('[AIInsights] delete snapshot:', err?.message || err);
+    const msg = String(err?.message || err || 'Erro desconhecido');
+    if (/row-level security|permission denied|403/i.test(msg)) {
+      toast('Não foi possível excluir o snapshot por permissão.', 'error');
+    } else {
+      toast('Erro ao excluir snapshot: ' + msg, 'error');
+    }
+  } finally {
+    _ai.snapshotDeletingId = null;
+    _aiRenderSnapshotsList();
   }
 }
 
@@ -950,7 +964,7 @@ function _aiSetAnalysisState(state, msg) {
         <span class="ai-error-icon">⚠️</span>
         <p><strong>Erro na análise</strong></p>
         <p class="ai-error-msg">${esc(msg || 'Tente novamente.')}</p>
-        <button class="btn btn-ghost btn-sm" onclick="runAiAnalysis()">↺ Tentar novamente</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="runAiAnalysis()">↺ Tentar novamente</button>
       </div>`;
   } else if (state === 'empty') {
     container.innerHTML = `
@@ -2261,7 +2275,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Aplica feature flag ao carregar
     applyAiInsightsFeature();
-    _aiBindActionButtons();
   }, 400);
 });
 
@@ -2279,12 +2292,4 @@ function getPeriodColor(period) {
 
 window.loadAiSnapshots = loadAiSnapshots;
 
-window.runAiAnalysis = runAiAnalysis;
-window.saveCurrentAiSnapshot = saveCurrentAiSnapshot;
-document.addEventListener('click', (e) => {
-  const saveBtn = e.target.closest ? e.target.closest('#aiSaveSnapshotBtn') : null;
-  if (saveBtn) {
-    e.preventDefault();
-    saveCurrentAiSnapshot();
-  }
-});
+window.deleteAiSnapshot = deleteAiSnapshot;
