@@ -779,6 +779,14 @@ function openScheduledModal(id='') {
   const naEl = document.getElementById('scNotifyEmailAddr');
   const ndEl = document.getElementById('scNotifyDaysBefore');
   const ndDiv = document.getElementById('scNotifyEmailDetails');
+  const nwEl = document.getElementById('scNotifyWhatsapp');
+  const nwdEl = document.getElementById('scNotifyWhatsappDetails');
+  const nwnEl = document.getElementById('scNotifyWhatsappNumber');
+  const nwdaysEl = document.getElementById('scNotifyWhatsappDaysBefore');
+  const nwUpEl = document.getElementById('scNotifyWhatsappUpcoming');
+  const nwProcEl = document.getElementById('scNotifyWhatsappProcessed');
+  const nwTplEl = document.getElementById('scNotifyWhatsappTemplate');
+  const nwLangEl = document.getElementById('scNotifyWhatsappLang');
   if(arEl) arEl.checked = sc?.auto_register || false;
   const acEl = document.getElementById('scAutoConfirm');
   if(acEl) {
@@ -796,6 +804,17 @@ function openScheduledModal(id='') {
     naEl.value = sc?.notify_email_addr || _cfg.emailDefault || currentUser?.email || '';
   }
   if(ndEl) ndEl.value = sc?.notify_days_before ?? 1;
+  if(nwEl) {
+    nwEl.checked = sc?.notify_whatsapp || false;
+    toggleScheduledWhatsappDetails(nwEl.checked);
+    if (nwdEl) nwdEl.style.display = nwEl.checked ? '' : 'none';
+  }
+  if(nwnEl) nwnEl.value = sc?.notify_whatsapp_number || '';
+  if(nwdaysEl) nwdaysEl.value = sc?.notify_whatsapp_days_before ?? sc?.notify_days_before ?? 1;
+  if(nwUpEl) nwUpEl.checked = sc?.notify_whatsapp_on_upcoming ?? true;
+  if(nwProcEl) nwProcEl.checked = sc?.notify_whatsapp_on_processed ?? true;
+  if(nwTplEl) nwTplEl.value = sc?.notify_whatsapp_template || 'scheduled_upcoming';
+  if(nwLangEl) nwLangEl.value = sc?.notify_whatsapp_lang || 'pt_BR';
 
   // Render family member multi-picker
   if (typeof renderFmcMultiPicker === 'function') {
@@ -1019,6 +1038,13 @@ async function saveScheduled() {
   const autoReg = document.getElementById('scAutoRegister')?.checked || false;
   const autoConfirm = document.getElementById('scAutoConfirm')?.checked ?? true;
   const notifyEm = document.getElementById('scNotifyEmail')?.checked || false;
+  const notifyWa = document.getElementById('scNotifyWhatsapp')?.checked || false;
+  const notifyWaNumber = (document.getElementById('scNotifyWhatsappNumber')?.value || '').trim();
+  const notifyWaDaysBefore = parseInt(document.getElementById('scNotifyWhatsappDaysBefore')?.value || document.getElementById('scNotifyDaysBefore')?.value || '1', 10) || 0;
+  const notifyWaUpcoming = document.getElementById('scNotifyWhatsappUpcoming')?.checked ?? true;
+  const notifyWaProcessed = document.getElementById('scNotifyWhatsappProcessed')?.checked ?? true;
+  const notifyWaTemplate = (document.getElementById('scNotifyWhatsappTemplate')?.value || 'scheduled_upcoming').trim();
+  const notifyWaLang = (document.getElementById('scNotifyWhatsappLang')?.value || 'pt_BR').trim();
   const isScTransfer = type==='transfer' || type==='card_payment';
   const isScCardPayment = type==='card_payment';
 
@@ -1069,6 +1095,13 @@ async function saveScheduled() {
     notify_email: notifyEm,
     notify_email_addr: notifyEm ? (document.getElementById('scNotifyEmailAddr')?.value.trim()||null) : null,
     notify_days_before: notifyEm ? parseInt(document.getElementById('scNotifyDaysBefore')?.value||'1') : 1,
+    notify_whatsapp: notifyWa,
+    notify_whatsapp_number: notifyWa ? (notifyWaNumber || null) : null,
+    notify_whatsapp_days_before: notifyWa ? notifyWaDaysBefore : 1,
+    notify_whatsapp_on_processed: notifyWa ? !!notifyWaProcessed : false,
+    notify_whatsapp_on_upcoming: notifyWa ? !!notifyWaUpcoming : false,
+    notify_whatsapp_template: notifyWa ? (notifyWaTemplate || 'scheduled_upcoming') : null,
+    notify_whatsapp_lang: notifyWa ? (notifyWaLang || 'pt_BR') : 'pt_BR',
     fx_mode:  fxVisible ? fxMode : null,
     fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
@@ -1089,6 +1122,7 @@ async function saveScheduled() {
   if(isScTransfer && !data.transfer_to_account_id) { toast('Selecione a conta destino da transferência', 'error'); return; }
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
   if(!data.start_date) { toast('Informe a data de início', 'error'); return; }
+  if (notifyWa && !notifyWaNumber) { toast('Informe o número de WhatsApp para a notificação.', 'error'); return; }
 
   let err, newId = id;
   if(!id) data.family_id = famId();
@@ -1129,6 +1163,12 @@ async function toggleScStatus(id) {
 }
 
 // Feature 8: Update hint for auto_confirm status
+function toggleScheduledWhatsappDetails(show) {
+  const details = document.getElementById('scNotifyWhatsappDetails');
+  if (details) details.style.display = show ? '' : 'none';
+}
+window.toggleScheduledWhatsappDetails = toggleScheduledWhatsappDetails;
+
 function _updateAutoConfirmHint() {
   const el  = document.getElementById('scAutoConfirm');
   const hint = document.getElementById('scAutoConfirmHint');

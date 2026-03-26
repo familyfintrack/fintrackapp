@@ -257,6 +257,7 @@ async function runAutoRegister(manual=false) {
   try {
     if (typeof runScheduledAutoRegister === 'function') {
       const totalRegistered = await runScheduledAutoRegister();
+      await runScheduledUpcomingNotifications();
       updateLastRunConfig(totalRegistered || 0);
       if(manual) {
         if(totalRegistered) toast(`✓ ${totalRegistered} transação(ões) programada(s) registrada(s)`, 'success');
@@ -326,6 +327,78 @@ function nextScheduledDate(dateStr, sc) {
     default: return null;
   }
   return d.toISOString().slice(0,10);
+}
+
+
+/* ── WhatsApp Notifications ── */
+function _normalizeWhatsappNumber(raw) {
+  const digits = String(raw || '').replace(/\D+/g, '');
+  return digits || null;
+}
+
+async function invokeScheduledWhatsapp(payload) {
+  if (!sb?.functions?.invoke) throw new Error('Supabase Edge Functions não disponíveis nesta sessão.');
+  const { data, error } = await sb.functions.invoke('send-scheduled-whatsapp', { body: payload });
+  if (error) throw error;
+  return data || null;
+}
+
+async function sendScheduledWhatsappNotification(sc, date, amount, mode) {
+  const number = _normalizeWhatsappNumber(sc?.notify_whatsapp_number);
+  if (!number) return null;
+  const payload = {
+    scheduled_id: sc.id,
+    occurrence_date: date,
+    notification_type: mode === 'upcoming' ? 'upcoming' : 'processed',
+    recipient: number,
+    amount: amount,
+    lang: sc?.notify_whatsapp_lang || 'pt_BR',
+    template_name: mode === 'upcoming'
+      ? (sc?.notify_whatsapp_template || 'scheduled_upcoming')
+      : 'scheduled_processed',
+  };
+  try {
+    return await invokeScheduledWhatsapp(payload);
+  } catch (e) {
+    console.warn('[AutoReg] WhatsApp error:', e?.message || e);
+    return null;
+  }
+}
+
+async function runScheduledUpcomingNotifications() {
+  try {
+    if (!state.scheduled || !state.scheduled.length) return 0;
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    let sent = 0;
+    for (const sc of state.scheduled) {
+      if (sc.status !== 'active') continue;
+      const upcomingEnabled = !!(sc.notify_whatsapp && sc.notify_whatsapp_on_upcoming);
+      const emailEnabled = !!sc.notify_email;
+      if (!upcomingEnabled && !emailEnabled) continue;
+      const daysBefore = Math.max(0, parseInt(sc.notify_whatsapp_days_before ?? sc.notify_days_before ?? 0, 10) || 0);
+      const cutoff = new Date(today.getTime() + daysBefore * 86400000).toISOString().slice(0,10);
+      const occDates = getScheduledDates(sc, cutoff);
+      for (const d of occDates) {
+        if (d < todayStr) continue;
+        const diffDays = Math.round((new Date(d + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
+        if (diffDays !== daysBefore) continue;
+        if (emailEnabled) {
+          const cfg = getAutoCheckConfig ? getAutoCheckConfig() : {};
+          const emailTo = sc.notify_email_addr || cfg.emailDefault || currentUser?.email;
+          if (emailTo) await sendUpcomingNotification(sc, d, emailTo, daysBefore);
+        }
+        if (upcomingEnabled) {
+          await sendScheduledWhatsappNotification(sc, d, sc.amount, 'upcoming');
+          sent++;
+        }
+      }
+    }
+    return sent;
+  } catch (e) {
+    console.warn('[AutoReg] upcoming notifications error:', e?.message || e);
+    return 0;
+  }
 }
 
 /* ── Email Notifications ── */
