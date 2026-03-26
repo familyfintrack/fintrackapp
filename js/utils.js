@@ -696,3 +696,95 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+/* ═══════════════════════════════════════
+   AI AUTO DESCRIPTION
+   Generates a short description when the user leaves it blank.
+   Uses Gemini when configured, with a deterministic fallback.
+═══════════════════════════════════════ */
+
+function _autoDescCapWords(str) {
+  return String(str || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+function _autoDescBuildFallback({ categoryName, payeeName, memberName, type }) {
+  const cat = _autoDescCapWords(categoryName || '');
+  const pay = _autoDescCapWords(payeeName || '');
+  const mem = _autoDescCapWords(memberName || '');
+  const kindMap = {
+    expense: 'Despesa',
+    income: 'Receita',
+    transfer: 'Transferência',
+    card_payment: 'Pagamento do cartão'
+  };
+  const base = cat || kindMap[type] || 'Transação';
+  if (mem && pay) return `${base} do ${mem} no ${pay}`;
+  if (pay) return `${base} no ${pay}`;
+  if (mem) return `${base} do ${mem}`;
+  return base;
+}
+
+async function generateAiAutoDescription({ categoryName, payeeName, memberName, type, context }) {
+  const fallback = _autoDescBuildFallback({ categoryName, payeeName, memberName, type });
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '');
+    if (!apiKey || !apiKey.startsWith('AIza')) return fallback;
+
+    const model = 'gemini-2.5-flash-lite';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const prompt = [
+      'Você cria descrições muito curtas para lançamentos financeiros no Family FinTrack.',
+      'Objetivo: gerar uma descrição natural, curta, clara e pronta para salvar.',
+      'Regras obrigatórias:',
+      '- Responda com APENAS a descrição final, sem aspas.',
+      '- Máximo de 6 palavras.',
+      '- Em português do Brasil.',
+      '- Priorize a categoria e o beneficiário.',
+      '- Se houver membro, inclua "do/da <membro>".',
+      '- Se houver beneficiário, inclua "no/na <beneficiário>" quando soar natural.',
+      '- Não invente valores, datas nem detalhes extras.',
+      `Contexto: ${context === 'scheduled' ? 'transação programada' : 'transação'}`,
+      `Tipo: ${type || 'expense'}`,
+      `Categoria: ${categoryName || 'não informada'}`,
+      `Beneficiário: ${payeeName || 'não informado'}`,
+      `Membro: ${memberName || 'não informado'}`,
+      'Exemplos:',
+      'Supermercado + Pão de Açúcar => Supermercado no Pão de Açúcar',
+      'Supermercado + Pão de Açúcar + Décio => Supermercado do Décio no Pão de Açúcar',
+      'Transporte + Uber => Transporte no Uber',
+      `Fallback recomendado se necessário: ${fallback}`,
+    ].join('\n');
+
+    const body = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        topP: 0.8,
+        maxOutputTokens: 40,
+        responseMimeType: 'text/plain'
+      }
+    };
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) return fallback;
+    const json = await resp.json();
+    const raw = json?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join(' ').trim() || '';
+    const cleaned = raw.replace(/^['"“”]+|['"“”]+$/g, '').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return fallback;
+    return cleaned.slice(0, 90);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+window.generateAiAutoDescription = generateAiAutoDescription;

@@ -1040,15 +1040,39 @@ async function saveScheduled() {
     fxRate = (fxMode === 'fixed' && raw > 0) ? raw : null;
   }
 
+  const scCategoryId = document.getElementById('scCategoryId').value || null;
+  const scPayeeId    = isScTransfer ? null : (document.getElementById('scPayeeId').value || null);
+  const scMemberIds  = typeof getFmcMultiPickerSelected === 'function'
+    ? getFmcMultiPickerSelected('scFamilyMemberPicker')
+    : [];
+  const scPrimaryMemberId = scMemberIds[0] || null;
+  const scCategoryName = (state.categories || []).find(c => c.id === scCategoryId)?.name || '';
+  const scPayeeName    = (state.payees || []).find(p => p.id === scPayeeId)?.name || '';
+  const scMemberName   = typeof getFamilyMemberById === 'function'
+    ? (getFamilyMemberById(scPrimaryMemberId)?.name || '')
+    : '';
+  let scDescription = document.getElementById('scDesc').value.trim();
+  if (!scDescription && typeof generateAiAutoDescription === 'function') {
+    scDescription = await generateAiAutoDescription({
+      categoryName: scCategoryName,
+      payeeName: scPayeeName,
+      memberName: scMemberName,
+      type,
+      context: 'scheduled'
+    });
+    const scDescEl = document.getElementById('scDesc');
+    if (scDescEl && scDescription) scDescEl.value = scDescription;
+  }
+
   const data = {
-    description: document.getElementById('scDesc').value.trim(),
+    description: scDescription,
     type,
     amount: (type==='expense'||isScTransfer) ? -Math.abs(amount) : Math.abs(amount),
     currency: _getScSelectedCurrency() || (()=>{const _a=(state.accounts||[]).find(a=>a.id===document.getElementById('scAccountId').value);return _a?.currency||'BRL';})(),
     account_id: document.getElementById('scAccountId').value || null,
     transfer_to_account_id: isScTransfer ? (document.getElementById('scTransferToAccountId')?.value || null) : null,
-    payee_id: isScTransfer ? null : (document.getElementById('scPayeeId').value || null),
-    category_id: document.getElementById('scCategoryId').value || null,
+    payee_id: scPayeeId,
+    category_id: scCategoryId,
     memo: document.getElementById('scMemo').value,
     tags: tags.length ? tags : null,
     status: document.getElementById('scStatus').value,
@@ -1066,20 +1090,11 @@ async function saveScheduled() {
     fx_mode:  fxVisible ? fxMode : null,
     fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
-    family_member_ids: typeof getFmcMultiPickerSelected === 'function'
-      ? getFmcMultiPickerSelected('scFamilyMemberPicker')
-      : [],
-    family_member_id: (() => {
-      if (typeof getFmcMultiPickerSelected === 'function') {
-        const ids = getFmcMultiPickerSelected('scFamilyMemberPicker');
-        return ids[0] || null;
-      }
-      return null;
-    })(),
+    family_member_ids: scMemberIds,
+    family_member_id: scPrimaryMemberId,
   };
 
-  if(!data.description) { toast('Informe a descrição', 'error'); return; }
-  if(!data.account_id) { toast('Selecione a conta', 'error'); return; }
+    if(!data.account_id) { toast('Selecione a conta', 'error'); return; }
   if(isScTransfer && !data.transfer_to_account_id) { toast('Selecione a conta destino da transferência', 'error'); return; }
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
   if(!data.start_date) { toast('Informe a data de início', 'error'); return; }

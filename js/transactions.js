@@ -1345,15 +1345,39 @@ async function saveTransaction(){
     }
   }
 
+  const txCategoryId = document.getElementById('txCategoryId').value || null;
+  const txPayeeId    = isTransfer ? null : (document.getElementById('txPayeeId').value || null);
+  const txMemberIds  = typeof getFmcMultiPickerSelected === 'function'
+    ? getFmcMultiPickerSelected('txFamilyMemberPicker')
+    : [];
+  const txPrimaryMemberId = txMemberIds[0] || (document.getElementById('txFamilyMember')?.value || null);
+  const txCategoryName = (state.categories || []).find(c => c.id === txCategoryId)?.name || '';
+  const txPayeeName    = (state.payees || []).find(p => p.id === txPayeeId)?.name || '';
+  const txMemberName   = typeof getFamilyMemberById === 'function'
+    ? (getFamilyMemberById(txPrimaryMemberId)?.name || '')
+    : '';
+  let txDescription = document.getElementById('txDesc').value.trim();
+  if (!txDescription && typeof generateAiAutoDescription === 'function') {
+    txDescription = await generateAiAutoDescription({
+      categoryName: txCategoryName,
+      payeeName: txPayeeName,
+      memberName: txMemberName,
+      type,
+      context: 'transaction'
+    });
+    const txDescEl = document.getElementById('txDesc');
+    if (txDescEl && txDescription) txDescEl.value = txDescription;
+  }
+
   const data={
     date:document.getElementById('txDate').value,
-    description:document.getElementById('txDesc').value.trim(),
+    description:txDescription,
     amount,
     currency: txCurrency,
     brl_amount: brlAmount,
     account_id:document.getElementById('txAccountId').value||null,
-    payee_id:isTransfer?null:(document.getElementById('txPayeeId').value||null),
-    category_id:document.getElementById('txCategoryId').value||null,
+    payee_id:txPayeeId,
+    category_id:txCategoryId,
     memo:document.getElementById('txMemo').value,
     tags:tags.length?tags:null,
     status: (document.getElementById('txStatus')?.value || 'confirmed'),
@@ -1365,16 +1389,8 @@ async function saveTransaction(){
     attachment_name: existingName,
     updated_at:new Date().toISOString(),
     family_id:famId(),
-    family_member_ids: typeof getFmcMultiPickerSelected === 'function'
-      ? getFmcMultiPickerSelected('txFamilyMemberPicker')
-      : [],
-    family_member_id: (()=>{
-      if (typeof getFmcMultiPickerSelected === 'function') {
-        const ids = getFmcMultiPickerSelected('txFamilyMemberPicker');
-        return ids[0] || null;
-      }
-      return document.getElementById('txFamilyMember')?.value || null;
-    })()
+    family_member_ids: txMemberIds,
+    family_member_id: txPrimaryMemberId
   };
   if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
   let err,txResult;
