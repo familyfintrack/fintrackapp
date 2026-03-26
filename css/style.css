@@ -5040,7 +5040,14 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     font-weight: 400 !important;
   }
 
-  /* ── 8. Filtros compactos ── */
+  /* ── 8. Modo agrupado: table-wrap e tabela dentro do grupo também viram block ── */
+  #txGroupContainer .table-wrap { overflow: visible !important; }
+  #txGroupContainer table,
+  #txGroupContainer tbody { display: block; width: 100%; }
+  #txGroupContainer thead  { display: none !important; }
+  /* Cards dentro dos grupos usam os mesmos seletores do flat view acima */
+
+  /* ── 9. Filtros compactos ── */
   .tx-filter-chips-row { overflow-x: auto !important; flex-wrap: nowrap !important; }
   .tx-chip-select      { font-size: .78rem !important; padding: 6px 11px !important; border-radius: 20px !important; }
 
