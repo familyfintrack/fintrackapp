@@ -2522,6 +2522,7 @@
       <!-- Tabs: Análise / Chat -->
       <div class="ai-tabs" style="padding:0 16px;background:var(--surface,#1a2e1e);">
         <button class="ai-tab-btn active" id="aiTab-analysis" onclick="_aiShowTab('analysis')"><span data-i18n="ai.analysis">Análise</span></button>
+        <button class="ai-tab-btn" id="aiTab-snapshots" onclick="_aiShowTab('snapshots')">📚 <span>Snapshots</span></button>
         <button class="ai-tab-btn" id="aiTab-chat" onclick="_aiShowTab('chat')"><span data-i18n="ai.chat">Chat</span></button>
       </div>
 
@@ -2554,6 +2555,19 @@
               <span style="font-size:2.8rem">🤖</span>
               <p style="font-size:.95rem;font-weight:600">Análise Financeira com IA</p>
               <p style="font-size:.82rem;max-width:280px">Selecione um período, aplique filtros e clique em <strong>Analisar</strong> para gerar insights com Gemini.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAINEL SNAPSHOTS ── -->
+      <div id="aiPanel-snapshots" style="display:none">
+        <div style="padding:12px 16px 80px">
+          <div id="aiSnapshotsList">
+            <div class="ai-empty-state">
+              <span style="font-size:2.2rem">📚</span>
+              <p style="font-size:.95rem;font-weight:600">Snapshots por família</p>
+              <p style="font-size:.82rem;max-width:360px">Gere uma análise para salvar um snapshot com contexto factual, projeção e resposta da IA.</p>
             </div>
           </div>
         </div>
