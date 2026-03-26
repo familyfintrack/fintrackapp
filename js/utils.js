@@ -698,93 +698,94 @@ function getPeriodColor(period) {
 }
 
 
+/* AUTO DESCRIPTION HELPERS LOADED */
+
 /* ═══════════════════════════════════════
-   AI AUTO DESCRIPTION
-   Generates a short description when the user leaves it blank.
-   Uses Gemini when configured, with a deterministic fallback.
+   AUTO DESCRIPTION (Gemini + deterministic fallback)
+   Used when saving transactions / scheduled items without a description.
 ═══════════════════════════════════════ */
 
-function _autoDescCapWords(str) {
-  return String(str || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+function _autoDescNorm(s) {
+  return String(s || '').trim().replace(/\s+/g, ' ');
 }
 
-function _autoDescBuildFallback({ categoryName, payeeName, memberName, type }) {
-  const cat = _autoDescCapWords(categoryName || '');
-  const pay = _autoDescCapWords(payeeName || '');
-  const mem = _autoDescCapWords(memberName || '');
-  const kindMap = {
-    expense: 'Despesa',
-    income: 'Receita',
-    transfer: 'Transferência',
-    card_payment: 'Pagamento do cartão'
-  };
-  const base = cat || kindMap[type] || 'Transação';
-  if (mem && pay) return `${base} do ${mem} no ${pay}`;
-  if (pay) return `${base} no ${pay}`;
-  if (mem) return `${base} do ${mem}`;
-  return base;
+function _autoDescArticleForPerson(name) {
+  const n = _autoDescNorm(name).toLowerCase();
+  if (!n) return 'de';
+  const feminineHints = ['bruna','lara','chloe','elise','beatrice','ana','maria','julia','carolina','sofia','isabela','camila'];
+  if (feminineHints.some(x => n === x || n.startsWith(x + ' '))) return 'da';
+  return 'do';
 }
 
-async function generateAiAutoDescription({ categoryName, payeeName, memberName, type, context }) {
-  const fallback = _autoDescBuildFallback({ categoryName, payeeName, memberName, type });
+function _autoDescArticleForPlace(name) {
+  const n = _autoDescNorm(name).toLowerCase();
+  if (!n) return 'em';
+  return /(^|\b)(farmácia|padaria|feira|loja|boutique|academia|clínica|drogaria|casa|mercearia)\b/.test(n) ? 'na' : 'no';
+}
+
+function _autoDescHumanizeFallback({ categoryName = '', payeeName = '', memberName = '' } = {}) {
+  const cat = _autoDescNorm(categoryName) || 'Transação';
+  const pay = _autoDescNorm(payeeName);
+  const mem = _autoDescNorm(memberName);
+  let out = cat;
+  if (mem) out += ` ${_autoDescArticleForPerson(mem)} ${mem}`;
+  if (pay) out += ` ${_autoDescArticleForPlace(pay)} ${pay}`;
+  return out;
+}
+
+async function generateAutoDescription({ categoryName = '', payeeName = '', memberName = '' } = {}) {
+  const cat = _autoDescNorm(categoryName);
+  const pay = _autoDescNorm(payeeName);
+  const mem = _autoDescNorm(memberName);
+  const fallback = _autoDescHumanizeFallback({ categoryName: cat, payeeName: pay, memberName: mem });
+
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '');
-    if (!apiKey || !apiKey.startsWith('AIza')) return fallback;
+    if (typeof getAppSetting !== 'function' || typeof fetch !== 'function') return fallback;
+    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    const model = (typeof RECEIPT_AI_MODEL !== 'undefined' && RECEIPT_AI_MODEL) ? RECEIPT_AI_MODEL : 'gemini-2.5-flash-lite';
+    if (!apiKey || !String(apiKey).startsWith('AIza')) return fallback;
 
-    const model = 'gemini-2.5-flash-lite';
+    const prompt = `Create a VERY SHORT transaction description in Brazilian Portuguese.
+Rules:
+- Maximum 7 words.
+- Keep it natural and finance-app friendly.
+- Use the category as the main concept.
+- If there is a member, include it naturally.
+- If there is a payee, include it naturally.
+- No quotes.
+- No punctuation at the end.
+- Return ONLY the final description text.
+
+Examples:
+Category: Supermercado | Payee: Pão de Açúcar | Member:
+Result: Supermercado no Pão de Açúcar
+
+Category: Supermercado | Payee: Pão de Açúcar | Member: Décio
+Result: Supermercado do Décio no Pão de Açúcar
+
+Input:
+Category: ${cat || '(none)'}
+Payee: ${pay || '(none)'}
+Member: ${mem || '(none)'}`;
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const prompt = [
-      'Você cria descrições muito curtas para lançamentos financeiros no Family FinTrack.',
-      'Objetivo: gerar uma descrição natural, curta, clara e pronta para salvar.',
-      'Regras obrigatórias:',
-      '- Responda com APENAS a descrição final, sem aspas.',
-      '- Máximo de 6 palavras.',
-      '- Em português do Brasil.',
-      '- Priorize a categoria e o beneficiário.',
-      '- Se houver membro, inclua "do/da <membro>".',
-      '- Se houver beneficiário, inclua "no/na <beneficiário>" quando soar natural.',
-      '- Não invente valores, datas nem detalhes extras.',
-      `Contexto: ${context === 'scheduled' ? 'transação programada' : 'transação'}`,
-      `Tipo: ${type || 'expense'}`,
-      `Categoria: ${categoryName || 'não informada'}`,
-      `Beneficiário: ${payeeName || 'não informado'}`,
-      `Membro: ${memberName || 'não informado'}`,
-      'Exemplos:',
-      'Supermercado + Pão de Açúcar => Supermercado no Pão de Açúcar',
-      'Supermercado + Pão de Açúcar + Décio => Supermercado do Décio no Pão de Açúcar',
-      'Transporte + Uber => Transporte no Uber',
-      `Fallback recomendado se necessário: ${fallback}`,
-    ].join('\n');
-
-    const body = {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        topP: 0.8,
-        maxOutputTokens: 40,
-        responseMimeType: 'text/plain'
-      }
-    };
-
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 30 }
+      })
     });
     if (!resp.ok) return fallback;
     const json = await resp.json();
-    const raw = json?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join(' ').trim() || '';
-    const cleaned = raw.replace(/^['"“”]+|['"“”]+$/g, '').replace(/\s+/g, ' ').trim();
-    if (!cleaned) return fallback;
-    return cleaned.slice(0, 90);
+    let raw = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    raw = String(raw).replace(/^```\w*\s*/,'').replace(/```$/,'').trim();
+    raw = raw.replace(/^['"“”]+|['"“”]+$/g, '').replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!raw) return fallback;
+    if (raw.split(/\s+/).length > 8) return fallback;
+    return raw;
   } catch (_) {
     return fallback;
   }
 }
-
-window.generateAiAutoDescription = generateAiAutoDescription;

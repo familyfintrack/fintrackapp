@@ -1345,28 +1345,20 @@ async function saveTransaction(){
     }
   }
 
-  const txCategoryId = document.getElementById('txCategoryId').value || null;
-  const txPayeeId    = isTransfer ? null : (document.getElementById('txPayeeId').value || null);
-  const txMemberIds  = typeof getFmcMultiPickerSelected === 'function'
+  const _txMemberIds = typeof getFmcMultiPickerSelected === 'function'
     ? getFmcMultiPickerSelected('txFamilyMemberPicker')
     : [];
-  const txPrimaryMemberId = txMemberIds[0] || (document.getElementById('txFamilyMember')?.value || null);
-  const txCategoryName = (state.categories || []).find(c => c.id === txCategoryId)?.name || '';
-  const txPayeeName    = (state.payees || []).find(p => p.id === txPayeeId)?.name || '';
-  const txMemberName   = typeof getFamilyMemberById === 'function'
-    ? (getFamilyMemberById(txPrimaryMemberId)?.name || '')
-    : '';
+  const _txMemberId = _txMemberIds[0] || document.getElementById('txFamilyMember')?.value || null;
   let txDescription = document.getElementById('txDesc').value.trim();
-  if (!txDescription && typeof generateAiAutoDescription === 'function') {
-    txDescription = await generateAiAutoDescription({
-      categoryName: txCategoryName,
-      payeeName: txPayeeName,
-      memberName: txMemberName,
-      type,
-      context: 'transaction'
-    });
-    const txDescEl = document.getElementById('txDesc');
-    if (txDescEl && txDescription) txDescEl.value = txDescription;
+  if (!txDescription && typeof generateAutoDescription === 'function') {
+    const _catId = document.getElementById('txCategoryId').value || null;
+    const _payId = isTransfer ? null : (document.getElementById('txPayeeId').value || null);
+    const _catName = (state.categories || []).find(c => c.id === _catId)?.name || '';
+    const _payName = (state.payees || []).find(p => p.id === _payId)?.name || '';
+    const _memberName = (typeof getFamilyMemberById === 'function' ? getFamilyMemberById(_txMemberId)?.name : '') || '';
+    txDescription = await generateAutoDescription({ categoryName: _catName, payeeName: _payName, memberName: _memberName });
+    const _descEl = document.getElementById('txDesc');
+    if (_descEl && txDescription) _descEl.value = txDescription;
   }
 
   const data={
@@ -1376,8 +1368,8 @@ async function saveTransaction(){
     currency: txCurrency,
     brl_amount: brlAmount,
     account_id:document.getElementById('txAccountId').value||null,
-    payee_id:txPayeeId,
-    category_id:txCategoryId,
+    payee_id:isTransfer?null:(document.getElementById('txPayeeId').value||null),
+    category_id:document.getElementById('txCategoryId').value||null,
     memo:document.getElementById('txMemo').value,
     tags:tags.length?tags:null,
     status: (document.getElementById('txStatus')?.value || 'confirmed'),
@@ -1389,8 +1381,8 @@ async function saveTransaction(){
     attachment_name: existingName,
     updated_at:new Date().toISOString(),
     family_id:famId(),
-    family_member_ids: txMemberIds,
-    family_member_id: txPrimaryMemberId
+    family_member_ids: _txMemberIds,
+    family_member_id: _txMemberId
   };
   if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
   let err,txResult;
