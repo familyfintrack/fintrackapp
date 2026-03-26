@@ -17172,40 +17172,19 @@ section[data-page="transactions"] .content {
 
 
 
-/* === 2026-03-26 DEBTS HEADER ACTIONS RIGHT ALIGN === */
-@media (max-width: 768px){
-  #page-debts .section-header{
+/* === 2026-03-26 CENTER ACCOUNT PILL ON MOBILE TX CARDS === */
+@media (max-width: 720px){
+  #page-transactions .tx-v2-account-line{
     display:flex !important;
-    flex-direction:row !important;
+    justify-content:center !important;
     align-items:center !important;
-    justify-content:space-between !important;
-    gap:10px !important;
-    flex-wrap:nowrap !important;
+    margin-top:4px !important;
+    width:100% !important;
   }
 
-  #page-debts .section-header > :first-child{
-    flex:1 1 auto !important;
-    min-width:0 !important;
-  }
-
-  #page-debts .section-header > :last-child{
-    display:flex !important;
-    justify-content:flex-end !important;
-    align-items:center !important;
-    gap:8px !important;
-    flex:0 0 auto !important;
-    margin-left:auto !important;
-    position:static !important;
-  }
-
-  #page-debts .section-title{
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-
-  #page-debts .section-header .btn,
-  #page-debts .section-header button{
-    white-space:nowrap !important;
+  #page-transactions .tx-v2-acct-pill{
+    margin:0 auto !important;
+    max-width:85% !important;
+    text-align:center !important;
   }
 }
