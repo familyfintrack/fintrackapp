@@ -696,6 +696,7 @@ function renderTransactions(){
   const pendingHtml   = renderWithDateGroups(pending, !singleAccId, null);
   const confirmedHtml = renderWithDateGroups(confirmed, !singleAccId, balMap);
   body.innerHTML = pendingHtml + sep + confirmedHtml;
+  try{ enhanceTransactionsMobileLayout(); }catch(e){}
   const total=state.txTotal, page=state.txPage, ps=state.txPageSize;
   document.getElementById('txPagination').innerHTML=`<span>${page*ps+1}–${Math.min((page+1)*ps,total)} de ${total}</span><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" ${page===0?'disabled':''} onclick="changePage(-1)">${t('tx.prev_page')}</button><button class="btn btn-ghost btn-sm" ${(page+1)*ps>=total?'disabled':''} onclick="changePage(1)">${t('tx.next_page')}</button></div>`;
 
@@ -2058,6 +2059,76 @@ async function toggleTxDetailStatus() {
 // Mobile UX: swipe to confirm + compact view
 // ─────────────────────────────────────────────
 let _txSwipeBound = false;
+
+function enhanceTransactionsMobileLayout(){
+  const page = document.getElementById('page-transactions');
+  if (!page) return;
+
+  const header = page.querySelector('.tx-page-header');
+  const filterBar = page.querySelector('.tx-filter-bar');
+  const chipsRow = page.querySelector('.tx-filter-chips-row');
+  const searchWrap = page.querySelector('.tx-search-wrap');
+  const searchInput = document.getElementById('txSearch');
+  const actionsWrap = header?.lastElementChild;
+
+  if (header) header.classList.add('tx-mobile-refined-header');
+  if (actionsWrap) actionsWrap.classList.add('tx-mobile-header-actions');
+  if (filterBar) filterBar.classList.add('tx-mobile-refined-filters');
+  if (chipsRow) chipsRow.classList.add('tx-mobile-refined-grid');
+  if (searchWrap) searchWrap.classList.add('tx-mobile-search-shell');
+  if (searchInput && window.innerWidth <= 720) {
+    searchInput.placeholder = 'Buscar transação';
+  }
+
+  const controls = [
+    ['txMonth', 'Período'],
+    ['txAccount', 'Conta'],
+    ['txCategoryFilter', 'Categoria'],
+    ['txType', 'Tipo'],
+    ['txStatusFilter', 'Status'],
+    ['txMemberPicker', 'Pessoa'],
+    ['txReconcileFilter', 'Conciliação'],
+    ['btnEnterReconcile', 'Modo de conciliação'],
+  ];
+
+  controls.forEach(([id, label]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const wrap = el.closest('.tx-filter-chip-wrap') || el;
+    wrap.dataset.mobileLabel = label;
+    wrap.classList.add('tx-mobile-filter-cell');
+    if (id === 'btnEnterReconcile' || id === 'txReconcileFilter') {
+      wrap.classList.add('tx-mobile-span-2');
+    }
+  });
+
+  const viewBtns = page.querySelector('.tx-view-btns');
+  if (viewBtns) {
+    viewBtns.dataset.mobileLabel = 'Visualização';
+    viewBtns.classList.add('tx-mobile-filter-cell', 'tx-mobile-span-2');
+  }
+
+  if (chipsRow) {
+    const desiredOrder = [
+      'txMonth',
+      'txAccount',
+      'txCategoryFilter',
+      'txType',
+      'txStatusFilter',
+      'txMemberPicker',
+      'txReconcileFilter',
+      'btnEnterReconcile',
+    ];
+    desiredOrder.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const node = el.closest('.tx-filter-chip-wrap') || el;
+      if (node.parentElement === chipsRow) chipsRow.appendChild(node);
+    });
+    if (viewBtns && viewBtns.parentElement === chipsRow) chipsRow.appendChild(viewBtns);
+  }
+}
+
 function initTxMobileUX(){
   // Bind once using event delegation
   if(_txSwipeBound) return;
