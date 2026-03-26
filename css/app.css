@@ -24,7 +24,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .sidebar-logo{padding:0;border-bottom:1px solid var(--border);overflow:hidden;}
 .sidebar-logo-mark{display:flex;align-items:center;gap:10px;margin-bottom:2px;}
 .logo-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem;font-weight:600;font-family:var(--font-serif);letter-spacing:-.02em;flex-shrink:0;}
-.sidebar-logo h1{font-family:var(--font-serif);font-size:1.25rem;font-weight:600;color:var(--text);letter-spacing:-.02em;line-height:1;}
+.sidebar-logo h1{font-family:var(--font-serif);font-size: 1.8rem;font-weight:600;color:var(--text);letter-spacing:-.02em;line-height:1;}
 .sidebar-logo p{font-size:.7rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding-left:44px;}
 .sidebar-nav{flex:1;padding:10px 12px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
 .nav-section{margin-bottom:14px;}
