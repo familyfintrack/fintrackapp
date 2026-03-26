@@ -412,22 +412,17 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const amtClass = t.amount >= 0 ? 'amount-pos' : 'amount-neg';
   let amtHtml = `<span class="tx-v2-amt ${amtClass}">${mainAmt}</span>`;
 
-  // Secondary amount rules:
-  // A) mixed-account list (no account filter, flat/date-grouped view):
-  //    for any foreign-currency transaction, always show the BRL equivalent below.
-  // B) single-account / other contexts:
-  //    only show secondary value when transaction currency differs from the account currency.
-  const hasSingleAccountFilter = !!(state?.txFilter?.account || '');
-  const isFlatDateList = state?.txView === 'flat';
-  const shouldShowBrlInMixedList = !hasSingleAccountFilter && isFlatDateList && !!txCur && txCur !== 'BRL';
-  const shouldShowConvertedVsAccount = !!txCur && txCur !== 'BRL' && txCur !== accountCur;
-  const secondaryAmount = shouldShowBrlInMixedList
-    ? ((accountCur === 'BRL' && t.brl_amount != null) ? t.brl_amount : (typeof toBRL === 'function' ? toBRL(t.amount, txCur) : t.brl_amount))
-    : t.brl_amount;
-  const secondaryCurrency = shouldShowBrlInMixedList ? 'BRL' : (accountCur || 'BRL');
-  const showConvertedAmount = (shouldShowBrlInMixedList || shouldShowConvertedVsAccount) && secondaryAmount != null;
+  // Secondary converted value rules:
+  //  - If no single account filter is active in the flat list, show BRL conversion for foreign-currency transactions.
+  //  - If a single account is filtered, only show conversion when the transaction currency differs from the account currency.
+  //  - Never show a secondary line for BRL transactions.
+  const hasSingleAccountFilter = !!(state?.txFilter?.account);
+  const hasBrlConversion = t.brl_amount != null && !Number.isNaN(parseFloat(t.brl_amount));
+  const showConvertedAmount = !!txCur && txCur !== 'BRL' && hasBrlConversion && (
+    !hasSingleAccountFilter || txCur !== accountCur
+  );
   if (showConvertedAmount) {
-    amtHtml += `<span class="tx-v2-brl">${fmt(secondaryAmount, secondaryCurrency)}</span>`;
+    amtHtml += `<span class="tx-v2-brl">${fmt(t.brl_amount, 'BRL')}</span>`;
   }
 
   // Running balance — use account's native currency (balance is stored in account currency)
