@@ -1040,27 +1040,8 @@ async function saveScheduled() {
     fxRate = (fxMode === 'fixed' && raw > 0) ? raw : null;
   }
 
-  let generatedDescription = document.getElementById('scDesc').value.trim();
-  if (!generatedDescription) {
-    const categoryName = (state.categories || []).find(c => c.id === (document.getElementById('scCategoryId').value || null))?.name || '';
-    const payeeName = isScTransfer ? '' : ((state.payees || []).find(p => p.id === (document.getElementById('scPayeeId').value || null))?.name || '');
-    const memberIds = typeof getFmcMultiPickerSelected === 'function'
-      ? getFmcMultiPickerSelected('scFamilyMemberPicker')
-      : [];
-    const memberName = (() => {
-      const firstId = memberIds[0] || null;
-      if (!firstId) return '';
-      if (typeof getFamilyMembers === 'function') {
-        return getFamilyMembers().find(m => m.id === firstId)?.name || '';
-      }
-      return '';
-    })();
-    generatedDescription = await generateShortTransactionDescription({ categoryName, payeeName, memberName });
-    document.getElementById('scDesc').value = generatedDescription;
-  }
-
   const data = {
-    description: generatedDescription,
+    description: document.getElementById('scDesc').value.trim(),
     type,
     amount: (type==='expense'||isScTransfer) ? -Math.abs(amount) : Math.abs(amount),
     currency: _getScSelectedCurrency() || (()=>{const _a=(state.accounts||[]).find(a=>a.id===document.getElementById('scAccountId').value);return _a?.currency||'BRL';})(),
@@ -1097,6 +1078,7 @@ async function saveScheduled() {
     })(),
   };
 
+  if(!data.description) { toast('Informe a descrição', 'error'); return; }
   if(!data.account_id) { toast('Selecione a conta', 'error'); return; }
   if(isScTransfer && !data.transfer_to_account_id) { toast('Selecione a conta destino da transferência', 'error'); return; }
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
