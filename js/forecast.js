@@ -327,7 +327,10 @@ function _forecastDateParts(iso){
             return `<tr class="forecast-date-group-row ${isToday ? 'forecast-date-group-row--today' : ''}">
               <td colspan="3">
                 <div class="forecast-date-group-pill">
-                  <span class="forecast-date-group-main">${dateParts.weekday} · ${dateParts.short}</span>
+                  <div class="forecast-date-group-copy">
+                    <span class="forecast-date-group-main">${dateParts.weekday}</span>
+                    <span class="forecast-date-group-sub">${dateParts.short}</span>
+                  </div>
                   ${todayMarker}
                 </div>
               </td>
@@ -344,11 +347,9 @@ function _forecastDateParts(iso){
       return `${groupHeader}<tr class="${rowClass} ${balClass} forecast-tx-row">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">
           <div class="forecast-date-card forecast-date-card--compact" aria-label="${dateParts.short}">
+            <div class="forecast-date-weekday">${dateParts.weekday}</div>
             <div class="forecast-date-daynum">${dateParts.day}</div>
             <div class="forecast-date-monthyear">${dateParts.monthYear}</div>
-          </div>
-          <div class="forecast-date-meta">
-            ${todayMarker}
           </div>
         </td>
         <td class="forecast-desc-cell">
