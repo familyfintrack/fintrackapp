@@ -46,6 +46,9 @@ const _ai = {
   // Loading states
   analysisLoading: false,
   chatLoading: false,
+  snapshotsLoading: false,
+  snapshots: [],
+  currentSnapshotId: null,
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -94,13 +97,16 @@ async function initAiInsightsPage() {
   // Show/hide tabs — start on Analysis tab
   _aiShowTab('analysis');
 
+  // Load snapshots list
+  loadAiSnapshots().catch(err => console.warn('[AIInsights] snapshots init:', err?.message || err));
+
   // Render existing result if available
   if (_ai.analysisResult) _aiRenderAnalysis(_ai.analysisResult);
   if (_ai.chatHistory.length) _aiRenderChatHistory();
 }
 
 function _aiShowTab(tab) {
-  ['analysis','chat'].forEach(t => {
+  ['analysis','snapshots','chat'].forEach(t => {
     const btn   = document.getElementById('aiTab-' + t);
     const panel = document.getElementById('aiPanel-' + t);
     if (btn)   btn.classList.toggle('active', t === tab);
@@ -149,116 +155,286 @@ function _aiPopulateFilters() {
 //  SEÇÃO 2 — COLETA E AGREGAÇÃO DE DADOS FINANCEIROS (pelo app, não pela IA)
 // ══════════════════════════════════════════════════════════════════════════
 
-async function _aiCollectFinancialContext() {
-  const dateFrom   = document.getElementById('aiDateFrom')?.value   || '';
-  const dateTo     = document.getElementById('aiDateTo')?.value     || '';
-  const memberId   = document.getElementById('aiMemberFilter')?.value || '';
-  const accountId  = document.getElementById('aiAccountFilter')?.value || '';
-  const categoryId = document.getElementById('aiCategoryFilter')?.value || '';
-  const payeeId    = document.getElementById('aiPayeeFilter')?.value   || '';
+function _aiGetFilters() {
+  const filters = {
+    dateFrom: document.getElementById('aiDateFrom')?.value || '',
+    dateTo: document.getElementById('aiDateTo')?.value || '',
+    memberId: document.getElementById('aiMemberFilter')?.value || '',
+    accountId: document.getElementById('aiAccountFilter')?.value || '',
+    categoryId: document.getElementById('aiCategoryFilter')?.value || '',
+    payeeId: document.getElementById('aiPayeeFilter')?.value || '',
+  };
+  _ai.filters = { ...filters };
+  return filters;
+}
 
-  // ── 1. Transações do período selecionado ─────────────────────────────
+function _aiTxMatchesMember(tx, memberId) {
+  if (!memberId) return true;
+  if (tx.family_member_id === memberId) return true;
+  if (Array.isArray(tx.family_member_ids) && tx.family_member_ids.includes(memberId)) return true;
+  if (typeof tx.family_member_ids === 'string' && tx.family_member_ids.includes(memberId)) return true;
+  return false;
+}
+
+function _aiScheduledMatchesFilters(s, filters) {
+  if (!s || s.status !== 'active') return false;
+  if (filters.accountId && s.account_id !== filters.accountId && s.transfer_to_account_id !== filters.accountId) return false;
+  if (filters.payeeId && s.payee_id !== filters.payeeId) return false;
+  if (filters.categoryId && s.category_id !== filters.categoryId) return false;
+  if (filters.memberId) {
+    const mids = Array.isArray(s.family_member_ids) ? s.family_member_ids : [];
+    if (s.family_member_id !== filters.memberId && !mids.includes(filters.memberId)) return false;
+  }
+  return true;
+}
+
+function _aiGenerateOccurrencesInRange(sc, fromStr, toStr, limit = 240) {
+  if (!sc || !fromStr || !toStr) return [];
+  const occ = (typeof generateOccurrences === 'function') ? generateOccurrences(sc, limit) : [];
+  return (occ || []).filter(d => d >= fromStr && d <= toStr);
+}
+
+function _aiMonthBounds(ym) {
+  const [y, m] = String(ym || '').split('-').map(Number);
+  if (!y || !m) return null;
+  const start = `${y}-${String(m).padStart(2, '0')}-01`;
+  const end = new Date(y, m, 0).toISOString().slice(0, 10);
+  return { start, end };
+}
+
+function _aiMedian(values) {
+  const arr = (values || []).map(v => parseFloat(v || 0)).filter(v => Number.isFinite(v)).sort((a,b)=>a-b);
+  if (!arr.length) return 0;
+  const mid = Math.floor(arr.length / 2);
+  return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+}
+
+function _aiComputeProjectionConfidence(closedMonths, scheduledCoverageRatio, filterSpread) {
+  const monthScore = Math.min(40, (closedMonths || 0) * 6.5);
+  const coverageScore = Math.max(0, Math.min(40, Math.round((scheduledCoverageRatio || 0) * 40)));
+  const filterScore = Math.max(10, 20 - Math.min(10, filterSpread || 0));
+  return Math.max(15, Math.min(98, monthScore + coverageScore + filterScore));
+}
+
+async function _aiLoadSnapshotRows() {
+  const famId = currentUser?.family_id;
+  if (!famId) return [];
+  const { data, error } = await sb.from('ai_insight_snapshots')
+    .select('id,family_id,title,period_from,period_to,status,filters,source_metrics,projection_metrics,recommendation_summary,ai_summary,confidence_score,created_at,created_by,engine_version,model_name,prompt_version')
+    .eq('family_id', famId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message || '')) return [];
+    throw error;
+  }
+  return data || [];
+}
+
+function _aiRenderSnapshotsList() {
+  const el = document.getElementById('aiSnapshotsList');
+  if (!el) return;
+  if (_ai.snapshotsLoading) {
+    el.innerHTML = `<div class="ai-loading"><div class="ai-loading-spinner"></div><p>Carregando snapshots…</p></div>`;
+    return;
+  }
+  if (!_ai.snapshots.length) {
+    el.innerHTML = `<div class="ai-empty-state"><span style="font-size:2.2rem">📚</span><p style="font-size:.95rem;font-weight:600">Nenhum snapshot salvo ainda</p><p style="font-size:.82rem;max-width:360px">Ao gerar uma análise, o app salva automaticamente um snapshot por família no Supabase.</p></div>`;
+    return;
+  }
+  el.innerHTML = _ai.snapshots.map(s => {
+    const created = new Date(s.created_at).toLocaleString('pt-BR');
+    const confidence = s.confidence_score != null ? `${Math.round(parseFloat(s.confidence_score || 0))}/100` : '—';
+    const summary = s.ai_summary?.summary || s.ai_summary?.overview?.net_comment || 'Snapshot salvo com contexto factual e narrativa da IA.';
+    return `<div class="card" style="margin-bottom:12px;padding:14px 14px 12px;border:1px solid rgba(255,255,255,.08)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <div style="min-width:240px;flex:1">
+          <div style="font-weight:800;font-size:.98rem">${esc(s.title || `AI Insights ${s.period_from} → ${s.period_to}`)}</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px">${esc(String(s.period_from || ''))} → ${esc(String(s.period_to || ''))} · ${esc(created)} · confiança ${esc(confidence)}</div>
+          <div style="margin-top:8px;font-size:.86rem;line-height:1.45;color:var(--text)">${esc(String(summary || ''))}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="openAiSnapshot('${s.id}')">Abrir</button>
+          <button class="btn btn-ghost btn-sm" onclick="_aiShowTab('analysis')">Nova análise</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadAiSnapshots() {
+  if (_ai.snapshotsLoading) return;
+  _ai.snapshotsLoading = true;
+  _aiRenderSnapshotsList();
+  try {
+    _ai.snapshots = await _aiLoadSnapshotRows();
+  } catch (e) {
+    console.warn('[AIInsights] load snapshots:', e?.message || e);
+  } finally {
+    _ai.snapshotsLoading = false;
+    _aiRenderSnapshotsList();
+  }
+}
+
+async function _aiSaveSnapshot(ctx, result) {
+  const famId = currentUser?.family_id;
+  const userId = currentUser?.id;
+  if (!famId || !userId || !ctx || !result) return null;
+  const recSummary = [
+    ...(result.recommendations || []).map((r, i) => ({ type:'recommendation', title:r.title || `Recomendação ${i+1}`, description:r.description || '', severity:r.priority || 'medium', sort_order:i })),
+    ...(result.savings_opportunities || []).map((r, i) => ({ type:'saving', title:r.title || `Oportunidade ${i+1}`, description:r.description || '', severity:'medium', sort_order:100+i })),
+    ...(result.cashflow_alerts || []).map((r, i) => ({ type:'cashflow', title:r.type || 'alerta', description:r.message || '', severity:r.type === 'warning' ? 'high' : 'low', sort_order:200+i })),
+  ];
+  const payload = {
+    family_id: famId,
+    created_by: userId,
+    title: `AI Insights ${ctx.period?.from || ''} → ${ctx.period?.to || ''}`.trim(),
+    period_from: ctx.period?.from || new Date().toISOString().slice(0,10),
+    period_to: ctx.period?.to || new Date().toISOString().slice(0,10),
+    snapshot_type: 'analysis',
+    status: 'completed',
+    filters: ctx.filters || {},
+    source_metrics: { full_context: ctx },
+    projection_metrics: { financialProjection: ctx.financialProjection || {}, recurringCommitments: ctx.recurringCommitments || {}, anomalies: ctx.anomalies || [] },
+    recommendation_summary: recSummary,
+    ai_summary: result,
+    confidence_score: ctx.meta?.confidence_score ?? null,
+    model_name: typeof RECEIPT_AI_MODEL !== 'undefined' ? RECEIPT_AI_MODEL : null,
+    prompt_version: 'ai-insights-prompt-v2',
+    engine_version: 'ai-insights-engine-v2',
+  };
+  const { data, error } = await sb.from('ai_insight_snapshots').insert(payload).select('id').single();
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message || '')) {
+      console.warn('[AIInsights] snapshot table missing');
+      return null;
+    }
+    throw error;
+  }
+  const snapshotId = data?.id;
+  if (snapshotId && recSummary.length) {
+    const rows = recSummary.map((r, idx) => ({
+      snapshot_id: snapshotId,
+      family_id: famId,
+      recommendation_type: r.type,
+      severity: ['low','medium','high'].includes(r.severity) ? r.severity : 'medium',
+      title: r.title,
+      description: r.description,
+      evidence: {},
+      impact: {},
+      suggested_action: {},
+      confidence_score: ctx.meta?.confidence_score ?? null,
+      sort_order: idx,
+    }));
+    const { error: recErr } = await sb.from('ai_insight_recommendations').insert(rows);
+    if (recErr && recErr.code !== '42P01') console.warn('[AIInsights] rec snapshot save:', recErr.message);
+  }
+  _ai.currentSnapshotId = snapshotId || null;
+  return snapshotId;
+}
+
+async function openAiSnapshot(snapshotId) {
+  const snap = (_ai.snapshots || []).find(s => s.id === snapshotId) || null;
+  let row = snap;
+  if (!row) {
+    const { data, error } = await sb.from('ai_insight_snapshots').select('*').eq('id', snapshotId).single();
+    if (error) throw error;
+    row = data;
+  }
+  const ctx = row?.source_metrics?.full_context || row?.source_metrics || null;
+  const result = row?.ai_summary || null;
+  if (!ctx || !result) {
+    toast('Snapshot incompleto.', 'warning');
+    return;
+  }
+  _ai.financialContext = ctx;
+  _ai.analysisResult = result;
+  _ai.currentSnapshotId = row.id;
+  _aiRenderAnalysis(result);
+  _aiShowTab('analysis');
+}
+window.openAiSnapshot = openAiSnapshot;
+
+
+async function _aiCollectFinancialContext() {
+  const filters = _aiGetFilters();
+  const { dateFrom, dateTo, memberId, accountId, categoryId, payeeId } = filters;
+
   let q = famQ(sb.from('transactions').select(
     'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,' +
     'description,memo,category_id,payee_id,account_id,transfer_to_account_id,' +
     'family_member_id,family_member_ids,currency,exchange_rate,check_number,tags'
   ).eq('status', 'confirmed'));
 
-  if (dateFrom)   q = q.gte('date', dateFrom);
-  if (dateTo)     q = q.lte('date', dateTo);
-  if (accountId)  q = q.eq('account_id', accountId);
-  if (payeeId)    q = q.eq('payee_id', payeeId);
+  if (dateFrom) q = q.gte('date', dateFrom);
+  if (dateTo) q = q.lte('date', dateTo);
+  if (accountId) q = q.or(`account_id.eq.${accountId},transfer_to_account_id.eq.${accountId}`);
+  if (payeeId) q = q.eq('payee_id', payeeId);
   if (categoryId) q = q.eq('category_id', categoryId);
   q = q.order('date', { ascending: false }).limit(3000);
-
-  const { data: txs, error } = await q;
+  const { data: txRows, error } = await q;
   if (error) throw new Error('Erro ao carregar transações: ' + error.message);
+  const txs = (txRows || []).filter(t => _aiTxMatchesMember(t, memberId));
 
-  // ── 2. Histórico dos 12 meses anteriores ao período (para tendência) ─
   let histRows = [];
   if (dateFrom) {
-    const histFrom = new Date(dateFrom);
+    const histFrom = new Date(dateFrom + 'T12:00:00');
     histFrom.setMonth(histFrom.getMonth() - 12);
     const histFromStr = histFrom.toISOString().slice(0, 10);
-    const histDateTo  = new Date(dateFrom);
-    histDateTo.setDate(histDateTo.getDate() - 1);
-    const histToStr = histDateTo.toISOString().slice(0, 10);
-    const { data: hd } = await famQ(sb.from('transactions').select(
-      'id,date,amount,brl_amount,is_transfer,is_card_payment,category_id,payee_id,account_id,family_member_id,currency,exchange_rate'
-    ).eq('status', 'confirmed')).gte('date', histFromStr).lte('date', histToStr)
-      .order('date', { ascending: false }).limit(2000);
-    histRows = hd || [];
+    const histTo = new Date(dateFrom + 'T12:00:00');
+    histTo.setDate(histTo.getDate() - 1);
+    let hq = famQ(sb.from('transactions').select(
+      'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,transfer_to_account_id,family_member_id,family_member_ids,currency,exchange_rate'
+    ).eq('status','confirmed')).gte('date', histFromStr).lte('date', histTo.toISOString().slice(0,10));
+    if (accountId) hq = hq.or(`account_id.eq.${accountId},transfer_to_account_id.eq.${accountId}`);
+    if (payeeId) hq = hq.eq('payee_id', payeeId);
+    if (categoryId) hq = hq.eq('category_id', categoryId);
+    const { data: hd } = await hq.order('date', { ascending:false }).limit(3000);
+    histRows = (hd || []).filter(t => _aiTxMatchesMember(t, memberId));
   }
 
-  // ── 3. Lookups ────────────────────────────────────────────────────────
   const catMap  = Object.fromEntries((state.categories || []).map(c => [c.id, { name: c.name, type: c.type, parent_id: c.parent_id, icon: c.icon }]));
-  const payMap  = Object.fromEntries((state.payees     || []).map(p => [p.id, { name: p.name, type: p.type }]));
-  const accMap  = Object.fromEntries((state.accounts   || []).map(a => [a.id, { name: a.name, currency: a.currency, type: a.type, is_credit_card: a.type === 'cartao_credito' }]));
+  const payMap  = Object.fromEntries((state.payees || []).map(p => [p.id, { name: p.name, type: p.type }]));
+  const accMap  = Object.fromEntries((state.accounts || []).map(a => [a.id, { name: a.name, currency: a.currency, type: a.type, is_credit_card: a.type === 'cartao_credito' }]));
 
-  // ── 4. Classificação de cada transação ──────────────────────────────
   function _classifyTx(t) {
     const rawAmt = parseFloat(t.amount || 0);
-    const brlVal = typeof txToBRL === 'function' ? txToBRL(t)
-                 : parseFloat(t.brl_amount ?? t.amount_brl ?? t.amount ?? 0);
-    const acc = accMap[t.account_id];
-    const destAcc = t.transfer_to_account_id ? accMap[t.transfer_to_account_id] : null;
-
-    // Cartão de crédito: o próprio gasto no cartão é despesa real
-    // O pagamento da fatura (is_card_payment=true) é transferência contábil — NÃO é despesa
+    const brlVal = typeof txToBRL === 'function' ? txToBRL(t) : parseFloat(t.brl_amount ?? t.amount_brl ?? t.amount ?? 0);
     if (t.is_card_payment) return { type: 'card_payment', brlAmt: Math.abs(brlVal), rawAmt };
-
-    // Transferência entre contas da mesma família: não é receita nem despesa
     if (t.is_transfer) return { type: 'transfer', brlAmt: Math.abs(brlVal), rawAmt };
-
-    // Ajuste de saldo: correção técnica — NÃO é receita nem despesa real
     const _desc = (t.description || '').trim().toLowerCase();
-    if (_desc === 'ajuste de saldo' || _desc.startsWith('ajuste de saldo ')) {
-      return { type: 'balance_adjustment', brlAmt: Math.abs(brlVal), rawAmt };
-    }
-
-    // Receita ou despesa
-    if (rawAmt >= 0) return { type: 'income',  brlAmt: brlVal,            rawAmt };
-    return             { type: 'expense', brlAmt: Math.abs(brlVal), rawAmt };
+    if (_desc === 'ajuste de saldo' || _desc.startsWith('ajuste de saldo ')) return { type: 'balance_adjustment', brlAmt: Math.abs(brlVal), rawAmt };
+    if (rawAmt >= 0) return { type: 'income', brlAmt: Math.abs(brlVal), rawAmt };
+    return { type: 'expense', brlAmt: Math.abs(brlVal), rawAmt };
   }
 
-  const rows = txs || [];
-  const filtered = memberId ? rows.filter(t => t.family_member_id === memberId) : rows;
+  const filtered = txs || [];
+  if (!filtered.length) {
+    _ai.financialContext = null;
+    return { period:{ from:dateFrom || 'início', to:dateTo || 'hoje' }, summary:{ totalIncome:0,totalExpense:0,netResult:0,txCount:0,transferCount:0,cardPaymentCount:0 }, filters };
+  }
 
-  // ── 5. Agregações do período ──────────────────────────────────────────
-  let totalIncome = 0, totalExpense = 0;
-  const byCategory  = {};
-  const byPayee     = {};
-  const byMember    = {};
-  const byMemberCat = {};
-  const byMemberPay = {};
-  const byMemberInc = {};
-  const byMonth     = {};
-  // Agrupamento de gastos por cartão de crédito (fatura real vs pagamento)
-  const cardSpend   = {}; // accId -> total gasto real no cartão
-  const cardPayment = {}; // accId -> total pago de fatura
-  let transferCount = 0, cardPaymentCount = 0;
+  let totalIncome=0, totalExpense=0, transferCount=0, cardPaymentCount=0;
+  const byCategory={}, byPayee={}, byMonth={}, byMember={}, byMemberInc={}, byMemberCat={}, byMemberPay={};
+  const cardSpend={}, cardPayment={};
 
   filtered.forEach(t => {
-    const cls      = _classifyTx(t);
-    const catInfo  = catMap[t.category_id] || {};
-    const catName  = catInfo.name || 'Sem categoria';
-    const payName  = payMap[t.payee_id]?.name || null;
-    const memId    = t.family_member_id || null;
-    const month    = (t.date || '').slice(0, 7);
+    const cls = _classifyTx(t);
+    const month = (t.date || '').slice(0,7);
+    const catName = catMap[t.category_id]?.name || 'Sem categoria';
+    const payName = payMap[t.payee_id]?.name || null;
+    const memId = t.family_member_id || (Array.isArray(t.family_member_ids) ? t.family_member_ids[0] : null);
 
     if (cls.type === 'transfer') {
       transferCount++;
-      // Registra no byMonth mas separado — não some em despesas
       if (month) {
         if (!byMonth[month]) byMonth[month] = { income:0, expense:0, transfers:0, card_payments:0 };
         byMonth[month].transfers += cls.brlAmt;
       }
       return;
     }
-
     if (cls.type === 'card_payment') {
       cardPaymentCount++;
-      // O pagamento de fatura vai para accMap do destino (o cartão)
       const destId = t.transfer_to_account_id || t.account_id;
       cardPayment[destId] = (cardPayment[destId] || 0) + cls.brlAmt;
       if (month) {
@@ -267,19 +443,14 @@ async function _aiCollectFinancialContext() {
       }
       return;
     }
-
-    // Gasto real no cartão de crédito (não é pagamento de fatura)
-    if (accMap[t.account_id]?.is_credit_card && cls.type === 'expense') {
-      cardSpend[t.account_id] = (cardSpend[t.account_id] || 0) + cls.brlAmt;
-    }
-
+    if (cls.type === 'balance_adjustment') return;
+    if (accMap[t.account_id]?.is_credit_card && cls.type === 'expense') cardSpend[t.account_id] = (cardSpend[t.account_id] || 0) + cls.brlAmt;
     if (!byMonth[month]) byMonth[month] = { income:0, expense:0, transfers:0, card_payments:0 };
-
     if (cls.type === 'income') {
       totalIncome += cls.brlAmt;
       byMonth[month].income += cls.brlAmt;
       if (memId) byMemberInc[memId] = (byMemberInc[memId] || 0) + cls.brlAmt;
-    } else {
+    } else if (cls.type === 'expense') {
       totalExpense += cls.brlAmt;
       byMonth[month].expense += cls.brlAmt;
       byCategory[catName] = (byCategory[catName] || 0) + cls.brlAmt;
@@ -296,93 +467,51 @@ async function _aiCollectFinancialContext() {
     }
   });
 
-  // ── 6. Resumo de cartões de crédito ──────────────────────────────────
   const creditCardSummary = Object.entries(accMap)
     .filter(([,a]) => a.is_credit_card)
     .map(([id, a]) => ({
       account: a.name,
-      real_spending:   +(cardSpend[id]   || 0).toFixed(2),
+      real_spending: +(cardSpend[id] || 0).toFixed(2),
       invoice_payment: +(cardPayment[id] || 0).toFixed(2),
       note: 'O pagamento da fatura é uma transferência contábil e NÃO representa despesa adicional. A despesa real é o gasto no cartão.',
     }))
     .filter(c => c.real_spending > 0 || c.invoice_payment > 0);
 
-  // ── 7. Histórico mensal (período + 12 meses anteriores) ──────────────
-  // Agregar histórico
   const histByMonth = {};
   (histRows || []).forEach(t => {
-    const cls   = _classifyTx(t);
-    const month = (t.date || '').slice(0, 7);
-    if (!month) return;
+    const cls = _classifyTx(t);
+    const month = (t.date || '').slice(0,7);
+    if (!month || cls.type === 'transfer' || cls.type === 'card_payment' || cls.type === 'balance_adjustment') return;
     if (!histByMonth[month]) histByMonth[month] = { income:0, expense:0 };
-    if (cls.type === 'income')  histByMonth[month].income  += cls.brlAmt;
+    if (cls.type === 'income') histByMonth[month].income += cls.brlAmt;
     if (cls.type === 'expense') histByMonth[month].expense += cls.brlAmt;
   });
 
-  const monthlyTrend = Object.entries(byMonth)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, v]) => ({
-      month,
-      income:        +v.income.toFixed(2),
-      expense:       +v.expense.toFixed(2),
-      net:           +(v.income - v.expense).toFixed(2),
-      transfers:     +v.transfers.toFixed(2),
-      card_payments: +v.card_payments.toFixed(2),
-    }));
+  const monthlyTrend = Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])).map(([month,v]) => ({
+    month, income:+v.income.toFixed(2), expense:+v.expense.toFixed(2), net:+(v.income-v.expense).toFixed(2),
+    transfers:+v.transfers.toFixed(2), card_payments:+v.card_payments.toFixed(2),
+  }));
+  const historicalTrend = Object.entries(histByMonth).sort((a,b)=>a[0].localeCompare(b[0])).map(([month,v]) => ({
+    month, income:+v.income.toFixed(2), expense:+v.expense.toFixed(2), net:+(v.income-v.expense).toFixed(2),
+  }));
+  const histAvgIncome = historicalTrend.length ? historicalTrend.reduce((s,m)=>s+m.income,0)/historicalTrend.length : null;
+  const histAvgExpense = historicalTrend.length ? historicalTrend.reduce((s,m)=>s+m.expense,0)/historicalTrend.length : null;
 
-  const historicalTrend = Object.entries(histByMonth)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, v]) => ({
-      month,
-      income:  +v.income.toFixed(2),
-      expense: +v.expense.toFixed(2),
-      net:     +(v.income - v.expense).toFixed(2),
-    }));
-
-  // Média mensal histórica (12 meses anteriores)
-  const histAvgIncome  = historicalTrend.length ? historicalTrend.reduce((s,m)=>s+m.income,0)  / historicalTrend.length : null;
-  const histAvgExpense = historicalTrend.length ? historicalTrend.reduce((s,m)=>s+m.expense,0) / historicalTrend.length : null;
-
-  // ── 8. Topo de categorias, beneficiários e membros ───────────────────
-  const topCategories = Object.entries(byCategory)
-    .sort((a, b) => b[1] - a[1]).slice(0, 15)
-    .map(([name, amount]) => ({ name, amount: +amount.toFixed(2), pct: totalExpense ? +(amount/totalExpense*100).toFixed(1) : 0 }));
-
-  const topPayees = Object.entries(byPayee)
-    .sort((a, b) => b[1] - a[1]).slice(0, 15)
-    .map(([name, amount]) => ({ name, amount: +amount.toFixed(2) }));
+  const topCategories = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name, amount]) => ({ name, amount:+amount.toFixed(2), pct: totalExpense ? +(amount/totalExpense*100).toFixed(1) : 0 }));
+  const topPayees = Object.entries(byPayee).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name, amount]) => ({ name, amount:+amount.toFixed(2) }));
 
   const memberMap = {};
   const _fmcMembers = (typeof getFamilyMembers === 'function') ? getFamilyMembers() : [];
   _fmcMembers.forEach(m => { memberMap[m.id] = m.name || m.display_name || '—'; });
+  const memberInsights = Object.entries(byMember).sort((a,b)=>b[1]-a[1]).map(([id, expense]) => ({
+    id, name: memberMap[id] || '—', expense:+expense.toFixed(2), income:+(byMemberInc[id] || 0).toFixed(2),
+    topCategories: Object.entries(byMemberCat[id] || {}).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([cat, amt]) => ({ name:cat, amount:+amt.toFixed(2), pct: expense>0?+(amt/expense*100).toFixed(1):0 })),
+    topPayees: Object.entries(byMemberPay[id] || {}).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([pay, amt]) => ({ name:pay, amount:+amt.toFixed(2) })),
+    amount:+expense.toFixed(2),
+  })).filter(m => m.name !== '—');
 
-  const memberInsights = Object.entries(byMember)
-    .sort((a, b) => b[1] - a[1])
-    .map(([id, expense]) => {
-      const name = memberMap[id] || '—';
-      if (name === '—') return null;
-      return {
-        id, name,
-        expense: +expense.toFixed(2),
-        income:  +(byMemberInc[id] || 0).toFixed(2),
-        topCategories: Object.entries(byMemberCat[id] || {})
-          .sort((a,b)=>b[1]-a[1]).slice(0,5)
-          .map(([cat, amt]) => ({ name:cat, amount:+amt.toFixed(2), pct: expense>0?+(amt/expense*100).toFixed(1):0 })),
-        topPayees: Object.entries(byMemberPay[id] || {})
-          .sort((a,b)=>b[1]-a[1]).slice(0,5)
-          .map(([pay, amt]) => ({ name:pay, amount:+amt.toFixed(2) })),
-        amount: +expense.toFixed(2),
-      };
-    }).filter(Boolean);
-
-  // ── 9. Transações programadas — detalhe completo ──────────────────────
-  const _stSched = (state.scheduled || []).filter(s => s.status === 'active');
-
-  // Frequências → fator mensal
-  const _freqFactor = {
-    once:0, weekly:4.33, biweekly:2.17, monthly:1, bimonthly:0.5,
-    quarterly:0.33, semiannual:0.17, annual:1/12, custom:1,
-  };
+  const _stSched = (state.scheduled || []).filter(s => _aiScheduledMatchesFilters(s, filters));
+  const _freqFactor = { once:0, weekly:4.33, biweekly:2.17, monthly:1, bimonthly:0.5, quarterly:0.33, semiannual:0.17, annual:1/12, custom:1 };
   function _monthlyFactor(freq, customInterval, customUnit) {
     if (freq === 'once') return 0;
     if (freq === 'custom' && customInterval && customUnit) {
@@ -393,362 +522,203 @@ async function _aiCollectFinancialContext() {
   }
   function _schedAmt(s) { return Math.abs(parseFloat(s.brl_amount || s.amount || 0)); }
 
-  // Categorizar programados: únicos, mensais, irregulares, anuais
-  const schedOnce      = [];  // pagamento único
-  const schedMonthly   = [];  // mensais exatos
-  const schedRecurring = [];  // outras frequências regulares
-  const schedByType    = { expense:0, income:0, transfer:0, card_payment:0 };
+  const schedOnce=[], schedMonthly=[], schedRecurring=[];
+  const schedByType = { expense:0, income:0, transfer:0, card_payment:0 };
   const schedByCategory = {};
-
   _stSched.forEach(s => {
-    const factor   = _monthlyFactor(s.frequency, s.custom_interval, s.custom_unit);
-    const rawAmt   = _schedAmt(s);
+    const factor = _monthlyFactor(s.frequency, s.custom_interval, s.custom_unit);
+    const rawAmt = _schedAmt(s);
     const monthAmt = rawAmt * factor;
-    const stype    = s.type || (parseFloat(s.amount||0) < 0 ? 'expense' : 'income');
-    const catName  = s.categories?.name || catMap[s.category_id]?.name || 'Sem categoria';
-    const payName  = s.payees?.name || payMap[s.payee_id]?.name || null;
-
+    const stype = s.type || (parseFloat(s.amount || 0) < 0 ? 'expense' : 'income');
+    const catName = s.categories?.name || catMap[s.category_id]?.name || 'Sem categoria';
+    const payName = s.payees?.name || payMap[s.payee_id]?.name || null;
     const item = {
-      description:    s.description,
-      category:       catName,
-      payee:          payName,
-      type:           stype,
-      frequency:      s.frequency,
-      custom_interval: s.custom_interval || null,
-      custom_unit:    s.custom_unit || null,
-      amount:         +rawAmt.toFixed(2),
-      monthly_equiv:  +monthAmt.toFixed(2),
-      start_date:     s.start_date,
-      end_date:       s.end_date || null,
-      next_date:      typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : null,
-      account:        accMap[s.account_id]?.name || null,
-      is_card_payment: stype === 'card_payment',
+      id: s.id, description:s.description, category:catName, payee:payName, type:stype, frequency:s.frequency,
+      custom_interval:s.custom_interval || null, custom_unit:s.custom_unit || null, amount:+rawAmt.toFixed(2),
+      monthly_equiv:+monthAmt.toFixed(2), start_date:s.start_date, end_date:s.end_date || null,
+      next_date: typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : null,
+      account: accMap[s.account_id]?.name || null, is_card_payment: stype === 'card_payment', account_id:s.account_id,
+      transfer_to_account_id:s.transfer_to_account_id,
     };
-
-    if (s.frequency === 'once') {
-      schedOnce.push(item);
-    } else if (s.frequency === 'monthly') {
-      schedMonthly.push(item);
-    } else {
-      schedRecurring.push(item);
-    }
-
+    if (s.frequency === 'once') schedOnce.push(item);
+    else if (s.frequency === 'monthly') schedMonthly.push(item);
+    else schedRecurring.push(item);
     if (schedByType[stype] !== undefined) schedByType[stype] += monthAmt;
     if (!schedByCategory[catName]) schedByCategory[catName] = { income:0, expense:0 };
-    if (stype === 'income')  schedByCategory[catName].income  += monthAmt;
+    if (stype === 'income') schedByCategory[catName].income += monthAmt;
     if (stype === 'expense') schedByCategory[catName].expense += monthAmt;
   });
 
   const recurringCommitments = {
-    monthly_expense:  +schedByType.expense.toFixed(2),
-    monthly_income:   +schedByType.income.toFixed(2),
-    monthly_net:      +(schedByType.income - schedByType.expense).toFixed(2),
-    by_category: Object.entries(schedByCategory)
-      .map(([cat, v]) => ({ category:cat, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
-      .sort((a,b) => (b.monthly_expense+b.monthly_income) - (a.monthly_expense+a.monthly_income)),
+    monthly_expense:+schedByType.expense.toFixed(2), monthly_income:+schedByType.income.toFixed(2),
+    monthly_net:+(schedByType.income - schedByType.expense).toFixed(2),
+    by_category:Object.entries(schedByCategory).map(([category, v]) => ({ category, monthly_income:+v.income.toFixed(2), monthly_expense:+v.expense.toFixed(2) }))
+      .sort((a,b)=>(b.monthly_expense+b.monthly_income)-(a.monthly_expense+a.monthly_income)),
   };
 
-  // ── 9b. Projeção de gastos em cartões de crédito ───────────────────
-  // Inclui apenas programados do tipo expense/income/once em contas cartão
-  // NÃO inclui card_payment (pagamento de fatura) nem ajuste de saldo
-  const ccAccIds = Object.entries(accMap)
-    .filter(([, a]) => a.is_credit_card)
-    .map(([id]) => id);
-
-  const creditCardScheduledItems = _stSched.filter(s => {
-    const isOnCcAcc = ccAccIds.includes(s.account_id);
-    const isBillPayment = s.type === 'card_payment';
-    return isOnCcAcc && !isBillPayment;
-  });
-
+  const ccAccIds = Object.entries(accMap).filter(([,a]) => a.is_credit_card).map(([id]) => id);
+  const creditCardScheduledItems = _stSched.filter(s => ccAccIds.includes(s.account_id) && s.type !== 'card_payment');
   const _ccByCard = {};
   creditCardScheduledItems.forEach(s => {
     const accName = accMap[s.account_id]?.name || 'Cartão';
-    if (!_ccByCard[accName]) _ccByCard[accName] = { items: [], monthly_total: 0 };
-    const factor   = _monthlyFactor(s.frequency, s.custom_interval, s.custom_unit);
-    const rawAmt   = _schedAmt(s);
-    const monthly  = rawAmt * factor;
-    const catName  = catMap[s.category_id]?.name || null;
-    const nextDate = typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : null;
-    _ccByCard[accName].items.push({
-      description:    s.description,
-      category:       catName,
-      type:           s.type,
-      frequency:      s.frequency,
-      amount:         +rawAmt.toFixed(2),
-      monthly_equiv:  +monthly.toFixed(2),
-      next_date:      nextDate,
-      is_once:        s.frequency === 'once',
-    });
+    if (!_ccByCard[accName]) _ccByCard[accName] = { items:[], monthly_total:0 };
+    const monthly = _schedAmt(s) * _monthlyFactor(s.frequency, s.custom_interval, s.custom_unit);
+    _ccByCard[accName].items.push({ description:s.description, category:catMap[s.category_id]?.name || null, type:s.type, frequency:s.frequency, amount:+_schedAmt(s).toFixed(2), monthly_equiv:+monthly.toFixed(2), next_date:typeof getNextOccurrence === 'function' ? getNextOccurrence(s) : null, is_once:s.frequency === 'once' });
     _ccByCard[accName].monthly_total += monthly;
   });
-
   const creditCardProjection = {
-    note: 'Gastos programados em cartões de crédito. NÃO inclui pagamento de fatura (is_card_payment). Use para avaliar compromissos futuros no cartão.',
-    cards: Object.entries(_ccByCard).map(([card, v]) => ({
-      card,
-      monthly_total:    +v.monthly_total.toFixed(2),
-      scheduled_items:  v.items.sort((a,b) => b.monthly_equiv - a.monthly_equiv),
-    })),
-    grand_monthly_total: +Object.values(_ccByCard).reduce((s, v) => s + v.monthly_total, 0).toFixed(2),
+    note:'Gastos programados em cartões de crédito. NÃO inclui pagamento de fatura (is_card_payment). Use para avaliar compromissos futuros no cartão.',
+    cards:Object.entries(_ccByCard).map(([card, v]) => ({ card, monthly_total:+v.monthly_total.toFixed(2), items:v.items.sort((a,b)=>b.monthly_equiv-a.monthly_equiv).slice(0,12) })),
+    total_monthly_projected:+Object.values(_ccByCard).reduce((s,v)=>s+v.monthly_total,0).toFixed(2),
   };
 
-  // ── 10. Projeção mensal para 6 meses ─────────────────────────────────
-  // Base: média dos últimos 3 meses do período (ou hist) para income/expense
-  const recentMonths = monthlyTrend.slice(-3);
-  const baseIncome  = recentMonths.length
-    ? recentMonths.reduce((s,m)=>s+m.income,0)  / recentMonths.length
-    : (histAvgIncome || totalIncome);
-  const baseExpense = recentMonths.length
-    ? recentMonths.reduce((s,m)=>s+m.expense,0) / recentMonths.length
-    : (histAvgExpense || totalExpense);
-
-  // Eventos futuros por mês: programados únicos e recorrentes
-  const _today = new Date();
-  const projMonths = [];
-
-  // Breakdown por categoria no histórico recente (base para projeção)
-  const _baseCatExpense = {}; // catName -> avg mensal
-  const _baseCatIncome  = {};
-  recentMonths.forEach(m => {
-    // m não tem breakdown por cat — usamos topCategories ponderadas
+  const projectionAnchor = dateTo ? new Date(dateTo + 'T12:00:00') : new Date();
+  const currentMonthKey = projectionAnchor.toISOString().slice(0,7);
+  const historicalPool = [...histRows, ...filtered].filter(t => { const c=_classifyTx(t); return c.type === 'income' || c.type === 'expense'; });
+  const closedMonthsMap = {};
+  historicalPool.forEach(t => {
+    const month = (t.date || '').slice(0,7);
+    if (!month || month >= currentMonthKey) return;
+    if (!closedMonthsMap[month]) closedMonthsMap[month] = { income:0, expense:0, expenseCat:{}, incomeCat:{} };
+    const cls = _classifyTx(t);
+    const catName = catMap[t.category_id]?.name || 'Sem categoria';
+    if (cls.type === 'income') {
+      closedMonthsMap[month].income += cls.brlAmt;
+      closedMonthsMap[month].incomeCat[catName] = (closedMonthsMap[month].incomeCat[catName] || 0) + cls.brlAmt;
+    } else if (cls.type === 'expense') {
+      closedMonthsMap[month].expense += cls.brlAmt;
+      closedMonthsMap[month].expenseCat[catName] = (closedMonthsMap[month].expenseCat[catName] || 0) + cls.brlAmt;
+    }
   });
-  // Distribuição proporcional de baseExpense por categoria (top categorias)
-  const _catDistExp = {};
-  const _catDistInc = {};
-  if (topCategories.length && baseExpense > 0) {
-    const topCatTotal = topCategories.reduce((s,c) => s + c.amount, 0) || 1;
-    topCategories.forEach(c => {
-      _catDistExp[c.name] = baseExpense * (c.amount / topCatTotal);
-    });
-  }
-  // Receitas base
-  if (baseIncome > 0) {
-    _catDistInc['Receitas base'] = baseIncome;
-  }
+  const closedMonthKeys = Object.keys(closedMonthsMap).sort().slice(-6);
+  const baseIncome = closedMonthKeys.length ? +_aiMedian(closedMonthKeys.map(m => closedMonthsMap[m].income)).toFixed(2) : +(histAvgIncome || totalIncome || 0).toFixed(2);
+  const baseExpense = closedMonthKeys.length ? +_aiMedian(closedMonthKeys.map(m => closedMonthsMap[m].expense)).toFixed(2) : +(histAvgExpense || totalExpense || 0).toFixed(2);
 
+  const baseExpCat = {};
+  const baseIncCat = {};
+  const allBaseExpCats = [...new Set(closedMonthKeys.flatMap(m => Object.keys(closedMonthsMap[m].expenseCat || {})))];
+  const allBaseIncCats = [...new Set(closedMonthKeys.flatMap(m => Object.keys(closedMonthsMap[m].incomeCat || {})))];
+  allBaseExpCats.forEach(cat => { baseExpCat[cat] = +_aiMedian(closedMonthKeys.map(m => closedMonthsMap[m].expenseCat?.[cat] || 0)).toFixed(2); });
+  allBaseIncCats.forEach(cat => { baseIncCat[cat] = +_aiMedian(closedMonthKeys.map(m => closedMonthsMap[m].incomeCat?.[cat] || 0)).toFixed(2); });
+
+  const recurringCoverageExp = {};
+  const recurringCoverageInc = {};
+  [...schedMonthly, ...schedRecurring].forEach(s => {
+    if (s.type === 'expense') recurringCoverageExp[s.category || s.description || 'Sem categoria'] = (recurringCoverageExp[s.category || s.description || 'Sem categoria'] || 0) + s.monthly_equiv;
+    if (s.type === 'income') recurringCoverageInc[s.category || s.description || 'Sem categoria'] = (recurringCoverageInc[s.category || s.description || 'Sem categoria'] || 0) + s.monthly_equiv;
+  });
+
+  const projMonths = [];
+  const scheduledFrom = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+1, 1).toISOString().slice(0,10);
+  const scheduledTo = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+7, 0).toISOString().slice(0,10);
+  const occurrenceIndex = {};
+  _stSched.forEach(s => {
+    const occs = _aiGenerateOccurrencesInRange(s, scheduledFrom, scheduledTo, 240);
+    occs.forEach(date => {
+      const ym = date.slice(0,7);
+      if (!occurrenceIndex[ym]) occurrenceIndex[ym] = [];
+      occurrenceIndex[ym].push({
+        id: s.id, date, description:s.description, category:s.categories?.name || catMap[s.category_id]?.name || 'Sem categoria',
+        type:s.type || (parseFloat(s.amount || 0) < 0 ? 'expense' : 'income'), amount:+_schedAmt(s).toFixed(2),
+        frequency:s.frequency, account:accMap[s.account_id]?.name || null, is_once:s.frequency === 'once',
+      });
+    });
+  });
+
+  const coverageRatio = baseExpense > 0 ? Math.min(1, recurringCommitments.monthly_expense / Math.max(baseExpense, 1)) : 0;
+  const filterSpread = [memberId, accountId, categoryId, payeeId].filter(Boolean).length;
   for (let i = 1; i <= 6; i++) {
-    const d   = new Date(_today.getFullYear(), _today.getMonth() + i, 1);
-    const ym  = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    const dEnd = new Date(d.getFullYear(), d.getMonth()+1, 0);
-    const ymEnd = dEnd.toISOString().slice(0,10);
-
-    // ── Programados únicos deste mês ──────────────────────────────────
-    const onceThisMonth = schedOnce.filter(s =>
-      s.next_date && s.next_date >= ym + '-01' && s.next_date <= ymEnd
-    );
-
-    let projExtraIncome = 0, projExtraExpense = 0;
-    // Breakdown de categorias projetadas (base + programados)
-    const projExpCat = { ...Object.fromEntries(Object.entries(_catDistExp).map(([k,v]) => [k, +v.toFixed(2)])) };
-    const projIncCat = { ...Object.fromEntries(Object.entries(_catDistInc).map(([k,v]) => [k, +v.toFixed(2)])) };
-
-    onceThisMonth.forEach(s => {
-      if (s.type === 'income')  { projExtraIncome  += s.amount; projIncCat[s.category || s.description] = (projIncCat[s.category || s.description] || 0) + s.amount; }
-      if (s.type === 'expense') { projExtraExpense += s.amount; projExpCat[s.category || s.description] = (projExpCat[s.category || s.description] || 0) + s.amount; }
+    const d = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+i, 1);
+    const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const monthOcc = occurrenceIndex[ym] || [];
+    const onceThisMonth = monthOcc.filter(x => x.is_once);
+    const recurringThisMonth = monthOcc.filter(x => !x.is_once);
+    const monthExpCat = {};
+    const monthIncCat = {};
+    onceThisMonth.forEach(item => {
+      if (item.type === 'expense') monthExpCat[item.category || item.description] = (monthExpCat[item.category || item.description] || 0) + item.amount;
+      if (item.type === 'income') monthIncCat[item.category || item.description] = (monthIncCat[item.category || item.description] || 0) + item.amount;
+    });
+    recurringThisMonth.forEach(item => {
+      if (item.type === 'expense') monthExpCat[item.category || item.description] = (monthExpCat[item.category || item.description] || 0) + item.amount;
+      if (item.type === 'income') monthIncCat[item.category || item.description] = (monthIncCat[item.category || item.description] || 0) + item.amount;
     });
 
-    schedMonthly.forEach(s => {
-      if (s.type === 'income')  { projExtraIncome  += s.monthly_equiv; projIncCat[s.category || s.description] = (projIncCat[s.category || s.description] || 0) + s.monthly_equiv; }
-      if (s.type === 'expense') { projExtraExpense += s.monthly_equiv; projExpCat[s.category || s.description] = (projExpCat[s.category || s.description] || 0) + s.monthly_equiv; }
-    });
+    const projExpCat = {};
+    const projIncCat = {};
+    Object.entries(baseExpCat).forEach(([cat, amt]) => { projExpCat[cat] = Math.max(0, +(amt - (recurringCoverageExp[cat] || 0)).toFixed(2)); });
+    Object.entries(baseIncCat).forEach(([cat, amt]) => { projIncCat[cat] = Math.max(0, +(amt - (recurringCoverageInc[cat] || 0)).toFixed(2)); });
+    Object.entries(monthExpCat).forEach(([cat, amt]) => { projExpCat[cat] = +( (projExpCat[cat] || 0) + amt ).toFixed(2); });
+    Object.entries(monthIncCat).forEach(([cat, amt]) => { projIncCat[cat] = +( (projIncCat[cat] || 0) + amt ).toFixed(2); });
 
-    schedRecurring.forEach(s => {
-      if (s.type === 'income')  { projExtraIncome  += s.monthly_equiv; projIncCat[s.category || s.description] = (projIncCat[s.category || s.description] || 0) + s.monthly_equiv; }
-      if (s.type === 'expense') { projExtraExpense += s.monthly_equiv; projExpCat[s.category || s.description] = (projExpCat[s.category || s.description] || 0) + s.monthly_equiv; }
-    });
-
-    const projIncome  = +(baseIncome  + projExtraIncome).toFixed(2);
-    const projExpense = +(baseExpense + projExtraExpense).toFixed(2);
+    const projExpense = +Object.values(projExpCat).reduce((s,v)=>s+v,0).toFixed(2);
+    const projIncome = +Object.values(projIncCat).reduce((s,v)=>s+v,0).toFixed(2);
 
     projMonths.push({
-      month:             ym,
-      projected_income:  projIncome,
-      projected_expense: projExpense,
-      projected_net:     +(projIncome - projExpense).toFixed(2),
-      one_time_events:   onceThisMonth.length,
-      // Detalhamento para o painel de UI
+      month: ym, projected_income: projIncome, projected_expense: projExpense, projected_net:+(projIncome-projExpense).toFixed(2), one_time_events: onceThisMonth.length,
       _detail: {
-        one_time_items: onceThisMonth.map(s => ({
-          description: s.description,
-          category:    s.category,
-          type:        s.type,
-          amount:      s.amount,
-          date:        s.next_date,
-        })),
-        expense_by_cat: Object.entries(projExpCat)
-          .sort((a,b) => b[1]-a[1]).slice(0, 8)
-          .map(([cat, amt]) => ({ cat, amt: +amt.toFixed(2) })),
-        income_by_cat: Object.entries(projIncCat)
-          .sort((a,b) => b[1]-a[1]).slice(0, 6)
-          .map(([cat, amt]) => ({ cat, amt: +amt.toFixed(2) })),
-        scheduled_items: [
-          ...schedMonthly.filter(s => s.type==='expense' || s.type==='income').slice(0,6),
-          ...schedRecurring.filter(s => s.type==='expense' || s.type==='income').slice(0,4),
-        ].map(s => ({ description: s.description, amount: s.monthly_equiv, type: s.type, frequency: s.frequency, category: s.category })),
-      },
+        methodology: 'Base recorrente limpa por mediana dos meses fechados + ocorrências futuras reais vindas dos programados, reconciliando categorias recorrentes para evitar dupla contagem.',
+        one_time_items: onceThisMonth.map(s => ({ description:s.description, category:s.category, type:s.type, amount:s.amount, date:s.date })),
+        expense_by_cat: Object.entries(projExpCat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([cat, amt]) => ({ cat, amt:+amt.toFixed(2) })),
+        income_by_cat: Object.entries(projIncCat).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([cat, amt]) => ({ cat, amt:+amt.toFixed(2) })),
+        scheduled_items: recurringThisMonth.slice(0,10).map(s => ({ description:s.description, amount:s.amount, type:s.type, frequency:s.frequency, category:s.category, date:s.date })),
+      }
     });
   }
 
+  const confidenceScore = _aiComputeProjectionConfidence(closedMonthKeys.length, coverageRatio, filterSpread);
   const financialProjection = {
-    horizon:              '6 meses',
-    months:               projMonths,
-    base_monthly_income:  +baseIncome.toFixed(2),
-    base_monthly_expense: +baseExpense.toFixed(2),
-    historical_avg_income:  histAvgIncome  ? +histAvgIncome.toFixed(2)  : null,
-    historical_avg_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null,
-    trend_direction: projMonths.every(m=>m.projected_net>=0) ? 'positive'
-                   : projMonths.every(m=>m.projected_net<0)  ? 'negative' : 'mixed',
-    avg_projected_net: +(projMonths.reduce((s,m)=>s+m.projected_net,0)/projMonths.length).toFixed(2),
+    horizon:'6 meses', months:projMonths, base_monthly_income:+baseIncome.toFixed(2), base_monthly_expense:+baseExpense.toFixed(2),
+    historical_avg_income: histAvgIncome ? +histAvgIncome.toFixed(2) : null, historical_avg_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null,
+    trend_direction: projMonths.every(m => m.projected_net >= 0) ? 'positive' : projMonths.every(m => m.projected_net < 0) ? 'negative' : 'mixed',
+    avg_projected_net:+(projMonths.reduce((s,m)=>s+m.projected_net,0)/Math.max(1, projMonths.length)).toFixed(2),
+    methodology:'Meses fechados + ocorrências reais futuras por calendário, com reconciliação de recorrentes por categoria para evitar dupla contagem.',
+    confidence_score: confidenceScore,
   };
 
-  // ── 11. Top transações individuais (despesas e receitas reais) ────────
-  const topTransactions = filtered
-    .filter(t => { const cls = _classifyTx(t); return cls.type === 'expense' || cls.type === 'income'; })
-    .map(t => {
-      const cls = _classifyTx(t);
-      return {
-        date:        t.date,
-        description: t.description || '—',
-        amount_brl:  +cls.brlAmt.toFixed(2),
-        type:        cls.type,
-        category:    catMap[t.category_id]?.name || null,
-        payee:       payMap[t.payee_id]?.name    || null,
-        account:     accMap[t.account_id]?.name  || null,
-        currency:    t.currency || 'BRL',
-        memo:        t.memo || null,
-        tags:        t.tags || null,
-      };
-    })
-    .sort((a, b) => b.amount_brl - a.amount_brl)
-    .slice(0, 40);
+  const topTransactions = filtered.filter(t => { const cls = _classifyTx(t); return cls.type === 'expense' || cls.type === 'income'; }).map(t => {
+    const cls = _classifyTx(t);
+    return { date:t.date, description:t.description || '—', amount_brl:+cls.brlAmt.toFixed(2), type:cls.type, category:catMap[t.category_id]?.name || null, payee:payMap[t.payee_id]?.name || null, account:accMap[t.account_id]?.name || null, currency:t.currency || 'BRL', memo:t.memo || null, tags:t.tags || null };
+  }).sort((a,b)=>b.amount_brl-a.amount_brl).slice(0,40);
+  const allTransactions = filtered.filter(t => { const cls = _classifyTx(t); return cls.type === 'expense' || cls.type === 'income'; }).map(t => {
+    const cls = _classifyTx(t);
+    return { date:t.date, description:t.description || '—', amount_brl:+cls.brlAmt.toFixed(2), type:cls.type, category:catMap[t.category_id]?.name || null, payee:payMap[t.payee_id]?.name || null };
+  }).sort((a,b)=>a.date.localeCompare(b.date));
 
-  // Lista de todas as transações do período (para chat / análise detalhada)
-  const allTransactions = filtered
-    .filter(t => { const cls = _classifyTx(t); return cls.type === 'expense' || cls.type === 'income'; })
-    .map(t => {
-      const cls = _classifyTx(t);
-      return {
-        date:        t.date,
-        description: t.description || '—',
-        amount_brl:  +cls.brlAmt.toFixed(2),
-        type:        cls.type,
-        category:    catMap[t.category_id]?.name || null,
-        payee:       payMap[t.payee_id]?.name    || null,
-      };
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  // ── 12. Saldos e resumo por conta ─────────────────────────────────────
-  const accountBalances = (state.accounts || [])
-    .filter(a => !accountId || a.id === accountId)
-    .map(a => ({
-      name:     a.name,
-      balance:  +(a.balance || 0).toFixed(2),
-      currency: a.currency,
-      type:     a.type,
-      is_credit_card: a.type === 'cartao_credito',
-    }));
-
+  const accountBalances = (state.accounts || []).filter(a => !accountId || a.id === accountId).map(a => ({ name:a.name, balance:+(a.balance || 0).toFixed(2), currency:a.currency, type:a.type, is_credit_card:a.type === 'cartao_credito' }));
   const byAccount = {};
   filtered.forEach(t => {
-    const cls     = _classifyTx(t);
-    const accName = accMap[t.account_id]?.name || 'Desconhecida';
+    const cls = _classifyTx(t); const accName = accMap[t.account_id]?.name || 'Desconhecida';
     if (!byAccount[accName]) byAccount[accName] = { income:0, expense:0, transfers:0 };
-    if (cls.type === 'income')   byAccount[accName].income   += cls.brlAmt;
-    if (cls.type === 'expense')  byAccount[accName].expense  += cls.brlAmt;
+    if (cls.type === 'income') byAccount[accName].income += cls.brlAmt;
+    if (cls.type === 'expense') byAccount[accName].expense += cls.brlAmt;
     if (cls.type === 'transfer') byAccount[accName].transfers += cls.brlAmt;
   });
-  const accountSummary = Object.entries(byAccount).map(([name, v]) => ({
-    name,
-    income:    +v.income.toFixed(2),
-    expense:   +v.expense.toFixed(2),
-    net:       +(v.income - v.expense).toFixed(2),
-    transfers: +v.transfers.toFixed(2),
-  }));
+  const accountSummary = Object.entries(byAccount).map(([name, v]) => ({ name, income:+v.income.toFixed(2), expense:+v.expense.toFixed(2), net:+(v.income-v.expense).toFixed(2), transfers:+v.transfers.toFixed(2) }));
 
-  // ── 13. Anomalias ─────────────────────────────────────────────────────
-  const anomalies = _aiDetectAnomalies(
-    filtered, catMap, payMap,
-    historicalTrend, byCategory
-  );
+  const anomalies = _aiDetectAnomalies(filtered, catMap, payMap, historicalTrend, byCategory);
 
-  // ── 14. Orçamentos ────────────────────────────────────────────────────
   let budgetContext = null;
   try {
-    if (typeof _rbtGetBudgetContext === 'function') {
-      budgetContext = await _rbtGetBudgetContext();
-    }
+    if (typeof _rbtGetBudgetContext === 'function') budgetContext = await _rbtGetBudgetContext();
     if (!budgetContext) {
       const curMonth = new Date().toISOString().slice(0,7);
-      const { data: bdata } = await famQ(
-        sb.from('budgets').select('amount,category_id,categories(name)')
-      ).eq('month', curMonth + '-01');
+      const { data: bdata } = await famQ(sb.from('budgets').select('amount,category_id,categories(name)')).eq('month', curMonth + '-01');
       if (bdata?.length) {
         const rawSpend = {};
-        filtered.forEach(t => {
-          const cls = _classifyTx(t);
-          if (cls.type === 'expense' && t.category_id) {
-            rawSpend[t.category_id] = (rawSpend[t.category_id]||0) + cls.brlAmt;
-          }
-        });
-        budgetContext = {
-          period: { type:'monthly', month: curMonth },
-          budgets: bdata.map(b => {
-            const limit = parseFloat(b.amount||0);
-            const used  = rawSpend[b.category_id] || 0;
-            return {
-              category:  b.categories?.name || '—',
-              limit:     +limit.toFixed(2),
-              used:      +used.toFixed(2),
-              available: +Math.max(0, limit - used).toFixed(2),
-              pct:       limit > 0 ? +(used/limit*100).toFixed(1) : 0,
-              over:      used > limit && limit > 0,
-            };
-          }),
-        };
+        filtered.forEach(t => { const cls = _classifyTx(t); if (cls.type === 'expense' && t.category_id) rawSpend[t.category_id] = (rawSpend[t.category_id] || 0) + cls.brlAmt; });
+        budgetContext = { period:{ type:'monthly', month:curMonth }, budgets:bdata.map(b => { const limit=parseFloat(b.amount || 0); const used=rawSpend[b.category_id] || 0; return { category:b.categories?.name || '—', limit:+limit.toFixed(2), used:+used.toFixed(2), available:+Math.max(0, limit-used).toFixed(2), pct: limit>0 ? +(used/limit*100).toFixed(1) : 0, over: used>limit && limit>0 }; }) };
       }
     }
   } catch(_) {}
 
   const ctx = {
-    period: { from: dateFrom || 'início', to: dateTo || 'hoje' },
-    summary: {
-      totalIncome:      +totalIncome.toFixed(2),
-      totalExpense:     +totalExpense.toFixed(2),
-      netResult:        +(totalIncome - totalExpense).toFixed(2),
-      txCount:          filtered.filter(t => { const c=_classifyTx(t); return c.type==='income'||c.type==='expense'; }).length,
-      transferCount,
-      cardPaymentCount,
-      note_transfers:   'Transferências entre contas foram EXCLUÍDAS das despesas e receitas — são movimentações internas.',
-      note_card_payment:'Pagamentos de fatura de cartão foram EXCLUÍDOS das despesas — evitando dupla contagem com os gastos reais no cartão.',
-    },
-    topCategories,
-    topPayees,
-    memberInsights,
-    monthlyTrend,
-    historicalTrend,
-    historicalAvg: {
-      monthly_income:  histAvgIncome  ? +histAvgIncome.toFixed(2)  : null,
-      monthly_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null,
-    },
-    scheduledItems: {
-      once:      schedOnce.sort((a,b)=>{ const d=a.next_date||''; const e=b.next_date||''; return d.localeCompare(e); }),
-      monthly:   schedMonthly.sort((a,b)=>b.monthly_equiv-a.monthly_equiv),
-      recurring: schedRecurring.sort((a,b)=>b.monthly_equiv-a.monthly_equiv),
-      total_count: _stSched.length,
-    },
-    recurringCommitments,
-    financialProjection,
-    creditCardSummary,
-    creditCardProjection,
-    accountBalances,
-    accountSummary,
-    topTransactions,
-    allTransactions,
-    anomalies,
-    budgets: budgetContext,
-    filters: { dateFrom, dateTo, memberId, accountId, categoryId, payeeId },
+    period:{ from:dateFrom || 'início', to:dateTo || 'hoje' },
+    summary:{ totalIncome:+totalIncome.toFixed(2), totalExpense:+totalExpense.toFixed(2), netResult:+(totalIncome-totalExpense).toFixed(2), txCount:filtered.filter(t => { const c=_classifyTx(t); return c.type==='income' || c.type==='expense'; }).length, transferCount, cardPaymentCount, note_transfers:'Transferências entre contas foram EXCLUÍDAS das despesas e receitas — são movimentações internas.', note_card_payment:'Pagamentos de fatura de cartão foram EXCLUÍDOS das despesas — evitando dupla contagem com os gastos reais no cartão.' },
+    topCategories, topPayees, memberInsights, monthlyTrend, historicalTrend, historicalAvg:{ monthly_income: histAvgIncome ? +histAvgIncome.toFixed(2) : null, monthly_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null },
+    scheduledItems:{ once:schedOnce.sort((a,b)=>(a.next_date || '').localeCompare(b.next_date || '')), monthly:schedMonthly.sort((a,b)=>b.monthly_equiv-a.monthly_equiv), recurring:schedRecurring.sort((a,b)=>b.monthly_equiv-a.monthly_equiv), total_count:_stSched.length },
+    recurringCommitments, financialProjection, creditCardSummary, creditCardProjection, accountBalances, accountSummary, topTransactions, allTransactions, anomalies, budgets:budgetContext, filters,
+    meta:{ confidence_score: confidenceScore, closed_months_used: closedMonthKeys.length, recurring_coverage_ratio:+coverageRatio.toFixed(3), engine_version:'ai-insights-engine-v2' },
   };
 
   _ai.financialContext = ctx;
@@ -804,10 +774,20 @@ async function runAiAnalysis() {
   _aiSetAnalysisState('loading');
 
   try {
-    const ctx    = await _aiCollectFinancialContext();
+    const ctx = await _aiCollectFinancialContext();
+    if (!ctx?.summary?.txCount) {
+      _aiSetAnalysisState('empty');
+      return;
+    }
     const result = await _callGeminiAnalysis(apiKey, ctx);
     _ai.analysisResult = result;
     _aiRenderAnalysis(result);
+    try {
+      await _aiSaveSnapshot(ctx, result);
+      await loadAiSnapshots();
+    } catch (snapErr) {
+      console.warn('[AIInsights] snapshot save:', snapErr?.message || snapErr);
+    }
     toast(t('ai.analysis_done'), 'success');
   } catch (e) {
     _aiSetAnalysisState('error', e.message);
@@ -2160,3 +2140,5 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+window.loadAiSnapshots = loadAiSnapshots;
