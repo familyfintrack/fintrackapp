@@ -16977,11 +16977,24 @@ section[data-page="transactions"] .content {
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
+  margin-right: auto;
+  min-width: 0;
 }
 .fx-bar-family-icon { color: var(--accent); flex-shrink: 0; }
 .fx-bar-family-text { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-.fx-bar-rates { flex: 1; min-width: 0; }
-.fx-bar-age { margin-left: auto; }
+.fx-bar-label,
+.fx-bar-refresh,
+.fx-bar-age {
+  flex-shrink: 0;
+}
+.fx-bar-rates {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.fx-bar-age { margin-left: 0; }
 
 #page-dashboard #dashFamilyName,
 #page-dashboard #dashFamilyNameText {
@@ -17002,12 +17015,15 @@ section[data-page="transactions"] .content {
     gap: 8px;
   }
   .fx-bar-family {
-    max-width: 44vw;
+    max-width: 42vw;
     padding: 2px 8px;
     font-size: .64rem;
   }
   .fx-bar-family-text {
-    max-width: 30vw;
+    max-width: 28vw;
+  }
+  .fx-bar-rates {
+    max-width: 46vw;
   }
   #page-debts .page-header-bar-right {
     width: 100%;
@@ -17145,144 +17161,5 @@ section[data-page="transactions"] .content {
   #page-transactions .tx-v2-brl,
   #page-transactions .tx-v2-bal{
     white-space:nowrap;
-  }
-}
-
-/* === Final integrated fixes: title font, remove language picker, mobile transaction density, debts header alignment === */
-.page-header-bar-title,
-.page-title,
-.tx-page-header h1,
-.tx-page-header .page-title {
-  font-family: 'Inter', var(--font-sans), system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-#topbarLangPicker,
-#topbarLangBtn,
-#topbarLangDropdown,
-#topbarLangBadge,
-.i18n-topbar-picker,
-.topbar-lang-badge {
-  display: none !important;
-}
-
-@media (max-width: 768px) {
-  #page-debts .page-header-bar-right {
-    width: auto !important;
-    justify-content: flex-end !important;
-    margin-top: 0 !important;
-    margin-left: auto !important;
-  }
-}
-
-@media (max-width: 720px){
-  #page-transactions #txBody tr.tx-date-header-row{
-    display:block !important;
-    margin:24px 0 12px !important;
-  }
-  #page-transactions #txBody tr.tx-date-header-row:first-child{
-    margin-top:8px !important;
-  }
-
-  #page-transactions #txBody tr.tx-row-clickable{
-    display:grid !important;
-    grid-template-columns:56px minmax(0,1fr) auto;
-    grid-template-areas:"date body right";
-    gap:12px;
-    align-items:center;
-    padding:12px 14px;
-  }
-
-  #page-transactions #txBody td.tx-v2-date{
-    grid-area:date;
-    width:56px !important;
-    min-width:56px !important;
-    display:flex !important;
-    flex-direction:column;
-    align-items:flex-start;
-    justify-content:center;
-    align-self:stretch;
-    text-align:left;
-    padding:0 0 0 2px !important;
-  }
-  #page-transactions #txBody td.tx-v2-date .tx-date-day,
-  #page-transactions #txBody td.tx-v2-date .tx-date-mon{
-    width:100%;
-    text-align:left;
-  }
-
-  #page-transactions #txBody td.tx-v2-body{
-    grid-area:body;
-    min-width:0 !important;
-    width:auto !important;
-    display:flex !important;
-    flex-direction:column;
-    justify-content:center;
-    gap:4px;
-    padding:0 !important;
-    overflow:hidden;
-  }
-
-  #page-transactions #txBody td.tx-v2-right{
-    grid-area:right;
-    min-width:92px !important;
-    width:max-content !important;
-    padding:0 !important;
-    align-self:center;
-    justify-self:end;
-  }
-
-  #page-transactions .tx-v2-title{
-    margin:0 !important;
-    min-width:0;
-    max-width:100%;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    display:block !important;
-    -webkit-line-clamp:unset !important;
-    -webkit-box-orient:unset !important;
-    line-height:1.16 !important;
-  }
-
-  #page-transactions .tx-v2-mobile-meta,
-  #page-transactions .tx-v2-payee-line,
-  #page-transactions .tx-v2-category,
-  #page-transactions .tx-v2-account-line,
-  #page-transactions .tx-v2-account-line .tx-v2-acct-pill{
-    min-width:0;
-    max-width:100%;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-
-  #page-transactions .tx-v2-mobile-meta,
-  #page-transactions .tx-v2-payee-line,
-  #page-transactions .tx-v2-category{
-    font-size:.76rem;
-    line-height:1.1;
-  }
-
-  #page-transactions .tx-v2-account-line{
-    margin-top:1px;
-  }
-
-  #page-transactions .tx-v2-account-line .tx-v2-acct-pill{
-    display:inline-flex;
-    align-items:center;
-    padding:4px 10px;
-    font-size:.73rem;
-    line-height:1;
-    vertical-align:top;
-  }
-
-  #page-transactions .tx-v2-amt-wrap,
-  #page-transactions .tx-v2-right,
-  #page-transactions .tx-v2-amt,
-  #page-transactions .tx-v2-brl,
-  #page-transactions .tx-v2-bal{
-    white-space:nowrap !important;
   }
 }
