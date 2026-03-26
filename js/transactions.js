@@ -405,12 +405,22 @@ function txRow(t, showAccount=true, runningBalance=null) {
     : '';
 
   // Amount
-  const cur = (t.currency || t.accounts?.currency || 'BRL').toUpperCase();
-  const mainAmt = fmt(t.amount, cur);
+  const txCur = (t.currency || '').toUpperCase();
+  const accountCur = (t.accounts?.currency || 'BRL').toUpperCase();
+  const displayCur = txCur || accountCur || 'BRL';
+  const mainAmt = fmt(t.amount, displayCur);
   const amtClass = t.amount >= 0 ? 'amount-pos' : 'amount-neg';
   let amtHtml = `<span class="tx-v2-amt ${amtClass}">${mainAmt}</span>`;
-  if (cur !== 'BRL' && t.brl_amount != null) {
-    amtHtml += `<span class="tx-v2-brl">${fmt(t.brl_amount,'BRL')}</span>`;
+
+  // Only show secondary converted value when:
+  //  1) transaction currency was explicitly set,
+  //  2) it is a foreign currency (not BRL), and
+  //  3) it differs from the account default currency.
+  // This avoids showing a redundant / misleading conversion for BRL transactions
+  // or for transactions already in the account native currency.
+  const showConvertedAmount = !!txCur && txCur !== 'BRL' && txCur !== accountCur && t.brl_amount != null;
+  if (showConvertedAmount) {
+    amtHtml += `<span class="tx-v2-brl">${fmt(t.brl_amount, accountCur || 'BRL')}</span>`;
   }
 
   // Running balance — use account's native currency (balance is stored in account currency)
