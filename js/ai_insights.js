@@ -47,8 +47,11 @@ const _ai = {
   analysisLoading: false,
   chatLoading: false,
   snapshotsLoading: false,
+  snapshotSaving: false,
+  snapshotDeletingId: null,
   snapshots: [],
   currentSnapshotId: null,
+  currentSnapshotHash: null,
   currentContext: null,
 };
 
@@ -158,8 +161,12 @@ function _aiRefreshSnapshotButton() {
   const btn = document.getElementById('aiSaveSnapshotBtn');
   if (!btn) return;
   const canSave = !!(_ai.analysisResult && _ai.financialContext);
-  btn.disabled = !canSave || !!_ai.analysisLoading;
-  btn.title = canSave ? 'Salvar snapshot da família' : 'Gere uma análise primeiro';
+  const saving = !!_ai.snapshotSaving;
+  btn.disabled = !canSave || !!_ai.analysisLoading || saving;
+  btn.title = !canSave ? 'Gere uma análise primeiro' : (saving ? 'Salvando snapshot...' : 'Salvar snapshot da família');
+  btn.innerHTML = saving
+    ? '<span class="ai-btn-spinner" aria-hidden="true"></span> Salvando...'
+    : '💾 Salvar snapshot';
 }
 
 function _aiPopulateFilters() {
@@ -286,6 +293,41 @@ function _aiComputeProjectionConfidence(closedMonths, scheduledCoverageRatio, fi
   return Math.max(15, Math.min(98, monthScore + coverageScore + filterScore));
 }
 
+
+function _aiSnapshotTitleValue() {
+  return (document.getElementById('aiSnapshotTitle')?.value || '').trim();
+}
+
+function _aiStableStringify(value) {
+  if (value === null || value === undefined) return JSON.stringify(value);
+  if (typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(_aiStableStringify).join(',') + ']';
+  return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + _aiStableStringify(value[k])).join(',') + '}';
+}
+
+async function _aiSha256(text) {
+  const data = new TextEncoder().encode(String(text || ''));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function _aiBuildSnapshotHash(ctx, result) {
+  const base = {
+    family_id: _aiCurrentFamilyId(),
+    period: ctx?.period || {},
+    filters: {
+      ...(ctx?.filters || {}),
+      extraContext: ctx?.filters?.extraContext || '',
+    },
+    summary: ctx?.summary || {},
+    projection: ctx?.financialProjection || {},
+    recurringCommitments: ctx?.recurringCommitments || {},
+    anomalies: ctx?.anomalies || [],
+    ai_summary: result || {},
+  };
+  return _aiSha256(_aiStableStringify(base));
+}
+
 async function _aiLoadSnapshotRows() {
   const famId = _aiCurrentFamilyId();
   if (!famId) return [];
@@ -357,6 +399,27 @@ async function _aiSaveSnapshot(ctx, result) {
   const famId = await _aiAssertSnapshotAccess();
   const userId = currentUser?.id;
   if (!famId || !userId || !ctx || !result) return null;
+  const customTitle = _aiSnapshotTitleValue();
+  const snapshotHash = await _aiBuildSnapshotHash(ctx, result);
+
+  try {
+    const { data: existing, error: existingErr } = await sb.from('ai_insight_snapshots')
+      .select('id,title,created_at,filters')
+      .eq('family_id', famId)
+      .contains('filters', { snapshot_hash: snapshotHash })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingErr && existingErr.code !== 'PGRST116') throw existingErr;
+    if (existing?.id) {
+      _ai.currentSnapshotId = existing.id;
+      _ai.currentSnapshotHash = snapshotHash;
+      return { id: existing.id, duplicated: true };
+    }
+  } catch (dupErr) {
+    if (!(dupErr?.code === 'PGRST116')) console.warn('[AIInsights] duplicate snapshot check:', dupErr?.message || dupErr);
+  }
+
   const recSummary = [
     ...(result.recommendations || []).map((r, i) => ({ type:'recommendation', title:r.title || `Recomendação ${i+1}`, description:r.description || '', severity:r.priority || 'medium', sort_order:i })),
     ...(result.savings_opportunities || []).map((r, i) => ({ type:'saving', title:r.title || `Oportunidade ${i+1}`, description:r.description || '', severity:'medium', sort_order:100+i })),
@@ -365,12 +428,12 @@ async function _aiSaveSnapshot(ctx, result) {
   const payload = {
     family_id: famId,
     created_by: userId,
-    title: `AI Insights ${ctx.period?.from || ''} → ${ctx.period?.to || ''}`.trim(),
+    title: customTitle || `AI Insights ${ctx.period?.from || ''} → ${ctx.period?.to || ''}`.trim(),
     period_from: ctx.period?.from || new Date().toISOString().slice(0,10),
     period_to: ctx.period?.to || new Date().toISOString().slice(0,10),
     snapshot_type: 'analysis',
     status: 'completed',
-    filters: ctx.filters || {},
+    filters: { ...(ctx.filters || {}), snapshot_hash: snapshotHash, snapshot_custom_title: customTitle || '' },
     source_metrics: { full_context: ctx },
     projection_metrics: { financialProjection: ctx.financialProjection || {}, recurringCommitments: ctx.recurringCommitments || {}, anomalies: ctx.anomalies || [] },
     recommendation_summary: recSummary,
@@ -407,7 +470,8 @@ async function _aiSaveSnapshot(ctx, result) {
     if (recErr && recErr.code !== '42P01') console.warn('[AIInsights] rec snapshot save:', recErr.message);
   }
   _ai.currentSnapshotId = snapshotId || null;
-  return snapshotId;
+  _ai.currentSnapshotHash = snapshotHash || null;
+  return { id: snapshotId || null, duplicated: false };
 }
 
 async function openAiSnapshot(snapshotId) {
@@ -428,8 +492,11 @@ async function openAiSnapshot(snapshotId) {
   _ai.currentContext = ctx;
   _ai.analysisResult = result;
   _ai.currentSnapshotId = row.id;
+  _ai.currentSnapshotHash = row?.filters?.snapshot_hash || null;
   const extraContextEl = document.getElementById('aiExtraContext');
   if (extraContextEl) extraContextEl.value = ctx?.filters?.extraContext || '';
+  const titleEl = document.getElementById('aiSnapshotTitle');
+  if (titleEl) titleEl.value = row?.title || ctx?.filters?.snapshot_custom_title || '';
   _aiRenderAnalysis(result);
   _aiRefreshSnapshotButton();
   _aiShowTab('analysis');
@@ -867,6 +934,7 @@ async function runAiAnalysis() {
     _ai.currentContext = ctx;
     _ai.analysisResult = result;
     _ai.currentSnapshotId = null;
+    _ai.currentSnapshotHash = null;
     _aiRenderAnalysis(result);
     _aiRefreshSnapshotButton();
     toast('Análise pronta. Use “Salvar snapshot” para guardar esta versão da família.', 'success');
@@ -876,6 +944,7 @@ async function runAiAnalysis() {
     console.error('[AIInsights] analysis error:', e);
   } finally {
     _ai.analysisLoading = false;
+    _aiRefreshSnapshotButton();
   }
 }
 
@@ -889,26 +958,22 @@ async function saveCurrentAiSnapshot() {
     _aiRefreshSnapshotButton();
     return;
   }
-  if (_ai.currentSnapshotId) {
-    toast('Esta análise já foi salva como snapshot.', 'info');
-    return;
-  }
   _ai.snapshotSaving = true;
-  const btn = document.getElementById('aiSaveSnapshotBtn');
-  const prevHtml = btn ? btn.innerHTML : '';
+  _aiRefreshSnapshotButton();
   try {
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '⏳ Salvando...';
-    }
-    const snapshotId = await _aiSaveSnapshot(ctx, result);
+    const response = await _aiSaveSnapshot(ctx, result);
+    const snapshotId = response?.id || null;
     if (!snapshotId) {
       toast('Não foi possível salvar o snapshot. Verifique o SQL atualizado e as permissões da família no Supabase.', 'warning');
       return;
     }
     _ai.currentSnapshotId = snapshotId;
+    if (response?.duplicated) {
+      toast('Este snapshot já existe para esta família.', 'info');
+    } else {
+      toast('Snapshot da família salvo com sucesso.', 'success');
+    }
     await loadAiSnapshots();
-    toast('Snapshot da família salvo com sucesso.', 'success');
   } catch (err) {
     console.warn('[AIInsights] manual snapshot save:', err?.message || err);
     const msg = String(err?.message || err || 'Erro desconhecido');
@@ -919,7 +984,6 @@ async function saveCurrentAiSnapshot() {
     }
   } finally {
     _ai.snapshotSaving = false;
-    if (btn) btn.innerHTML = prevHtml || '💾 Salvar snapshot';
     _aiRefreshSnapshotButton();
   }
 }
@@ -935,7 +999,7 @@ async function deleteAiSnapshot(snapshotId) {
     const { error } = await sb.from('ai_insight_snapshots').delete().eq('id', snapshotId).eq('family_id', famId);
     if (error) throw error;
     _ai.snapshots = (_ai.snapshots || []).filter(s => s.id !== snapshotId);
-    if (_ai.currentSnapshotId === snapshotId) _ai.currentSnapshotId = null;
+    if (_ai.currentSnapshotId === snapshotId) { _ai.currentSnapshotId = null; _ai.currentSnapshotHash = null; }
     _aiRenderSnapshotsList();
     toast('Snapshot excluído com sucesso.', 'success');
   } catch (err) {
@@ -2299,5 +2363,6 @@ function getPeriodColor(period) {
 }
 
 window.loadAiSnapshots = loadAiSnapshots;
+window.saveCurrentAiSnapshot = saveCurrentAiSnapshot;
 
 window.deleteAiSnapshot = deleteAiSnapshot;
