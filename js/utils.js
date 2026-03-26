@@ -710,10 +710,32 @@ function buildFallbackShortDescription({ categoryName = '', payeeName = '', memb
   const cat = _normalizeShortDescText(categoryName);
   const pay = _normalizeShortDescText(payeeName);
   const mem = _normalizeShortDescText(memberName);
+
+  // Fallback determinístico e fiel às definições do app:
+  // prioriza sempre categoria + beneficiário, incluindo membro quando houver.
   if (cat && pay && mem) return `${cat} do ${mem} no ${pay}`;
   if (cat && pay) return `${cat} no ${pay}`;
-  if (cat && mem) return `${cat} do ${mem}`;
-  return cat || pay || mem || 'Lançamento';
+  if (cat) return cat;
+  if (pay) return pay;
+  if (mem) return mem;
+  return 'Lançamento';
+}
+
+function _looksLikeValidAiShortDescription(text, { categoryName = '', payeeName = '', memberName = '' } = {}) {
+  const out = _normalizeShortDescText(text).toLowerCase();
+  if (!out) return false;
+  if (out.length > 80) return false;
+
+  const cat = _normalizeShortDescText(categoryName).toLowerCase();
+  const pay = _normalizeShortDescText(payeeName).toLowerCase();
+  const mem = _normalizeShortDescText(memberName).toLowerCase();
+
+  // Se categoria ou beneficiário foram informados, a resposta da IA deve respeitar esse contexto.
+  if (cat && !out.includes(cat)) return false;
+  if (pay && !out.includes(pay)) return false;
+  if (mem && !out.includes(mem)) return false;
+
+  return true;
 }
 
 async function generateShortTransactionDescription({ categoryName = '', payeeName = '', memberName = '' } = {}) {
@@ -722,20 +744,26 @@ async function generateShortTransactionDescription({ categoryName = '', payeeNam
     const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
     if (!apiKey || !apiKey.startsWith('AIza')) return fallback;
 
-    const prompt = `Create a very short transaction description in Brazilian Portuguese.
-Rules:
-- Use category, payee and family member if provided.
-- Maximum 7 words.
-- No quotes.
-- No punctuation at the end.
-- Natural phrasing for a finance app.
-- Prefer patterns like "Supermercado no Pão de Açúcar" and "Supermercado do Décio no Pão de Açúcar".
-- If one field is missing, adapt naturally.
-Return only the final description.
+    const prompt = `Gere uma descrição curta de transação em português do Brasil.
 
-Category: ${categoryName || 'none'}
-Payee: ${payeeName || 'none'}
-Member: ${memberName || 'none'}`;
+Regras obrigatórias:
+- Responda com apenas uma frase curta.
+- Não use aspas.
+- Não use ponto final.
+- Máximo de 7 palavras.
+- Use exatamente a categoria informada.
+- Use exatamente o beneficiário informado, quando existir.
+- Use exatamente o membro informado, quando existir.
+- Siga estes padrões:
+  - Categoria + beneficiário: "Supermercado no Pão de Açúcar"
+  - Categoria + membro + beneficiário: "Supermercado do Décio no Pão de Açúcar"
+- Se a resposta não puder seguir isso, mantenha a estrutura mais simples possível.
+
+Categoria: ${categoryName || 'nenhuma'}
+Beneficiário: ${payeeName || 'nenhum'}
+Membro: ${memberName || 'nenhum'}
+
+Retorne somente a descrição final.`;
 
     const model = (typeof RECEIPT_AI_MODEL !== 'undefined' && RECEIPT_AI_MODEL) ? RECEIPT_AI_MODEL : 'gemini-2.5-flash-lite';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -744,14 +772,14 @@ Member: ${memberName || 'none'}`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 40, temperature: 0.2 }
+        generationConfig: { maxOutputTokens: 40, temperature: 0.1 }
       })
     });
     if (!resp.ok) return fallback;
     const json = await resp.json();
     let text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    text = _normalizeShortDescText(text.replace(/^['"`]+|['"`]+$/g, ''));
-    if (!text) return fallback;
+    text = _normalizeShortDescText(text.replace(/^['"`]+|['"`]+$/g, '').replace(/[.。]+$/g, ''));
+    if (!_looksLikeValidAiShortDescription(text, { categoryName, payeeName, memberName })) return fallback;
     return text;
   } catch (_) {
     return fallback;
