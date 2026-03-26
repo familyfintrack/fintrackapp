@@ -693,7 +693,7 @@ function renderTransactions(){
     return html;
   }
 
-  const pendingHtml  = pending.length  ? pending.map(t => txRow(t, !singleAccId, null)).join('') : '';
+  const pendingHtml   = renderWithDateGroups(pending, !singleAccId, null);
   const confirmedHtml = renderWithDateGroups(confirmed, !singleAccId, balMap);
   body.innerHTML = pendingHtml + sep + confirmedHtml;
   const total=state.txTotal, page=state.txPage, ps=state.txPageSize;
