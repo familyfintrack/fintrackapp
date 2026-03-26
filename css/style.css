@@ -17164,133 +17164,71 @@ section[data-page="transactions"] .content {
   }
 }
 
-/* === 2026-03-26 final mobile transactions + topbar language removal === */
+
+/* === 2026-03-26 final mobile transactions width + remove topbar language === */
+@media (max-width: 720px){
+  #page-transactions #txBody tr.tx-row-clickable{
+    grid-template-columns: 50px minmax(0,1fr) minmax(88px,max-content) !important;
+    gap: 8px !important;
+    padding: 12px 12px !important;
+  }
+  #page-transactions #txBody td.tx-v2-date{
+    width: 50px !important;
+    min-width: 50px !important;
+  }
+  #page-transactions #txBody td.tx-v2-body{
+    padding-right: 0 !important;
+    gap: 3px !important;
+  }
+  #page-transactions #txBody td.tx-v2-right{
+    min-width: 88px !important;
+    width: 88px !important;
+    padding-left: 0 !important;
+  }
+  #page-transactions .tx-v2-title{
+    font-size: .85rem !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: initial !important;
+  }
+  #page-transactions .tx-v2-mobile-meta{
+    font-size: .73rem !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  #page-transactions .tx-v2-account-line .tx-v2-acct-pill{
+    max-width: 100% !important;
+    font-size: .72rem !important;
+  }
+  #page-transactions .tx-v2-amt-wrap{
+    min-width: 0 !important;
+  }
+  #page-transactions .tx-v2-amt{
+    font-size: .92rem !important;
+  }
+  #page-transactions .tx-v2-brl{
+    font-size: .72rem !important;
+    line-height: 1.05 !important;
+  }
+}
+
+/* Remove topbar language picker/badge completely, including any legacy injected variant */
 #topbarLangPicker,
 #topbarLangDropdown,
 #topbarLangBadge,
 #topbarLangLabel,
 .topbar-lang-badge,
-.topbar [onclick*="toggleLangPicker"] {
+.topbar [onclick*="toggleLangPicker"],
+.topbar button[title*="Idioma"],
+.topbar button[title*="idioma"],
+.topbar button[title*="Language"],
+.topbar button[aria-label*="Idioma"],
+.topbar button[aria-label*="Language"] {
   display: none !important;
-}
-
-@media (max-width: 768px) {
-  /* FX bar: family left, rates right */
-  .fx-bar-inner {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-  }
-  .fx-bar-family {
-    margin-right: auto !important;
-    max-width: 44vw !important;
-    min-width: 0 !important;
-  }
-  .fx-bar-rates {
-    margin-left: auto !important;
-    justify-content: flex-end !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    max-width: 52vw !important;
-  }
-
-  /* Transactions grouped by date: reclaim horizontal space */
-  #page-transactions #txBody tr.tx-row-clickable {
-    grid-template-columns: 44px minmax(0, 1fr) auto !important;
-    gap: 8px !important;
-    padding: 12px 12px !important;
-  }
-
-  #page-transactions #txBody td.tx-v2-date {
-    width: 44px !important;
-    min-width: 44px !important;
-    padding: 0 !important;
-    align-items: flex-start !important;
-    justify-content: center !important;
-    text-align: left !important;
-  }
-  #page-transactions #txBody td.tx-v2-date .tx-date-day {
-    font-size: .94rem !important;
-    line-height: .95 !important;
-    text-align: left !important;
-  }
-  #page-transactions #txBody td.tx-v2-date .tx-date-mon {
-    font-size: .58rem !important;
-    letter-spacing: .08em !important;
-    text-align: left !important;
-  }
-
-  #page-transactions #txBody td.tx-v2-body {
-    min-width: 0 !important;
-    padding: 0 !important;
-    gap: 3px !important;
-  }
-
-  #page-transactions #txBody td.tx-v2-right {
-    min-width: unset !important;
-    width: auto !important;
-    max-width: 104px !important;
-    padding: 0 0 0 4px !important;
-    white-space: nowrap !important;
-  }
-
-  #page-transactions #txBody .tx-v2-amt,
-  #page-transactions #txBody .tx-v2-brl,
-  #page-transactions #txBody .tx-v2-bal {
-    white-space: nowrap !important;
-  }
-
-  #page-transactions .tx-v2-title {
-    display: block !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    -webkit-line-clamp: unset !important;
-    -webkit-box-orient: initial !important;
-    font-size: .91rem !important;
-    line-height: 1.12 !important;
-  }
-
-  #page-transactions .tx-v2-mobile-meta,
-  #page-transactions .tx-v2-category,
-  #page-transactions .tx-v2-payee-line {
-    display: block !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    line-height: 1.08 !important;
-  }
-
-  #page-transactions .tx-v2-mobile-meta {
-    font-size: .76rem !important;
-  }
-
-  /* Grouped by account: show category and payee on separate lines, both single-line */
-  #page-transactions .tx-group-body .tx-v2-category,
-  #page-transactions .tx-group-body .tx-v2-payee-line {
-    display: block !important;
-    font-size: .76rem !important;
-    color: var(--muted) !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  #page-transactions .tx-v2-account-line {
-    display: block !important;
-    min-width: 0 !important;
-    margin-top: 1px !important;
-  }
-  #page-transactions .tx-v2-account-line .tx-v2-acct-pill {
-    display: inline-flex !important;
-    max-width: min(100%, 180px) !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
 }
