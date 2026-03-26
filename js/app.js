@@ -1112,6 +1112,27 @@ document.addEventListener('i18n:changed', () => {
 })();
 
 
+
+
+// ── Hard remove topbar language picker (legacy defensive cleanup) ────────────
+function _removeLegacyTopbarLang() {
+  const selectors = [
+    '#topbarLangPicker',
+    '#topbarLangDropdown',
+    '#topbarLangBadge',
+    '#topbarLangLabel',
+    '[onclick*="toggleLangPicker"]',
+    '.topbar-lang-badge'
+  ];
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => el.remove());
+  });
+}
+
+document.addEventListener('DOMContentLoaded', _removeLegacyTopbarLang);
+window.addEventListener('load', _removeLegacyTopbarLang);
+document.addEventListener('i18n:changed', _removeLegacyTopbarLang);
+
 // ── Language picker (topbar) ─────────────────────────────────────────────────
 function toggleLangPicker() {
   const dd = document.getElementById('topbarLangDropdown');

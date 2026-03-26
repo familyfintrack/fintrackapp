@@ -420,7 +420,14 @@ function txRow(t, showAccount=true, runningBalance=null) {
   // or for transactions already in the account native currency.
   const showConvertedAmount = !!txCur && txCur !== 'BRL' && txCur !== accountCur && t.brl_amount != null;
   if (showConvertedAmount) {
-    amtHtml += `<span class="tx-v2-brl">${fmt(t.brl_amount, accountCur || 'BRL')}</span>`;
+    const secondaryAmt = (accountCur === 'BRL')
+      ? (Number.isFinite(Number(t.brl_amount)) ? Number(t.brl_amount) : null)
+      : (Number.isFinite(Number(t.amount)) && Number.isFinite(Number(t.exchange_rate))
+          ? (Number(t.amount) * Number(t.exchange_rate))
+          : (Number.isFinite(Number(t.brl_amount)) ? Number(t.brl_amount) : null));
+    if (secondaryAmt !== null) {
+      amtHtml += `<span class="tx-v2-brl">${fmt(secondaryAmt, accountCur || 'BRL')}</span>`;
+    }
   }
 
   // Running balance — use account's native currency (balance is stored in account currency)
