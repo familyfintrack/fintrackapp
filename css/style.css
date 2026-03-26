@@ -4930,21 +4930,20 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     flex-shrink: 0;
   }
 
-  /* ── 3. Card de transação: grid ícone · corpo · valor ──────────────
-     Coluna body cresce livremente; valor tem largura mínima garantida
-     para não espremer o texto da descrição.
+  /* ── 3. Card de transação: flex row (body flex-1 · valor fixo) ────────
+     Estrutura real do TR: [td.tx-v2-date oculto] [td.tx-v2-body] [td.tx-v2-right]
+     Dentro de tx-v2-body: .tx-v2-body-inner = flex com [bubble] [texto]
   ── */
   #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
-    display: grid !important;
-    /* ícone fixo · body cresce · valor com min 80px */
-    grid-template-columns: 40px minmax(0, 1fr) minmax(80px, auto) !important;
-    align-items: start !important;        /* alinha pelo topo quando body tem 2 linhas */
-    gap: 0 10px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 0 !important;
     border: 1px solid var(--border, #e8e4de) !important;
     border-left: 3px solid var(--accent, #2a6049) !important;
     border-radius: 14px !important;
     background: var(--surface, #fff) !important;
-    padding: 11px 12px 11px 10px !important;
+    padding: 11px 12px 11px 12px !important;
     margin: 0 0 5px !important;
     box-shadow: 0 1px 4px rgba(0,0,0,.05) !important;
     transition: transform .12s, box-shadow .12s;
@@ -4967,32 +4966,36 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     padding: 4px 2px !important; margin: 6px 0 2px !important;
   }
 
-  /* ── 4. Ícone de categoria (col 1) — centralizado verticalmente ── */
+  /* ── 4. Bubble de ícone — dentro do body-inner via flex ── */
   .tx-v2-cat-bubble {
     display: flex !important;
-    grid-column: 1; grid-row: 1;
-    margin-top: 2px;             /* alinha visualmente com a primeira linha de texto */
+    width: 40px !important; height: 40px !important;
+    flex-shrink: 0 !important;
   }
 
-  /* ── 5. Body wrapper — ocupa col 2 inteira ── */
+  /* ── 5. Body — cresce para ocupar o espaço disponível ── */
   #page-transactions tbody td.tx-v2-body {
-    grid-column: 2 !important; grid-row: 1 !important;
-    padding: 0 !important; min-width: 0 !important;
-    align-self: start !important; display: block !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    align-self: flex-start !important;
+    display: block !important;
   }
   .tx-v2-body-inner {
     display: flex !important;
     align-items: flex-start !important;
-    gap: 9px !important;
+    gap: 10px !important;
   }
   .tx-v2-body-text { display: block !important; min-width: 0; flex: 1; }
 
-  /* ── 6. Valor (col 3) — alinhado ao topo com o título ── */
+  /* ── 6. Valor — não encolhe, alinha à direita ── */
   #page-transactions tbody td.tx-v2-right {
-    grid-column: 3 !important; grid-row: 1 !important;
-    padding: 0 !important; text-align: right !important;
-    align-self: start !important; width: auto !important;
-    display: block !important; margin-top: 2px;
+    flex-shrink: 0 !important;
+    padding: 0 0 0 10px !important;
+    text-align: right !important;
+    align-self: flex-start !important;
+    display: block !important;
+    min-width: 80px !important;
   }
 
   /* Ações: ocultas — tap abre detalhe */
@@ -16150,16 +16153,13 @@ section[data-page="transactions"] .content {
   .page-header-bar{
     padding:0 12px !important;
   }
-  /* Cards: ícone ligeiramente menor, gap ajustado */
-  #page-transactions #txBody tr.tx-row-clickable,
-  #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)){
-    grid-template-columns: 36px minmax(0,1fr) minmax(72px,auto) !important;
-    gap: 0 8px !important;
-    padding: 10px 10px 10px 9px !important;
-  }
+  /* Bubble ligeiramente menor em telas pequenas */
   .tx-v2-cat-bubble{
     width: 36px !important; height: 36px !important;
     border-radius: 10px !important; font-size: 1rem !important;
+  }
+  #page-transactions tbody td.tx-v2-right {
+    min-width: 70px !important;
   }
   #page-transactions .tx-v2-amt{
     font-size: .88rem !important;
