@@ -19,7 +19,7 @@
 <meta name="format-detection" content="telephone=no">
 <title>Family Fintrack · Família inteligente, Finanças sob controle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
@@ -603,6 +603,10 @@
   <!-- FX RATES BAR -->
   <div id="fxRatesBadge" class="fx-bar" style="display:none" aria-label="Cotações de câmbio">
     <div class="fx-bar-inner">
+      <div class="fx-bar-family" id="fxBarFamily" style="display:none">
+        <svg class="fx-bar-family-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="fx-bar-family-text" id="fxBarFamilyText">—</span>
+      </div>
       <span class="fx-bar-label">Câmbio</span>
       <div class="fx-bar-rates" id="fxBarRates"></div>
       <button class="fx-bar-refresh" onclick="refreshFxRates()" id="fxBarRefreshBtn" title="Atualizar">🔄</button>
@@ -619,22 +623,7 @@
         <span></span>
         <button onclick="document.getElementById('dashMemberFilter').value='';document.getElementById('dashRelGroup').value='';loadDashboard()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.85rem;padding:0;line-height:1" title="Limpar filtro">✕</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
-        <!-- Nome da família ativa -->
-        <div id="dashFamilyName" style="display:flex;align-items:center;gap:6px;
-          font-size:.75rem;font-weight:700;color:var(--text2);
-          background:var(--surface2);border:1px solid var(--border);
-          border-radius:var(--r-sm);padding:5px 10px;
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--accent)"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span id="dashFamilyNameText">—</span>
-        </div>
-        <!-- Personalizar -->
-        <button class="btn btn-ghost btn-sm" onclick="openDashCustomModal()" title="Personalizar dashboard" style="font-size:.75rem;gap:5px;color:var(--muted);padding:5px 10px;flex-shrink:0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
-          Personalizar
-        </button>
-      </div>
+      <!-- family badge moved to FX bar; dashboard customize moved to page title bar -->
       <div class="grid-4 mb-4">
         <div class="stat-card"><div class="stat-accent"></div><div class="stat-label">Patrimônio Total</div><div class="stat-value text-accent" id="statTotal">—</div><div class="stat-sub">Todas as contas</div></div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--green)"></div><div class="stat-label">Receitas do Mês</div><div class="stat-value text-green" id="statIncome">—</div><div class="stat-sub">Mês atual</div></div>
