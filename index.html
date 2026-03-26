@@ -19,7 +19,7 @@
 <meta name="format-detection" content="telephone=no">
 <title>Family Fintrack · Família inteligente, Finanças sob controle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
@@ -570,27 +570,6 @@
         <button class="topbar-icon-btn" id="settingsNavTopbar" data-nav="settings" onclick="navigate('settings')" title="Configurações">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
-        <!-- Language quick-picker — matches topbar-icon-btn pattern -->
-        <div class="i18n-topbar-picker" id="topbarLangPicker" style="position:relative">
-          <button class="topbar-icon-btn" id="topbarLangBtn"
-            onclick="toggleLangPicker()" title="Idioma / Language">
-            <!-- Globe icon -->
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <!-- Active language badge — green dot with 2-letter code -->
-            <span id="topbarLangBadge" class="topbar-lang-badge">PT</span>
-          </button>
-          <div class="i18n-topbar-dropdown" id="topbarLangDropdown" style="display:none">
-            <button onclick="quickSetLang('pt')" class="i18n-dd-item" data-lang="pt">🇧🇷 Português</button>
-            <button onclick="quickSetLang('en')" class="i18n-dd-item" data-lang="en">🇺🇸 English</button>
-            <button onclick="quickSetLang('es')" class="i18n-dd-item" data-lang="es">🇪🇸 Español</button>
-            <button onclick="quickSetLang('fr')" class="i18n-dd-item" data-lang="fr">🇫🇷 Français</button>
-          </div>
-        </div>
         <!-- Sair -->
         <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
