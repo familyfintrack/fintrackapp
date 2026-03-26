@@ -266,6 +266,26 @@ function renderForecastTables(allItems, accounts) {
   if (!container) return;
   const today = new Date().toISOString().slice(0, 10);
 
+function _forecastDateParts(iso){
+  try {
+    const dt = new Date(`${String(iso || '').slice(0,10)}T12:00:00`);
+    if (Number.isNaN(dt.getTime())) return { weekday:'', day:'--', monthYear:'', short:'—' };
+    const locale = document?.documentElement?.lang || 'pt-BR';
+    const weekday = new Intl.DateTimeFormat(locale, { weekday:'short' }).format(dt).replace('.', '').toUpperCase();
+    const day = new Intl.DateTimeFormat(locale, { day:'2-digit' }).format(dt);
+    const month = new Intl.DateTimeFormat(locale, { month:'short' }).format(dt).replace('.', '').toUpperCase();
+    const year = new Intl.DateTimeFormat(locale, { year:'2-digit' }).format(dt);
+    return {
+      weekday,
+      day,
+      monthYear: `${month} · ${year}`,
+      short: `${day}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
+    };
+  } catch(_e){
+    return { weekday:'', day:'--', monthYear:'', short:'—' };
+  }
+}
+
   if (!accounts.length) {
     container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:12px">📅</div><p>Nenhuma transação no período selecionado.</p></div>';
     return;
@@ -288,6 +308,7 @@ function renderForecastTables(allItems, accounts) {
       realSum +
       txs.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 
+    let currentDateGroup = null;
     const rows = txs.map(t => {
       runningBalance += parseFloat(t.amount) || 0;
       const isPast   = t.date < today;
@@ -296,16 +317,26 @@ function renderForecastTables(allItems, accounts) {
       const isPos    = runningBalance > 0;
       const rowClass = isPast ? 'forecast-row-past' : isToday ? 'forecast-row-today' : '';
       const balClass = isNeg ? 'forecast-row-negative' : '';
-      // Category icon: show emoji from category if available, else 📅 for scheduled
       const _catIcon = t.categories?.icon || null;
       const _catColor = t.categories?.color || 'var(--accent)';
-      const dateMeta = t.isScheduled
-        ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon || '📅'}</span>`
-        : (_catIcon
-            ? `<span class="forecast-date-flag forecast-cat-icon" style="color:${_catColor}">${_catIcon}</span>`
-            : '<span class="forecast-date-flag">&nbsp;</span>');
-      const todayMarker = isToday ? '<span class="forecast-date-today">hoje</span>' : '<span class="forecast-date-today">&nbsp;</span>';
-      // Category shown as separate line below description
+      const todayMarker = isToday ? '<span class="forecast-date-today">Hoje</span>' : '';
+      const dateParts = _forecastDateParts(t.date);
+      const groupHeader = currentDateGroup !== t.date
+        ? (() => {
+            currentDateGroup = t.date;
+            return `<tr class="forecast-date-group-row ${isToday ? 'forecast-date-group-row--today' : ''}">
+              <td colspan="3">
+                <div class="forecast-date-group-pill">
+                  <div class="forecast-date-group-copy">
+                    <span class="forecast-date-group-main">${dateParts.weekday}</span>
+                    <span class="forecast-date-group-sub">${dateParts.short}</span>
+                  </div>
+                  ${todayMarker}
+                </div>
+              </td>
+            </tr>`;
+          })()
+        : '';
       const _catName  = t.categories?.name ? esc(t.categories.name) : null;
       const _catLine  = _catName
         ? `<div class="forecast-line forecast-category" style="color:${_catColor}"><span class="forecast-cat-dot" style="background:${_catColor}"></span>${_catIcon ? _catIcon + ' ' : ''}${_catName}</div>`
@@ -313,11 +344,13 @@ function renderForecastTables(allItems, accounts) {
       const payeeLine = t.payees?.name
         ? `<div class="forecast-line forecast-payee">${esc(t.payees.name)}</div>`
         : '';
-      return `<tr class="${rowClass} ${balClass} forecast-tx-row">
+      return `${groupHeader}<tr class="${rowClass} ${balClass} forecast-tx-row">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">
-          <div class="forecast-date-main">${fmtDate(t.date)}</div>
-          ${dateMeta}
-          ${todayMarker}
+          <div class="forecast-date-card forecast-date-card--compact" aria-label="${dateParts.short}">
+            <div class="forecast-date-weekday">${dateParts.weekday}</div>
+            <div class="forecast-date-daynum">${dateParts.day}</div>
+            <div class="forecast-date-monthyear">${dateParts.monthYear}</div>
+          </div>
         </td>
         <td class="forecast-desc-cell">
           <div class="forecast-line forecast-title">${esc(t.description||'')}</div>
