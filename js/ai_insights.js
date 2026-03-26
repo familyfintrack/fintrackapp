@@ -49,6 +49,7 @@ const _ai = {
   snapshotsLoading: false,
   snapshots: [],
   currentSnapshotId: null,
+  currentContext: null,
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -103,6 +104,7 @@ async function initAiInsightsPage() {
   // Render existing result if available
   if (_ai.analysisResult) _aiRenderAnalysis(_ai.analysisResult);
   if (_ai.chatHistory.length) _aiRenderChatHistory();
+  _aiRefreshSnapshotButton();
 }
 
 function _aiShowTab(tab) {
@@ -112,6 +114,15 @@ function _aiShowTab(tab) {
     if (btn)   btn.classList.toggle('active', t === tab);
     if (panel) panel.style.display = t === tab ? '' : 'none';
   });
+}
+
+
+function _aiRefreshSnapshotButton() {
+  const btn = document.getElementById('aiSaveSnapshotBtn');
+  if (!btn) return;
+  const canSave = !!(_ai.analysisResult && _ai.financialContext);
+  btn.disabled = !canSave || !!_ai.analysisLoading;
+  btn.title = canSave ? 'Salvar snapshot da família' : 'Gere uma análise primeiro';
 }
 
 function _aiPopulateFilters() {
@@ -369,9 +380,11 @@ async function openAiSnapshot(snapshotId) {
     return;
   }
   _ai.financialContext = ctx;
+  _ai.currentContext = ctx;
   _ai.analysisResult = result;
   _ai.currentSnapshotId = row.id;
   _aiRenderAnalysis(result);
+  _aiRefreshSnapshotButton();
   _aiShowTab('analysis');
 }
 window.openAiSnapshot = openAiSnapshot;
@@ -802,15 +815,13 @@ async function runAiAnalysis() {
       return;
     }
     const result = await _callGeminiAnalysis(apiKey, ctx);
+    _ai.financialContext = ctx;
+    _ai.currentContext = ctx;
     _ai.analysisResult = result;
+    _ai.currentSnapshotId = null;
     _aiRenderAnalysis(result);
-    try {
-      await _aiSaveSnapshot(ctx, result);
-      await loadAiSnapshots();
-    } catch (snapErr) {
-      console.warn('[AIInsights] snapshot save:', snapErr?.message || snapErr);
-    }
-    toast(t('ai.analysis_done'), 'success');
+    _aiRefreshSnapshotButton();
+    toast('Análise pronta. Use “Salvar snapshot” para guardar esta versão da família.', 'success');
   } catch (e) {
     _aiSetAnalysisState('error', e.message);
     toast('Erro na análise: ' + e.message, 'error');
@@ -820,8 +831,43 @@ async function runAiAnalysis() {
   }
 }
 
+
+async function saveCurrentAiSnapshot() {
+  if (_ai.analysisLoading) return;
+  const ctx = _ai.currentContext || _ai.financialContext;
+  const result = _ai.analysisResult;
+  if (!ctx || !result) {
+    toast('Gere uma análise antes de salvar um snapshot.', 'warning');
+    _aiRefreshSnapshotButton();
+    return;
+  }
+  const btn = document.getElementById('aiSaveSnapshotBtn');
+  const prevHtml = btn ? btn.innerHTML : '';
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Salvando...';
+    }
+    const snapshotId = await _aiSaveSnapshot(ctx, result);
+    if (!snapshotId) {
+      toast('Não foi possível salvar o snapshot. Verifique se o SQL foi aplicado no Supabase.', 'warning');
+      return;
+    }
+    await loadAiSnapshots();
+    _ai.currentSnapshotId = snapshotId;
+    toast('Snapshot da família salvo com sucesso.', 'success');
+  } catch (err) {
+    console.warn('[AIInsights] manual snapshot save:', err?.message || err);
+    toast('Erro ao salvar snapshot: ' + (err?.message || err), 'error');
+  } finally {
+    if (btn) btn.innerHTML = prevHtml || '💾 Salvar snapshot';
+    _aiRefreshSnapshotButton();
+  }
+}
+
 function _aiSetAnalysisState(state, msg) {
   const container = document.getElementById('aiAnalysisResult');
+  _aiRefreshSnapshotButton();
   if (!container) return;
 
   if (state === 'loading') {
