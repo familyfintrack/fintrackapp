@@ -36,7 +36,7 @@ async function applyAiInsightsFeature() {
 
 const _ai = {
   // Filtros ativos da tela de Análise
-  filters: { dateFrom: '', dateTo: '', memberId: '', accountId: '', categoryId: '', payeeId: '' },
+  filters: { dateFrom: '', dateTo: '', memberId: '', accountId: '', accountIds: [], categoryId: '', categoryIds: [], payeeId: '' },
   // Resultado da última análise
   analysisResult: null,
   // Histórico do chat
@@ -155,13 +155,34 @@ function _aiPopulateFilters() {
 //  SEÇÃO 2 — COLETA E AGREGAÇÃO DE DADOS FINANCEIROS (pelo app, não pela IA)
 // ══════════════════════════════════════════════════════════════════════════
 
+function _aiGetSelectedValues(selectId) {
+  const el = document.getElementById(selectId);
+  if (!el) return [];
+  return Array.from(el.selectedOptions || []).map(o => String(o.value || '').trim()).filter(Boolean);
+}
+
+function _aiMatchesSelectedIds(value, selectedIds) {
+  if (!Array.isArray(selectedIds) || !selectedIds.length) return true;
+  return selectedIds.includes(String(value || ''));
+}
+
+function _aiBuildAccountOrFilter(accountIds) {
+  const ids = (accountIds || []).map(v => String(v || '').trim()).filter(Boolean);
+  if (!ids.length) return '';
+  return ids.flatMap(id => [`account_id.eq.${id}`, `transfer_to_account_id.eq.${id}`]).join(',');
+}
+
 function _aiGetFilters() {
+  const accountIds = _aiGetSelectedValues('aiAccountFilter');
+  const categoryIds = _aiGetSelectedValues('aiCategoryFilter');
   const filters = {
     dateFrom: document.getElementById('aiDateFrom')?.value || '',
     dateTo: document.getElementById('aiDateTo')?.value || '',
     memberId: document.getElementById('aiMemberFilter')?.value || '',
-    accountId: document.getElementById('aiAccountFilter')?.value || '',
-    categoryId: document.getElementById('aiCategoryFilter')?.value || '',
+    accountIds,
+    accountId: accountIds[0] || '',
+    categoryIds,
+    categoryId: categoryIds[0] || '',
     payeeId: document.getElementById('aiPayeeFilter')?.value || '',
   };
   _ai.filters = { ...filters };
@@ -178,9 +199,9 @@ function _aiTxMatchesMember(tx, memberId) {
 
 function _aiScheduledMatchesFilters(s, filters) {
   if (!s || s.status !== 'active') return false;
-  if (filters.accountId && s.account_id !== filters.accountId && s.transfer_to_account_id !== filters.accountId) return false;
+  if (!_aiMatchesSelectedIds(s.account_id, filters.accountIds) && !_aiMatchesSelectedIds(s.transfer_to_account_id, filters.accountIds)) return false;
   if (filters.payeeId && s.payee_id !== filters.payeeId) return false;
-  if (filters.categoryId && s.category_id !== filters.categoryId) return false;
+  if (!_aiMatchesSelectedIds(s.category_id, filters.categoryIds)) return false;
   if (filters.memberId) {
     const mids = Array.isArray(s.family_member_ids) ? s.family_member_ids : [];
     if (s.family_member_id !== filters.memberId && !mids.includes(filters.memberId)) return false;
@@ -358,7 +379,7 @@ window.openAiSnapshot = openAiSnapshot;
 
 async function _aiCollectFinancialContext() {
   const filters = _aiGetFilters();
-  const { dateFrom, dateTo, memberId, accountId, categoryId, payeeId } = filters;
+  const { dateFrom, dateTo, memberId, accountIds = [], categoryIds = [], payeeId } = filters;
 
   let q = famQ(sb.from('transactions').select(
     'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,' +
@@ -368,9 +389,10 @@ async function _aiCollectFinancialContext() {
 
   if (dateFrom) q = q.gte('date', dateFrom);
   if (dateTo) q = q.lte('date', dateTo);
-  if (accountId) q = q.or(`account_id.eq.${accountId},transfer_to_account_id.eq.${accountId}`);
+  const accountOrFilter = _aiBuildAccountOrFilter(accountIds);
+  if (accountOrFilter) q = q.or(accountOrFilter);
   if (payeeId) q = q.eq('payee_id', payeeId);
-  if (categoryId) q = q.eq('category_id', categoryId);
+  if (categoryIds.length) q = q.in('category_id', categoryIds);
   q = q.order('date', { ascending: false }).limit(3000);
   const { data: txRows, error } = await q;
   if (error) throw new Error('Erro ao carregar transações: ' + error.message);
@@ -386,9 +408,9 @@ async function _aiCollectFinancialContext() {
     let hq = famQ(sb.from('transactions').select(
       'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,transfer_to_account_id,family_member_id,family_member_ids,currency,exchange_rate'
     ).eq('status','confirmed')).gte('date', histFromStr).lte('date', histTo.toISOString().slice(0,10));
-    if (accountId) hq = hq.or(`account_id.eq.${accountId},transfer_to_account_id.eq.${accountId}`);
+    if (accountOrFilter) hq = hq.or(accountOrFilter);
     if (payeeId) hq = hq.eq('payee_id', payeeId);
-    if (categoryId) hq = hq.eq('category_id', categoryId);
+    if (categoryIds.length) hq = hq.in('category_id', categoryIds);
     const { data: hd } = await hq.order('date', { ascending:false }).limit(3000);
     histRows = (hd || []).filter(t => _aiTxMatchesMember(t, memberId));
   }
@@ -626,7 +648,7 @@ async function _aiCollectFinancialContext() {
   });
 
   const coverageRatio = baseExpense > 0 ? Math.min(1, recurringCommitments.monthly_expense / Math.max(baseExpense, 1)) : 0;
-  const filterSpread = [memberId, accountId, categoryId, payeeId].filter(Boolean).length;
+  const filterSpread = [memberId, payeeId].filter(Boolean).length + (accountIds.length ? 1 : 0) + (categoryIds.length ? 1 : 0);
   for (let i = 1; i <= 6; i++) {
     const d = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+i, 1);
     const ym = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
@@ -685,7 +707,7 @@ async function _aiCollectFinancialContext() {
     return { date:t.date, description:t.description || '—', amount_brl:+cls.brlAmt.toFixed(2), type:cls.type, category:catMap[t.category_id]?.name || null, payee:payMap[t.payee_id]?.name || null };
   }).sort((a,b)=>a.date.localeCompare(b.date));
 
-  const accountBalances = (state.accounts || []).filter(a => !accountId || a.id === accountId).map(a => ({ name:a.name, balance:+(a.balance || 0).toFixed(2), currency:a.currency, type:a.type, is_credit_card:a.type === 'cartao_credito' }));
+  const accountBalances = (state.accounts || []).filter(a => !accountIds.length || accountIds.includes(a.id)).map(a => ({ name:a.name, balance:+(a.balance || 0).toFixed(2), currency:a.currency, type:a.type, is_credit_card:a.type === 'cartao_credito' }));
   const byAccount = {};
   filtered.forEach(t => {
     const cls = _classifyTx(t); const accName = accMap[t.account_id]?.name || 'Desconhecida';
