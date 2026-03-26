@@ -211,6 +211,13 @@ const active   = _dbt.debts.filter(d => d.status === 'active');
         '<span class="page-header-bar-title">' + (t('dbt.title') || 'Dívidas') + '</span>' +
       '</div>' +
       '<div class="page-header-bar-right">' +
+        '<button class="page-header-action" onclick="openDebtTransactionLauncher()">' +
+          '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<line x1="12" y1="5" x2="12" y2="19"/>' +
+            '<line x1="5" y1="12" x2="19" y2="12"/>' +
+          '</svg>' +
+          'Novo Lançamento' +
+        '</button>' +
         '<button class="page-header-action" onclick="openDebtModal()">' +
           '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
             '<line x1="12" y1="5" x2="12" y2="19"/>' +
@@ -1287,6 +1294,94 @@ function _confirmAmortization() {
   toast(t('dbt.amort_set'), 'info');
 }
 window._confirmAmortization = _confirmAmortization;
+
+
+async function openDebtTransactionLauncher() {
+  if (!_dbt.loaded) await loadDebts();
+  const activeDebts = (_dbt.debts || []).filter(d => d.status === 'active');
+  if (!activeDebts.length) { toast('Nenhuma dívida ativa para amortizar.', 'warning'); return; }
+  if (activeDebts.length === 1) {
+    await _launchDebtAmortizationTransaction(activeDebts[0].id);
+    return;
+  }
+
+  let modal = document.getElementById('debtTxLauncherModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'debtTxLauncherModal';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:420px">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+          <span class="modal-title">Novo lançamento de amortização</span>
+          <button class="modal-close" onclick="closeModal('debtTxLauncherModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Selecione a dívida</label>
+            <select class="form-select" id="debtTxLauncherSelect"></select>
+          </div>
+          <p style="margin:10px 0 0;color:var(--muted);font-size:.82rem">O lançamento abrirá já vinculado para amortização da dívida selecionada.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('debtTxLauncherModal')">Cancelar</button>
+          <button class="btn btn-primary" onclick="_confirmDebtTransactionLauncher()">Continuar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  const select = modal.querySelector('#debtTxLauncherSelect');
+  if (select) {
+    select.innerHTML = activeDebts.map(d => `<option value="${d.id}">${esc(d.name)} · ${fmt(_debtCurrentBalance(d), d.currency)}</option>`).join('');
+  }
+  openModal('debtTxLauncherModal');
+}
+window.openDebtTransactionLauncher = openDebtTransactionLauncher;
+
+async function _confirmDebtTransactionLauncher() {
+  const debtId = document.getElementById('debtTxLauncherSelect')?.value;
+  if (!debtId) return;
+  closeModal('debtTxLauncherModal');
+  await _launchDebtAmortizationTransaction(debtId);
+}
+window._confirmDebtTransactionLauncher = _confirmDebtTransactionLauncher;
+
+async function _launchDebtAmortizationTransaction(debtId) {
+  const debt = (_dbt.debts || []).find(d => d.id === debtId);
+  if (!debt) { toast('Dívida não encontrada.', 'error'); return; }
+
+  await _ensureAmortizacaoCategory();
+  if (typeof openTransactionModal !== 'function') return;
+
+  closeModal('debtDetailModal');
+  await openTransactionModal();
+  try { setTxType?.('expense'); } catch(_) {}
+
+  const payeeId = debt.creditor_payee_id || debt.creditor?.id || '';
+  if (payeeId && typeof setPayeeField === 'function') setPayeeField(payeeId, 'tx');
+
+  const amortCat = (state.categories || []).find(c =>
+    c.name?.toLowerCase().includes('amortiza') || c.slug === 'amortizacao_divida'
+  );
+  if (amortCat && typeof setCatPickerValue === 'function') setCatPickerValue(amortCat.id);
+
+  window._pendingAmortDebtId = debt.id;
+  const titleEl = document.getElementById('txModalTitle');
+  if (titleEl) titleEl.textContent = 'Nova Amortização';
+
+  let banner = document.getElementById('debtAmortizationBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'debtAmortizationBanner';
+    banner.className = 'dbt-amort-banner';
+    const memoGroup = document.getElementById('txMemo')?.closest('.form-group');
+    if (memoGroup) memoGroup.parentNode.insertBefore(banner, memoGroup);
+    else document.getElementById('txForm')?.appendChild(banner);
+  }
+  banner.style.display = '';
+  banner.innerHTML = `<div class="dbt-amort-banner-ok">✓ ${t('dbt.amort_linked')} — ${esc(debt.name || '')}</div>`;
+}
 
 // Called after saveTransaction() successfully posts the expense leg
 async function postDebtAmortizationEntry(txAmount, txDate, txId) {

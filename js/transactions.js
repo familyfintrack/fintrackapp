@@ -371,17 +371,6 @@ async function buildAccountRunningBalanceMap(accountId) {
   });
   return map;
 }
-
-function buildCategoryLineHtml(t) {
-  const categoryName = t?.categories?.name ? esc(t.categories.name) : '';
-  const categoryIcon = t?.categories?.icon || '';
-  const categoryColor = t?.categories?.color || '';
-  const iconHtml = categoryIcon
-    ? `<span class="tx-v2-cat-icon" style="${categoryColor ? `color:${categoryColor}` : ''}">${categoryIcon}</span>`
-    : '';
-  return categoryName ? `<div class="tx-v2-category">${iconHtml}${categoryName}</div>` : '';
-}
-
 function txRow(t, showAccount=true, runningBalance=null) {
   const isPending = (t.status||'confirmed') === 'pending';
 
@@ -397,7 +386,14 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const MON = _MONS[_lang] || _MONS.pt;
   const dateStr = `<span class="tx-date-day">${d.getDate()}</span><span class="tx-date-mon">${MON[d.getMonth()]}</span>`;
 
-  const categoryLine = buildCategoryLineHtml(t);
+  const _catIcon  = t.categories?.icon  || '';
+  const _catColor = t.categories?.color || '';
+  const _catIconHtml = _catIcon
+    ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
+    : '';
+  const categoryLine = t.categories?.name
+    ? `<div class="tx-v2-category">${_catIconHtml}${esc(t.categories.name)}</div>`
+    : '';
 
   // Amount
   const cur = (t.currency || t.accounts?.currency || 'BRL').toUpperCase();

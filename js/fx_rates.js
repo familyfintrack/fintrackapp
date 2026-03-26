@@ -207,7 +207,18 @@ function _renderFxBadge() {
   const ratesEl  = document.getElementById('fxBarRates');
   const ageEl    = document.getElementById('fxBarAge');
   const refreshEl= document.getElementById('fxBarRefreshBtn');
+  const familyEl = document.getElementById('fxBarFamily');
+  const familyTextEl = document.getElementById('fxBarFamilyText');
   if (!el) return;
+
+  try {
+    const fid = currentUser?.family_id;
+    const familyName = fid
+      ? ((typeof _familyDisplayName === 'function' ? _familyDisplayName(fid, '') : '') || (currentUser?.families || []).find(f => String(f.id) === String(fid))?.name || '')
+      : '';
+    if (familyEl) familyEl.style.display = familyName ? '' : 'none';
+    if (familyTextEl) familyTextEl.textContent = familyName || '';
+  } catch (_) {}
 
   const wanted = _usedCurrencies();
   const pairs = wanted

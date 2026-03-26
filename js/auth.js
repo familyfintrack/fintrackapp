@@ -3834,6 +3834,7 @@ async function switchFamily(familyId) {
     currentUser.can_manage_family = r === 'admin' || r === 'owner';
   }
   localStorage.setItem('ft_active_family_' + currentUser.id, familyId);
+  try { _renderFxBadge?.(); } catch(_) {}
 
   // ── 4. Recarregar dados essenciais (force=true para ignorar cache) ─────────
   try {
