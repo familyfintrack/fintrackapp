@@ -1301,10 +1301,44 @@ body.tx-compact .tx-table .badge{
   transform: scale(.95);
 }
 
-/* Mobile layout for transaction rows: ver style.css bloco principal */
-/* Este bloco legado foi substituído. Mantido apenas para .tx-table não usadas na página principal. */
+/* Better mobile layout for transaction rows */
 @media (max-width: 720px){
-  /* .tx-table (legado) — sem conflito com #page-transactions */
+  .tx-table thead{ display:none; }
+  .tx-table, .tx-table tbody, .tx-table tr, .tx-table td{ display:block; width:100%; }
+  .tx-table tr{
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:10px 10px;
+    margin:10px 0;
+    background:var(--card,#fff);
+  }
+  .tx-table td{
+    border:none !important;
+    padding:4px 2px !important;
+  }
+  .tx-table td:nth-child(1){ /* date */
+    color:var(--muted);
+    font-size:.78rem;
+    margin-bottom:2px;
+  }
+  .tx-table td:nth-child(2){ /* account */
+    display:inline-block;
+    margin-bottom:6px;
+  }
+  .tx-table td:nth-child(3){ /* description */
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .tx-table td:nth-child(4){ /* payee/category */
+    color:var(--muted);
+    font-size:.8rem;
+    margin-bottom:6px;
+  }
+  .tx-table td:last-child{ /* amount */
+    text-align:right !important;
+    font-size:1.05rem;
+    font-weight:700;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
