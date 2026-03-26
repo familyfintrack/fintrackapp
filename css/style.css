@@ -16101,21 +16101,20 @@ section[data-page="transactions"] .content {
     letter-spacing:.03em;
   }
 
-  /* Regular rows become tighter mobile cards */
+  /* Mobile cards balanced like a compact ledger: date | body | amount */
   #page-transactions #txBody tr.tx-row-clickable{
     display:grid !important;
-    grid-template-columns:48px minmax(0,1fr);
+    grid-template-columns:52px minmax(0,1fr) auto;
     grid-template-areas:
-      "date right"
-      "body body";
-    gap:5px 8px;
-    align-items:start;
-    margin:6px 0;
-    padding:9px 10px;
-    border:1px solid var(--border);
-    border-radius:12px;
+      "date body right";
+    gap:10px;
+    align-items:center;
+    margin:8px 0;
+    padding:12px 14px;
+    border:1px solid rgba(24,56,40,.10);
+    border-radius:22px;
     background:var(--surface);
-    box-shadow:0 1px 3px rgba(0,0,0,.035);
+    box-shadow:0 3px 12px rgba(17,24,39,.05);
   }
   #page-transactions #txBody tr.tx-row-clickable td{
     padding:0 !important;
@@ -16125,80 +16124,105 @@ section[data-page="transactions"] .content {
   }
   #page-transactions #txBody td.tx-v2-date{
     grid-area:date;
-    width:48px !important;
+    width:52px !important;
     text-align:center;
-    padding-top:1px !important;
+    align-self:center;
+    color:var(--text2);
   }
   #page-transactions #txBody td.tx-v2-date .tx-date-day{
-    font-size:.98rem;
+    display:block;
+    font-size:1.02rem;
     line-height:.95;
+    font-weight:800;
+    letter-spacing:-.02em;
+    color:var(--text);
   }
   #page-transactions #txBody td.tx-v2-date .tx-date-mon{
-    margin-top:1px;
-    font-size:.58rem;
-    letter-spacing:.06em;
+    display:block;
+    margin-top:3px;
+    font-size:.54rem;
+    letter-spacing:.09em;
+    font-weight:800;
+    color:var(--muted);
   }
   #page-transactions #txBody td.tx-v2-right{
     grid-area:right;
     width:auto !important;
+    min-width:112px;
     text-align:right;
     justify-self:end;
+    align-self:center;
     white-space:normal;
-  }
-  #page-transactions #txBody td.tx-v2-right{
-    min-width:92px;
   }
   #page-transactions #txBody td.tx-v2-body{
     grid-area:body;
     width:auto !important;
     max-width:100%;
+    min-width:0;
+    align-self:center;
   }
 
   #page-transactions .tx-v2-title{
     white-space:normal;
     overflow:visible;
     text-overflow:clip;
-    line-height:1.18;
+    line-height:1.12;
     font-size:.84rem;
-    align-items:flex-start;
+    font-weight:800;
+    align-items:center;
     flex-wrap:wrap;
     gap:4px;
+    margin:0;
   }
   #page-transactions .tx-v2-category{
-    margin-top:2px;
+    margin-top:5px;
     white-space:normal;
     overflow:visible;
     text-overflow:clip;
-    font-size:.72rem;
-    line-height:1.15;
+    font-size:.74rem;
+    line-height:1.1;
+    color:var(--text2);
+    display:flex;
+    align-items:center;
+    gap:6px;
   }
   #page-transactions .tx-v2-meta{
-    margin-top:3px;
-    flex-wrap:wrap;
+    margin-top:6px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
     white-space:normal;
     overflow:visible;
-    row-gap:2px;
-    column-gap:4px;
-    font-size:.68rem;
-    line-height:1.1;
+    row-gap:4px;
+    column-gap:0;
+    font-size:.69rem;
+    line-height:1.08;
+  }
+  #page-transactions .tx-v2-dot{
+    display:none;
   }
   #page-transactions .tx-v2-acct-pill{
     max-width:100%;
+    font-size:.68rem;
+    padding:3px 9px;
   }
   #page-transactions .tx-v2-pay{
     max-width:100%;
+    font-size:.71rem;
+    color:var(--muted);
   }
   #page-transactions .tx-v2-amt{
-    font-size:.92rem;
+    font-size:.96rem;
     line-height:1;
+    font-weight:800;
   }
   #page-transactions .tx-v2-amt-wrap{
     align-items:flex-end;
-    gap:2px;
+    gap:3px;
   }
   #page-transactions .tx-v2-bal{
-    margin-top:1px;
-    font-size:.7rem;
+    margin-top:3px;
+    font-size:.68rem;
     line-height:1.05;
   }
   #page-transactions .tx-v2-inline-actions{
@@ -16231,12 +16255,22 @@ section[data-page="transactions"] .content {
     padding:0 12px !important;
   }
   #page-transactions #txBody tr.tx-row-clickable{
-    grid-template-columns:44px minmax(0,1fr);
-    gap:4px 7px;
-    padding:8px 9px;
+    grid-template-columns:46px minmax(0,1fr) auto;
+    gap:8px;
+    padding:11px 12px;
+    border-radius:20px;
+  }
+  #page-transactions #txBody td.tx-v2-date{
+    width:46px !important;
+  }
+  #page-transactions #txBody td.tx-v2-right{
+    min-width:98px;
   }
   #page-transactions .tx-v2-amt{
-    font-size:.88rem;
+    font-size:.9rem;
+  }
+  #page-transactions .tx-v2-title{
+    font-size:.8rem;
   }
 }
 
@@ -16927,138 +16961,5 @@ section[data-page="transactions"] .content {
   }
   #page-transactions .tx-filter-chips-row{
     gap:7px;
-  }
-}
-
-/* === 2026-03-26 mobile transactions card compactness refinement === */
-@media (max-width: 640px){
-  /* grouped-by-date list: remove per-card date column to save vertical and horizontal space */
-  #page-transactions #txBody td.tx-v2-date,
-  #page-transactions #txBody tr.tx-row-clickable td.tx-v2-date{
-    display:none !important;
-  }
-
-  /* compact, consistent mobile cards */
-  #page-transactions #txBody tr.tx-row-clickable{
-    grid-template-columns:minmax(0,1fr) auto !important;
-    grid-template-areas:
-      "body right" !important;
-    gap:6px 10px !important;
-    align-items:start !important;
-    margin:5px 0 !important;
-    padding:8px 10px !important;
-    border-radius:11px !important;
-    min-height:0 !important;
-  }
-
-  #page-transactions #txBody td.tx-v2-body{
-    grid-area:body !important;
-    min-width:0 !important;
-    padding-right:2px !important;
-  }
-
-  #page-transactions #txBody td.tx-v2-right{
-    grid-area:right !important;
-    min-width:88px !important;
-    width:auto !important;
-    align-self:start !important;
-    text-align:right !important;
-  }
-
-  #page-transactions .tx-v2-title{
-    margin:0 !important;
-    font-size:.83rem !important;
-    line-height:1.14 !important;
-    font-weight:700 !important;
-    display:flex;
-    align-items:flex-start;
-    gap:4px;
-  }
-
-  #page-transactions .tx-v2-category{
-    margin-top:2px !important;
-    font-size:.69rem !important;
-    line-height:1.08 !important;
-    opacity:.9;
-  }
-
-  #page-transactions .tx-v2-meta{
-    margin-top:4px !important;
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:4px 6px !important;
-    font-size:.66rem !important;
-    line-height:1.05 !important;
-  }
-
-  #page-transactions .tx-v2-dot{
-    opacity:.45;
-  }
-
-  #page-transactions .tx-v2-acct-pill{
-    padding:1px 8px !important;
-    font-size:.64rem !important;
-    line-height:1.1 !important;
-  }
-
-  #page-transactions .tx-v2-acct-pill::before{
-    margin-right:4px !important;
-    font-size:.55rem !important;
-  }
-
-  #page-transactions .tx-v2-pay{
-    font-size:.66rem !important;
-    line-height:1.05 !important;
-  }
-
-  #page-transactions .tx-v2-amt-wrap{
-    gap:1px !important;
-    align-items:flex-end !important;
-  }
-
-  #page-transactions .tx-v2-amt{
-    font-size:.86rem !important;
-    line-height:1 !important;
-    font-weight:800 !important;
-    letter-spacing:-.01em;
-  }
-
-  #page-transactions .tx-v2-brl,
-  #page-transactions .tx-v2-bal{
-    margin-top:0 !important;
-    font-size:.66rem !important;
-    line-height:1.02 !important;
-  }
-
-  #page-transactions .tx-v2-clip,
-  #page-transactions .tx-reconcile-badge,
-  #page-transactions .tx-v2-pend{
-    transform:scale(.92);
-    transform-origin:center;
-  }
-
-  #page-transactions #txBody tr.tx-date-header-row{
-    margin:10px 0 6px !important;
-  }
-
-  #page-transactions #txBody tr.tx-date-header-row .tx-date-header-cell{
-    font-size:.76rem !important;
-    letter-spacing:.035em !important;
-  }
-}
-
-@media (max-width: 420px){
-  #page-transactions #txBody tr.tx-row-clickable{
-    gap:5px 8px !important;
-    padding:7px 9px !important;
-  }
-
-  #page-transactions .tx-v2-title{
-    font-size:.8rem !important;
-  }
-
-  #page-transactions .tx-v2-amt{
-    font-size:.82rem !important;
   }
 }
