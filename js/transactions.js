@@ -411,11 +411,9 @@ function txRow(t, showAccount=true, runningBalance=null) {
     : '';
 
   // Meta line: Conta · Beneficiário
-  // On mobile, always keep the account visible before the payee for better scanability.
-  const forceMobileAccount = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
   const metaParts = [];
-  if ((showAccount || forceMobileAccount) && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
-  if (t.payees?.name) metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
+  if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
+  if (t.payees?.name)                  metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
   const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
