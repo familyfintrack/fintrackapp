@@ -449,10 +449,6 @@ function txRow(t, showAccount=true, runningBalance=null) {
   }
 
   // ── Modo normal ──
-  const reconcileBtn = `<button class="tx-reconcile-btn${isReconciled?' reconciled':''}"
-    title="${isReconciled?'Desmarcar reconciliação':'Marcar como reconciliada'}"
-    onclick="event.stopPropagation();toggleReconcile('${t.id}',this)">${isReconciled?'✓ Rec':'○ Rec'}</button>`;
-
   return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${isReconciled?' tx-reconciled':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
     <td class="tx-v2-date">${dateStr}${pendDot}</td>
     <td class="tx-v2-body">
@@ -463,7 +459,6 @@ function txRow(t, showAccount=true, runningBalance=null) {
     <td class="tx-v2-right">
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
       ${balHtml}
-      <div class="tx-v2-inline-actions" onclick="event.stopPropagation()">${reconcileBtn}</div>
     </td>
   </tr>`;
 }
@@ -474,6 +469,8 @@ function txRow(t, showAccount=true, runningBalance=null) {
 function enterReconcileMode() {
   state.reconcileMode = true;
   state.reconcileChecked = new Set();
+  document.body.classList.add('reconcile-mode');
+  document.getElementById('page-transactions')?.classList.add('reconcile-mode');
   // Esconde botão de entrada, mostra banner
   const btn = document.getElementById('btnEnterReconcile');
   if (btn) btn.style.display = 'none';
@@ -486,6 +483,8 @@ function enterReconcileMode() {
 function exitReconcileMode(committed) {
   state.reconcileMode = false;
   state.reconcileChecked = new Set();
+  document.body.classList.remove('reconcile-mode');
+  document.getElementById('page-transactions')?.classList.remove('reconcile-mode');
   const btn = document.getElementById('btnEnterReconcile');
   if (btn) btn.style.display = '';
   const banner = document.getElementById('reconcileBanner');
