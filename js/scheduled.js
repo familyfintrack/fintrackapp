@@ -1040,8 +1040,14 @@ async function saveScheduled() {
     fxRate = (fxMode === 'fixed' && raw > 0) ? raw : null;
   }
 
+  const scDescEl = document.getElementById('scDesc');
+  let autoScDesc = scDescEl?.value?.trim() || '';
+  if (!autoScDesc && typeof ensureTransactionDescription === 'function') {
+    autoScDesc = (await ensureTransactionDescription(scDescEl)).trim();
+  }
+
   const data = {
-    description: document.getElementById('scDesc').value.trim(),
+    description: autoScDesc,
     type,
     amount: (type==='expense'||isScTransfer) ? -Math.abs(amount) : Math.abs(amount),
     currency: _getScSelectedCurrency() || (()=>{const _a=(state.accounts||[]).find(a=>a.id===document.getElementById('scAccountId').value);return _a?.currency||'BRL';})(),

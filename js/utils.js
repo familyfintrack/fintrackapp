@@ -696,3 +696,115 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+/* ═══════════════════════════════════════
+   AI AUTO-DESCRIPTION (shared desktop + mobile)
+═══════════════════════════════════════ */
+function _afdClean(v) {
+  return String(v || '').replace(/\s+/g, ' ').trim();
+}
+
+function _afdTitle(v) {
+  const s = _afdClean(v);
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function buildAutoDescriptionFallback(categoryName, payeeName, memberName) {
+  const cat = _afdTitle(categoryName);
+  const pay = _afdTitle(payeeName);
+  const mem = _afdTitle(memberName);
+  if (cat && pay && mem) return `${cat} do ${mem} no ${pay}`;
+  if (cat && pay) return `${cat} no ${pay}`;
+  if (cat && mem) return `${cat} do ${mem}`;
+  return cat || pay || mem || 'Lançamento';
+}
+
+async function generateAutoTransactionDescription({ categoryName, payeeName, memberName } = {}) {
+  const fallback = buildAutoDescriptionFallback(categoryName, payeeName, memberName);
+  const cat = _afdClean(categoryName);
+  const pay = _afdClean(payeeName);
+  const mem = _afdClean(memberName);
+  if (!cat && !pay && !mem) return fallback;
+
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    if (!apiKey || !apiKey.startsWith('AIza')) return fallback;
+
+    const prompt = `Você cria descrições curtas e padronizadas para lançamentos financeiros.
+Retorne SOMENTE a descrição final, sem aspas, sem markdown, sem explicações.
+
+REGRA DE FORMATO PREFERENCIAL:
+- Se houver categoria e beneficiário: "<Categoria> no <Beneficiário>"
+- Se houver categoria, beneficiário e membro: "<Categoria> do <Membro> no <Beneficiário>"
+- Preserve nomes próprios corretamente.
+- Seja curto, direto e natural em português do Brasil.
+- Não invente informação além dos campos fornecidos.
+- Não use ponto final.
+- Máximo de 60 caracteres.
+
+DADOS:
+Categoria: ${cat || '(vazio)'}
+Beneficiário: ${pay || '(vazio)'}
+Membro: ${mem || '(vazio)'}
+
+Exemplos válidos:
+Supermercado no Pão de Açúcar
+Supermercado do Décio no Pão de Açúcar
+Farmácia na Drogasil
+Presente da Chloe na Amazon`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 80 }
+      })
+    });
+    if (!resp.ok) return fallback;
+
+    const json = await resp.json().catch(() => null);
+    const text = _afdClean(json?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join(' ') || '');
+    if (!text) return fallback;
+
+    const cleaned = text.replace(/^['"“”]+|['"“”]+$/g, '').replace(/\s+/g, ' ').trim();
+    if (!cleaned || cleaned.length > 80) return fallback;
+    return cleaned;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+async function ensureTransactionDescription(input) {
+  const el = typeof input === 'string' ? document.getElementById(input) : input;
+  const current = _afdClean(el?.value);
+  if (current) return current;
+
+  const categoryId = document.getElementById('txCategoryId')?.value || document.getElementById('scCategoryId')?.value || '';
+  const payeeId    = document.getElementById('txPayeeId')?.value    || document.getElementById('scPayeeId')?.value    || '';
+
+  let memberId = null;
+  if (typeof getFmcMultiPickerSelected === 'function') {
+    const txIds = getFmcMultiPickerSelected('txFamilyMemberPicker');
+    const scIds = getFmcMultiPickerSelected('scFamilyMemberPicker');
+    memberId = (txIds && txIds[0]) || (scIds && scIds[0]) || null;
+  }
+  memberId = memberId || document.getElementById('txFamilyMember')?.value || null;
+
+  const categoryName = (state.categories || []).find(c => c.id === categoryId)?.name || '';
+  const payeeName    = (state.payees || []).find(p => p.id === payeeId)?.name || '';
+  const memberName   = (typeof getFamilyMemberById === 'function' && memberId)
+    ? (getFamilyMemberById(memberId)?.name || '')
+    : '';
+
+  const generated = await generateAutoTransactionDescription({ categoryName, payeeName, memberName });
+  if (el && generated) el.value = generated;
+  return generated;
+}
+
+window.buildAutoDescriptionFallback = buildAutoDescriptionFallback;
+window.generateAutoTransactionDescription = generateAutoTransactionDescription;
+window.ensureTransactionDescription = ensureTransactionDescription;

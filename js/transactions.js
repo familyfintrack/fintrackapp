@@ -391,8 +391,14 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const _catIconHtml = _catIcon
     ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
     : '';
-  const categoryLine = t.categories?.name
-    ? `<div class="tx-v2-category">${_catIconHtml}${esc(t.categories.name)}</div>`
+  const categoryName = t.categories?.name ? esc(t.categories.name) : '';
+  const payeeName = t.payees?.name ? esc(t.payees.name) : '';
+  const categoryLine = categoryName
+    ? `<div class="tx-v2-category">${_catIconHtml}${categoryName}</div>`
+    : '';
+  const mobileMetaText = [payeeName, categoryName].filter(Boolean).join(' | ');
+  const mobileMeta = mobileMetaText
+    ? `<div class="tx-v2-mobile-meta">${mobileMetaText}</div>`
     : '';
 
   // Amount
@@ -410,11 +416,14 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-bal ${runningBalance >= 0 ? '' : 'neg'}">${fmt(runningBalance, balCur)}</div>`
     : '';
 
-  // Meta line: Conta · Beneficiário
+  // Meta line: desktop keeps account + beneficiary, mobile gets beneficiary | category and account below
   const metaParts = [];
   if (showAccount && t.accounts?.name) metaParts.push(`<span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span>`);
-  if (t.payees?.name)                  metaParts.push(`<span class="tx-v2-pay">${esc(t.payees.name)}</span>`);
+  if (payeeName)                       metaParts.push(`<span class="tx-v2-pay">${payeeName}</span>`);
   const meta = metaParts.length ? `<div class="tx-v2-meta">${metaParts.join('<span class="tx-v2-dot"> · </span>')}</div>` : '';
+  const accountLine = (showAccount && t.accounts?.name)
+    ? `<div class="tx-v2-account-line"><span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span></div>`
+    : '';
 
   const attach   = t.attachment_url ? ' <span class="tx-v2-clip" title="Anexo">📎</span>' : '';
   const pendDot  = isPending ? '<span class="tx-v2-pend">⏳</span>' : '';
@@ -439,7 +448,9 @@ function txRow(t, showAccount=true, runningBalance=null) {
       <td class="tx-v2-body">
         <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
         ${categoryLine}
+        ${mobileMeta}
         ${meta}
+        ${accountLine}
       </td>
       <td class="tx-v2-right">
         <div class="tx-v2-amt-wrap">${amtHtml}</div>
@@ -1345,9 +1356,15 @@ async function saveTransaction(){
     }
   }
 
+  const txDescEl = document.getElementById('txDesc');
+  let autoTxDesc = txDescEl?.value?.trim() || '';
+  if (!autoTxDesc && typeof ensureTransactionDescription === 'function') {
+    autoTxDesc = (await ensureTransactionDescription(txDescEl)).trim();
+  }
+
   const data={
     date:document.getElementById('txDate').value,
-    description:document.getElementById('txDesc').value.trim(),
+    description:autoTxDesc,
     amount,
     currency: txCurrency,
     brl_amount: brlAmount,
