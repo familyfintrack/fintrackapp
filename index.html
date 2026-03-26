@@ -2537,6 +2537,7 @@
           <select id="aiAccountFilter" multiple size="5" title="Selecione uma ou mais contas. Sem seleção = todas"></select>
           <select id="aiCategoryFilter" multiple size="5" title="Selecione uma ou mais categorias. Sem seleção = todas"></select>
           <select id="aiPayeeFilter"></select>
+          <textarea id="aiExtraContext" class="ai-extra-context" rows="2" placeholder="Contexto ou instruções opcionais para a IA. Ex.: considere que teremos férias em julho, ou que um gasto foi excepcional."></textarea>
           <div class="ai-toolbar-actions">
             <button type="button" class="btn btn-primary btn-sm" onclick="runAiAnalysis()">🤖 Analisar</button>
             <button type="button" class="btn btn-ghost btn-sm" id="aiSaveSnapshotBtn" onclick="saveCurrentAiSnapshot()" title="Salvar snapshot da família" disabled>
@@ -2558,7 +2559,7 @@
             <div class="ai-empty-state">
               <span style="font-size:2.8rem">🤖</span>
               <p style="font-size:.95rem;font-weight:600">Análise Financeira com IA</p>
-              <p style="font-size:.82rem;max-width:340px">Selecione um período, aplique filtros e clique em <strong>Analisar</strong> para gerar insights com Gemini. Quando quiser guardar a análise atual, use <strong>Salvar snapshot</strong>.</p>
+              <p style="font-size:.82rem;max-width:340px">Selecione um período, aplique filtros e clique em <strong>Analisar</strong> para gerar insights com Gemini. Se quiser, adicione um contexto opcional para a IA considerar na leitura. Quando quiser guardar a análise atual, use <strong>Salvar snapshot</strong>.</p>
             </div>
           </div>
         </div>
