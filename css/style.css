@@ -16421,3 +16421,92 @@ section[data-page="transactions"] .content {
     margin: 0 -12px 14px -12px !important;
   }
 }
+
+
+/* === Forecast report date refresh === */
+.forecast-date-cell{
+  width:96px !important;
+  padding-right:10px !important;
+  vertical-align:top;
+}
+.forecast-date-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:74px;
+  padding:8px 6px 7px;
+  border-radius:16px;
+  background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(246,249,247,.96) 100%);
+  border:1px solid rgba(21,80,55,.12);
+  box-shadow:0 6px 16px rgba(5,34,20,.06);
+}
+.forecast-date-cell--today .forecast-date-card{
+  background:linear-gradient(180deg, rgba(228,248,237,.98) 0%, rgba(214,242,227,.96) 100%);
+  border-color:rgba(22,101,52,.24);
+  box-shadow:0 8px 18px rgba(22,101,52,.12);
+}
+.forecast-date-weekday{
+  font-size:.6rem !important;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:.12em;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.forecast-date-daynum{
+  font-size:1.28rem !important;
+  line-height:.95;
+  font-weight:800;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+.forecast-date-monthyear{
+  margin-top:5px;
+  font-size:.63rem !important;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:.08em;
+  color:var(--muted);
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.forecast-date-meta{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  margin-top:7px;
+  min-height:18px;
+}
+.forecast-date-flag,
+.forecast-date-today{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:18px;
+}
+.forecast-date-flag{
+  min-width:18px;
+  font-size:.82rem !important;
+}
+.forecast-date-today{
+  padding:2px 8px;
+  border-radius:999px;
+  background:rgba(22,101,52,.10);
+  border:1px solid rgba(22,101,52,.12);
+  color:#166534;
+  font-size:.62rem !important;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+@media (max-width: 1023px){
+  .forecast-date-cell{ width:82px !important; padding-right:6px !important; }
+  .forecast-date-card{ min-height:66px; border-radius:14px; padding:7px 5px 6px; }
+  .forecast-date-weekday{ font-size:.54rem !important; margin-bottom:5px; }
+  .forecast-date-daynum{ font-size:1.08rem !important; }
+  .forecast-date-monthyear{ font-size:.57rem !important; margin-top:4px; }
+  .forecast-date-meta{ gap:4px; margin-top:5px; }
+  .forecast-date-today{ padding:1px 6px; font-size:.55rem !important; }
+}
