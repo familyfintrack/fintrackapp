@@ -162,6 +162,27 @@ function _aiRefreshSnapshotButton() {
   btn.title = canSave ? 'Salvar snapshot da família' : 'Gere uma análise primeiro';
 }
 
+
+function _aiBindActionButtons() {
+  const analyzeBtn = document.querySelector('#aiInsightsPage button[onclick="runAiAnalysis()"]');
+  if (analyzeBtn && !analyzeBtn.dataset.aiBound) {
+    analyzeBtn.dataset.aiBound = '1';
+    analyzeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      runAiAnalysis();
+    });
+  }
+  const saveBtn = document.getElementById('aiSaveSnapshotBtn');
+  if (saveBtn && !saveBtn.dataset.aiBound) {
+    saveBtn.dataset.aiBound = '1';
+    saveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      saveCurrentAiSnapshot();
+    });
+  }
+  _aiRefreshSnapshotButton();
+}
+
 function _aiPopulateFilters() {
   // Members — use getFamilyMembers() from family_members_composition.js
   const memSel = document.getElementById('aiMemberFilter');
@@ -2239,6 +2260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Aplica feature flag ao carregar
     applyAiInsightsFeature();
+    _aiBindActionButtons();
   }, 400);
 });
 
@@ -2255,3 +2277,13 @@ function getPeriodColor(period) {
 }
 
 window.loadAiSnapshots = loadAiSnapshots;
+
+window.runAiAnalysis = runAiAnalysis;
+window.saveCurrentAiSnapshot = saveCurrentAiSnapshot;
+document.addEventListener('click', (e) => {
+  const saveBtn = e.target.closest ? e.target.closest('#aiSaveSnapshotBtn') : null;
+  if (saveBtn) {
+    e.preventDefault();
+    saveCurrentAiSnapshot();
+  }
+});
