@@ -889,6 +889,7 @@ async function runAiAnalysis() {
     console.error('[AIInsights] analysis error:', e);
   } finally {
     _ai.analysisLoading = false;
+    _aiRefreshSnapshotButton();
   }
 }
 
