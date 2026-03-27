@@ -1172,17 +1172,32 @@ async function testMyProfileNotification(channel) {
   const profileName = String(currentUser?.name || currentUser?.email || 'usuário').trim();
   _setMyProfileTestButtonState(normalizedChannel, true);
   try {
+    const body = normalizedChannel === 'whatsapp'
+      ? {
+          channel: 'whatsapp',
+          recipient,
+          user_name: profileName,
+          user_email: String(currentUser?.email || '').trim(),
+        }
+      : {
+          channel: 'telegram',
+          chat_id: recipient,
+          user_name: profileName,
+          user_email: String(currentUser?.email || '').trim(),
+        };
+
     const { data, error } = await sb.functions.invoke('send-profile-notification-test', {
-      body: {
-        channel: normalizedChannel,
-        recipient,
-        user_name: profileName,
-        user_email: String(currentUser?.email || '').trim(),
-      },
+      body,
     });
     if (error) throw error;
     if (data?.ok === false || data?.error) {
-      throw new Error(data?.error || data?.details || 'Falha ao enviar mensagem de teste.');
+      throw new Error(
+        data?.description ||
+        data?.error ||
+        data?.details?.description ||
+        data?.details ||
+        'Falha ao enviar mensagem de teste.'
+      );
     }
     toast(normalizedChannel === 'whatsapp'
       ? 'Mensagem de teste enviada para o WhatsApp.'
