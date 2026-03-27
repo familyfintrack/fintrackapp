@@ -9117,83 +9117,6 @@ tr.reconcile-checked td { opacity: 1 !important; }
   gap: 6px;
   align-items: center;
   width: 100%;
-  flex-wrap: wrap;
-}
-.ai-snapshot-form-wrap {
-  padding: 12px 16px 0;
-  background: var(--surface, #1a2e1e);
-}
-.ai-snapshot-form {
-  display: grid;
-  grid-template-columns: minmax(220px, 340px) minmax(260px, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-.ai-snapshot-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ai-snapshot-field label {
-  font-size: .72rem;
-  font-weight: 700;
-  color: var(--muted, #9ca3af);
-  letter-spacing: .02em;
-}
-.ai-snapshot-field input,
-.ai-snapshot-field textarea {
-  width: 100%;
-  font-size: .8rem;
-  padding: 9px 11px;
-  border-radius: var(--r-sm, 8px);
-  background: var(--surface2, #243228);
-  border: 1px solid var(--border, #2a3a2e);
-  color: var(--text, #e5e7eb);
-  font-family: inherit;
-}
-.ai-snapshot-field textarea {
-  min-height: 64px;
-  resize: vertical;
-}
-.ai-snapshots-wrap {
-  padding: 12px 16px 80px;
-}
-.ai-snapshots-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  margin-bottom: 12px;
-}
-.ai-snapshots-title {
-  font-size: .98rem;
-  font-weight: 800;
-  color: var(--text, #e5e7eb);
-}
-.ai-snapshots-subtitle {
-  margin-top: 4px;
-  font-size: .8rem;
-  color: var(--muted, #9ca3af);
-  max-width: 520px;
-  line-height: 1.45;
-}
-.ai-snapshots-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.ai-btn-spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: ai-spin .8s linear infinite;
-  vertical-align: -2px;
-  margin-right: 6px;
 }
 
 /* ── States ─────────────────────────────────────────────────────── */
@@ -9569,9 +9492,6 @@ tr.reconcile-checked td { opacity: 1 !important; }
   .ai-kpi-row .ai-kpi:last-child { grid-column: 1 / -1; }
   .ai-trend-header, .ai-trend-row { grid-template-columns: 65px 1fr 1fr 1fr; font-size: .72rem; }
   .ai-toolbar select, .ai-toolbar input[type="date"] { flex: 1 1 120px; }
-  .ai-snapshot-form { grid-template-columns: 1fr; }
-  .ai-snapshots-header { flex-direction: column; align-items: flex-start; }
-  .ai-snapshots-actions { width: 100%; justify-content: flex-start; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -19300,3 +19220,191 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 .sb-user-card,
 .sidebar-footer,
 .sidebar-logo { position: relative; z-index: 1; }
+
+
+/* === 2026-03-27 isolated reconcile layout fix (transactions only) === */
+#page-transactions.reconcile-mode #txMainTable{
+  table-layout: fixed !important;
+}
+#page-transactions.reconcile-mode #txMainTable thead th.th-chk{
+  width: 42px !important;
+  min-width: 42px !important;
+  padding: 0 4px !important;
+}
+#page-transactions.reconcile-mode #txMainTable thead th.tx-v2-th-date,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-date{
+  width: 72px !important;
+  min-width: 72px !important;
+}
+#page-transactions.reconcile-mode #txMainTable thead th.tx-v2-th-right,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-right{
+  width: 140px !important;
+  min-width: 140px !important;
+}
+#page-transactions.reconcile-mode #txMainTable thead th.tx-v2-th-body,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body{
+  width: auto !important;
+  min-width: 0 !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody tr.tx-row-clickable{
+  display: table-row !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody tr.tx-row-clickable td{
+  display: table-cell !important;
+  vertical-align: top !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-chk{
+  display: table-cell !important;
+  width: 42px !important;
+  min-width: 42px !important;
+  padding: 0 4px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body{
+  overflow: hidden !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-right{
+  padding-right: 14px !important;
+  white-space: nowrap !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-right .tx-v2-amt-wrap{
+  align-items: flex-end !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-title,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-category,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-meta,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-account-line,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-mobile-meta,
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-payee-line{
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+#page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body .tx-v2-desc-text{
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+@media (max-width: 720px){
+  #page-transactions.reconcile-mode #txMainTable,
+  #page-transactions.reconcile-mode #txMainTable tbody,
+  #page-transactions.reconcile-mode #txMainTable tr,
+  #page-transactions.reconcile-mode #txMainTable td{
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #page-transactions.reconcile-mode #txBody tr.tx-row-clickable{
+    display: grid !important;
+    grid-template-columns: 30px 48px minmax(0,1fr) minmax(92px,max-content) !important;
+    grid-template-areas:
+      "chk date body right"
+      "chk . body right" !important;
+    gap: 6px 8px !important;
+    align-items: start !important;
+    margin: 6px 0 !important;
+    padding: 10px 10px 10px 8px !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    background: var(--surface) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,.035) !important;
+  }
+  #page-transactions.reconcile-mode #txBody tr.tx-row-clickable td{
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  #page-transactions.reconcile-mode #txBody td.tx-v2-chk{
+    grid-area: chk !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    padding-top: 3px !important;
+  }
+  #page-transactions.reconcile-mode #txBody td.tx-v2-date{
+    grid-area: date !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    text-align: center !important;
+    align-self: start !important;
+  }
+  #page-transactions.reconcile-mode #txBody td.tx-v2-body{
+    grid-area: body !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    padding-right: 4px !important;
+  }
+  #page-transactions.reconcile-mode #txBody td.tx-v2-right{
+    grid-area: right !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    min-width: 92px !important;
+    width: auto !important;
+    text-align: right !important;
+    align-self: start !important;
+    white-space: normal !important;
+  }
+  #page-transactions.reconcile-mode #txBody td.tx-v2-right .tx-v2-amt-wrap{
+    width: auto !important;
+    align-items: flex-end !important;
+  }
+  #page-transactions.reconcile-mode #txBody .tx-v2-title{
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.18 !important;
+  }
+  #page-transactions.reconcile-mode #txBody .tx-v2-desc-text{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+  #page-transactions.reconcile-mode #txBody .tx-v2-category,
+  #page-transactions.reconcile-mode #txBody .tx-v2-meta,
+  #page-transactions.reconcile-mode #txBody .tx-v2-account-line,
+  #page-transactions.reconcile-mode #txBody .tx-v2-mobile-meta,
+  #page-transactions.reconcile-mode #txBody .tx-v2-payee-line{
+    display: block !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  #page-transactions.reconcile-mode #txBody tr.tx-date-header-row,
+  #page-transactions.reconcile-mode #txBody tr:has(.tx-v2-sep){
+    display: block !important;
+  }
+  #page-transactions.reconcile-mode #txBody tr.tx-date-header-row td,
+  #page-transactions.reconcile-mode #txBody tr:has(.tx-v2-sep) td{
+    display: block !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 420px){
+  #page-transactions.reconcile-mode #txBody tr.tx-row-clickable{
+    grid-template-columns: 28px 42px minmax(0,1fr) minmax(84px,max-content) !important;
+    gap: 5px 7px !important;
+    padding: 9px 9px 9px 7px !important;
+  }
+  #page-transactions.reconcile-mode #txBody td.tx-v2-right{
+    min-width: 84px !important;
+  }
+  #page-transactions.reconcile-mode #txBody .tx-v2-amt{
+    font-size: .88rem !important;
+  }
+}
