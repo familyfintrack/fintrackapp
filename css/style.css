@@ -4951,11 +4951,11 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
     transition: box-shadow .15s, transform .12s;
   }
-  /* Reconcile mode: 4-col grid (checkbox + date + body + amount) */
-  .reconcile-mode #page-transactions tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
+  /* Reconcile mode: 4-col grid -- scoped to #txFlatCard only */
+  .reconcile-mode #page-transactions #txFlatCard tbody tr:not(.tx-date-header-row):not(:has(.tx-v2-sep)) {
     grid-template-columns: 28px 38px 1fr auto;
   }
-  .reconcile-mode #page-transactions tbody td.tx-v2-chk {
+  .reconcile-mode #page-transactions #txFlatCard tbody td.tx-v2-chk {
     grid-column: 1; grid-row: 1;
     padding: 0 !important;
     align-self: center;
@@ -4963,16 +4963,16 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     align-items: center;
     justify-content: center;
   }
-  .reconcile-mode #page-transactions tbody td.tx-v2-date {
+  .reconcile-mode #page-transactions #txFlatCard tbody td.tx-v2-date {
     grid-column: 2 !important;
   }
-  .reconcile-mode #page-transactions tbody td.tx-v2-body {
+  .reconcile-mode #page-transactions #txFlatCard tbody td.tx-v2-body {
     grid-column: 3 !important;
   }
-  .reconcile-mode #page-transactions tbody td.tx-v2-right {
+  .reconcile-mode #page-transactions #txFlatCard tbody td.tx-v2-right {
     grid-column: 4 !important;
   }
-  #page-transactions tbody tr:active {
+  #page-transactions #txFlatCard tbody tr:active {
     transform: scale(.982);
     box-shadow: none !important;
   }
@@ -5035,7 +5035,7 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
   #page-transactions tbody td.tx-v2-act { display: none !important; }
   /* Reconcile checkbox hidden by default on mobile, shown via .reconcile-mode */
   #page-transactions tbody td.tx-v2-chk { display: none !important; }
-  .reconcile-mode #page-transactions tbody td.tx-v2-chk { display: flex !important; }
+  .reconcile-mode #page-transactions #txFlatCard tbody td.tx-v2-chk { display: flex !important; }
 
   /* Typography */
   .tx-v2-title  { font-size: .875rem; line-height: 1.3; }
