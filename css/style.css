@@ -19482,3 +19482,91 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 }
 .air-price-tip { color: var(--text2); }
 
+
+/* ══ Investments — Performance Charts ═══════════════════════════════════ */
+.inv-charts-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+@media (max-width: 768px) {
+  .inv-charts-section { grid-template-columns: 1fr; }
+}
+.inv-chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.inv-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+.inv-chart-title {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text2);
+}
+.inv-chart-sub {
+  font-size: .72rem;
+  color: var(--muted);
+}
+.inv-chart-wrap {
+  position: relative;
+}
+.inv-chart-wrap canvas {
+  width: 100% !important;
+}
+
+
+/* ══ Audit — Notification badges ════════════════════════════════════════ */
+.audit-notif-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: .65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.audit-notif-none  { background: var(--bg2); color: var(--muted); border: 1px solid var(--border); }
+.audit-notif-email { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.audit-notif-wa-ok { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.audit-notif-wa-err { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.audit-notif-tg-ok  { background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; }
+.audit-notif-tg-err { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.aud-card-notif {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 5px 0 2px;
+}
+
+/* ══ Profile — Tx notification row ══════════════════════════════════════ */
+.prof-notif-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.prof-notif-channel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: .85rem;
+  color: var(--text);
+  padding: 6px 0;
+}
+.prof-notif-channel-row input[type="checkbox"] {
+  width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent);
+}
+.prof-notif-channel-icon { font-size: 1rem; flex-shrink: 0; }
+.prof-notif-channel-label { font-weight: 600; }
+
