@@ -4075,6 +4075,42 @@
         💳 <strong>Pagamento de Cartão de Crédito</strong> — debita a conta corrente e credita o cartão.
       </div>
 
+      <!-- IA / Manual entry mode toggle -->
+      <div id="txEntryModeBar" style="padding:10px 16px 0;display:flex;gap:8px">
+        <button class="tx-entry-mode-btn tx-entry-mode-btn--active" id="txEntryModeManual" onclick="setTxEntryMode('manual')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Manual
+        </button>
+        <button class="tx-entry-mode-btn" id="txEntryModeAi" onclick="setTxEntryMode('ai')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Usar IA
+        </button>
+      </div>
+
+      <!-- IA entry pane -->
+      <div id="txAiEntryPane" style="display:none;padding:12px 16px">
+        <div class="tx-ai-input-wrap">
+          <textarea id="txAiPrompt" class="tx-ai-textarea" placeholder="Descreva a transação em linguagem natural…&#10;Ex: &quot;Almocei no Outback com família, R$280, paguei no Nubank&quot;&#10;Ex: &quot;Recebi salário de R$8.500 na conta Bradesco dia 27&quot;" rows="3"></textarea>
+          <div id="txAiInputHint" class="tx-ai-hint">Pressione Enter ou clique em Analisar</div>
+        </div>
+        <div id="txAiExtractedChips" class="tx-ai-chips" style="display:none"></div>
+        <div id="txAiError" class="tx-ai-error" style="display:none"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost btn-sm" onclick="setTxEntryMode('manual')" style="flex-shrink:0">Preencher manual</button>
+          <button class="btn btn-primary" id="txAiAnalyzeBtn" onclick="txAiAnalyze()" style="flex:1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+            Analisar com IA
+          </button>
+        </div>
+        <div id="txAiConfirmBar" style="display:none;margin-top:10px">
+          <div class="tx-ai-confirm-msg">✓ Campos preenchidos pela IA — revise e salve</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-ghost btn-sm" onclick="txAiClear()">Limpar e redigitar</button>
+            <button class="btn btn-primary" onclick="saveTransaction()" style="flex:1">Salvar transação</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Context tabs: Abas mode -->
       <div id="txContextTabBar" style="display:flex;border-bottom:1px solid var(--border);margin-top:14px;padding:0 16px;gap:0">
         <button class="tx-ctx-tab active" data-tab="txCtxPrincipal" onclick="switchTxTab('txCtxPrincipal',this)">Principal</button>
@@ -5090,7 +5126,6 @@
   <script src="js/payee_autocomplete.js"></script>
   <script src="js/ui_helpers.js"></script>
   <script src="js/scheduled.js"></script>
-  <script src="js/form_mode.js"></script>
   <script src="js/attachments.js"></script>
   <script src="js/iof.js"></script>
   <script src="js/forecast.js"></script>
@@ -5103,6 +5138,7 @@
   <script src="js/auto_register.js"></script>
 <script src="js/audit.js"></script>
 <script src="js/receipt_ai.js"></script>
+  <script src="js/form_mode.js"></script>
 <script src="js/prices.js"></script>
   <script src="js/grocery.js"></script>
 
@@ -5184,84 +5220,84 @@
 
   <!-- My Profile Modal: avatar + password in one place -->
   <div class="modal-overlay" id="myProfileModal">
-    <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
-      <div class="modal-header" style="padding:12px 16px 11px">
-        <span class="modal-title" style="font-size:1rem">👤 Meu Perfil</span>
-        <button class="modal-close" onclick="closeModal('myProfileModal')">✕</button>
-      </div>
-      <div class="modal-body" style="padding:14px 16px 20px">
+    <div class="modal prof-modal"><div class="modal-handle"></div>
 
-        <!-- Avatar section — row layout on mobile to save vertical space -->
-        <div style="display:flex;flex-direction:row;align-items:center;gap:14px;
-                    padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:14px">
-          <!-- Avatar circle clickable -->
+      <!-- Cover header -->
+      <div class="prof-modal__cover">
+        <button class="modal-close prof-modal__close" onclick="closeModal('myProfileModal')">✕</button>
+        <div class="prof-modal__avatar-wrap">
           <div id="myProfileAvatarWrap" onclick="document.getElementById('myProfileAvatarFile').click()"
                title="Clique para alterar foto"
-               style="width:72px;height:72px;border-radius:50%;overflow:hidden;cursor:pointer;
-                      border:3px solid var(--accent);background:var(--surface2);
-                      display:flex;align-items:center;justify-content:center;
-                      transition:opacity .15s;flex-shrink:0;position:relative"
-               onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+               class="prof-modal__avatar">
           </div>
-          <!-- Info + actions stacked beside avatar -->
-          <div style="flex:1;min-width:0">
-            <div id="myProfileName" style="font-size:.92rem;font-weight:700;color:var(--text);
-                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-            <div id="myProfileEmail" style="font-size:.72rem;color:var(--muted);
-                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
-            <div id="myProfileRoleBadge" style="margin-top:5px"></div>
-            <!-- Avatar actions inline -->
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-              <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:.75rem;padding:3px 10px">
-                📷 Foto
-                <input type="file" id="myProfileAvatarFile" accept="image/*"
-                       style="display:none" onchange="previewMyProfileAvatar(this)">
-              </label>
-              <button id="myProfileRemoveAvatarBtn" class="btn btn-ghost btn-sm"
-                      style="font-size:.75rem;color:var(--red);display:none;padding:3px 10px"
-                      onclick="removeMyProfileAvatar()">✕ Remover</button>
+          <label class="prof-modal__avatar-edit" title="Trocar foto">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <input type="file" id="myProfileAvatarFile" accept="image/*" style="display:none" onchange="previewMyProfileAvatar(this)">
+          </label>
+        </div>
+        <div class="prof-modal__identity">
+          <div id="myProfileName" class="prof-modal__name"></div>
+          <div id="myProfileEmail" class="prof-modal__email"></div>
+          <div id="myProfileRoleBadge" class="prof-modal__role"></div>
+        </div>
+        <button id="myProfileRemoveAvatarBtn" class="prof-modal__avatar-remove" style="display:none" onclick="removeMyProfileAvatar()">✕ Remover foto</button>
+        <input type="hidden" id="myProfileAvatarRemoveFlag" value="">
+      </div>
+
+      <!-- Context tabs -->
+      <div class="prof-modal__tabs">
+        <button class="prof-ctx-tab active" onclick="switchProfTab('profTabConta',this)">Conta</button>
+        <button class="prof-ctx-tab" onclick="switchProfTab('profTabSeguranca',this)">Segurança</button>
+        <button class="prof-ctx-tab" onclick="switchProfTab('profTabPrefs',this)">Preferências</button>
+        <button class="prof-ctx-tab" onclick="switchProfTab('profTabNotif',this)">Notificações</button>
+      </div>
+
+      <div class="modal-body prof-modal__body">
+        <div id="myProfileAvatarError" style="display:none;color:var(--red);font-size:.78rem;padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;margin-bottom:12px;text-align:center"></div>
+
+        <!-- ── Tab: Conta ── -->
+        <div class="prof-tab-pane" id="profTabConta">
+          <div class="prof-field-group">
+            <div class="prof-field">
+              <label class="prof-field__label">Nome completo</label>
+              <div id="myProfileNameDisplay" class="prof-field__value"></div>
+            </div>
+            <div class="prof-field">
+              <label class="prof-field__label">E-mail</label>
+              <div id="myProfileEmailDisplay" class="prof-field__value prof-field__value--muted"></div>
             </div>
           </div>
-          <input type="hidden" id="myProfileAvatarRemoveFlag" value="">
-        </div>
-        <div id="myProfileAvatarError" style="display:none;color:var(--red);font-size:.78rem;
-          padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;
-          margin-bottom:12px;text-align:center"></div>
-
-        <!-- Password section -->
-        <div style="margin-bottom:4px">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
-            Alterar senha
+          <!-- Família preferida -->
+          <div id="myProfileFamilyRow" style="display:none" class="prof-field-group" style="margin-top:12px">
+            <div class="prof-field">
+              <label class="prof-field__label">Família preferida</label>
+              <select id="myProfilePreferredFamily" style="width:100%;font-size:.83rem"></select>
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Pré-selecionada ao fazer login em qualquer dispositivo.</div>
+            </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        </div>
+
+        <!-- ── Tab: Segurança ── -->
+        <div class="prof-tab-pane" id="profTabSeguranca" style="display:none">
+          <div class="prof-section-label">Alterar senha</div>
+          <div class="form-grid">
             <div class="form-group" style="margin-bottom:0">
-              <label style="font-size:.75rem">Nova senha</label>
-              <input type="password" id="myProfilePwd1" placeholder="Mín. 8 caracteres"
-                     autocomplete="new-password" oninput="updateMyProfilePwdStrength()">
-              <div style="margin-top:4px;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
-                <div id="myProfilePwdBar" style="height:100%;width:0;transition:width .3s,background .3s;border-radius:3px"></div>
-              </div>
+              <label style="font-size:.78rem">Nova senha</label>
+              <input type="password" id="myProfilePwd1" placeholder="Mín. 8 caracteres" autocomplete="new-password" oninput="updateMyProfilePwdStrength()">
+              <div style="margin-top:4px;height:3px;border-radius:3px;background:var(--border);overflow:hidden"><div id="myProfilePwdBar" style="height:100%;width:0;transition:width .3s,background .3s;border-radius:3px"></div></div>
               <div id="myProfilePwdHint" style="font-size:.68rem;color:var(--muted);margin-top:2px"></div>
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label style="font-size:.75rem">Confirmar senha</label>
-              <input type="password" id="myProfilePwd2" placeholder="Repita a senha"
-                     autocomplete="new-password"
-                     onkeydown="if(event.key==='Enter')saveMyProfile()">
+              <label style="font-size:.78rem">Confirmar senha</label>
+              <input type="password" id="myProfilePwd2" placeholder="Repita a senha" autocomplete="new-password" onkeydown="if(event.key==='Enter')saveMyProfile()">
             </div>
           </div>
-          <div id="myProfilePwdNote" style="font-size:.72rem;color:var(--muted);margin-bottom:12px">
-            Deixe em branco para manter a senha atual.
-          </div>
+          <div id="myProfilePwdNote" style="font-size:.72rem;color:var(--muted);margin-top:8px">Deixe em branco para manter a senha atual.</div>
         </div>
 
-        <!-- Idioma preferido -->
-        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-            🌐 <span data-i18n="settings.language">Idioma</span>
-          </div>
+        <!-- ── Tab: Preferências ── -->
+        <div class="prof-tab-pane" id="profTabPrefs" style="display:none">
+          <div class="prof-section-label">🌐 Idioma</div>
           <div class="i18n-lang-selector" id="profileLangSelector">
             <button class="i18n-lang-btn" data-lang="pt" onclick="profileSelectLang('pt')">🇧🇷 PT</button>
             <button class="i18n-lang-btn" data-lang="en" onclick="profileSelectLang('en')">🇺🇸 EN</button>
@@ -5269,81 +5305,52 @@
             <button class="i18n-lang-btn" data-lang="fr" onclick="profileSelectLang('fr')">🇫🇷 FR</button>
           </div>
           <input type="hidden" id="myProfileLanguage" value="pt">
-        </div>
 
-
-        <!-- Modo de formulário preferido -->
-        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
-            📋 Modo de formulário
-          </div>
-          <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Escolha como prefere preencher transações e programados.</div>
+          <div class="prof-section-label" style="margin-top:16px">📋 Modo de formulário</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Como prefere preencher transações e programados.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <label id="formModeTabsBtn" class="form-mode-option" onclick="selectFormMode('tabs')" style="cursor:pointer;border:1.5px solid var(--accent);border-radius:var(--r-sm);padding:10px 12px;background:var(--accent-lt,#e8f2ee);display:block">
               <div style="font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:3px">📑 Abas por contexto</div>
-              <div style="font-size:.72rem;color:var(--muted)">Todos os campos visíveis em abas: Principal, Detalhes, Recorrência, Notificações.</div>
+              <div style="font-size:.72rem;color:var(--muted)">Principal, Detalhes, Recorrência, Notificações.</div>
             </label>
             <label id="formModeWizardBtn" class="form-mode-option" onclick="selectFormMode('wizard')" style="cursor:pointer;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;background:transparent;display:block">
               <div style="font-size:.82rem;font-weight:700;color:var(--text2);margin-bottom:3px">🧙 Wizard passo a passo</div>
-              <div style="font-size:.72rem;color:var(--muted)">Navega campo por campo guiado: O quê → Detalhes → Agendamento → Notificações.</div>
+              <div style="font-size:.72rem;color:var(--muted)">O quê → Detalhes → Agendamento → Notificações.</div>
             </label>
           </div>
           <input type="hidden" id="myProfileFormMode" value="tabs">
         </div>
 
-        <!-- Canais padrão de notificação -->
-        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-            🔔 Canais padrão
-          </div>
-          <div style="display:grid;grid-template-columns:1fr;gap:10px">
+        <!-- ── Tab: Notificações ── -->
+        <div class="prof-tab-pane" id="profTabNotif" style="display:none">
+          <div class="prof-section-label">🔔 Canais padrão</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:12px">
             <div class="form-group" style="margin-bottom:0">
-              <label style="font-size:.75rem">WhatsApp padrão</label>
+              <label style="font-size:.78rem">WhatsApp padrão</label>
               <div style="display:flex;gap:8px;align-items:center">
                 <input type="tel" id="myProfileWhatsappNumber" placeholder="5511999999999" style="flex:1">
-                <button type="button" class="btn btn-ghost btn-sm" id="myProfileWhatsappTestBtn"
-                        onclick="testMyProfileNotification('whatsapp')">🧪 Testar</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="myProfileWhatsappTestBtn" onclick="testMyProfileNotification('whatsapp')">🧪 Testar</button>
               </div>
-              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Usado como padrão ao habilitar notificação por WhatsApp em Programados.</div>
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Pré-preenchido ao habilitar notificação por WhatsApp em Programados.</div>
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label style="font-size:.75rem">Telegram padrão (Chat ID)</label>
+              <label style="font-size:.78rem">Telegram padrão (Chat ID)</label>
               <div style="display:flex;gap:8px;align-items:center">
                 <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976" style="flex:1">
-                <button type="button" class="btn btn-ghost btn-sm" id="myProfileTelegramTestBtn"
-                        onclick="testMyProfileNotification('telegram')">🧪 Testar</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="myProfileTelegramTestBtn" onclick="testMyProfileNotification('telegram')">🧪 Testar</button>
               </div>
               <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Abra o bot do Telegram, envie /start e informe aqui o chat ID retornado.</div>
             </div>
           </div>
         </div>
 
-        <!-- Família preferida (só aparece se o usuário pertence a mais de uma) -->
-        <div id="myProfileFamilyRow" style="display:none;margin-bottom:4px">
-          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
-                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
-            Família preferida
-          </div>
-          <div class="form-group" style="margin-bottom:4px">
-            <label style="font-size:.75rem">Carregar ao entrar</label>
-            <select id="myProfilePreferredFamily" style="width:100%;font-size:.83rem"></select>
-            <div style="font-size:.7rem;color:var(--muted);margin-top:3px">
-              Pré-selecionada em qualquer dispositivo ao fazer login.
-            </div>
-          </div>
-        </div>
-
-        <!-- Gerenciar família: via menu do usuário (avatar topbar) → Gerenciar minha família -->
-
-        <div id="myProfileError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;
-          padding:7px 11px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
+        <div id="myProfileError" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:10px;padding:7px 11px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:4px">
           <button class="btn btn-ghost btn-sm" onclick="closeModal('myProfileModal')">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="myProfileSaveBtn" onclick="saveMyProfile()">💾 Salvar</button>
         </div>
-
       </div>
+
     </div>
   </div>
 
