@@ -301,6 +301,10 @@ async function _loadCurrentUserContext(authCtx = null) {
     whatsapp_number:      appUserRow?.whatsapp_number || '',
     telegram_chat_id:     appUserRow?.telegram_chat_id || '',
     preferred_form_mode:  appUserRow?.preferred_form_mode || 'tabs',
+    notify_on_tx:         !!appUserRow?.notify_on_tx,
+    notify_tx_email:      !!appUserRow?.notify_tx_email,
+    notify_tx_wa:         !!appUserRow?.notify_tx_wa,
+    notify_tx_tg:         !!appUserRow?.notify_tx_tg,
     ...caps
   };
 
