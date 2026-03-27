@@ -19907,3 +19907,27 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 .py2-action-btn:hover { background: var(--border); color: var(--text); }
 .py2-action-del:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
 
+
+
+/* === 2026-03-27 forecast report column width tuning === */
+#reportForecastView .forecast-grid-table{
+  width:100%;
+  table-layout:fixed;
+}
+#reportForecastView .forecast-grid-table .forecast-col-date{
+  width:10%;
+}
+#reportForecastView .forecast-grid-table .forecast-col-amount{
+  width:22%;
+}
+#reportForecastView .forecast-grid-table .forecast-col-desc{
+  width:68%;
+}
+@media (max-width: 1023px){
+  #reportForecastView .forecast-grid-table .forecast-col-date{
+    width:72px;
+  }
+  #reportForecastView .forecast-grid-table .forecast-col-amount{
+    width:116px;
+  }
+}
