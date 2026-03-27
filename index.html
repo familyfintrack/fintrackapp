@@ -3847,7 +3847,7 @@
         <!-- Email notification -->
         <div class="form-group full">
           <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
-            <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="document.getElementById('scNotifyEmailDetails').style.display=this.checked?'':'none'">
+            <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
             <div>
               <div style="font-weight:600;font-size:.88rem">Notificar por e-mail</div>
               <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Enviar e-mail de aviso quando a transação estiver próxima ou for registrada automaticamente</div>
@@ -3888,7 +3888,7 @@
             <div class="form-group" style="margin:0">
               <label>Número WhatsApp</label>
               <input type="tel" id="scNotifyWhatsappNumber" placeholder="5511999999999">
-              <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Use formato internacional com DDI. Ex.: 5511999999999</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Se o seu perfil tiver WhatsApp padrão, este campo será pré-preenchido automaticamente.</div>
             </div>
             <div class="form-group" style="margin:0">
               <label>Avisar com antecedência</label>
@@ -3927,6 +3927,47 @@
               ✅ Avisar após auto-registro
             </label>
           </div>
+
+
+        <!-- Telegram notification -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="scNotifyTelegram" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="toggleScheduledTelegramDetails(this.checked)">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Notificar por Telegram</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Enviar lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente</div>
+            </div>
+          </label>
+        </div>
+        <div class="form-group full" id="scNotifyTelegramDetails" style="display:none;padding:12px;background:rgba(59,130,246,.08);border-radius:var(--r-sm);border:1px solid rgba(59,130,246,.18)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label>Telegram Chat ID</label>
+              <input type="text" id="scNotifyTelegramChatId" placeholder="Ex.: 7540422976">
+              <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Se o seu perfil tiver Telegram padrão, este campo será pré-preenchido automaticamente.</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Avisar com antecedência</label>
+              <select id="scNotifyTelegramDaysBefore">
+                <option value="0">No dia</option>
+                <option value="1" selected>1 dia antes</option>
+                <option value="2">2 dias antes</option>
+                <option value="3">3 dias antes</option>
+                <option value="7">1 semana antes</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyTelegramUpcoming" checked />
+              🔔 Avisar antes da data
+            </label>
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyTelegramProcessed" checked />
+              ✅ Avisar após auto-registro
+            </label>
+          </div>
+        </div>
         </div>
 
       </div>
@@ -5295,6 +5336,27 @@
             <button class="i18n-lang-btn" data-lang="fr" onclick="profileSelectLang('fr')">🇫🇷 FR</button>
           </div>
           <input type="hidden" id="myProfileLanguage" value="pt">
+        </div>
+
+
+        <!-- Canais padrão de notificação -->
+        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text2);
+                      text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+            🔔 Canais padrão
+          </div>
+          <div style="display:grid;grid-template-columns:1fr;gap:10px">
+            <div class="form-group" style="margin-bottom:0">
+              <label style="font-size:.75rem">WhatsApp padrão</label>
+              <input type="tel" id="myProfileWhatsappNumber" placeholder="5511999999999">
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Usado como padrão ao habilitar notificação por WhatsApp em Programados.</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label style="font-size:.75rem">Telegram padrão (Chat ID)</label>
+              <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976">
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Abra o bot do Telegram, envie /start e informe aqui o chat ID retornado.</div>
+            </div>
+          </div>
         </div>
 
         <!-- Família preferida (só aparece se o usuário pertence a mais de uma) -->
