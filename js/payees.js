@@ -195,23 +195,31 @@ function payeeRow(p) {
   const rowAttrs = txCount > 0
     ? `onclick="openPayeeHistory('${p.id}','${esc(p.name)}')" style="cursor:pointer"`
     : '';
-  return `<tr class="payee-row" ${rowAttrs}>
+  return `<tr class="payee-row py2-row" ${rowAttrs}>
     <td>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="payee-row-avatar" style="background:${avatarColor}18;border:1.5px solid ${avatarColor}40;color:${avatarColor}">${initials}</div>
-        <div style="min-width:0">
-          <div style="font-weight:600;font-size:.875rem">${esc(p.name)}</div>
-          ${contactChips.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;max-width:320px">${contactChips.join('')}</div>` : ''}
-          ${p.notes ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(p.notes)}</div>` : ''}
+      <div class="py2-name-cell">
+        <div class="py2-avatar" style="background:${avatarColor}18;border:1.5px solid ${avatarColor}35;color:${avatarColor}">${initials}</div>
+        <div class="py2-name-body">
+          <div class="py2-name">${esc(p.name)}</div>
+          ${contactChips.length ? `<div class="py2-chips">${contactChips.join('')}</div>` : ''}
+          ${p.notes ? `<div class="py2-notes">${esc(p.notes)}</div>` : ''}
         </div>
       </div>
     </td>
-    <td style="font-size:.82rem;color:var(--text2)">${p.categories?.name||'<span style="color:var(--muted)">—</span>'}</td>
+    <td>
+      ${p.categories?.name
+        ? `<span class="py2-cat-badge">${esc(p.categories.name)}</span>`
+        : `<span class="py2-cat-none">—</span>`}
+    </td>
     <td style="text-align:center">${txBadge}</td>
     <td>
-      <div class="payee-row-actions" style="display:flex;gap:5px;justify-content:flex-end">
-        <button class="btn-icon payee-edit-btn" onclick="event.stopPropagation();openPayeeModal('${p.id}')" title="Editar" aria-label="Editar beneficiário">✏️</button>
-        <button class="btn-icon payee-delete-btn" onclick="event.stopPropagation();deletePayee('${p.id}')" title="Excluir" style="color:var(--red)" aria-label="Excluir beneficiário">🗑️</button>
+      <div class="payee-row-actions" style="display:flex;gap:4px;justify-content:flex-end">
+        <button class="py2-action-btn" onclick="event.stopPropagation();openPayeeModal('${p.id}')" title="Editar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="py2-action-btn py2-action-del" onclick="event.stopPropagation();deletePayee('${p.id}')" title="Excluir">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
       </div>
     </td>
   </tr>`;
@@ -360,6 +368,15 @@ function scrollPayeeGroup(key) {
 }
 
 function filterPayees(){renderPayees(document.getElementById('payeeSearch').value,document.getElementById('payeeTypeFilter').value);}
+
+function py2SetTypeFilter(btn, type) {
+  // Update hidden select
+  const sel = document.getElementById('payeeTypeFilter');
+  if (sel) sel.value = type;
+  // Update pill active state
+  document.querySelectorAll('.py2-type-pill').forEach(b => b.classList.toggle('active', b === btn));
+  filterPayees();
+}
 async function openPayeeModal(id=''){
   const form={id:'',name:'',type:'beneficiario',default_category_id:'',notes:''};
   if(id){const p=state.payees.find(x=>x.id===id);if(p)Object.assign(form,p);}
