@@ -2790,7 +2790,7 @@
             </tr>
           </thead>
           <tbody id="auditBody">
-            <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Carregando...</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Carregando...</td></tr>
           </tbody>
         </table>
         <div style="padding:10px 18px;border-top:1px solid var(--border);font-size:.74rem;color:var(--muted);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
@@ -5379,6 +5379,47 @@
 
         <!-- ── Tab: Notificações ── -->
         <div class="prof-tab-pane" id="profTabNotif" style="display:none">
+
+          <!-- Notificação por transação -->
+          <div class="prof-section-label">📩 Notificação por transação</div>
+          <div class="prof-field" style="margin-bottom:14px">
+            <div class="prof-notif-toggle-row">
+              <div>
+                <div style="font-size:.85rem;font-weight:600;color:var(--text)">Notificar ao registrar transação</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Receba uma notificação toda vez que uma transação for registrada manualmente ou por auto-registro.</div>
+              </div>
+              <label class="toggle-switch" style="flex-shrink:0">
+                <input type="checkbox" id="myProfileNotifyOnTx">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <!-- Canal de notificação (visível apenas quando toggle ativo) -->
+            <div id="myProfileNotifyOnTxChannels" style="display:none;margin-top:12px">
+              <div style="font-size:.75rem;font-weight:600;color:var(--text2);margin-bottom:8px">Enviar via:</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label class="prof-notif-channel-row">
+                  <input type="checkbox" id="myProfileNotifyTxEmail">
+                  <span class="prof-notif-channel-icon">✉️</span>
+                  <span class="prof-notif-channel-label">E-mail</span>
+                  <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa e-mail do perfil)</span>
+                </label>
+                <label class="prof-notif-channel-row">
+                  <input type="checkbox" id="myProfileNotifyTxWa">
+                  <span class="prof-notif-channel-icon">💬</span>
+                  <span class="prof-notif-channel-label">WhatsApp</span>
+                  <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa número abaixo)</span>
+                </label>
+                <label class="prof-notif-channel-row">
+                  <input type="checkbox" id="myProfileNotifyTxTg">
+                  <span class="prof-notif-channel-icon">✈️</span>
+                  <span class="prof-notif-channel-label">Telegram</span>
+                  <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa Chat ID abaixo)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Canais padrão -->
           <div class="prof-section-label">🔔 Canais padrão</div>
           <div style="display:grid;grid-template-columns:1fr;gap:12px">
             <div class="form-group" style="margin-bottom:0">
