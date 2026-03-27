@@ -18781,3 +18781,306 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 /* Tab pane fade in */
 .prof-tab-pane { animation: fadeInPane .15s ease; }
 
+
+/* ══ Scheduled page — new layout (Mobile C + Desktop A) ═══════════════════ */
+
+/* ── Page header ── */
+.sc-page-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.sc-page-header__left  { display: flex; align-items: center; gap: 8px; }
+.sc-page-header__right { margin-left: auto; flex-shrink: 0; }
+
+/* ── Desktop KPI strip ── */
+.sc-kpi-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 6px 14px;
+  flex-shrink: 0;
+}
+.sc-kpi-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12px;
+}
+.sc-kpi-val {
+  font-family: var(--font-serif);
+  font-size: .88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.sc-kpi-val.sc-kpi-expense { color: var(--red, #dc2626); }
+.sc-kpi-val.sc-kpi-income  { color: var(--green, #16a34a); }
+.sc-kpi-val.sc-kpi-pending { color: var(--amber, #d97706); }
+.sc-kpi-val.sc-kpi-ok      { color: var(--muted); }
+.sc-kpi-lbl {
+  font-size: .62rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.sc-kpi-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Mobile KPI bar (3 tiles, shown only on small screens) ── */
+.sc-mobile-kpis {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sc-mkpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.sc-mkpi-val {
+  font-family: var(--font-serif);
+  font-size: .85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sc-mkpi-val.pos    { color: var(--green, #16a34a); }
+.sc-mkpi-val.neg    { color: var(--red,   #dc2626); }
+.sc-mkpi-val.amber  { color: var(--amber, #d97706); }
+.sc-mkpi-lbl {
+  font-size: .6rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-align: center;
+}
+
+/* ── Split layout container ── */
+.sc-list-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ── Panel shared ── */
+.sc-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.sc-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.sc-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.sc-panel__title svg { color: var(--accent); flex-shrink: 0; }
+.sc-panel__badge {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--amber-lt, #fef3c7);
+  color: var(--amber, #d97706);
+  white-space: nowrap;
+}
+.sc-panel__count {
+  font-size: .7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sc-panel__body {
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+  min-height: 160px;
+}
+.sc-panel__filters {
+  flex: 1;
+  min-width: 0;
+}
+.sc-panel__search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 12px;
+  transition: border-color .15s;
+}
+.sc-panel__search-wrap:focus-within { border-color: var(--accent); }
+.sc-panel__search-wrap svg { color: var(--muted); flex-shrink: 0; }
+.sc-panel__search-input {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: .82rem;
+  color: var(--text);
+  width: 100%;
+  padding: 0 !important;
+}
+
+/* Recurrents panel: header has filters, so slightly more padding */
+.sc-panel--recurrents .sc-panel__header {
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.sc-panel--recurrents .sc-panel__header > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Mobile recurrents divider label */
+.sc-mobile-recurrents-label {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 0 8px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.sc-mobile-recurrents-label svg { color: var(--accent); }
+
+/* ── Mobile: single-column timeline layout ── */
+@media (max-width: 800px) {
+  /* Hide desktop KPI strip, show mobile tiles */
+  .sc-kpi-strip  { display: none !important; }
+  .sc-mobile-kpis { display: grid; }
+
+  /* Stack panels vertically */
+  .sc-list-view {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* Remove panel card chrome on mobile — panels flow as sections */
+  .sc-panel {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .sc-panel__header {
+    background: transparent;
+    border-bottom: none;
+    padding: 0 0 8px;
+  }
+  .sc-panel__title {
+    font-size: .7rem;
+    color: var(--muted);
+  }
+  .sc-panel__body {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* Recurrents panel: move filters inline */
+  .sc-panel--recurrents .sc-panel__header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Show mobile recurrents label (between upcoming and recurring) */
+  .sc-mobile-recurrents-label { display: flex; }
+
+  /* Recurrents panel title hidden (label above serves as separator) */
+  .sc-panel--recurrents .sc-panel__header { display: none; }
+}
+
+/* ── Mobile C: upcoming items get timeline treatment on small screens ── */
+@media (max-width: 800px) {
+  /* Each sup-group becomes a timeline date block */
+  .sup-group {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    margin-bottom: 0;
+    overflow: visible;
+  }
+  .sup-group-hdr {
+    background: transparent;
+    padding: 10px 0 5px;
+    border-bottom: none;
+  }
+  .sup-group-left { gap: 8px; }
+  .sup-rows {
+    border-top: none;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+  /* Each item becomes a card */
+  .sup-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .sup-item--today {
+    border-left: 3px solid var(--accent);
+  }
+  /* Day pill: inline with date number + month */
+  .sup-day-pill {
+    min-width: 34px;
+    padding: 3px 7px;
+  }
+  .sup-day-num { font-size: .85rem; }
+  /* Register button: full width on mobile */
+  .sup-register-btn {
+    height: 26px;
+    padding: 0 12px;
+    font-size: .78rem;
+  }
+  /* sc-card on mobile: compact */
+  .sc-card { border-radius: 10px; }
+  .sc-card-row { padding: 9px 12px; }
+}
+
