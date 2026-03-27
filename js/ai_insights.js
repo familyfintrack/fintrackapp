@@ -87,6 +87,8 @@ async function initAiInsightsPage() {
     return;
   }
 
+  _aiEnsureSnapshotScaffold();
+
   // Populate filter selects
   _aiPopulateFilters();
 
@@ -114,12 +116,115 @@ function _aiShowTab(tab) {
   ['analysis','snapshots','chat'].forEach(t => {
     const btn   = document.getElementById('aiTab-' + t);
     const panel = document.getElementById('aiPanel-' + t);
-    if (btn)   btn.classList.toggle('active', t === tab);
+    if (btn) btn.classList.toggle('active', t === tab);
     if (panel) panel.style.display = t === tab ? '' : 'none';
   });
+  if (tab === 'snapshots') {
+    loadAiSnapshots().catch(err => console.warn('[AIInsights] snapshots tab refresh:', err?.message || err));
+  }
 }
 
+function _aiSetSelectValues(selectId, values) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const wanted = new Set((Array.isArray(values) ? values : [values]).map(v => String(v || '')).filter(Boolean));
+  const opts = Array.from(el.options || []);
+  let firstApplied = false;
+  opts.forEach(opt => {
+    const selected = wanted.has(String(opt.value || ''));
+    if ('selected' in opt) opt.selected = selected;
+    if (selected && !firstApplied) {
+      el.value = opt.value;
+      firstApplied = true;
+    }
+  });
+  if (!wanted.size) el.value = '';
+}
 
+function _aiApplyFiltersToUi(filters) {
+  const f = filters || {};
+  const dateFromEl = document.getElementById('aiDateFrom');
+  const dateToEl = document.getElementById('aiDateTo');
+  const memberEl = document.getElementById('aiMemberFilter');
+  const payeeEl = document.getElementById('aiPayeeFilter');
+  const extraContextEl = document.getElementById('aiExtraContext');
+  if (dateFromEl) dateFromEl.value = f.dateFrom || f.from || '';
+  if (dateToEl) dateToEl.value = f.dateTo || f.to || '';
+  if (memberEl) memberEl.value = f.memberId || '';
+  if (payeeEl) payeeEl.value = f.payeeId || '';
+  _aiSetSelectValues('aiAccountFilter', f.accountIds || f.accountId || '');
+  _aiSetSelectValues('aiCategoryFilter', f.categoryIds || f.categoryId || '');
+  if (extraContextEl) extraContextEl.value = f.extraContext || '';
+}
+
+function _aiEnsureSnapshotScaffold() {
+  const page = document.getElementById('page-ai_insights');
+  if (!page) return;
+
+  const tabs = page.querySelector('.ai-tabs');
+  if (tabs && !document.getElementById('aiTab-snapshots')) {
+    const btn = document.createElement('button');
+    btn.className = 'ai-tab-btn';
+    btn.id = 'aiTab-snapshots';
+    btn.type = 'button';
+    btn.textContent = 'Snapshots';
+    btn.onclick = () => _aiShowTab('snapshots');
+    tabs.insertBefore(btn, document.getElementById('aiTab-chat') || null);
+  }
+
+  const analysisPanel = document.getElementById('aiPanel-analysis');
+  if (analysisPanel) {
+    const toolbar = analysisPanel.querySelector('.ai-toolbar');
+    const actionBar = toolbar?.querySelector('.ai-toolbar-actions');
+    if (actionBar && !document.getElementById('aiSaveSnapshotBtn')) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.id = 'aiSaveSnapshotBtn';
+      btn.textContent = '💾 Salvar snapshot';
+      btn.onclick = () => saveCurrentAiSnapshot();
+      actionBar.insertBefore(btn, actionBar.children[1] || null);
+    }
+    if (analysisPanel && !document.getElementById('aiSnapshotTitle')) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ai-snapshot-form-wrap';
+      wrap.innerHTML = `
+        <div class="ai-snapshot-form">
+          <div class="ai-snapshot-field ai-snapshot-field-title">
+            <label for="aiSnapshotTitle">Título do snapshot</label>
+            <input type="text" id="aiSnapshotTitle" maxlength="120" placeholder="Ex.: Fechamento de março · cenário conservador">
+          </div>
+          <div class="ai-snapshot-field ai-snapshot-field-context">
+            <label for="aiExtraContext">Contexto adicional para a IA e para o snapshot</label>
+            <textarea id="aiExtraContext" rows="2" placeholder="Ex.: Recebimento extraordinário em abril, viagem prevista, despesas escolares fora do padrão..."></textarea>
+          </div>
+        </div>`;
+      (toolbar?.insertAdjacentElement ? toolbar.insertAdjacentElement('afterend', wrap) : analysisPanel.prepend(wrap));
+    }
+  }
+
+  if (!document.getElementById('aiPanel-snapshots')) {
+    const chatPanel = document.getElementById('aiPanel-chat');
+    const panel = document.createElement('div');
+    panel.id = 'aiPanel-snapshots';
+    panel.style.display = 'none';
+    panel.innerHTML = `
+      <div class="ai-snapshots-wrap">
+        <div class="ai-snapshots-header card">
+          <div>
+            <div class="ai-snapshots-title">Snapshots salvos</div>
+            <div class="ai-snapshots-subtitle">Abra, compare e exclua versões salvas da análise financeira da família.</div>
+          </div>
+          <div class="ai-snapshots-actions">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="loadAiSnapshots()">↻ Atualizar lista</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="_aiShowTab('analysis')">+ Nova análise</button>
+          </div>
+        </div>
+        <div id="aiSnapshotsList"></div>
+      </div>`;
+    if (chatPanel?.parentNode) chatPanel.parentNode.insertBefore(panel, chatPanel);
+  }
+}
 
 function _aiCurrentFamilyId() {
   return currentUser?.family_id || null;
@@ -200,6 +305,16 @@ function _aiPopulateFilters() {
     paySel.innerHTML = '<option value="">Todos os beneficiários</option>' +
       (state.payees || []).slice(0, 200).map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
   }
+}
+
+function _aiSyncFilterSelectionsFromSnapshot(filters) {
+  _aiApplyFiltersToUi(filters || {});
+  _ai.filters = {
+    ..._ai.filters,
+    ...(filters || {}),
+    accountIds: Array.isArray(filters?.accountIds) ? filters.accountIds : (filters?.accountId ? [filters.accountId] : []),
+    categoryIds: Array.isArray(filters?.categoryIds) ? filters.categoryIds : (filters?.categoryId ? [filters.categoryId] : []),
+  };
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -493,10 +608,9 @@ async function openAiSnapshot(snapshotId) {
   _ai.analysisResult = result;
   _ai.currentSnapshotId = row.id;
   _ai.currentSnapshotHash = row?.filters?.snapshot_hash || null;
-  const extraContextEl = document.getElementById('aiExtraContext');
-  if (extraContextEl) extraContextEl.value = ctx?.filters?.extraContext || '';
+  _aiSyncFilterSelectionsFromSnapshot(ctx?.filters || row?.filters || {});
   const titleEl = document.getElementById('aiSnapshotTitle');
-  if (titleEl) titleEl.value = row?.title || ctx?.filters?.snapshot_custom_title || '';
+  if (titleEl) titleEl.value = row?.title || ctx?.filters?.snapshot_custom_title || row?.filters?.snapshot_custom_title || '';
   _aiRenderAnalysis(result);
   _aiRefreshSnapshotButton();
   _aiShowTab('analysis');
