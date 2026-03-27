@@ -665,6 +665,37 @@ function toggleScCard(id) {
   const body = document.getElementById('scBody-'+id);
   if(body) body.classList.toggle('open');
 }
+function _setScheduledSectionCollapsed(section, collapsed) {
+  const card = document.getElementById(section === 'automation' ? 'scAutomationSection' : 'scNotificationsSection');
+  if (!card) return;
+  card.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+}
+
+function toggleScheduledSection(section) {
+  const card = document.getElementById(section === 'automation' ? 'scAutomationSection' : 'scNotificationsSection');
+  if (!card) return;
+  const collapsed = card.getAttribute('data-collapsed') === 'true';
+  _setScheduledSectionCollapsed(section, !collapsed);
+}
+window.toggleScheduledSection = toggleScheduledSection;
+
+function syncScheduledAutomationSummary() {
+  const autoReg = !!document.getElementById('scAutoRegister')?.checked;
+  const autoConfirm = document.getElementById('scAutoConfirm')?.checked ?? true;
+  const chip = document.getElementById('scAutomationChip');
+  if (chip) chip.textContent = autoReg ? (autoConfirm ? 'Automático · Confirmado' : 'Automático · Pendente') : 'Manual';
+}
+window.syncScheduledAutomationSummary = syncScheduledAutomationSummary;
+
+function syncScheduledNotificationSummary() {
+  const active = [];
+  if (document.getElementById('scNotifyEmail')?.checked) active.push('E-mail');
+  if (document.getElementById('scNotifyWhatsapp')?.checked) active.push('WhatsApp');
+  if (document.getElementById('scNotifyTelegram')?.checked) active.push('Telegram');
+  const chip = document.getElementById('scNotificationsChip');
+  if (chip) chip.textContent = active.length ? active.join(' · ') : 'Sem canais';
+}
+window.syncScheduledNotificationSummary = syncScheduledNotificationSummary;
 
 // ── Modal open/save/delete ─────────────────────────────
 function openScheduledModal(id='') {
@@ -794,6 +825,8 @@ function openScheduledModal(id='') {
   const nwTplEl = document.getElementById('scNotifyWhatsappTemplate');
   const nwLangEl = document.getElementById('scNotifyWhatsappLang');
   if(arEl) arEl.checked = sc?.auto_register || false;
+  _setScheduledSectionCollapsed('automation', false);
+  _setScheduledSectionCollapsed('notifications', false);
   const acEl = document.getElementById('scAutoConfirm');
   if(acEl) {
     acEl.checked = (sc?.auto_confirm ?? true);
@@ -828,6 +861,14 @@ function openScheduledModal(id='') {
   if(ntdaysEl) ntdaysEl.value = sc?.notify_telegram_days_before ?? sc?.notify_days_before ?? 1;
   if(ntUpEl) ntUpEl.checked = sc?.notify_telegram_on_upcoming ?? true;
   if(ntProcEl) ntProcEl.checked = sc?.notify_telegram_on_processed ?? true;
+
+  if (arEl) arEl.onchange = () => syncScheduledAutomationSummary();
+  if (acEl) acEl.onchange = () => { _updateAutoConfirmHint(); syncScheduledAutomationSummary(); };
+  if (neEl) neEl.onchange = () => toggleScheduledEmailDetails(neEl.checked);
+  if (nwEl) nwEl.onchange = () => toggleScheduledWhatsappDetails(nwEl.checked);
+  if (ntEl) ntEl.onchange = () => toggleScheduledTelegramDetails(ntEl.checked);
+  syncScheduledAutomationSummary();
+  syncScheduledNotificationSummary();
 
   // Render family member multi-picker
   if (typeof renderFmcMultiPicker === 'function') {
@@ -1205,21 +1246,33 @@ function _prefillScheduledTelegramDefault() {
 function toggleScheduledEmailDetails(show) {
   const details = document.getElementById('scNotifyEmailDetails');
   if (details) details.style.display = show ? '' : 'none';
-  if (show) _prefillScheduledEmailDefault();
+  if (show) {
+    _prefillScheduledEmailDefault();
+    _setScheduledSectionCollapsed('notifications', false);
+  }
+  syncScheduledNotificationSummary();
 }
 window.toggleScheduledEmailDetails = toggleScheduledEmailDetails;
 
 function toggleScheduledWhatsappDetails(show) {
   const details = document.getElementById('scNotifyWhatsappDetails');
   if (details) details.style.display = show ? '' : 'none';
-  if (show) _prefillScheduledWhatsappDefault();
+  if (show) {
+    _prefillScheduledWhatsappDefault();
+    _setScheduledSectionCollapsed('notifications', false);
+  }
+  syncScheduledNotificationSummary();
 }
 window.toggleScheduledWhatsappDetails = toggleScheduledWhatsappDetails;
 
 function toggleScheduledTelegramDetails(show) {
   const details = document.getElementById('scNotifyTelegramDetails');
   if (details) details.style.display = show ? '' : 'none';
-  if (show) _prefillScheduledTelegramDefault();
+  if (show) {
+    _prefillScheduledTelegramDefault();
+    _setScheduledSectionCollapsed('notifications', false);
+  }
+  syncScheduledNotificationSummary();
 }
 window.toggleScheduledTelegramDetails = toggleScheduledTelegramDetails;
 
