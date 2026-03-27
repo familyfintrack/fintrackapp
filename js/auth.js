@@ -1012,6 +1012,7 @@ function openMyProfile() {
   }
 
   // --- Notification defaults ---
+  if (typeof loadFormModeIntoProfile === 'function') loadFormModeIntoProfile();
   const waEl = document.getElementById('myProfileWhatsappNumber');
   const tgEl = document.getElementById('myProfileTelegramChatId');
   if (waEl) waEl.value = currentUser?.whatsapp_number || '';
@@ -1254,7 +1255,9 @@ async function saveMyProfile() {
   const waChanged = whatsappNumber !== String(currentUser.whatsapp_number || '').replace(/\D+/g, '');
   const tgChanged = telegramChatId !== String(currentUser.telegram_chat_id || '');
 
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged) {
+  const newFormMode = document.getElementById('myProfileFormMode')?.value || 'tabs';
+  const fmChanged = newFormMode !== getTxFormMode();
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged) {
     closeModal('myProfileModal');
     return;
   }
@@ -1314,6 +1317,7 @@ async function saveMyProfile() {
     }
 
     toast(t('profile.updated'), 'success');
+    if (typeof _saveFormModeFromProfile === 'function') _saveFormModeFromProfile();
     closeModal('myProfileModal');
   } catch(e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }

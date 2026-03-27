@@ -842,6 +842,8 @@ function openScheduledModal(id='') {
 
   updateScPreview();
   openModal('scheduledModal');
+  if (typeof initScFormMode === "function") initScFormMode();
+  if (typeof initScFormMode === 'function') initScFormMode();
   // Scroll modal body to top on every open
   requestAnimationFrame(() => {
     const body = document.querySelector('#scheduledModal .modal-body');
@@ -851,8 +853,8 @@ function openScheduledModal(id='') {
 
 function setScType(type) {
   document.getElementById('scTypeField').value = type;
-  const activeTab = (type==='transfer'||type==='card_payment') ? 'transfer' : type;
-  document.querySelectorAll('#scheduledModal .tab').forEach((t,i)=>t.classList.toggle('active',['expense','income','transfer'][i]===activeTab));
+  const activeTab = type;
+  document.querySelectorAll('#scTypeTabs .tab').forEach((t,i)=>t.classList.toggle('active',['expense','income','transfer','card_payment'][i]===activeTab));
   const isTransfer = type==='transfer' || type==='card_payment';
   const isCardPayment = type==='card_payment';
   const trGroup = document.getElementById('scTransferToGroup');

@@ -818,6 +818,7 @@ async function openTransactionModal(id=''){
       }
     }
     openModal('txModal');
+  if (typeof initTxFormMode === 'function') initTxFormMode();
   }
 }
 function resetTxModal(){
@@ -895,6 +896,7 @@ async function editTransaction(id){
   const _dab = document.getElementById('debtAmortizationBanner');
   if (_dab) { _dab.style.display = 'none'; _dab.innerHTML = ''; }
   openModal('txModal');
+  if (typeof initTxFormMode === 'function') initTxFormMode();
 }
 function _filterTxAccountOrigin(excludeCreditCards) {
   const sel = document.getElementById('txAccountId');
@@ -918,8 +920,8 @@ function _filterTxAccountOrigin(excludeCreditCards) {
 function setTxType(type){
   document.getElementById('txTypeField').value=type;
   // card_payment is visually shown as 'transfer' tab
-  const activeTab = (type==='card_payment') ? 'transfer' : type;
-  document.querySelectorAll('#txModal .tab').forEach((t,i)=>t.classList.toggle('active',['expense','income','transfer'][i]===activeTab));
+  const activeTab = type;
+  document.querySelectorAll('#txTypeTabs .tab').forEach((t,i)=>t.classList.toggle('active',['expense','income','transfer','card_payment'][i]===activeTab));
   const isTransfer = type==='transfer' || type==='card_payment';
   const isCardPayment = type==='card_payment';
   const isPureTransfer = type==='transfer';
@@ -1550,6 +1552,7 @@ function _openTxAsCopy(orig) {
   document.getElementById('txModalTitle').textContent = 'Nova Transação (cópia)';
   // txId stays empty → saveTransaction() will INSERT
   openModal('txModal');
+  if (typeof initTxFormMode === 'function') initTxFormMode();
 }
 // ══════════════════════════════════════════════════════════════════════════════
 //  SMART AI SUGGESTIONS ENGINE — v2
