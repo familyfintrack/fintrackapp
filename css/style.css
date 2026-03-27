@@ -2110,46 +2110,42 @@ canvas { cursor: default; }
 @media (max-width: 640px){
 
   /* Pega QUALQUER tabela dentro da página de transações */
-  #page-transactions .table-wrap{ overflow: visible; }
-  #page-transactions table thead{ display:none; }
+  #page-transactions #txFlatCard .table-wrap{ overflow: visible; }
+  #page-transactions #txFlatCard table thead{ display:none; }
 
-  #page-transactions table,
-  #page-transactions tbody,
-  #page-transactions tr,
-  #page-transactions td{
+  #page-transactions #txFlatCard table,
+  #page-transactions #txFlatCard tbody,
+  #page-transactions #txFlatCard tr,
+  #page-transactions #txFlatCard td{
     display:block;
     width:100%;
   }
 
-  /* Linha padrão vira card */
-  #page-transactions tbody tr{
+  /* Linha padrão vira card — flat list only */
+  #page-transactions #txFlatCard tbody tr{
     border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface);
     padding: 12px;
     margin: 10px 0;
   }
-  #page-transactions tbody td{ padding:0; border:0; }
+  #page-transactions #txFlatCard tbody td{ padding:0; border:0; }
 
-  /* EXCEÇÃO: linhas de "título do grupo" (nome da conta)
-     Normalmente são linhas com 1 célula ocupando tudo (colspan)
-     ou com classe/estilo diferenciado. Este seletor cobre o caso
-     mais comum: apenas 1 <td> na linha.
-  */
-  #page-transactions tbody tr:has(> td:only-child){
+  /* EXCEÇÃO: linhas de cabeçalho de grupo (1 <td> full-width) */
+  #page-transactions #txFlatCard tbody tr:has(> td:only-child){
     border: 0;
     background: transparent;
     padding: 6px 4px;
     margin: 14px 0 6px;
   }
-  #page-transactions tbody tr:has(> td:only-child) td{
+  #page-transactions #txFlatCard tbody tr:has(> td:only-child) td{
     font-weight: 750;
     font-size: 1rem;
     color: var(--text);
   }
 
-  /* Grid para linhas "normais" (as que têm colunas) */
-  #page-transactions tbody tr:not(:has(> td:only-child)){
+  /* Grid para linhas normais — flat list */
+  #page-transactions #txFlatCard tbody tr:not(:has(> td:only-child)){
     display:grid;
     grid-template-columns: 1fr auto;
     gap: 8px 10px;
@@ -2182,7 +2178,7 @@ canvas { cursor: default; }
 
   /* Ações embaixo */
   
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(7) > div{
+  #page-transactions #txFlatCard tbody tr:not(:has(> td:only-child)) td:nth-child(7) > div{
     display:flex;
     justify-content:flex-end;
     gap:8px;
@@ -4887,12 +4883,12 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
   #page-transactions #txFlatCard table thead { display: none; }
   #page-transactions #txFlatCard .table-wrap { overflow: visible; }
 
-  #page-transactions table,
-  #page-transactions tbody { display: block; width: 100%; }
+  #page-transactions #txFlatCard table,
+  #page-transactions #txFlatCard tbody { display: block; width: 100%; }
 
-  /* Card rows become block — but NOT the date header rows */
-  #page-transactions tr:not(.tx-date-header-row),
-  #page-transactions td:not(.tx-date-header-cell) { display: block; width: 100%; }
+  /* Card rows become block — flat list only, NOT group-by-account */
+  #page-transactions #txFlatCard tr:not(.tx-date-header-row),
+  #page-transactions #txFlatCard td:not(.tx-date-header-cell) { display: block; width: 100%; }
 
   /* ── Date header row: single-line pill with trailing rule ── */
   #page-transactions tbody tr.tx-date-header-row {
@@ -4941,7 +4937,7 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
   tr.tx-date-band-alt td.tx-date-header-cell { color: var(--text2); }
 
   /* ── Transaction card shell ── */
-  #page-transactions tbody tr {
+  #page-transactions #txFlatCard tbody tr {
     display: grid !important;
     grid-template-columns: 38px 1fr auto;
     grid-template-rows: 1fr;
@@ -5467,12 +5463,12 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   #page-transactions #txFlatCard table thead { display: none; }
   #page-transactions #txFlatCard .table-wrap { overflow: visible; }
 
-  #page-transactions table,
-  #page-transactions tbody { display: block; width: 100%; }
+  #page-transactions #txFlatCard table,
+  #page-transactions #txFlatCard tbody { display: block; width: 100%; }
 
-  /* Card rows become block — but NOT date header rows */
-  #page-transactions tr:not(.tx-date-header-row),
-  #page-transactions td:not(.tx-date-header-cell) { display: block; width: 100%; }
+  /* Card rows become block — flat list only */
+  #page-transactions #txFlatCard tr:not(.tx-date-header-row),
+  #page-transactions #txFlatCard td:not(.tx-date-header-cell) { display: block; width: 100%; }
 
   /* ── Date header: single-line with trailing rule — NEVER breaks ── */
   #page-transactions tbody tr.tx-date-header-row {
@@ -19569,4 +19565,44 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 }
 .prof-notif-channel-icon { font-size: 1rem; flex-shrink: 0; }
 .prof-notif-channel-label { font-weight: 600; }
+
+
+/* ══ Help — Financial literacy intro card ═══════════════════════════════ */
+.help-literacy-card {
+  display: flex;
+  gap: 14px;
+  background: color-mix(in srgb, var(--lc, var(--accent)) 8%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--lc, var(--accent)) 22%, transparent);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .help-literacy-card { background: var(--accent-lt, #e8f2ee); border-color: rgba(42,96,73,.22); }
+}
+.help-literacy-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+.help-literacy-body { flex: 1; min-width: 0; }
+.help-literacy-title {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--lc, var(--accent));
+  margin-bottom: 6px;
+}
+.help-literacy-text {
+  font-size: .84rem;
+  color: var(--text2);
+  line-height: 1.6;
+}
+.help-literacy-text strong { color: var(--text); }
+.help-literacy-text em { font-style: italic; color: var(--text2); }
+
+/* ══ Payees — Maps search results ════════════════════════════════════════ */
+#payeeMapsResults > div:last-child { border-bottom: none; }
 
