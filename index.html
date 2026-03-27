@@ -1279,27 +1279,39 @@
 
     <!-- SCHEDULED TRANSACTIONS -->
     <div class="page" id="page-scheduled">
-      <!-- Mobile header -->
-      <div class="section-header mb-6">
-
-        <div style="display:flex;gap:8px;align-items:center">
-          <!-- View toggle: list / calendar -->
+      <!-- Page header -->
+      <div class="sc-page-header">
+        <div class="sc-page-header__left">
           <div class="sc-view-toggle" id="scViewToggle">
             <button class="sc-view-btn active" id="scViewList" onclick="setScView('list')" title="Lista">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               <span class="sc-view-lbl">Lista</span>
             </button>
             <button class="sc-view-btn" id="scViewCal" onclick="setScView('calendar')" title="Calendário">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span class="sc-view-lbl">Calendário</span>
             </button>
             <button class="sc-view-btn" id="scViewCats" onclick="setScView('categories')" title="Categorias">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
               <span class="sc-view-lbl">Categorias</span>
             </button>
           </div>
+        </div>
+        <div class="sc-kpi-strip" id="scKpiStrip">
+          <div class="sc-kpi-item"><span class="sc-kpi-val sc-kpi-expense" id="scKpiExpense">—</span><span class="sc-kpi-lbl">despesas/30d</span></div>
+          <div class="sc-kpi-sep"></div>
+          <div class="sc-kpi-item"><span class="sc-kpi-val sc-kpi-income" id="scKpiIncome">—</span><span class="sc-kpi-lbl">receitas/30d</span></div>
+          <div class="sc-kpi-sep"></div>
+          <div class="sc-kpi-item"><span class="sc-kpi-val sc-kpi-pending" id="scKpiPending">—</span><span class="sc-kpi-lbl">pendentes</span></div>
+        </div>
+        <div class="sc-page-header__right">
           <button class="btn btn-primary" onclick="openScheduledModal()">+ Programar</button>
         </div>
+      </div>
+      <div class="sc-mobile-kpis" id="scMobileKpis">
+        <div class="sc-mkpi"><span class="sc-mkpi-val neg" id="scMKpiExpense">—</span><span class="sc-mkpi-lbl">despesas/30d</span></div>
+        <div class="sc-mkpi"><span class="sc-mkpi-val pos" id="scMKpiIncome">—</span><span class="sc-mkpi-lbl">receitas/30d</span></div>
+        <div class="sc-mkpi"><span class="sc-mkpi-val amber" id="scMKpiPending">—</span><span class="sc-mkpi-lbl">pendentes</span></div>
       </div>
 
       <!-- Calendar view -->
@@ -1361,51 +1373,69 @@
         <div id="scCatsList"></div>
       </div>
 
-      <!-- Status summary chips (scrollable on mobile) -->
-      <div id="scheduledSummaryBar" class="sc-summary-bar"></div>
+      <!-- Summary bar (kept for compatibility, hidden in new layout) -->
+      <div id="scheduledSummaryBar" class="sc-summary-bar" style="display:none"></div>
 
-      <!-- Compact filter bar -->
-      <div class="sc-filter-bar mb-6">
-        <div class="search-wrap" style="flex:1;min-width:120px">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="scSearch" placeholder="Buscar..." oninput="filterScheduled()">
-        </div>
-        <div class="sc-filter-chips">
-          <button class="sc-chip active" id="scChipAll"    onclick="scChipFilter(event,'all')">Todos</button>
-          <button class="sc-chip"        id="scChipActive" onclick="scChipFilter(event,'active')">Ativos</button>
-          <button class="sc-chip"        id="scChipPaused" onclick="scChipFilter(event,'paused')">Pausados</button>
-          <button class="sc-chip"        id="scChipDone"   onclick="scChipFilter(event,'finished')">Concluídos</button>
-        </div>
-        <select id="scTypeFilter" onchange="filterScheduled()" class="sc-type-select">
-          <option value="">Todos os tipos</option>
-          <option value="expense">💸 Despesas</option>
-          <option value="income">💰 Receitas</option>
-          <option value="transfer">🔄 Transferências</option>
-          <option value="card_payment">💳 Pgto. Cartão</option>
-        </select>
-      </div>
+      <!-- Desktop split layout / Mobile timeline -->
+      <div id="scListView" class="sc-list-view">
 
-      <!-- Upcoming next 10 days — Feature 1: collapsible, compact -->
-      <div id="scheduledUpcomingCard" style="display:none" class="card mb-6" style="padding:0">
-        <div class="card-header sc-upcoming-header" onclick="toggleUpcomingCard()" style="cursor:pointer;user-select:none">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="card-title" id="scheduledUpcomingTitle">⏰ Próximos 10 dias</span>
-            <span id="scheduledUpcomingCount" style="font-size:.72rem;color:var(--muted)"></span>
+        <!-- LEFT panel: Próximos 10 dias -->
+        <div class="sc-panel sc-panel--upcoming" id="scUpcomingPanel">
+          <div class="sc-panel__header">
+            <div class="sc-panel__title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Próximos 10 dias
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="scheduledUpcomingTotal" class="sc-panel__badge"></span>
+              <span id="scheduledUpcomingCount" class="sc-panel__count"></span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="scheduledUpcomingTotal" class="badge badge-amber"></span>
-            <svg id="upcomingCardArrow" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                 style="color:var(--muted);transition:transform .2s;transform:rotate(0deg)">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
+          <div id="scheduledUpcomingList" class="sc-panel__body sc-upcoming-list"></div>
+          <!-- Mobile: também mostra o timeline de recorrentes abaixo -->
+          <div class="sc-mobile-recurrents-label" id="scMobileRecurrentsLabel">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            Recorrentes
           </div>
         </div>
-        <div id="scheduledUpcomingList" class="sc-upcoming-list"></div>
+
+        <!-- RIGHT panel: Recorrentes -->
+        <div class="sc-panel sc-panel--recurrents" id="scRecurrentsPanel">
+          <div class="sc-panel__header">
+            <div class="sc-panel__title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              Recorrentes
+            </div>
+            <div class="sc-panel__filters">
+              <div class="sc-panel__search-wrap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input type="text" id="scSearch" placeholder="Buscar..." oninput="filterScheduled()" class="sc-panel__search-input">
+              </div>
+              <div class="sc-filter-chips" style="margin-top:6px">
+                <button class="sc-chip active" id="scChipAll"    onclick="scChipFilter(event,'all')">Todos</button>
+                <button class="sc-chip"        id="scChipActive" onclick="scChipFilter(event,'active')">Ativos</button>
+                <button class="sc-chip"        id="scChipPaused" onclick="scChipFilter(event,'paused')">Pausados</button>
+                <button class="sc-chip"        id="scChipDone"   onclick="scChipFilter(event,'finished')">Concluídos</button>
+                <select id="scTypeFilter" onchange="filterScheduled()" class="sc-type-select">
+                  <option value="">Todos os tipos</option>
+                  <option value="expense">💸 Despesas</option>
+                  <option value="income">💰 Receitas</option>
+                  <option value="transfer">🔄 Transferências</option>
+                  <option value="card_payment">💳 Pgto. Cartão</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="sc-panel__body" id="scheduledList"></div>
+        </div>
+
       </div>
 
-      <!-- Main list -->
-      <div id="scheduledList"></div>
+      <!-- Legacy upcoming card (hidden — kept for JS compat) -->
+      <div id="scheduledUpcomingCard" style="display:none">
+        <div id="upcomingCardArrow" style="display:none"></div>
+        <div id="scheduledUpcomingTitle" style="display:none"></div>
+      </div>
     </div>    <!-- IMPORT / BACKUP PAGE -->
     <!-- Feature 4: Lista de Mercado -->
     <div class="page" id="page-grocery">
