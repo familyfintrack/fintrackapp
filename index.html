@@ -3053,8 +3053,20 @@
 </div><!-- /mainApp -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <div id="loginScreen" class="login-screen-shell" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0d3d2b 0%,#1e5c42 60%,#0d3d2b 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
-    <div class="login-card" style="width:100%;max-width:400px;background:#fff;border-radius:20px;padding:36px 32px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
+  <div id="loginScreen" class="login-screen-shell login-bg-a" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
+
+    <!-- Decorative background layers -->
+    <div class="login-bg-a__base"></div>
+    <div class="login-bg-a__glow1"></div>
+    <div class="login-bg-a__glow2"></div>
+    <div class="login-bg-a__glow3"></div>
+    <div class="login-bg-a__ring1"></div>
+    <div class="login-bg-a__ring2"></div>
+    <div class="login-bg-a__ring3"></div>
+    <div class="login-bg-a__ring4"></div>
+    <div class="login-bg-a__grain"></div>
+
+    <div class="login-card login-card-a" style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:28px">
         <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:200px;height:auto;object-fit:contain;margin-bottom:12px">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
