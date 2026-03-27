@@ -694,25 +694,15 @@ function renderUpcoming() {
         <div class="sup-group-meta">
           <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
           <span class="sup-day-count">${items.length}</span>
-          <svg class="sc-upcoming-day-arrow open" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg class="sc-upcoming-day-arrow ${((new Date(date+'T12:00:00').getTime() - new Date(today+'T12:00:00').getTime()) / 86400000) <= 1 ? 'open' : ''}" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
-      <div class="sup-rows" id="${gid}">${rows}</div>
+      <div class="sup-rows" id="${gid}" style="display:${((new Date(date+'T12:00:00').getTime() - new Date(today+'T12:00:00').getTime()) / 86400000) <= 1 ? '' : 'none'}">${rows}</div>
     </div>`;
   }).join('');;
 }
 
 // Feature 1: toggle entire upcoming panel open/closed
-function toggleUpcomingGroup(id) {
-  const rows = document.getElementById(id);
-  const arrow = document.getElementById(id + '_arr');
-  if (!rows) return;
-  const isCollapsed = rows.style.display === 'none';
-  rows.style.display = isCollapsed ? '' : 'none';
-  if (arrow) arrow.classList.toggle('open', isCollapsed);
-  if (arrow) arrow.style.transform = isCollapsed ? '' : 'rotate(-90deg)';
-}
-
 function toggleUpcomingCard() {
   const listEl = document.getElementById('scheduledUpcomingList');
   const arrow  = document.getElementById('upcomingCardArrow');
@@ -720,6 +710,15 @@ function toggleUpcomingCard() {
   const isOpen = listEl.style.display !== 'none';
   listEl.style.display = isOpen ? 'none' : '';
   if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+function toggleUpcomingGroup(gid) {
+  const rows = document.getElementById(gid);
+  const arrow = document.getElementById(gid + '_arr');
+  if (!rows) return;
+  const isOpen = rows.style.display !== 'none';
+  rows.style.display = isOpen ? 'none' : '';
+  if (arrow) arrow.classList.toggle('open', !isOpen);
 }
 
 function toggleScCard(id) {
