@@ -219,9 +219,36 @@ function _renderInvestmentsPage() {
       </div>
     </div>
 
+    <!-- Performance charts section -->
+    <div class="inv-charts-section">
+      <div class="inv-chart-card" id="invPerfChartCard">
+        <div class="inv-chart-header">
+          <span class="inv-chart-title">📈 Evolução da Carteira</span>
+          <span class="inv-chart-sub" id="invPerfChartPeriod"></span>
+        </div>
+        <div class="inv-chart-wrap" style="height:220px">
+          <canvas id="invPortfolioChart"></canvas>
+        </div>
+      </div>
+      <div class="inv-chart-card" id="invAllocChartCard">
+        <div class="inv-chart-header">
+          <span class="inv-chart-title">🥧 Alocação por Tipo de Ativo</span>
+        </div>
+        <div class="inv-chart-wrap" style="height:220px">
+          <canvas id="invAllocationChart"></canvas>
+        </div>
+      </div>
+    </div>
+
     <!-- Per-account portfolios -->
     ${invAccs.map(acc => _renderPortfolioCard(acc)).join('')}
   `;
+
+  // Render charts asynchronously after DOM is ready
+  requestAnimationFrame(() => {
+    renderInvAllocationChart();
+    renderInvPerformanceChart().catch(() => {});
+  });
 }
 
 function _renderPortfolioCard(acc) {
@@ -543,7 +570,7 @@ function openInvTransactionModal(accountId = null, positionId = null) {
   </div>`;
 
   document.body.appendChild(modal);
-  _renderInvGainLossChart(pos, history || []);
+  // chart rendered in detail modal only
   if (accountId) document.getElementById('invTxAccount').value = accountId;
   if (pos) {
     document.getElementById('invTxAssetType').value = pos.asset_type || 'outro';
@@ -865,6 +892,219 @@ async function applyInvestmentsFeature() {
 // Called from accounts.js after recalculating balances
 function invPostBalanceHook() {
   if (_inv.loaded) _invAugmentAccountBalances();
+}
+
+
+
+// ── Portfolio performance chart (page-level) ────────────────────────────────
+async function renderInvPerformanceChart() {
+  const cvId = 'invPortfolioChart';
+  const cv = document.getElementById(cvId);
+  if (!cv) return;
+
+  const positions = _inv.positions.filter(p => +(p.quantity) > 0);
+  if (!positions.length) { cv.style.display = 'none'; return; }
+
+  // Collect all price history for current positions
+  let allHistory = [];
+  try {
+    const posIds = positions.map(p => p.id);
+    // Fetch up to 90 days of price history across all positions
+    const { data: hist } = await famQ(
+      sb.from('investment_price_history')
+        .select('position_id,date,price,currency')
+    ).in('position_id', posIds)
+      .order('date', { ascending: true })
+      .limit(5000);
+    allHistory = hist || [];
+  } catch(e) {
+    console.warn('[inv] perf chart history:', e.message);
+    cv.style.display = 'none'; return;
+  }
+
+  if (!allHistory.length) { cv.style.display = 'none'; return; }
+
+  // Group by date — compute total portfolio market value at each date
+  const dateMap = {};
+  allHistory.forEach(h => {
+    const pos = positions.find(p => p.id === h.position_id);
+    if (!pos) return;
+    const qty = +(pos.quantity) || 0;
+    const price = +(h.price) || 0;
+    const mv = qty * price;
+    if (!dateMap[h.date]) dateMap[h.date] = 0;
+    dateMap[h.date] += mv;
+  });
+
+  const sortedDates = Object.keys(dateMap).sort();
+  if (sortedDates.length < 2) { cv.style.display = 'none'; return; }
+
+  const labels = sortedDates.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  });
+  const values = sortedDates.map(d => +dateMap[d].toFixed(2));
+
+  const totalCost = positions.reduce((s, p) => s + _invCost(p), 0);
+  const first = values[0];
+  const last  = values[values.length - 1];
+  const isPos = last >= totalCost;
+
+  const G = '#22c55e', R = '#ef4444';
+  const lineColor = isPos ? G : R;
+  const fillColor = isPos ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)';
+
+  // Destroy existing
+  if (cv._chart) { try { cv._chart.destroy(); } catch(_) {} }
+
+  const fmt_ = v => 'R$ ' + (+v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+  cv.style.display = '';
+  cv._chart = new Chart(cv.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Valor de Mercado',
+          data: values,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 2.5,
+          pointRadius: values.length > 30 ? 0 : 3,
+          pointHoverRadius: 5,
+          fill: 'origin',
+          tension: 0.35,
+        },
+        {
+          label: 'Custo Total',
+          data: sortedDates.map(() => +totalCost.toFixed(2)),
+          borderColor: 'rgba(100,116,139,.5)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [6, 3],
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { size: 11 }, boxWidth: 12, padding: 10 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${fmt_(ctx.parsed.y)}`,
+            afterBody: items => {
+              const mv = items[0]?.parsed.y;
+              if (mv == null) return;
+              const diff = mv - totalCost;
+              const pct  = totalCost ? (diff / totalCost * 100).toFixed(2) : '—';
+              const sign = diff >= 0 ? '+' : '';
+              return [``, ` P&L: ${sign}${fmt_(diff)} (${sign}${pct}%)`];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 10 }, maxTicksLimit: 8 },
+          grid: { display: false },
+        },
+        y: {
+          ticks: {
+            font: { size: 10 },
+            callback: v => 'R$ ' + (+v).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }),
+          },
+          grid: { color: 'rgba(0,0,0,.04)' },
+        },
+      },
+    },
+  });
+}
+
+// ── Allocation donut chart ───────────────────────────────────────────────────
+function renderInvAllocationChart() {
+  const cvId = 'invAllocationChart';
+  const cv = document.getElementById(cvId);
+  if (!cv) return;
+
+  const positions = _inv.positions.filter(p => +(p.quantity) > 0);
+  if (!positions.length) { cv.style.display = 'none'; return; }
+
+  const COLORS = {
+    acao_br: '#2a6049', fii: '#7c3aed', etf_br: '#0891b2',
+    acao_us: '#dc2626', etf_us: '#ea580c', bdr: '#d97706',
+    crypto: '#f59e0b', renda_fixa: '#16a34a', outro: '#94a3b8',
+  };
+
+  // Group by asset type
+  const byType = {};
+  const totalMV = positions.reduce((s, p) => s + _invMarketValue(p), 0);
+  positions.forEach(p => {
+    const k = p.asset_type || 'outro';
+    byType[k] = (byType[k] || 0) + _invMarketValue(p);
+  });
+
+  const entries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  const labels = entries.map(([k]) => _invAssetType(k).label);
+  const data   = entries.map(([, v]) => +v.toFixed(2));
+  const colors = entries.map(([k]) => COLORS[k] || '#94a3b8');
+
+  if (cv._chart) { try { cv._chart.destroy(); } catch(_) {} }
+  cv.style.display = '';
+
+  const fmtShort = v => 'R$ ' + (+v).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
+
+  cv._chart = new Chart(cv.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: 'var(--surface, #fff)',
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            font: { size: 11 },
+            padding: 10,
+            boxWidth: 12,
+            generateLabels: chart => {
+              const ds = chart.data.datasets[0];
+              return chart.data.labels.map((label, i) => ({
+                text: `${label} ${(data[i] / totalMV * 100).toFixed(1)}%`,
+                fillStyle: ds.backgroundColor[i],
+                strokeStyle: ds.backgroundColor[i],
+                lineWidth: 0,
+                index: i,
+              }));
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${fmtShort(ctx.parsed)} (${(ctx.parsed / totalMV * 100).toFixed(1)}%)`,
+          },
+        },
+      },
+    },
+  });
 }
 
 function _renderInvGainLossChart(pos, history) {
