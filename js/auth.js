@@ -148,7 +148,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   // app_users: fonte de verdade para dados pessoais e role global
   const { data: appUserRow } = await sb
     .from('app_users')
-    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode')
+    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -992,6 +992,11 @@ function closeUserMenu() {
    MY PROFILE MODAL — avatar + senha num único lugar
 ══════════════════════════════════════════════════════════════════ */
 
+function _toggleTxNotifChannels(show) {
+  const ch = document.getElementById('myProfileNotifyOnTxChannels');
+  if (ch) ch.style.display = show ? '' : 'none';
+}
+
 function openMyProfile() {
   closeUserMenu();
   if (!currentUser) return;
@@ -1026,6 +1031,19 @@ function openMyProfile() {
   const tgEl = document.getElementById('myProfileTelegramChatId');
   if (waEl) waEl.value = currentUser?.whatsapp_number || '';
   if (tgEl) tgEl.value = currentUser?.telegram_chat_id || '';
+  // tx notification prefs
+  const notifyTxEl      = document.getElementById('myProfileNotifyOnTx');
+  const notifyTxEmailEl = document.getElementById('myProfileNotifyTxEmail');
+  const notifyTxWaEl    = document.getElementById('myProfileNotifyTxWa');
+  const notifyTxTgEl    = document.getElementById('myProfileNotifyTxTg');
+  if (notifyTxEl) {
+    notifyTxEl.checked = !!(currentUser?.notify_on_tx);
+    _toggleTxNotifChannels(notifyTxEl.checked);
+    notifyTxEl.onchange = () => _toggleTxNotifChannels(notifyTxEl.checked);
+  }
+  if (notifyTxEmailEl) notifyTxEmailEl.checked = !!(currentUser?.notify_tx_email);
+  if (notifyTxWaEl)    notifyTxWaEl.checked    = !!(currentUser?.notify_tx_wa);
+  if (notifyTxTgEl)    notifyTxTgEl.checked    = !!(currentUser?.notify_tx_tg);
 
   // --- Avatar state ---
   const removeBtn = document.getElementById('myProfileRemoveAvatarBtn');
@@ -1268,7 +1286,15 @@ async function saveMyProfile() {
   const nameChanged = newName && newName !== (currentUser?.name || '');
   const newFormMode = document.getElementById('myProfileFormMode')?.value || 'tabs';
   const fmChanged = newFormMode !== (currentUser?.preferred_form_mode || 'tabs');
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged) {
+  const notifyOnTx      = !!(document.getElementById('myProfileNotifyOnTx')?.checked);
+  const notifyTxEmail   = !!(document.getElementById('myProfileNotifyTxEmail')?.checked);
+  const notifyTxWa      = !!(document.getElementById('myProfileNotifyTxWa')?.checked);
+  const notifyTxTg      = !!(document.getElementById('myProfileNotifyTxTg')?.checked);
+  const notifyChanged   = notifyOnTx      !== !!(currentUser?.notify_on_tx)
+                       || notifyTxEmail   !== !!(currentUser?.notify_tx_email)
+                       || notifyTxWa      !== !!(currentUser?.notify_tx_wa)
+                       || notifyTxTg      !== !!(currentUser?.notify_tx_tg);
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged && !notifyChanged) {
     closeModal('myProfileModal');
     return;
   }
@@ -1296,6 +1322,12 @@ async function saveMyProfile() {
     if (tgChanged)      updatePayload.telegram_chat_id    = telegramChatId || null;
     if (nameChanged)    updatePayload.name                = newName;
     if (fmChanged)      updatePayload.preferred_form_mode = newFormMode;
+    if (notifyChanged) {
+      updatePayload.notify_on_tx    = notifyOnTx;
+      updatePayload.notify_tx_email = notifyTxEmail;
+      updatePayload.notify_tx_wa    = notifyTxWa;
+      updatePayload.notify_tx_tg    = notifyTxTg;
+    }
 
     if (Object.keys(updatePayload).length > 0) {
       const { error: avErr } = await sb.from('app_users').update(updatePayload).eq('id', appRow.id);
@@ -1318,6 +1350,10 @@ async function saveMyProfile() {
       }
       if ('whatsapp_number' in updatePayload) currentUser.whatsapp_number = whatsappNumber || '';
       if ('telegram_chat_id' in updatePayload) currentUser.telegram_chat_id = telegramChatId || '';
+      if ('notify_on_tx'    in updatePayload) currentUser.notify_on_tx    = notifyOnTx;
+      if ('notify_tx_email' in updatePayload) currentUser.notify_tx_email = notifyTxEmail;
+      if ('notify_tx_wa'    in updatePayload) currentUser.notify_tx_wa    = notifyTxWa;
+      if ('notify_tx_tg'    in updatePayload) currentUser.notify_tx_tg    = notifyTxTg;
       if ('name' in updatePayload) {
         currentUser.name = newName;
         // Refresh cover header name

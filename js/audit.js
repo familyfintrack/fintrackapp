@@ -42,7 +42,7 @@ async function loadAuditLogs() {
     <div style="font-size:.85rem">Carregando registros…</div></div>`;
 
   if (btn)   btn.disabled = true;
-  if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${loading}</td></tr>`;
+  if (body)  body.innerHTML  = `<tr><td colspan="8" style="padding:0">${loading}</td></tr>`;
   if (cards) cards.innerHTML = loading;
 
   try {
@@ -56,7 +56,7 @@ async function loadAuditLogs() {
 
     let q = famQ(
       sb.from('scheduled_run_logs')
-        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at')
+        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at, notif_email_sent, notif_wa_sent, notif_tg_sent, notif_email_addr, notif_wa_number, notif_tg_chat_id, notif_error')
         .order('created_at', { ascending: false })
         .limit(500)
     );
@@ -110,7 +110,7 @@ async function loadAuditLogs() {
           ⚠️ Erro ao carregar auditoria: ${esc(e.message)}
           <br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="loadAuditLogs()">↻ Tentar novamente</button></div>`;
 
-    if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${errHtml}</td></tr>`;
+    if (body)  body.innerHTML  = `<tr><td colspan="8" style="padding:0">${errHtml}</td></tr>`;
     if (cards) cards.innerHTML = errHtml;
   } finally {
     if (btn) btn.disabled = false;
@@ -150,7 +150,7 @@ function _auditApplyLocalFilters() {
       : 'Nenhum auto-registro ainda. Execute uma transação programada automática para ver os logs aqui.';
     const body  = document.getElementById('auditBody');
     const cards = document.getElementById('auditCards');
-    if (body)  body.innerHTML  = `<tr><td colspan="7" style="padding:0">${empty(msg)}</td></tr>`;
+    if (body)  body.innerHTML  = `<tr><td colspan="8" style="padding:0">${empty(msg)}</td></tr>`;
     if (cards) cards.innerHTML = empty(msg);
     return;
   }
@@ -202,6 +202,37 @@ function _auditTxLink(txId) {
     : `<span style="color:var(--muted);font-size:.78rem">—</span>`;
 }
 
+// ── Notification badge helper ────────────────────────────────────────────────
+function _auditNotifBadge(r) {
+  const parts = [];
+  // Email
+  if (r.notif_email_sent) {
+    const to = r.notif_email_addr ? ` → ${esc(r.notif_email_addr)}` : '';
+    parts.push(`<span class="audit-notif-badge audit-notif-email" title="E-mail enviado${r.notif_email_addr?' para '+r.notif_email_addr:''}">✉️ Email${to}</span>`);
+  }
+  // WhatsApp
+  if (r.notif_wa_sent !== undefined && r.notif_wa_sent !== null) {
+    const to = r.notif_wa_number ? ` +${esc(r.notif_wa_number)}` : '';
+    const ok = r.notif_wa_sent === true || r.notif_wa_sent === 'sent';
+    const icon = ok ? '✅' : '❌';
+    const cls  = ok ? 'audit-notif-wa-ok' : 'audit-notif-wa-err';
+    parts.push(`<span class="audit-notif-badge ${cls}" title="WhatsApp${to}: ${ok?'enviado':'falhou'}">${icon} WA${to}</span>`);
+  }
+  // Telegram
+  if (r.notif_tg_sent !== undefined && r.notif_tg_sent !== null) {
+    const to = r.notif_tg_chat_id ? ` @${esc(r.notif_tg_chat_id)}` : '';
+    const ok = r.notif_tg_sent === true || r.notif_tg_sent === 'sent';
+    const icon = ok ? '✅' : '❌';
+    const cls  = ok ? 'audit-notif-tg-ok' : 'audit-notif-tg-err';
+    parts.push(`<span class="audit-notif-badge ${cls}" title="Telegram${to}: ${ok?'enviado':'falhou'}">${icon} TG${to}</span>`);
+  }
+  // No notification at all
+  if (!parts.length) {
+    return `<span class="audit-notif-badge audit-notif-none" title="Sem notificação configurada">— sem notificação</span>`;
+  }
+  return parts.join('');
+}
+
 // ── Linha da tabela desktop ───────────────────────────────────────────────────
 function _auditRowDesktop(r) {
   const sc       = r.scheduled_transactions;
@@ -216,13 +247,14 @@ function _auditRowDesktop(r) {
 
   return `<tr class="audit-tr-${r.status || 'confirmed'}">
     <td style="white-space:nowrap;font-size:.82rem;color:var(--text2)">${fmtDate(r.scheduled_date || r.created_at)}</td>
-    <td style="max-width:240px">
+    <td style="max-width:220px">
       <div style="font-weight:600;font-size:.875rem;color:var(--text)">${typeIcon} ${esc(mainDesc)}</div>
       ${catName  ? `<div style="font-size:.72rem;color:var(--accent);margin-top:1px">📁 ${esc(catName)}</div>` : ''}
       ${runDesc  ? `<div style="font-size:.72rem;color:var(--muted);margin-top:1px">${esc(runDesc)}</div>` : ''}
     </td>
     <td style="font-size:.78rem;color:var(--muted);white-space:nowrap">${_auditFreqLabel(sc?.frequency)}</td>
     <td>${_auditStatusBadge(r.status)}</td>
+    <td><div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">${_auditNotifBadge(r)}</div>${r.notif_error?`<div style="font-size:.68rem;color:var(--red);margin-top:2px" title="${esc(r.notif_error)}">⚠️ ${esc(r.notif_error.slice(0,40))}…</div>`:''}</td>
     <td style="text-align:right;white-space:nowrap;font-weight:700"
         class="${amount >= 0 ? 'amount-pos' : 'amount-neg'}">${fmt(amount)}</td>
     <td style="font-size:.74rem;color:var(--muted);white-space:nowrap">${createdAt}</td>
@@ -252,6 +284,9 @@ function _auditRowMobile(r) {
       <span>📅 ${date}</span>
       ${_auditFreqLabel(sc?.frequency) !== '—' ? `<span>🔁 ${_auditFreqLabel(sc?.frequency)}</span>` : ''}
       ${catName ? `<span class="aud-card-cat">📁 ${esc(catName)}</span>` : ''}
+    </div>
+    <div class="aud-card-notif">${_auditNotifBadge(r)}</div>
+    <div class="aud-card-meta" style="margin-top:4px">
       <span style="margin-left:auto">${_auditTxLink(r.transaction_id)}</span>
     </div>
   </div>`;
@@ -274,20 +309,39 @@ function filterAuditLogs() {
 // ── SQL migration ─────────────────────────────────────────────────────────────
 function _auditMigrationSql() {
   return `CREATE TABLE IF NOT EXISTS public.scheduled_run_logs (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id      UUID REFERENCES public.families(id) ON DELETE CASCADE,
-  scheduled_id   UUID REFERENCES public.scheduled_transactions(id) ON DELETE SET NULL,
-  transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
-  scheduled_date DATE,
-  status         TEXT NOT NULL DEFAULT 'confirmed'
-                   CHECK (status IN ('confirmed','pending','error')),
-  amount         NUMERIC(14,2),
-  description    TEXT,
-  notes          TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_id        UUID REFERENCES public.families(id) ON DELETE CASCADE,
+  scheduled_id     UUID REFERENCES public.scheduled_transactions(id) ON DELETE SET NULL,
+  transaction_id   UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
+  scheduled_date   DATE,
+  status           TEXT NOT NULL DEFAULT 'confirmed'
+                     CHECK (status IN ('confirmed','pending','error')),
+  amount           NUMERIC(14,2),
+  description      TEXT,
+  notes            TEXT,
+  notif_email_sent BOOLEAN,
+  notif_wa_sent    TEXT,
+  notif_tg_sent    TEXT,
+  notif_email_addr TEXT,
+  notif_wa_number  TEXT,
+  notif_tg_chat_id TEXT,
+  notif_error      TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- Adiciona coluna notes caso a tabela já exista sem ela
-ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notes TEXT;
+-- Adiciona colunas de notificação caso a tabela já exista sem elas
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notes            TEXT;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_email_sent BOOLEAN;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_wa_sent    TEXT;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_tg_sent    TEXT;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_email_addr TEXT;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_wa_number  TEXT;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_tg_chat_id TEXT;
+ALTER TABLE public.scheduled_run_logs ADD COLUMN IF NOT EXISTS notif_error      TEXT;
+-- Adiciona colunas de notificação em app_users (preferências de notificação por transação)
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS notify_on_tx    BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS notify_tx_email BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS notify_tx_wa    BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS notify_tx_tg    BOOLEAN NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS idx_srl_family  ON public.scheduled_run_logs(family_id);
 CREATE INDEX IF NOT EXISTS idx_srl_created ON public.scheduled_run_logs(created_at DESC);
 ALTER TABLE public.scheduled_run_logs ENABLE ROW LEVEL SECURITY;

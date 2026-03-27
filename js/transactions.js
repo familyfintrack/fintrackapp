@@ -1531,6 +1531,10 @@ async function saveTransaction(){
     await postDebtAmortizationEntry(data.amount, data.date, txResult.id).catch(() => {});
   }
   toast(id?'✓ Atualizado!':'✓ Transação salva!','success');
+  // Notify user on new transaction if enabled
+  if (!id && savedId && typeof notifyOnTransaction === 'function') {
+    notifyOnTransaction({ id: savedId, ...data }).catch(() => {});
+  }
   closeModal('txModal');
   if(!id && savedId) {
     await _goToSavedTransaction(savedId, { ...data, id: savedId, status: data.status, date: data.date });
@@ -2350,6 +2354,7 @@ async function saveConvertToScheduled() {
   if (error) { toast('Erro ao criar programação: ' + error.message, 'error'); return; }
 
   toast(t('scheduled.saved'), 'success');
+  // No per-transaction notify for scheduled — notified at execution time
   closeModal('convertToScheduledModal');
   if (state.currentPage === 'scheduled') loadScheduled();
 }

@@ -636,6 +636,97 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_auto_register
 }
 
 
+
+/* ── Notify on manual/auto transaction ────────────────────────────────────── */
+async function notifyOnTransaction(tx, sc = null) {
+  try {
+    const user = typeof currentUser !== 'undefined' ? currentUser : null;
+    if (!user?.notify_on_tx) return;
+
+    const desc    = tx?.description || sc?.description || 'Transação';
+    const amount  = typeof fmt === 'function' ? fmt(tx?.amount ?? 0) : String(tx?.amount ?? 0);
+    const date    = typeof fmtDate === 'function' ? fmtDate(tx?.date || new Date().toISOString().slice(0,10)) : (tx?.date || '');
+    const accName = (state?.accounts || []).find(a => a.id === tx?.account_id)?.name || '';
+    const catName = (state?.categories || []).find(c => c.id === tx?.category_id)?.name || '';
+    const type    = tx?.amount >= 0 ? '💰 Receita' : '💸 Despesa';
+
+    const msgLines = [
+      `${type}: ${desc}`,
+      `Valor: ${amount}`,
+      date ? `Data: ${date}` : '',
+      accName ? `Conta: ${accName}` : '',
+      catName ? `Categoria: ${catName}` : '',
+    ].filter(Boolean).join('\n');
+
+    const promises = [];
+
+    // Email
+    if (user.notify_tx_email && user.email) {
+      const tplId = (typeof EMAILJS_CONFIG !== 'undefined') ? (EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId) : null;
+      if (tplId && EMAILJS_CONFIG.serviceId && EMAILJS_CONFIG.publicKey) {
+        promises.push(
+          emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+            to_email:       user.email,
+            report_subject: `[FinTrack] ${type}: ${desc}`,
+            Subject:        `[FinTrack] ${type}: ${desc}`,
+            month_year:     date,
+            report_content: `<div style="font-family:Arial,sans-serif;padding:14px"><strong>${desc}</strong><br>Valor: ${amount}<br>Data: ${date}${accName?'<br>Conta: '+accName:''}${catName?'<br>Categoria: '+catName:''}</div>`,
+          }).catch(e => console.warn('[notifyTx] email:', e.message))
+        );
+      }
+    }
+
+    // WhatsApp
+    if (user.notify_tx_wa && user.whatsapp_number) {
+      const number = String(user.whatsapp_number).replace(/\D+/g, '');
+      if (number) {
+        promises.push(
+          (async () => {
+            try {
+              await sb.functions.invoke('send-scheduled-whatsapp', {
+                body: {
+                  recipient: number,
+                  message: msgLines,
+                  notification_type: 'tx_registered',
+                  amount: tx?.amount,
+                  lang: 'pt_BR',
+                }
+              });
+            } catch(e) { console.warn('[notifyTx] whatsapp:', e.message); }
+          })()
+        );
+      }
+    }
+
+    // Telegram
+    if (user.notify_tx_tg && user.telegram_chat_id) {
+      const chatId = String(user.telegram_chat_id).trim();
+      if (chatId) {
+        promises.push(
+          (async () => {
+            try {
+              await sb.functions.invoke('send-scheduled-telegram', {
+                body: {
+                  chat_id: chatId,
+                  message: `✅ FinTrack: Transação Registrada
+${msgLines}`,
+                  notification_type: 'tx_registered',
+                  amount: tx?.amount,
+                }
+              });
+            } catch(e) { console.warn('[notifyTx] telegram:', e.message); }
+          })()
+        );
+      }
+    }
+
+    if (promises.length) await Promise.allSettled(promises);
+  } catch(e) {
+    console.warn('[notifyOnTransaction]', e.message);
+  }
+}
+window.notifyOnTransaction = notifyOnTransaction;
+
 // === PERIODICITY COLORS ===
 function getPeriodColor(period) {
   switch((period||'').toLowerCase()) {
