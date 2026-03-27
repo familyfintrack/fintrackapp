@@ -387,10 +387,11 @@ function txRow(t, showAccount=true, runningBalance=null) {
   const dateStr = `<span class="tx-date-day">${d.getDate()}</span><span class="tx-date-mon">${MON[d.getMonth()]}</span>`;
 
   const _catIcon  = t.categories?.icon  || '';
-  const _catColor = t.categories?.color || '';
+  const _catColor = t.categories?.color || '#94a3b8';
+  // Category icon bubble — shown inline before description
   const _catIconHtml = _catIcon
-    ? `<span class="tx-v2-cat-icon" style="${_catColor ? `color:${_catColor}` : ''}">${_catIcon}</span>`
-    : '';
+    ? `<span class="tx-v2-cat-bubble" style="background:${_catColor}22;color:${_catColor}">${_catIcon}</span>`
+    : `<span class="tx-v2-cat-bubble tx-v2-cat-bubble-dot" style="background:${_catColor}33"></span>`;
   const categoryName = t.categories?.name ? esc(t.categories.name) : '';
   const payeeName = t.payees?.name ? esc(t.payees.name) : '';
   const categoryOnlyLine = categoryName
@@ -460,7 +461,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
       ${checkboxCell}
       <td class="tx-v2-date">${dateStr}${pendDot}</td>
       <td class="tx-v2-body">
-        <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
+        <div class="tx-v2-title">${_catIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
         ${detailLines}
       </td>
       <td class="tx-v2-right">
@@ -676,6 +677,14 @@ function renderTransactions(){
     let bandIndex = 0;
     const TODAY_STR = new Date().toISOString().slice(0,10);
     const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    // Pre-compute per-day totals for the summary
+    const dayTotals = {};
+    txList.forEach(tx => {
+      if (!tx.date) return;
+      if (!dayTotals[tx.date]) dayTotals[tx.date] = 0;
+      const brl = txToBRL(tx);
+      dayTotals[tx.date] += brl;
+    });
     txList.forEach(tx => {
       const txDateStr = tx.date || '';
       if (txDateStr !== lastDate) {
@@ -705,7 +714,11 @@ function renderTransactions(){
         bandIndex++;
         const bandClass = bandIndex % 2 === 0 ? 'tx-date-band-alt' : 'tx-date-band';
         const colspan = colCount;
-        html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell">${label}</td></tr>`;
+        const daySum = dayTotals[txDateStr] || 0;
+        const daySumHtml = daySum !== 0
+          ? `<span class="tx-date-day-total ${daySum >= 0 ? 'pos' : 'neg'}">${daySum >= 0 ? '+' : ''}${fmt(daySum)}</span>`
+          : '';
+        html += `<tr class="tx-date-header-row ${bandClass}"><td colspan="${colspan}" class="tx-date-header-cell"><span class="tx-date-label">${label}</span>${daySumHtml}</td></tr>`;
         lastDate = txDateStr;
       }
       const runningBal = (balMapArg && Object.prototype.hasOwnProperty.call(balMapArg, tx.id)) ? balMapArg[tx.id] : null;
@@ -759,26 +772,30 @@ function renderTransactionsGrouped(txs) {
     const acct = state.accounts.find(a => a.id === k) || {};
     const col = acct.color || 'var(--accent)';
     const colspan = 6;
-    return `<div class="tx-group-wrap" id="txGroup-${k}" style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px">
-      <div class="tx-group-header" onclick="toggleTxGroup('${k}')"
-        style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-bottom:2px solid ${col}30;cursor:pointer">
-        <div style="width:4px;height:32px;background:${col};border-radius:4px;flex-shrink:0"></div>
-        ${renderIconEl(acct.icon, acct.color, 28)}
-        <span style="font-weight:700;font-size:.95rem;flex:1">${esc(g.account?.name||'Sem conta')}</span>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          ${g.income ? `<span class="badge badge-green" style="font-size:.75rem">+${fmt(g.income,'BRL')}</span>` : ''}
-          ${g.expense ? `<span class="badge badge-red" style="font-size:.75rem">${fmt(g.expense,'BRL')}</span>` : ''}
-          <span class="badge" style="font-size:.78rem;font-weight:700;background:${g.balance>=0?'var(--green-lt)':'var(--red-lt)'};color:${g.balance>=0?'var(--green)':'var(--red)'}">
-            ${g.balance>=0?'=':''} ${fmt(g.balance,'BRL')}
-          </span>
-          <span style="font-size:.7rem;color:var(--muted)">${g.txs.length} lanç.</span>
+    const acctCurrency = acct.currency || 'BRL';
+    return `<div class="tx-group-card" id="txGroup-${k}">
+      <div class="tx-group-card__header" onclick="toggleTxGroup('${k}')">
+        <div class="tx-group-card__accent" style="background:${col}"></div>
+        <div class="tx-group-card__icon" style="background:${col}22;color:${col}">${acct.icon||'🏦'}</div>
+        <div class="tx-group-card__info">
+          <span class="tx-group-card__name">${esc(g.account?.name||'Sem conta')}</span>
+          <span class="tx-group-card__count">${g.txs.length} lançamentos</span>
         </div>
-        <span id="txGroupToggle-${k}" style="font-size:.7rem;color:var(--muted);transition:transform .2s">▼</span>
+        <div class="tx-group-card__totals">
+          ${g.income ? `<span class="tx-grp-badge tx-grp-badge-in">+${fmt(g.income,acctCurrency)}</span>` : ''}
+          ${g.expense ? `<span class="tx-grp-badge tx-grp-badge-out">${fmt(g.expense,acctCurrency)}</span>` : ''}
+          <span class="tx-grp-badge ${g.balance>=0?'tx-grp-badge-bal-pos':'tx-grp-badge-bal-neg'}">${fmt(g.balance,acctCurrency)}</span>
+        </div>
+        <svg class="tx-group-card__arrow" id="txGroupToggle-${k}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <div id="txGroupBody-${k}" class="tx-group-body">
+      <div id="txGroupBody-${k}" class="tx-group-card__body">
         <div class="table-wrap" style="margin:0">
           <table style="border-radius:0">
-            <thead><tr><th class="tx-th-date" onclick="sortTx('date')">Data ⇅</th><th class="tx-th-desc">Descrição</th><th class="tx-th-amt" onclick="sortTx('amount')">Valor ⇅</th></tr></thead>
+            <thead><tr>
+              <th class="tx-v2-th-date" onclick="sortTx('date')">Data ⇅</th>
+              <th class="tx-v2-th-body">Descrição</th>
+              <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>
+            </tr></thead>
             <tbody>${g.txs.map(t => txRow(t, false)).join('')}</tbody>
           </table>
         </div>
@@ -790,9 +807,11 @@ function renderTransactionsGrouped(txs) {
 function toggleTxGroup(k) {
   const body = document.getElementById('txGroupBody-'+k);
   const arrow = document.getElementById('txGroupToggle-'+k);
+  const card = document.getElementById('txGroup-'+k);
   const collapsed = body.style.display === 'none';
   body.style.display = collapsed ? '' : 'none';
   if(arrow) arrow.style.transform = collapsed ? '' : 'rotate(-90deg)';
+  if(card) card.classList.toggle('tx-group-card--collapsed', !collapsed);
 }
 
 function changePage(dir){state.txPage+=dir;loadTransactions();}
