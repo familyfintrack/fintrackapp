@@ -408,39 +408,72 @@ async function openPayeeModal(id=''){
 }
 
 /** Constrói o dropdown hierárquico de categorias filtrado por tipo de beneficiário */
-function _buildPayeeCatPicker(payeeType, selectedId) {
-  const typeFilter = payeeType === 'beneficiario' ? 'despesa'
-    : payeeType === 'fonte_pagadora' ? 'receita'
-    : null; // 'ambos' → mostra todas
+function _normalizePayeeCatType(raw) {
+  const v = String(raw || '').toLowerCase().trim();
+  if (!v) return '';
+  if (['expense', 'despesa', 'gasto'].includes(v)) return 'expense';
+  if (['income', 'receita', 'entrada'].includes(v)) return 'income';
+  if (['both', 'ambos', 'ambas', 'all', 'todos'].includes(v)) return 'both';
+  return v;
+}
 
-  const cats = (state.categories || []).filter(c => c && c.id && c.name);
-  // Parents visíveis conforme tipo
-  const parents = cats.filter(c => !c.parent_id && (typeFilter === null || c.type === typeFilter));
+function _payeeTypeToCatGroup(payeeType) {
+  if (payeeType === 'beneficiario') return 'expense';
+  if (payeeType === 'fonte_pagadora') return 'income';
+  return null; // 'ambos' → mostra tudo
+}
+
+function _buildPayeeCatPicker(payeeType, selectedId) {
+  const typeFilter = _payeeTypeToCatGroup(payeeType);
+  const cats = Array.isArray(state.categories) ? state.categories : [];
   const dropdown = document.getElementById('payeeCatPickerDropdown');
   if (!dropdown) return;
 
-  let html = `<div onclick="setPayeeCatValue('','true')"
+  const parents = cats
+    .filter(c => !c.parent_id)
+    .filter(c => {
+      const catType = _normalizePayeeCatType(c.type);
+      return typeFilter === null || catType === typeFilter || catType === 'both';
+    })
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'));
+
+  let html = `<div onclick="setPayeeCatValue('', true)"
     style="padding:9px 12px;cursor:pointer;font-size:.82rem;color:var(--muted);
            border-bottom:1px solid var(--border2)"
     onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
     — Nenhuma —</div>`;
 
-  if (typeFilter === null) {
-    // Agrupar por tipo quando 'ambos'
-    [['despesa','💸 Despesas'],['receita','💰 Receitas']].forEach(([t, label]) => {
-      const group = parents.filter(p => p.type === t);
-      if (!group.length) return;
+  if (!parents.length) {
+    html += `<div style="padding:12px;font-size:.8rem;color:var(--muted)">Nenhuma categoria disponível.</div>`;
+    dropdown.innerHTML = html;
+    setPayeeCatValue(selectedId, false);
+    return;
+  }
+
+  const groupDefs = typeFilter === null
+    ? [['expense', '💸 Despesas'], ['income', '💰 Receitas']]
+    : [[typeFilter, typeFilter === 'expense' ? '💸 Despesas' : '💰 Receitas']];
+
+  groupDefs.forEach(([groupType, label]) => {
+    const group = parents.filter(p => {
+      const catType = _normalizePayeeCatType(p.type);
+      return catType === groupType || catType === 'both';
+    });
+    if (!group.length) return;
+    if (typeFilter === null) {
       html += `<div style="padding:5px 10px;font-size:.7rem;font-weight:700;
                            text-transform:uppercase;letter-spacing:.06em;
                            color:var(--muted);background:var(--surface2)">${label}</div>`;
-      group.forEach(p => { html += _payeeCatParentHtml(p, cats.filter(c => c.parent_id === p.id)); });
+    }
+    group.forEach(parent => {
+      const children = cats
+        .filter(c => c.parent_id === parent.id)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'));
+      html += _payeeCatParentHtml(parent, children);
     });
-  } else {
-    parents.forEach(p => { html += _payeeCatParentHtml(p, cats.filter(c => c.parent_id === p.id)); });
-  }
+  });
 
   dropdown.innerHTML = html;
-  // Apply selected value
   setPayeeCatValue(selectedId, false);
 }
 
@@ -458,7 +491,7 @@ function _payeeCatParentHtml(parent, children) {
       style="padding:7px 12px 7px 28px;cursor:pointer;font-size:.8rem;
              display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border2)"
       onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-      ${cdot}<span>${esc(c.name)}</span></div>`;
+      ${cdot}<span>${esc(parent.name)} <span style="color:var(--muted)">→</span> ${esc(c.name)}</span></div>`;
   });
   return h;
 }
@@ -494,8 +527,9 @@ function setPayeeCatValue(catId, closeDropdown) {
   } else {
     const cat = (state.categories || []).find(c => c.id === catId);
     if (cat) {
-      if (label) label.textContent = cat.name;
-      if (dot)   dot.style.background = cat.color || 'var(--accent)';
+      const parent = cat.parent_id ? (state.categories || []).find(c => c.id === cat.parent_id) : null;
+      if (label) label.textContent = parent ? `${parent.name} → ${cat.name}` : cat.name;
+      if (dot)   dot.style.background = cat.color || parent?.color || 'var(--accent)';
     }
   }
   if (closeDropdown && dd) dd.style.display = 'none';
