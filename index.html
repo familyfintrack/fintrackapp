@@ -3823,178 +3823,151 @@
 
         <div class="form-group full"><label>Memo / Observação</label><textarea id="scMemo" rows="2" placeholder="Notas..."></textarea></div>
 
-        <div class="sc-section-card full" id="scAutomationSection" data-collapsed="false">
-          <button type="button" class="sc-section-toggle" onclick="toggleScheduledSection('automation')">
+        <!-- Divider -->
+        <div class="full" style="border-top:1px solid var(--border);padding-top:4px;margin-top:4px">
+          <span style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Automação</span>
+        </div>
+
+        <!-- Auto register -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="scAutoRegister" style="width:16px;height:16px;margin-top:2px;cursor:pointer">
             <div>
-              <div class="sc-section-kicker">Automação</div>
-              <div class="sc-section-title">Registro automático</div>
-              <div class="sc-section-subtitle">Configure se o lançamento deve ser criado sozinho e como ele entra no fluxo da conta.</div>
+              <div style="font-weight:600;font-size:.88rem">Registrar automaticamente</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Quando a data chegar, cria a transação automaticamente sem necessidade de aprovação manual</div>
             </div>
-            <div class="sc-section-meta">
-              <span class="sc-section-chip" id="scAutomationChip">Manual</span>
-              <svg class="sc-section-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </label>
+          <label class="iof-intl-toggle" style="margin-top:8px;display:block" onclick="event.stopPropagation()">
+            <input type="checkbox" id="scAutoConfirm" onchange="_updateAutoConfirmHint()" />
+            ✅ Auto-confirmar ao registrar automaticamente
+          </label>
+          <div id="scAutoConfirmHint" style="font-size:.72rem;font-weight:600;margin:-6px 0 6px 4px;color:var(--green,#16a34a)">✅ Lançará como Confirmada</div>
+        </div>
+
+        <!-- Email notification -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Notificar por e-mail</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Enviar e-mail de aviso quando a transação estiver próxima ou for registrada automaticamente</div>
             </div>
-          </button>
-          <div class="sc-section-body">
-            <div class="sc-automation-panel">
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scAutoRegister" style="width:16px;height:16px;cursor:pointer" onchange="syncScheduledAutomationSummary()">
-                  <div>
-                    <div class="sc-channel-title">Registrar automaticamente</div>
-                    <div class="sc-channel-subtitle">Quando a data chegar, cria a transação automaticamente sem precisar de intervenção manual.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details">
-                  <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                    <input type="checkbox" id="scAutoConfirm" onchange="_updateAutoConfirmHint();syncScheduledAutomationSummary()" />
-                    ✅ Auto-confirmar ao registrar automaticamente
-                  </label>
-                  <div id="scAutoConfirmHint" class="sc-inline-note" style="font-weight:700;color:var(--green,#16a34a);margin-top:8px">✅ Lançará como Confirmada</div>
-                </div>
-              </div>
+          </label>
+        </div>
+        <div class="form-group full" id="scNotifyEmailDetails" style="display:none;padding:12px;background:var(--accent-lt);border-radius:var(--r-sm);border:1px solid rgba(42,96,73,.15)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label>E-mail destino</label>
+              <input type="email" id="scNotifyEmailAddr" placeholder="email@exemplo.com">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Avisar com antecedência</label>
+              <select id="scNotifyDaysBefore">
+                <option value="0">No dia</option>
+                <option value="1" selected>1 dia antes</option>
+                <option value="2">2 dias antes</option>
+                <option value="3">3 dias antes</option>
+                <option value="7">1 semana antes</option>
+              </select>
             </div>
           </div>
         </div>
 
-        <div class="sc-section-card full" id="scNotificationsSection" data-collapsed="false">
-          <button type="button" class="sc-section-toggle" onclick="toggleScheduledSection('notifications')">
+        <!-- WhatsApp notification -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="scNotifyWhatsapp" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="toggleScheduledWhatsappDetails(this.checked)">
             <div>
-              <div class="sc-section-kicker">Notificações</div>
-              <div class="sc-section-title">Canais de aviso</div>
-              <div class="sc-section-subtitle">E-mail, WhatsApp e Telegram operam de forma independente e podem ser ligados em qualquer combinação.</div>
+              <div style="font-weight:600;font-size:.88rem">Notificar por WhatsApp</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Enviar lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente</div>
             </div>
-            <div class="sc-section-meta">
-              <span class="sc-section-chip" id="scNotificationsChip">Sem canais</span>
-              <svg class="sc-section-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </label>
+        </div>
+        <div class="form-group full" id="scNotifyWhatsappDetails" style="display:none;padding:12px;background:rgba(34,197,94,.08);border-radius:var(--r-sm);border:1px solid rgba(34,197,94,.18)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label>Número WhatsApp</label>
+              <input type="tel" id="scNotifyWhatsappNumber" placeholder="5511999999999">
+              <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Se o seu perfil tiver WhatsApp padrão, este campo será pré-preenchido automaticamente.</div>
             </div>
-          </button>
-          <div class="sc-section-body">
-            <div class="sc-section-grid">
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
-                  <div>
-                    <div class="sc-channel-title">Notificar por e-mail</div>
-                    <div class="sc-channel-subtitle">Envia lembrete antes da data usando o e-mail do usuário como padrão.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details" id="scNotifyEmailDetails" style="display:none">
-                  <div class="sc-details-grid">
-                    <div class="form-group" style="margin:0">
-                      <label>E-mail destino</label>
-                      <input type="email" id="scNotifyEmailAddr" placeholder="email@exemplo.com">
-                      <div class="sc-inline-note">Pré-preenchido com o e-mail do usuário logado.</div>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Avisar com antecedência</label>
-                      <select id="scNotifyDaysBefore">
-                        <option value="0">No dia</option>
-                        <option value="1" selected>1 dia antes</option>
-                        <option value="2">2 dias antes</option>
-                        <option value="3">3 dias antes</option>
-                        <option value="7">1 semana antes</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scNotifyWhatsapp" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledWhatsappDetails(this.checked)">
-                  <div>
-                    <div class="sc-channel-title">Notificar por WhatsApp</div>
-                    <div class="sc-channel-subtitle">Envia lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details" id="scNotifyWhatsappDetails" style="display:none">
-                  <div class="sc-details-grid">
-                    <div class="form-group" style="margin:0">
-                      <label>Número WhatsApp</label>
-                      <input type="tel" id="scNotifyWhatsappNumber" placeholder="5511999999999">
-                      <div class="sc-inline-note">Se o seu perfil tiver WhatsApp padrão, este campo será pré-preenchido automaticamente.</div>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Avisar com antecedência</label>
-                      <select id="scNotifyWhatsappDaysBefore">
-                        <option value="0">No dia</option>
-                        <option value="1" selected>1 dia antes</option>
-                        <option value="2">2 dias antes</option>
-                        <option value="3">3 dias antes</option>
-                        <option value="7">1 semana antes</option>
-                      </select>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Template</label>
-                      <select id="scNotifyWhatsappTemplate">
-                        <option value="scheduled_upcoming">Lembrete agendado</option>
-                        <option value="scheduled_processed">Confirmação de execução</option>
-                      </select>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Idioma</label>
-                      <select id="scNotifyWhatsappLang">
-                        <option value="pt_BR" selected>Português (Brasil)</option>
-                        <option value="en_US">English (US)</option>
-                        <option value="fr_FR">Français</option>
-                        <option value="es_ES">Español</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="sc-stack">
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyWhatsappUpcoming" checked />
-                      🔔 Avisar antes da data
-                    </label>
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyWhatsappProcessed" checked />
-                      ✅ Avisar após auto-registro
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scNotifyTelegram" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledTelegramDetails(this.checked)">
-                  <div>
-                    <div class="sc-channel-title">Notificar por Telegram</div>
-                    <div class="sc-channel-subtitle">Envia lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details" id="scNotifyTelegramDetails" style="display:none">
-                  <div class="sc-details-grid">
-                    <div class="form-group" style="margin:0">
-                      <label>Telegram Chat ID</label>
-                      <input type="text" id="scNotifyTelegramChatId" placeholder="Ex.: 7540422976">
-                      <div class="sc-inline-note">Se o seu perfil tiver Telegram padrão, este campo será pré-preenchido automaticamente.</div>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Avisar com antecedência</label>
-                      <select id="scNotifyTelegramDaysBefore">
-                        <option value="0">No dia</option>
-                        <option value="1" selected>1 dia antes</option>
-                        <option value="2">2 dias antes</option>
-                        <option value="3">3 dias antes</option>
-                        <option value="7">1 semana antes</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="sc-stack">
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyTelegramUpcoming" checked />
-                      🔔 Avisar antes da data
-                    </label>
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyTelegramProcessed" checked />
-                      ✅ Avisar após auto-registro
-                    </label>
-                  </div>
-                </div>
-              </div>
+            <div class="form-group" style="margin:0">
+              <label>Avisar com antecedência</label>
+              <select id="scNotifyWhatsappDaysBefore">
+                <option value="0">No dia</option>
+                <option value="1" selected>1 dia antes</option>
+                <option value="2">2 dias antes</option>
+                <option value="3">3 dias antes</option>
+                <option value="7">1 semana antes</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Template</label>
+              <select id="scNotifyWhatsappTemplate">
+                <option value="scheduled_upcoming">Lembrete agendado</option>
+                <option value="scheduled_processed">Confirmação de execução</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Idioma</label>
+              <select id="scNotifyWhatsappLang">
+                <option value="pt_BR" selected>Português (Brasil)</option>
+                <option value="en_US">English (US)</option>
+                <option value="fr_FR">Français</option>
+                <option value="es_ES">Español</option>
+              </select>
             </div>
           </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyWhatsappUpcoming" checked />
+              🔔 Avisar antes da data
+            </label>
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyWhatsappProcessed" checked />
+              ✅ Avisar após auto-registro
+            </label>
+          </div>
+        </div>
+
+        <!-- Telegram notification -->
+        <div class="form-group full">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="scNotifyTelegram" style="width:16px;height:16px;margin-top:2px;cursor:pointer" onchange="toggleScheduledTelegramDetails(this.checked)">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">Notificar por Telegram</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Enviar lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente</div>
+            </div>
+          </label>
+        </div>
+        <div class="form-group full" id="scNotifyTelegramDetails" style="display:none;padding:12px;background:rgba(59,130,246,.08);border-radius:var(--r-sm);border:1px solid rgba(59,130,246,.18)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label>Telegram Chat ID</label>
+              <input type="text" id="scNotifyTelegramChatId" placeholder="Ex.: 7540422976">
+              <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Se o seu perfil tiver Telegram padrão, este campo será pré-preenchido automaticamente.</div>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Avisar com antecedência</label>
+              <select id="scNotifyTelegramDaysBefore">
+                <option value="0">No dia</option>
+                <option value="1" selected>1 dia antes</option>
+                <option value="2">2 dias antes</option>
+                <option value="3">3 dias antes</option>
+                <option value="7">1 semana antes</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyTelegramUpcoming" checked />
+              🔔 Avisar antes da data
+            </label>
+            <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
+              <input type="checkbox" id="scNotifyTelegramProcessed" checked />
+              ✅ Avisar após auto-registro
+            </label>
+          </div>
+        </div>
         </div>
 
       </div>
@@ -5375,12 +5348,18 @@
           <div style="display:grid;grid-template-columns:1fr;gap:10px">
             <div class="form-group" style="margin-bottom:0">
               <label style="font-size:.75rem">WhatsApp padrão</label>
-              <input type="tel" id="myProfileWhatsappNumber" placeholder="5511999999999">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="tel" id="myProfileWhatsappNumber" placeholder="5511999999999" style="flex:1;min-width:220px">
+                <button type="button" class="btn btn-ghost btn-sm" id="myProfileWhatsappTestBtn" onclick="testMyProfileNotification('whatsapp')">🧪 Testar</button>
+              </div>
               <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Usado como padrão ao habilitar notificação por WhatsApp em Programados.</div>
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label style="font-size:.75rem">Telegram padrão (Chat ID)</label>
-              <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976" style="flex:1;min-width:220px">
+                <button type="button" class="btn btn-ghost btn-sm" id="myProfileTelegramTestBtn" onclick="testMyProfileNotification('telegram')">🧪 Testar</button>
+              </div>
               <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Abra o bot do Telegram, envie /start e informe aqui o chat ID retornado.</div>
             </div>
           </div>
