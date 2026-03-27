@@ -432,8 +432,11 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-bal ${runningBalance >= 0 ? '' : 'neg'}">${fmt(runningBalance, balCur)}</div>`
     : '';
 
+  const _acctIcon = (showAccount && t.accounts?.icon && typeof renderIconEl === 'function')
+    ? renderIconEl(t.accounts.icon, t.accounts.color || '#94a3b8', 12)
+    : '';
   const accountLine = (showAccount && t.accounts?.name)
-    ? `<div class="tx-v2-account-line"><span class="tx-v2-acct tx-v2-acct-pill">${esc(t.accounts.name)}</span></div>`
+    ? `<div class="tx-v2-account-line"><span class="tx-v2-acct tx-v2-acct-pill">${_acctIcon}${esc(t.accounts.name)}</span></div>`
     : '';
   const isGroupView = state.txView === 'group';
   const detailLines = isGroupView
@@ -475,7 +478,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
   return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${isReconciled?' tx-reconciled':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
     <td class="tx-v2-date">${dateStr}${pendDot}</td>
     <td class="tx-v2-body">
-      <div class="tx-v2-title">${esc(t.description||'—')}${attach}${reconcileBadge}</div>
+      <div class="tx-v2-title">${_catIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
       ${detailLines}
     </td>
     <td class="tx-v2-right">
@@ -776,7 +779,7 @@ function renderTransactionsGrouped(txs) {
     return `<div class="tx-group-card" id="txGroup-${k}">
       <div class="tx-group-card__header" onclick="toggleTxGroup('${k}')">
         <div class="tx-group-card__accent" style="background:${col}"></div>
-        <div class="tx-group-card__icon" style="background:${col}22;color:${col}">${acct.icon||'🏦'}</div>
+        <div class="tx-group-card__icon" style="background:${col}22">${typeof renderIconEl==='function' ? renderIconEl(acct.icon||'', col, 24) : (acct.icon||'🏦')}</div>
         <div class="tx-group-card__info">
           <span class="tx-group-card__name">${esc(g.account?.name||'Sem conta')}</span>
           <span class="tx-group-card__count">${g.txs.length} lançamentos</span>
