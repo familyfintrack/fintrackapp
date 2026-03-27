@@ -4825,6 +4825,17 @@
           <span>📍</span> Contato &amp; Localização <span style="margin-left:auto;opacity:.5;font-size:.7rem">▾</span>
         </summary>
         <div style="padding:10px 12px 12px">
+          <!-- Google Maps search -->
+          <div style="display:flex;gap:6px;margin-bottom:12px;align-items:flex-end">
+            <div style="flex:1">
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Buscar no Google Maps</label>
+              <input type="text" id="payeeMapsQuery" placeholder="Ex: Supermercado Extra Av Paulista" style="margin-top:3px">
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="searchPayeeOnMaps()" id="payeeMapsBtn" style="flex-shrink:0;white-space:nowrap">
+              🗺️ Buscar
+            </button>
+          </div>
+          <div id="payeeMapsResults" style="display:none;margin-bottom:10px;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface)"></div>
           <div class="form-grid">
             <div class="form-group full">
               <label>Endereço (rua, número)</label>
