@@ -1131,6 +1131,71 @@ function updateMyProfilePwdStrength() {
   hint.textContent     = lv.label;
 }
 
+
+function _setMyProfileTestButtonState(channel, loading) {
+  const btn = document.getElementById(channel === 'whatsapp' ? 'myProfileWhatsappTestBtn' : 'myProfileTelegramTestBtn');
+  if (!btn) return;
+  if (loading) {
+    btn.dataset.prevLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Testando...';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn.dataset.prevLabel || '🧪 Testar';
+  }
+}
+
+async function testMyProfileNotification(channel) {
+  const normalizedChannel = String(channel || '').toLowerCase();
+  if (!['whatsapp','telegram'].includes(normalizedChannel)) {
+    toast('Canal de teste inválido.', 'error');
+    return;
+  }
+  if (!sb) {
+    toast('Supabase não conectado.', 'error');
+    return;
+  }
+
+  const waInput = document.getElementById('myProfileWhatsappNumber');
+  const tgInput = document.getElementById('myProfileTelegramChatId');
+  const recipient = normalizedChannel === 'whatsapp'
+    ? String(waInput?.value || currentUser?.whatsapp_number || '').replace(/\D+/g, '')
+    : String(tgInput?.value || currentUser?.telegram_chat_id || '').trim();
+
+  if (!recipient) {
+    toast(normalizedChannel === 'whatsapp'
+      ? 'Informe um número de WhatsApp para testar.'
+      : 'Informe um Chat ID do Telegram para testar.', 'warning');
+    return;
+  }
+
+  const profileName = String(currentUser?.name || currentUser?.email || 'usuário').trim();
+  _setMyProfileTestButtonState(normalizedChannel, true);
+  try {
+    const { data, error } = await sb.functions.invoke('send-profile-notification-test', {
+      body: {
+        channel: normalizedChannel,
+        recipient,
+        user_name: profileName,
+        user_email: String(currentUser?.email || '').trim(),
+      },
+    });
+    if (error) throw error;
+    if (data?.ok === false || data?.error) {
+      throw new Error(data?.error || data?.details || 'Falha ao enviar mensagem de teste.');
+    }
+    toast(normalizedChannel === 'whatsapp'
+      ? 'Mensagem de teste enviada para o WhatsApp.'
+      : 'Mensagem de teste enviada para o Telegram.', 'success');
+  } catch (e) {
+    console.warn('[profile] test notification error:', e?.message || e);
+    toast('Erro ao enviar teste: ' + (e?.message || e), 'error');
+  } finally {
+    _setMyProfileTestButtonState(normalizedChannel, false);
+  }
+}
+window.testMyProfileNotification = testMyProfileNotification;
+
 async function saveMyProfile() {
   const errEl   = document.getElementById('myProfileError');
   const saveBtn = document.getElementById('myProfileSaveBtn');
