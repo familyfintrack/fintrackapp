@@ -15,10 +15,266 @@ const _px = {
   activeItemId:  null,
   search:        '',
   catFilter:     '',
+  subcatFilter:  '',   // filtro subcategoria de preços
+  typeFilter:    '',   // filtro tipo dentro da subcategoria
   storeFilter:   '',
   pidStoreFilter: '',
-  groupBy:       '',   // '' | 'cat' | 'store'
+  groupBy:       '',   // '' | 'cat' | 'store' | 'subcat'
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SISTEMA DE CATEGORIAS HIERÁRQUICAS EXCLUSIVAS DE PREÇOS
+// Estrutura: Categoria App → Subcategoria Preços → Tipo
+// Persistência exclusivamente via Supabase (app_settings + price_items)
+//
+// app_settings keys:
+//   px_hierarchy_{family_id}  → JSON com definição de subcategorias e tipos
+//   px_item_meta_{family_id}  → JSON com mapeamento itemId → px_subcat value
+//
+// Formato px_subcat value: "catId|__|subcatKey|__|typeLabel"
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __SEP__ = '|__|';
+
+// Cache em memória para a sessão (evita round-trips repetidos)
+let _pxHierCache = null;      // { [catId|'__none__']: { subcategories: { [key]: { label, types[] } } } }
+let _pxItemMetaCache = null;  // { [itemId]: "catId|__|subcatKey|__|typeLabel" }
+let _pxHierDirty = false;
+let _pxItemMetaDirty = false;
+
+function _pxHierSettingKey() { return _famId() ? `px_hierarchy_${_famId()}` : null; }
+function _pxItemMetaKey()    { return _famId() ? `px_item_meta_${_famId()}` : null; }
+
+// Carrega hierarquia do Supabase (app_settings) — com cache em memória
+async function _pxHierLoad() {
+  if (_pxHierCache !== null) return _pxHierCache;
+  const key = _pxHierSettingKey();
+  if (!key) { _pxHierCache = {}; return {}; }
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    const raw = data?.value;
+    _pxHierCache = (raw && typeof raw === 'object') ? raw : (raw ? JSON.parse(raw) : {});
+  } catch { _pxHierCache = {}; }
+  return _pxHierCache;
+}
+
+// Persiste hierarquia no Supabase
+async function _pxHierSave() {
+  const key = _pxHierSettingKey();
+  if (!key || !_pxHierCache) return;
+  try {
+    await sb.from('app_settings').upsert({ key, value: _pxHierCache }, { onConflict: 'key' });
+    _pxHierDirty = false;
+  } catch(e) { console.warn('[px] hier save error:', e.message); }
+}
+
+// Carrega mapeamento item→subcat do Supabase
+async function _pxItemMetaLoad() {
+  if (_pxItemMetaCache !== null) return _pxItemMetaCache;
+  const key = _pxItemMetaKey();
+  if (!key) { _pxItemMetaCache = {}; return {}; }
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    const raw = data?.value;
+    _pxItemMetaCache = (raw && typeof raw === 'object') ? raw : (raw ? JSON.parse(raw) : {});
+  } catch { _pxItemMetaCache = {}; }
+  return _pxItemMetaCache;
+}
+
+// Persiste mapeamento item→subcat no Supabase
+async function _pxItemMetaSave() {
+  const key = _pxItemMetaKey();
+  if (!key || !_pxItemMetaCache) return;
+  try {
+    await sb.from('app_settings').upsert({ key, value: _pxItemMetaCache }, { onConflict: 'key' });
+    _pxItemMetaDirty = false;
+  } catch(e) { console.warn('[px] item meta save error:', e.message); }
+}
+
+// Invalida caches (chamado ao trocar de família ou recarregar)
+function _pxInvalidateCaches() {
+  _pxHierCache = null;
+  _pxItemMetaCache = null;
+}
+
+// Retorna lista de subcategorias para um catId (ou __none__) — síncrono após load
+function _pxSubcatsForCat(catId) {
+  const h = _pxHierCache || {};
+  const key = catId || '__none__';
+  return Object.entries((h[key]?.subcategories) || {})
+    .map(([k, v]) => ({ key: k, label: v.label, types: v.types || [] }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// Retorna tipos para catId + subcatKey
+function _pxTypesFor(catId, subcatKey) {
+  const h = _pxHierCache || {};
+  const key = catId || '__none__';
+  return (h[key]?.subcategories?.[subcatKey]?.types || []).sort();
+}
+
+// Adiciona subcategoria e persiste no Supabase
+async function _pxAddSubcat(catId, label) {
+  if (!_pxHierCache) await _pxHierLoad();
+  const key = catId || '__none__';
+  if (!_pxHierCache[key]) _pxHierCache[key] = { subcategories: {} };
+  if (!_pxHierCache[key].subcategories) _pxHierCache[key].subcategories = {};
+  const subcatKey = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  if (!subcatKey) return null;
+  if (!_pxHierCache[key].subcategories[subcatKey]) {
+    _pxHierCache[key].subcategories[subcatKey] = { label, types: [] };
+  }
+  await _pxHierSave();
+  return subcatKey;
+}
+
+// Adiciona tipo e persiste
+async function _pxAddType(catId, subcatKey, typeLabel) {
+  if (!_pxHierCache) await _pxHierLoad();
+  const key = catId || '__none__';
+  if (!_pxHierCache[key]?.subcategories?.[subcatKey]) return;
+  const types = _pxHierCache[key].subcategories[subcatKey].types;
+  if (!types.includes(typeLabel)) types.push(typeLabel);
+  await _pxHierSave();
+}
+
+// Popula select de subcategorias no filtro da página
+function _populatePxSubcatFilter() {
+  const sel = document.getElementById('pxSubcatFilter');
+  if (!sel) return;
+  const catId = _px.catFilter || null;
+  const subcats = _pxSubcatsForCat(catId);
+  sel.innerHTML = '<option value="">Todas as subcategorias</option>' +
+    subcats.map(s => `<option value="${s.key}${__SEP__}${catId||''}">${esc(s.label)}</option>`).join('');
+  sel.value = '';
+  _px.subcatFilter = '';
+  _populatePxTypeFilter();
+}
+
+// Popula select de tipos no filtro
+function _populatePxTypeFilter() {
+  const sel = document.getElementById('pxTypeFilter');
+  if (!sel) return;
+  const subcatVal = document.getElementById('pxSubcatFilter')?.value || '';
+  if (!subcatVal) {
+    sel.innerHTML = '<option value="">Todos os tipos</option>';
+    sel.value = '';
+    _px.typeFilter = '';
+    sel.disabled = true;
+    return;
+  }
+  const [subcatKey, catId] = subcatVal.split(__SEP__);
+  const types = _pxTypesFor(catId || null, subcatKey);
+  sel.disabled = types.length === 0;
+  sel.innerHTML = '<option value="">Todos os tipos</option>' +
+    types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  sel.value = '';
+  _px.typeFilter = '';
+}
+
+// Popula subcategorias no formulário de item
+function _pxPopulateFormSubcats(catId) {
+  const sel = document.getElementById('pifSubcat');
+  if (!sel) return;
+  const subcats = _pxSubcatsForCat(catId);
+  sel.innerHTML = '<option value="">— Nenhuma —</option>' +
+    subcats.map(s => `<option value="${s.key}">${esc(s.label)}</option>`).join('') +
+    '<option value="__new__">+ Nova subcategoria…</option>';
+}
+
+// Popula tipos no formulário de item
+function _pxPopulateFormTypes(catId, subcatKey) {
+  const sel = document.getElementById('pifType');
+  if (!sel) return;
+  if (!subcatKey || subcatKey === '__new__') {
+    sel.innerHTML = '<option value="">— Nenhum —</option>';
+    sel.disabled = true;
+    return;
+  }
+  const types = _pxTypesFor(catId, subcatKey);
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">— Nenhum —</option>' +
+    types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('') +
+    '<option value="__new__">+ Novo tipo…</option>';
+}
+
+// Handler: mudança de categoria no formulário
+function _pxFormCatChanged() {
+  const catId = document.getElementById('pifCategory')?.value || null;
+  _pxPopulateFormSubcats(catId);
+  _pxPopulateFormTypes(catId, null);
+}
+
+// Handler: mudança de subcategoria no formulário
+async function _pxFormSubcatChanged() {
+  const catId = document.getElementById('pifCategory')?.value || null;
+  const subcatSel = document.getElementById('pifSubcat');
+  const subcatKey = subcatSel?.value || null;
+  if (subcatKey === '__new__') {
+    const nome = prompt('Nome da nova subcategoria (ex: Bebidas, Laticínios, Combustível):');
+    if (!nome?.trim()) { subcatSel.value = ''; return; }
+    const key = await _pxAddSubcat(catId, nome.trim());
+    _pxPopulateFormSubcats(catId);
+    if (key) subcatSel.value = key;
+  }
+  _pxPopulateFormTypes(catId, subcatSel?.value || null);
+}
+
+// Handler: mudança de tipo no formulário
+async function _pxFormTypeChanged() {
+  const catId    = document.getElementById('pifCategory')?.value || null;
+  const subcatSel = document.getElementById('pifSubcat');
+  const typeSel   = document.getElementById('pifType');
+  const subcatKey = subcatSel?.value || null;
+  if (typeSel?.value === '__new__') {
+    const nome = prompt('Nome do novo tipo (ex: Refrigerante, Gasolina, Desnatado):');
+    if (!nome?.trim()) { typeSel.value = ''; return; }
+    await _pxAddType(catId, subcatKey, nome.trim());
+    _pxPopulateFormTypes(catId, subcatKey);
+    typeSel.value = nome.trim();
+  }
+}
+
+// Retorna hierarquia de um item (lê do cache _pxItemMetaCache)
+function _pxItemHier(item) {
+  const stored = (_pxItemMetaCache || {})[item.id] || null;
+  if (!stored) return null;
+  const parts = stored.split(__SEP__);
+  if (parts.length < 2) return null;
+  const [catId, subcatKey, typeLabel] = parts;
+  const h = _pxHierCache || {};
+  const groupKey = catId || '__none__';
+  const subcat = h[groupKey]?.subcategories?.[subcatKey];
+  if (!subcat) return null;
+  return { catId, subcatKey, subcatLabel: subcat.label, typeLabel: typeLabel || null };
+}
+
+// Constrói o valor de px_subcat
+function _pxBuildHierValue(catId, subcatKey, typeLabel) {
+  if (!subcatKey) return null;
+  return [catId || '', subcatKey, typeLabel || ''].join(__SEP__);
+}
+
+// Filtra items pela hierarquia selecionada
+function _pxApplyHierFilter(items) {
+  const subcatVal = document.getElementById('pxSubcatFilter')?.value || '';
+  const typeVal   = document.getElementById('pxTypeFilter')?.value || '';
+  if (!subcatVal && !typeVal) return items;
+  let filtered = items;
+  if (subcatVal) {
+    const [subcatKey, catId] = subcatVal.split(__SEP__);
+    filtered = filtered.filter(item => {
+      const hier = _pxItemHier(item);
+      if (!hier) return false;
+      const catMatch = !catId || hier.catId === catId;
+      return catMatch && hier.subcatKey === subcatKey;
+    });
+  }
+  if (typeVal) {
+    filtered = filtered.filter(item => _pxItemHier(item)?.typeLabel === typeVal);
+  }
+  return filtered;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FEATURE FLAG
@@ -88,12 +344,20 @@ async function isGroceryEnabled() {
 async function initPricesPage() {
   const on = await isPricesEnabled();
   if (!on) { toast('Recurso de preços não está ativo para esta família.', 'warning'); navigate('dashboard'); return; }
-  _px.search = _px.catFilter = _px.storeFilter = '';
+  _px.search = _px.catFilter = _px.storeFilter = _px.subcatFilter = _px.typeFilter = '';
   const searchEl = document.getElementById('pricesSearch');
   if (searchEl) searchEl.value = '';
-  await _loadPricesData();
+  // Invalida caches para recarregar dados frescos do Supabase
+  _pxInvalidateCaches();
+  // Carrega dados e caches de hierarquia em paralelo
+  await Promise.all([
+    _loadPricesData(),
+    _pxHierLoad(),
+    _pxItemMetaLoad(),
+  ]);
   _populatePricesCatFilter();
   _populatePricesStoreFilter();
+  _populatePxSubcatFilter();
   _renderPricesPage();
 }
 
@@ -146,6 +410,8 @@ function _renderPricesPage() {
     items = items.filter(i => i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q));
   }
   if (_px.catFilter)   items = items.filter(i => i.category_id === _px.catFilter);
+  // Filtros hierárquicos exclusivos de preços
+  items = _pxApplyHierFilter(items);
 
   const countEl = document.getElementById('pricesCount');
   if (countEl) countEl.textContent = items.length + (items.length !== 1 ? ' itens' : ' item');
@@ -192,6 +458,7 @@ function _renderPricesPage() {
     return;
   }
   if (_px.groupBy) {
+    if (_px.groupBy === 'subcat') { _renderPricesGroupedBySubcat(items); return; }
     _renderPricesGrouped(items);
     return;
   }
@@ -199,15 +466,25 @@ function _renderPricesPage() {
 }
 
 function pricesSearch(val)      { _px.search = val;      _renderPricesPage(); }
-function pricesCatFilter(val)   { _px.catFilter = val;   _renderPricesPage(); }
+function pricesCatFilter(val)   {
+  _px.catFilter = val;
+  _populatePxSubcatFilter();
+  _renderPricesPage();
+}
 function pricesStoreFilter(val) { _px.storeFilter = val; _renderPricesPage(); }
+function pricesSubcatFilter(val) {
+  _px.subcatFilter = val;
+  _populatePxTypeFilter();
+  _renderPricesPage();
+}
+function pricesTypeFilter(val)  { _px.typeFilter = val; _renderPricesPage(); }
 function pricesSetGroup(val) {
   _px.groupBy = val;
-  ['pxGroupNone','pxGroupCat','pxGroupStore'].forEach(id => {
+  ['pxGroupNone','pxGroupCat','pxGroupStore','pxGroupSubcat'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
-  const map = { '': 'pxGroupNone', cat: 'pxGroupCat', store: 'pxGroupStore' };
+  const map = { '': 'pxGroupNone', cat: 'pxGroupCat', store: 'pxGroupStore', subcat: 'pxGroupSubcat' };
   const active = document.getElementById(map[val]);
   if (active) active.classList.add('active');
   _renderPricesPage();
@@ -399,17 +676,30 @@ function _pxCardHtml(item) {
   const emoji  = _pxItemEmoji(item);
   const unitBadge = (item.unit && item.unit !== 'un')
     ? `<span class="px-unit">${esc(item.unit)}</span>` : '';
+
+  // Hierarquia exclusiva de preços
+  const hier = _pxItemHier(item);
+  let hierHtml = '';
+  if (hier) {
+    hierHtml = `<div class="px-cat-breadcrumb">`;
+    if (cat) hierHtml += `<span>${esc(cat)}</span><span class="sep">›</span>`;
+    hierHtml += `<span class="px-cat-tag">${esc(hier.subcatLabel)}</span>`;
+    if (hier.typeLabel) hierHtml += `<span class="sep">›</span><span class="px-type-badge">${esc(hier.typeLabel)}</span>`;
+    hierHtml += `</div>`;
+  }
+
   return `
     <div class="px-card" onclick="openPriceItemDetail('${item.id}')" style="--px-clr:${catColor}">
       <div class="px-card-top">
         <div class="px-avatar" style="background:color-mix(in srgb,${catColor} 15%,transparent);font-size:1.4rem;line-height:1">${emoji}</div>
-        ${cat && !_px.groupBy ? `<span class="px-cat-badge" style="color:${catColor};background:color-mix(in srgb,${catColor} 12%,transparent)">${esc(cat)}</span>` : ''}
+        ${!hier && cat && !_px.groupBy ? `<span class="px-cat-badge" style="color:${catColor};background:color-mix(in srgb,${catColor} 12%,transparent)">${esc(cat)}</span>` : ''}
         <button class="px-cart-btn" title="Adicionar à lista de compras"
                 onclick="event.stopPropagation();openAddToGroceryList('${item.id}','${esc(item.name).replace(/'/g,'\u0027')}','${esc(item.unit||'un')}',${item.last_price ?? 'null'})">
           🛒
         </button>
       </div>
       <div class="px-name">${esc(item.name)}${unitBadge}</div>
+      ${hierHtml}
       ${item.description ? `<div class="px-desc">${esc(item.description)}</div>` : ''}
       <div class="px-prices">
         <div class="px-price-col"><span class="px-price-lbl">Preço médio</span><span class="px-price-val">${avg ?? '—'}</span></div>
@@ -418,6 +708,72 @@ function _pxCardHtml(item) {
       </div>
       <div class="px-card-footer"><div class="px-progress"><div class="px-progress-bar" style="width:${Math.min(100, cnt * 10)}%;background:${catColor}"></div></div></div>
     </div>`;
+}
+
+// Agrupa items por subcategoria de preços
+function _renderPricesGroupedBySubcat(items) {
+  const listEl = document.getElementById('pricesItemList');
+  if (!listEl) return;
+  const groups = {};
+  const noSubcat = [];
+  items.forEach(item => {
+    const hier = _pxItemHier(item);
+    if (!hier) { noSubcat.push(item); return; }
+    if (!groups[hier.subcatKey]) {
+      groups[hier.subcatKey] = { label: hier.subcatLabel, items: [], byType: {} };
+    }
+    groups[hier.subcatKey].items.push(item);
+    if (hier.typeLabel) {
+      if (!groups[hier.subcatKey].byType[hier.typeLabel]) groups[hier.subcatKey].byType[hier.typeLabel] = [];
+      groups[hier.subcatKey].byType[hier.typeLabel].push(item);
+    }
+  });
+
+  let html = '';
+  Object.entries(groups)
+    .sort((a, b) => a[1].label.localeCompare(b[1].label))
+    .forEach(([key, g]) => {
+      const typeKeys = Object.keys(g.byType);
+      let innerHtml = '';
+      if (typeKeys.length > 0) {
+        typeKeys.sort().forEach(tl => {
+          innerHtml += `
+            <div style="margin-bottom:12px">
+              <div class="px-subcat-group-header" style="padding-left:4px;border-left:3px solid var(--accent);margin-bottom:8px">
+                <span class="px-subcat-group-label" style="font-size:.72rem;color:var(--muted)">${esc(tl)}</span>
+                <span class="px-subcat-group-meta">${g.byType[tl].length} item(s)</span>
+              </div>
+              <div class="px-grid">${g.byType[tl].map(_pxCardHtml).join('')}</div>
+            </div>`;
+        });
+        const untyped = g.items.filter(i => !_pxItemHier(i)?.typeLabel);
+        if (untyped.length) innerHtml += `<div class="px-grid">${untyped.map(_pxCardHtml).join('')}</div>`;
+      } else {
+        innerHtml = `<div class="px-grid">${g.items.map(_pxCardHtml).join('')}</div>`;
+      }
+      html += `
+        <div class="px-subcat-group">
+          <div class="px-subcat-group-header">
+            <span class="px-subcat-group-dot"></span>
+            <span class="px-subcat-group-label">${esc(g.label)}</span>
+            <span class="px-subcat-group-meta">${g.items.length} item(s)</span>
+          </div>
+          ${innerHtml}
+        </div>`;
+    });
+
+  if (noSubcat.length) {
+    html += `
+      <div class="px-subcat-group">
+        <div class="px-subcat-group-header">
+          <span class="px-subcat-group-dot" style="background:var(--muted2)"></span>
+          <span class="px-subcat-group-label" style="color:var(--muted)">Sem subcategoria</span>
+          <span class="px-subcat-group-meta">${noSubcat.length} item(s)</span>
+        </div>
+        <div class="px-grid">${noSubcat.map(_pxCardHtml).join('')}</div>
+      </div>`;
+  }
+  listEl.innerHTML = html || '<div class="prices-empty"><div style="font-size:2.8rem;margin-bottom:12px">🏷️</div><div style="font-weight:700">Nenhum item encontrado</div></div>';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -621,7 +977,7 @@ function aprNewStore() {
 
 function openNewPriceItem() { _openItemForm(null); }
 
-function _openItemForm(item) {
+async function _openItemForm(item) {
   const el = id => document.getElementById(id);
   if (el('pifItemId'))     el('pifItemId').value = item?.id || '';
   if (el('pifName'))       el('pifName').value   = item?.name || '';
@@ -640,6 +996,27 @@ function _openItemForm(item) {
       (state.categories || []).filter(c => c.type !== 'income')
         .map(c => `<option value="${c.id}"${item?.category_id === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
   }
+  // Garante que caches do Supabase estejam carregados
+  if (_pxHierCache === null) await _pxHierLoad();
+  if (_pxItemMetaCache === null) await _pxItemMetaLoad();
+
+  // Popula hierarquia
+  const catId = item?.category_id || null;
+  _pxPopulateFormSubcats(catId);
+
+  // Restaura seleção salva no Supabase (via _pxItemMetaCache)
+  const storedHier = item?.id ? (_pxItemMetaCache[item.id] || null) : null;
+  if (storedHier) {
+    const parts = storedHier.split(__SEP__);
+    const [, subcatKey, typeLabel] = parts;
+    _pxPopulateFormTypes(catId, subcatKey);
+    setTimeout(() => {
+      if (el('pifSubcat') && subcatKey) el('pifSubcat').value = subcatKey;
+      if (el('pifType') && typeLabel)   el('pifType').value   = typeLabel;
+    }, 50);
+  } else {
+    _pxPopulateFormTypes(catId, null);
+  }
   if (el('pifError')) el('pifError').style.display = 'none';
   openModal('priceItemFormModal');
   setTimeout(() => el('pifName')?.focus(), 150);
@@ -657,6 +1034,14 @@ async function savePriceItem() {
   const date  = el('pifDate')?.value;
   const storeId   = el('pifStoreId')?.value   || null;
   const storeName = el('pifStoreInput')?.value?.trim();
+
+  // Hierarquia exclusiva de preços — salva via Supabase (app_settings)
+  const subcatKey = el('pifSubcat')?.value || null;
+  const typeLabel = (el('pifType')?.value && el('pifType')?.value !== '__new__') ? el('pifType').value : null;
+  const pxSubcatVal = (subcatKey && subcatKey !== '__new__')
+    ? _pxBuildHierValue(catId, subcatKey, typeLabel)
+    : null;
+
   if (!name) { _pifErr('Informe o nome do item.'); return; }
   if (el('pifError')) el('pifError').style.display = 'none';
   const fid     = _famId();
@@ -670,6 +1055,16 @@ async function savePriceItem() {
     const { data: ni, error } = await sb.from('price_items').insert(payload).select('id').single();
     if (error) { _pifErr('Erro: ' + error.message); return; }
     itemId = ni.id;
+  }
+  // Persiste vínculo item→subcategoria no Supabase (app_settings px_item_meta_{fid})
+  if (pxSubcatVal !== null) {
+    if (!_pxItemMetaCache) await _pxItemMetaLoad();
+    _pxItemMetaCache[itemId] = pxSubcatVal;
+    await _pxItemMetaSave();
+  } else if (pxSubcatVal === null && id && _pxItemMetaCache?.[id]) {
+    // Usuário limpou a hierarquia do item: remove o vínculo
+    delete _pxItemMetaCache[id];
+    await _pxItemMetaSave();
   }
   if (price > 0 && date) {
     let resolvedStoreId = storeId;
@@ -688,6 +1083,7 @@ async function savePriceItem() {
   closeModal('priceItemFormModal');
   await _loadPricesData();
   _populatePricesStoreFilter();
+  _populatePxSubcatFilter();
   _renderPricesPage();
 }
 

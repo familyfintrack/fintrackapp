@@ -1147,7 +1147,7 @@ function _setMyProfileTestButtonState(channel, loading) {
 
 async function testMyProfileNotification(channel) {
   const normalizedChannel = String(channel || '').toLowerCase();
-  if (!['whatsapp','telegram'].includes(normalizedChannel)) {
+  if (!['whatsapp', 'telegram'].includes(normalizedChannel)) {
     toast('Canal de teste inválido.', 'error');
     return;
   }
@@ -1158,50 +1158,76 @@ async function testMyProfileNotification(channel) {
 
   const waInput = document.getElementById('myProfileWhatsappNumber');
   const tgInput = document.getElementById('myProfileTelegramChatId');
-  const recipient = normalizedChannel === 'whatsapp'
+
+  const rawValue = normalizedChannel === 'whatsapp'
     ? String(waInput?.value || currentUser?.whatsapp_number || '').replace(/\D+/g, '')
     : String(tgInput?.value || currentUser?.telegram_chat_id || '').trim();
 
-  if (!recipient) {
-    toast(normalizedChannel === 'whatsapp'
-      ? 'Informe um número de WhatsApp para testar.'
-      : 'Informe um Chat ID do Telegram para testar.', 'warning');
+  if (!rawValue) {
+    toast(
+      normalizedChannel === 'whatsapp'
+        ? 'Informe um número de WhatsApp para testar.'
+        : 'Informe um Chat ID do Telegram para testar.',
+      'warning'
+    );
     return;
   }
 
   const profileName = String(currentUser?.name || currentUser?.email || 'usuário').trim();
   _setMyProfileTestButtonState(normalizedChannel, true);
+
   try {
     const body = normalizedChannel === 'whatsapp'
       ? {
           channel: 'whatsapp',
-          recipient,
+          recipient: rawValue,
           user_name: profileName,
           user_email: String(currentUser?.email || '').trim(),
         }
       : {
           channel: 'telegram',
-          chat_id: recipient,
+          chat_id: rawValue,
           user_name: profileName,
           user_email: String(currentUser?.email || '').trim(),
         };
 
-    const { data, error } = await sb.functions.invoke('send-profile-notification-test', {
-      body,
+    const { data: sessionData } = await sb.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+    const supabaseUrl = localStorage.getItem('sb_url') || window.SUPABASE_URL || '';
+    const anonKey = localStorage.getItem('sb_key') || window.SUPABASE_ANON_KEY || '';
+
+    if (!supabaseUrl || !anonKey) {
+      throw new Error('Configuração do Supabase ausente no navegador.');
+    }
+
+    const resp = await fetch(`${supabaseUrl}/functions/v1/send-profile-notification-test`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+        'Authorization': `Bearer ${accessToken || anonKey}`,
+      },
+      body: JSON.stringify(body),
     });
-    if (error) throw error;
-    if (data?.ok === false || data?.error) {
+
+    const result = await resp.json().catch(() => ({}));
+
+    if (!resp.ok || result?.ok === false) {
       throw new Error(
-        data?.description ||
-        data?.error ||
-        data?.details?.description ||
-        data?.details ||
-        'Falha ao enviar mensagem de teste.'
+        result?.description ||
+        result?.error ||
+        result?.details?.description ||
+        (typeof result?.details === 'string' ? result.details : '') ||
+        `HTTP ${resp.status}`
       );
     }
-    toast(normalizedChannel === 'whatsapp'
-      ? 'Mensagem de teste enviada para o WhatsApp.'
-      : 'Mensagem de teste enviada para o Telegram.', 'success');
+
+    toast(
+      normalizedChannel === 'whatsapp'
+        ? 'Mensagem de teste enviada para o WhatsApp.'
+        : 'Mensagem de teste enviada para o Telegram.',
+      'success'
+    );
   } catch (e) {
     console.warn('[profile] test notification error:', e?.message || e);
     toast('Erro ao enviar teste: ' + (e?.message || e), 'error');
