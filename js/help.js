@@ -280,8 +280,19 @@ function initHelpPage() {
   const page = document.getElementById('page-help');
   if (!page) return;
 
-  page.innerHTML = `
-    <div class="help-shell">
+  // Preserve the page title bar and FX bar injected by navigate('help').
+  const existingHeader = page.querySelector(':scope > .page-header-bar');
+  const existingFxBar = page.querySelector(':scope > #fxRatesBadge, :scope > .fx-bar');
+
+  // Remove only the dynamic help shell/content, never the preserved header/fx nodes.
+  Array.from(page.children).forEach((child) => {
+    if (child === existingHeader || child === existingFxBar) return;
+    child.remove();
+  });
+
+  const shell = document.createElement('div');
+  shell.className = 'help-shell';
+  shell.innerHTML = `
       <nav class="help-nav" id="helpNavPanel">
         <div class="help-nav-header">
           <div class="help-nav-title">❓ ${_ht({pt:'Central de Ajuda',en:'Help Center',es:'Centro de ayuda',fr:"Centre d'aide"})}</div>
@@ -301,17 +312,26 @@ function initHelpPage() {
           ← ${_ht({pt:'Início',en:'Home',es:'Inicio',fr:'Accueil'})}
         </button>
         <div id="helpMain"></div>
-      </main>
-    </div>`;
+      </main>`;
+
+  // Rebuild the page in the correct order: title bar, FX bar, help shell.
+  if (existingHeader && existingHeader.parentElement !== page) page.appendChild(existingHeader);
+  if (existingHeader && page.firstElementChild !== existingHeader) page.insertBefore(existingHeader, page.firstChild);
+  if (existingFxBar) {
+    existingFxBar.style.display = '';
+    if (existingHeader?.nextSibling) page.insertBefore(existingFxBar, existingHeader.nextSibling);
+    else page.appendChild(existingFxBar);
+  }
+  page.appendChild(shell);
 
   _helpRenderNav();
   helpShowHome();
 
   // Mobile: tap nav header to expand/collapse
-  const navHeader = document.querySelector('.help-nav-header');
+  const navHeader = shell.querySelector('.help-nav-header');
   if (navHeader) {
     navHeader.addEventListener('click', () => {
-      const nav = document.querySelector('.help-nav');
+      const nav = shell.querySelector('.help-nav');
       if (window.innerWidth <= 700 && nav) {
         nav.classList.toggle('expanded');
       }
