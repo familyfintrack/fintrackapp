@@ -7172,6 +7172,31 @@ tr.tx-row-new td:first-child {
   font-variant-numeric: tabular-nums;
 }
 
+/* Confirmed-only balance line on fav cards */
+.dash-fav-card__confirmed {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: .72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255,255,255,.7);
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+.dash-fav-card__confirmed.neg {
+  color: rgba(252,165,165,.8);
+}
+.dash-fav-card__confirmed-label {
+  font-size: .6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  opacity: .65;
+  white-space: nowrap;
+}
+
 /* Mobile: 2-col on small screens, 1-col on very small */
 @media (max-width: 480px) {
   .dash-favs-grid {
