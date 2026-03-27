@@ -141,11 +141,35 @@ async function _loadCurrentUserContext(authCtx = null) {
   if (!user) return null;
 
   // app_users: fonte de verdade para dados pessoais e role global
-  const { data: appUserRow } = await sb
-    .from('app_users')
-    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
-    .eq('email', user.email)
-    .maybeSingle();
+  // Tenta primeiro por auth_uid (= auth.uid(), sempre funciona com RLS)
+  // Fallback por email para usuários ainda sem auth_uid preenchido
+  let appUserRow = null;
+  {
+    const { data: byUid } = await sb
+      .from('app_users')
+      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
+      .eq('auth_uid', user.id)
+      .maybeSingle();
+    appUserRow = byUid || null;
+
+    // Fallback: se auth_uid ainda não foi gravado, busca por email
+    // E aproveita para gravar o auth_uid agora
+    if (!appUserRow && user.email) {
+      // Disable RLS for this fallback by using service key if available,
+      // otherwise rely on app_users_own_row policy which also allows email match
+      const { data: byEmail } = await sb
+        .from('app_users')
+        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
+        .eq('email', user.email)
+        .maybeSingle();
+      appUserRow = byEmail || null;
+      // Populate auth_uid for future logins
+      if (appUserRow?.id && user.id) {
+        sb.from('app_users').update({ auth_uid: user.id }).eq('id', appUserRow.id)
+          .then(() => {}).catch(() => {});
+      }
+    }
+  }
 
   // family_members: fonte de verdade para vínculos multi-família
   // Compatibilidade: alguns ambientes antigos podem ter salvo user_id como app_users.id
@@ -571,6 +595,15 @@ async function doLogin() {
       if (_pwRow?.password_hash && !_pwRow.password_hash.startsWith('pbkdf2:')) {
         const _newHash = await hashPassword(password);
         await sb.from('app_users').update({ password_hash: _newHash }).eq('id', _pwRow.id);
+      }
+      // Store Supabase Auth UID in app_users for RLS policies
+      // This is the critical bridge: app_users.auth_uid = auth.uid()
+      if (_pwRow?.id && authData?.user?.id) {
+        await sb.from('app_users')
+          .update({ auth_uid: authData.user.id })
+          .eq('id', _pwRow.id)
+          .then(() => {})  // fire-and-forget, non-blocking
+          .catch(() => {}); // ignore error if column doesn't exist yet
       }
     } catch(_) {} // non-blocking — upgrade is best-effort
     await _loadCurrentUserContext(authData);
