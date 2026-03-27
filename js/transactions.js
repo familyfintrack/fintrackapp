@@ -439,6 +439,8 @@ function txRow(t, showAccount=true, runningBalance=null) {
     ? `<div class="tx-v2-account-line"><span class="tx-v2-acct tx-v2-acct-pill">${_acctIcon}${esc(t.accounts.name)}</span></div>`
     : '';
   const isGroupView = state.txView === 'group';
+  const showTitleCategoryIcon = !isGroupView;
+  const titleCategoryIconHtml = showTitleCategoryIcon ? _catIconHtml : '';
   const detailLines = isGroupView
     ? `${categoryOnlyLine}${payeeOnlyLine}`
     : `${flatMetaLine}${accountLine}`;
@@ -464,7 +466,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
       ${checkboxCell}
       <td class="tx-v2-date">${dateStr}${pendDot}</td>
       <td class="tx-v2-body">
-        <div class="tx-v2-title">${_catIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
+        <div class="tx-v2-title">${titleCategoryIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
         ${detailLines}
       </td>
       <td class="tx-v2-right">
@@ -478,7 +480,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
   return `<tr class="tx-row-clickable${isPending?' tx-pending':''}${isReconciled?' tx-reconciled':''}" data-tx-id="${t.id}" onclick="openTxDetail('${t.id}')">
     <td class="tx-v2-date">${dateStr}${pendDot}</td>
     <td class="tx-v2-body">
-      <div class="tx-v2-title">${_catIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
+      <div class="tx-v2-title">${titleCategoryIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
       ${detailLines}
     </td>
     <td class="tx-v2-right">
