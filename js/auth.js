@@ -1011,6 +1011,12 @@ function openMyProfile() {
       background:${bgs[r]||'var(--bg2)'};color:${colors[r]||'var(--text)'}">${labels[r]||r}</span>`;
   }
 
+  // --- Notification defaults ---
+  const waEl = document.getElementById('myProfileWhatsappNumber');
+  const tgEl = document.getElementById('myProfileTelegramChatId');
+  if (waEl) waEl.value = currentUser?.whatsapp_number || '';
+  if (tgEl) tgEl.value = currentUser?.telegram_chat_id || '';
+
   // --- Avatar state ---
   const removeBtn = document.getElementById('myProfileRemoveAvatarBtn');
   if (removeBtn) removeBtn.style.display = currentUser.avatar_url ? '' : 'none';
@@ -1158,56 +1164,58 @@ async function testMyProfileNotification(channel) {
 
   const waInput = document.getElementById('myProfileWhatsappNumber');
   const tgInput = document.getElementById('myProfileTelegramChatId');
-  const recipient = normalizedChannel === 'whatsapp'
+  const rawValue = normalizedChannel === 'whatsapp'
     ? String(waInput?.value || currentUser?.whatsapp_number || '').replace(/\D+/g, '')
     : String(tgInput?.value || currentUser?.telegram_chat_id || '').trim();
 
-  if (!recipient) {
-    toast(normalizedChannel === 'whatsapp'
-      ? 'Informe um número de WhatsApp para testar.'
-      : 'Informe um Chat ID do Telegram para testar.', 'warning');
+  if (!rawValue) {
+    toast(
+      normalizedChannel === 'whatsapp'
+        ? 'Informe um número de WhatsApp para testar.'
+        : 'Informe um Chat ID do Telegram para testar.',
+      'warning'
+    );
     return;
   }
 
   const profileName = String(currentUser?.name || currentUser?.email || 'usuário').trim();
   _setMyProfileTestButtonState(normalizedChannel, true);
+
   try {
     const body = normalizedChannel === 'whatsapp'
       ? {
           channel: 'whatsapp',
-          recipient,
+          recipient: rawValue,
           user_name: profileName,
           user_email: String(currentUser?.email || '').trim(),
         }
       : {
           channel: 'telegram',
-          chat_id: recipient,
+          chat_id: rawValue,
           user_name: profileName,
           user_email: String(currentUser?.email || '').trim(),
         };
 
-    const { data: sessionData } = await sb.auth.getSession();
-    const accessToken = sessionData?.session?.access_token || '';
-    const supabaseUrl = localStorage.getItem('sb_url') || window.SUPABASE_URL || '';
-    const anonKey = localStorage.getItem('sb_key') || window.SUPABASE_ANON_KEY || '';
+    const { data, error } = await sb.functions.invoke('send-profile-notification-test', { body });
 
-    const resp = await fetch(`${supabaseUrl}/functions/v1/send-profile-notification-test`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': anonKey,
-        'Authorization': `Bearer ${accessToken || anonKey}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data?.ok === false || data?.error) {
-      throw new Error(data?.description || data?.error || data?.details?.description || data?.details || `HTTP ${resp.status}` || 'Falha ao enviar mensagem de teste.');
+    if (error) {
+      throw new Error(error.message || 'Falha ao chamar a Edge Function');
     }
-    toast(normalizedChannel === 'whatsapp'
-      ? 'Mensagem de teste enviada para o WhatsApp.'
-      : 'Mensagem de teste enviada para o Telegram.', 'success');
+    if (data?.ok === false) {
+      throw new Error(
+        data?.description ||
+        data?.error ||
+        data?.details?.description ||
+        'Falha ao enviar mensagem de teste.'
+      );
+    }
+
+    toast(
+      normalizedChannel === 'whatsapp'
+        ? 'Mensagem de teste enviada para o WhatsApp.'
+        : 'Mensagem de teste enviada para o Telegram.',
+      'success'
+    );
   } catch (e) {
     console.warn('[profile] test notification error:', e?.message || e);
     toast('Erro ao enviar teste: ' + (e?.message || e), 'error');
@@ -1216,6 +1224,7 @@ async function testMyProfileNotification(channel) {
   }
 }
 window.testMyProfileNotification = testMyProfileNotification;
+
 
 async function saveMyProfile() {
   const errEl   = document.getElementById('myProfileError');
