@@ -335,6 +335,54 @@ function filterScheduled() {
   }
   renderScheduled(list);
   renderUpcoming();
+  _renderScKpis();
+}
+
+
+// ── KPI Strip ──────────────────────────────────────────────────────────
+function _renderScKpis() {
+  const all = state.scheduled || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const in30  = new Date(); in30.setDate(in30.getDate() + 30);
+  const in30s = in30.toISOString().slice(0, 10);
+
+  let expense30 = 0, income30 = 0, pending = 0;
+  all.forEach(sc => {
+    if (sc.status === 'paused' || sc.status === 'finished') return;
+    const occs = generateOccurrences(sc, 60);
+    occs.forEach(date => {
+      if (date < today || date > in30s) return;
+      const amt = Math.abs(sc.amount);
+      const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+      if (isExp) expense30 += amt; else income30 += amt;
+    });
+    const next = getNextOccurrence(sc);
+    if (next && next <= today) {
+      const executed = (sc.occurrences || []).some(o => o.scheduled_date === next &&
+        (o.execution_status === 'executed' || o.execution_status === 'processing'));
+      if (!executed) pending++;
+    }
+  });
+
+  // Desktop KPI strip
+  const expEl  = document.getElementById('scKpiExpense');
+  const incEl  = document.getElementById('scKpiIncome');
+  const pendEl = document.getElementById('scKpiPending');
+  if (expEl)  expEl.textContent  = expense30 ? '-' + fmt(expense30) : '—';
+  if (incEl)  incEl.textContent  = income30  ? '+' + fmt(income30)  : '—';
+  if (pendEl) pendEl.textContent = pending   ? pending + ' pendente' + (pending > 1 ? 's' : '') : '0';
+
+  // Mobile KPI strip
+  const mExpEl  = document.getElementById('scMKpiExpense');
+  const mIncEl  = document.getElementById('scMKpiIncome');
+  const mPendEl = document.getElementById('scMKpiPending');
+  if (mExpEl)  mExpEl.textContent  = expense30 ? '-' + fmt(expense30) : '—';
+  if (mIncEl)  mIncEl.textContent  = income30  ? '+' + fmt(income30)  : '—';
+  if (mPendEl) mPendEl.textContent = pending + (pending !== 1 ? ' pend.' : ' pend.');
+
+  // Show/hide pending amber
+  if (pendEl) pendEl.className = 'sc-kpi-val ' + (pending > 0 ? 'sc-kpi-pending' : 'sc-kpi-ok');
+  if (mPendEl) mPendEl.className = 'sc-mkpi-val ' + (pending > 0 ? 'amber' : '');
 }
 
 function renderScheduled(list) {
@@ -398,6 +446,10 @@ function renderScheduled(list) {
   }
 
   container.innerHTML = activeHtml + finishedSection;
+
+  // Update mobile recurrents label visibility
+  const mLabel = document.getElementById('scMobileRecurrentsLabel');
+  if (mLabel) mLabel.style.display = (activeHtml || finishedSection) ? '' : 'none';
   return;
 
 }
@@ -655,7 +707,6 @@ function toggleUpcomingCard() {
   const listEl = document.getElementById('scheduledUpcomingList');
   const arrow  = document.getElementById('upcomingCardArrow');
   if (!listEl) return;
-  // Treat missing/empty display as 'open' (default expanded state)
   const isOpen = listEl.style.display !== 'none';
   listEl.style.display = isOpen ? 'none' : '';
   if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
@@ -1525,31 +1576,32 @@ function setScView(view) {
   if (calBtn)   calBtn.classList.toggle('active',   view === 'calendar');
   if (catsBtn)  catsBtn.classList.toggle('active',  view === 'categories');
 
-  // Toggle section visibility
-  const filterBar    = document.querySelector('.sc-filter-bar');
-  const summaryBar   = document.getElementById('scheduledSummaryBar');
-  const upcomingCard = document.getElementById('scheduledUpcomingCard');
-  const listEl       = document.getElementById('scheduledList');
-  const calView      = document.getElementById('scCalendarView');
-  const catsView     = document.getElementById('scCategoriesView');
+  const listView = document.getElementById('scListView');
+  const calView  = document.getElementById('scCalendarView');
+  const catsView = document.getElementById('scCategoriesView');
+  const kpiStrip = document.getElementById('scKpiStrip');
+  const mKpis    = document.getElementById('scMobileKpis');
 
-  // Hide all
-  [filterBar, summaryBar, upcomingCard, listEl, calView, catsView].forEach(el => {
-    if (el) el.style.display = 'none';
-  });
+  // Hide all content areas
+  [listView, calView, catsView].forEach(el => { if (el) el.style.display = 'none'; });
 
   if (view === 'calendar') {
     if (calView) calView.style.display = '';
+    if (kpiStrip) kpiStrip.style.display = 'none';
+    if (mKpis) mKpis.style.display = 'none';
     renderScCalendar();
   } else if (view === 'categories') {
     if (catsView) catsView.style.display = '';
+    if (kpiStrip) kpiStrip.style.display = 'none';
+    if (mKpis) mKpis.style.display = 'none';
     renderScCategories();
   } else {
-    if (filterBar)    filterBar.style.display    = '';
-    if (summaryBar)   summaryBar.style.display   = '';
-    if (upcomingCard) upcomingCard.style.display = '';
-    if (listEl)       listEl.style.display       = '';
+    if (listView) listView.style.display = '';
+    if (kpiStrip) kpiStrip.style.display = '';
+    if (mKpis) mKpis.style.display = '';
+    _renderScKpis();
     filterScheduled();
+    renderUpcoming();
   }
 }
 
