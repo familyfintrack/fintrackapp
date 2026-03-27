@@ -14,7 +14,7 @@
   --font-serif:'Lora',Georgia,serif;
   --font-sans:'Outfit',system-ui,sans-serif;
   --sidebar-w:240px;--topbar-h:58px;--bottom-h:64px;
-  --brand-bg:#0d2318;   /* single source of truth — sidebar + page header bar */
+  --brand-bg:#0e3520;   /* Option 2: richer mid-green — sidebar + page header bar */
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{font-size:15px;-webkit-text-size-adjust:100%;}
@@ -27,7 +27,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: var(--brand-bg, #0d2318);
+  background: linear-gradient(180deg, #0d3d28 0%, #1a5c3e 45%, #0e3520 100%);
   display: flex;
   flex-direction: column;
   z-index: 200;
@@ -36,40 +36,36 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   position: relative;
 }
 
-/* Decorative white orbs — same language as inv-hero */
+/* Névoa difusa — same pattern as login Option 2 */
 .sidebar::before {
   content: '';
   position: absolute;
-  top: -60px; right: -60px;
-  width: 220px; height: 220px;
-  background: rgba(255,255,255,.04);
-  border-radius: 50%;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 160% 50% at 10% 10%,  rgba(255,255,255,.10) 0%, transparent 52%),
+    radial-gradient(ellipse 120% 60% at 90% 90%,  rgba(255,255,255,.08) 0%, transparent 48%),
+    radial-gradient(ellipse 80%  40% at 50% 50%,  rgba(255,255,255,.05) 0%, transparent 45%);
+  filter: blur(3px);
   pointer-events: none;
   z-index: 0;
 }
+/* Diagonal line across sidebar */
 .sidebar::after {
   content: '';
   position: absolute;
-  bottom: 60px; left: -80px;
-  width: 240px; height: 240px;
-  background: rgba(255,255,255,.03);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-/* Third orb — mid-right accent */
-.sidebar .sb-orb-mid {
-  display: none; /* rendered via JS or could be a real div */
-}
-/* Alternative: use a global pseudo-element on sb-header */
-.sb-header::after {
-  content: '';
-  position: absolute;
-  top: 50%; right: -50px;
-  transform: translateY(-50%);
-  width: 130px; height: 130px;
-  background: rgba(255,255,255,.03);
-  border-radius: 50%;
+  width: 300%;
+  height: 50px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.05) 30%,
+    rgba(255,255,255,.09) 55%,
+    rgba(255,255,255,.05) 80%,
+    transparent 100%
+  );
+  top: 35%;
+  left: -100%;
+  transform: rotate(-15deg);
+  filter: blur(5px);
   pointer-events: none;
   z-index: 0;
 }
@@ -6584,7 +6580,7 @@ tr.tx-row-new td:first-child {
 .wz-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px 12px;
-  background: #0d2318;   /* same deep brand-green as sidebar */
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 60%, #0e3520 100%);   /* Option 2 green */
   flex-shrink: 0;
 }
 .wz-close-btn {
@@ -15379,7 +15375,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Hero header ── */
 .dbt-hero {
-  background: var(--brand-bg, #0d2318);
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 60%, #0e3520 100%);
   border-radius: 16px;
   padding: 20px 22px 16px;
   margin-bottom: 18px;
@@ -18375,95 +18371,91 @@ section[data-page="transactions"] .content {
 /* ══ Login — Opção A: Emerald Depth ══════════════════════════════════════ */
 
 /* Base background */
-.login-bg-a {
-  background: #092115 !important;
+/* ══ Login — Opção 2: Névoa Difusa ═══════════════════════════════════════ */
+
+.login-bg-2 {
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 50%, #0e3520 100%) !important;
 }
 
-/* Layered gradient base */
-.login-bg-a__base {
+/* Névoa branca espalhada — três elipses sobrepostos */
+.lgn-haze {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 110% 80% at 20% 10%,  #0d3d28 0%, transparent 55%),
-    radial-gradient(ellipse 80%  70% at 80% 90%,  #0a2e1e 0%, transparent 50%),
-    radial-gradient(ellipse 60%  50% at 60% 30%,  #113324 0%, transparent 45%),
-    linear-gradient(155deg, #0b2a1a 0%, #0e3522 40%, #09261a 70%, #07180f 100%);
+    radial-gradient(ellipse 80% 60% at 18% 15%,  rgba(255,255,255,.13) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 55% at 82% 88%,  rgba(255,255,255,.10) 0%, transparent 52%),
+    radial-gradient(ellipse 45% 35% at 58% 42%,  rgba(255,255,255,.07) 0%, transparent 50%),
+    radial-gradient(ellipse 55% 40% at 30% 80%,  rgba(255,255,255,.06) 0%, transparent 48%);
+  filter: blur(4px);
   pointer-events: none;
 }
 
-/* Primary radial glow — upper-left warm emerald */
-.login-bg-a__glow1 {
+/* Linha diagonal 1 — mais larga, mais opaca */
+.lgn-line1 {
   position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(34,197,94,.13) 0%, transparent 65%);
-  top: -180px;
-  left: -140px;
+  width: 200%;
+  height: 70px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.06) 25%,
+    rgba(255,255,255,.11) 50%,
+    rgba(255,255,255,.06) 75%,
+    transparent 100%
+  );
+  top: 28%;
+  left: -50%;
+  transform: rotate(-12deg);
+  filter: blur(6px);
   pointer-events: none;
 }
 
-/* Secondary glow — lower-right cooler */
-.login-bg-a__glow2 {
+/* Linha diagonal 2 — mais estreita, sutil */
+.lgn-line2 {
   position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(16,185,129,.09) 0%, transparent 60%);
-  bottom: -160px;
-  right: -120px;
+  width: 200%;
+  height: 40px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.04) 30%,
+    rgba(255,255,255,.08) 55%,
+    rgba(255,255,255,.04) 80%,
+    transparent 100%
+  );
+  top: 54%;
+  left: -50%;
+  transform: rotate(-12deg);
+  filter: blur(4px);
   pointer-events: none;
 }
 
-/* Tertiary glow — center depth */
-.login-bg-a__glow3 {
+/* Linha diagonal 3 — tênue, parte superior */
+.lgn-line3 {
   position: absolute;
-  width: 400px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(20,83,45,.25) 0%, transparent 65%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  width: 200%;
+  height: 25px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.03) 35%,
+    rgba(255,255,255,.06) 60%,
+    rgba(255,255,255,.03) 85%,
+    transparent 100%
+  );
+  top: 14%;
+  left: -50%;
+  transform: rotate(-12deg);
+  filter: blur(3px);
   pointer-events: none;
 }
 
-/* Concentric rings — centered on upper-right */
-.login-bg-a__ring1,
-.login-bg-a__ring2,
-.login-bg-a__ring3,
-.login-bg-a__ring4 {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,.045);
-  pointer-events: none;
-  top: -30vh;
-  right: -20vw;
-}
-.login-bg-a__ring1 { width: 40vmax; height: 40vmax; }
-.login-bg-a__ring2 { width: 60vmax; height: 60vmax; top: -40vh; right: -30vw; border-color: rgba(255,255,255,.03); }
-.login-bg-a__ring3 { width: 80vmax; height: 80vmax; top: -55vh; right: -40vw; border-color: rgba(255,255,255,.02); }
-.login-bg-a__ring4 { width: 28vmax; height: 28vmax; border-color: rgba(34,197,94,.06); }
-
-/* Subtle grain texture overlay */
-.login-bg-a__grain {
-  position: absolute;
-  inset: 0;
-  opacity: .018;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-}
-
-/* Card — floating with dramatic shadow + subtle top shine */
+/* Card — mesma sombra dramática da versão anterior */
 .login-card-a {
   background: #ffffff;
   border-radius: 22px;
   padding: 38px 34px;
   box-shadow:
     0 2px 0 rgba(255,255,255,.08) inset,
-    0 32px 80px rgba(0,0,0,.55),
-    0 8px 32px rgba(0,0,0,.35),
+    0 32px 80px rgba(0,0,0,.45),
+    0 8px 32px rgba(0,0,0,.28),
     0 0 0 1px rgba(255,255,255,.06);
   position: relative;
   z-index: 2;
@@ -18475,7 +18467,7 @@ section[data-page="transactions"] .content {
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
-/* Inputs inside the card — subtle green focus */
+/* Inputs — foco verde */
 .login-card-a input[type="email"]:focus,
 .login-card-a input[type="password"]:focus,
 .login-card-a input[type="text"]:focus {
@@ -18484,7 +18476,7 @@ section[data-page="transactions"] .content {
   box-shadow: 0 0 0 3px rgba(42,96,73,.1);
 }
 
-/* Tagline text below logo */
+/* Tagline */
 .login-card-a [data-i18n="auth.tagline"],
 .login-card-a .login-tagline {
   color: #9ca3af;
@@ -18494,17 +18486,17 @@ section[data-page="transactions"] .content {
   text-transform: uppercase;
 }
 
-/* Mobile: tighten card padding */
+/* Mobile */
 @media (max-width: 480px) {
   .login-card-a {
     padding: 28px 22px;
     border-radius: 18px;
   }
-  .login-bg-a__ring1,
-  .login-bg-a__ring2,
-  .login-bg-a__ring3,
-  .login-bg-a__ring4 { display: none; }
+  .lgn-line1, .lgn-line2, .lgn-line3 {
+    opacity: .7;
+  }
 }
+
 
 
 /* ══ TX List — Timeline enhancements (Opção A) ═══════════════════════════ */
