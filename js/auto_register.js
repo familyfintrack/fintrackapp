@@ -330,7 +330,7 @@ function nextScheduledDate(dateStr, sc) {
 }
 
 
-/* ── WhatsApp Notifications ── */
+/* ── Channel Notifications ── */
 function _normalizeWhatsappNumber(raw) {
   const digits = String(raw || '').replace(/\D+/g, '');
   return digits || null;
@@ -344,7 +344,7 @@ async function invokeScheduledWhatsapp(payload) {
 }
 
 async function sendScheduledWhatsappNotification(sc, date, amount, mode) {
-  const number = _normalizeWhatsappNumber(sc?.notify_whatsapp_number);
+  const number = _normalizeWhatsappNumber(sc?.notify_whatsapp_number || currentUser?.whatsapp_number);
   if (!number) return null;
   const payload = {
     scheduled_id: sc.id,
@@ -365,6 +365,38 @@ async function sendScheduledWhatsappNotification(sc, date, amount, mode) {
   }
 }
 
+async function invokeScheduledTelegram(payload) {
+  if (!sb?.functions?.invoke) throw new Error('Supabase Edge Functions não disponíveis nesta sessão.');
+  const { data, error } = await sb.functions.invoke('send-scheduled-telegram', { body: payload });
+  if (error) throw error;
+  return data || null;
+}
+
+async function sendScheduledTelegramNotification(sc, date, amount, mode) {
+  const chatId = String(sc?.notify_telegram_chat_id || currentUser?.telegram_chat_id || '').trim();
+  if (!chatId) return null;
+  const amountLabel = typeof fmtBRL === 'function' ? fmtBRL(Math.abs(Number(amount || sc?.amount || 0))) : String(amount || sc?.amount || 0);
+  const title = mode === 'upcoming' ? '📅 Lembrete FinTrack' : '✅ FinTrack registrou';
+  const message = `${title}
+${sc?.description || 'Transação programada'}
+Data: ${date}
+Valor: ${amountLabel}`;
+  const payload = {
+    scheduled_id: sc.id,
+    occurrence_date: date,
+    notification_type: mode === 'upcoming' ? 'upcoming' : 'processed',
+    chat_id: chatId,
+    message,
+    amount
+  };
+  try {
+    return await invokeScheduledTelegram(payload);
+  } catch (e) {
+    console.warn('[AutoReg] Telegram error:', e?.message || e);
+    return null;
+  }
+}
+
 async function runScheduledUpcomingNotifications() {
   try {
     if (!state.scheduled || !state.scheduled.length) return 0;
@@ -373,10 +405,15 @@ async function runScheduledUpcomingNotifications() {
     let sent = 0;
     for (const sc of state.scheduled) {
       if (sc.status !== 'active') continue;
-      const upcomingEnabled = !!(sc.notify_whatsapp && sc.notify_whatsapp_on_upcoming);
+      const upcomingWhatsappEnabled = !!(sc.notify_whatsapp && sc.notify_whatsapp_on_upcoming);
+      const upcomingTelegramEnabled = !!(sc.notify_telegram && sc.notify_telegram_on_upcoming);
       const emailEnabled = !!sc.notify_email;
-      if (!upcomingEnabled && !emailEnabled) continue;
-      const daysBefore = Math.max(0, parseInt(sc.notify_whatsapp_days_before ?? sc.notify_days_before ?? 0, 10) || 0);
+      if (!upcomingWhatsappEnabled && !upcomingTelegramEnabled && !emailEnabled) continue;
+      const daysBefore = Math.max(
+        Math.max(0, parseInt(sc.notify_whatsapp_days_before ?? sc.notify_days_before ?? 0, 10) || 0),
+        Math.max(0, parseInt(sc.notify_telegram_days_before ?? sc.notify_days_before ?? 0, 10) || 0),
+        Math.max(0, parseInt(sc.notify_days_before ?? 0, 10) || 0)
+      );
       const cutoff = new Date(today.getTime() + daysBefore * 86400000).toISOString().slice(0,10);
       const occDates = getScheduledDates(sc, cutoff);
       for (const d of occDates) {
@@ -385,12 +422,22 @@ async function runScheduledUpcomingNotifications() {
         if (diffDays !== daysBefore) continue;
         if (emailEnabled) {
           const cfg = getAutoCheckConfig ? getAutoCheckConfig() : {};
-          const emailTo = sc.notify_email_addr || cfg.emailDefault || currentUser?.email;
+          const emailTo = sc.notify_email_addr || currentUser?.email || cfg.emailDefault;
           if (emailTo) await sendUpcomingNotification(sc, d, emailTo, daysBefore);
         }
-        if (upcomingEnabled) {
-          await sendScheduledWhatsappNotification(sc, d, sc.amount, 'upcoming');
-          sent++;
+        if (upcomingWhatsappEnabled) {
+          const waLead = Math.max(0, parseInt(sc.notify_whatsapp_days_before ?? sc.notify_days_before ?? 0, 10) || 0);
+          if (diffDays === waLead) {
+            await sendScheduledWhatsappNotification(sc, d, sc.amount, 'upcoming');
+            sent++;
+          }
+        }
+        if (upcomingTelegramEnabled) {
+          const tgLead = Math.max(0, parseInt(sc.notify_telegram_days_before ?? sc.notify_days_before ?? 0, 10) || 0);
+          if (diffDays === tgLead) {
+            await sendScheduledTelegramNotification(sc, d, sc.amount, 'upcoming');
+            sent++;
+          }
         }
       }
     }

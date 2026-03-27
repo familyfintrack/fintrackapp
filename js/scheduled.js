@@ -779,6 +779,12 @@ function openScheduledModal(id='') {
   const naEl = document.getElementById('scNotifyEmailAddr');
   const ndEl = document.getElementById('scNotifyDaysBefore');
   const ndDiv = document.getElementById('scNotifyEmailDetails');
+  const ntEl = document.getElementById('scNotifyTelegram');
+  const ntdEl = document.getElementById('scNotifyTelegramDetails');
+  const ntcEl = document.getElementById('scNotifyTelegramChatId');
+  const ntdaysEl = document.getElementById('scNotifyTelegramDaysBefore');
+  const ntUpEl = document.getElementById('scNotifyTelegramUpcoming');
+  const ntProcEl = document.getElementById('scNotifyTelegramProcessed');
   const nwEl = document.getElementById('scNotifyWhatsapp');
   const nwdEl = document.getElementById('scNotifyWhatsappDetails');
   const nwnEl = document.getElementById('scNotifyWhatsappNumber');
@@ -799,9 +805,7 @@ function openScheduledModal(id='') {
     if(ndDiv) ndDiv.style.display = neEl.checked ? '' : 'none';
   }
   if(naEl) {
-    // Pre-fill: saved addr → emailDefault config → currentUser email
-    const _cfg = typeof getAutoCheckConfig === 'function' ? getAutoCheckConfig() : {};
-    naEl.value = sc?.notify_email_addr || _cfg.emailDefault || currentUser?.email || '';
+    naEl.value = sc?.notify_email_addr || currentUser?.email || '';
   }
   if(ndEl) ndEl.value = sc?.notify_days_before ?? 1;
   if(nwEl) {
@@ -809,12 +813,21 @@ function openScheduledModal(id='') {
     toggleScheduledWhatsappDetails(nwEl.checked);
     if (nwdEl) nwdEl.style.display = nwEl.checked ? '' : 'none';
   }
-  if(nwnEl) nwnEl.value = sc?.notify_whatsapp_number || '';
+  if(nwnEl) nwnEl.value = sc?.notify_whatsapp_number || currentUser?.whatsapp_number || '';
   if(nwdaysEl) nwdaysEl.value = sc?.notify_whatsapp_days_before ?? sc?.notify_days_before ?? 1;
   if(nwUpEl) nwUpEl.checked = sc?.notify_whatsapp_on_upcoming ?? true;
   if(nwProcEl) nwProcEl.checked = sc?.notify_whatsapp_on_processed ?? true;
   if(nwTplEl) nwTplEl.value = sc?.notify_whatsapp_template || 'scheduled_upcoming';
   if(nwLangEl) nwLangEl.value = sc?.notify_whatsapp_lang || 'pt_BR';
+  if(ntEl) {
+    ntEl.checked = sc?.notify_telegram || false;
+    toggleScheduledTelegramDetails(ntEl.checked);
+    if (ntdEl) ntdEl.style.display = ntEl.checked ? '' : 'none';
+  }
+  if(ntcEl) ntcEl.value = sc?.notify_telegram_chat_id || currentUser?.telegram_chat_id || '';
+  if(ntdaysEl) ntdaysEl.value = sc?.notify_telegram_days_before ?? sc?.notify_days_before ?? 1;
+  if(ntUpEl) ntUpEl.checked = sc?.notify_telegram_on_upcoming ?? true;
+  if(ntProcEl) ntProcEl.checked = sc?.notify_telegram_on_processed ?? true;
 
   // Render family member multi-picker
   if (typeof renderFmcMultiPicker === 'function') {
@@ -1039,12 +1052,17 @@ async function saveScheduled() {
   const autoConfirm = document.getElementById('scAutoConfirm')?.checked ?? true;
   const notifyEm = document.getElementById('scNotifyEmail')?.checked || false;
   const notifyWa = document.getElementById('scNotifyWhatsapp')?.checked || false;
+  const notifyTg = document.getElementById('scNotifyTelegram')?.checked || false;
   const notifyWaNumber = (document.getElementById('scNotifyWhatsappNumber')?.value || '').trim();
+  const notifyTgChatId = (document.getElementById('scNotifyTelegramChatId')?.value || '').trim();
   const notifyWaDaysBefore = parseInt(document.getElementById('scNotifyWhatsappDaysBefore')?.value || document.getElementById('scNotifyDaysBefore')?.value || '1', 10) || 0;
   const notifyWaUpcoming = document.getElementById('scNotifyWhatsappUpcoming')?.checked ?? true;
   const notifyWaProcessed = document.getElementById('scNotifyWhatsappProcessed')?.checked ?? true;
   const notifyWaTemplate = (document.getElementById('scNotifyWhatsappTemplate')?.value || 'scheduled_upcoming').trim();
   const notifyWaLang = (document.getElementById('scNotifyWhatsappLang')?.value || 'pt_BR').trim();
+  const notifyTgDaysBefore = parseInt(document.getElementById('scNotifyTelegramDaysBefore')?.value || document.getElementById('scNotifyDaysBefore')?.value || '1', 10) || 0;
+  const notifyTgUpcoming = document.getElementById('scNotifyTelegramUpcoming')?.checked ?? true;
+  const notifyTgProcessed = document.getElementById('scNotifyTelegramProcessed')?.checked ?? true;
   const isScTransfer = type==='transfer' || type==='card_payment';
   const isScCardPayment = type==='card_payment';
 
@@ -1102,6 +1120,11 @@ async function saveScheduled() {
     notify_whatsapp_on_upcoming: notifyWa ? !!notifyWaUpcoming : false,
     notify_whatsapp_template: notifyWa ? (notifyWaTemplate || 'scheduled_upcoming') : null,
     notify_whatsapp_lang: notifyWa ? (notifyWaLang || 'pt_BR') : 'pt_BR',
+    notify_telegram: notifyTg,
+    notify_telegram_chat_id: notifyTg ? (notifyTgChatId || null) : null,
+    notify_telegram_days_before: notifyTg ? notifyTgDaysBefore : 1,
+    notify_telegram_on_processed: notifyTg ? !!notifyTgProcessed : false,
+    notify_telegram_on_upcoming: notifyTg ? !!notifyTgUpcoming : false,
     fx_mode:  fxVisible ? fxMode : null,
     fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
@@ -1123,6 +1146,7 @@ async function saveScheduled() {
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
   if(!data.start_date) { toast('Informe a data de início', 'error'); return; }
   if (notifyWa && !notifyWaNumber) { toast('Informe o número de WhatsApp para a notificação.', 'error'); return; }
+  if (notifyTg && !notifyTgChatId) { toast('Informe o Chat ID do Telegram para a notificação.', 'error'); return; }
 
   let err, newId = id;
   if(!id) data.family_id = famId();
@@ -1163,11 +1187,41 @@ async function toggleScStatus(id) {
 }
 
 // Feature 8: Update hint for auto_confirm status
+function _prefillScheduledEmailDefault() {
+  const el = document.getElementById('scNotifyEmailAddr');
+  if (!el || (el.value || '').trim()) return;
+  el.value = currentUser?.email || '';
+}
+function _prefillScheduledWhatsappDefault() {
+  const el = document.getElementById('scNotifyWhatsappNumber');
+  if (!el || (el.value || '').trim()) return;
+  el.value = currentUser?.whatsapp_number || '';
+}
+function _prefillScheduledTelegramDefault() {
+  const el = document.getElementById('scNotifyTelegramChatId');
+  if (!el || (el.value || '').trim()) return;
+  el.value = currentUser?.telegram_chat_id || '';
+}
+function toggleScheduledEmailDetails(show) {
+  const details = document.getElementById('scNotifyEmailDetails');
+  if (details) details.style.display = show ? '' : 'none';
+  if (show) _prefillScheduledEmailDefault();
+}
+window.toggleScheduledEmailDetails = toggleScheduledEmailDetails;
+
 function toggleScheduledWhatsappDetails(show) {
   const details = document.getElementById('scNotifyWhatsappDetails');
   if (details) details.style.display = show ? '' : 'none';
+  if (show) _prefillScheduledWhatsappDefault();
 }
 window.toggleScheduledWhatsappDetails = toggleScheduledWhatsappDetails;
+
+function toggleScheduledTelegramDetails(show) {
+  const details = document.getElementById('scNotifyTelegramDetails');
+  if (details) details.style.display = show ? '' : 'none';
+  if (show) _prefillScheduledTelegramDefault();
+}
+window.toggleScheduledTelegramDetails = toggleScheduledTelegramDetails;
 
 function _updateAutoConfirmHint() {
   const el  = document.getElementById('scAutoConfirm');

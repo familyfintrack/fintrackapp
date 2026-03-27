@@ -148,7 +148,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   // app_users: fonte de verdade para dados pessoais e role global
   const { data: appUserRow } = await sb
     .from('app_users')
-    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language')
+    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -279,6 +279,8 @@ async function _loadCurrentUserContext(authCtx = null) {
     avatar_url:           appUserRow?.avatar_url || null,
     preferred_family_id:  appUserRow?.preferred_family_id || null,
     preferred_language:   appUserRow?.preferred_language  || 'pt',
+    whatsapp_number:      appUserRow?.whatsapp_number || '',
+    telegram_chat_id:     appUserRow?.telegram_chat_id || '',
     ...caps
   };
 
@@ -1152,8 +1154,12 @@ async function saveMyProfile() {
   const prefFamChanged = prefFamId !== (currentUser.preferred_family_id || null);
   const newLang = document.getElementById('myProfileLanguage')?.value || 'pt';
   const langChanged = newLang !== (currentUser.preferred_language || 'pt');
+  const whatsappNumber = (document.getElementById('myProfileWhatsappNumber')?.value || '').trim().replace(/\D+/g, '');
+  const telegramChatId = (document.getElementById('myProfileTelegramChatId')?.value || '').trim();
+  const waChanged = whatsappNumber !== String(currentUser.whatsapp_number || '').replace(/\D+/g, '');
+  const tgChanged = telegramChatId !== String(currentUser.telegram_chat_id || '');
 
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged) {
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged) {
     closeModal('myProfileModal');
     return;
   }
@@ -1177,6 +1183,8 @@ async function saveMyProfile() {
     if (newAvatarUrl !== currentUser.avatar_url) updatePayload.avatar_url = newAvatarUrl;
     if (prefFamChanged) updatePayload.preferred_family_id = prefFamId || null;
     if (langChanged)    updatePayload.preferred_language  = newLang;
+    if (waChanged)      updatePayload.whatsapp_number     = whatsappNumber || null;
+    if (tgChanged)      updatePayload.telegram_chat_id    = telegramChatId || null;
 
     if (Object.keys(updatePayload).length > 0) {
       const { error: avErr } = await sb.from('app_users').update(updatePayload).eq('id', appRow.id);
@@ -1197,6 +1205,8 @@ async function saveMyProfile() {
         if (typeof i18nSetLanguage === 'function') await i18nSetLanguage(newLang);
         if (typeof _i18nUpdateTopbarLabel === 'function') _i18nUpdateTopbarLabel();
       }
+      if ('whatsapp_number' in updatePayload) currentUser.whatsapp_number = whatsappNumber || '';
+      if ('telegram_chat_id' in updatePayload) currentUser.telegram_chat_id = telegramChatId || '';
     }
 
     // 2. Password
