@@ -1006,6 +1006,11 @@ function openMyProfile() {
   const roleEl  = document.getElementById('myProfileRoleBadge');
   if (nameEl)  nameEl.textContent  = currentUser.name  || '';
   if (emailEl) emailEl.textContent = currentUser.email || '';
+  // Also fill editable name input and email display in Conta tab
+  const nameInputEl = document.getElementById('myProfileNameInput');
+  const emailDispEl = document.getElementById('myProfileEmailDisplay');
+  if (nameInputEl) nameInputEl.value = currentUser.name || '';
+  if (emailDispEl) emailDispEl.textContent = currentUser.email || '';
   if (roleEl) {
     const labels = { owner:'👑 Owner', admin:'🔧 Admin', viewer:'👁 Visualizador', user:'👤 Usuário' };
     const bgs    = { owner:'#fef3c7', admin:'#fef9c3', viewer:'#f0f9ff', user:'var(--accent-lt)' };
@@ -1259,9 +1264,11 @@ async function saveMyProfile() {
   const waChanged = whatsappNumber !== String(currentUser.whatsapp_number || '').replace(/\D+/g, '');
   const tgChanged = telegramChatId !== String(currentUser.telegram_chat_id || '');
 
+  const newName = (document.getElementById('myProfileNameInput')?.value || '').trim();
+  const nameChanged = newName && newName !== (currentUser?.name || '');
   const newFormMode = document.getElementById('myProfileFormMode')?.value || 'tabs';
   const fmChanged = newFormMode !== (currentUser?.preferred_form_mode || 'tabs');
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged) {
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged) {
     closeModal('myProfileModal');
     return;
   }
@@ -1287,6 +1294,7 @@ async function saveMyProfile() {
     if (langChanged)    updatePayload.preferred_language  = newLang;
     if (waChanged)      updatePayload.whatsapp_number     = whatsappNumber || null;
     if (tgChanged)      updatePayload.telegram_chat_id    = telegramChatId || null;
+    if (nameChanged)    updatePayload.name                = newName;
     if (fmChanged)      updatePayload.preferred_form_mode = newFormMode;
 
     if (Object.keys(updatePayload).length > 0) {
@@ -1310,6 +1318,16 @@ async function saveMyProfile() {
       }
       if ('whatsapp_number' in updatePayload) currentUser.whatsapp_number = whatsappNumber || '';
       if ('telegram_chat_id' in updatePayload) currentUser.telegram_chat_id = telegramChatId || '';
+      if ('name' in updatePayload) {
+        currentUser.name = newName;
+        // Refresh cover header name
+        const coverName = document.getElementById('myProfileName');
+        if (coverName) coverName.textContent = newName;
+        // Refresh sidebar user name if visible
+        document.querySelectorAll('.sb-family-name,.sb-user-name').forEach(el => {
+          if (el.dataset.type === 'username') el.textContent = newName;
+        });
+      }
       if ('preferred_form_mode' in updatePayload) {
         currentUser.preferred_form_mode = newFormMode;
         try { localStorage.setItem(`pref_${currentUser.id}_global_form_mode`, newFormMode); } catch(e) {}

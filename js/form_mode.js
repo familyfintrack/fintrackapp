@@ -581,8 +581,10 @@ function switchProfTab(paneId, btnEl) {
 function _fillProfileDisplayFields() {
   const nameDisp  = document.getElementById('myProfileNameDisplay');
   const emailDisp = document.getElementById('myProfileEmailDisplay');
+  const nameInput = document.getElementById('myProfileNameInput');
   if (nameDisp  && window.currentUser?.name)  nameDisp.textContent  = window.currentUser.name;
   if (emailDisp && window.currentUser?.email) emailDisp.textContent = window.currentUser.email;
+  if (nameInput && window.currentUser?.name)  nameInput.value       = window.currentUser.name;
 }
 
 // Hook into loadFormModeIntoProfile to also fill display fields
