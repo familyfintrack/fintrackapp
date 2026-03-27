@@ -27,7 +27,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: linear-gradient(180deg, #0d3d28 0%, #1a5c3e 45%, #0e3520 100%);
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 60%, #0e3520 100%);
   display: flex;
   flex-direction: column;
   z-index: 200;
@@ -37,37 +37,19 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 }
 
 /* Névoa difusa — same pattern as login Option 2 */
+/* Sidebar orbe decorativo — mesmo idioma do dbt-hero / Option 1 */
 .sidebar::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 160% 50% at 10% 10%,  rgba(255,255,255,.10) 0%, transparent 52%),
-    radial-gradient(ellipse 120% 60% at 90% 90%,  rgba(255,255,255,.08) 0%, transparent 48%),
-    radial-gradient(ellipse 80%  40% at 50% 50%,  rgba(255,255,255,.05) 0%, transparent 45%);
-  filter: blur(3px);
+  top: -60px; right: -60px;
+  width: 260px; height: 260px;
+  background: rgba(255,255,255,.04);
+  border-radius: 50%;
   pointer-events: none;
   z-index: 0;
 }
-/* Diagonal line across sidebar */
 .sidebar::after {
-  content: '';
-  position: absolute;
-  width: 300%;
-  height: 50px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255,255,255,.05) 30%,
-    rgba(255,255,255,.09) 55%,
-    rgba(255,255,255,.05) 80%,
-    transparent 100%
-  );
-  top: 35%;
-  left: -100%;
-  transform: rotate(-15deg);
-  filter: blur(5px);
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 .sb-header { position: relative; overflow: visible; }
 
@@ -309,12 +291,20 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .stat-sub{font-size:.75rem;color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:4px;}
 
 
-/* DASHBOARD STAT CARDS (compact 2-per-row + larger numbers) */
-#page-dashboard .grid-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+/* DASHBOARD STAT CARDS — 4 em linha no desktop, 2×2 no mobile */
+#page-dashboard .grid-4{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
 #page-dashboard .stat-card{padding:14px;}
 #page-dashboard .stat-label{margin-bottom:6px;}
-#page-dashboard .stat-value{font-size:1.50rem;font-variant-numeric:tabular-nums;}
+#page-dashboard .stat-value{font-size:1.45rem;font-variant-numeric:tabular-nums;}
 #page-dashboard .stat-sub{margin-top:5px;}
+@media(max-width:768px){
+  #page-dashboard .grid-4{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  #page-dashboard .stat-value{font-size:1.35rem;}
+}
+@media(max-width:420px){
+  #page-dashboard .grid-4{grid-template-columns:1fr;}
+  #page-dashboard .stat-value{font-size:1.25rem;}
+}
 
 /* Dashboard value colors */
 #page-dashboard .stat-value.amount-pos,
@@ -665,7 +655,7 @@ body.sidebar-open .fab{
 .text-muted{color:var(--muted);}.text-green{color:var(--green);}.text-red{color:var(--red);}.text-accent{color:var(--accent);}
 
 /* RESPONSIVE */
-@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:1024px){.grid-4:not(#page-dashboard .grid-4){grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:768px){
   html{font-size:14px;}
   /* Garantir que todos os elementos scrolláveis sejam reconhecidos pelo iOS */
@@ -1970,46 +1960,51 @@ canvas { cursor: default; }
 @media (max-width: 640px){
 
   /* Pega QUALQUER tabela dentro da página de transações */
-  #page-transactions .table-wrap{ overflow: visible; }
-  #page-transactions table thead{ display:none; }
+  /* Flat list (txFlatCard) — table → card layout */
+  #page-transactions #txFlatCard .table-wrap{ overflow: visible; }
+  #page-transactions #txFlatCard table thead{ display:none; }
 
-  #page-transactions table,
-  #page-transactions tbody,
-  #page-transactions tr,
-  #page-transactions td{
+  #page-transactions #txFlatCard table,
+  #page-transactions #txFlatCard tbody,
+  #page-transactions #txFlatCard tr,
+  #page-transactions #txFlatCard td{
     display:block;
     width:100%;
   }
 
   /* Linha padrão vira card */
-  #page-transactions tbody tr{
+  #page-transactions #txFlatCard tbody tr{
     border: 1px solid var(--border);
     border-radius: var(--r-md);
     background: var(--surface);
     padding: 12px;
     margin: 10px 0;
   }
-  #page-transactions tbody td{ padding:0; border:0; }
+  #page-transactions #txFlatCard tbody td{ padding:0; border:0; }
+
+  /* Group view (txGroupContainer) — keep table layout, just make it scrollable */
+  #txGroupContainer .table-wrap{ overflow-x: auto; }
+  #txGroupContainer table{ min-width: 320px; }
 
   /* EXCEÇÃO: linhas de "título do grupo" (nome da conta)
      Normalmente são linhas com 1 célula ocupando tudo (colspan)
      ou com classe/estilo diferenciado. Este seletor cobre o caso
      mais comum: apenas 1 <td> na linha.
   */
-  #page-transactions tbody tr:has(> td:only-child){
+  #page-transactions #txFlatCard tbody tr:has(> td:only-child){
     border: 0;
     background: transparent;
     padding: 6px 4px;
     margin: 14px 0 6px;
   }
-  #page-transactions tbody tr:has(> td:only-child) td{
+  #page-transactions #txFlatCard tbody tr:has(> td:only-child) td{
     font-weight: 750;
     font-size: 1rem;
     color: var(--text);
   }
 
   /* Grid para linhas "normais" (as que têm colunas) */
-  #page-transactions tbody tr:not(:has(> td:only-child)){
+  #page-transactions #txFlatCard tbody tr:not(:has(> td:only-child)){
     display:grid;
     grid-template-columns: 1fr auto;
     gap: 8px 10px;
@@ -2042,7 +2037,7 @@ canvas { cursor: default; }
 
   /* Ações embaixo */
   
-  #page-transactions tbody tr:not(:has(> td:only-child)) td:nth-child(7) > div{
+  #page-transactions #txFlatCard tbody tr:not(:has(> td:only-child)) td:nth-child(7) > div{
     display:flex;
     justify-content:flex-end;
     gap:8px;
@@ -19320,3 +19315,170 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     overflow:hidden !important;
   }
 }
+
+  /* Group view (txGroupContainer) reconcile — compact checkbox in table */
+  .reconcile-mode #txGroupContainer td.tx-v2-chk {
+    width: 32px !important;
+    padding: 4px 6px !important;
+    display: table-cell !important;
+  }
+  .reconcile-mode #txGroupContainer td.tx-v2-chk { display: table-cell !important; }
+  #txGroupContainer td.tx-v2-chk { display: table-cell !important; }
+
+/* ══ Login — Opção 1 background ══════════════════════════════════════════ */
+.login-bg-opt1 {
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 60%, #0e3520 100%) !important;
+  position: fixed !important;
+}
+.login-bg-opt1::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 400px; height: 400px;
+  background: rgba(255,255,255,.04);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ══ AI Insights — Investments / Debts / Prices sections ═══════════════ */
+.air-invest-section,
+.air-debts-section,
+.air-prices-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.air-invest-hero,
+.air-debts-hero {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 12px;
+}
+.air-invest-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 100px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+}
+.air-invest-kpi-lbl {
+  font-size: .65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.air-invest-kpi-val {
+  font-family: var(--font-serif);
+  font-size: .98rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.air-invest-summary {
+  font-size: .85rem;
+  color: var(--text2);
+  line-height: 1.55;
+  margin: 6px 0;
+}
+.air-invest-note {
+  font-size: .8rem;
+  color: var(--text2);
+  background: var(--bg2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 6px 10px;
+  margin: 6px 0;
+}
+.air-invest-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.air-invest-highlight {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: .82rem;
+}
+.air-invest-ticker {
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  background: var(--accent-lt);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: .75rem;
+}
+.air-invest-recs,
+.air-debts-priority {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.air-invest-rec {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: .82rem;
+}
+.air-invest-rat {
+  color: var(--muted);
+  font-size: .78rem;
+}
+.air-debts-priority-lbl {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.air-debt-prio-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: .82rem;
+}
+.air-debt-prio-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.air-price-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.air-price-item {
+  display: flex;
+  gap: 10px;
+  font-size: .82rem;
+  align-items: baseline;
+}
+.air-price-name {
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+  min-width: 100px;
+}
+.air-price-tip { color: var(--text2); }
+
