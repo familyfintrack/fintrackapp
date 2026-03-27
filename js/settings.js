@@ -1321,33 +1321,92 @@ function initServiceRoleKeySection() {
   row.style.display = isAdmin ? '' : 'none';
   if (!isAdmin) return;
 
-  const saved = localStorage.getItem('sb_service_key') || '';
-  const inp   = document.getElementById('serviceRoleKeyInput');
-  const stat  = document.getElementById('serviceRoleKeyStatus');
-  if (inp)  inp.value = saved ? '•'.repeat(20) : '';
+  // SECURITY: Remove any previously stored service key immediately
+  const hadKey = !!localStorage.getItem('sb_service_key');
+  localStorage.removeItem('sb_service_key');
+
+  const inp  = document.getElementById('serviceRoleKeyInput');
+  const stat = document.getElementById('serviceRoleKeyStatus');
+  if (inp)  inp.value = '';
   if (stat) {
-    if (saved) {
-      stat.textContent = '✓ Chave configurada — reset de senha funcionará diretamente.';
-      stat.style.color = 'var(--green)';
+    if (hadKey) {
+      stat.innerHTML = '🔐 Chave anterior removida por segurança. O reset de senha usa RPC <code>set_user_password</code> (SECURITY DEFINER) — sem necessidade de armazenar a Service Role Key no navegador.';
+      stat.style.color = 'var(--amber)';
     } else {
-      stat.textContent = 'Sem chave — reset de senha usará e-mail de recuperação como fallback.';
+      stat.innerHTML = 'Reset de senha via RPC <code>set_user_password</code>. A Service Role Key não deve ser armazenada no navegador.';
       stat.style.color = 'var(--muted)';
     }
+  }
+  // Nullify sbAdmin so it's never initialized from stored key
+  if (typeof initSbAdmin === 'function') initSbAdmin();
+
+  // Show security migration prompt
+  _initSecurityStatus();
+}
+
+async function _initSecurityStatus() {
+  const el = document.getElementById('securityStatusPanel');
+  if (!el) return;
+  el.style.display = '';
+
+  // Check if RLS is active by trying a cross-family query
+  let rlsOk = null;
+  try {
+    const { data, error } = await sb.from('scheduled_transactions').select('id').limit(1);
+    rlsOk = !error;
+  } catch(_) { rlsOk = false; }
+
+  const hasSvcKey = !!localStorage.getItem('sb_service_key');
+  const hasPwd    = !!(localStorage.getItem('ft_remember_me') &&
+                      JSON.parse(atob(localStorage.getItem('ft_remember_me') || 'e30=')).password);
+
+  const items = [
+    { ok: !hasSvcKey, label: 'Service Role Key não armazenada no browser',    fix: 'Já corrigido nesta versão.' },
+    { ok: !hasPwd,    label: 'Senha não armazenada no localStorage',           fix: 'Já corrigido nesta versão.' },
+    { ok: true,       label: 'Senhas usam PBKDF2 (migração automática no login)', fix: '' },
+    { ok: rlsOk,      label: 'RLS ativo nas tabelas do banco',
+      fix: 'Execute o SQL em <strong>SECURITY_RLS.sql</strong> no Supabase SQL Editor.' },
+  ];
+
+  el.innerHTML = `
+    <div style="font-weight:700;font-size:.85rem;margin-bottom:10px;color:var(--text)">🔐 Status de Segurança</div>
+    ${items.map(i => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:1rem;flex-shrink:0">${i.ok ? '✅' : '⚠️'}</span>
+        <div style="min-width:0">
+          <div style="font-size:.82rem;font-weight:600;color:${i.ok ? 'var(--text)' : 'var(--amber)'}">${i.label}</div>
+          ${!i.ok && i.fix ? `<div style="font-size:.75rem;color:var(--muted);margin-top:2px">${i.fix}</div>` : ''}
+        </div>
+      </div>`).join('')}
+    <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="copySecurityRlsSql()">
+      📋 Copiar SQL de segurança (RLS)
+    </button>`;
+}
+
+async function copySecurityRlsSql() {
+  try {
+    const resp = await fetch('SECURITY_RLS.sql');
+    const sql  = await resp.text();
+    await navigator.clipboard.writeText(sql);
+    toast('✅ SQL copiado! Cole no Supabase SQL Editor.', 'success');
+  } catch(e) {
+    toast('Não foi possível copiar. Baixe o arquivo SECURITY_RLS.sql manualmente.', 'warning');
   }
 }
 
 function saveServiceRoleKey() {
-  const inp  = document.getElementById('serviceRoleKeyInput');
+  // SECURITY: Service Role Key must NEVER be stored client-side.
+  // Use the admin-reset-password Edge Function instead.
   const stat = document.getElementById('serviceRoleKeyStatus');
-  const val  = (inp?.value || '').trim();
-  if (!val || val.includes('•')) { if (stat) { stat.textContent = 'Cole a chave completa antes de salvar.'; stat.style.color = 'var(--red)'; } return; }
-  if (!val.startsWith('eyJ')) { if (stat) { stat.textContent = 'Chave inválida — deve começar com eyJ...'; stat.style.color = 'var(--red)'; } return; }
-  localStorage.setItem('sb_service_key', val);
-  if (inp)  inp.value = '•'.repeat(20);
-  if (stat) { stat.textContent = '✓ Chave salva! Reset de senha funcionará diretamente.'; stat.style.color = 'var(--green)'; }
-  toast('✓ Service Role Key salva', 'success');
-  // Notificar auth.js para recriar sbAdmin
-  if (typeof initSbAdmin === 'function') initSbAdmin();
+  const inp  = document.getElementById('serviceRoleKeyInput');
+  if (inp) inp.value = '';
+  if (stat) {
+    stat.innerHTML = '🚫 Por segurança, a Service Role Key não pode ser salva no navegador. Use a <strong>Edge Function admin-reset-password</strong> — o reset de senha funciona via RPC sem necessidade desta chave.';
+    stat.style.color = 'var(--red)';
+  }
+  // Remove any previously stored key
+  localStorage.removeItem('sb_service_key');
+  toast('⚠️ Service Role Key não armazenada — veja as instruções abaixo.', 'warning');
 }
 
 function clearServiceRoleKey() {

@@ -360,9 +360,15 @@ function scrollPayeeGroup(key) {
 }
 
 function filterPayees(){renderPayees(document.getElementById('payeeSearch').value,document.getElementById('payeeTypeFilter').value);}
-function openPayeeModal(id=''){
+async function openPayeeModal(id=''){
   const form={id:'',name:'',type:'beneficiario',default_category_id:'',notes:''};
   if(id){const p=state.payees.find(x=>x.id===id);if(p)Object.assign(form,p);}
+
+  // Ensure categories are loaded before building the picker
+  if (!state.categories || !state.categories.length) {
+    try { await DB.categories.load(); } catch(_) {}
+  }
+
   document.getElementById('payeeId').value    = form.id;
   document.getElementById('payeeName').value  = form.name;
   document.getElementById('payeeType').value  = form.type;
@@ -785,6 +791,134 @@ async function confirmPayeeClipboardImport() {
 ══════════════════════════════════════════════════════ */
 let _txClipItems = []; // parsed rows ready for preview
 
+
+
+// ── Google Maps / Places lookup ──────────────────────────────────────────────
+async function searchPayeeOnMaps() {
+  const query    = (document.getElementById('payeeMapsQuery')?.value || '').trim();
+  const nameVal  = (document.getElementById('payeeName')?.value || '').trim();
+  const searchQ  = query || nameVal;
+  if (!searchQ) { toast('Digite um nome ou endereço para buscar.', 'warning'); return; }
+
+  const btn = document.getElementById('payeeMapsBtn');
+  const res = document.getElementById('payeeMapsResults');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando…'; }
+  if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+
+  try {
+    // Use Google Places Text Search via Supabase Edge Function proxy (avoids CORS + key exposure)
+    // Fallback: use nominatim (OpenStreetMap) which is free and CORS-friendly
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQ)}&format=json&addressdetails=1&limit=5&accept-language=pt-BR`;
+    const resp = await fetch(nominatimUrl, {
+      headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'FamilyFinTrack/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) throw new Error('Erro na busca: ' + resp.status);
+    const data = await resp.json();
+
+    if (!data.length) {
+      if (res) {
+        res.style.display = '';
+        res.innerHTML = `<div style="padding:12px 14px;font-size:.82rem;color:var(--muted);text-align:center">
+          Nenhum resultado encontrado. Tente um termo mais específico.
+        </div>`;
+      }
+      return;
+    }
+
+    if (res) {
+      res.style.display = '';
+      res.innerHTML = data.map((place, i) => {
+        const addr = place.address || {};
+        const displayName = place.display_name || '';
+        const road     = addr.road || addr.pedestrian || addr.street || '';
+        const houseNum = addr.house_number || '';
+        const city     = addr.city || addr.town || addr.municipality || addr.county || '';
+        const state    = addr.state || '';
+        const stateAbbr = _nominatimStateAbbr(state);
+        const postcode = addr.postcode || '';
+        const phone    = '';
+        const website  = '';
+
+        const fullAddr = [road, houseNum].filter(Boolean).join(', ');
+        const shortName = displayName.split(',')[0];
+
+        return `<div onclick="_applyMapsResult(${i})"
+          data-idx="${i}"
+          style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);
+                 transition:background .12s"
+          onmouseover="this.style.background='var(--surface2)'"
+          onmouseout="this.style.background=''"
+          data-name="${esc(shortName)}"
+          data-address="${esc(fullAddr)}"
+          data-city="${esc(city)}"
+          data-state="${esc(stateAbbr)}"
+          data-zip="${esc(postcode.replace('-',''))}"
+          data-phone="${esc(phone)}"
+          data-website="${esc(website)}">
+          <div style="font-weight:600;font-size:.84rem;color:var(--text)">${esc(shortName)}</div>
+          <div style="font-size:.74rem;color:var(--muted);margin-top:2px">${esc(displayName.split(',').slice(1,4).join(',').trim())}</div>
+        </div>`;
+      }).join('');
+      window._payeeMapsData = data;
+    }
+  } catch(e) {
+    toast('Erro ao buscar: ' + (e.message || 'Verifique a conexão'), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🗺️ Buscar'; }
+  }
+}
+
+function _nominatimStateAbbr(stateName) {
+  const map = {
+    'Acre':'AC','Alagoas':'AL','Amapá':'AP','Amazonas':'AM','Bahia':'BA',
+    'Ceará':'CE','Distrito Federal':'DF','Espírito Santo':'ES','Goiás':'GO',
+    'Maranhão':'MA','Mato Grosso':'MT','Mato Grosso do Sul':'MS','Minas Gerais':'MG',
+    'Pará':'PA','Paraíba':'PB','Paraná':'PR','Pernambuco':'PE','Piauí':'PI',
+    'Rio de Janeiro':'RJ','Rio Grande do Norte':'RN','Rio Grande do Sul':'RS',
+    'Rondônia':'RO','Roraima':'RR','Santa Catarina':'SC','São Paulo':'SP',
+    'Sergipe':'SE','Tocantins':'TO',
+  };
+  return map[stateName] || (stateName ? stateName.slice(0,2).toUpperCase() : '');
+}
+
+function _applyMapsResult(idx) {
+  const res = document.getElementById('payeeMapsResults');
+  const row = res?.querySelector(`[data-idx="${idx}"]`);
+  if (!row) return;
+
+  const name    = row.dataset.name    || '';
+  const address = row.dataset.address || '';
+  const city    = row.dataset.city    || '';
+  const state   = row.dataset.state   || '';
+  const zip     = row.dataset.zip     || '';
+  const phone   = row.dataset.phone   || '';
+  const website = row.dataset.website || '';
+
+  // Fill form fields
+  if (name && !document.getElementById('payeeName')?.value)
+    document.getElementById('payeeName').value = name;
+  if (address)  document.getElementById('payeeAddress').value  = address;
+  if (city)     document.getElementById('payeeCity').value     = city;
+  if (state)    document.getElementById('payeeStateUf').value  = state.slice(0,2).toUpperCase();
+  if (zip)      document.getElementById('payeeZip').value      = zip;
+  if (phone)    document.getElementById('payeePhone').value    = phone;
+  if (website)  document.getElementById('payeeWebsite').value  = website;
+
+  // Hide results
+  if (res) res.style.display = 'none';
+  toast('✅ Dados preenchidos com informações do Maps.', 'success');
+}
+
+// Allow pressing Enter in maps query field
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.id === 'payeeMapsQuery') {
+      e.preventDefault();
+      searchPayeeOnMaps();
+    }
+  });
+});
 
 // === PERIODICITY COLORS ===
 function getPeriodColor(period) {

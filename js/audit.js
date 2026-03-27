@@ -56,7 +56,7 @@ async function loadAuditLogs() {
 
     let q = famQ(
       sb.from('scheduled_run_logs')
-        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at, notif_email_sent, notif_wa_sent, notif_tg_sent, notif_email_addr, notif_wa_number, notif_tg_chat_id, notif_error')
+        .select('id, family_id, scheduled_id, transaction_id, scheduled_date, status, amount, description, created_at')
         .order('created_at', { ascending: false })
         .limit(500)
     );
@@ -84,6 +84,22 @@ async function loadAuditLogs() {
         const scMap = Object.fromEntries(scData.map(s => [s.id, s]));
         rows = rows.map(r => ({ ...r, scheduled_transactions: scMap[r.scheduled_id] || null }));
       }
+    }
+
+    // Try to fetch notification columns (added in v48 migration — may not exist yet)
+    const logIds = rows.map(r => r.id).filter(Boolean);
+    if (logIds.length > 0) {
+      try {
+        const { data: notifData, error: notifErr } = await sb
+          .from('scheduled_run_logs')
+          .select('id, notif_email_sent, notif_wa_sent, notif_tg_sent, notif_email_addr, notif_wa_number, notif_tg_chat_id, notif_error')
+          .in('id', logIds);
+        if (!notifErr && notifData) {
+          const notifMap = Object.fromEntries(notifData.map(n => [n.id, n]));
+          rows = rows.map(r => ({ ...r, ...notifMap[r.id] }));
+        }
+        // If column doesn't exist yet (notifErr), rows keep null notif fields — _auditNotifBadge handles gracefully
+      } catch(_) { /* notification columns not yet migrated — silently skip */ }
     }
 
     _auditState.allRows    = rows;

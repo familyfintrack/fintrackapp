@@ -7,16 +7,11 @@ let currentUser = null;  // { id, email, name, role, family_id, can_* }
 let sbAdmin = null;
 
 function initSbAdmin() {
-  const serviceKey = localStorage.getItem('sb_service_key') || '';
-  const url = localStorage.getItem('sb_url') || window.SUPABASE_URL || '';
-  if (serviceKey && url && typeof supabase !== 'undefined') {
-    sbAdmin = supabase.createClient(url, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-  } else {
-    sbAdmin = null;
-  }
-  return sbAdmin;
+  // SECURITY: Service Role Key must never be stored client-side.
+  // Admin operations use RPC set_user_password (SECURITY DEFINER) or Edge Functions.
+  localStorage.removeItem('sb_service_key');
+  sbAdmin = null;
+  return null;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -301,11 +296,34 @@ async function _loadCurrentUserContext(authCtx = null) {
   return currentUser;
 }
 
-// ── SHA-256 helper (Web Crypto API) ──
+// ── Password hashing — PBKDF2 + salt (Web Crypto API) ──
+// SECURITY: Replaces raw SHA-256 with PBKDF2 + random 16-byte salt.
+// Stored format: 'pbkdf2:<saltHex>:<hashHex>'
 async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  // Alias kept for compatibility — delegates to hashPassword
+  return hashPassword(str);
 }
+async function hashPassword(password, saltHex) {
+  const salt = saltHex ? _hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' }, km, 256);
+  return `pbkdf2:${_bytesToHex(salt)}:${_bytesToHex(new Uint8Array(bits))}`;
+}
+async function verifyPassword(password, stored) {
+  if (!stored) return false;
+  if (stored.startsWith('pbkdf2:')) {
+    const [,saltHex,expected] = stored.split(':');
+    const salt = _hexToBytes(saltHex);
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' }, km, 256);
+    return _bytesToHex(new Uint8Array(bits)) === expected;
+  }
+  // Legacy SHA-256 fallback (auto-upgrades on next login)
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('') === stored;
+}
+function _bytesToHex(b) { return Array.from(b).map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function _hexToBytes(h) { const a=new Uint8Array(h.length/2); for(let i=0;i<a.length;i++) a[i]=parseInt(h.slice(i*2,i*2+2),16); return a; }
 
 
 function detectLoginPlatform() {
@@ -453,18 +471,18 @@ function showLoginScreen() {
     }
   }
 }
-function _saveRememberedCredentials(email, password) {
+function _saveRememberedCredentials(email, _password) {
   try {
-    // Encode credentials with btoa for basic obfuscation (not encryption)
-    const data = btoa(JSON.stringify({ email, password }));
-    localStorage.setItem('ft_remember_me', data);
+    // SECURITY: store only email — never the password
+    localStorage.setItem('ft_remember_me', btoa(JSON.stringify({ email })));
   } catch(e) {}
 }
 function _loadRememberedCredentials() {
   try {
     const data = localStorage.getItem('ft_remember_me');
     if (!data) return null;
-    return JSON.parse(atob(data));
+    const p = JSON.parse(atob(data));
+    return { email: p.email || '', password: '' }; // password never returned
   } catch(e) { return null; }
 }
 function _clearRememberedCredentials() {
@@ -537,6 +555,24 @@ async function doLogin() {
       return;
     }
 
+    // Upgrade legacy SHA-256 hash to PBKDF2 transparently on login
+    try {
+      const { data: _pwRow } = await sb.from('app_users')
+        .select('id,password_hash').eq('email', email).maybeSingle();
+      if (_pwRow?.password_hash && !_pwRow.password_hash.startsWith('pbkdf2:')) {
+        const _newHash = await hashPassword(password);
+        await sb.from('app_users').update({ password_hash: _newHash }).eq('id', _pwRow.id);
+      }
+    } catch(_) {}
+    // Upgrade legacy SHA-256 hash to PBKDF2 transparently on login
+    try {
+      const { data: _pwRow } = await sb.from('app_users')
+        .select('id,password_hash').eq('email', email).maybeSingle();
+      if (_pwRow?.password_hash && !_pwRow.password_hash.startsWith('pbkdf2:')) {
+        const _newHash = await hashPassword(password);
+        await sb.from('app_users').update({ password_hash: _newHash }).eq('id', _pwRow.id);
+      }
+    } catch(_) {} // non-blocking — upgrade is best-effort
     await _loadCurrentUserContext(authData);
 
     await onLoginSuccess();
