@@ -303,6 +303,16 @@ async function loadDashboard(){
         const _brlLine    = (a.currency !== 'BRL')
           ? `<div class="dash-fav-brl">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>`
           : '';
+        // Confirmed-only balance line (hidden when equal to total balance)
+        const _confBal = a.confirmed_balance;
+        const _hasPending = (_confBal !== undefined) && (Math.abs(_confBal - a.balance) > 0.001);
+        const _confIsNeg   = _confBal < 0;
+        const _confLine    = _hasPending
+          ? `<div class="dash-fav-card__confirmed ${_confIsNeg ? 'neg' : ''}">
+               <span class="dash-fav-card__confirmed-label">confirmado</span>
+               ${fmt(_confBal, a.currency)}
+             </div>`
+          : '';
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
@@ -311,14 +321,15 @@ async function loadDashboard(){
           </div>
           <div class="dash-fav-card__name">${esc(a.name)}</div>
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
+          ${_confLine}
           ${_brlLine}
           <div class="dash-fav-card__shine"></div>
         </div>`;
       }
       // Standard row for non-favorites
-      return `<div onclick="goToAccountTransactions('${a.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:4px;margin:0 -4px;padding-left:4px;padding-right:4px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <div style="display:flex;align-items:center;gap:9px">${_dashRenderIcon(a.icon,a.color,18)}<span style="font-size:.83rem;color:var(--text2)">${esc(a.name)}</span></div>
-        <span class="${a.balance<0?'text-red':'text-accent'}" style="font-size:.83rem;font-weight:500">${fmt(a.balance,a.currency)}</span>
+      return `<div onclick="goToAccountTransactions('${a.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:4px;margin:0 -4px;padding-left:4px;padding-right:4px" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        <div style="display:flex;align-items:center;gap:9px">${_dashRenderIcon(a.icon,a.color,20)}<span style="font-size:.92rem;font-weight:500;color:var(--text)">${esc(a.name)}</span></div>
+        <span class="${a.balance<0?'text-red':'text-accent'}" style="font-size:.92rem;font-weight:700;font-family:var(--font-serif)">${fmt(a.balance,a.currency)}</span>
       </div>`;
     };
 

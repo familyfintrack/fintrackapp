@@ -79,32 +79,44 @@ const _accounts = {
   async recalcBalances() {
     if (!state.accounts.length) return;
     const txMap = {};
+    const confMap = {}; // confirmed-only (excludes pending)
     try {
-      // Step 1: sum every transaction by its owning account
+      // Step 1: sum ALL transactions by account (total balance)
       const { data: s1, error: e1 } = await famQ(
-        sb.from('transactions').select('account_id,amount')
+        sb.from('transactions').select('account_id,amount,status')
       );
       if (e1) throw e1;
       (s1 || []).forEach(t => {
-        if (t.account_id) txMap[t.account_id] = (txMap[t.account_id] || 0) + (parseFloat(t.amount) || 0);
+        if (!t.account_id) return;
+        txMap[t.account_id] = (txMap[t.account_id] || 0) + (parseFloat(t.amount) || 0);
+        // confirmed_balance excludes pending transactions
+        if ((t.status || 'confirmed') !== 'pending') {
+          confMap[t.account_id] = (confMap[t.account_id] || 0) + (parseFloat(t.amount) || 0);
+        }
       });
-      // Step 2: legacy single-leg transfers — credit destination only when no paired leg exists
+      // Step 2: legacy single-leg transfers — credit destination
       const { data: s2 } = await famQ(
         sb.from('transactions')
-          .select('transfer_to_account_id,amount')
+          .select('transfer_to_account_id,amount,status')
           .eq('is_transfer', true)
           .is('linked_transfer_id', null)
           .not('transfer_to_account_id', 'is', null)
       );
       (s2 || []).forEach(t => {
         const dest = t.transfer_to_account_id;
-        if (dest) txMap[dest] = (txMap[dest] || 0) + Math.abs(parseFloat(t.amount) || 0);
+        if (!dest) return;
+        const v = Math.abs(parseFloat(t.amount) || 0);
+        txMap[dest] = (txMap[dest] || 0) + v;
+        if ((t.status || 'confirmed') !== 'pending') {
+          confMap[dest] = (confMap[dest] || 0) + v;
+        }
       });
     } catch (e) {
       console.warn('[DB.accounts.recalcBalances] fallback:', e.message);
     }
     state.accounts.forEach(a => {
-      a.balance = (parseFloat(a.initial_balance) || 0) + (txMap[a.id] || 0);
+      a.balance           = (parseFloat(a.initial_balance) || 0) + (txMap[a.id]  || 0);
+      a.confirmed_balance = (parseFloat(a.initial_balance) || 0) + (confMap[a.id] || 0);
     });
     // Augment investment account balances with market value of positions
     if (typeof invPostBalanceHook === 'function') invPostBalanceHook();
