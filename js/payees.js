@@ -409,13 +409,13 @@ async function openPayeeModal(id=''){
 
 /** Constrói o dropdown hierárquico de categorias filtrado por tipo de beneficiário */
 function _buildPayeeCatPicker(payeeType, selectedId) {
-  const typeFilter = payeeType === 'beneficiario' ? 'expense'
-    : payeeType === 'fonte_pagadora' ? 'income'
+  const typeFilter = payeeType === 'beneficiario' ? 'despesa'
+    : payeeType === 'fonte_pagadora' ? 'receita'
     : null; // 'ambos' → mostra todas
 
-  const cats = state.categories || [];
+  const cats = (state.categories || []).filter(c => c && c.id && c.name);
   // Parents visíveis conforme tipo
-  const parents = cats.filter(c => !c.parent_id && (typeFilter === null || c.type === typeFilter || c.type === 'both'));
+  const parents = cats.filter(c => !c.parent_id && (typeFilter === null || c.type === typeFilter));
   const dropdown = document.getElementById('payeeCatPickerDropdown');
   if (!dropdown) return;
 
@@ -427,8 +427,8 @@ function _buildPayeeCatPicker(payeeType, selectedId) {
 
   if (typeFilter === null) {
     // Agrupar por tipo quando 'ambos'
-    [['expense','💸 Despesas'],['income','💰 Receitas']].forEach(([t, label]) => {
-      const group = parents.filter(p => p.type === t || p.type === 'both');
+    [['despesa','💸 Despesas'],['receita','💰 Receitas']].forEach(([t, label]) => {
+      const group = parents.filter(p => p.type === t);
       if (!group.length) return;
       html += `<div style="padding:5px 10px;font-size:.7rem;font-weight:700;
                            text-transform:uppercase;letter-spacing:.06em;

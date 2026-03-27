@@ -451,6 +451,56 @@ function _helpIntroCard(title, icon, body, color) {
   </div>`;
 }
 
+
+function _helpResolveBody(raw) {
+  if (typeof raw !== 'string' || !raw.includes('_helpIntroCard(')) return raw || '';
+
+  const prefix = '_helpIntroCard(';
+  const start = raw.indexOf(prefix);
+  if (start !== 0) return raw;
+
+  const args = [];
+  let i = prefix.length;
+  while (i < raw.length && args.length < 4) {
+    while (i < raw.length && /\s/.test(raw[i])) i++;
+    const quote = raw[i];
+    if (quote !== "'" && quote !== '"') return raw;
+    i++;
+    let val = '';
+    while (i < raw.length) {
+      const ch = raw[i];
+      if (ch === '\\') {
+        if (i + 1 < raw.length) val += raw[i + 1];
+        i += 2;
+        continue;
+      }
+      if (ch === quote) break;
+      val += ch;
+      i++;
+    }
+    if (raw[i] !== quote) return raw;
+    args.push(val);
+    i++;
+    while (i < raw.length && /\s/.test(raw[i])) i++;
+    if (args.length < 4) {
+      if (raw[i] !== ',') return raw;
+      i++;
+    }
+  }
+
+  while (i < raw.length && /\s/.test(raw[i])) i++;
+  if (raw[i] !== ')') return raw;
+  i++;
+  while (i < raw.length && /\s/.test(raw[i])) i++;
+  if (raw.slice(i, i + 1) !== '+') return raw;
+  i++;
+
+  const [title, icon, body, color] = args;
+  const rest = raw.slice(i).trim();
+  return _helpIntroCard(title, icon, body, color) + rest;
+}
+
+
 function initHelpPage() {
   const page = document.getElementById('page-help');
   if (!page) return;
@@ -874,7 +924,7 @@ function helpShowArticle(sectionId, articleId) {
         <span style="color:var(--text2);font-size:.72rem">${_ht(art.title)}</span>
       </div>
       <h1 class="help-article-title">${_ht(art.title)}</h1>
-      <div class="help-article-body">${_ht(art.body)}</div>
+      <div class="help-article-body">${_helpResolveBody(_ht(art.body))}</div>
       <div class="help-article-nav">
         ${prev ? `<button class="help-prev-next" onclick="helpShowArticle('${prev.secId}','${prev.artId}')">← ${_ht({pt:'Anterior',en:'Previous',es:'Anterior',fr:'Précédent'})}<br><span style="font-size:.72rem;color:var(--muted)">${prev.title}</span></button>` : '<span></span>'}
         ${next ? `<button class="help-prev-next help-next" onclick="helpShowArticle('${next.secId}','${next.artId}')">${_ht({pt:'Próximo',en:'Next',es:'Siguiente',fr:'Suivant'})} →<br><span style="font-size:.72rem;color:var(--muted)">${next.title}</span></button>` : ''}
