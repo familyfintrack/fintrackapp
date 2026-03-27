@@ -3561,443 +3561,337 @@
       <span class="modal-title" id="scheduledModalTitle">Programar Transação</span>
       <button class="modal-close" onclick="closeModal('scheduledModal')">✕</button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="padding:0">
       <input type="hidden" id="scId">
-      <div class="tab-bar mb-4">
-        <button class="tab active" onclick="setScType('expense')">Despesa</button>
-        <button class="tab" onclick="setScType('income')">Receita</button>
-        <button class="tab" onclick="setScType('transfer')">Transferência</button>
-        <button class="tab" onclick="setScType('card_payment')">💳 Pgto.Cartão</button>
+
+      <!-- Type tabs -->
+      <div style="padding:14px 16px 0">
+        <div class="tab-bar mb-0" id="scTypeTabs">
+          <button class="tab active" onclick="setScType('expense')">Despesa</button>
+          <button class="tab" onclick="setScType('income')">Receita</button>
+          <button class="tab" onclick="setScType('transfer')">Transferência</button>
+          <button class="tab" onclick="setScType('card_payment')">💳 Pgto.Cartão</button>
+        </div>
       </div>
-      <div id="scCardPaymentBadge" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);font-size:.82rem;color:#1d4ed8">
-        💳 <strong>Pagamento de Cartão de Crédito</strong> — debita a conta origem e credita o cartão. Permite categorizar como pagamento de cartão.
+      <div id="scCardPaymentBadge" style="display:none;margin:10px 16px 0;padding:8px 12px;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);font-size:.82rem;color:#1d4ed8">
+        💳 <strong>Pagamento de Cartão de Crédito</strong> — debita a conta origem e credita o cartão.
       </div>
       <input type="hidden" id="scTypeField" value="expense">
 
-      <div class="form-grid">
-        <!-- Basic info -->
-        <div class="form-group full">
-          <label>Descrição *</label>
-          <input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."
-            oninput="_aiSmartDebounce(this.value,'sc')"
-            onblur="_aiSmartTrigger(this.value,'sc')">
-          <div id="scAiSuggestionsPanel" style="display:none;margin-top:7px">
-            <div class="ai-suggest-panel">
-              <div class="ai-suggest-header">
-                <span class="ai-suggest-title">🤖 Sugestões</span>
-                <button class="ai-suggest-dismiss" onclick="_aiDismissAll('sc')" title="Dispensar todas">✕</button>
-              </div>
-              <div id="scAiSuggestChips" class="ai-suggest-chips"></div>
-            </div>
-          </div>
+      <!-- Context tabs: Abas mode -->
+      <div id="scContextTabBar" style="display:flex;border-bottom:1px solid var(--border);margin-top:14px;padding:0 16px;gap:0">
+        <button class="tx-ctx-tab active" data-tab="scCtxPrincipal" onclick="switchScTab('scCtxPrincipal',this)">Principal</button>
+        <button class="tx-ctx-tab" data-tab="scCtxDetalhes" onclick="switchScTab('scCtxDetalhes',this)">Detalhes</button>
+        <button class="tx-ctx-tab" data-tab="scCtxRecorrencia" onclick="switchScTab('scCtxRecorrencia',this)">Recorrência</button>
+        <button class="tx-ctx-tab" data-tab="scCtxNotificacoes" onclick="switchScTab('scCtxNotificacoes',this)">Notificações</button>
+      </div>
+
+      <!-- Wizard step indicator -->
+      <div id="scWizardSteps" style="display:none;padding:12px 16px 0">
+        <div class="wz-steps" id="scWzStepsBar">
+          <div class="wz-step active" data-step="0">O quê</div>
+          <div class="wz-step" data-step="1">Detalhes</div>
+          <div class="wz-step" data-step="2">Agendamento</div>
+          <div class="wz-step" data-step="3">Notificações</div>
         </div>
-        <div class="form-group">
-          <label>Valor *</label>
-          <div style="display:flex;align-items:center;gap:6px">
+      </div>
+
+      <!-- ── TAB/STEP 0: Principal ──────────────────────────────── -->
+      <div class="tx-ctx-pane" id="scCtxPrincipal" style="padding:16px">
+
+        <div class="tx-amount-hero">
+          <div class="tx-amount-row">
             <div class="amt-wrap" style="flex:1">
               <button type="button" class="amt-sign-btn" id="scAmountSignBtn" onclick="toggleAmtSign('scAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
-                oninput="updateScCurrencyPreview()">
+              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="updateScCurrencyPreview()">
             </div>
-            <!-- Seletor de moeda da transação (pode diferir da moeda da conta) -->
-            <select id="scCurrencySelect" onchange="onScCurrencyChange()"
-              style="flex-shrink:0;padding:6px 8px;border-radius:var(--r-sm);background:var(--surface2);
-                     border:1px solid var(--border);font-size:.8rem;font-weight:700;
-                     color:var(--accent);cursor:pointer;max-width:82px">
+            <select id="scCurrencySelect" onchange="onScCurrencyChange()" class="tx-currency-sel">
               <option value="BRL">BRL</option>
             </select>
             <span id="scCurrencyBadge" style="display:none">BRL</span>
           </div>
         </div>
-        <div class="form-group"><label>Conta Origem *</label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
-        <div class="form-group" id="scTransferToGroup" style="display:none">
-          <label>Conta Destino *</label>
-          <select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select>
+
+        <div class="form-grid" style="margin-top:14px">
+          <div class="form-group full">
+            <label>Descrição <span class="req-star">*</span></label>
+            <input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."
+              oninput="_aiSmartDebounce(this.value,'sc')"
+              onblur="_aiSmartTrigger(this.value,'sc')">
+            <div id="scAiSuggestionsPanel" style="display:none;margin-top:7px">
+              <div class="ai-suggest-panel">
+                <div class="ai-suggest-header">
+                  <span class="ai-suggest-title">🤖 Sugestões</span>
+                  <button class="ai-suggest-dismiss" onclick="_aiDismissAll('sc')" title="Dispensar">✕</button>
+                </div>
+                <div id="scAiSuggestChips" class="ai-suggest-chips"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group"><label>Conta Origem <span class="req-star">*</span></label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
+          <div class="form-group" id="scTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select></div>
+          <div class="form-group"><label>Status</label><select id="scStatus"><option value="active">Ativo</option><option value="paused">Pausado</option></select></div>
         </div>
 
-        <!-- Currency panel: expense/income on non-BRL account -->
-        <div id="scCurrencyPanel" style="display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
+        <!-- Currency panel -->
+        <div id="scCurrencyPanel" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-top:10px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:.82rem;font-weight:600;color:var(--accent)">
-              💱 <span id="scCurrencyPanelTitle">Conversão de Moeda</span>
-            </span>
+            <span style="font-size:.82rem;font-weight:600;color:var(--accent)">💱 <span id="scCurrencyPanelTitle">Conversão de Moeda</span></span>
           </div>
-          <!-- Modo de taxa: fixa agora vs buscar no momento do registro -->
           <div style="display:flex;gap:6px;margin-bottom:12px">
-            <button type="button" id="scCurrModeFixed" onclick="setScCurrencyMode('fixed')"
-              style="flex:1;padding:6px 8px;border:1.5px solid var(--accent);border-radius:7px;background:var(--accent);color:#fff;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">
-              🔒 Taxa fixa agora
-            </button>
-            <button type="button" id="scCurrModeApi" onclick="setScCurrencyMode('api')"
-              style="flex:1;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--text2);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">
-              📡 Buscar no registro
-            </button>
+            <button type="button" id="scCurrModeFixed" onclick="setScCurrencyMode('fixed')" style="flex:1;padding:6px 8px;border:1.5px solid var(--accent);border-radius:7px;background:var(--accent);color:#fff;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">🔒 Taxa fixa agora</button>
+            <button type="button" id="scCurrModeApi" onclick="setScCurrencyMode('api')" style="flex:1;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--text2);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">📡 Buscar no registro</button>
           </div>
-          <!-- Painel taxa fixa -->
           <div id="scCurrFixedPanel">
             <div id="scCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="flex:1;min-width:120px">
-                <label style="font-size:.75rem;font-weight:600;display:block;margin-bottom:3px">
-                  Taxa (1 <span id="scCurrencyRateFromLabel">USD</span> = ? BRL)
-                </label>
-                <input type="text" id="scCurrencyRate" inputmode="decimal" placeholder="1.00000"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)"
-                  oninput="updateScCurrencyPreview()">
+                <label style="font-size:.75rem;font-weight:600;display:block;margin-bottom:3px">Taxa (1 <span id="scCurrencyRateFromLabel">USD</span> = ? BRL)</label>
+                <input type="text" id="scCurrencyRate" inputmode="decimal" placeholder="1.00000" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)" oninput="updateScCurrencyPreview()">
               </div>
               <div style="padding-top:18px">
-                <button type="button" onclick="fetchScCurrencyRate()" id="scCurrencyFetchBtn"
-                  style="font-size:.75rem;padding:5px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600">
-                  <span id="scCurrencyFetchIcon">🔄</span> Buscar cotação
-                </button>
+                <button type="button" onclick="fetchScCurrencyRate()" id="scCurrencyFetchBtn" style="font-size:.75rem;padding:5px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600"><span id="scCurrencyFetchIcon">🔄</span> Buscar cotação</button>
               </div>
               <div id="scCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
             </div>
-            <div style="font-size:.75rem;color:var(--muted);margin-top:8px">
-              💡 O valor em BRL (<span id="scCurrencyBrlHint">—</span>) será usado para relatórios e patrimônio.
-            </div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:8px">💡 Valor em BRL (<span id="scCurrencyBrlHint">—</span>) para relatórios.</div>
           </div>
-          <!-- Painel API: taxa buscada no momento de cada registro -->
           <div id="scCurrApiPanel" style="display:none;font-size:.8rem;color:#1e40af;background:#dbeafe;border-radius:8px;padding:10px 12px;line-height:1.6">
-            📡 A taxa de câmbio será buscada automaticamente na <strong>API Frankfurter (BCE)</strong> na data de cada lançamento.<br>
-            <span style="font-size:.75rem;color:#1d4ed8">O valor em BRL refletirá a cotação do dia do registro.</span>
+            📡 Taxa buscada automaticamente na <strong>API Frankfurter (BCE)</strong> na data de cada lançamento.
           </div>
         </div>
 
-        <!-- FX panel for scheduled transfers between different currencies -->
-        <div id="scFxPanel" style="display:none;grid-column:1/-1;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px">
+        <!-- FX panel for cross-currency transfers -->
+        <div id="scFxPanel" style="display:none;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px;margin-top:10px">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
             <span style="font-size:.82rem;font-weight:600;color:#1d4ed8">💱 <span id="scFxTitle">Câmbio</span></span>
           </div>
-
-          <!-- Mode toggle -->
           <div style="display:flex;gap:6px;margin-bottom:12px">
-            <button type="button" id="scFxModeFixed" onclick="setScFxMode('fixed')"
-              style="flex:1;padding:7px;border:1.5px solid #2563eb;border-radius:7px;background:#2563eb;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">
-              🔒 Taxa fixa
-            </button>
-            <button type="button" id="scFxModeApi" onclick="setScFxMode('api')"
-              style="flex:1;padding:7px;border:1.5px solid #e5e7eb;border-radius:7px;background:transparent;color:#6b7280;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">
-              📡 Buscar na API no registro
-            </button>
+            <button type="button" id="scFxModeFixed" onclick="setScFxMode('fixed')" style="flex:1;padding:7px;border:1.5px solid #2563eb;border-radius:7px;background:#2563eb;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">🔒 Taxa fixa</button>
+            <button type="button" id="scFxModeApi" onclick="setScFxMode('api')" style="flex:1;padding:7px;border:1.5px solid #e5e7eb;border-radius:7px;background:transparent;color:#6b7280;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">📡 Buscar na API no registro</button>
           </div>
-
-          <!-- Fixed rate panel -->
           <div id="scFxFixedPanel">
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="flex:1;min-width:120px">
-                <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:3px">
-                  Taxa de câmbio <span id="scFxLabel" style="font-weight:400;color:#6b7280"></span>
-                </label>
-                <input type="text" id="scFxRate" inputmode="decimal" placeholder="1.00000"
-                  style="width:100%;padding:8px 10px;border:1.5px solid #93c5fd;border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:#fff"
-                  oninput="updateScFxPreview()">
+                <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:3px">Taxa de câmbio <span id="scFxLabel" style="font-weight:400;color:#6b7280"></span></label>
+                <input type="text" id="scFxRate" inputmode="decimal" placeholder="1.00000" style="width:100%;padding:8px 10px;border:1.5px solid #93c5fd;border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:#fff" oninput="updateScFxPreview()">
               </div>
               <div style="padding-top:18px">
-                <button type="button" onclick="fetchScSuggestedFxRate()" id="scFxFetchBtn"
-                  style="font-size:.75rem;padding:5px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600">
-                  <span id="scFxFetchIcon">🔄</span> Sugerir cotação hoje
-                </button>
+                <button type="button" onclick="fetchScSuggestedFxRate()" id="scFxFetchBtn" style="font-size:.75rem;padding:5px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600"><span id="scFxFetchIcon">🔄</span> Sugerir cotação</button>
               </div>
               <div id="scFxPreview" style="font-size:.82rem;color:#1d4ed8;padding-top:18px;white-space:nowrap"></div>
             </div>
             <div id="scFxSuggestion" style="display:none;font-size:.78rem;color:#1e40af;margin-top:8px;padding:6px 8px;background:#dbeafe;border-radius:6px"></div>
           </div>
-
-          <!-- API mode info -->
           <div id="scFxApiPanel" style="display:none;font-size:.8rem;color:#1e40af;background:#dbeafe;border-radius:8px;padding:10px 12px;line-height:1.6">
-            📡 A taxa de câmbio será buscada automaticamente na <strong>API do Frankfurter (BCE)</strong> na data de cada registro.<br>
-            <span style="color:#1d4ed8;font-size:.75rem">O valor lançado na conta destino usará a cotação do dia do registro.</span>
+            📡 Taxa buscada automaticamente na <strong>API Frankfurter (BCE)</strong> na data de cada registro.
           </div>
         </div>
-        <div class="form-group" id="scPayeeGroup" style="position:relative">
-          <label>Beneficiário / Fonte</label>
-          <input type="hidden" id="scPayeeId">
-          <div class="payee-input-wrap">
-            <input type="text" id="scPayeeName" placeholder="Buscar ou criar..." autocomplete="off"
-              oninput="onPayeeInput(this.value,'sc')" onblur="onPayeeBlur('sc')" onkeydown="onPayeeKey(event,'sc')">
-            <span id="scPayeeStatus" class="payee-status"></span>
-          </div>
-          <div id="scPayeeDropdown" class="payee-dropdown" style="display:none"></div>
-        </div>
-        <div class="form-group" id="scCategoryGroup">
-          <label>Categoria</label>
-          <input type="hidden" id="scCategoryId">
-          <div class="cat-picker-wrap" id="scCatPickerWrap">
-            <button type="button" class="cat-picker-btn" id="scCatPickerBtn" onclick="toggleCatPicker('sc')">
-              <span class="cat-picker-dot" id="scCatPickerDot" style="display:none"></span>
-              <span id="scCatPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
-              <span class="cat-picker-caret">▼</span>
-            </button>
-            <div class="cat-picker-dropdown" id="scCatPickerDropdown"></div>
-          </div>
-        </div>
-        <div class="form-group"><label>Tags</label><input type="text" id="scTags" placeholder="IR, Décio, ..."></div>
-
-        <!-- Membro(s) da família -->
-        <div class="form-group full" id="scFamilyMemberGroup">
-          <label>Membro(s) da família <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
-          <div id="scFamilyMemberPicker" class="fmc-picker-container">
-            <div class="fmc-picker-empty">👨‍👩‍👧 Família (geral)</div>
-          </div>
-        </div>
-
-        <!-- Divider -->
-        <div class="full" style="border-top:1px solid var(--border);padding-top:4px;margin-top:4px">
-          <span style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Agendamento</span>
-        </div>
-
-        <!-- Scheduling -->
-        <div class="form-group"><label>Primeira data *</label><input type="date" id="scStartDate"></div>
-        <div class="form-group"><label>Status</label>
-          <select id="scStatus">
-            <option value="active">Ativo</option>
-            <option value="paused">Pausado</option>
-          </select>
-        </div>
-
-        <!-- Recurrence -->
-        <div class="form-group full">
-          <label>Recorrência</label>
-          <div class="sc-recurrence-grid">
-            <label class="sc-freq-opt" data-freq="once"><input type="radio" name="scFreq" value="once" checked> <span>Uma vez</span></label>
-            <label class="sc-freq-opt" data-freq="weekly"><input type="radio" name="scFreq" value="weekly"> <span>Semanal</span></label>
-            <label class="sc-freq-opt" data-freq="biweekly"><input type="radio" name="scFreq" value="biweekly"> <span>Quinzenal</span></label>
-            <label class="sc-freq-opt" data-freq="monthly"><input type="radio" name="scFreq" value="monthly"> <span>Mensal</span></label>
-            <label class="sc-freq-opt" data-freq="bimonthly"><input type="radio" name="scFreq" value="bimonthly"> <span>Bimestral</span></label>
-            <label class="sc-freq-opt" data-freq="quarterly"><input type="radio" name="scFreq" value="quarterly"> <span>Trimestral</span></label>
-            <label class="sc-freq-opt" data-freq="semiannual"><input type="radio" name="scFreq" value="semiannual"> <span>Semestral</span></label>
-            <label class="sc-freq-opt" data-freq="annual"><input type="radio" name="scFreq" value="annual"> <span>Anual</span></label>
-            <label class="sc-freq-opt" data-freq="custom"><input type="radio" name="scFreq" value="custom"> <span>Personalizado</span></label>
-          </div>
-        </div>
-
-        <!-- Custom interval (shown only for custom) -->
-        <div class="form-group" id="scCustomIntervalGroup" style="display:none">
-          <label>A cada</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="number" id="scCustomInterval" min="1" value="1" style="width:70px" inputmode="numeric">
-            <select id="scCustomUnit" style="flex:1">
-              <option value="days">dias</option>
-              <option value="weeks">semanas</option>
-              <option value="months" selected>meses</option>
-              <option value="years">anos</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- End condition (hidden for "once") -->
-        <div class="form-group full" id="scEndGroup" style="display:none">
-          <label>Término</label>
-          <div class="sc-end-grid">
-            <label class="sc-end-opt"><input type="radio" name="scEnd" value="forever" checked> Indefinido</label>
-            <label class="sc-end-opt"><input type="radio" name="scEnd" value="count"> Nº de vezes</label>
-            <label class="sc-end-opt"><input type="radio" name="scEnd" value="date"> Até a data</label>
-          </div>
-          <div id="scEndCountGroup" style="display:none;margin-top:8px">
-            <input type="number" id="scEndCount" min="1" placeholder="Ex: 12 (parcelas)" inputmode="numeric" style="max-width:160px">
-            <span style="font-size:.78rem;color:var(--muted);margin-left:8px">repetições</span>
-          </div>
-          <div id="scEndDateGroup" style="display:none;margin-top:8px">
-            <input type="date" id="scEndDate">
-          </div>
-        </div>
-
-        <!-- Preview -->
-        <div class="full">
-          <div id="scPreview" class="sc-preview"></div>
-        </div>
-
-        <div class="form-group full"><label>Memo / Observação</label><textarea id="scMemo" rows="2" placeholder="Notas..."></textarea></div>
-
-        <!-- Divider -->
-        <div class="full" style="border-top:1px solid var(--border);padding-top:4px;margin-top:4px">
-          <span style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Automação</span>
-        </div>
-
-
-        <div class="sc-section-card full" id="scAutomationSection" data-collapsed="false">
-          <button type="button" class="sc-section-toggle" onclick="toggleScheduledSection('automation')">
-            <div>
-              <div class="sc-section-kicker">Automação</div>
-              <div class="sc-section-title">Registro automático</div>
-              <div class="sc-section-subtitle">Configure se o lançamento deve ser criado sozinho e como ele entra no fluxo da conta.</div>
-            </div>
-            <div class="sc-section-meta">
-              <span class="sc-section-chip" id="scAutomationChip">Manual</span>
-              <svg class="sc-section-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-          </button>
-          <div class="sc-section-body">
-            <div class="sc-automation-panel">
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scAutoRegister" style="width:16px;height:16px;cursor:pointer" onchange="_updateAutoConfirmHint();syncScheduledAutomationSummary()">
-                  <div>
-                    <div class="sc-channel-title">Registrar automaticamente</div>
-                    <div class="sc-channel-subtitle">Quando a data chegar, cria a transação automaticamente sem precisar de intervenção manual.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details">
-                  <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                    <input type="checkbox" id="scAutoConfirm" onchange="_updateAutoConfirmHint();syncScheduledAutomationSummary()" />
-                    ✅ Auto-confirmar ao registrar automaticamente
-                  </label>
-                  <div id="scAutoConfirmHint" class="sc-inline-note" style="font-weight:700;color:var(--green,#16a34a);margin-top:8px">✅ Lançará como Confirmada</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sc-section-card full" id="scNotificationsSection" data-collapsed="false">
-          <button type="button" class="sc-section-toggle" onclick="toggleScheduledSection('notifications')">
-            <div>
-              <div class="sc-section-kicker">Notificações</div>
-              <div class="sc-section-title">Canais de aviso</div>
-              <div class="sc-section-subtitle">E-mail, WhatsApp e Telegram operam de forma independente e podem ser ligados em qualquer combinação.</div>
-            </div>
-            <div class="sc-section-meta">
-              <span class="sc-section-chip" id="scNotificationsChip">Sem canais</span>
-              <svg class="sc-section-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-          </button>
-          <div class="sc-section-body">
-            <div class="sc-section-grid">
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
-                  <div>
-                    <div class="sc-channel-title">Notificar por e-mail</div>
-                    <div class="sc-channel-subtitle">Envia lembrete antes da data usando o e-mail do usuário como padrão.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details" id="scNotifyEmailDetails" style="display:none">
-                  <div class="sc-details-grid">
-                    <div class="form-group" style="margin:0">
-                      <label>E-mail destino</label>
-                      <input type="email" id="scNotifyEmailAddr" placeholder="email@exemplo.com">
-                      <div class="sc-inline-note">Pré-preenchido com o e-mail do usuário logado.</div>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Avisar com antecedência</label>
-                      <select id="scNotifyDaysBefore">
-                        <option value="0">No dia</option>
-                        <option value="1" selected>1 dia antes</option>
-                        <option value="2">2 dias antes</option>
-                        <option value="3">3 dias antes</option>
-                        <option value="7">1 semana antes</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scNotifyWhatsapp" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledWhatsappDetails(this.checked)">
-                  <div>
-                    <div class="sc-channel-title">Notificar por WhatsApp</div>
-                    <div class="sc-channel-subtitle">Envia lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details" id="scNotifyWhatsappDetails" style="display:none">
-                  <div class="sc-details-grid">
-                    <div class="form-group" style="margin:0">
-                      <label>Número WhatsApp</label>
-                      <input type="tel" id="scNotifyWhatsappNumber" placeholder="5511999999999">
-                      <div class="sc-inline-note">Se o seu perfil tiver WhatsApp padrão, este campo será pré-preenchido automaticamente.</div>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Avisar com antecedência</label>
-                      <select id="scNotifyWhatsappDaysBefore">
-                        <option value="0">No dia</option>
-                        <option value="1" selected>1 dia antes</option>
-                        <option value="2">2 dias antes</option>
-                        <option value="3">3 dias antes</option>
-                        <option value="7">1 semana antes</option>
-                      </select>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Template</label>
-                      <select id="scNotifyWhatsappTemplate">
-                        <option value="scheduled_upcoming">Lembrete agendado</option>
-                        <option value="scheduled_processed">Confirmação de execução</option>
-                      </select>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Idioma</label>
-                      <select id="scNotifyWhatsappLang">
-                        <option value="pt_BR" selected>Português (Brasil)</option>
-                        <option value="en_US">English (US)</option>
-                        <option value="fr_FR">Français</option>
-                        <option value="es_ES">Español</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="sc-stack">
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyWhatsappUpcoming" checked />
-                      🔔 Avisar antes da data
-                    </label>
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyWhatsappProcessed" checked />
-                      ✅ Avisar após auto-registro
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div class="sc-channel-card">
-                <label class="sc-channel-header" style="cursor:pointer">
-                  <input type="checkbox" id="scNotifyTelegram" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledTelegramDetails(this.checked)">
-                  <div>
-                    <div class="sc-channel-title">Notificar por Telegram</div>
-                    <div class="sc-channel-subtitle">Envia lembrete antes da data e/ou confirmação quando o lançamento for registrado automaticamente.</div>
-                  </div>
-                </label>
-                <div class="sc-channel-details" id="scNotifyTelegramDetails" style="display:none">
-                  <div class="sc-details-grid">
-                    <div class="form-group" style="margin:0">
-                      <label>Telegram Chat ID</label>
-                      <input type="text" id="scNotifyTelegramChatId" placeholder="Ex.: 7540422976">
-                      <div class="sc-inline-note">Se o seu perfil tiver Telegram padrão, este campo será pré-preenchido automaticamente.</div>
-                    </div>
-                    <div class="form-group" style="margin:0">
-                      <label>Avisar com antecedência</label>
-                      <select id="scNotifyTelegramDaysBefore">
-                        <option value="0">No dia</option>
-                        <option value="1" selected>1 dia antes</option>
-                        <option value="2">2 dias antes</option>
-                        <option value="3">3 dias antes</option>
-                        <option value="7">1 semana antes</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="sc-stack">
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyTelegramUpcoming" checked />
-                      🔔 Avisar antes da data
-                    </label>
-                    <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()">
-                      <input type="checkbox" id="scNotifyTelegramProcessed" checked />
-                      ✅ Avisar após auto-registro
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
-    </div>
-    <div class="modal-footer">
+
+      <!-- ── TAB/STEP 1: Detalhes ───────────────────────────────── -->
+      <div class="tx-ctx-pane" id="scCtxDetalhes" style="display:none;padding:16px">
+        <div class="form-grid">
+          <div class="form-group" id="scPayeeGroup" style="position:relative">
+            <label>Beneficiário / Fonte <span class="opt-label">opcional</span></label>
+            <input type="hidden" id="scPayeeId">
+            <div class="payee-input-wrap">
+              <input type="text" id="scPayeeName" placeholder="Buscar ou criar..." autocomplete="off"
+                oninput="onPayeeInput(this.value,'sc')" onblur="onPayeeBlur('sc')" onkeydown="onPayeeKey(event,'sc')">
+              <span id="scPayeeStatus" class="payee-status"></span>
+            </div>
+            <div id="scPayeeDropdown" class="payee-dropdown" style="display:none"></div>
+          </div>
+          <div class="form-group" id="scCategoryGroup">
+            <label>Categoria <span class="opt-label">opcional</span></label>
+            <input type="hidden" id="scCategoryId">
+            <div class="cat-picker-wrap" id="scCatPickerWrap">
+              <button type="button" class="cat-picker-btn" id="scCatPickerBtn" onclick="toggleCatPicker('sc')">
+                <span class="cat-picker-dot" id="scCatPickerDot" style="display:none"></span>
+                <span id="scCatPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
+                <span class="cat-picker-caret">▼</span>
+              </button>
+              <div class="cat-picker-dropdown" id="scCatPickerDropdown"></div>
+            </div>
+          </div>
+          <div class="form-group full" id="scFamilyMemberGroup">
+            <label>Membro(s) da família <span class="opt-label">opcional</span></label>
+            <div id="scFamilyMemberPicker" class="fmc-picker-container"><div class="fmc-picker-empty">👨‍👩‍👧 Família (geral)</div></div>
+          </div>
+          <div class="form-group"><label>Tags <span class="opt-label">opcional</span></label><input type="text" id="scTags" placeholder="IR, Décio, ..."></div>
+          <div class="form-group full"><label>Memo / Observação <span class="opt-label">opcional</span></label><textarea id="scMemo" rows="2" placeholder="Notas..."></textarea></div>
+        </div>
+      </div>
+
+      <!-- ── TAB/STEP 2: Recorrência ────────────────────────────── -->
+      <div class="tx-ctx-pane" id="scCtxRecorrencia" style="display:none;padding:16px">
+        <div class="form-grid">
+          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input type="date" id="scStartDate"></div>
+          <div class="form-group"></div>
+
+          <div class="form-group full">
+            <label>Frequência</label>
+            <div class="sc-recurrence-grid">
+              <label class="sc-freq-opt" data-freq="once"><input type="radio" name="scFreq" value="once" checked> <span>Uma vez</span></label>
+              <label class="sc-freq-opt" data-freq="weekly"><input type="radio" name="scFreq" value="weekly"> <span>Semanal</span></label>
+              <label class="sc-freq-opt" data-freq="biweekly"><input type="radio" name="scFreq" value="biweekly"> <span>Quinzenal</span></label>
+              <label class="sc-freq-opt" data-freq="monthly"><input type="radio" name="scFreq" value="monthly"> <span>Mensal</span></label>
+              <label class="sc-freq-opt" data-freq="bimonthly"><input type="radio" name="scFreq" value="bimonthly"> <span>Bimestral</span></label>
+              <label class="sc-freq-opt" data-freq="quarterly"><input type="radio" name="scFreq" value="quarterly"> <span>Trimestral</span></label>
+              <label class="sc-freq-opt" data-freq="semiannual"><input type="radio" name="scFreq" value="semiannual"> <span>Semestral</span></label>
+              <label class="sc-freq-opt" data-freq="annual"><input type="radio" name="scFreq" value="annual"> <span>Anual</span></label>
+              <label class="sc-freq-opt" data-freq="custom"><input type="radio" name="scFreq" value="custom"> <span>Personalizado</span></label>
+            </div>
+          </div>
+
+          <div class="form-group" id="scCustomIntervalGroup" style="display:none">
+            <label>A cada</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="number" id="scCustomInterval" min="1" value="1" style="width:70px" inputmode="numeric">
+              <select id="scCustomUnit" style="flex:1">
+                <option value="days">dias</option>
+                <option value="weeks">semanas</option>
+                <option value="months" selected>meses</option>
+                <option value="years">anos</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group full" id="scEndGroup" style="display:none">
+            <label>Término</label>
+            <div class="sc-end-grid">
+              <label class="sc-end-opt"><input type="radio" name="scEnd" value="forever" checked> Indefinido</label>
+              <label class="sc-end-opt"><input type="radio" name="scEnd" value="count"> Nº de vezes</label>
+              <label class="sc-end-opt"><input type="radio" name="scEnd" value="date"> Até a data</label>
+            </div>
+            <div id="scEndCountGroup" style="display:none;margin-top:8px">
+              <input type="number" id="scEndCount" min="1" placeholder="Ex: 12 (parcelas)" inputmode="numeric" style="max-width:160px">
+              <span style="font-size:.78rem;color:var(--muted);margin-left:8px">repetições</span>
+            </div>
+            <div id="scEndDateGroup" style="display:none;margin-top:8px">
+              <input type="date" id="scEndDate">
+            </div>
+          </div>
+
+          <div class="form-group full" id="scAutomationGroup">
+            <label>Automação</label>
+            <div class="sc-channel-card" style="border:1px solid var(--border);border-radius:var(--r-sm);padding:12px">
+              <label class="sc-channel-header" style="cursor:pointer">
+                <input type="checkbox" id="scAutoRegister" style="width:16px;height:16px;cursor:pointer" onchange="_updateAutoConfirmHint();syncScheduledAutomationSummary()">
+                <div>
+                  <div class="sc-channel-title">Registrar automaticamente</div>
+                  <div class="sc-channel-subtitle">Cria a transação sozinho na data, sem intervenção manual.</div>
+                </div>
+              </label>
+              <div class="sc-channel-details">
+                <label class="iof-intl-toggle" style="margin:8px 0 0;display:block" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="scAutoConfirm" onchange="_updateAutoConfirmHint();syncScheduledAutomationSummary()">
+                  ✅ Auto-confirmar ao registrar automaticamente
+                </label>
+                <div id="scAutoConfirmHint" class="sc-inline-note" style="font-weight:700;color:var(--green,#16a34a);margin-top:8px">✅ Lançará como Confirmada</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="full">
+            <div id="scPreview" class="sc-preview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB/STEP 3: Notificações ───────────────────────────── -->
+      <div class="tx-ctx-pane" id="scCtxNotificacoes" style="display:none;padding:16px">
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px">Os canais abaixo são independentes. Ative apenas os que desejar.</p>
+        <div class="sc-section-grid">
+
+          <!-- Email -->
+          <div class="sc-channel-card">
+            <label class="sc-channel-header" style="cursor:pointer">
+              <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
+              <div>
+                <div class="sc-channel-title">📧 E-mail</div>
+                <div class="sc-channel-subtitle">Lembrete antes da data.</div>
+              </div>
+            </label>
+            <div class="sc-channel-details" id="scNotifyEmailDetails" style="display:none">
+              <div class="sc-details-grid">
+                <div class="form-group" style="margin:0"><label>E-mail destino</label><input type="email" id="scNotifyEmailAddr" placeholder="email@exemplo.com"><div class="sc-inline-note">Pré-preenchido com o e-mail do usuário logado.</div></div>
+                <div class="form-group" style="margin:0"><label>Avisar com antecedência</label>
+                  <select id="scNotifyDaysBefore"><option value="0">No dia</option><option value="1" selected>1 dia antes</option><option value="2">2 dias antes</option><option value="3">3 dias antes</option><option value="7">1 semana antes</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WhatsApp -->
+          <div class="sc-channel-card">
+            <label class="sc-channel-header" style="cursor:pointer">
+              <input type="checkbox" id="scNotifyWhatsapp" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledWhatsappDetails(this.checked)">
+              <div>
+                <div class="sc-channel-title">💬 WhatsApp</div>
+                <div class="sc-channel-subtitle">Lembrete e/ou confirmação de auto-registro.</div>
+              </div>
+            </label>
+            <div class="sc-channel-details" id="scNotifyWhatsappDetails" style="display:none">
+              <div class="sc-details-grid">
+                <div class="form-group" style="margin:0"><label>Número WhatsApp</label><input type="tel" id="scNotifyWhatsappNumber" placeholder="5511999999999"><div class="sc-inline-note">Pré-preenchido pelo perfil, se configurado.</div></div>
+                <div class="form-group" style="margin:0"><label>Avisar com antecedência</label>
+                  <select id="scNotifyWhatsappDaysBefore"><option value="0">No dia</option><option value="1" selected>1 dia antes</option><option value="2">2 dias antes</option><option value="3">3 dias antes</option><option value="7">1 semana antes</option></select>
+                </div>
+                <div class="form-group" style="margin:0"><label>Template</label>
+                  <select id="scNotifyWhatsappTemplate"><option value="scheduled_upcoming">Lembrete agendado</option><option value="scheduled_processed">Confirmação de execução</option></select>
+                </div>
+                <div class="form-group" style="margin:0"><label>Idioma</label>
+                  <select id="scNotifyWhatsappLang"><option value="pt_BR" selected>Português (Brasil)</option><option value="en_US">English (US)</option><option value="fr_FR">Français</option><option value="es_ES">Español</option></select>
+                </div>
+              </div>
+              <div class="sc-stack">
+                <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()"><input type="checkbox" id="scNotifyWhatsappUpcoming" checked> 🔔 Avisar antes da data</label>
+                <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()"><input type="checkbox" id="scNotifyWhatsappProcessed" checked> ✅ Avisar após auto-registro</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Telegram -->
+          <div class="sc-channel-card">
+            <label class="sc-channel-header" style="cursor:pointer">
+              <input type="checkbox" id="scNotifyTelegram" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledTelegramDetails(this.checked)">
+              <div>
+                <div class="sc-channel-title">✈️ Telegram</div>
+                <div class="sc-channel-subtitle">Lembrete e/ou confirmação de auto-registro.</div>
+              </div>
+            </label>
+            <div class="sc-channel-details" id="scNotifyTelegramDetails" style="display:none">
+              <div class="sc-details-grid">
+                <div class="form-group" style="margin:0"><label>Telegram Chat ID</label><input type="text" id="scNotifyTelegramChatId" placeholder="Ex.: 7540422976"><div class="sc-inline-note">Pré-preenchido pelo perfil, se configurado.</div></div>
+                <div class="form-group" style="margin:0"><label>Avisar com antecedência</label>
+                  <select id="scNotifyTelegramDaysBefore"><option value="0">No dia</option><option value="1" selected>1 dia antes</option><option value="2">2 dias antes</option><option value="3">3 dias antes</option><option value="7">1 semana antes</option></select>
+                </div>
+              </div>
+              <div class="sc-stack">
+                <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()"><input type="checkbox" id="scNotifyTelegramUpcoming" checked> 🔔 Avisar antes da data</label>
+                <label class="iof-intl-toggle" style="margin:0;display:block" onclick="event.stopPropagation()"><input type="checkbox" id="scNotifyTelegramProcessed" checked> ✅ Avisar após auto-registro</label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer" id="scModalFooter">
       <button class="btn btn-ghost" onclick="closeModal('scheduledModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveScheduled()">Salvar</button>
+      <div id="scWizardNav" style="display:none;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost" id="scWzPrev" onclick="scWizardPrev()" style="display:none">← Anterior</button>
+        <span id="scWzStepLabel" style="font-size:.78rem;color:var(--muted)"></span>
+        <button class="btn btn-primary" id="scWzNext" onclick="scWizardNext()">Próximo →</button>
+      </div>
+      <button class="btn btn-primary" id="scSaveBtn" onclick="saveScheduled()">Salvar</button>
     </div>
   </div>
 </div>
+
 
 <!-- REGISTER OCCURRENCE MODAL -->
 <div class="modal-overlay" id="registerOccModal">
@@ -4150,21 +4044,173 @@
 
 <div class="modal-overlay" id="txModal">
   <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-header"><span class="modal-title" id="txModalTitle">Nova Transação</span><button class="modal-close" onclick="closeModal('txModal')">✕</button></div>
-    <div class="modal-body">
-      <div class="tab-bar mb-4">
-        <button class="tab active" onclick="setTxType('expense')">Despesa</button>
-        <button class="tab" onclick="setTxType('income')">Receita</button>
-        <button class="tab" onclick="setTxType('transfer')">Transferência</button>
-        <button class="tab" onclick="setTxType('card_payment')">💳 Pgto.Cartão</button>
+    <div class="modal-header">
+      <span class="modal-title" id="txModalTitle">Nova Transação</span>
+      <button class="modal-close" onclick="closeModal('txModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+
+      <!-- Type tabs -->
+      <div style="padding:14px 16px 0">
+        <div class="tab-bar mb-0" id="txTypeTabs">
+          <button class="tab active" onclick="setTxType('expense')">Despesa</button>
+          <button class="tab" onclick="setTxType('income')">Receita</button>
+          <button class="tab" onclick="setTxType('transfer')">Transferência</button>
+          <button class="tab" onclick="setTxType('card_payment')">💳 Pgto.Cartão</button>
+        </div>
       </div>
-      <div id="txCardPaymentBadge" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);font-size:.82rem;color:#1d4ed8">
-        💳 <strong>Pagamento de Cartão de Crédito</strong> — debita a conta corrente e credita o cartão. Permite categorizar como "Pgto. Cartão".
+      <div id="txCardPaymentBadge" style="display:none;margin:10px 16px 0;padding:8px 12px;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);font-size:.82rem;color:#1d4ed8">
+        💳 <strong>Pagamento de Cartão de Crédito</strong> — debita a conta corrente e credita o cartão.
       </div>
+
+      <!-- Context tabs: Abas mode -->
+      <div id="txContextTabBar" style="display:flex;border-bottom:1px solid var(--border);margin-top:14px;padding:0 16px;gap:0">
+        <button class="tx-ctx-tab active" data-tab="txCtxPrincipal" onclick="switchTxTab('txCtxPrincipal',this)">Principal</button>
+        <button class="tx-ctx-tab" data-tab="txCtxDetalhes" onclick="switchTxTab('txCtxDetalhes',this)">Detalhes</button>
+        <button class="tx-ctx-tab" data-tab="txCtxAnexo" onclick="switchTxTab('txCtxAnexo',this)">Anexo / IA</button>
+      </div>
+
+      <!-- Wizard step indicator -->
+      <div id="txWizardSteps" style="display:none;padding:12px 16px 0;display:none">
+        <div class="wz-steps" id="txWzStepsBar">
+          <div class="wz-step active" data-step="0">O quê</div>
+          <div class="wz-step" data-step="1">Detalhes</div>
+          <div class="wz-step" data-step="2">Extras</div>
+        </div>
+      </div>
+
       <input type="hidden" id="txId"><input type="hidden" id="txTypeField" value="expense">
-      <div class="form-grid">
-        <!-- Anexo -->
-        <div class="form-group full" id="txAttachGroup">
+
+      <!-- ── TAB / STEP 0: Principal ─────────────────────────────── -->
+      <div class="tx-ctx-pane" id="txCtxPrincipal" style="padding:16px">
+
+        <!-- Amount hero -->
+        <div class="tx-amount-hero">
+          <div class="tx-amount-row">
+            <div class="amt-wrap" style="flex:1">
+              <button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button>
+              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="onTxAmountInput()">
+            </div>
+            <select id="txCurrencySelect" onchange="onTxCurrencyChange()" class="tx-currency-sel">
+              <option value="BRL">BRL</option>
+            </select>
+            <span id="txCurrencyBadge" style="display:none">BRL</span>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:14px">
+          <div class="form-group"><label>Data <span class="req-star">*</span></label><input type="date" id="txDate"></div>
+          <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
+          <div class="form-group full">
+            <label>Descrição <span class="req-star">*</span></label>
+            <input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"
+              oninput="_aiSmartDebounce(this.value,'tx')"
+              onblur="_aiSmartTrigger(this.value,'tx')">
+            <div id="txAiSuggestionsPanel" style="display:none;margin-top:7px">
+              <div class="ai-suggest-panel">
+                <div class="ai-suggest-header">
+                  <span class="ai-suggest-title">🤖 Sugestões</span>
+                  <button class="ai-suggest-dismiss" onclick="_aiDismissAll('tx')" title="Dispensar">✕</button>
+                </div>
+                <div id="txAiSuggestChips" class="ai-suggest-chips"></div>
+              </div>
+            </div>
+            <div id="txAiPayeeSuggestion" style="display:none"></div>
+            <div id="txAiAccountSuggestion" style="display:none"></div>
+            <div id="txAiMemberSuggestion" style="display:none"></div>
+          </div>
+          <div class="form-group"><label>Conta <span class="req-star">*</span></label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
+          <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
+        </div>
+
+        <!-- Best card suggestion -->
+        <div id="txBestCardSuggestion" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;margin-top:4px"></div>
+
+        <!-- Currency conversion panel -->
+        <div id="txCurrencyPanel" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:.82rem;font-weight:600;color:var(--accent)">💱 <span id="txCurrencyPanelTitle">Conversão de Moeda</span></div>
+            <button type="button" onclick="fetchTxCurrencyRate()" id="txCurrencyFetchBtn" style="font-size:.75rem;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:4px"><span id="txCurrencyFetchIcon">🔄</span> Buscar cotação</button>
+          </div>
+          <div id="txCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:.75rem;font-weight:600;color:var(--text-muted,#374151);display:block;margin-bottom:3px">Taxa (1 <span id="txCurrencyRateFromLabel">USD</span> = ? <span id="txCurrencyRateToLabel">BRL</span>)</label>
+              <input type="text" id="txCurrencyRate" inputmode="decimal" placeholder="1.00000" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)" oninput="updateTxCurrencyPreview()">
+            </div>
+            <div id="txCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
+          </div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:8px">💡 Valor convertido (<span id="txCurrencyBrlHint">—</span>) usado nos relatórios.</div>
+        </div>
+
+        <!-- FX panel for cross-currency transfers -->
+        <div id="txFxPanel" style="display:none;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px;margin-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div style="font-size:.82rem;font-weight:600;color:#1d4ed8">💱 <span id="txFxTitle">Câmbio</span></div>
+            <button type="button" onclick="fetchSuggestedFxRate()" id="txFxFetchBtn" style="font-size:.75rem;padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:4px"><span id="txFxFetchIcon">🔄</span> Buscar cotação</button>
+          </div>
+          <div id="txFxSuggestion" style="display:none;font-size:.78rem;color:#1e40af;margin-bottom:8px;padding:6px 8px;background:#dbeafe;border-radius:6px"></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:3px">Taxa de câmbio <span id="txFxLabel" style="font-weight:400;color:#6b7280"></span></label>
+              <input type="text" id="txFxRate" inputmode="decimal" placeholder="1.00000" style="width:100%;padding:8px 10px;border:1.5px solid #93c5fd;border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:#fff" oninput="updateFxPreview()">
+            </div>
+            <div id="txFxPreview" style="font-size:.82rem;color:#1d4ed8;padding-top:18px;white-space:nowrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB / STEP 1: Detalhes ─────────────────────────────── -->
+      <div class="tx-ctx-pane" id="txCtxDetalhes" style="display:none;padding:16px">
+        <div class="form-grid">
+          <div class="form-group" id="txPayeeGroup" style="position:relative">
+            <label>Beneficiário / Fonte <span class="opt-label">opcional</span></label>
+            <input type="hidden" id="txPayeeId">
+            <div class="payee-input-wrap">
+              <input type="text" id="txPayeeName" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="onPayeeInput(this.value)" onblur="onPayeeBlur()" onkeydown="onPayeeKey(event)">
+              <span id="txPayeeStatus" class="payee-status"></span>
+            </div>
+            <div id="txPayeeDropdown" class="payee-dropdown" style="display:none"></div>
+            <div id="txPayeeSimilarBanner" class="payee-similar-banner" style="display:none"></div>
+          </div>
+          <div class="form-group" id="txCategoryGroup">
+            <label>Categoria <span class="opt-label">opcional</span></label>
+            <input type="hidden" id="txCategoryId">
+            <div class="cat-picker-wrap" id="catPickerWrap">
+              <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker()">
+                <span class="cat-picker-dot" id="catPickerDot" style="display:none"></span>
+                <span id="catPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
+                <span class="cat-picker-caret">▼</span>
+              </button>
+              <div class="cat-picker-dropdown" id="catPickerDropdown"></div>
+            </div>
+            <div class="cat-suggestion" id="catSuggestion" onclick="applyCatSuggestion()">
+              <span class="cat-sug-dot" id="catSugDot"></span>
+              <span class="cat-sug-label">Última usada:</span>
+              <span class="cat-sug-name" id="catSugName"></span>
+              <span class="cat-sug-dismiss" onclick="event.stopPropagation();hideCatSuggestion()" title="Dispensar">✕</span>
+            </div>
+          </div>
+          <div class="form-group" id="txFamilyMemberGroup">
+            <label>Membro(s) da família <span class="opt-label">opcional</span></label>
+            <div id="txFamilyMemberPicker" class="fmc-picker-container"><div class="fmc-picker-empty">Carregando…</div></div>
+            <select id="txFamilyMember" style="display:none"></select>
+          </div>
+          <div class="form-group"><label>Tags <span class="opt-label">opcional</span></label><input type="text" id="txTags" placeholder="IR, Décio, ..."></div>
+          <div class="form-group full"><label>Observação <span class="opt-label">opcional</span></label><textarea id="txMemo" rows="2" placeholder="Memo, notas..."></textarea></div>
+          <div class="form-group full" id="txIofGroup" style="display:none">
+            <label class="iof-intl-toggle" onclick="toggleIofIntl()">
+              <input type="checkbox" id="txIsInternational" onclick="event.stopPropagation();updateIofMirror()">
+              🌍 Compra internacional (aplicar IOF)
+            </label>
+            <div class="iof-mirror-info" id="txIofMirrorInfo"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB / STEP 2: Anexo / IA ──────────────────────────── -->
+      <div class="tx-ctx-pane" id="txCtxAnexo" style="display:none;padding:16px">
+        <div class="form-group" id="txAttachGroup">
           <label>Anexo (PDF ou imagem)</label>
           <div class="tx-attachment-area" id="txAttachArea"
             onclick="if(event.target!==document.getElementById('txAttachFile'))document.getElementById('txAttachFile').click()"
@@ -4181,172 +4227,26 @@
           </div>
           <input type="hidden" id="txAttachUrl">
           <input type="hidden" id="txAttachNameHidden">
-          <button type="button" id="receiptAiReadBtn"
-            onclick="readReceiptWithAI()"
-            style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
-            🤖 Ler com IA
-          </button>
-          <button type="button" id="txRegisterPricesBtn"
-            onclick="openRegisterPricesFromReceipt()"
-            style="display:none;align-items:center;gap:8px;margin-top:6px;width:100%;padding:8px 14px;background:linear-gradient(135deg,#047857,#059669);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">
-            🏷️ Registrar Preços
-          </button>
-          <input type="file" id="receiptScanInput"
-            accept="image/*,application/pdf" capture="environment"
-            style="display:none"
-            onchange="onReceiptScanInput(this)">
+          <button type="button" id="receiptAiReadBtn" onclick="readReceiptWithAI()" style="display:none;align-items:center;gap:8px;margin-top:8px;width:100%;padding:10px 14px;background:linear-gradient(135deg,#6d28d9,#4f46e5);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.85rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">🤖 Ler com IA</button>
+          <button type="button" id="txRegisterPricesBtn" onclick="openRegisterPricesFromReceipt()" style="display:none;align-items:center;gap:8px;margin-top:6px;width:100%;padding:8px 14px;background:linear-gradient(135deg,#047857,#059669);color:#fff;border:none;border-radius:var(--r-sm,8px);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-serif);justify-content:center;transition:opacity .15s">🏷️ Registrar Preços</button>
+          <input type="file" id="receiptScanInput" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="onReceiptScanInput(this)">
           <div id="receiptAiResultPanel" style="display:none;margin-top:10px"></div>
         </div>
-        <div class="form-group"><label>Data *</label><input type="date" id="txDate"></div>
-        <div class="form-group">
-          <label>Valor *</label>
-          <div style="display:flex;align-items:center;gap:6px">
-            <div class="amt-wrap" style="flex:1">
-              <button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
-                oninput="onTxAmountInput()">
-            </div>
-            <!-- Feature 1: seletor de moeda da transação (pode diferir da moeda da conta) -->
-            <select id="txCurrencySelect" onchange="onTxCurrencyChange()"
-              style="flex-shrink:0;padding:6px 8px;border-radius:var(--r-sm);background:var(--surface2);
-                     border:1px solid var(--border);font-size:.8rem;font-weight:700;
-                     color:var(--accent);cursor:pointer;max-width:80px">
-              <option value="BRL">BRL</option>
-            </select>
-            <span id="txCurrencyBadge" style="display:none">BRL</span>
-          </div>
-        </div>
-        <div class="form-group full">
-          <label>Descrição *</label>
-          <input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"
-            oninput="_aiSmartDebounce(this.value,'tx')"
-            onblur="_aiSmartTrigger(this.value,'tx')">
-          <!-- AI suggestions panel — shown after typing description -->
-          <div id="txAiSuggestionsPanel" style="display:none;margin-top:7px">
-            <div class="ai-suggest-panel">
-              <div class="ai-suggest-header">
-                <span class="ai-suggest-title">🤖 Sugestões</span>
-                <button class="ai-suggest-dismiss" onclick="_aiDismissAll('tx')" title="Dispensar todas">✕</button>
-              </div>
-              <div id="txAiSuggestChips" class="ai-suggest-chips"></div>
-            </div>
-          </div>
-          <!-- Legacy individual banners (kept for backward compat, hidden by new panel) -->
-          <div id="txAiPayeeSuggestion" style="display:none"></div>
-          <div id="txAiAccountSuggestion" style="display:none"></div>
-          <div id="txAiMemberSuggestion" style="display:none"></div>
-        </div>
-
-                <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
-<div class="form-group"><label>Conta *</label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
-        <!-- Feature 9: sugestão do melhor cartão -->
-        <div id="txBestCardSuggestion" style="display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;margin-top:-4px"></div>
-        <!-- Currency conversion panel — expense/income with non-BRL account -->
-        <div id="txCurrencyPanel" style="display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:.82rem;font-weight:600;color:var(--accent)">
-              💱 <span id="txCurrencyPanelTitle">Conversão de Moeda</span>
-            </div>
-            <button type="button" onclick="fetchTxCurrencyRate()" id="txCurrencyFetchBtn"
-              style="font-size:.75rem;padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:4px">
-              <span id="txCurrencyFetchIcon">🔄</span> Buscar cotação
-            </button>
-          </div>
-          <div id="txCurrencySuggestion" style="display:none;font-size:.78rem;margin-bottom:8px;padding:6px 8px;background:var(--blue-lt,#dbeafe);border-radius:6px;color:#1e40af"></div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:.75rem;font-weight:600;color:var(--text-muted,#374151);display:block;margin-bottom:3px">
-                Taxa (1 <span id="txCurrencyRateFromLabel">USD</span> = ? <span id="txCurrencyRateToLabel">BRL</span>)
-              </label>
-              <input type="text" id="txCurrencyRate" inputmode="decimal" placeholder="1.00000"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:var(--surface)"
-                oninput="updateTxCurrencyPreview()">
-            </div>
-            <div id="txCurrencyPreview" style="font-size:.82rem;color:var(--accent);padding-top:18px;white-space:nowrap"></div>
-          </div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:8px">
-            💡 O valor convertido (<span id="txCurrencyBrlHint">—</span>) será registrado para fins de relatórios e orçamentos.
-          </div>
-        </div>
-
-        <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino *</label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
-
-        <!-- FX rate panel — shown only when source and destination accounts have different currencies -->
-        <div id="txFxPanel" style="display:none;grid-column:1/-1;background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div style="font-size:.82rem;font-weight:600;color:#1d4ed8">
-              💱 <span id="txFxTitle">Câmbio</span>
-            </div>
-            <button type="button" onclick="fetchSuggestedFxRate()" id="txFxFetchBtn"
-              style="font-size:.75rem;padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:4px">
-              <span id="txFxFetchIcon">🔄</span> Buscar cotação
-            </button>
-          </div>
-          <div id="txFxSuggestion" style="display:none;font-size:.78rem;color:#1e40af;margin-bottom:8px;padding:6px 8px;background:#dbeafe;border-radius:6px"></div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:3px">
-                Taxa de câmbio <span id="txFxLabel" style="font-weight:400;color:#6b7280"></span>
-              </label>
-              <input type="text" id="txFxRate" inputmode="decimal" placeholder="1.00000"
-                style="width:100%;padding:8px 10px;border:1.5px solid #93c5fd;border-radius:8px;font-size:.9rem;font-family:var(--font-serif);font-weight:600;box-sizing:border-box;background:#fff"
-                oninput="updateFxPreview()">
-            </div>
-            <div id="txFxPreview" style="font-size:.82rem;color:#1d4ed8;padding-top:18px;white-space:nowrap"></div>
-          </div>
-        </div>
-        <div class="form-group" id="txPayeeGroup" style="position:relative">
-          <label>Beneficiário / Fonte</label>
-          <input type="hidden" id="txPayeeId">
-          <div class="payee-input-wrap">
-            <input type="text" id="txPayeeName" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="onPayeeInput(this.value)" onblur="onPayeeBlur()" onkeydown="onPayeeKey(event)">
-            <span id="txPayeeStatus" class="payee-status"></span>
-          </div>
-          <div id="txPayeeDropdown" class="payee-dropdown" style="display:none"></div>
-          <div id="txPayeeSimilarBanner" class="payee-similar-banner" style="display:none"></div>
-        </div>
-        <div class="form-group" id="txCategoryGroup">
-          <label>Categoria</label>
-          <input type="hidden" id="txCategoryId">
-          <div class="cat-picker-wrap" id="catPickerWrap">
-            <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker()">
-              <span class="cat-picker-dot" id="catPickerDot" style="display:none"></span>
-              <span id="catPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
-              <span class="cat-picker-caret">▼</span>
-            </button>
-            <div class="cat-picker-dropdown" id="catPickerDropdown"></div>
-          </div>
-          <div class="cat-suggestion" id="catSuggestion" onclick="applyCatSuggestion()">
-            <span class="cat-sug-dot" id="catSugDot"></span>
-            <span class="cat-sug-label">Última usada:</span>
-            <span class="cat-sug-name" id="catSugName"></span>
-            <span class="cat-sug-dismiss" onclick="event.stopPropagation();hideCatSuggestion()" title="Dispensar">✕</span>
-          </div>
-        </div>
-        <!-- Membro da família (optional) -->
-        <div class="form-group" id="txFamilyMemberGroup">
-          <label>Membro(s) da família <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
-          <div id="txFamilyMemberPicker" class="fmc-picker-container">
-            <div class="fmc-picker-empty">Carregando…</div>
-          </div>
-          <!-- hidden select kept for backward compat with save logic -->
-          <select id="txFamilyMember" style="display:none"></select>
-        </div>
-        <div class="form-group full"><label>Observação</label><textarea id="txMemo" rows="2" placeholder="Memo, notas..."></textarea></div>
-        <div class="form-group full"><label>Tags (vírgula)</label><input type="text" id="txTags" placeholder="IR, Décio, ..."></div>
-
-        <!-- IOF internacional (só aparece para cartão BR) -->
-        <div class="form-group full" id="txIofGroup" style="display:none">
-          <label class="iof-intl-toggle" onclick="toggleIofIntl()">
-            <input type="checkbox" id="txIsInternational" onclick="event.stopPropagation();updateIofMirror()">
-            🌍 Compra internacional (aplicar IOF)
-          </label>
-          <div class="iof-mirror-info" id="txIofMirrorInfo"></div>
-        </div>
-
       </div>
+
+    </div><!-- /modal-body -->
+
+    <!-- Footer -->
+    <div class="modal-footer" id="txModalFooter">
+      <button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button>
+      <!-- Wizard prev/next (hidden in tabs mode) -->
+      <div id="txWizardNav" style="display:none;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost" id="txWzPrev" onclick="txWizardPrev()" style="display:none">← Anterior</button>
+        <span id="txWzStepLabel" style="font-size:.78rem;color:var(--muted)"></span>
+        <button class="btn btn-primary" id="txWzNext" onclick="txWizardNext()">Próximo →</button>
+      </div>
+      <button class="btn btn-primary" id="txSaveBtn" onclick="saveTransaction()">Salvar</button>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button><button class="btn btn-primary" onclick="saveTransaction()">Salvar</button></div>
   </div>
 </div>
 
@@ -5178,6 +5078,7 @@
   <script src="js/payee_autocomplete.js"></script>
   <script src="js/ui_helpers.js"></script>
   <script src="js/scheduled.js"></script>
+  <script src="js/form_mode.js"></script>
   <script src="js/attachments.js"></script>
   <script src="js/iof.js"></script>
   <script src="js/forecast.js"></script>
@@ -5358,6 +5259,25 @@
           <input type="hidden" id="myProfileLanguage" value="pt">
         </div>
 
+
+        <!-- Modo de formulário preferido -->
+        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+            📋 Modo de formulário
+          </div>
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Escolha como prefere preencher transações e programados.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <label id="formModeTabsBtn" class="form-mode-option" onclick="selectFormMode('tabs')" style="cursor:pointer;border:1.5px solid var(--accent);border-radius:var(--r-sm);padding:10px 12px;background:var(--accent-lt,#e8f2ee);display:block">
+              <div style="font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:3px">📑 Abas por contexto</div>
+              <div style="font-size:.72rem;color:var(--muted)">Todos os campos visíveis em abas: Principal, Detalhes, Recorrência, Notificações.</div>
+            </label>
+            <label id="formModeWizardBtn" class="form-mode-option" onclick="selectFormMode('wizard')" style="cursor:pointer;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;background:transparent;display:block">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text2);margin-bottom:3px">🧙 Wizard passo a passo</div>
+              <div style="font-size:.72rem;color:var(--muted)">Navega campo por campo guiado: O quê → Detalhes → Agendamento → Notificações.</div>
+            </label>
+          </div>
+          <input type="hidden" id="myProfileFormMode" value="tabs">
+        </div>
 
         <!-- Canais padrão de notificação -->
         <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
