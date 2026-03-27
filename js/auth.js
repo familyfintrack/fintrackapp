@@ -148,7 +148,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   // app_users: fonte de verdade para dados pessoais e role global
   const { data: appUserRow } = await sb
     .from('app_users')
-    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id')
+    .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode')
     .eq('email', user.email)
     .maybeSingle();
 
@@ -281,6 +281,7 @@ async function _loadCurrentUserContext(authCtx = null) {
     preferred_language:   appUserRow?.preferred_language  || 'pt',
     whatsapp_number:      appUserRow?.whatsapp_number || '',
     telegram_chat_id:     appUserRow?.telegram_chat_id || '',
+    preferred_form_mode:  appUserRow?.preferred_form_mode || 'tabs',
     ...caps
   };
 
@@ -289,6 +290,9 @@ async function _loadCurrentUserContext(authCtx = null) {
   const _langToApply = currentUser.preferred_language || 'pt';
   // Sync localStorage immediately so i18n.js reads correct lang on next load
   localStorage.setItem('fintrack_i18n_lang', _langToApply);
+  // Sync form_mode preference from DB into localStorage
+  try { const _fmKey = `pref_${currentUser.id}_global_form_mode`;
+    localStorage.setItem(_fmKey, currentUser.preferred_form_mode || 'tabs'); } catch(e) {}
   // Apply to DOM now — await so everything renders in the correct language
   if (typeof i18nSetLanguage === 'function') {
     await i18nSetLanguage(_langToApply).catch(() => {});
@@ -1256,7 +1260,7 @@ async function saveMyProfile() {
   const tgChanged = telegramChatId !== String(currentUser.telegram_chat_id || '');
 
   const newFormMode = document.getElementById('myProfileFormMode')?.value || 'tabs';
-  const fmChanged = newFormMode !== getTxFormMode();
+  const fmChanged = newFormMode !== (currentUser?.preferred_form_mode || 'tabs');
   if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged) {
     closeModal('myProfileModal');
     return;
@@ -1283,6 +1287,7 @@ async function saveMyProfile() {
     if (langChanged)    updatePayload.preferred_language  = newLang;
     if (waChanged)      updatePayload.whatsapp_number     = whatsappNumber || null;
     if (tgChanged)      updatePayload.telegram_chat_id    = telegramChatId || null;
+    if (fmChanged)      updatePayload.preferred_form_mode = newFormMode;
 
     if (Object.keys(updatePayload).length > 0) {
       const { error: avErr } = await sb.from('app_users').update(updatePayload).eq('id', appRow.id);
@@ -1305,6 +1310,10 @@ async function saveMyProfile() {
       }
       if ('whatsapp_number' in updatePayload) currentUser.whatsapp_number = whatsappNumber || '';
       if ('telegram_chat_id' in updatePayload) currentUser.telegram_chat_id = telegramChatId || '';
+      if ('preferred_form_mode' in updatePayload) {
+        currentUser.preferred_form_mode = newFormMode;
+        try { localStorage.setItem(`pref_${currentUser.id}_global_form_mode`, newFormMode); } catch(e) {}
+      }
     }
 
     // 2. Password

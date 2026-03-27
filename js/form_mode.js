@@ -10,26 +10,22 @@
 
 function getTxFormMode() {
   try {
+    // DB value (via currentUser) is authoritative — synced to localStorage on login
+    if (window.currentUser?.preferred_form_mode) {
+      return window.currentUser.preferred_form_mode === 'wizard' ? 'wizard' : 'tabs';
+    }
+    // Fallback: localStorage (covers pre-login render or missing column)
     const uid = window.currentUser?.id || 'local';
     const stored = localStorage.getItem(`pref_${uid}_global_form_mode`);
     return stored === 'wizard' ? 'wizard' : 'tabs';
   } catch(e) { return 'tabs'; }
 }
 
-async function _persistFormMode(mode) {
+function _persistFormMode(mode) {
+  // localStorage sync only — DB is written by auth.js saveMyProfile via app_users column
   try {
     const uid = window.currentUser?.id || 'local';
     localStorage.setItem(`pref_${uid}_global_form_mode`, mode);
-    if (window.sb && window.currentUser?.id) {
-      // Persist to app_users — best-effort, ignore errors
-      await window.sb.from('app_users')
-        .update({ preferred_language: window.currentUser.preferred_language }) // harmless no-op; real persistence below
-        .eq('id', window.currentUser.id);
-      // Use setUserPreference if available (settings.js)
-      if (typeof setUserPreference === 'function') {
-        await setUserPreference('global', 'form_mode', mode);
-      }
-    }
   } catch(e) {}
 }
 
