@@ -27,13 +27,53 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: var(--brand-bg, #0d2318);   /* deep brand-green — single source of truth */
+  background: var(--brand-bg, #0d2318);
   display: flex;
   flex-direction: column;
   z-index: 200;
   transition: transform .3s cubic-bezier(.4,0,.2,1);
-  overflow: hidden;             /* clip children, never let content overflow */
+  overflow: hidden;
+  position: relative;
 }
+
+/* Decorative white orbs — same language as inv-hero */
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  background: rgba(255,255,255,.04);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: 60px; left: -80px;
+  width: 240px; height: 240px;
+  background: rgba(255,255,255,.03);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Third orb — mid-right accent */
+.sidebar .sb-orb-mid {
+  display: none; /* rendered via JS or could be a real div */
+}
+/* Alternative: use a global pseudo-element on sb-header */
+.sb-header::after {
+  content: '';
+  position: absolute;
+  top: 50%; right: -50px;
+  transform: translateY(-50%);
+  width: 130px; height: 130px;
+  background: rgba(255,255,255,.03);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.sb-header { position: relative; overflow: visible; }
 
 /* ── Header: logo + close btn ── */
 .sb-header {
@@ -42,9 +82,11 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   justify-content: space-between;
   padding: 14px 16px 10px;
   flex-shrink: 0;
-  overflow: hidden;        /* belt + suspenders: clip any oversized child */
+  overflow: hidden;
   min-width: 0;
   gap: 8px;
+  position: relative;
+  z-index: 1;
 }
 .sb-logo-img {
   height: 25px;
@@ -113,6 +155,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .sidebar-nav {
   flex: 1;
   padding: 4px 10px 8px;
+  position: relative;
+  z-index: 1;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -19084,3 +19128,27 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   .sc-card-row { padding: 9px 12px; }
 }
 
+
+/* Profile modal — editable name input */
+.prof-field__input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: .9rem;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.prof-field__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(42,96,73,.08);
+}
+
+/* Sidebar: ensure all direct children stack above orbs */
+.sb-user-card,
+.sidebar-footer,
+.sidebar-logo { position: relative; z-index: 1; }
