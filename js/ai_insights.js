@@ -985,6 +985,68 @@ async function _aiCollectFinancialContext() {
     meta:{ confidence_score: confidenceScore, closed_months_used: closedMonthKeys.length, recurring_coverage_ratio:+coverageRatio.toFixed(3), engine_version:'ai-insights-engine-v2' },
   };
 
+  // ── Investimentos ──────────────────────────────────────────────────────
+  try {
+    const invPositions = (typeof _inv !== 'undefined' && Array.isArray(_inv.positions)) ? _inv.positions : [];
+    if (invPositions.length > 0) {
+      const invAccMap = Object.fromEntries((state.accounts || []).filter(a => a.type === 'investimento').map(a => [a.id, a.name]));
+      const totalMV = invPositions.reduce((s, p) => s + (typeof _invBrlPrice === 'function' ? _invBrlPrice(p) * (+p.quantity || 0) : 0), 0);
+      const totalCost = invPositions.reduce((s, p) => s + ((+p.avg_cost || 0) * (+p.quantity || 0)), 0);
+      ctx.investments = {
+        total_market_value: +totalMV.toFixed(2),
+        total_cost: +totalCost.toFixed(2),
+        total_pnl: +(totalMV - totalCost).toFixed(2),
+        positions: invPositions.map(p => {
+          const mv = (typeof _invBrlPrice === 'function' ? _invBrlPrice(p) : (+p.current_price || 0)) * (+p.quantity || 0);
+          return {
+            ticker: p.ticker, name: p.name || p.ticker, asset_type: p.asset_type,
+            account: invAccMap[p.account_id] || null, quantity: +p.quantity,
+            avg_cost: +p.avg_cost, current_price: +(p.current_price || 0),
+            market_value: +mv.toFixed(2), currency: p.currency || 'BRL',
+            pnl: +(mv - (+p.avg_cost || 0) * (+p.quantity || 0)).toFixed(2),
+          };
+        }).filter(p => p.quantity > 0).sort((a, b) => b.market_value - a.market_value).slice(0, 20),
+      };
+    }
+  } catch(_e) { /* investments unavailable — skip */ }
+
+  // ── Dívidas ────────────────────────────────────────────────────────────
+  try {
+    const debts = (typeof _dbt !== 'undefined' && Array.isArray(_dbt.debts)) ? _dbt.debts : [];
+    const activeDebts = debts.filter(d => d.status === 'active');
+    if (debts.length > 0) {
+      ctx.debts = {
+        total_active_balance: +activeDebts.reduce((s, d) => s + (+d.current_balance || 0), 0).toFixed(2),
+        count_active: activeDebts.length,
+        count_settled: debts.filter(d => d.status === 'settled').length,
+        items: activeDebts.map(d => ({
+          name: d.name, creditor: d.creditor_name || null,
+          original_amount: +d.original_amount, current_balance: +d.current_balance,
+          currency: d.currency || 'BRL', adjustment_type: d.adjustment_type,
+          fixed_rate: d.fixed_rate || null, start_date: d.start_date,
+          pct_paid: d.original_amount > 0 ? +(((d.original_amount - d.current_balance) / d.original_amount) * 100).toFixed(1) : 0,
+        })).sort((a, b) => b.current_balance - a.current_balance).slice(0, 10),
+      };
+    }
+  } catch(_e) { /* debts unavailable — skip */ }
+
+  // ── Preços monitorados ─────────────────────────────────────────────────
+  try {
+    const { data: priceItems } = await famQ(sb.from('price_items').select('name,unit,avg_price,last_price,record_count,min_price').order('record_count', { ascending: false }).limit(20));
+    if (priceItems && priceItems.length > 0) {
+      ctx.price_tracking = {
+        item_count: priceItems.length,
+        items: priceItems.map(p => ({
+          name: p.name, unit: p.unit || 'un',
+          last_price: p.last_price ? +p.last_price : null,
+          avg_price: p.avg_price ? +p.avg_price : null,
+          min_price: p.min_price ? +p.min_price : null,
+          records: p.record_count || 0,
+        })),
+      };
+    }
+  } catch(_e) { /* price tracking unavailable — skip */ }
+
   _ai.financialContext = ctx;
   return ctx;
 }
@@ -1193,6 +1255,9 @@ async function _callGeminiAnalysis(apiKey, ctx) {
     orcamentos:                ctx.budgets,
     anomalias_detectadas:      ctx.anomalies,
     top_40_transacoes:         ctx.topTransactions,
+    ...(ctx.investments  ? { carteira_investimentos: ctx.investments  } : {}),
+    ...(ctx.debts        ? { dividas_ativas:          ctx.debts        } : {}),
+    ...(ctx.price_tracking ? { rastreamento_precos:  ctx.price_tracking } : {}),
     contexto_adicional_usuario: ctx.userContext?.extraContext || ctx.filters?.extraContext || '',
   };
 
@@ -1305,7 +1370,38 @@ RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
   },
   "budget_analysis": [
     { "category": "nome", "status": "ok|near|over", "insight": "análise do orçamento" }
-  ]
+  ],
+  "investments_analysis": {
+    "_instrucao": "Inclua APENAS se carteira_investimentos estiver nos dados. Omita esta seção completamente se não houver dados de investimentos.",
+    "summary": "resumo da carteira em 1-2 frases",
+    "total_market_value_comment": "comentário sobre o valor total da carteira",
+    "pnl_comment": "avaliação do resultado (lucro/prejuízo) da carteira",
+    "diversification_note": "avaliação da diversificação por tipo de ativo",
+    "highlights": [
+      { "ticker": "ticker ou nome", "insight": "observação sobre esta posição" }
+    ],
+    "recommendations": [
+      { "action": "recomendação concreta", "rationale": "justificativa" }
+    ]
+  },
+  "debts_analysis": {
+    "_instrucao": "Inclua APENAS se dividas_ativas estiver nos dados. Omita esta seção completamente se não houver dados de dívidas.",
+    "summary": "resumo das dívidas em 1-2 frases",
+    "total_burden_comment": "avaliação do peso das dívidas em relação à renda",
+    "priority_order": [
+      { "name": "nome da dívida", "rationale": "por que priorizar esta" }
+    ],
+    "payoff_insight": "estratégia sugerida para quitação (ex: bola de neve, avalanche)",
+    "cashflow_impact": "impacto estimado das dívidas no fluxo de caixa mensal"
+  },
+  "price_insights": {
+    "_instrucao": "Inclua APENAS se rastreamento_precos estiver nos dados. Omita esta seção completamente se não houver dados de preços.",
+    "summary": "observação sobre os itens rastreados",
+    "best_value_items": [
+      { "name": "item", "insight": "dica de economia baseada nos preços históricos" }
+    ],
+    "shopping_tip": "dica geral baseada nos padrões de preço observados"
+  }
 }
 
 REGRAS FINAIS:
@@ -1317,6 +1413,9 @@ REGRAS FINAIS:
 - forecast.projection_highlights: máx 4, apenas meses com algo relevante
 - forecast.one_time_payment_alerts: apenas pagamentos únicos relevantes (>R$200)
 - budget_analysis: lista vazia se não houver orçamentos
+- investments_analysis: OMITIR completamente se carteira_investimentos não estiver nos dados
+- debts_analysis: OMITIR completamente se dividas_ativas não estiver nos dados
+- price_insights: OMITIR completamente se rastreamento_precos não estiver nos dados
 - Todos os textos em português brasileiro`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
@@ -1914,6 +2013,65 @@ function _aiRenderAnalysis(r) {
 </div>`;
   }
 
+  // ── Investments section ───────────────────────────────────────────────
+  let investHtml = '';
+  const invA = r.investments_analysis;
+  const invCtx = ctx?.investments;
+  if (invA && invCtx) {
+    const pnlPos = (invCtx.total_pnl || 0) >= 0;
+    investHtml = `
+<div class="air-section air-invest-section">
+  <div class="air-section-title">📈 Carteira de Investimentos</div>
+  <div class="air-invest-hero">
+    <div class="air-invest-kpi"><span class="air-invest-kpi-lbl">Valor de Mercado</span><span class="air-invest-kpi-val">${fmtN(invCtx.total_market_value)}</span></div>
+    <div class="air-invest-kpi"><span class="air-invest-kpi-lbl">Custo Total</span><span class="air-invest-kpi-val">${fmtN(invCtx.total_cost)}</span></div>
+    <div class="air-invest-kpi"><span class="air-invest-kpi-lbl">Resultado</span><span class="air-invest-kpi-val ${pnlPos?'air-green':'air-red'}">${pnlPos?'+':''}${fmtN(invCtx.total_pnl)}</span></div>
+  </div>
+  ${invA.summary ? `<p class="air-invest-summary">${esc(invA.summary)}</p>` : ''}
+  ${invA.diversification_note ? `<div class="air-invest-note">📊 ${esc(invA.diversification_note)}</div>` : ''}
+  ${(invA.highlights||[]).length ? `<div class="air-invest-highlights">${(invA.highlights||[]).map(h=>`
+    <div class="air-invest-highlight"><span class="air-invest-ticker">${esc(h.ticker)}</span><span>${esc(h.insight)}</span></div>`).join('')}</div>` : ''}
+  ${(invA.recommendations||[]).length ? `<div class="air-invest-recs">${(invA.recommendations||[]).map(rec=>`
+    <div class="air-invest-rec"><span>💡</span><div><strong>${esc(rec.action)}</strong>${rec.rationale?`<span class="air-invest-rat"> — ${esc(rec.rationale)}</span>`:''}</div></div>`).join('')}</div>` : ''}
+</div>`;
+  }
+
+  // ── Debts section ─────────────────────────────────────────────────────
+  let debtsHtml = '';
+  const dbtA = r.debts_analysis;
+  const dbtCtx = ctx?.debts;
+  if (dbtA && dbtCtx) {
+    debtsHtml = `
+<div class="air-section air-debts-section">
+  <div class="air-section-title">💳 Análise de Dívidas</div>
+  <div class="air-debts-hero">
+    <div class="air-invest-kpi"><span class="air-invest-kpi-lbl">Saldo Ativo Total</span><span class="air-invest-kpi-val air-red">${fmtN(dbtCtx.total_active_balance)}</span></div>
+    <div class="air-invest-kpi"><span class="air-invest-kpi-lbl">Dívidas Ativas</span><span class="air-invest-kpi-val">${dbtCtx.count_active}</span></div>
+    <div class="air-invest-kpi"><span class="air-invest-kpi-lbl">Quitadas</span><span class="air-invest-kpi-val air-green">${dbtCtx.count_settled}</span></div>
+  </div>
+  ${dbtA.summary ? `<p class="air-invest-summary">${esc(dbtA.summary)}</p>` : ''}
+  ${dbtA.payoff_insight ? `<div class="air-invest-note">🎯 ${esc(dbtA.payoff_insight)}</div>` : ''}
+  ${dbtA.cashflow_impact ? `<div class="air-invest-note">💸 ${esc(dbtA.cashflow_impact)}</div>` : ''}
+  ${(dbtA.priority_order||[]).length ? `<div class="air-debts-priority"><div class="air-debts-priority-lbl">Ordem de Prioridade</div>${(dbtA.priority_order||[]).map((d,i)=>`
+    <div class="air-debt-prio-item"><span class="air-debt-prio-num">${i+1}</span><div><strong>${esc(d.name)}</strong>${d.rationale?`<span class="air-invest-rat"> — ${esc(d.rationale)}</span>`:''}</div></div>`).join('')}</div>` : ''}
+</div>`;
+  }
+
+  // ── Price insights section ────────────────────────────────────────────
+  let priceHtml = '';
+  const priceA = r.price_insights;
+  const priceCtx = ctx?.price_tracking;
+  if (priceA && priceCtx) {
+    priceHtml = `
+<div class="air-section air-prices-section">
+  <div class="air-section-title">🏷️ Rastreamento de Preços</div>
+  ${priceA.summary ? `<p class="air-invest-summary">${esc(priceA.summary)}</p>` : ''}
+  ${(priceA.best_value_items||[]).length ? `<div class="air-price-items">${(priceA.best_value_items||[]).map(p=>`
+    <div class="air-price-item"><span class="air-price-name">${esc(p.name)}</span><span class="air-price-tip">${esc(p.insight)}</span></div>`).join('')}</div>` : ''}
+  ${priceA.shopping_tip ? `<div class="air-invest-note">💡 ${esc(priceA.shopping_tip)}</div>` : ''}
+</div>`;
+  }
+
   // ── Final assembly ────────────────────────────────────────────────────
   container.innerHTML = `
 <div class="air-root">
@@ -1925,6 +2083,9 @@ function _aiRenderAnalysis(r) {
   ${actionsHtml}
   ${catHtml}
   ${budgetHtml}
+  ${investHtml}
+  ${debtsHtml}
+  ${priceHtml}
   ${memberHtml}
   ${trendHtml}
   ${payeeHtml}
