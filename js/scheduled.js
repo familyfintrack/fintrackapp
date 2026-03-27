@@ -703,6 +703,16 @@ function renderUpcoming() {
 }
 
 // Feature 1: toggle entire upcoming panel open/closed
+function toggleUpcomingGroup(id) {
+  const rows = document.getElementById(id);
+  const arrow = document.getElementById(id + '_arr');
+  if (!rows) return;
+  const isCollapsed = rows.style.display === 'none';
+  rows.style.display = isCollapsed ? '' : 'none';
+  if (arrow) arrow.classList.toggle('open', isCollapsed);
+  if (arrow) arrow.style.transform = isCollapsed ? '' : 'rotate(-90deg)';
+}
+
 function toggleUpcomingCard() {
   const listEl = document.getElementById('scheduledUpcomingList');
   const arrow  = document.getElementById('upcomingCardArrow');

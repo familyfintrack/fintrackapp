@@ -795,6 +795,7 @@ function renderTransactionsGrouped(txs) {
         <div class="table-wrap" style="margin:0">
           <table style="border-radius:0">
             <thead><tr>
+              ${state.reconcileMode ? '<th class="th-chk" style="width:36px"></th>' : ''}
               <th class="tx-v2-th-date" onclick="sortTx('date')">Data ⇅</th>
               <th class="tx-v2-th-body">Descrição</th>
               <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>
