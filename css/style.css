@@ -19909,139 +19909,49 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 
 
 
-/* === 2026-03-27 forecast report column width tuning === */
-#reportForecastView .forecast-grid-table{
-  width:100%;
-  table-layout:fixed;
-}
-#reportForecastView .forecast-grid-table .forecast-col-date{
-  width:10%;
-}
-#reportForecastView .forecast-grid-table .forecast-col-amount{
-  width:22%;
-}
-#reportForecastView .forecast-grid-table .forecast-col-desc{
-  width:68%;
-}
-@media (max-width: 1023px){
-  #reportForecastView .forecast-grid-table .forecast-col-date{
-    width:72px;
-  }
-  #reportForecastView .forecast-grid-table .forecast-col-amount{
-    width:116px;
-  }
-}
-
-/* === 2026-03-27 MOBILE FIX: grouped-by-account transactions visible === */
-@media (max-width: 720px){
-  #page-transactions #txGroupContainer .table-wrap{
-    overflow: visible !important;
-  }
-
-  #page-transactions #txGroupContainer table{
-    width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-  }
-
-  #page-transactions #txGroupContainer table thead{
-    display: none !important;
-  }
-
-  #page-transactions #txGroupContainer table,
-  #page-transactions #txGroupContainer tbody,
-  #page-transactions #txGroupContainer tr,
-  #page-transactions #txGroupContainer td{
-    display: block;
+/* Payees mobile layout fix: keep avatar and name on same row */
+@media (max-width: 640px) {
+  #page-payees .py2-name-cell {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
     width: 100%;
+    min-width: 0;
   }
-
-  #page-transactions #txGroupContainer tbody tr.tx-row-clickable{
-    display: grid !important;
-    grid-template-columns: minmax(38px, 10%) minmax(0, 1fr) minmax(82px, 20%);
-    grid-template-areas: "date body right";
-    gap: 10px;
+  #page-payees .py2-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    flex: 0 0 34px;
+    display: inline-flex;
     align-items: center;
-    margin: 10px 0;
-    padding: 12px 14px;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    background: var(--surface);
-  }
-
-  #page-transactions #txGroupContainer tbody td{
-    padding: 0 !important;
-    border: 0 !important;
-  }
-
-  #page-transactions #txGroupContainer tbody td.tx-v2-date{
-    grid-area: date;
-    min-width: 38px;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
     justify-content: center;
-    text-align: left;
-    white-space: normal;
-  }
-
-  #page-transactions #txGroupContainer tbody td.tx-v2-body{
-    grid-area: body;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    overflow: hidden;
-  }
-
-  #page-transactions #txGroupContainer tbody td.tx-v2-right{
-    grid-area: right;
-    min-width: 82px;
     align-self: center;
-    text-align: right;
-    white-space: nowrap;
   }
-
-  #page-transactions #txGroupContainer .tx-v2-title{
-    display: -webkit-box !important;
-    -webkit-box-orient: vertical !important;
-    -webkit-line-clamp: 2 !important;
-    line-clamp: 2 !important;
-    white-space: normal !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: none !important;
-    line-height: 1.12 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-category,
-  #page-transactions #txGroupContainer .tx-v2-payee-line{
-    display: block !important;
+  #page-payees .py2-name-body {
+    flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  #page-payees .py2-name {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
   }
+}
 
-  #page-transactions #txGroupContainer .tx-v2-mobile-meta,
-  #page-transactions #txGroupContainer .tx-v2-account-line{
-    display: none !important;
+@media (max-width: 480px) {
+  #page-payees .py2-name-cell {
+    gap: 8px !important;
   }
-
-  #page-transactions #txGroupContainer .tx-v2-amt-wrap{
-    align-items: flex-end;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-amt{
-    font-size: .96rem;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-brl,
-  #page-transactions #txGroupContainer .tx-v2-bal{
-    white-space: nowrap;
+  #page-payees .py2-avatar {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    font-size: .7rem;
   }
 }
