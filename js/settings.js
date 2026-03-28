@@ -2099,6 +2099,7 @@ function _telRenderUsersTable(rows) {
       <td style="padding:9px 10px;text-align:right;font-variant-numeric:tabular-nums">${u.errors>0?`<span class="tel-badge-danger">${u.errors}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td style="padding:9px 10px;text-align:right;color:var(--muted);font-size:.78rem;white-space:nowrap" class="tel-hide-sm">${(u.lastSeen||'').slice(0,10)}</td>
     </tr>`).join('');
+}
 
 function _telSortUsers(col) {
   if (_telDash.userSort.col === col) {
@@ -2218,6 +2219,7 @@ function _telRenderFamiliesTable(rows) {
       <td style="padding:9px 10px;text-align:right;color:var(--muted)" class="tel-hide-sm">${f.ai||'—'}</td>
       <td style="padding:9px 10px;text-align:right;color:var(--muted);font-size:.78rem;white-space:nowrap" class="tel-hide-xs">${(f.lastSeen||'').slice(0,10)}</td>
     </tr>`).join('');
+}
 
 function _telSortFamilies(col) {
   if (_telDash.famSort.col === col) {
@@ -2295,7 +2297,4 @@ function getPeriodColor(period) {
     case 'yearly': return '#9b59b6';
     default: return '#1F6B4F';
   }
-}
-
-    }
 }

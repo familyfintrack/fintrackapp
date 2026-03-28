@@ -432,8 +432,6 @@ function _helpContent() {
         },
       ],
     },
-  ];
-    },
     {
       id: 'modules', icon: '🧩', color: '#0891b2',
       title: { pt: 'Módulos do App', en: 'App Modules', es: 'Módulos de la app', fr: "Modules de l'app" },
