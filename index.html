@@ -749,127 +749,124 @@
     <!-- TRANSACTIONS -->
     <div class="page" id="page-transactions">
       <style>
-        /* ── Transactions modern redesign ── */
-        #page-transactions { --tx-radius: 14px; }
+        /* ═══ Transactions page — scoped styles ═══ */
+        #page-transactions {
+          --tx-r: 12px;
+        }
 
-        /* ── Compact action bar (replaces the tall hero on mobile) ── */
-        .tx-action-bar {
+        /* ── Topbar: stats + actions in ONE single line ── */
+        #tx-topbar {
           display: flex;
           align-items: center;
           gap: 8px;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
+          min-height: 34px;
         }
-        .tx-action-bar-stats {
-          flex: 1;
+        #tx-topbar-stats {
           display: flex;
           align-items: center;
           gap: 6px;
-          flex-wrap: wrap;
+          flex: 1;
           min-width: 0;
+          overflow: hidden;
         }
-        .tx-hero-count {
-          font-size: .75rem; font-weight: 600;
+        .tx-stat-count {
+          font-size: .75rem;
+          font-weight: 600;
           color: var(--muted);
           white-space: nowrap;
+          flex-shrink: 0;
         }
-        .tx-hero-badge-income {
-          font-size: .73rem; font-weight: 700;
-          color: var(--green, #16a34a);
-          background: var(--green-lt, #dcfce7);
+        .tx-stat-in {
+          font-size: .72rem; font-weight: 700;
+          color: #15803d;
+          background: #dcfce7;
           padding: 2px 8px; border-radius: 20px;
-          white-space: nowrap;
+          white-space: nowrap; flex-shrink: 0;
         }
-        .tx-hero-badge-expense {
-          font-size: .73rem; font-weight: 700;
+        .tx-stat-out {
+          font-size: .72rem; font-weight: 700;
           color: #dc2626;
           background: #fee2e2;
           padding: 2px 8px; border-radius: 20px;
-          white-space: nowrap;
+          white-space: nowrap; flex-shrink: 0;
         }
-        .tx-action-bar-btns { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+        /* dark theme overrides */
+        .dark .tx-stat-in  { background: rgba(74,222,128,.18); color: #86efac; }
+        .dark .tx-stat-out { background: rgba(248,113,113,.18); color: #fca5a5; }
 
-        /* ── Collapsible filter panel ── */
-        .tx-filter-panel {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: var(--tx-radius);
-          margin-bottom: 12px;
-          overflow: hidden;
-          transition: border-color .15s;
-        }
-        .tx-filter-panel:focus-within { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-
-        /* Top row: search + toggle button */
-        .tx-filter-top {
+        #tx-topbar-actions {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 10px;
+          gap: 5px;
+          flex-shrink: 0;
         }
-        .tx-filter-top .tx-search-wrap {
+
+        /* ── Filter bar: search + toggles, ONE line ── */
+        #tx-filterbar {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 10px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--tx-r);
+          padding: 7px 10px;
+        }
+        #tx-filterbar .tx-search-wrap {
           flex: 1;
+          min-width: 0;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg2);
-          padding: 6px 10px;
+          padding: 5px 10px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
-        .tx-filter-top .tx-search-wrap:focus-within {
+        #tx-filterbar .tx-search-wrap:focus-within {
           border-color: var(--accent);
           box-shadow: 0 0 0 2px var(--accent-lt);
         }
+        #tx-filterbar .tx-search-input {
+          border: none; background: transparent; outline: none;
+          font-size: .82rem; color: var(--text); width: 100%;
+          font-family: inherit;
+        }
+        #tx-filterbar .tx-search-input::placeholder { color: var(--muted); }
 
-        /* Toggle filters button */
-        .tx-filter-toggle-btn {
-          display: inline-flex; align-items: center; gap: 4px;
-          padding: 6px 10px; border-radius: 8px; font-size: .75rem; font-weight: 600;
+        /* Icon-only buttons in filterbar */
+        .tx-fb-btn {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 32px; height: 32px; border-radius: 8px;
           border: 1.5px solid var(--border); background: var(--surface2);
-          color: var(--muted); cursor: pointer; font-family: inherit;
-          white-space: nowrap; transition: all .15s; flex-shrink: 0;
+          color: var(--muted); cursor: pointer; flex-shrink: 0;
+          transition: all .15s;
         }
-        .tx-filter-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .tx-filter-toggle-btn.has-active {
-          border-color: var(--accent);
-          background: var(--accent-lt);
-          color: var(--accent);
-        }
-        .tx-filter-toggle-btn svg {
-          transition: transform .2s;
-        }
-        .tx-filter-toggle-btn.open svg { transform: rotate(180deg); }
+        .tx-fb-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+        .tx-fb-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .tx-fb-btn.has-filters { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
 
-        /* View toggle in top row */
-        .tx-view-btns-top {
-          border: 1.5px solid var(--border);
-          border-radius: 8px;
+        /* Divider between filterbar icon groups */
+        .tx-fb-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+        /* ── Collapsible filters panel ── */
+        #tx-filters-panel {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--tx-r);
+          margin-bottom: 10px;
           overflow: hidden;
+          display: none; /* hidden by default */
+        }
+        #tx-filters-panel.open { display: block; }
+        #tx-filters-panel-inner {
+          padding: 10px 12px 12px;
           display: flex;
-          flex-shrink: 0;
-        }
-        .tx-view-btns-top .tx-view-btn {
-          padding: 5px 8px;
-          background: transparent;
-          border: none;
-          color: var(--muted);
-          cursor: pointer;
-          transition: background .12s, color .12s;
-          display: flex; align-items: center;
-        }
-        .tx-view-btns-top .tx-view-btn.active { background: var(--accent); color: #fff; }
-        .tx-view-btns-top .tx-view-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
-
-        /* Collapsible filters body */
-        .tx-filters-body {
-          border-top: 1px solid var(--border);
-          padding: 10px 10px 12px;
-          display: none; /* starts collapsed */
-        }
-        .tx-filters-body.open { display: block; }
-
-        .tx-selects-row {
-          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
           gap: 6px;
           align-items: center;
-          flex-wrap: wrap;
         }
         .tx-chip-select {
           border-radius: 20px;
@@ -883,69 +880,53 @@
           transition: all .15s;
           white-space: nowrap;
           font-family: inherit;
+          -webkit-appearance: none;
+          appearance: none;
         }
         .tx-chip-select:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
         .tx-chip-select:focus { outline: none; border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 2px var(--accent-lt); }
         .tx-chip-select.is-active { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); font-weight: 700; }
 
-        .tx-reconcile-pill {
-          display: inline-flex; align-items: center; gap: 5px;
-          padding: 5px 11px; border-radius: 20px; font-size: .76rem; font-weight: 600;
+        .tx-reconcile-chip {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 5px 10px; border-radius: 20px; font-size: .75rem; font-weight: 600;
           border: 1.5px solid var(--border); background: transparent;
           color: var(--muted); cursor: pointer; font-family: inherit;
           white-space: nowrap; transition: all .15s;
         }
-        .tx-reconcile-pill:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
+        .tx-reconcile-chip:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
 
-        /* ── Fix grouped view mobile layout ── */
+        /* ── Fix grouped view: table-layout fixed, no overflow ── */
+        .tx-group-card__body .table-wrap { overflow-x: hidden; }
         .tx-group-card__body table {
-          width: 100%;
-          table-layout: fixed;
+          width: 100% !important;
+          table-layout: fixed !important;
         }
-        .tx-group-card__body .tx-v2-date {
-          width: 52px;
-          padding: 8px 4px 8px 10px;
-        }
-        .tx-group-card__body .tx-v2-body {
-          overflow: hidden;
-          padding: 8px 4px;
-        }
-        .tx-group-card__body .tx-v2-right {
-          width: 90px;
-          padding: 8px 10px 8px 4px;
-          text-align: right;
-        }
+        .tx-group-card__body .tx-v2-date  { width: 52px; padding: 8px 4px 8px 12px; }
+        .tx-group-card__body .tx-v2-body  { overflow: hidden; padding: 8px 6px; }
+        .tx-group-card__body .tx-v2-right { width: 90px; padding: 8px 12px 8px 4px; text-align: right; }
         .tx-group-card__body .tx-v2-desc-text {
-          display: block;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 100%;
+          display: block; overflow: hidden;
+          text-overflow: ellipsis; white-space: nowrap;
         }
-        .tx-group-card__body .tx-v2-amt {
-          font-size: .82rem;
-          white-space: nowrap;
-        }
-        .tx-group-card__body .tx-v2-brl {
-          font-size: .7rem;
-          white-space: nowrap;
-        }
-        @media (max-width: 400px) {
-          .tx-group-card__body .tx-v2-right { width: 80px; }
-          .tx-group-card__body .tx-v2-amt { font-size: .78rem; }
+        .tx-group-card__body .tx-v2-amt  { font-size: .82rem; white-space: nowrap; }
+        .tx-group-card__body .tx-v2-brl  { font-size: .69rem; white-space: nowrap; display: block; }
+        @media (max-width: 380px) {
+          .tx-group-card__body .tx-v2-right { width: 76px; }
+          .tx-group-card__body .tx-v2-amt   { font-size: .77rem; }
         }
       </style>
 
-      <!-- Compact action bar -->
-      <div class="tx-action-bar">
-        <div class="tx-action-bar-stats">
-          <span id="txCount" class="tx-hero-count"></span>
-          <span id="txTotalIncome"  class="tx-hero-badge-income"></span>
-          <span id="txTotalExpense" class="tx-hero-badge-expense"></span>
+      <!-- ── Topbar: stats + action buttons ── -->
+      <div id="tx-topbar">
+        <div id="tx-topbar-stats">
+          <span id="txCount" class="tx-stat-count"></span>
+          <span id="txTotalIncome"  class="tx-stat-in"></span>
+          <span id="txTotalExpense" class="tx-stat-out"></span>
         </div>
-        <div class="tx-action-bar-btns">
-          <button class="btn btn-ghost btn-sm" onclick="openTxClipboardImport()" title="Importar do clipboard" style="padding:6px 10px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+        <div id="tx-topbar-actions">
+          <button class="btn btn-ghost btn-sm" style="padding:5px 9px" onclick="openTxClipboardImport()" title="Clipboard">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
           </button>
           <button class="btn btn-primary btn-sm" onclick="openTransactionModal()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -954,66 +935,63 @@
         </div>
       </div>
 
-      <!-- Collapsible filter panel -->
-      <div class="tx-filter-panel" id="txFilterPanel">
-        <!-- Top row: search + controls always visible -->
-        <div class="tx-filter-top">
-          <div class="tx-search-wrap">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="txSearch" placeholder="Buscar transação…" oninput="filterTransactions()" class="tx-search-input">
-          </div>
-          <div class="tx-view-btns-top">
-            <button class="tx-view-btn active" id="viewBtnFlat"  onclick="setTxView('flat')"  title="Lista">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
-            <button class="tx-view-btn" id="viewBtnGroup" onclick="setTxView('group')" title="Por conta">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            </button>
-          </div>
-          <button class="tx-filter-toggle-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-            Filtros
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
+      <!-- ── Filter bar: always visible, ONE line ── -->
+      <div id="tx-filterbar">
+        <div class="tx-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="txSearch" placeholder="Buscar…" oninput="filterTransactions()" class="tx-search-input">
         </div>
+        <div class="tx-fb-sep"></div>
+        <!-- View toggle -->
+        <button class="tx-fb-btn active" id="viewBtnFlat" onclick="setTxView('flat')" title="Lista">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <button class="tx-fb-btn" id="viewBtnGroup" onclick="setTxView('group')" title="Por conta">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+        <div class="tx-fb-sep"></div>
+        <!-- Filter toggle -->
+        <button class="tx-fb-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        </button>
+      </div>
 
-        <!-- Collapsible filters body (hidden by default) -->
-        <div class="tx-filters-body" id="txFiltersBody">
-          <div class="tx-selects-row">
-            <select id="txMonth" onchange="filterTransactions(true)" class="tx-chip-select"></select>
-            <select id="txAccount" onchange="filterTransactions(true)" class="tx-chip-select">
-              <option value="">Todas as contas</option>
+      <!-- ── Collapsible filters panel (hidden by default) ── -->
+      <div id="tx-filters-panel">
+        <div id="tx-filters-panel-inner">
+          <select id="txMonth" onchange="filterTransactions(true)" class="tx-chip-select"></select>
+          <select id="txAccount" onchange="filterTransactions(true)" class="tx-chip-select">
+            <option value="">Todas as contas</option>
+          </select>
+          <div id="txCatFilterWrap">
+            <select id="txCategoryFilter" onchange="filterTransactions(true)" class="tx-chip-select">
+              <option value="">Categoria</option>
             </select>
-            <div id="txCatFilterWrap">
-              <select id="txCategoryFilter" onchange="filterTransactions(true)" class="tx-chip-select">
-                <option value="">Categoria</option>
-              </select>
-            </div>
-            <select id="txType" onchange="filterTransactions(true)" class="tx-chip-select">
-              <option value="">Tipo</option>
-              <option value="income">💰 Receitas</option>
-              <option value="expense">💸 Despesas</option>
-              <option value="transfer">🔄 Transferências</option>
-              <option value="card_payment">💳 Pgto. Cartão</option>
+          </div>
+          <select id="txType" onchange="filterTransactions(true)" class="tx-chip-select">
+            <option value="">Tipo</option>
+            <option value="income">💰 Receitas</option>
+            <option value="expense">💸 Despesas</option>
+            <option value="transfer">🔄 Transferências</option>
+            <option value="card_payment">💳 Pgto. Cartão</option>
+          </select>
+          <select id="txStatusFilter" onchange="filterTransactions(true)" class="tx-chip-select">
+            <option value="">Status</option>
+            <option value="pending">⏳ Pendentes</option>
+            <option value="confirmed">✅ Confirmadas</option>
+          </select>
+          <button id="btnEnterReconcile" class="tx-reconcile-chip" onclick="enterReconcileMode()">
+            ⚖️ Reconciliar
+          </button>
+          <div id="txMemberFilterWrap" style="display:none">
+            <select id="txMemberPicker" class="tx-chip-select" onchange="filterTransactions(true)" title="Membro">
+              <option value="">👤 Todos</option>
             </select>
-            <select id="txStatusFilter" onchange="filterTransactions(true)" class="tx-chip-select">
-              <option value="">Status</option>
-              <option value="pending">⏳ Pendentes</option>
-              <option value="confirmed">✅ Confirmadas</option>
-            </select>
-            <button id="btnEnterReconcile" class="tx-reconcile-pill" onclick="enterReconcileMode()">
-              ⚖️ Reconciliar
-            </button>
-            <div id="txMemberFilterWrap" style="display:none">
-              <select id="txMemberPicker" class="tx-chip-select" onchange="filterTransactions(true)" title="Membro">
-                <option value="">👤 Todos</option>
-              </select>
-            </div>
           </div>
         </div>
       </div>
 
-      <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+            <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
 
       <!-- ── Reconcile Mode Banner ─────────────────────────────── -->
       <div id="reconcileBanner" style="display:none">
@@ -2825,36 +2803,157 @@
         </div>
       </div>
 
-      <!-- Filters -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-        <input type="text" id="pricesSearch" placeholder="🔍 Buscar item…"
-               oninput="pricesSearch(this.value)"
-               style="flex:1;min-width:180px;font-size:.85rem">
-        <select id="pricesCatFilter" onchange="pricesCatFilter(this.value)"
-                style="font-size:.85rem;min-width:160px">
-          <option value="">Todas as categorias</option>
-        </select>
-        <select id="pxSubcatFilter" onchange="pricesSubcatFilter(this.value)"
-                style="font-size:.85rem;min-width:160px">
-          <option value="">Todas as subcategorias</option>
-        </select>
-        <select id="pxTypeFilter" onchange="pricesTypeFilter(this.value)"
-                style="font-size:.85rem;min-width:140px" disabled>
-          <option value="">Todos os tipos</option>
-        </select>
-        <select id="pricesStoreFilter" onchange="pricesStoreFilter(this.value)"
-                style="font-size:.85rem;min-width:160px">
-          <option value="">Todos os estabelecimentos</option>
-        </select>
-        <!-- Group-by toggle -->
-        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0">
-          <button id="pxGroupNone"   onclick="pricesSetGroup('')"       class="px-group-btn active" title="Sem agrupamento">Lista</button>
-          <button id="pxGroupCat"    onclick="pricesSetGroup('cat')"    class="px-group-btn"        title="Agrupar por categoria">Categoria</button>
-          <button id="pxGroupSubcat" onclick="pricesSetGroup('subcat')" class="px-group-btn"        title="Agrupar por subcategoria">Subcategoria</button>
-          <button id="pxGroupStore"  onclick="pricesSetGroup('store')"  class="px-group-btn"        title="Agrupar por estabelecimento">Loja</button>
+      <style>
+        /* ── Prices page filter bar ── */
+        #px-filterbar {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 10px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 7px 10px;
+        }
+        #px-filterbar .px-search-wrap {
+          flex: 1; min-width: 0;
+          display: flex; align-items: center; gap: 6px;
+          background: var(--bg2); border: 1.5px solid var(--border);
+          border-radius: 8px; padding: 5px 10px;
+          transition: border-color .15s;
+        }
+        #px-filterbar .px-search-wrap:focus-within {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 2px var(--accent-lt);
+        }
+        #px-filterbar .px-search-input {
+          border: none; background: transparent; outline: none;
+          font-size: .82rem; color: var(--text); width: 100%; font-family: inherit;
+        }
+        #px-filterbar .px-search-input::placeholder { color: var(--muted); }
+        .px-fb-btn {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 32px; height: 32px; border-radius: 8px;
+          border: 1.5px solid var(--border); background: var(--surface2);
+          color: var(--muted); cursor: pointer; flex-shrink: 0; transition: all .15s;
+        }
+        .px-fb-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+        .px-fb-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .px-fb-btn.has-filters { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
+        .px-fb-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+        .px-count-badge {
+          font-size: .72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0;
+        }
+        /* Collapsible filters panel */
+        #px-filters-panel {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          margin-bottom: 10px;
+          overflow: hidden;
+          display: none;
+        }
+        #px-filters-panel.open { display: block; }
+        #px-filters-inner {
+          padding: 10px 12px 12px;
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: center;
+        }
+        .px-filter-select {
+          border-radius: 20px;
+          border: 1.5px solid var(--border);
+          background: transparent;
+          color: var(--muted);
+          font-size: .76rem; font-weight: 600;
+          padding: 5px 10px;
+          cursor: pointer;
+          transition: all .15s;
+          white-space: nowrap;
+          font-family: inherit;
+        }
+        .px-filter-select:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
+        .px-filter-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-lt); }
+        .px-filter-select.is-active { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); font-weight: 700; }
+        /* Group-by pills inside filter panel */
+        .px-group-wrap {
+          display: flex; gap: 0;
+          border: 1.5px solid var(--border);
+          border-radius: 20px; overflow: hidden; flex-shrink: 0;
+        }
+        .px-group-btn {
+          padding: 5px 11px; font-size: .74rem; font-weight: 600;
+          border: none; background: transparent; cursor: pointer;
+          color: var(--muted); font-family: inherit; white-space: nowrap;
+          transition: background .12s, color .12s;
+        }
+        .px-group-btn:not(:last-child) { border-right: 1px solid var(--border); }
+        .px-group-btn.active { background: var(--accent); color: #fff; }
+        .px-group-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+      </style>
+
+      <!-- Filter bar: search + group toggle + filter toggle -->
+      <div id="px-filterbar">
+        <div class="px-search-wrap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="pricesSearch" class="px-search-input" placeholder="Buscar item…" oninput="pricesSearch(this.value); _pxUpdateFilterBadge()">
         </div>
-        <span id="pricesCount" style="font-size:.78rem;color:var(--muted);white-space:nowrap;align-self:center"></span>
+        <span id="pricesCount" class="px-count-badge"></span>
+        <div class="px-fb-sep"></div>
+        <button class="px-fb-btn" id="pxFilterToggle" onclick="_pxToggleFilters()" title="Filtros">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        </button>
       </div>
+
+      <!-- Collapsible filters + group-by -->
+      <div id="px-filters-panel">
+        <div id="px-filters-inner">
+          <select id="pricesCatFilter" class="px-filter-select" onchange="pricesCatFilter(this.value); _pxUpdateFilterBadge()">
+            <option value="">Todas as categorias</option>
+          </select>
+          <select id="pxSubcatFilter" class="px-filter-select" onchange="pricesSubcatFilter(this.value); _pxUpdateFilterBadge()">
+            <option value="">Todas as subcategorias</option>
+          </select>
+          <select id="pxTypeFilter" class="px-filter-select" onchange="pricesTypeFilter(this.value); _pxUpdateFilterBadge()" disabled>
+            <option value="">Todos os tipos</option>
+          </select>
+          <select id="pricesStoreFilter" class="px-filter-select" onchange="pricesStoreFilter(this.value); _pxUpdateFilterBadge()">
+            <option value="">Todos os estabelecimentos</option>
+          </select>
+          <div class="px-group-wrap">
+            <button id="pxGroupNone"   onclick="pricesSetGroup('')"       class="px-group-btn active">Lista</button>
+            <button id="pxGroupCat"    onclick="pricesSetGroup('cat')"    class="px-group-btn">Categoria</button>
+            <button id="pxGroupSubcat" onclick="pricesSetGroup('subcat')" class="px-group-btn">Subcat.</button>
+            <button id="pxGroupStore"  onclick="pricesSetGroup('store')"  class="px-group-btn">Loja</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        function _pxToggleFilters() {
+          const panel = document.getElementById('px-filters-panel');
+          const btn   = document.getElementById('pxFilterToggle');
+          if (!panel) return;
+          const open = panel.classList.toggle('open');
+          if (btn) btn.classList.toggle('active', open);
+        }
+        function _pxUpdateFilterBadge() {
+          const btn = document.getElementById('pxFilterToggle');
+          if (!btn) return;
+          const hasFilter = [
+            document.getElementById('pricesCatFilter')?.value,
+            document.getElementById('pxSubcatFilter')?.value,
+            document.getElementById('pxTypeFilter')?.value,
+            document.getElementById('pricesStoreFilter')?.value,
+            document.getElementById('pricesSearch')?.value,
+          ].some(Boolean);
+          btn.classList.toggle('has-filters', hasFilter);
+        }
+        window._pxToggleFilters    = _pxToggleFilters;
+        window._pxUpdateFilterBadge = _pxUpdateFilterBadge;
+      </script>
 
       <div id="pricesHero" class="px-hero-strip" style="display:none;margin-bottom:14px"></div>
 
