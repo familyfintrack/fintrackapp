@@ -752,142 +752,101 @@
         /* ── Transactions modern redesign ── */
         #page-transactions { --tx-radius: 14px; }
 
-        /* Hero header */
-        .tx-hero {
-          background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 65%, #0d2e1e) 100%);
-          border-radius: var(--tx-radius);
-          padding: 14px 18px;
-          margin-bottom: 14px;
+        /* ── Compact action bar (replaces the tall hero on mobile) ── */
+        .tx-action-bar {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          position: relative;
-          overflow: hidden;
+          gap: 8px;
+          margin-bottom: 10px;
         }
-        .tx-hero::before {
-          content: '';
-          position: absolute; inset: 0;
-          background: radial-gradient(ellipse 60% 80% at 95% 50%, rgba(255,255,255,.07), transparent);
-          pointer-events: none;
+        .tx-action-bar-stats {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+          min-width: 0;
         }
-        .tx-hero-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .tx-hero-icon {
-          width: 38px; height: 38px; border-radius: 10px;
-          background: rgba(255,255,255,.15);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.2rem; flex-shrink: 0;
-        }
-        .tx-hero-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .tx-hero-count {
-          font-size: .8rem; font-weight: 600;
-          color: rgba(255,255,255,.8);
-          background: rgba(255,255,255,.12);
-          padding: 3px 9px; border-radius: 20px;
+          font-size: .75rem; font-weight: 600;
+          color: var(--muted);
+          white-space: nowrap;
         }
         .tx-hero-badge-income {
-          font-size: .78rem; font-weight: 700;
-          color: #fff;
-          background: rgba(74,222,128,.25);
-          border: 1px solid rgba(74,222,128,.4);
-          padding: 3px 9px; border-radius: 20px;
+          font-size: .73rem; font-weight: 700;
+          color: var(--green, #16a34a);
+          background: var(--green-lt, #dcfce7);
+          padding: 2px 8px; border-radius: 20px;
+          white-space: nowrap;
         }
         .tx-hero-badge-expense {
-          font-size: .78rem; font-weight: 700;
-          color: #fff;
-          background: rgba(248,113,113,.25);
-          border: 1px solid rgba(248,113,113,.4);
-          padding: 3px 9px; border-radius: 20px;
+          font-size: .73rem; font-weight: 700;
+          color: #dc2626;
+          background: #fee2e2;
+          padding: 2px 8px; border-radius: 20px;
+          white-space: nowrap;
         }
-        .tx-hero-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-        .tx-hero-btn {
-          display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 12px; border-radius: 8px; font-size: .77rem; font-weight: 600;
-          border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12);
-          color: #fff; cursor: pointer; font-family: inherit;
-          transition: background .15s;
-        }
-        .tx-hero-btn:hover { background: rgba(255,255,255,.22); }
-        .tx-hero-btn-primary {
-          background: rgba(255,255,255,.95); color: var(--accent); border-color: transparent;
-        }
-        .tx-hero-btn-primary:hover { background: #fff; }
+        .tx-action-bar-btns { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
 
-        /* Filter section */
-        .tx-filter-section {
+        /* ── Collapsible filter panel ── */
+        .tx-filter-panel {
           background: var(--surface);
           border: 1px solid var(--border);
           border-radius: var(--tx-radius);
-          padding: 12px 14px;
           margin-bottom: 12px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
+          overflow: hidden;
+          transition: border-color .15s;
         }
-        .tx-filter-section .tx-search-wrap {
-          border-radius: 10px;
+        .tx-filter-panel:focus-within { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+
+        /* Top row: search + toggle button */
+        .tx-filter-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 10px;
+        }
+        .tx-filter-top .tx-search-wrap {
+          flex: 1;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg2);
+          padding: 6px 10px;
         }
-        .tx-filter-section .tx-search-wrap:focus-within {
+        .tx-filter-top .tx-search-wrap:focus-within {
           border-color: var(--accent);
           box-shadow: 0 0 0 2px var(--accent-lt);
         }
-        .tx-selects-row {
-          display: flex;
-          gap: 6px;
-          align-items: center;
-          flex-wrap: wrap;
+
+        /* Toggle filters button */
+        .tx-filter-toggle-btn {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 6px 10px; border-radius: 8px; font-size: .75rem; font-weight: 600;
+          border: 1.5px solid var(--border); background: var(--surface2);
+          color: var(--muted); cursor: pointer; font-family: inherit;
+          white-space: nowrap; transition: all .15s; flex-shrink: 0;
         }
-        /* Override chip-select to look more polished */
-        .tx-filter-section .tx-chip-select {
-          border-radius: 20px;
-          border: 1.5px solid var(--border);
-          background: transparent;
-          color: var(--muted);
-          font-size: .77rem;
-          font-weight: 600;
-          padding: 5px 11px;
-          cursor: pointer;
-          transition: all .15s;
-          white-space: nowrap;
-        }
-        .tx-filter-section .tx-chip-select:hover {
-          border-color: var(--accent);
-          color: var(--text);
-          background: var(--surface2);
-        }
-        .tx-filter-section .tx-chip-select:focus {
-          outline: none;
-          border-color: var(--accent);
-          color: var(--text);
-          box-shadow: 0 0 0 2px var(--accent-lt);
-        }
-        .tx-filter-section .tx-chip-select.is-active {
+        .tx-filter-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .tx-filter-toggle-btn.has-active {
           border-color: var(--accent);
           background: var(--accent-lt);
           color: var(--accent);
-          font-weight: 700;
         }
-        .tx-reconcile-pill {
-          display: inline-flex; align-items: center; gap: 5px;
-          padding: 5px 12px; border-radius: 20px; font-size: .77rem; font-weight: 600;
-          border: 1.5px solid var(--border); background: transparent;
-          color: var(--muted); cursor: pointer; font-family: inherit;
-          white-space: nowrap; transition: all .15s;
+        .tx-filter-toggle-btn svg {
+          transition: transform .2s;
         }
-        .tx-reconcile-pill:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
-        /* View toggle inside filter section */
-        .tx-filter-section .tx-view-btns {
-          margin-left: auto;
+        .tx-filter-toggle-btn.open svg { transform: rotate(180deg); }
+
+        /* View toggle in top row */
+        .tx-view-btns-top {
           border: 1.5px solid var(--border);
           border-radius: 8px;
           overflow: hidden;
           display: flex;
           flex-shrink: 0;
         }
-        .tx-filter-section .tx-view-btn {
-          padding: 5px 9px;
+        .tx-view-btns-top .tx-view-btn {
+          padding: 5px 8px;
           background: transparent;
           border: none;
           color: var(--muted);
@@ -895,75 +854,161 @@
           transition: background .12s, color .12s;
           display: flex; align-items: center;
         }
-        .tx-filter-section .tx-view-btn.active { background: var(--accent); color: #fff; }
-        .tx-filter-section .tx-view-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+        .tx-view-btns-top .tx-view-btn.active { background: var(--accent); color: #fff; }
+        .tx-view-btns-top .tx-view-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+        /* Collapsible filters body */
+        .tx-filters-body {
+          border-top: 1px solid var(--border);
+          padding: 10px 10px 12px;
+          display: none; /* starts collapsed */
+        }
+        .tx-filters-body.open { display: block; }
+
+        .tx-selects-row {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        .tx-chip-select {
+          border-radius: 20px;
+          border: 1.5px solid var(--border);
+          background: transparent;
+          color: var(--muted);
+          font-size: .76rem;
+          font-weight: 600;
+          padding: 5px 10px;
+          cursor: pointer;
+          transition: all .15s;
+          white-space: nowrap;
+          font-family: inherit;
+        }
+        .tx-chip-select:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
+        .tx-chip-select:focus { outline: none; border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 2px var(--accent-lt); }
+        .tx-chip-select.is-active { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); font-weight: 700; }
+
+        .tx-reconcile-pill {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 5px 11px; border-radius: 20px; font-size: .76rem; font-weight: 600;
+          border: 1.5px solid var(--border); background: transparent;
+          color: var(--muted); cursor: pointer; font-family: inherit;
+          white-space: nowrap; transition: all .15s;
+        }
+        .tx-reconcile-pill:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
+
+        /* ── Fix grouped view mobile layout ── */
+        .tx-group-card__body table {
+          width: 100%;
+          table-layout: fixed;
+        }
+        .tx-group-card__body .tx-v2-date {
+          width: 52px;
+          padding: 8px 4px 8px 10px;
+        }
+        .tx-group-card__body .tx-v2-body {
+          overflow: hidden;
+          padding: 8px 4px;
+        }
+        .tx-group-card__body .tx-v2-right {
+          width: 90px;
+          padding: 8px 10px 8px 4px;
+          text-align: right;
+        }
+        .tx-group-card__body .tx-v2-desc-text {
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100%;
+        }
+        .tx-group-card__body .tx-v2-amt {
+          font-size: .82rem;
+          white-space: nowrap;
+        }
+        .tx-group-card__body .tx-v2-brl {
+          font-size: .7rem;
+          white-space: nowrap;
+        }
+        @media (max-width: 400px) {
+          .tx-group-card__body .tx-v2-right { width: 80px; }
+          .tx-group-card__body .tx-v2-amt { font-size: .78rem; }
+        }
       </style>
 
-      <!-- Hero header -->
-      <div class="tx-hero">
-        <div class="tx-hero-left">
-          <div class="tx-hero-icon">💸</div>
-          <div class="tx-hero-stats">
-            <span id="txCount" class="tx-hero-count"></span>
-            <span id="txTotalIncome"  class="tx-hero-badge-income"></span>
-            <span id="txTotalExpense" class="tx-hero-badge-expense"></span>
-          </div>
+      <!-- Compact action bar -->
+      <div class="tx-action-bar">
+        <div class="tx-action-bar-stats">
+          <span id="txCount" class="tx-hero-count"></span>
+          <span id="txTotalIncome"  class="tx-hero-badge-income"></span>
+          <span id="txTotalExpense" class="tx-hero-badge-expense"></span>
         </div>
-        <div class="tx-hero-right">
-          <button class="tx-hero-btn" onclick="openTxClipboardImport()" title="Importar do clipboard">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
-            Clipboard
+        <div class="tx-action-bar-btns">
+          <button class="btn btn-ghost btn-sm" onclick="openTxClipboardImport()" title="Importar do clipboard" style="padding:6px 10px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
           </button>
-          <button class="tx-hero-btn tx-hero-btn-primary" onclick="openTransactionModal()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button class="btn btn-primary btn-sm" onclick="openTransactionModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nova
           </button>
         </div>
       </div>
 
-      <!-- Filter section -->
-      <div class="tx-filter-section">
-        <div class="tx-search-wrap">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="txSearch" placeholder="Buscar transação…" oninput="filterTransactions()" class="tx-search-input">
-        </div>
-        <div class="tx-selects-row">
-          <select id="txMonth" onchange="filterTransactions(true)" class="tx-chip-select"></select>
-          <select id="txAccount" onchange="filterTransactions(true)" class="tx-chip-select">
-            <option value="">Todas as contas</option>
-          </select>
-          <div id="txCatFilterWrap">
-            <select id="txCategoryFilter" onchange="filterTransactions(true)" class="tx-chip-select">
-              <option value="">Categoria</option>
-            </select>
+      <!-- Collapsible filter panel -->
+      <div class="tx-filter-panel" id="txFilterPanel">
+        <!-- Top row: search + controls always visible -->
+        <div class="tx-filter-top">
+          <div class="tx-search-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="txSearch" placeholder="Buscar transação…" oninput="filterTransactions()" class="tx-search-input">
           </div>
-          <select id="txType" onchange="filterTransactions(true)" class="tx-chip-select">
-            <option value="">Tipo</option>
-            <option value="income">💰 Receitas</option>
-            <option value="expense">💸 Despesas</option>
-            <option value="transfer">🔄 Transferências</option>
-            <option value="card_payment">💳 Pgto. Cartão</option>
-          </select>
-          <select id="txStatusFilter" onchange="filterTransactions(true)" class="tx-chip-select">
-            <option value="">Status</option>
-            <option value="pending">⏳ Pendentes</option>
-            <option value="confirmed">✅ Confirmadas</option>
-          </select>
-          <button id="btnEnterReconcile" class="tx-reconcile-pill" onclick="enterReconcileMode()">
-            ⚖️ Reconciliar
-          </button>
-          <div id="txMemberFilterWrap" style="display:none">
-            <select id="txMemberPicker" class="tx-chip-select" onchange="filterTransactions(true)" title="Filtrar por membro">
-              <option value="">👤 Todos</option>
-            </select>
-          </div>
-          <div class="tx-view-btns">
-            <button class="tx-view-btn active" id="viewBtnFlat"  onclick="setTxView('flat')"  title="Lista plana">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <div class="tx-view-btns-top">
+            <button class="tx-view-btn active" id="viewBtnFlat"  onclick="setTxView('flat')"  title="Lista">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <button class="tx-view-btn" id="viewBtnGroup" onclick="setTxView('group')" title="Por conta">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             </button>
+          </div>
+          <button class="tx-filter-toggle-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+            Filtros
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+
+        <!-- Collapsible filters body (hidden by default) -->
+        <div class="tx-filters-body" id="txFiltersBody">
+          <div class="tx-selects-row">
+            <select id="txMonth" onchange="filterTransactions(true)" class="tx-chip-select"></select>
+            <select id="txAccount" onchange="filterTransactions(true)" class="tx-chip-select">
+              <option value="">Todas as contas</option>
+            </select>
+            <div id="txCatFilterWrap">
+              <select id="txCategoryFilter" onchange="filterTransactions(true)" class="tx-chip-select">
+                <option value="">Categoria</option>
+              </select>
+            </div>
+            <select id="txType" onchange="filterTransactions(true)" class="tx-chip-select">
+              <option value="">Tipo</option>
+              <option value="income">💰 Receitas</option>
+              <option value="expense">💸 Despesas</option>
+              <option value="transfer">🔄 Transferências</option>
+              <option value="card_payment">💳 Pgto. Cartão</option>
+            </select>
+            <select id="txStatusFilter" onchange="filterTransactions(true)" class="tx-chip-select">
+              <option value="">Status</option>
+              <option value="pending">⏳ Pendentes</option>
+              <option value="confirmed">✅ Confirmadas</option>
+            </select>
+            <button id="btnEnterReconcile" class="tx-reconcile-pill" onclick="enterReconcileMode()">
+              ⚖️ Reconciliar
+            </button>
+            <div id="txMemberFilterWrap" style="display:none">
+              <select id="txMemberPicker" class="tx-chip-select" onchange="filterTransactions(true)" title="Membro">
+                <option value="">👤 Todos</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -1408,12 +1453,12 @@
         .py2-hero {
           background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 65%, #0d2e1e) 100%);
           border-radius: var(--py-radius);
-          padding: 14px 18px;
-          margin-bottom: 14px;
+          padding: 10px 14px;
+          margin-bottom: 12px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
+          gap: 10px;
           position: relative;
           overflow: hidden;
         }
@@ -1424,19 +1469,17 @@
           background: radial-gradient(ellipse 60% 80% at 95% 50%, rgba(255,255,255,.07), transparent);
           pointer-events: none;
         }
-        .py2-hero-left { display: flex; align-items: center; gap: 10px; }
+        .py2-hero-left { display: flex; align-items: center; gap: 8px; }
         .py2-hero-icon {
-          width: 38px; height: 38px; border-radius: 10px;
+          width: 32px; height: 32px; border-radius: 8px;
           background: rgba(255,255,255,.15);
           display: flex; align-items: center; justify-content: center;
-          font-size: 1.25rem; flex-shrink: 0;
+          font-size: 1.1rem; flex-shrink: 0;
         }
-        .py2-hero-title { font-size: .95rem; font-weight: 800; color: #fff; letter-spacing: -.01em; }
-        .py2-hero-sub { font-size: .71rem; color: rgba(255,255,255,.65); margin-top: 1px; }
         .py2-hero-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .py2-hero-btn {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 12px; border-radius: 8px; font-size: .77rem; font-weight: 600;
+          padding: 6px 11px; border-radius: 8px; font-size: .76rem; font-weight: 600;
           border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12);
           color: #fff; cursor: pointer; font-family: inherit;
           transition: background .15s;
@@ -1498,10 +1541,6 @@
       <div class="py2-hero">
         <div class="py2-hero-left">
           <div class="py2-hero-icon">👥</div>
-          <div>
-            <div class="py2-hero-title">Beneficiários</div>
-            <div class="py2-hero-sub">Lojas, pessoas e fontes pagadoras</div>
-          </div>
         </div>
         <div class="py2-hero-actions">
           <button class="py2-hero-btn" onclick="openNormalizePayeesModal()" title="Padronizar nomes">
