@@ -1468,7 +1468,23 @@ async function runScheduledAutoRegister() {
           if(method==='email' && emailTo && typeof sendScheduledNotification==='function') {
             await sendScheduledNotification(sc, d, result.amount, emailTo);
           }
-        }catch(e){ console.warn('[auto_register notify]', e.message); }
+        }catch(e){ console.warn('[auto_register notify email]', e.message); }
+
+        // WhatsApp notification for processed occurrence
+        try{
+          const waOnProcessed = !!(sc.notify_whatsapp && sc.notify_whatsapp_on_processed);
+          if(waOnProcessed && typeof sendScheduledWhatsappNotification === 'function') {
+            await sendScheduledWhatsappNotification(sc, d, result.amount, 'processed');
+          }
+        }catch(e){ console.warn('[auto_register notify whatsapp]', e.message); }
+
+        // Telegram notification for processed occurrence
+        try{
+          const tgOnProcessed = !!(sc.notify_telegram && sc.notify_telegram_on_processed);
+          if(tgOnProcessed && typeof sendScheduledTelegramNotification === 'function') {
+            await sendScheduledTelegramNotification(sc, d, result.amount, 'processed');
+          }
+        }catch(e){ console.warn('[auto_register notify telegram]', e.message); }
 
         created++;
 

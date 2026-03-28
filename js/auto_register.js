@@ -716,24 +716,41 @@ window.saveTelegramBotToken = async function() {
     return;
   }
   if (dot) dot.style.background = '#22c55e';
-  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Use o botão Testar para verificar.'; }
-  if (document.getElementById('tgBotTestBtn')) document.getElementById('tgBotTestBtn').style.display = '';
+  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Informe o Chat ID abaixo e clique Testar.'; }
+  // Show the test row with chat-id field
+  const testRow = document.getElementById('tgBotTestRow');
+  if (testRow) testRow.style.display = 'flex';
+  // Pre-fill chat id from currentUser if available
+  const chatIdInput = document.getElementById('tgBotTestChatId');
+  if (chatIdInput && !chatIdInput.value) {
+    const knownChatId = String(currentUser?.telegram_chat_id || '').trim();
+    if (knownChatId) {
+      chatIdInput.value = knownChatId;
+      if (document.getElementById('tgBotTestBtn')) document.getElementById('tgBotTestBtn').style.display = '';
+    }
+  }
   toast('Token do Telegram salvo', 'success');
 };
 
 window.testTelegramBotToken = async function() {
+  // Priority: dedicated settings field → profile modal field → currentUser DB field
   const chatId = String(
+    document.getElementById('tgBotTestChatId')?.value ||
     document.getElementById('myProfileTelegramChatId')?.value ||
     currentUser?.telegram_chat_id || ''
   ).trim();
   const statusEl = document.getElementById('tgBotStatus');
   const btn = document.getElementById('tgBotTestBtn');
-  if (!chatId) { toast('Informe o Chat ID no perfil primeiro (aba Notificações)', 'error'); return; }
+  if (!chatId) {
+    toast('Informe o Chat ID no campo acima para testar', 'error');
+    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '⚠️ Informe o Chat ID no campo acima.'; }
+    return;
+  }
   if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   try {
     await _sendTelegramDirect(chatId,
       '✅ <b>FinTrack</b> — Teste de notificação Telegram!\nSe recebeu, as notificações estão funcionando corretamente.');
-    if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Mensagem enviada com sucesso!'; }
+    if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Mensagem enviada com sucesso para o Chat ID ' + chatId + '!'; }
     toast('✅ Telegram OK!', 'success');
   } catch (e) {
     if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '❌ ' + e.message; }
@@ -746,15 +763,26 @@ window.testTelegramBotToken = async function() {
 window._tgBotTokenOnInput = function() {
   const dot    = document.getElementById('tgBotStatusDot');
   const input  = document.getElementById('telegramBotTokenInput');
+  const testRow = document.getElementById('tgBotTestRow');
   const testBtn = document.getElementById('tgBotTestBtn');
   if (dot) dot.style.background = input?.value?.trim() ? '#f59e0b' : '#d1d5db';
+  // Hide test button until token is saved — user must press Salvar first
   if (testBtn) testBtn.style.display = 'none';
+  // But keep the test row visible if it was already showing
+};
+
+window._tgBotChatIdOnInput = function() {
+  const chatIdInput = document.getElementById('tgBotTestChatId');
+  const testBtn = document.getElementById('tgBotTestBtn');
+  if (testBtn) testBtn.style.display = chatIdInput?.value?.trim() ? '' : 'none';
 };
 
 window.loadTelegramBotTokenUI = async function() {
   const input   = document.getElementById('telegramBotTokenInput');
   const dot     = document.getElementById('tgBotStatusDot');
+  const testRow = document.getElementById('tgBotTestRow');
   const testBtn = document.getElementById('tgBotTestBtn');
+  const chatIdInput = document.getElementById('tgBotTestChatId');
   if (!input) return;
   let token = '';
   try { token = (await getAppSetting('telegram_bot_token', '')) || ''; } catch {}
@@ -763,14 +791,53 @@ window.loadTelegramBotTokenUI = async function() {
     try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
     input.value = token;
     if (dot) dot.style.background = '#22c55e';
-    if (testBtn) testBtn.style.display = '';
+    // Pre-fill Chat ID from currentUser if available
+    if (chatIdInput && !chatIdInput.value) {
+      const knownChatId = String(
+        document.getElementById('myProfileTelegramChatId')?.value ||
+        currentUser?.telegram_chat_id || ''
+      ).trim();
+      if (knownChatId) {
+        chatIdInput.value = knownChatId;
+        if (testBtn) testBtn.style.display = '';
+      }
+    }
   }
 };
 
 /* ── Notify on manual/auto transaction ────────────────────────────────────── */
 async function notifyOnTransaction(tx, sc = null) {
   try {
-    const user = typeof currentUser !== 'undefined' ? currentUser : null;
+    // Use currentUser but refresh notify flags from DB to avoid stale cache
+    let user = typeof currentUser !== 'undefined' ? currentUser : null;
+    if (!user) return;
+
+    // Quick refresh of notification prefs from DB (non-blocking, best-effort)
+    try {
+      if (sb && user.id) {
+        const { data: freshUser } = await sb
+          .from('app_users')
+          .select('notify_on_tx,notify_tx_email,notify_tx_wa,notify_tx_tg,telegram_chat_id,whatsapp_number,email')
+          .eq('id', user.id)
+          .single();
+        if (freshUser) {
+          // Merge fresh notification prefs into local user object
+          user = { ...user, ...freshUser };
+          // Also update currentUser in-place so next call is fresh too
+          if (typeof currentUser !== 'undefined' && currentUser) {
+            currentUser.notify_on_tx    = freshUser.notify_on_tx;
+            currentUser.notify_tx_email = freshUser.notify_tx_email;
+            currentUser.notify_tx_wa    = freshUser.notify_tx_wa;
+            currentUser.notify_tx_tg    = freshUser.notify_tx_tg;
+            currentUser.telegram_chat_id = freshUser.telegram_chat_id || currentUser.telegram_chat_id;
+            currentUser.whatsapp_number  = freshUser.whatsapp_number  || currentUser.whatsapp_number;
+          }
+        }
+      }
+    } catch(refreshErr) {
+      console.debug('[notifyTx] could not refresh user prefs:', refreshErr?.message);
+    }
+
     if (!user?.notify_on_tx) return;
 
     const desc    = tx?.description || sc?.description || 'Transação';
@@ -822,13 +889,14 @@ async function notifyOnTransaction(tx, sc = null) {
     }
 
     // Telegram — Edge Function with direct API fallback
-    if (user.notify_tx_tg && user.telegram_chat_id) {
-      const chatId = String(user.telegram_chat_id).trim();
+    if (user.notify_tx_tg) {
+      const chatId = String(user.telegram_chat_id || '').trim();
       if (chatId) {
         promises.push((async () => {
           try {
             const msg = `✅ <b>FinTrack</b>: Transação Registrada\n${msgLines}`;
             await _sendTelegramWithFallback(chatId, msg, { notification_type: 'tx_registered', amount: tx?.amount });
+            console.info('[notifyTx] telegram OK → chatId', chatId);
           } catch(e) {
             console.warn('[notifyTx] telegram all methods failed:', e.message);
             if (state?.currentPage === 'transactions') {
@@ -836,6 +904,8 @@ async function notifyOnTransaction(tx, sc = null) {
             }
           }
         })());
+      } else {
+        console.warn('[notifyTx] notify_tx_tg=true mas telegram_chat_id está vazio. Configure no perfil (aba Notificações).');
       }
     }
 
@@ -856,3 +926,10 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Cross-module exports: scheduled.js calls these by typeof check ─────────
+window.sendScheduledWhatsappNotification = sendScheduledWhatsappNotification;
+window.sendScheduledTelegramNotification = sendScheduledTelegramNotification;
+window.sendScheduledNotification         = typeof sendScheduledNotification === 'function'
+  ? sendScheduledNotification : (window.sendScheduledNotification || null);
+window.runScheduledUpcomingNotifications = runScheduledUpcomingNotifications;
