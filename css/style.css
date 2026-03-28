@@ -20234,35 +20234,6 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   }
 }
 
-@media (min-width: 1025px) {
-  /* Desktop flat view date-grouped: reset all mobile overrides */
-  #page-transactions #txFlatCard #txBody td.tx-v2-date {
-    display: table-cell !important;
-    flex-direction: unset !important;
-    width: 62px !important;
-    min-width: 62px !important;
-    max-width: 62px !important;
-    padding: 8px 8px 8px 12px !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-  }
-  #page-transactions #txFlatCard #txBody td.tx-v2-body {
-    display: table-cell !important;
-    overflow: hidden !important;
-    width: auto !important;
-    padding: 8px 10px !important;
-  }
-  #page-transactions #txFlatCard #txBody td.tx-v2-right {
-    display: table-cell !important;
-    width: 130px !important;
-    min-width: 130px !important;
-    padding: 8px 14px 8px 4px !important;
-    text-align: right !important;
-    vertical-align: middle !important;
-  }
-}
-
-
 
 @media (max-width: 480px) {
   #page-payees .py2-name-cell {
