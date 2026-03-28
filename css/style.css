@@ -4853,6 +4853,21 @@ tr.tx-date-band-alt td.tx-date-header-cell {
   color: var(--text2);
   background: transparent;
 }
+
+/* ── Desktop only: indent date-group label to align with description col ──
+   The date column is 72-78px wide. We shift the label right so it starts
+   at the same horizontal position as the transaction description text.
+   This block is scoped outside any @media so it applies desktop-only;
+   mobile overrides below reset to zero indent.                          ── */
+@media (min-width: 641px) {
+  #page-transactions #txFlatCard td.tx-date-header-cell {
+    padding-left: calc(72px + 16px) !important; /* date-col width + body-col left-pad */
+  }
+  /* Reconcile mode adds a 36px checkbox column before the date column */
+  .reconcile-mode #page-transactions #txFlatCard td.tx-date-header-cell {
+    padding-left: calc(36px + 72px + 16px) !important;
+  }
+}
 /* Row tinting per date band — rows following a band header inherit it */
 tr.tx-date-band ~ tr:not(.tx-date-header-row):not(.tx-pending) {
   background: transparent;
@@ -7831,13 +7846,31 @@ tr.tx-row-new td:first-child {
 
 /* ── Mobile: improved scheduled layout ────────────────────────────────── */
 @media (max-width: 800px) {
-  /* Compact page header — single row */
+  /* Compact page header — stack to avoid horizontal overflow */
   .sc-page-header {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 10px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
-  .sc-view-toggle { gap: 2px; }
+  .sc-page-header__left {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .sc-page-header__right {
+    flex-shrink: 0;
+    margin-left: 0;
+  }
+  .sc-view-toggle {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    gap: 2px;
+  }
   .sc-view-btn { padding: 5px 8px; font-size: .75rem; }
   .sc-view-lbl { display: none; } /* icons only on mobile */
 
@@ -20562,8 +20595,10 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     text-overflow: ellipsis !important;
   }
 
+  /* Date-group header: indent to align with description col in reconcile mode
+     chk=42px + date=84px + body-padding=10px = 136px */
   #page-transactions.reconcile-mode #txMainTable tbody tr.tx-date-header-row td {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    padding-left: calc(42px + 84px + 10px) !important;
+    padding-right: 12px !important;
   }
 }
