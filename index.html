@@ -2483,6 +2483,12 @@
                     style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)"
                     oninput="_tgBotTokenOnInput()">
                   <button class="btn btn-ghost btn-sm" onclick="saveTelegramBotToken()">Salvar</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px;align-items:center" id="tgBotTestRow">
+                  <input type="text" id="tgBotTestChatId"
+                    placeholder="Chat ID para teste (ex: 7540422976)"
+                    style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)"
+                    oninput="_tgBotChatIdOnInput()">
                   <button class="btn btn-ghost btn-sm" onclick="testTelegramBotToken()" id="tgBotTestBtn" style="display:none">🧪 Testar</button>
                 </div>
                 <div id="tgBotStatus" style="font-size:.7rem;margin-top:3px;color:var(--muted)">
