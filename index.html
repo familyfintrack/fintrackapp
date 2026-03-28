@@ -2886,251 +2886,416 @@
     <!-- ══ TELEMETRIA PAGE ══════════════════════════════════════════════════ -->
     <div class="page" id="page-telemetry">
 
-      <!-- ── Estilos responsivos da página de telemetria ── -->
+      <!-- ── Telemetria: estilos modernos ── -->
       <style>
-        .tel-header { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
-        .tel-header-title { font-size:1.1rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
-        .tel-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-        .tel-filters select {
-          font-size:.82rem; padding:6px 10px; border-radius:8px;
-          border:1px solid var(--border); background:var(--surface); color:var(--text);
-          flex:1; min-width:120px; max-width:100%;
+        /* ── Reset e base ── */
+        #page-telemetry { --tel-radius: 14px; --tel-radius-sm: 9px; }
+
+        /* ── Hero header ── */
+        .tel-hero {
+          display:flex; flex-direction:column; gap:14px; margin-bottom:20px;
+          padding:18px 20px; border-radius:var(--tel-radius);
+          background:linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #0d2e1e) 100%);
+          position:relative; overflow:hidden;
         }
-        @media (min-width:640px) {
-          .tel-header { flex-direction:row; align-items:center; justify-content:space-between; }
-          .tel-filters select { flex:0 1 auto; max-width:180px; }
+        .tel-hero::before {
+          content:''; position:absolute; inset:0;
+          background:radial-gradient(ellipse 80% 60% at 90% 50%, rgba(255,255,255,.07) 0%, transparent 70%);
+          pointer-events:none;
         }
-        .tel-tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .tel-hero-top { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+        .tel-hero-title {
+          display:flex; align-items:center; gap:10px;
+          font-size:1.05rem; font-weight:800; color:#fff; letter-spacing:-.01em;
+        }
+        .tel-hero-title svg { opacity:.85; flex-shrink:0; }
+        .tel-hero-subtitle { font-size:.75rem; color:rgba(255,255,255,.65); margin-top:1px; }
+        .tel-hero-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .tel-hero-select {
+          font-size:.8rem; padding:6px 10px; border-radius:8px;
+          border:1.5px solid rgba(255,255,255,.25); background:rgba(255,255,255,.12);
+          color:#fff; cursor:pointer; min-width:100px; backdrop-filter:blur(4px);
+          transition:border-color .15s, background .15s;
+        }
+        .tel-hero-select:focus { outline:none; border-color:rgba(255,255,255,.5); background:rgba(255,255,255,.2); }
+        .tel-hero-select option { background:var(--surface); color:var(--text); }
+        .tel-reload-btn {
+          display:inline-flex; align-items:center; justify-content:center;
+          width:34px; height:34px; border-radius:8px;
+          border:1.5px solid rgba(255,255,255,.25); background:rgba(255,255,255,.12);
+          color:#fff; cursor:pointer; font-size:1rem; transition:background .15s;
+        }
+        .tel-reload-btn:hover { background:rgba(255,255,255,.22); }
+
+        /* ── Tabs ── */
+        .tel-tabs {
+          display:flex; gap:4px; margin-bottom:18px;
+          background:var(--surface2); border-radius:11px; padding:4px;
+          border:1px solid var(--border);
+        }
         .tel-tab-btn {
-          padding:9px 16px; font-size:.83rem; font-weight:600;
+          flex:1; padding:8px 14px; font-size:.81rem; font-weight:600;
           border:none; background:none; cursor:pointer; color:var(--muted);
-          border-bottom:2px solid transparent; margin-bottom:-2px;
-          font-family:var(--font-sans); white-space:nowrap; flex-shrink:0;
+          border-radius:8px; font-family:var(--font-sans); white-space:nowrap;
+          transition:background .15s, color .15s; display:flex; align-items:center; justify-content:center; gap:6px;
         }
-        .tel-tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tel-tab-btn:hover:not(.active) { background:var(--bg2); color:var(--text); }
+        .tel-tab-btn.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(0,0,0,.18); }
+
+        /* ── KPI grid ── */
         .tel-kpi-grid {
-          display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:16px;
+          display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;
         }
-        @media (min-width:600px) { .tel-kpi-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); } }
+        @media (min-width:480px) { .tel-kpi-grid { grid-template-columns:repeat(3,1fr); } }
+        @media (min-width:768px) { .tel-kpi-grid { grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); } }
         .tel-kpi-card {
-          background:var(--surface2); border-radius:10px; padding:10px 12px;
-          border:1px solid var(--border); display:flex; flex-direction:column; gap:2px;
+          background:var(--surface); border-radius:var(--tel-radius); padding:14px 14px 12px;
+          border:1px solid var(--border); display:flex; flex-direction:column; gap:4px;
+          position:relative; overflow:hidden; transition:box-shadow .15s, transform .12s;
         }
-        .tel-kpi-val { font-size:1.35rem; font-weight:700; color:var(--text); line-height:1.1; }
-        .tel-kpi-val.danger { color:var(--danger); }
-        .tel-kpi-lbl { font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
-        .tel-charts-row { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px; }
-        @media (min-width:640px) { .tel-charts-row { grid-template-columns:1fr 1fr; } }
-        .tel-pair { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px; }
-        @media (min-width:640px) { .tel-pair { grid-template-columns:1fr 1fr; } }
-        .tel-card-label { font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
-        .tel-row { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); font-size:.8rem; }
-        .tel-row:last-child { border-bottom:none; }
-        .tel-row-label { flex:1; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .tel-row-bar { width:60px; height:5px; background:var(--border); border-radius:3px; overflow:hidden; flex-shrink:0; }
-        .tel-row-bar-fill { height:100%; background:var(--accent); border-radius:3px; }
-        .tel-row-val { min-width:34px; text-align:right; color:var(--muted); font-size:.75rem; }
-        .tel-row-pct { min-width:36px; text-align:right; color:var(--muted); font-size:.72rem; }
-        .tel-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-        .tel-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+        .tel-kpi-card:hover { box-shadow:0 4px 18px rgba(0,0,0,.09); transform:translateY(-1px); }
+        .tel-kpi-card::after {
+          content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+          background:var(--accent); opacity:.2; border-radius:0 0 var(--tel-radius) var(--tel-radius);
+        }
+        .tel-kpi-card.danger::after { background:#ef4444; opacity:.5; }
+        .tel-kpi-icon { font-size:1.1rem; margin-bottom:2px; line-height:1; }
+        .tel-kpi-val { font-size:1.5rem; font-weight:800; color:var(--text); line-height:1.1; letter-spacing:-.02em; }
+        .tel-kpi-val.danger { color:#ef4444; }
+        .tel-kpi-lbl { font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+
+        /* ── Section cards ── */
+        .tel-section {
+          background:var(--surface); border:1px solid var(--border);
+          border-radius:var(--tel-radius); padding:16px 18px; margin-bottom:14px;
+        }
+        .tel-section-title {
+          display:flex; align-items:center; gap:7px;
+          font-size:.72rem; font-weight:700; color:var(--muted);
+          text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;
+        }
+        .tel-section-title-dot {
+          width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0;
+        }
+
+        /* ── Charts layout ── */
+        .tel-charts-row { display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:14px; }
+        @media (min-width:640px) { .tel-charts-row { grid-template-columns:2fr 1fr; } }
+
+        /* ── Bar rows (event types, devices) ── */
+        .tel-bar-row {
+          display:flex; align-items:center; gap:8px; padding:6px 0;
+          border-bottom:1px solid var(--border); font-size:.8rem;
+        }
+        .tel-bar-row:last-child { border-bottom:none; }
+        .tel-bar-label { flex:1; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tel-bar-track {
+          width:72px; height:5px; background:var(--border); border-radius:99px;
+          overflow:hidden; flex-shrink:0;
+        }
+        .tel-bar-fill { height:100%; background:var(--accent); border-radius:99px; transition:width .3s ease; }
+        .tel-bar-val { min-width:36px; text-align:right; color:var(--muted); font-size:.74rem; font-variant-numeric:tabular-nums; }
+        .tel-bar-pct { min-width:38px; text-align:right; color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; }
+
+        /* ── Device subsections ── */
+        .tel-device-group-title {
+          font-size:.66rem; font-weight:700; color:var(--muted); text-transform:uppercase;
+          letter-spacing:.06em; margin:10px 0 4px; padding-bottom:4px;
+          border-bottom:1px dashed var(--border);
+        }
+        .tel-device-group-title:first-child { margin-top:0; }
+
+        /* ── Tables ── */
+        .tel-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:var(--tel-radius-sm); }
+        .tel-table { width:100%; border-collapse:collapse; font-size:.81rem; }
+        .tel-table thead tr { border-bottom:2px solid var(--border); }
         .tel-table th {
-          padding:6px 8px; text-align:left; font-size:.7rem; font-weight:600;
-          color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
-          border-bottom:2px solid var(--border); cursor:pointer; user-select:none; white-space:nowrap;
+          padding:9px 10px; text-align:left; font-size:.68rem; font-weight:700;
+          color:var(--muted); text-transform:uppercase; letter-spacing:.05em;
+          cursor:pointer; user-select:none; white-space:nowrap;
         }
+        .tel-table th:hover { color:var(--text); }
         .tel-table th.r { text-align:right; }
-        .tel-table td { padding:8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .tel-table td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
         .tel-table tr:last-child td { border-bottom:none; }
-        .tel-table tbody tr { cursor:pointer; }
-        .tel-table tbody tr:hover { background:var(--bg2); }
+        .tel-table tbody tr { cursor:pointer; transition:background .1s; }
+        .tel-table tbody tr:hover { background:var(--surface2); }
+        .tel-sort-icon { font-size:.65rem; margin-left:3px; opacity:.5; }
+        .tel-sort-icon.active { opacity:1; color:var(--accent); }
         .tel-hide-xs { display:none; }
         .tel-hide-sm { display:none; }
         @media (min-width:480px) { .tel-hide-xs { display:table-cell; } }
         @media (min-width:640px) { .tel-hide-sm { display:table-cell; } }
-        .tel-detail-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
-        .tel-detail-avatar {
-          width:38px; height:38px; border-radius:50%; background:var(--accent-lt);
-          display:flex; align-items:center; justify-content:center;
-          font-size:1rem; font-weight:700; color:var(--accent); flex-shrink:0;
-        }
-        .tel-detail-name { font-weight:600; font-size:.9rem; color:var(--text); }
-        .tel-detail-meta { font-size:.74rem; color:var(--muted); }
-        .tel-detail-pair { display:grid; grid-template-columns:1fr; gap:12px; }
-        @media (min-width:480px) { .tel-detail-pair { grid-template-columns:1fr 1fr; } }
-        .tel-search {
-          font-size:.82rem; padding:6px 10px; border-radius:8px;
-          border:1px solid var(--border); background:var(--bg2);
-          color:var(--text); width:100%; box-sizing:border-box; margin-bottom:12px;
-        }
-        .tel-err-table { width:100%; border-collapse:collapse; font-size:.78rem; }
-        .tel-err-table th { padding:4px 6px; text-align:left; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
-        .tel-err-table td { padding:5px 6px; border-bottom:1px solid var(--border); }
-        .tel-err-table tr:last-child td { border-bottom:none; }
-        .tel-err-col-user { display:none; }
-        @media (min-width:520px) { .tel-err-col-user { display:table-cell; } }
-        .tel-err-col-msg { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        @media (min-width:520px) { .tel-err-col-msg { max-width:260px; } }
-        @media (min-width:768px) { .tel-err-col-msg { max-width:400px; } }
-        .tel-ai-table { width:100%; border-collapse:collapse; font-size:.78rem; }
-        .tel-ai-table th { padding:4px 6px; text-align:left; font-size:.7rem; font-weight:600; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
-        .tel-ai-col-r { text-align:right; }
-        .tel-ai-table td { padding:5px 6px; border-bottom:1px solid var(--border); }
-        .tel-ai-table tr:last-child td { border-bottom:none; }
-        .tel-ai-col-tokens { display:none; }
-        @media (min-width:560px) { .tel-ai-col-tokens { display:table-cell; } }
 
-        /* ── Telemetry error list — expandable cards ── */
-        .tel-error-list { display:flex; flex-direction:column; gap:6px; }
-        .tel-error-item {
-          border:1px solid var(--border); border-radius:9px; overflow:hidden;
-          background:var(--surface);
+        /* ── Search inputs ── */
+        .tel-search {
+          display:flex; align-items:center; gap:8px;
+          background:var(--bg2); border:1px solid var(--border); border-radius:9px;
+          padding:7px 12px; margin-bottom:12px; width:100%; box-sizing:border-box;
+          font-size:.82rem; color:var(--text); font-family:inherit;
         }
+        .tel-search::placeholder { color:var(--muted); }
+        .tel-search:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-lt); }
+
+        /* ── User / family badges ── */
+        .tel-badge-danger {
+          display:inline-flex; align-items:center; justify-content:center;
+          background:#fef2f2; color:#dc2626; font-size:.7rem; font-weight:700;
+          padding:2px 7px; border-radius:20px; border:1px solid #fecaca;
+        }
+        .tel-avatar {
+          width:32px; height:32px; border-radius:50%; background:var(--accent-lt);
+          display:flex; align-items:center; justify-content:center;
+          font-size:.85rem; font-weight:800; color:var(--accent); flex-shrink:0;
+        }
+
+        /* ── Detail panels ── */
+        .tel-detail-panel {
+          background:var(--surface2); border:1px solid var(--border); border-radius:var(--tel-radius);
+          padding:16px 18px; margin-bottom:14px;
+          border-left:3px solid var(--accent);
+        }
+        .tel-detail-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+        .tel-detail-avatar {
+          width:44px; height:44px; border-radius:50%; background:var(--accent-lt);
+          display:flex; align-items:center; justify-content:center;
+          font-size:1.1rem; font-weight:800; color:var(--accent); flex-shrink:0;
+          border:2px solid var(--accent);
+        }
+        .tel-detail-name { font-weight:700; font-size:.95rem; color:var(--text); }
+        .tel-detail-meta { font-size:.74rem; color:var(--muted); margin-top:2px; }
+        .tel-detail-close {
+          margin-left:auto; background:none; border:none; cursor:pointer;
+          color:var(--muted); font-size:1.1rem; padding:4px; flex-shrink:0;
+          border-radius:6px; transition:color .12s;
+        }
+        .tel-detail-close:hover { color:var(--text); }
+        .tel-detail-pair { display:grid; grid-template-columns:1fr; gap:14px; }
+        @media (min-width:480px) { .tel-detail-pair { grid-template-columns:1fr 1fr; } }
+        .tel-detail-sub { font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+        .tel-detail-row {
+          display:flex; justify-content:space-between; align-items:center;
+          padding:5px 0; border-bottom:1px solid var(--border); font-size:.79rem;
+        }
+        .tel-detail-row:last-child { border-bottom:none; }
+
+        /* ── Error cards ── */
+        .tel-error-list { display:flex; flex-direction:column; gap:8px; }
+        .tel-error-item {
+          border:1px solid var(--border); border-radius:var(--tel-radius-sm); overflow:hidden;
+          background:var(--surface); transition:border-color .12s;
+        }
+        .tel-error-item:hover { border-color:color-mix(in srgb, var(--border) 50%, #ef4444); }
         .tel-error-header {
-          display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-          padding:8px 12px; cursor:pointer; user-select:none;
-          transition:background .12s; gap:6px;
+          display:flex; align-items:center; gap:8px; padding:9px 12px;
+          cursor:pointer; user-select:none; transition:background .12s;
         }
         .tel-error-header:hover { background:var(--surface2); }
         .tel-error-main { flex:1; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
         .tel-error-type {
-          background:#fee2e2; color:#dc2626; font-size:.68rem; font-weight:700;
-          padding:2px 7px; border-radius:5px; white-space:nowrap; flex-shrink:0;
+          background:#fef2f2; color:#dc2626; font-size:.65rem; font-weight:800;
+          padding:2px 8px; border-radius:20px; border:1px solid #fecaca;
+          white-space:nowrap; flex-shrink:0; letter-spacing:.02em;
         }
         .tel-error-msg {
-          font-size:.78rem; color:var(--text); overflow:hidden; text-overflow:ellipsis;
+          font-size:.79rem; color:var(--text); overflow:hidden; text-overflow:ellipsis;
           white-space:nowrap; flex:1; min-width:0;
         }
         .tel-error-meta { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-        .tel-error-date { font-size:.7rem; color:var(--muted); white-space:nowrap; }
-        .tel-error-user { font-size:.7rem; color:var(--muted); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .tel-error-toggle { font-size:.65rem; color:var(--muted); width:14px; text-align:center; flex-shrink:0; }
+        .tel-error-date { font-size:.69rem; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .tel-error-user { font-size:.69rem; color:var(--muted); max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .tel-error-toggle { font-size:.6rem; color:var(--muted); width:14px; text-align:center; flex-shrink:0; transition:transform .15s; }
         .tel-error-detail {
-          border-top:1px solid var(--border); padding:10px 12px;
+          border-top:1px solid var(--border); padding:12px 14px;
           background:var(--surface2);
         }
         .tel-error-detail-grid {
-          display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-bottom:10px;
+          display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; margin-bottom:12px;
         }
         @media (max-width:480px) { .tel-error-detail-grid { grid-template-columns:1fr; } }
-        .tel-error-dl { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); display:block; }
-        .tel-error-dd { font-size:.76rem; color:var(--text2); }
-        .tel-error-payload-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px; }
+        .tel-error-dl { font-size:.63rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); display:block; margin-bottom:2px; }
+        .tel-error-dd { font-size:.78rem; color:var(--text2); }
+        .tel-error-payload-label { font-size:.63rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:5px; }
         .tel-error-payload {
-          background:var(--bg); border:1px solid var(--border); border-radius:6px;
-          padding:8px 10px; font-size:.7rem; font-family:monospace;
-          overflow-x:auto; max-height:160px; overflow-y:auto;
-          color:var(--text2); line-height:1.5; margin:0 0 8px 0; white-space:pre;
+          background:var(--bg); border:1px solid var(--border); border-radius:8px;
+          padding:10px 12px; font-size:.7rem; font-family:monospace;
+          overflow-x:auto; max-height:180px; overflow-y:auto;
+          color:var(--text2); line-height:1.55; margin:0 0 10px 0; white-space:pre;
         }
         .tel-error-actions { display:flex; align-items:center; gap:8px; }
         .tel-copy-btn {
           display:inline-flex; align-items:center; gap:5px;
-          padding:5px 12px; border-radius:7px; border:1.5px solid var(--accent);
+          padding:5px 13px; border-radius:7px; border:1.5px solid var(--accent);
           background:var(--accent-lt); color:var(--accent);
-          font-size:.75rem; font-weight:700; cursor:pointer; font-family:inherit;
-          transition:background .12s;
+          font-size:.74rem; font-weight:700; cursor:pointer; font-family:inherit;
+          transition:background .12s, color .12s;
         }
         .tel-copy-btn:hover { background:var(--accent); color:#fff; }
+
+        /* ── AI calls ── */
+        .tel-ai-grid {
+          display:grid; gap:10px;
+          grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+          margin-bottom:14px;
+        }
+        .tel-ai-stat {
+          background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+          padding:10px 12px; display:flex; flex-direction:column; gap:2px;
+        }
+        .tel-ai-stat-val { font-size:1.2rem; font-weight:800; color:var(--text); }
+        .tel-ai-stat-lbl { font-size:.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+
+        /* ── Loading skeleton ── */
+        @keyframes tel-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .tel-skeleton {
+          height:80px; border-radius:var(--tel-radius); 
+          background:linear-gradient(90deg, var(--border) 25%, var(--surface2) 50%, var(--border) 75%);
+          background-size:200% 100%;
+          animation:tel-shimmer 1.5s infinite; margin-bottom:10px;
+        }
+        .tel-skeleton-sm { height:12px; border-radius:4px; width:60%; }
+
+        /* ── Empty state ── */
+        .tel-empty {
+          text-align:center; padding:40px 20px; color:var(--muted);
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+        }
+        .tel-empty-icon { font-size:2rem; opacity:.4; }
+        .tel-empty-text { font-size:.84rem; }
       </style>
 
-      <!-- Header + filtros -->
-      <div class="tel-header">
-        <div class="tel-filters">
-          <select id="telPeriod" onchange="_telApplyFilters()">
-            <option value="7">7 dias</option>
-            <option value="30" selected>30 dias</option>
-            <option value="90">90 dias</option>
-          </select>
-          <select id="telFilterFamily" onchange="_telApplyFilters()">
-            <option value="">Todas as famílias</option>
-          </select>
-          <select id="telFilterUser" onchange="_telApplyFilters()">
-            <option value="">Todos os usuários</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="loadTelemetryDashboard()" title="Recarregar">↺</button>
+      <!-- ── Hero Header ── -->
+      <div class="tel-hero">
+        <div class="tel-hero-top">
+          <div>
+            <div class="tel-hero-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Telemetria
+            </div>
+            <div class="tel-hero-subtitle">Monitoramento de uso, erros e IA</div>
+          </div>
+          <div class="tel-hero-controls">
+            <select id="telPeriod" class="tel-hero-select" onchange="loadTelemetryDashboard()">
+              <option value="7">7 dias</option>
+              <option value="30" selected>30 dias</option>
+              <option value="90">90 dias</option>
+            </select>
+            <select id="telFilterFamily" class="tel-hero-select" onchange="_telApplyFilters()">
+              <option value="">Todas as famílias</option>
+            </select>
+            <select id="telFilterUser" class="tel-hero-select" onchange="_telApplyFilters()">
+              <option value="">Todos os usuários</option>
+            </select>
+            <button class="tel-reload-btn" onclick="loadTelemetryDashboard()" title="Recarregar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Abas -->
+      <!-- ── Abas ── -->
       <div class="tel-tabs">
-        <button id="telTab_overview" class="tel-tab-btn active" onclick="_telSetTab('overview')">Visão Geral</button>
-        <button id="telTab_users"    class="tel-tab-btn"        onclick="_telSetTab('users')">Usuários</button>
-        <button id="telTab_families" class="tel-tab-btn"        onclick="_telSetTab('families')">Famílias</button>
+        <button id="telTab_overview" class="tel-tab-btn active" onclick="_telSetTab('overview')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Visão Geral
+        </button>
+        <button id="telTab_users" class="tel-tab-btn" onclick="_telSetTab('users')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Usuários
+        </button>
+        <button id="telTab_families" class="tel-tab-btn" onclick="_telSetTab('families')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Famílias
+        </button>
       </div>
 
       <!-- ── ABA: Visão Geral ── -->
       <div id="telPane_overview">
         <div id="telKpis" class="tel-kpi-grid">
-          <div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Carregando...</div>
+          <div style="grid-column:1/-1" class="tel-skeleton"></div>
         </div>
         <div class="tel-charts-row">
-          <div class="card" style="padding:14px">
-            <div class="tel-card-label">Eventos por dia</div>
-            <div style="position:relative;height:160px"><canvas id="telDailyChart"></canvas></div>
+          <div class="tel-section">
+            <div class="tel-section-title"><span class="tel-section-title-dot"></span>Eventos por dia</div>
+            <div style="position:relative;height:170px"><canvas id="telDailyChart"></canvas></div>
           </div>
-          <div class="card" style="padding:14px">
-            <div class="tel-card-label">Páginas mais acessadas</div>
-            <div style="position:relative;height:160px"><canvas id="telPagesChart"></canvas></div>
+          <div class="tel-section">
+            <div class="tel-section-title"><span class="tel-section-title-dot"></span>Páginas acessadas</div>
+            <div style="position:relative;height:170px"><canvas id="telPagesChart"></canvas></div>
           </div>
         </div>
-        <div class="tel-pair">
-          <div class="card" style="padding:14px">
-            <div class="tel-card-label">Tipos de evento</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px" class="tel-pair-evdev">
+          <div class="tel-section">
+            <div class="tel-section-title"><span class="tel-section-title-dot"></span>Tipos de evento</div>
             <div id="telEventTypes"></div>
           </div>
-          <div class="card" style="padding:14px">
-            <div class="tel-card-label">Dispositivos</div>
+          <div class="tel-section">
+            <div class="tel-section-title"><span class="tel-section-title-dot"></span>Dispositivos</div>
             <div id="telDevices"></div>
           </div>
         </div>
-        <div class="card" style="padding:14px;margin-bottom:14px">
-          <div class="tel-card-label">Erros recentes</div>
+        <style>
+          @media (min-width:640px) { .tel-pair-evdev { grid-template-columns:1fr 1fr !important; } }
+        </style>
+        <div class="tel-section">
+          <div class="tel-section-title">
+            <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;flex-shrink:0;display:inline-block"></span>
+            Erros recentes
+          </div>
           <div id="telErrors"></div>
         </div>
-        <div class="card" style="padding:14px;margin-bottom:14px">
-          <div class="tel-card-label">Chamadas de IA</div>
+        <div class="tel-section">
+          <div class="tel-section-title">
+            <span style="width:7px;height:7px;border-radius:50%;background:#8b5cf6;flex-shrink:0;display:inline-block"></span>
+            Chamadas de IA
+          </div>
           <div id="telAiCalls"></div>
         </div>
       </div><!-- /telPane_overview -->
 
       <!-- ── ABA: Usuários ── -->
       <div id="telPane_users" style="display:none">
-        <div class="card" style="padding:14px;margin-bottom:14px">
+        <div class="tel-section">
           <input id="telUserSearch" class="tel-search" type="text"
-            placeholder="Filtrar por nome ou email…" oninput="_telFilterUsersTable(this.value)">
+            placeholder="🔍  Filtrar por nome ou email…" oninput="_telFilterUsersTable(this.value)">
           <div class="tel-table-wrap">
             <table class="tel-table" id="telUsersTable">
               <thead><tr>
-                <th onclick="_telSortUsers('name')">Usuário <span id="telUserSort_name"></span></th>
-                <th onclick="_telSortUsers('family')" class="tel-hide-xs">Família <span id="telUserSort_family"></span></th>
-                <th onclick="_telSortUsers('events')" class="r">Eventos <span id="telUserSort_events">↓</span></th>
-                <th onclick="_telSortUsers('pages')" class="r tel-hide-sm">PV <span id="telUserSort_pages"></span></th>
-                <th onclick="_telSortUsers('errors')" class="r">Erros <span id="telUserSort_errors"></span></th>
-                <th onclick="_telSortUsers('last')" class="r tel-hide-sm">Último acesso <span id="telUserSort_last"></span></th>
+                <th onclick="_telSortUsers('name')">Usuário <span id="telUserSort_name" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortUsers('family')" class="tel-hide-xs">Família <span id="telUserSort_family" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortUsers('events')" class="r">Eventos <span id="telUserSort_events" class="tel-sort-icon active">↓</span></th>
+                <th onclick="_telSortUsers('pages')" class="r tel-hide-sm">PV <span id="telUserSort_pages" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortUsers('errors')" class="r">Erros <span id="telUserSort_errors" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortUsers('last')" class="r tel-hide-sm">Último acesso <span id="telUserSort_last" class="tel-sort-icon"></span></th>
               </tr></thead>
               <tbody id="telUsersBody">
-                <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
+                <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Carregando…</td></tr>
               </tbody>
             </table>
           </div>
         </div>
         <div id="telUserDetail" style="display:none">
-          <div class="card" style="padding:14px;margin-bottom:14px">
+          <div class="tel-detail-panel">
             <div class="tel-detail-header">
               <div class="tel-detail-avatar" id="telUserDetailAvatar"></div>
               <div style="flex:1;min-width:0">
                 <div class="tel-detail-name" id="telUserDetailName"></div>
                 <div class="tel-detail-meta" id="telUserDetailMeta"></div>
               </div>
-              <button onclick="_telCloseUserDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;flex-shrink:0">✕</button>
+              <button onclick="_telCloseUserDetail()" class="tel-detail-close">✕</button>
             </div>
-            <div id="telUserDetailKpis" class="tel-kpi-grid" style="margin-bottom:14px"></div>
+            <div id="telUserDetailKpis" class="tel-kpi-grid" style="margin-bottom:16px"></div>
             <div class="tel-detail-pair">
               <div>
-                <div class="tel-card-label">Páginas visitadas</div>
+                <div class="tel-detail-sub">Páginas visitadas</div>
                 <div id="telUserDetailPages"></div>
               </div>
               <div>
-                <div class="tel-card-label">Operações realizadas</div>
+                <div class="tel-detail-sub">Operações realizadas</div>
                 <div id="telUserDetailOps"></div>
               </div>
             </div>
@@ -3140,44 +3305,44 @@
 
       <!-- ── ABA: Famílias ── -->
       <div id="telPane_families" style="display:none">
-        <div class="card" style="padding:14px;margin-bottom:14px">
+        <div class="tel-section">
           <input id="telFamilySearch" class="tel-search" type="text"
-            placeholder="Filtrar família…" oninput="_telFilterFamiliesTable(this.value)">
+            placeholder="🔍  Filtrar família…" oninput="_telFilterFamiliesTable(this.value)">
           <div class="tel-table-wrap">
             <table class="tel-table" id="telFamiliesTable">
               <thead><tr>
-                <th onclick="_telSortFamilies('name')">Família <span id="telFamSort_name"></span></th>
-                <th onclick="_telSortFamilies('events')" class="r">Eventos <span id="telFamSort_events">↓</span></th>
-                <th onclick="_telSortFamilies('users')" class="r tel-hide-sm">Usuários <span id="telFamSort_users"></span></th>
-                <th onclick="_telSortFamilies('pages')" class="r tel-hide-sm">PV <span id="telFamSort_pages"></span></th>
-                <th onclick="_telSortFamilies('errors')" class="r">Erros <span id="telFamSort_errors"></span></th>
-                <th onclick="_telSortFamilies('ai')" class="r tel-hide-sm">IA <span id="telFamSort_ai"></span></th>
-                <th onclick="_telSortFamilies('last')" class="r tel-hide-xs">Último acesso <span id="telFamSort_last"></span></th>
+                <th onclick="_telSortFamilies('name')">Família <span id="telFamSort_name" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortFamilies('events')" class="r">Eventos <span id="telFamSort_events" class="tel-sort-icon active">↓</span></th>
+                <th onclick="_telSortFamilies('users')" class="r tel-hide-sm">Usuários <span id="telFamSort_users" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortFamilies('pages')" class="r tel-hide-sm">PV <span id="telFamSort_pages" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortFamilies('errors')" class="r">Erros <span id="telFamSort_errors" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortFamilies('ai')" class="r tel-hide-sm">IA <span id="telFamSort_ai" class="tel-sort-icon"></span></th>
+                <th onclick="_telSortFamilies('last')" class="r tel-hide-xs">Último acesso <span id="telFamSort_last" class="tel-sort-icon"></span></th>
               </tr></thead>
               <tbody id="telFamiliesBody">
-                <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Carregando…</td></tr>
+                <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Carregando…</td></tr>
               </tbody>
             </table>
           </div>
         </div>
         <div id="telFamilyDetail" style="display:none">
-          <div class="card" style="padding:14px;margin-bottom:14px">
+          <div class="tel-detail-panel">
             <div class="tel-detail-header">
-              <div class="tel-detail-avatar">👥</div>
+              <div class="tel-detail-avatar">🏠</div>
               <div style="flex:1;min-width:0">
                 <div class="tel-detail-name" id="telFamilyDetailName"></div>
                 <div class="tel-detail-meta" id="telFamilyDetailMeta"></div>
               </div>
-              <button onclick="_telCloseFamilyDetail()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;flex-shrink:0">✕</button>
+              <button onclick="_telCloseFamilyDetail()" class="tel-detail-close">✕</button>
             </div>
-            <div id="telFamilyDetailKpis" class="tel-kpi-grid" style="margin-bottom:14px"></div>
+            <div id="telFamilyDetailKpis" class="tel-kpi-grid" style="margin-bottom:16px"></div>
             <div class="tel-detail-pair">
               <div>
-                <div class="tel-card-label">Usuários ativos</div>
+                <div class="tel-detail-sub">Usuários ativos</div>
                 <div id="telFamilyDetailUsers"></div>
               </div>
               <div>
-                <div class="tel-card-label">Páginas mais usadas</div>
+                <div class="tel-detail-sub">Páginas mais usadas</div>
                 <div id="telFamilyDetailPages"></div>
               </div>
             </div>
@@ -3234,7 +3399,7 @@
           </div>
           <div style="display:flex;align-items:center;margin-bottom:16px;gap:8px">
             <input type="checkbox" id="rememberMe" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
-            <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none" data-i18n="auth.remember_me">Salvar e-mail e senha</label>
+            <label for="rememberMe" style="font-size:.82rem;color:#6b7280;cursor:pointer;user-select:none" data-i18n="auth.remember_me">Salvar meu usuário</label>
           </div>
           <button onclick="doLogin()" id="loginBtn" class="login-btn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
