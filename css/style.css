@@ -20002,3 +20002,137 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     font-size: .7rem;
   }
 }
+
+/* ==========================================================================
+   HOTFIX 2026-03-28 — Transactions mobile / grouped by account
+   Isolated to #txGroupContainer to prevent regressions in flat view and desktop
+   ========================================================================== */
+@media (max-width: 640px) {
+  #page-transactions #txGroupContainer .table-wrap {
+    overflow: visible !important;
+  }
+
+  #page-transactions #txGroupContainer table,
+  #page-transactions #txGroupContainer tbody {
+    width: 100% !important;
+  }
+
+  #page-transactions #txGroupContainer thead {
+    display: none !important;
+  }
+
+  #page-transactions #txGroupContainer tbody tr.tx-row-clickable {
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) auto !important;
+    grid-template-areas: 'date body right' !important;
+    gap: 8px 10px !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    border-top: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+  }
+
+  #page-transactions #txGroupContainer tbody tr.tx-row-clickable:first-child {
+    border-top: 0 !important;
+  }
+
+  #page-transactions #txGroupContainer tbody td.tx-v2-date,
+  #page-transactions #txGroupContainer tbody td.tx-v2-body,
+  #page-transactions #txGroupContainer tbody td.tx-v2-right,
+  #page-transactions #txGroupContainer tbody td.tx-v2-chk {
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+  }
+
+  #page-transactions #txGroupContainer tbody td.tx-v2-date {
+    grid-area: date !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  #page-transactions #txGroupContainer tbody td.tx-v2-body {
+    grid-area: body !important;
+    overflow: hidden !important;
+  }
+
+  #page-transactions #txGroupContainer tbody td.tx-v2-right {
+    grid-area: right !important;
+    align-self: center !important;
+    justify-self: end !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  #page-transactions #txGroupContainer tbody td.tx-v2-chk {
+    display: none !important;
+  }
+
+  body.reconcile-mode #page-transactions #txGroupContainer tbody tr.tx-row-clickable,
+  #page-transactions.reconcile-mode #txGroupContainer tbody tr.tx-row-clickable {
+    grid-template-columns: 28px 44px minmax(0, 1fr) auto !important;
+    grid-template-areas: 'chk date body right' !important;
+  }
+
+  body.reconcile-mode #page-transactions #txGroupContainer tbody td.tx-v2-chk,
+  #page-transactions.reconcile-mode #txGroupContainer tbody td.tx-v2-chk {
+    grid-area: chk !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    min-width: 28px !important;
+  }
+
+  #page-transactions #txGroupContainer .tx-v2-title,
+  #page-transactions #txGroupContainer .tx-v2-desc-text {
+    display: block !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  #page-transactions #txGroupContainer .tx-v2-title {
+    font-size: .92rem !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+  }
+
+  #page-transactions #txGroupContainer .tx-v2-category,
+  #page-transactions #txGroupContainer .tx-v2-payee-line,
+  #page-transactions #txGroupContainer .tx-v2-meta,
+  #page-transactions #txGroupContainer .tx-v2-account-line {
+    display: block !important;
+    min-width: 0 !important;
+    margin-top: 2px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  #page-transactions #txGroupContainer .tx-v2-amt-wrap {
+    align-items: flex-end !important;
+  }
+
+  #page-transactions #txGroupContainer .tx-v2-amt {
+    font-size: 1rem !important;
+    line-height: 1.15 !important;
+  }
+
+  #page-transactions #txGroupContainer .tx-v2-brl,
+  #page-transactions #txGroupContainer .tx-v2-bal {
+    font-size: .68rem !important;
+    line-height: 1.1 !important;
+  }
+}
