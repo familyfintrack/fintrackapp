@@ -371,6 +371,39 @@ function getAmtField(fieldId) {
   const abs = Math.abs(parseFloat(clean) || 0);
   return _amtSignState[fieldId] ? -abs : abs;
 }
+
+/**
+ * onblur: formata o valor digitado como moeda BR (ex: 10500 → 10.500,00)
+ * Chamado via onblur nos campos de valor dos modais de programados.
+ */
+function _amtFieldBlur(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const raw = el.value.trim();
+  if (!raw) return;
+  // Parse lenientemente: aceita 10500 / 10500,00 / 10.500,00 / 10500.00
+  let clean = raw.replace(/\./g, '').replace(',', '.');
+  if (!/[.,]/.test(raw)) clean = raw;
+  const num = Math.abs(parseFloat(clean) || 0);
+  if (num === 0) { el.value = ''; return; }
+  // Formatar com separador de milhar BR e 2 casas decimais
+  el.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * onfocus: remove formatação para facilitar edição
+ * (ex: 10.500,00 → 10500,00 → mantém vírgula mas sem ponto de milhar)
+ */
+function _amtFieldFocus(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const raw = el.value.trim();
+  if (!raw) return;
+  // Remove pontos de milhar mas mantém vírgula decimal
+  el.value = raw.replace(/\./g, '');
+  // Seleciona todo o conteúdo para facilitar substituição
+  setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
+}
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
