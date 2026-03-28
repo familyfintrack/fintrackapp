@@ -274,10 +274,38 @@ function filterTransactions(immediate = false){
   // Highlight member filter wrap when active
   const wrap = document.getElementById('txMemberFilterWrap');
   if (wrap) wrap.classList.toggle('is-active', (state.txFilter.memberIds?.length || 0) > 0);
+  // Update filter toggle button badge (shows active filter count)
+  _txUpdateFilterBadge();
   // Debounce: typing waits 280ms; selects/chips pass immediate=true
   clearTimeout(_filterTxDebounceTimer);
   _filterTxDebounceTimer = setTimeout(() => loadTransactions(), immediate ? 0 : 280);
 }
+
+// ── Collapsible filter panel ──────────────────────────────────────────────
+function _txToggleFilters() {
+  const body = document.getElementById('txFiltersBody');
+  const btn  = document.getElementById('txFilterToggle');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (btn) btn.classList.toggle('open', !isOpen);
+}
+window._txToggleFilters = _txToggleFilters;
+
+function _txUpdateFilterBadge() {
+  const btn = document.getElementById('txFilterToggle');
+  if (!btn) return;
+  const activeCount = [
+    state.txFilter.month, state.txFilter.account, state.txFilter.type,
+    state.txFilter.status, state.txFilter.categoryId,
+    ...(state.txFilter.memberIds || [])
+  ].filter(Boolean).length;
+  btn.classList.toggle('has-active', activeCount > 0);
+  // Update label
+  const label = btn.querySelector('.tx-filter-count-lbl');
+  if (label) label.textContent = activeCount > 0 ? ` (${activeCount})` : '';
+}
+window._txUpdateFilterBadge = _txUpdateFilterBadge;
 
 function populateTxMonthFilter() {
   const sel = document.getElementById('txMonth');
@@ -795,12 +823,18 @@ function renderTransactionsGrouped(txs) {
       </div>
       <div id="txGroupBody-${k}" class="tx-group-card__body">
         <div class="table-wrap" style="margin:0">
-          <table style="border-radius:0">
+          <table style="border-radius:0;width:100%;table-layout:fixed">
+            <colgroup>
+              ${state.reconcileMode ? '<col style="width:36px">' : ''}
+              <col style="width:52px">
+              <col>
+              <col style="width:90px">
+            </colgroup>
             <thead><tr>
               ${state.reconcileMode ? '<th class="th-chk" style="width:36px"></th>' : ''}
-              <th class="tx-v2-th-date" onclick="sortTx('date')">Data ⇅</th>
+              <th class="tx-v2-th-date" onclick="sortTx('date')">Data</th>
               <th class="tx-v2-th-body">Descrição</th>
-              <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor ⇅</th>
+              <th class="tx-v2-th-right" onclick="sortTx('amount')">Valor</th>
             </tr></thead>
             <tbody>${g.txs.map(t => txRow(t, false)).join('')}</tbody>
           </table>
