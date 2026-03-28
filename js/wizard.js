@@ -15,11 +15,12 @@
 // ── State ─────────────────────────────────────────────────────────────────
 const _wz = {
   step: 1,
-  totalSteps: 8,
+  totalSteps: 9,
   familyName: '',
   adults: [],   // [{name, age, relation, invite: bool, email:''}]
   children: [], // [{name, age, relation}]
   expenses: [], // [{key, label, emoji, amount}]
+  modules: { prices: false, investments: false, debts: false, aiInsights: false },
 };
 
 // ── Trigger check ─────────────────────────────────────────────────────────
@@ -134,6 +135,7 @@ function _wzReset() {
   _wz.adults         = [];
   _wz.children       = [];
   _wz.expenses       = [];
+  _wz.modules        = { prices: false, investments: false, debts: false, aiInsights: false };
   _wz.creatingFamily = false;
 }
 
@@ -214,7 +216,7 @@ function _wzRenderStep() {
   // Buttons
   if (backBtn)  backBtn.style.display  = _wz.step > 1 && _wz.step < _wz.totalSteps ? '' : 'none';
   if (nextBtn)  nextBtn.style.display  = _wz.step < _wz.totalSteps ? '' : 'none';
-  if (skipBtn)  skipBtn.style.display  = (_wz.step >= 2 && _wz.step <= 7) ? '' : 'none';
+  if (skipBtn)  skipBtn.style.display  = (_wz.step >= 2 && _wz.step <= 8) ? '' : 'none';
   if (nextBtn)  nextBtn.textContent    = (_wz.step === _wz.totalSteps - 1) ? '✅ Finalizar' : 'Continuar →';
 
   switch (_wz.step) {
@@ -225,7 +227,8 @@ function _wzRenderStep() {
     case 5: return _wzStep5_account(body, title, subtitle);
     case 6: return _wzStep6_transaction(body, title, subtitle);
     case 7: return _wzStep7_reports(body, title, subtitle);
-    case 8: return _wzStep8_done(body, title, subtitle);
+    case 8: return _wzStep8_modules(body, title, subtitle);
+    case 9: return _wzStep9_done(body, title, subtitle);
   }
 }
 
@@ -631,7 +634,89 @@ function _wzWatchModalClose(modalId, callback) {
   obs.observe(modal, { attributes: true, attributeFilter: ['class','style'] });
 }
 
-function _wzStep8_done(body, title, subtitle) {
+
+// ── Step 8: Módulos opcionais ─────────────────────────────────────────────
+const _WZ_MODULES = [
+  {
+    key: 'aiInsights',
+    icon: '🤖',
+    color: '#7c3aed',
+    title: 'AI Insights',
+    desc: 'Análise inteligente das suas finanças com Google Gemini. Gera relatórios em linguagem natural, detecta oportunidades de economia, projeta o futuro do seu saldo e responde perguntas sobre seus dados.',
+    badge: 'Requer chave API gratuita do Google',
+    badgeColor: '#7c3aed',
+  },
+  {
+    key: 'investments',
+    icon: '💹',
+    color: '#16a34a',
+    title: 'Investimentos',
+    desc: 'Acompanhe sua carteira de ações, FIIs, ETFs, criptomoedas e renda fixa. Cotações automáticas, gráficos de performance, custo médio e histórico de movimentações.',
+    badge: 'Cotações automáticas via B3, Yahoo Finance e CoinGecko',
+    badgeColor: '#16a34a',
+  },
+  {
+    key: 'debts',
+    icon: '💳',
+    color: '#dc2626',
+    title: 'Controle de Dívidas',
+    desc: 'Registre empréstimos, financiamentos e dívidas com cálculo de juros automático. Aplique estratégias de quitação (bola de neve ou avalanche) e veja o impacto no seu fluxo de caixa.',
+    badge: 'Suporte a SELIC, IPCA, CDI, juros fixos e mais',
+    badgeColor: '#dc2626',
+  },
+  {
+    key: 'prices',
+    icon: '🏪',
+    color: '#0891b2',
+    title: 'Rastreamento de Preços',
+    desc: 'Crie um catálogo de produtos com histórico de preços em diferentes lojas. Integrado à Lista de Mercado: saiba sempre onde comprar mais barato e identifique a melhor época para comprar.',
+    badge: 'Inclui Lista de Mercado integrada',
+    badgeColor: '#0891b2',
+  },
+];
+
+function _wzStep8_modules(body, title, subtitle) {
+  if (title)    title.textContent    = 'Módulos opcionais 🧩';
+  if (subtitle) subtitle.textContent = 'Expanda o FinTrack com funcionalidades extras. Você pode ativar ou desativar a qualquer momento em Configurações → Módulos.';
+
+  body.innerHTML = `
+    <div class="wz-modules-grid">
+      ${_WZ_MODULES.map(m => {
+        const on = !!_wz.modules[m.key];
+        return `
+        <div class="wz-module-card ${on ? 'wz-module-card--on' : ''}" id="wzMod_${m.key}" onclick="_wzToggleModule('${m.key}')">
+          <div class="wz-module-card-top">
+            <span class="wz-module-icon" style="background:${m.color}18;color:${m.color}">${m.icon}</span>
+            <div class="wz-module-toggle-wrap">
+              <div class="wz-module-toggle ${on ? 'wz-module-toggle--on' : ''}" id="wzModToggle_${m.key}">
+                <div class="wz-module-toggle-knob"></div>
+              </div>
+            </div>
+          </div>
+          <div class="wz-module-title" style="color:${on ? m.color : 'var(--text)'}">${m.title}</div>
+          <div class="wz-module-desc">${m.desc}</div>
+          <div class="wz-module-badge" style="background:${m.color}14;color:${m.color};border-color:${m.color}30">${m.badge}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="wz-hint" style="margin-top:12px;text-align:center">💡 Todos os módulos podem ser ativados/desativados depois em <strong>Configurações → Módulos</strong>.</div>`;
+}
+
+function _wzToggleModule(key) {
+  _wz.modules[key] = !_wz.modules[key];
+  const card   = document.getElementById('wzMod_' + key);
+  const toggle = document.getElementById('wzModToggle_' + key);
+  const m      = _WZ_MODULES.find(x => x.key === key);
+  if (!card || !m) return;
+  const on = _wz.modules[key];
+  card.classList.toggle('wz-module-card--on', on);
+  toggle?.classList.toggle('wz-module-toggle--on', on);
+  const titleEl = card.querySelector('.wz-module-title');
+  if (titleEl) titleEl.style.color = on ? m.color : 'var(--text)';
+}
+window._wzToggleModule = _wzToggleModule;
+
+function _wzStep9_done(body, title, subtitle) {
   if (title)    title.textContent    = 'Tudo pronto! 🎉';
   if (subtitle) subtitle.textContent = 'Criando sua configuração inicial…';
 
@@ -643,7 +728,9 @@ function _wzStep8_done(body, title, subtitle) {
       <div class="wz-status-row" id="wzSt_family">⏳ Atualizando nome da família…</div>
       <div class="wz-status-row" id="wzSt_cats"  style="display:none">⏳ Criando categorias…</div>
       <div class="wz-status-row" id="wzSt_budgets" style="display:none">⏳ Criando orçamentos…</div>
+      <div class="wz-status-row" id="wzSt_modules" style="display:none">⏳ Ativando módulos…</div>
       <div class="wz-status-row" id="wzSt_invites" style="display:none">⏳ Enviando convites…</div>
+      <div class="wz-status-row" id="wzSt_modules" style="display:none">⏳ Ativando módulos…</div>
     </div>
     <div id="wzDoneBtn" style="display:none;text-align:center;margin-top:20px">
       <button class="btn btn-primary" style="padding:12px 36px;font-size:.95rem" onclick="_wzFinish()">
@@ -741,7 +828,26 @@ async function _wzRunSetup() {
       _wzSetStatus('wzSt_budgets', 'Orçamentos: pulado', true);
     }
 
-    // 4. Send invites
+    // 4. Apply selected modules
+    const mods = _wz.modules || {};
+    const anyMod = Object.values(mods).some(v => v);
+    if (anyMod) {
+      _wzSetStatus('wzSt_modules', 'Ativando módulos…', false);
+      const modLabels = { prices: '🏷️ Preços', investments: '📈 Investimentos', debts: '💳 Dívidas', aiInsights: '🤖 IA Insights' };
+      const NAV_MAP = { prices: '[data-nav="prices"]', investments: '[data-nav="investments"]', debts: '[data-nav="debts"]', aiInsights: '[data-nav="ai_insights"]' };
+      const active = Object.entries(mods).filter(([,v]) => v).map(([k]) => modLabels[k] || k);
+      Object.entries(NAV_MAP).forEach(([key, sel]) => {
+        document.querySelectorAll(sel).forEach(el => { el.style.display = mods[key] ? '' : 'none'; });
+      });
+      if (typeof saveAppSetting === 'function') {
+        await Promise.all(Object.entries(mods).map(([k, v]) => saveAppSetting('module_' + k + '_enabled', v).catch(() => {})));
+      }
+      _wzSetStatus('wzSt_modules', `Módulos ativos: ${active.join(', ') || 'nenhum'}`, true);
+    } else {
+      document.getElementById('wzSt_modules').style.display = 'none';
+    }
+
+    // 6. Send invites
     const invites = _wz.adults.filter(a => a.invite && a.email);
     if (invites.length) {
       _wzSetStatus('wzSt_invites', 'Enviando convites…', false);
@@ -757,7 +863,26 @@ async function _wzRunSetup() {
       document.getElementById('wzSt_invites').style.display = 'none';
     }
 
-    // 5. Mark wizard done
+    // 5. Save optional modules
+    const modKeys = Object.entries(_wz.modules).filter(([,v]) => v).map(([k]) => k);
+    if (modKeys.length) {
+      const modMap = {
+        aiInsights:  'module_ai_insights',
+        investments: 'module_investments',
+        debts:       'module_debts',
+        prices:      'module_prices',
+        grocery:     'module_grocery',
+      };
+      for (const k of modKeys) {
+        if (modMap[k]) {
+          await saveAppSetting(modMap[k], true).catch(() => {});
+          // Also enable grocery when prices is enabled
+          if (k === 'prices') await saveAppSetting('module_grocery', true).catch(() => {});
+        }
+      }
+    }
+
+    // 6. Mark wizard done
     await saveAppSetting('wizard_dismissed', true).catch(()=>{});
 
     // Reload data in background
@@ -811,3 +936,230 @@ async function _sendFamilyInviteEmail(toEmail, toName, familyName) {
     from_name: 'Family FinTrack',
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 5-ALT: Módulos opcionais
+// _wz.modules = { prices: bool, investments: bool, debts: bool, aiInsights: bool }
+// Inserido como step 5 (entre orçamentos e contas)
+// totalSteps permanece 8 — vamos apenas substituir step5 renderização
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Injetar step de módulos entre steps 4 e 5
+// Remap: antigo step5=contas agora é step6, etc.
+// Para não quebrar o flow existente, sobrescrevemos _wzRenderStep para chamar
+// o novo step de módulos quando step===5, e deslocar os demais.
+
+const _wzRenderStepOrig = _wzRenderStep;
+
+// Módulos selecionados pelo usuário
+if (!_wz.modules) _wz.modules = { prices: false, investments: false, debts: false, aiInsights: false };
+
+// Patch: adiciona step 5 de módulos e move os outros
+(function() {
+  window._wzRenderStep = function() {
+    _wzClearError();
+    const body     = document.getElementById('wzBody');
+    const progress = document.getElementById('wzProgress');
+    const backBtn  = document.getElementById('wzBackBtn');
+    const nextBtn  = document.getElementById('wzNextBtn');
+    const skipBtn  = document.getElementById('wzSkipBtn');
+    const title    = document.getElementById('wzTitle');
+    const subtitle = document.getElementById('wzSubtitle');
+    if (!body) return;
+
+    // totalSteps now 9 (added modules step)
+    const TOTAL = 9;
+    const pct = ((_wz.step - 1) / (TOTAL - 1)) * 100;
+    if (progress) progress.style.width = pct + '%';
+
+    document.querySelectorAll('.wz-dot').forEach((d, i) => {
+      d.classList.toggle('wz-dot--active', i + 1 === _wz.step);
+      d.classList.toggle('wz-dot--done',   i + 1 < _wz.step);
+    });
+
+    if (backBtn)  backBtn.style.display  = _wz.step > 1 && _wz.step < TOTAL ? '' : 'none';
+    if (nextBtn)  nextBtn.style.display  = _wz.step < TOTAL ? '' : 'none';
+    if (skipBtn)  skipBtn.style.display  = (_wz.step >= 2 && _wz.step <= TOTAL - 1) ? '' : 'none';
+    if (nextBtn)  nextBtn.textContent    = (_wz.step === TOTAL - 1) ? '✅ Finalizar' : 'Continuar →';
+
+    switch (_wz.step) {
+      case 1: return _wzStep1(body, title, subtitle);
+      case 2: return _wzStep2(body, title, subtitle);
+      case 3: return _wzStep3(body, title, subtitle);
+      case 4: return _wzStep4(body, title, subtitle);
+      case 5: return _wzStep5_modules(body, title, subtitle);  // NEW
+      case 6: return _wzStep5_account(body, title, subtitle);
+      case 7: return _wzStep6_transaction(body, title, subtitle);
+      case 8: return _wzStep7_reports(body, title, subtitle);
+      case 9: return _wzStep8_done(body, title, subtitle);
+    }
+  };
+
+  // Also patch _wzNext/_wzBack/_wzSkip/_wzValidateStep to use dynamic total
+  const _origValidate = window._wzValidateStep || (() => true);
+  window._wzValidateStep = function() {
+    if (_wz.step === 1) {
+      const name = document.getElementById('wzFamilyName')?.value.trim();
+      if (!name) { _wzShowError('Informe o nome da família'); return false; }
+      _wz.familyName = name;
+    }
+    if (_wz.step === 2) {
+      _wzCollectMembers();
+      if (_wz.adults.length === 0) { _wzShowError('Adicione pelo menos um adulto'); return false; }
+    }
+    if (_wz.step === 3) { _wzCollectInvites(); }
+    if (_wz.step === 4) { _wzCollectExpenses(); }
+    if (_wz.step === 5) { _wzCollectModules(); }
+    _wzClearError();
+    return true;
+  };
+
+  window._wzNext = function() {
+    if (!_wzValidateStep()) return;
+    if (_wz.step < 9) { _wz.step++; window._wzRenderStep(); }
+  };
+  window._wzBack = function() {
+    if (_wz.step > 1) { _wz.step--; window._wzRenderStep(); }
+  };
+  window._wzSkip = function() {
+    if (_wz.step < 9) { _wz.step++; window._wzRenderStep(); }
+  };
+  window._wzOpen = function() {
+    const el = document.getElementById('wizardOverlay');
+    if (el) { el.style.display = 'flex'; window._wzRenderStep(); }
+  };
+})();
+
+// ── Step 5: Módulos opcionais ──────────────────────────────────────────────
+function _wzStep5_modules(body, title, subtitle) {
+  if (title)    title.textContent    = 'Módulos opcionais 🧩';
+  if (subtitle) subtitle.textContent = 'Ative recursos adicionais conforme a sua necessidade. Você pode alterar isso depois nas configurações.';
+
+  const m = _wz.modules;
+  const MODULE_DATA = [
+    {
+      key: 'prices',
+      icon: '🏷️',
+      title: 'Rastreamento de Preços',
+      color: '#0891b2',
+      bgColor: '#e0f2fe',
+      description: 'Monitore o histórico de preços de produtos em supermercados e lojas. Compare preços entre estabelecimentos e descubra quando comprar mais barato.',
+      badge: 'Economia doméstica',
+      nav: 'prices',
+    },
+    {
+      key: 'investments',
+      icon: '📈',
+      title: 'Carteira de Investimentos',
+      color: '#16a34a',
+      bgColor: '#dcfce7',
+      description: 'Acompanhe ações, FIIs, renda fixa, cripto e outros ativos. Veja rentabilidade, alocação e evolução do patrimônio ao longo do tempo.',
+      badge: 'Patrimônio',
+      nav: 'investments',
+    },
+    {
+      key: 'debts',
+      icon: '💳',
+      title: 'Gestão de Dívidas',
+      color: '#dc2626',
+      bgColor: '#fee2e2',
+      description: 'Controle empréstimos, parcelamentos e dívidas em geral. Veja o saldo devedor, calcule juros e acompanhe o progresso de quitação.',
+      badge: 'Controle financeiro',
+      nav: 'debts',
+    },
+    {
+      key: 'aiInsights',
+      icon: '🤖',
+      title: 'IA Insights',
+      color: '#7c3aed',
+      bgColor: '#f3e8ff',
+      description: 'Análise inteligente das suas finanças com Gemini AI. Receba insights personalizados, identifique padrões de gastos e obtenha sugestões para economizar mais.',
+      badge: 'Inteligência artificial',
+      nav: 'ai_insights',
+    },
+  ];
+
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${MODULE_DATA.map(mod => {
+        const active = m[mod.key];
+        return `
+        <div class="wz-module-card ${active ? 'wz-module-card--active' : ''}"
+             id="wzMod_${mod.key}"
+             onclick="_wzToggleModule('${mod.key}')"
+             style="border:2px solid ${active ? mod.color : 'var(--border)'};border-radius:12px;padding:12px 14px;cursor:pointer;background:${active ? mod.bgColor : 'var(--surface)'};transition:all .2s;user-select:none">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:40px;height:40px;border-radius:10px;background:${mod.bgColor};display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;border:1.5px solid ${active ? mod.color : 'transparent'}">
+              ${mod.icon}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:.88rem;font-weight:700;color:${active ? mod.color : 'var(--text)'}">${mod.title}</span>
+                <span style="font-size:.62rem;font-weight:600;padding:2px 7px;border-radius:20px;background:${mod.bgColor};color:${mod.color};border:1px solid ${mod.color}22">${mod.badge}</span>
+              </div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:3px;line-height:1.4">${mod.description}</div>
+            </div>
+            <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${active ? mod.color : 'var(--border)'};background:${active ? mod.color : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s">
+              ${active ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="wz-hint" style="margin-top:10px;text-align:center">💡 Você pode ativar ou desativar qualquer módulo depois em <strong>Configurações → Família</strong></div>`;
+}
+
+function _wzToggleModule(key) {
+  _wz.modules[key] = !_wz.modules[key];
+  // Re-render only the modules step body
+  _wzStep5_modules(document.getElementById('wzBody'), null, null);
+}
+
+function _wzCollectModules() {
+  // Persist module preferences to app_settings
+  const mods = _wz.modules;
+  // Save async (fire-and-forget)
+  if (typeof saveAppSetting === 'function') {
+    Object.entries(mods).forEach(([k, v]) => {
+      saveAppSetting('module_' + k + '_enabled', v).catch(() => {});
+    });
+  }
+}
+
+// Patch _wzRunSetup to apply module nav visibility after setup
+const _wzRunSetupOrig = window._wzRunSetup;
+window._wzRunSetup = async function() {
+  await _wzRunSetupOrig.call(this);
+  // Apply module nav visibility
+  const mods = _wz.modules;
+  const NAV_MAP = {
+    prices: '[data-nav="prices"]',
+    investments: '[data-nav="investments"]',
+    debts: '[data-nav="debts"]',
+    aiInsights: '[data-nav="ai_insights"]',
+  };
+  Object.entries(NAV_MAP).forEach(([key, sel]) => {
+    document.querySelectorAll(sel).forEach(el => {
+      el.style.display = mods[key] ? '' : 'none';
+    });
+  });
+  // Persist nav visibility
+  if (typeof saveAppSetting === 'function') {
+    Object.entries(mods).forEach(([k, v]) => {
+      saveAppSetting('module_' + k + '_enabled', v).catch(() => {});
+    });
+  }
+};
+
+// ── Wizard restart from profile ────────────────────────────────────────────
+window.restartWizardFromProfile = async function() {
+  const confirmed = confirm('Isso vai reiniciar o assistente de configuração. Deseja continuar?');
+  if (!confirmed) return;
+  await saveAppSetting('wizard_dismissed', false).catch(() => {});
+  if (typeof closeModal === 'function') closeModal('myProfileModal');
+  setTimeout(() => {
+    _wzReset();
+    _wz.modules = { prices: false, investments: false, debts: false, aiInsights: false };
+    window._wzOpen();
+  }, 300);
+};

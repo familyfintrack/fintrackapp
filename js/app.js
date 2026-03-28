@@ -616,7 +616,8 @@ const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Co
   debts:'Dívidas',
   help:'Ajuda',
   audit:'Auditoria de Programadas',
-  telemetry:'Telemetria'};
+  telemetry:'Telemetria',
+  privacy:'Política de Privacidade'};
 
 // SVG icons used in the mobile topbar (replaces text title on small screens)
 const _pageIconsSVG = {
@@ -636,6 +637,7 @@ const _pageIconsSVG = {
   help:         '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   audit:        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
   telemetry:    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><polyline points="22 20 2 20"/></svg>',
+  privacy:      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
 };
 async function togglePrivacy(){
   state.privacyMode=!state.privacyMode;
@@ -921,6 +923,7 @@ function navigate(page){
       scheduled:    `<button class="page-header-action" onclick="openScheduledModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo</button>`,
       audit:        `<button class="page-header-action" onclick="loadAuditLogs()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Atualizar</button>`,
       telemetry:    `<button class="page-header-action" onclick="loadTelemetryDashboard?.()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Atualizar</button>`,
+      privacy:      '',
       reports:      '',
       categories:   '',
       payees:       '',
@@ -973,6 +976,7 @@ function navigate(page){
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
   else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
+  else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);

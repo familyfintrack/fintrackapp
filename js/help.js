@@ -433,6 +433,336 @@ function _helpContent() {
       ],
     },
   ];
+    },
+    {
+      id: 'modules', icon: '🧩', color: '#0891b2',
+      title: { pt: 'Módulos do App', en: 'App Modules', es: 'Módulos de la app', fr: "Modules de l'app" },
+      articles: [
+        {
+          id: 'module-prices',
+          title: { pt: 'Rastreamento de Preços 🏷️', en: 'Price Tracking 🏷️', es: 'Seguimiento de precios 🏷️', fr: 'Suivi des prix 🏷️' },
+          body: {
+            pt: `<div style="background:linear-gradient(135deg,#e0f2fe,#bae6fd);border-radius:12px;padding:16px 18px;margin-bottom:16px;border-left:4px solid #0891b2"><div style="font-size:2rem;margin-bottom:6px">🏷️</div><div style="font-size:1rem;font-weight:700;color:#0c4a6e">Rastreamento de Preços</div><div style="font-size:.82rem;color:#0369a1;margin-top:4px">Compare preços entre mercados.</div><button onclick="navigate('prices')" style="margin-top:10px;background:#0891b2;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Ir para Preços →</button></div><h4>Como funciona?</h4><ul><li>Cadastre produtos que compra regularmente</li><li>Registre o preço encontrado em cada estabelecimento</li><li>O app mostra o histórico e destaca onde está mais barato</li></ul><div class="help-tip">💡 Use junto com a lista de compras para economizar.</div>`,
+            en: `<button onclick="navigate('prices')" style="background:#0891b2;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Go to Prices →</button><p>Track product prices across stores and view price history charts.</p>`,
+            es: `<button onclick="navigate('prices')" style="background:#0891b2;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Ir a Precios →</button>`,
+            fr: `<button onclick="navigate('prices')" style="background:#0891b2;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Aller aux Prix →</button>`,
+          },
+        },
+        {
+          id: 'module-investments',
+          title: { pt: 'Carteira de Investimentos 📈', en: 'Investment Portfolio 📈', es: 'Cartera de inversiones 📈', fr: "Portefeuille d'investissements 📈" },
+          body: {
+            pt: `<div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border-radius:12px;padding:16px 18px;margin-bottom:16px;border-left:4px solid #16a34a"><div style="font-size:2rem;margin-bottom:6px">📈</div><div style="font-size:1rem;font-weight:700;color:#14532d">Carteira de Investimentos</div><button onclick="navigate('investments')" style="margin-top:10px;background:#16a34a;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Ir para Investimentos →</button></div><h4>O que você pode fazer?</h4><div class="help-card-grid"><div class="help-mini-card"><strong>📊 Carteiras</strong>Organize por corretora</div><div class="help-mini-card"><strong>💹 Rentabilidade</strong>Ganho % e em R$ por ativo</div><div class="help-mini-card"><strong>🥧 Alocação</strong>Distribuição dos ativos</div><div class="help-mini-card"><strong>📉 Posições</strong>Ações, FIIs, cripto, renda fixa</div></div><div class="help-tip">💡 Cadastre aportes mensais como transações para integrar com o saldo geral.</div>`,
+            en: `<button onclick="navigate('investments')" style="background:#16a34a;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Go to Investments →</button><p>Track stocks, ETFs, bonds and crypto with portfolio allocation charts.</p>`,
+            es: `<button onclick="navigate('investments')" style="background:#16a34a;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Ir a Inversiones →</button>`,
+            fr: `<button onclick="navigate('investments')" style="background:#16a34a;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Aller aux Investissements →</button>`,
+          },
+        },
+        {
+          id: 'module-debts',
+          title: { pt: 'Gestão de Dívidas 💳', en: 'Debt Management 💳', es: 'Gestión de deudas 💳', fr: 'Gestion des dettes 💳' },
+          body: {
+            pt: `<div style="background:linear-gradient(135deg,#fee2e2,#fecaca);border-radius:12px;padding:16px 18px;margin-bottom:16px;border-left:4px solid #dc2626"><div style="font-size:2rem;margin-bottom:6px">💳</div><div style="font-size:1rem;font-weight:700;color:#7f1d1d">Gestão de Dívidas</div><button onclick="navigate('debts')" style="margin-top:10px;background:#dc2626;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Ir para Dívidas →</button></div><h4>Para que serve?</h4><ul><li>Registrar empréstimos e financiamentos</li><li>Acompanhar saldo devedor e parcelas</li><li>Estratégias Bola de Neve e Avalanche</li></ul><div class="help-warning">⚠️ O app não acessa dados bancários — você insere manualmente.</div>`,
+            en: `<button onclick="navigate('debts')" style="background:#dc2626;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Go to Debts →</button><p>Track loans and use Snowball or Avalanche payoff strategies.</p>`,
+            es: `<button onclick="navigate('debts')" style="background:#dc2626;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Ir a Deudas →</button>`,
+            fr: `<button onclick="navigate('debts')" style="background:#dc2626;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Aller aux Dettes →</button>`,
+          },
+        },
+        {
+          id: 'module-ai',
+          title: { pt: 'IA Insights 🤖', en: 'AI Insights 🤖', es: 'IA Insights 🤖', fr: 'IA Insights 🤖' },
+          body: {
+            pt: `<div style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff);border-radius:12px;padding:16px 18px;margin-bottom:16px;border-left:4px solid #7c3aed"><div style="font-size:2rem;margin-bottom:6px">🤖</div><div style="font-size:1rem;font-weight:700;color:#4c1d95">IA Insights — Powered by Gemini</div><button onclick="navigate('ai_insights')" style="margin-top:10px;background:#7c3aed;color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Ir para IA Insights →</button></div><h4>O que a IA analisa?</h4><div class="help-card-grid"><div class="help-mini-card"><strong>📊 Padrões</strong>Identifica onde você gasta mais</div><div class="help-mini-card"><strong>🎯 Score</strong>Saúde financeira 0-100</div><div class="help-mini-card"><strong>💬 Chat</strong>Perguntas em linguagem natural</div><div class="help-mini-card"><strong>📄 PDF</strong>Relatório com insights</div></div><h4>Privacidade da IA</h4><p>Dados enviados são <strong>anonimizados</strong> — a IA recebe totais e categorias, nunca nomes pessoais. Sua chave Gemini fica somente no seu navegador.</p><div class="help-tip">💡 Pergunte: "Quanto gastei com alimentação este mês?"</div>`,
+            en: `<button onclick="navigate('ai_insights')" style="background:#7c3aed;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Go to AI Insights →</button><p>AI-powered financial analysis, health score, natural language chat and PDF reports.</p>`,
+            es: `<button onclick="navigate('ai_insights')" style="background:#7c3aed;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Ir a IA Insights →</button>`,
+            fr: `<button onclick="navigate('ai_insights')" style="background:#7c3aed;color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Aller à IA Insights →</button>`,
+          },
+        },
+      ],
+    },
+    {
+      id: 'security', icon: '🔒', color: '#1d4ed8',
+      title: { pt: 'Segurança & Privacidade', en: 'Security & Privacy', es: 'Seguridad y privacidad', fr: 'Sécurité et confidentialité' },
+      articles: [
+        {
+          id: 'data-security',
+          title: { pt: 'Como seus dados são protegidos?', en: 'How is your data protected?', es: '¿Cómo están protegidos sus datos?', fr: 'Comment vos données sont-elles protégées?' },
+          body: {
+            pt: `<div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-radius:14px;padding:18px 20px;margin-bottom:18px;border-left:4px solid #1d4ed8"><div style="font-size:1.8rem;margin-bottom:6px">🔒</div><div style="font-size:1rem;font-weight:800;color:#1e3a8a">Sim. Seus dados financeiros são protegidos em múltiplas camadas.</div></div><h4>🏗️ Infraestrutura — Supabase</h4><div class="help-card-grid"><div class="help-mini-card"><strong>🔐 TLS/HTTPS</strong>Dados sempre criptografados em trânsito</div><div class="help-mini-card"><strong>🗄️ Criptografia em repouso</strong>Dados cifrados no disco pelo Supabase</div><div class="help-mini-card"><strong>🔑 Row Level Security</strong>Cada família só acessa seus próprios dados</div><div class="help-mini-card"><strong>☁️ Backups automáticos</strong>Backups diários no plano Pro</div></div><h4>🔑 Autenticação</h4><ul><li><strong>JWT seguro:</strong> token assinado digitalmente com expiração automática</li><li><strong>Sem senha em texto puro:</strong> senhas processadas com bcrypt</li><li><strong>Aprovação de novos usuários:</strong> novos membros precisam de aprovação do admin</li></ul><h4>🤖 IA e seus dados</h4><p>Dados enviados para análise de IA são <strong>anonimizados</strong>. Sua chave Gemini fica somente no seu navegador.</p><div class="help-tip">💡 Seus dados ficam no seu próprio banco Supabase. Nem os desenvolvedores têm acesso sem sua service role key.</div><div style="margin-top:14px"><button onclick="navigate('privacy')" style="background:var(--accent);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">📄 Ver Política de Privacidade →</button></div>`,
+            en: `<div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-radius:14px;padding:18px;margin-bottom:18px;border-left:4px solid #1d4ed8"><div style="font-size:1.8rem">🔒</div><div style="font-weight:800;color:#1e3a8a">Yes. Your data is protected at multiple layers.</div></div><div class="help-card-grid"><div class="help-mini-card"><strong>🔐 TLS</strong>All data encrypted in transit</div><div class="help-mini-card"><strong>🗄️ At-rest encryption</strong>Data encrypted on disk</div><div class="help-mini-card"><strong>🔑 Row Level Security</strong>Each family sees only its own data</div><div class="help-mini-card"><strong>☁️ Auto backups</strong>Daily Supabase backups</div></div><button onclick="navigate('privacy')" style="margin-top:12px;background:var(--accent);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer">Privacy Policy →</button>`,
+            es: `<p>Sus datos están protegidos con TLS, RLS y JWT. Cada familia solo accede a sus propios datos.</p><button onclick="navigate('privacy')" style="background:var(--accent);color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Política de Privacidad →</button>`,
+            fr: `<p>Vos données sont protégées par TLS, RLS et JWT. Chaque famille n'accède qu'à ses propres données.</p><button onclick="navigate('privacy')" style="background:var(--accent);color:#fff;border:none;padding:7px 16px;border-radius:8px;cursor:pointer">Politique de confidentialité →</button>`,
+          },
+        },
+        {
+          id: 'privacy-rights',
+          title: { pt: 'Seus direitos & LGPD', en: 'Your rights & GDPR', es: 'Sus derechos & LGPD', fr: 'Vos droits & RGPD' },
+          body: {
+            pt: `<h4>📋 Seus direitos sobre os dados (LGPD)</h4><div class="help-card-grid"><div class="help-mini-card"><strong>👁️ Acesso</strong>Ver todos os dados armazenados sobre você</div><div class="help-mini-card"><strong>✏️ Correção</strong>Atualizar dados incorretos</div><div class="help-mini-card"><strong>🗑️ Exclusão</strong>Solicitar remoção completa dos seus dados</div><div class="help-mini-card"><strong>📤 Portabilidade</strong>Exportar dados em CSV/JSON</div></div><h4>🗑️ Solicitar exclusão da conta</h4><button onclick="navigate('privacy')" style="display:inline-flex;align-items:center;gap:6px;background:#dc2626;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;margin-top:6px">🗑️ Solicitar exclusão de conta</button><h4 style="margin-top:16px">📤 Exportar meus dados</h4><button onclick="navigate('reports')" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">📊 Ir para Relatórios</button><div class="help-tip" style="margin-top:14px">💡 A exclusão remove permanentemente todos os seus dados. Esta ação não pode ser desfeita.</div>`,
+            en: `<div class="help-card-grid"><div class="help-mini-card"><strong>👁️ Access</strong>View all stored data</div><div class="help-mini-card"><strong>✏️ Correction</strong>Update incorrect data</div><div class="help-mini-card"><strong>🗑️ Deletion</strong>Request full data removal</div><div class="help-mini-card"><strong>📤 Portability</strong>Export as CSV/JSON</div></div><button onclick="navigate('privacy')" style="margin-top:12px;background:#dc2626;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">🗑️ Request account deletion</button>`,
+            es: `<p>Tiene derecho de acceso, corrección, eliminación y portabilidad de sus datos.</p><button onclick="navigate('privacy')" style="background:#dc2626;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer">🗑️ Solicitar eliminación</button>`,
+            fr: `<p>Vous avez droit d'accès, de rectification, d'effacement et de portabilité de vos données.</p><button onclick="navigate('privacy')" style="background:#dc2626;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer">🗑️ Demander la suppression</button>`,
+          },
+        },
+      ],
+    },
+    {
+      id: 'modules', icon: '🧩', color: '#7c3aed',
+      title: { pt: 'Módulos & Funcionalidades', en: 'Modules & Features', es: 'Módulos y funciones', fr: 'Modules et fonctionnalités' },
+      articles: [
+        {
+          id: 'optional-modules',
+          title: { pt: 'Módulos opcionais', en: 'Optional modules', es: 'Módulos opcionales', fr: 'Modules optionnels' },
+          body: {
+            pt: `<p>O Family FinTrack possui módulos opcionais que podem ser ativados conforme a sua necessidade.</p>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #0891b2">
+    <strong>🏷️ Rastreamento de Preços</strong>
+    Compare preços entre supermercados e acompanhe histórico de produtos
+    <br><br><button class="help-action-btn" onclick="navigate('prices');if(typeof closeModal==='function')closeModal('myProfileModal')">Ir para Preços →</button>
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a">
+    <strong>📈 Investimentos</strong>
+    Carteira de ações, FIIs, renda fixa e criptomoedas com rentabilidade
+    <br><br><button class="help-action-btn" onclick="navigate('investments')">Ir para Investimentos →</button>
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #dc2626">
+    <strong>💳 Gestão de Dívidas</strong>
+    Controle empréstimos, parcelas e acompanhe o progresso de quitação
+    <br><br><button class="help-action-btn" onclick="navigate('debts')">Ir para Dívidas →</button>
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #7c3aed">
+    <strong>🤖 IA Insights</strong>
+    Análise inteligente com Gemini AI: padrões, previsões e recomendações
+    <br><br><button class="help-action-btn" onclick="navigate('ai_insights')">Ir para IA Insights →</button>
+  </div>
+</div>
+<div class="help-tip">💡 Para ativar ou desativar módulos: acesse seu <button onclick="openMyProfile();setTimeout(()=>document.querySelector('[onclick*=profTabPrefs]')?.click(),400)" style="background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;font-family:inherit;font-size:inherit">Perfil → Preferências</button> e use o botão "Reiniciar wizard" para reconfigurar os módulos ativos.</div>`,
+            en: `<p>Family FinTrack has optional modules that can be activated as needed.</p>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #0891b2"><strong>🏷️ Price Tracking</strong> Compare prices across stores and track product history<br><br><button class="help-action-btn" onclick="navigate('prices')">Go to Prices →</button></div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a"><strong>📈 Investments</strong> Portfolio of stocks, funds and fixed income<br><br><button class="help-action-btn" onclick="navigate('investments')">Go to Investments →</button></div>
+  <div class="help-mini-card" style="border-left:3px solid #dc2626"><strong>💳 Debt Management</strong> Track loans and installments<br><br><button class="help-action-btn" onclick="navigate('debts')">Go to Debts →</button></div>
+  <div class="help-mini-card" style="border-left:3px solid #7c3aed"><strong>🤖 AI Insights</strong> Smart financial analysis powered by Gemini AI<br><br><button class="help-action-btn" onclick="navigate('ai_insights')">Go to AI Insights →</button></div>
+</div>`,
+            es: `<p>Family FinTrack tiene módulos opcionales que se pueden activar según sus necesidades.</p>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>🏷️ Precios</strong> Compare precios entre tiendas<br><br><button class="help-action-btn" onclick="navigate('prices')">Ir a Precios →</button></div>
+  <div class="help-mini-card"><strong>📈 Inversiones</strong> Cartera de acciones y renta fija<br><br><button class="help-action-btn" onclick="navigate('investments')">Ir a Inversiones →</button></div>
+  <div class="help-mini-card"><strong>💳 Deudas</strong> Control de préstamos<br><br><button class="help-action-btn" onclick="navigate('debts')">Ir a Deudas →</button></div>
+  <div class="help-mini-card"><strong>🤖 IA Insights</strong> Análisis inteligente<br><br><button class="help-action-btn" onclick="navigate('ai_insights')">Ir a IA →</button></div>
+</div>`,
+            fr: `<p>Family FinTrack dispose de modules optionnels activables selon vos besoins.</p>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>🏷️ Prix</strong> Comparez les prix entre magasins<br><br><button class="help-action-btn" onclick="navigate('prices')">Aller aux Prix →</button></div>
+  <div class="help-mini-card"><strong>📈 Investissements</strong> Portefeuille d'actions et obligations<br><br><button class="help-action-btn" onclick="navigate('investments')">Aller aux Investissements →</button></div>
+  <div class="help-mini-card"><strong>💳 Dettes</strong> Contrôle des prêts<br><br><button class="help-action-btn" onclick="navigate('debts')">Aller aux Dettes →</button></div>
+  <div class="help-mini-card"><strong>🤖 IA Insights</strong> Analyse intelligente<br><br><button class="help-action-btn" onclick="navigate('ai_insights')">Aller à l'IA →</button></div>
+</div>`,
+          },
+        },
+        {
+          id: 'quick-actions',
+          title: { pt: 'Ações rápidas', en: 'Quick actions', es: 'Acciones rápidas', fr: 'Actions rapides' },
+          body: {
+            pt: `<p>Acesse rapidamente as principais funções do app:</p>
+<div class="help-action-grid">
+  <div class="help-action-card">
+    <div class="help-action-icon">💸</div>
+    <div class="help-action-label">Nova Transação</div>
+    <button class="help-action-btn" onclick="navigate('transactions');setTimeout(()=>typeof openTransactionModal==='function'&&openTransactionModal(),400)">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">🏦</div>
+    <div class="help-action-label">Nova Conta</div>
+    <button class="help-action-btn" onclick="navigate('accounts');setTimeout(()=>typeof openAccountModal==='function'&&openAccountModal(),400)">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">📅</div>
+    <div class="help-action-label">Novo Programado</div>
+    <button class="help-action-btn" onclick="navigate('scheduled');setTimeout(()=>typeof openScheduledModal==='function'&&openScheduledModal(),400)">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">📊</div>
+    <div class="help-action-label">Ver Relatórios</div>
+    <button class="help-action-btn" onclick="navigate('reports')">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">🎯</div>
+    <div class="help-action-label">Ver Orçamentos</div>
+    <button class="help-action-btn" onclick="navigate('budgets')">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">⚙️</div>
+    <div class="help-action-label">Configurações</div>
+    <button class="help-action-btn" onclick="navigate('settings')">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">🧙</div>
+    <div class="help-action-label">Reiniciar Wizard</div>
+    <button class="help-action-btn" onclick="openMyProfile();setTimeout(()=>document.querySelectorAll('.prof-ctx-tab')[2]?.click(),400)">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">🔒</div>
+    <div class="help-action-label">Política de Privacidade</div>
+    <button class="help-action-btn" onclick="navigate('privacy')">Abrir →</button>
+  </div>
+</div>`,
+            en: `<p>Quickly access the main app functions:</p>
+<div class="help-action-grid">
+  <div class="help-action-card"><div class="help-action-icon">💸</div><div class="help-action-label">New Transaction</div><button class="help-action-btn" onclick="navigate('transactions');setTimeout(()=>typeof openTransactionModal==='function'&&openTransactionModal(),400)">Open →</button></div>
+  <div class="help-action-card"><div class="help-action-icon">🏦</div><div class="help-action-label">New Account</div><button class="help-action-btn" onclick="navigate('accounts');setTimeout(()=>typeof openAccountModal==='function'&&openAccountModal(),400)">Open →</button></div>
+  <div class="help-action-card"><div class="help-action-icon">📊</div><div class="help-action-label">Reports</div><button class="help-action-btn" onclick="navigate('reports')">Open →</button></div>
+  <div class="help-action-card"><div class="help-action-icon">🔒</div><div class="help-action-label">Privacy Policy</div><button class="help-action-btn" onclick="navigate('privacy')">Open →</button></div>
+</div>`,
+            es: `<p>Accede rápidamente a las funciones principales:</p>
+<div class="help-action-grid">
+  <div class="help-action-card"><div class="help-action-icon">💸</div><div class="help-action-label">Nueva Transacción</div><button class="help-action-btn" onclick="navigate('transactions')">Abrir →</button></div>
+  <div class="help-action-card"><div class="help-action-icon">🏦</div><div class="help-action-label">Nueva Cuenta</div><button class="help-action-btn" onclick="navigate('accounts')">Abrir →</button></div>
+  <div class="help-action-card"><div class="help-action-icon">📊</div><div class="help-action-label">Informes</div><button class="help-action-btn" onclick="navigate('reports')">Abrir →</button></div>
+</div>`,
+            fr: `<p>Accédez rapidement aux fonctions principales:</p>
+<div class="help-action-grid">
+  <div class="help-action-card"><div class="help-action-icon">💸</div><div class="help-action-label">Nouvelle Transaction</div><button class="help-action-btn" onclick="navigate('transactions')">Ouvrir →</button></div>
+  <div class="help-action-card"><div class="help-action-icon">📊</div><div class="help-action-label">Rapports</div><button class="help-action-btn" onclick="navigate('reports')">Ouvrir →</button></div>
+</div>`,
+          },
+        },
+      ],
+    },
+    {
+      id: 'security', icon: '🔒', color: '#1d4ed8',
+      title: { pt: 'Segurança & Privacidade', en: 'Security & Privacy', es: 'Seguridad y privacidad', fr: 'Sécurité et confidentialité' },
+      articles: [
+        {
+          id: 'data-security',
+          title: { pt: 'Como seus dados estão protegidos', en: 'How your data is protected', es: 'Cómo están protegidos sus datos', fr: 'Comment vos données sont protégées' },
+          body: {
+            pt: `<div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:14px;padding:20px;color:#fff;margin-bottom:18px;text-align:center">
+  <div style="font-size:2.5rem;margin-bottom:8px">🔒</div>
+  <div style="font-size:1.05rem;font-weight:800;margin-bottom:4px">Seus dados estão seguros</div>
+  <div style="font-size:.8rem;opacity:.85">Infraestrutura enterprise-grade, criptografia ponta-a-ponta e controle total nas suas mãos.</div>
+</div>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #1d4ed8">
+    <strong>🔐 Criptografia TLS</strong>
+    Toda comunicação entre o app e o servidor é protegida por TLS 1.3, o mesmo padrão dos maiores bancos do mundo.
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a">
+    <strong>🏦 Supabase (PostgreSQL)</strong>
+    Dados armazenados no Supabase, plataforma cloud com certificações SOC 2 e ISO 27001. Seus dados nunca são compartilhados com terceiros.
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #7c3aed">
+    <strong>🛡️ Row Level Security (RLS)</strong>
+    Cada família acessa apenas os seus próprios dados. Políticas de segurança no banco de dados impedem qualquer acesso cruzado entre famílias.
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #f59e0b">
+    <strong>🔑 Autenticação JWT</strong>
+    Senhas nunca são armazenadas em texto puro. O sistema usa tokens JWT com expiração automática e hash bcrypt para senhas.
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #0891b2">
+    <strong>📱 PWA Offline-First</strong>
+    O app funciona offline e sincroniza apenas quando conectado. Nenhum dado financeiro trafega desnecessariamente.
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #dc2626">
+    <strong>🗑️ Direito ao Esquecimento</strong>
+    Você pode solicitar a exclusão completa de todos os seus dados a qualquer momento, conforme a LGPD.
+    <br><br><button class="help-action-btn" onclick="navigate('privacy')">Ver Política de Privacidade →</button>
+  </div>
+</div>
+<h4>🌍 Conformidade legal</h4>
+<ul>
+  <li><strong>LGPD</strong> (Lei Geral de Proteção de Dados) — Brasil</li>
+  <li><strong>GDPR</strong> — União Europeia</li>
+  <li>Supabase é <strong>SOC 2 Type II</strong> certificado</li>
+  <li>Backups automáticos com retenção de 7 dias</li>
+</ul>
+<h4>🔍 Transparência</h4>
+<p>O Family FinTrack é uma aplicação de código aberto para uso familiar. O proprietário da família tem acesso a logs de auditoria completos de todas as operações realizadas no sistema.</p>
+<div class="help-tip">💡 Dica: ative a autenticação em dois fatores (2FA) no seu provedor de email para uma camada extra de segurança no login.</div>
+<div style="margin-top:16px;text-align:center">
+  <button class="help-action-btn" onclick="navigate('privacy')" style="padding:10px 24px;font-size:.85rem">📄 Ver Política de Privacidade completa →</button>
+</div>`,
+            en: `<div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:14px;padding:20px;color:#fff;margin-bottom:18px;text-align:center">
+  <div style="font-size:2.5rem;margin-bottom:8px">🔒</div>
+  <div style="font-size:1.05rem;font-weight:800;margin-bottom:4px">Your data is secure</div>
+  <div style="font-size:.8rem;opacity:.85">Enterprise-grade infrastructure, end-to-end encryption and full control in your hands.</div>
+</div>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #1d4ed8"><strong>🔐 TLS Encryption</strong> All communication is protected by TLS 1.3.</div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a"><strong>🏦 Supabase (PostgreSQL)</strong> SOC 2 and ISO 27001 certified cloud platform.</div>
+  <div class="help-mini-card" style="border-left:3px solid #7c3aed"><strong>🛡️ Row Level Security</strong> Each family only accesses its own data.</div>
+  <div class="help-mini-card" style="border-left:3px solid #f59e0b"><strong>🔑 JWT Authentication</strong> Passwords are never stored in plain text.</div>
+</div>
+<div style="margin-top:16px;text-align:center">
+  <button class="help-action-btn" onclick="navigate('privacy')" style="padding:10px 24px">📄 View full Privacy Policy →</button>
+</div>`,
+            es: `<div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:14px;padding:20px;color:#fff;margin-bottom:18px;text-align:center">
+  <div style="font-size:2.5rem;margin-bottom:8px">🔒</div>
+  <div style="font-size:1.05rem;font-weight:800">Sus datos están seguros</div>
+</div>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #1d4ed8"><strong>🔐 Cifrado TLS</strong> Toda comunicación protegida por TLS 1.3.</div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a"><strong>🏦 Supabase</strong> Plataforma certificada SOC 2.</div>
+  <div class="help-mini-card" style="border-left:3px solid #7c3aed"><strong>🛡️ RLS</strong> Cada familia accede solo a sus propios datos.</div>
+</div>`,
+            fr: `<div style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border-radius:14px;padding:20px;color:#fff;margin-bottom:18px;text-align:center">
+  <div style="font-size:2.5rem;margin-bottom:8px">🔒</div>
+  <div style="font-size:1.05rem;font-weight:800">Vos données sont sécurisées</div>
+</div>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #1d4ed8"><strong>🔐 Chiffrement TLS</strong> Toutes les communications protégées par TLS 1.3.</div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a"><strong>🏦 Supabase</strong> Plateforme certifiée SOC 2.</div>
+</div>`,
+          },
+        },
+        {
+          id: 'my-rights',
+          title: { pt: 'Seus direitos sobre seus dados', en: 'Your data rights', es: 'Sus derechos sobre sus datos', fr: 'Vos droits sur vos données' },
+          body: {
+            pt: `<h4>📋 Seus direitos (LGPD / GDPR)</h4>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #1d4ed8">
+    <strong>👁️ Direito de Acesso</strong>
+    Você pode visualizar todos os seus dados a qualquer momento usando os recursos de Relatórios e Exportação do app.
+    <br><br><button class="help-action-btn" onclick="navigate('reports')">Ver Relatórios →</button>
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a">
+    <strong>✏️ Direito de Retificação</strong>
+    Edite qualquer dado diretamente no app — transações, perfil, membros — sem precisar entrar em contato conosco.
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #dc2626">
+    <strong>🗑️ Direito ao Apagamento</strong>
+    Solicite a exclusão completa de todos os dados da sua família. O processo é irreversível e atende à LGPD.
+    <br><br><button class="help-action-btn" onclick="navigate('privacy')" style="border-color:#dc2626;color:#dc2626">Solicitar exclusão →</button>
+  </div>
+  <div class="help-mini-card" style="border-left:3px solid #f59e0b">
+    <strong>📤 Direito de Portabilidade</strong>
+    Exporte todos os seus dados em formato CSV ou PDF a qualquer momento usando a função de Backup.
+    <br><br><button class="help-action-btn" onclick="navigate('settings')">Ir para Backup →</button>
+  </div>
+</div>
+<div class="help-warning" style="margin-top:12px">⚠️ A exclusão de dados é <strong>permanente e irreversível</strong>. Faça um backup antes de solicitar.</div>`,
+            en: `<h4>📋 Your rights (GDPR)</h4>
+<div class="help-card-grid">
+  <div class="help-mini-card" style="border-left:3px solid #1d4ed8"><strong>👁️ Right of Access</strong> View all your data anytime using Reports and Export.</div>
+  <div class="help-mini-card" style="border-left:3px solid #16a34a"><strong>✏️ Right of Rectification</strong> Edit any data directly in the app.</div>
+  <div class="help-mini-card" style="border-left:3px solid #dc2626"><strong>🗑️ Right to Erasure</strong> Request complete deletion of all your family's data.<br><br><button class="help-action-btn" onclick="navigate('privacy')" style="border-color:#dc2626;color:#dc2626">Request deletion →</button></div>
+  <div class="help-mini-card" style="border-left:3px solid #f59e0b"><strong>📤 Right to Portability</strong> Export all your data in CSV or PDF format anytime.</div>
+</div>`,
+            es: `<div class="help-card-grid">
+  <div class="help-mini-card"><strong>👁️ Derecho de acceso</strong> Vea todos sus datos en cualquier momento.</div>
+  <div class="help-mini-card"><strong>🗑️ Derecho al olvido</strong> Solicite la eliminación de todos sus datos.<br><br><button class="help-action-btn" onclick="navigate('privacy')">Solicitar eliminación →</button></div>
+</div>`,
+            fr: `<div class="help-card-grid">
+  <div class="help-mini-card"><strong>👁️ Droit d'accès</strong> Consultez toutes vos données à tout moment.</div>
+  <div class="help-mini-card"><strong>🗑️ Droit à l'effacement</strong> Demandez la suppression de toutes vos données.<br><br><button class="help-action-btn" onclick="navigate('privacy')">Demander la suppression →</button></div>
+</div>`,
+          },
+        },
+      ],
+    },
+  ];
 }
 
 // ══════════════════════════════════════════════════════════════════════════
