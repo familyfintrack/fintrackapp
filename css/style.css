@@ -1983,35 +1983,8 @@ canvas { cursor: default; }
   #page-transactions #txFlatCard tbody td{ padding:0; border:0; }
 
   /* Group view (txGroupContainer) — keep table layout, just make it scrollable */
-  #txGroupContainer { width: 100%; box-sizing: border-box; }
-  #txGroupContainer .tx-group-card { width: 100%; }
-  #txGroupContainer .table-wrap{ overflow-x: auto; width: 100%; }
-  #txGroupContainer table{ min-width: 320px; width: 100%; table-layout: auto; }
-
-  /* Garantir que as células do group view NÃO herdem o display:block do flat card */
-  #txGroupContainer table,
-  #txGroupContainer tbody,
-  #txGroupContainer thead,
-  #txGroupContainer tr,
-  #txGroupContainer td,
-  #txGroupContainer th { display: revert; width: revert; }
-  #txGroupContainer thead { display: table-header-group; }
-  #txGroupContainer tbody { display: table-row-group; }
-  #txGroupContainer tr    { display: table-row; background: none; border: none; border-radius: 0; padding: 0; margin: 0; }
-  #txGroupContainer td    { display: table-cell; }
-
-  /* Descrição não pode ser cortada no group view mobile */
-  #txGroupContainer .tx-v2-desc-text {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    word-break: break-word;
-  }
-  #txGroupContainer .tx-v2-title {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
+  #txGroupContainer .table-wrap{ overflow-x: auto; }
+  #txGroupContainer table{ min-width: 320px; }
 
   /* EXCEÇÃO: linhas de "título do grupo" (nome da conta)
      Normalmente são linhas com 1 célula ocupando tudo (colspan)
@@ -19980,5 +19953,95 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     height: 30px;
     flex-basis: 30px;
     font-size: .7rem;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GROUP VIEW (txGroupContainer) — MOBILE FIX
+   Restaura layout de tabela real dentro dos cards de conta agrupada.
+   Este bloco tem alta especificidade e deve ficar NO FINAL do arquivo
+   para sobrescrever qualquer regra de flat-card que vaze para o group view.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* Container ocupa largura total */
+  #page-transactions #txGroupContainer {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Cada card de conta — largura total, sem quebra */
+  #page-transactions #txGroupContainer .tx-group-card {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Table-wrap scrollável horizontalmente se necessário */
+  #page-transactions #txGroupContainer .table-wrap {
+    overflow-x: auto !important;
+    width: 100% !important;
+  }
+
+  /* Restaurar display de tabela — anula display:block que vaza do flat card */
+  #page-transactions #txGroupContainer table  { display: table       !important; width: 100% !important; table-layout: auto !important; }
+  #page-transactions #txGroupContainer thead  { display: table-header-group !important; }
+  #page-transactions #txGroupContainer tbody  { display: table-row-group    !important; width: auto !important; }
+  #page-transactions #txGroupContainer tr     { display: table-row    !important; width: auto !important;
+                                                 border: none !important; border-radius: 0 !important;
+                                                 background: none !important; padding: 0 !important;
+                                                 margin: 0 !important; box-shadow: none !important;
+                                                 grid-template-columns: none !important; }
+  #page-transactions #txGroupContainer td     { display: table-cell   !important; width: auto !important; }
+  #page-transactions #txGroupContainer th     { display: table-cell   !important; }
+
+  /* Colunas específicas da tabela interna */
+  #page-transactions #txGroupContainer td.tx-v2-date  {
+    grid-column: unset !important; grid-row: unset !important;
+    width: 44px !important; min-width: 44px !important;
+    padding: 8px 4px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+  #page-transactions #txGroupContainer td.tx-v2-body  {
+    grid-column: unset !important; grid-row: unset !important;
+    padding: 8px 6px !important;
+    vertical-align: middle !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+  #page-transactions #txGroupContainer td.tx-v2-right {
+    grid-column: unset !important; grid-row: unset !important;
+    padding: 8px 10px 8px 4px !important;
+    text-align: right !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+  }
+
+  /* Descrição — permitir quebra de linha no espaço reduzido */
+  #page-transactions #txGroupContainer .tx-v2-desc-text {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: break-word !important;
+    font-size: .82rem !important;
+  }
+  #page-transactions #txGroupContainer .tx-v2-title {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  /* Valor — tamanho razoável (não herdar o 1.65rem do flat) */
+  #page-transactions #txGroupContainer .tx-v2-amt {
+    font-size: .9rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* Zebra mínima para leitura */
+  #page-transactions #txGroupContainer tbody tr:nth-child(even) {
+    background: var(--surface2) !important;
+  }
+  #page-transactions #txGroupContainer tbody tr:hover {
+    background: var(--bg2) !important;
   }
 }
