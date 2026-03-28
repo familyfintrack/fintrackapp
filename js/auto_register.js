@@ -655,15 +655,7 @@ async function _sendTelegramDirect(chatId, text) {
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
   });
   const json = await resp.json();
-  if (!json.ok) {
-    if (Number(json.error_code) === 401 && !options._retriedWithFreshToken) {
-      const freshToken = await ensureTelegramBotToken(true);
-      if (freshToken && freshToken !== token) {
-        return _sendTelegramDirect(chatId, text, { forceRefreshToken: true, _retriedWithFreshToken: true });
-      }
-    }
-    throw new Error(`Telegram API: ${json.description || 'erro desconhecido'} (code ${json.error_code})`);
-  }
+  if (!json.ok) throw new Error(`Telegram API: ${json.description || 'erro desconhecido'} (code ${json.error_code})`);
   return json;
 }
 
