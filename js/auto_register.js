@@ -645,9 +645,26 @@ function getTelegramBotToken() {
   try { return (localStorage.getItem(_TG_BOT_KEY) || '').trim(); } catch { return ''; }
 }
 
+async function ensureTelegramBotToken() {
+  let token = getTelegramBotToken();
+  if (token) return token;
+  try {
+    if (typeof getAppSetting === 'function') {
+      token = String(await getAppSetting('telegram_bot_token', '') || '').trim();
+      if (token) {
+        try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
+        return token;
+      }
+    }
+  } catch (e) {
+    console.warn('[Telegram] Não foi possível carregar token salvo:', e?.message || e);
+  }
+  return '';
+}
+
 /** Send via direct Telegram Bot API — no Edge Function needed */
 async function _sendTelegramDirect(chatId, text) {
-  const token = getTelegramBotToken();
+  const token = await ensureTelegramBotToken();
   if (!token) throw new Error('Bot token não configurado em Configurações → Conexão');
   const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
