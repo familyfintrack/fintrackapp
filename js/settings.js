@@ -1573,7 +1573,7 @@ async function loadTelemetryDashboard() {
 
   // Loading state
   const kpiEl = document.getElementById('telKpis');
-  if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Carregando…</div>';
+  if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon" style="animation:tel-shimmer 1.5s infinite">⏳</div><div class="tel-empty-text">Carregando dados…</div></div>';
 
   // ── Queries em paralelo ───────────────────────────────────────────────────
   const [telRes, usersRes, famsRes] = await Promise.all([
@@ -1734,7 +1734,10 @@ const _telUserEmail = (id, evtMap) => {
 
 function _telRenderEmpty() {
   const kpi = document.getElementById('telKpis');
-  if (kpi) kpi.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--muted);font-size:.82rem">Nenhum dado encontrado para os filtros selecionados.</div>';
+  if (kpi) kpi.innerHTML = `<div class="tel-empty" style="grid-column:1/-1">
+    <div class="tel-empty-icon">📭</div>
+    <div class="tel-empty-text">Nenhum dado encontrado para os filtros selecionados.</div>
+  </div>`;
   ['telEventTypes','telDevices','telErrors','telAiCalls'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:4px 0">—</div>';
@@ -1754,21 +1757,18 @@ function _telRenderKpis(rows, days) {
   const kpiEl = document.getElementById('telKpis');
   if (!kpiEl) return;
 
-  const s = `background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--border)`;
-  const n = `font-size:1.4rem;font-weight:700;color:var(--text);line-height:1.1`;
-  const l = `font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em`;
-
   kpiEl.innerHTML = [
-    { v: total.toLocaleString('pt-BR'),     lb: 'Total eventos' },
-    { v: pageViews.toLocaleString('pt-BR'), lb: 'Page views' },
-    { v: users.toLocaleString('pt-BR'),     lb: 'Usuários únicos' },
-    { v: families.toLocaleString('pt-BR'),  lb: 'Famílias ativas' },
-    { v: perDay,                            lb: 'Eventos / dia' },
-    { v: aiCalls.toLocaleString('pt-BR'),   lb: 'Chamadas IA' },
-    { v: errors.toLocaleString('pt-BR'),    lb: 'Erros', danger: errors > 0 },
-  ].map(c => `<div style="${s}">
-    <span style="${n}${c.danger ? ';color:var(--danger)' : ''}">${c.v}</span>
-    <span style="${l}">${c.lb}</span>
+    { v: total.toLocaleString('pt-BR'),     lb: 'Total eventos',    icon: '📊' },
+    { v: pageViews.toLocaleString('pt-BR'), lb: 'Page views',       icon: '👁️' },
+    { v: users.toLocaleString('pt-BR'),     lb: 'Usuários únicos',  icon: '👤' },
+    { v: families.toLocaleString('pt-BR'),  lb: 'Famílias ativas',  icon: '🏠' },
+    { v: perDay,                            lb: 'Eventos / dia',    icon: '📈' },
+    { v: aiCalls.toLocaleString('pt-BR'),   lb: 'Chamadas IA',      icon: '🤖' },
+    { v: errors.toLocaleString('pt-BR'),    lb: 'Erros',            icon: '🔴', danger: errors > 0 },
+  ].map(c => `<div class="tel-kpi-card${c.danger ? ' danger' : ''}">
+    <span class="tel-kpi-icon">${c.icon}</span>
+    <span class="tel-kpi-val${c.danger ? ' danger' : ''}">${c.v}</span>
+    <span class="tel-kpi-lbl">${c.lb}</span>
   </div>`).join('');
 }
 
@@ -1785,15 +1785,29 @@ function _telRenderDailyChart(rows, days) {
   rows.forEach(r => { const day = (r.ts||'').slice(0,10); if (day in buckets) buckets[day]++; });
 
   const labels = Object.keys(buckets).map(d => { const [,m,dd] = d.split('-'); return `${dd}/${m}`; });
+  const values = Object.values(buckets);
+  const maxVal = Math.max(...values, 1);
 
   if (_telDash.charts.daily) { _telDash.charts.daily.destroy(); _telDash.charts.daily = null; }
   _telDash.charts.daily = new Chart(canvas, {
     type: 'bar',
-    data: { labels, datasets: [{ data: Object.values(buckets), backgroundColor: 'rgba(59,130,246,.55)', borderColor: 'rgba(59,130,246,.9)', borderWidth: 1, borderRadius: 3 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map(v => `rgba(31,107,79,${0.3 + 0.6*(v/maxVal)})`),
+        borderColor: 'rgba(31,107,79,.8)',
+        borderWidth: 1,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: t => t[0].label, label: t => `${t.raw} eventos` } } },
       scales: {
-        x: { ticks: { font: { size: 9 }, maxTicksLimit: 10, color: '#888' }, grid: { display: false } },
-        y: { ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,.1)' }, beginAtZero: true },
+        x: { ticks: { font: { size: 9 }, maxTicksLimit: days > 30 ? 10 : 15, color: '#888' }, grid: { display: false } },
+        y: { ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,.08)' }, beginAtZero: true },
       }
     }
   });
@@ -1827,13 +1841,15 @@ function _telRenderEventTypes(rows) {
   const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   const total = rows.length;
   const LABELS = { page_view:'📄 Page view', page_time:'⏱️ Tempo em tela', operation:'⚙️ Operação', error:'🔴 Erro', ai_call:'🤖 IA', metric:'📐 Métrica', toast:'💬 Toast', uncaught:'💥 Erro não capturado' };
+  const COLORS = { page_view:'var(--accent)', page_time:'#3b82f6', operation:'#f59e0b', error:'#ef4444', ai_call:'#8b5cf6', metric:'#14b8a6', toast:'#6b7280', uncaught:'#dc2626' };
   el.innerHTML = sorted.map(([type, count]) => {
     const pct = ((count/total)*100).toFixed(1);
-    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)">
-      <span style="flex:1;color:var(--text)">${LABELS[type]||type}</span>
-      <div style="width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--accent);border-radius:3px"></div></div>
-      <span style="min-width:36px;text-align:right;color:var(--muted)">${count.toLocaleString('pt-BR')}</span>
-      <span style="min-width:36px;text-align:right;color:var(--muted)">${pct}%</span>
+    const color = COLORS[type] || 'var(--accent)';
+    return `<div class="tel-bar-row">
+      <span class="tel-bar-label">${LABELS[type]||type}</span>
+      <div class="tel-bar-track"><div class="tel-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="tel-bar-val">${count.toLocaleString('pt-BR')}</span>
+      <span class="tel-bar-pct">${pct}%</span>
     </div>`;
   }).join('');
 }
@@ -1851,12 +1867,12 @@ function _telRenderDevices(rows) {
   const rg = (title, map) => {
     const s = Object.entries(map).sort((a,b)=>b[1]-a[1]);
     if (!s.length) return '';
-    return `<div style="font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;margin:8px 0 4px">${title}</div>` +
+    return `<div class="tel-device-group-title">${title}</div>` +
       s.map(([k,v]) => { const p=((v/total)*100).toFixed(1);
-        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
-          <span style="flex:1;color:var(--text);font-size:.78rem">${k}</span>
-          <div style="width:60px;height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${p}%;height:100%;background:var(--accent);border-radius:3px"></div></div>
-          <span style="min-width:30px;text-align:right;color:var(--muted);font-size:.75rem">${p}%</span>
+        return `<div class="tel-bar-row">
+          <span class="tel-bar-label">${k}</span>
+          <div class="tel-bar-track"><div class="tel-bar-fill" style="width:${p}%"></div></div>
+          <span class="tel-bar-pct">${p}%</span>
         </div>`;
       }).join('');
   };
@@ -1980,20 +1996,49 @@ function _telRenderAiCalls(rows) {
     totalMs  += r.payload?.latency_ms || 0;
   });
   const avgMs = ai.length ? Math.round(totalMs/ai.length) : 0;
-  const rs = 'display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:.78rem';
-  el.innerHTML = `<div style="${rs};font-weight:600;color:var(--muted);font-size:.7rem;text-transform:uppercase">
-    <span style="flex:1">Feature</span><span style="min-width:50px;text-align:right">Calls</span>
-    <span style="min-width:70px;text-align:right">Tokens ↑</span><span style="min-width:70px;text-align:right">Tokens ↓</span>
-    <span style="min-width:40px;text-align:right">Erros</span></div>` +
-    Object.entries(byFeature).sort((a,b)=>b[1].count-a[1].count).map(([f,s]) =>
-      `<div style="${rs}"><span style="flex:1;color:var(--text)">${f}</span>
-      <span style="min-width:50px;text-align:right;color:var(--muted)">${s.count}</span>
-      <span style="min-width:70px;text-align:right;color:var(--muted)">${s.tokensIn.toLocaleString('pt-BR')}</span>
-      <span style="min-width:70px;text-align:right;color:var(--muted)">${s.tokensOut.toLocaleString('pt-BR')}</span>
-      <span style="min-width:40px;text-align:right;${s.errors>0?'color:var(--danger)':'color:var(--muted)'}">${s.errors||'—'}</span></div>`
-    ).join('') +
-    `<div style="${rs};color:var(--muted);font-size:.72rem;margin-top:4px">
-      Total: ${ai.length} calls · ${(totalIn+totalOut).toLocaleString('pt-BR')} tokens · Latência média: ${avgMs}ms · ${errors} erros</div>`;
+  el.innerHTML = `
+    <div class="tel-ai-grid">
+      <div class="tel-ai-stat">
+        <span class="tel-ai-stat-val">${ai.length.toLocaleString('pt-BR')}</span>
+        <span class="tel-ai-stat-lbl">Total chamadas</span>
+      </div>
+      <div class="tel-ai-stat">
+        <span class="tel-ai-stat-val">${(totalIn+totalOut).toLocaleString('pt-BR')}</span>
+        <span class="tel-ai-stat-lbl">Tokens totais</span>
+      </div>
+      <div class="tel-ai-stat">
+        <span class="tel-ai-stat-val">${avgMs}ms</span>
+        <span class="tel-ai-stat-lbl">Latência média</span>
+      </div>
+      <div class="tel-ai-stat">
+        <span class="tel-ai-stat-val" style="${errors>0?'color:#ef4444':''}">${errors}</span>
+        <span class="tel-ai-stat-lbl">Erros</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+      <table style="width:100%;border-collapse:collapse;font-size:.79rem">
+        <thead>
+          <tr style="background:var(--surface2)">
+            <th style="padding:8px 10px;text-align:left;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Feature</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Calls</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Tokens ↑</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Tokens ↓</th>
+            <th style="padding:8px 10px;text-align:right;font-size:.67rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Erros</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Object.entries(byFeature).sort((a,b)=>b[1].count-a[1].count).map(([f,s]) =>
+            `<tr style="border-top:1px solid var(--border)">
+              <td style="padding:8px 10px;color:var(--text);font-weight:500">${f}</td>
+              <td style="padding:8px 10px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${s.count}</td>
+              <td style="padding:8px 10px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${s.tokensIn.toLocaleString('pt-BR')}</td>
+              <td style="padding:8px 10px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">${s.tokensOut.toLocaleString('pt-BR')}</td>
+              <td style="padding:8px 10px;text-align:right;font-variant-numeric:tabular-nums;${s.errors>0?'color:#ef4444;font-weight:700':'color:var(--muted)'}">${s.errors||'—'}</td>
+            </tr>`
+          ).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2038,19 +2083,22 @@ function _telRenderUsersTable(rows) {
   if (!entries.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Nenhum dado para os filtros selecionados</td></tr>'; return; }
 
   body.innerHTML = entries.map(u => `
-    <tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="_telOpenUserDetail('${u.id}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-      <td style="padding:8px 10px">
-        <div style="font-weight:600;font-size:.82rem;color:var(--text)">${_telEsc(u.name)}</div>
-        <div style="font-size:.72rem;color:var(--muted)">${_telEsc(u.email)}</div>
+    <tr onclick="_telOpenUserDetail('${u.id}')">
+      <td style="padding:9px 10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="tel-avatar" style="width:28px;height:28px;font-size:.75rem">${(_telEsc(u.name)||'?')[0].toUpperCase()}</div>
+          <div>
+            <div style="font-weight:600;font-size:.82rem;color:var(--text)">${_telEsc(u.name)}</div>
+            <div style="font-size:.71rem;color:var(--muted)">${_telEsc(u.email)}</div>
+          </div>
+        </div>
       </td>
-      <td style="padding:8px 10px;color:var(--muted);font-size:.8rem">${_telEsc(u.famName)}</td>
-      <td style="padding:8px 10px;text-align:right;font-weight:600;color:var(--text)">${u.events.toLocaleString('pt-BR')}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${u.sessions}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${u.pages}</td>
-      <td style="padding:8px 10px;text-align:right;${u.errors>0?'color:var(--danger);font-weight:600':'color:var(--muted)'}">${u.errors||'—'}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted);font-size:.78rem;white-space:nowrap">${(u.lastSeen||'').slice(0,10)}</td>
+      <td style="padding:9px 10px;color:var(--muted);font-size:.8rem" class="tel-hide-xs">${_telEsc(u.famName)}</td>
+      <td style="padding:9px 10px;text-align:right;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums">${u.events.toLocaleString('pt-BR')}</td>
+      <td style="padding:9px 10px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums" class="tel-hide-sm">${u.pages}</td>
+      <td style="padding:9px 10px;text-align:right;font-variant-numeric:tabular-nums">${u.errors>0?`<span class="tel-badge-danger">${u.errors}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="padding:9px 10px;text-align:right;color:var(--muted);font-size:.78rem;white-space:nowrap" class="tel-hide-sm">${(u.lastSeen||'').slice(0,10)}</td>
     </tr>`).join('');
-}
 
 function _telSortUsers(col) {
   if (_telDash.userSort.col === col) {
@@ -2089,27 +2137,28 @@ function _telOpenUserDetail(uid) {
   document.getElementById('telUserDetailName').textContent   = name;
   document.getElementById('telUserDetailMeta').textContent   = email + (u.family_id ? ' · ' + _telFamName(u.family_id) : '');
 
-  const s = `background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--border)`;
-  const n = `font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.1`;
-  const l = `font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em`;
   document.getElementById('telUserDetailKpis').innerHTML = [
-    { v: u.events,          lb: 'Eventos' },
-    { v: u.sessions.size||u.sessions, lb: 'Sessões' },
-    { v: u.pages,           lb: 'Page views' },
-    { v: u.ai,              lb: 'Chamadas IA' },
-    { v: u.errors,          lb: 'Erros', danger: u.errors > 0 },
-  ].map(c => `<div style="${s}"><span style="${n}${c.danger?';color:var(--danger)':''}">${typeof c.v==='number'?c.v.toLocaleString('pt-BR'):c.v}</span><span style="${l}">${c.lb}</span></div>`).join('');
+    { v: u.events,                   lb: 'Eventos',     icon: '📊' },
+    { v: u.sessions.size||u.sessions, lb: 'Sessões',    icon: '🔁' },
+    { v: u.pages,                    lb: 'Page views',  icon: '👁️' },
+    { v: u.ai,                       lb: 'Chamadas IA', icon: '🤖' },
+    { v: u.errors,                   lb: 'Erros',       icon: '🔴', danger: u.errors > 0 },
+  ].map(c => `<div class="tel-kpi-card${c.danger?' danger':''}">
+    <span class="tel-kpi-icon">${c.icon}</span>
+    <span class="tel-kpi-val${c.danger?' danger':''}">${typeof c.v==='number'?c.v.toLocaleString('pt-BR'):c.v}</span>
+    <span class="tel-kpi-lbl">${c.lb}</span>
+  </div>`).join('');
 
   // Pages
   const pages = Object.entries(u.pageCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('telUserDetailPages').innerHTML = pages.length
-    ? pages.map(([p,cnt]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:.78rem"><span style="color:var(--text)">${_telEsc(p)}</span><span style="color:var(--muted)">${cnt}</span></div>`).join('')
+    ? pages.map(([p,cnt]) => `<div class="tel-detail-row"><span style="color:var(--text)">${_telEsc(p)}</span><span style="color:var(--muted);font-size:.78rem">${cnt}</span></div>`).join('')
     : '<div style="color:var(--muted);font-size:.78rem">—</div>';
 
   // Ops
   const ops = Object.entries(u.opCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('telUserDetailOps').innerHTML = ops.length
-    ? ops.map(([op,cnt]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:.78rem"><span style="color:var(--text)">${_telEsc(op)}</span><span style="color:var(--muted)">${cnt}</span></div>`).join('')
+    ? ops.map(([op,cnt]) => `<div class="tel-detail-row"><span style="color:var(--text)">${_telEsc(op)}</span><span style="color:var(--muted);font-size:.78rem">${cnt}</span></div>`).join('')
     : '<div style="color:var(--muted);font-size:.78rem">—</div>';
 
   document.getElementById('telUserDetail').style.display = '';
@@ -2155,16 +2204,20 @@ function _telRenderFamiliesTable(rows) {
   if (!entries.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">Nenhum dado para os filtros selecionados</td></tr>'; return; }
 
   body.innerHTML = entries.map(f => `
-    <tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="_telOpenFamilyDetail('${f.id}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-      <td style="padding:8px 10px;font-weight:600;font-size:.82rem;color:var(--text)">${_telEsc(f.name)}</td>
-      <td style="padding:8px 10px;text-align:right;font-weight:600;color:var(--text)">${f.events.toLocaleString('pt-BR')}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${f.users}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${f.pages.toLocaleString('pt-BR')}</td>
-      <td style="padding:8px 10px;text-align:right;${f.errors>0?'color:var(--danger);font-weight:600':'color:var(--muted)'}">${f.errors||'—'}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted)">${f.ai||'—'}</td>
-      <td style="padding:8px 10px;text-align:right;color:var(--muted);font-size:.78rem;white-space:nowrap">${(f.lastSeen||'').slice(0,10)}</td>
+    <tr onclick="_telOpenFamilyDetail('${f.id}')">
+      <td style="padding:9px 10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="tel-avatar" style="width:28px;height:28px;font-size:.8rem">🏠</div>
+          <span style="font-weight:600;font-size:.83rem;color:var(--text)">${_telEsc(f.name)}</span>
+        </div>
+      </td>
+      <td style="padding:9px 10px;text-align:right;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums">${f.events.toLocaleString('pt-BR')}</td>
+      <td style="padding:9px 10px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums" class="tel-hide-sm">${f.users}</td>
+      <td style="padding:9px 10px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums" class="tel-hide-sm">${f.pages.toLocaleString('pt-BR')}</td>
+      <td style="padding:9px 10px;text-align:right;font-variant-numeric:tabular-nums">${f.errors>0?`<span class="tel-badge-danger">${f.errors}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="padding:9px 10px;text-align:right;color:var(--muted)" class="tel-hide-sm">${f.ai||'—'}</td>
+      <td style="padding:9px 10px;text-align:right;color:var(--muted);font-size:.78rem;white-space:nowrap" class="tel-hide-xs">${(f.lastSeen||'').slice(0,10)}</td>
     </tr>`).join('');
-}
 
 function _telSortFamilies(col) {
   if (_telDash.famSort.col === col) {
@@ -2195,16 +2248,17 @@ function _telOpenFamilyDetail(fid) {
   document.getElementById('telFamilyDetailName').textContent = _telFamName(fid);
   document.getElementById('telFamilyDetailMeta').textContent = `${f.users.size||f.users} usuário(s) ativo(s) no período`;
 
-  const s = `background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--border)`;
-  const n = `font-size:1.3rem;font-weight:700;color:var(--text);line-height:1.1`;
-  const l = `font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em`;
   document.getElementById('telFamilyDetailKpis').innerHTML = [
-    { v: f.events,         lb: 'Eventos' },
-    { v: f.users.size||f.users, lb: 'Usuários' },
-    { v: f.pages,          lb: 'Page views' },
-    { v: f.ai,             lb: 'Chamadas IA' },
-    { v: f.errors,         lb: 'Erros', danger: f.errors > 0 },
-  ].map(c => `<div style="${s}"><span style="${n}${c.danger?';color:var(--danger)':''}">${typeof c.v==='number'?c.v.toLocaleString('pt-BR'):c.v}</span><span style="${l}">${c.lb}</span></div>`).join('');
+    { v: f.events,              lb: 'Eventos',     icon: '📊' },
+    { v: f.users.size||f.users, lb: 'Usuários',    icon: '👥' },
+    { v: f.pages,               lb: 'Page views',  icon: '👁️' },
+    { v: f.ai,                  lb: 'Chamadas IA', icon: '🤖' },
+    { v: f.errors,              lb: 'Erros',       icon: '🔴', danger: f.errors > 0 },
+  ].map(c => `<div class="tel-kpi-card${c.danger?' danger':''}">
+    <span class="tel-kpi-icon">${c.icon}</span>
+    <span class="tel-kpi-val${c.danger?' danger':''}">${typeof c.v==='number'?c.v.toLocaleString('pt-BR'):c.v}</span>
+    <span class="tel-kpi-lbl">${c.lb}</span>
+  </div>`).join('');
 
   // Usuários ativos
   const famRows = _telDash.filtered.filter(r => r.family_id === fid && r.user_id);
@@ -2212,15 +2266,15 @@ function _telOpenFamilyDetail(fid) {
   famRows.forEach(r => { userCounts[r.user_id] = (userCounts[r.user_id]||0)+1; });
   const topUsers = Object.entries(userCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('telFamilyDetailUsers').innerHTML = topUsers.length
-    ? topUsers.map(([uid, cnt]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:.78rem">
+    ? topUsers.map(([uid, cnt]) => `<div class="tel-detail-row">
         <span style="color:var(--text)">${_telEsc(_telUserName(uid, map))}</span>
-        <span style="color:var(--muted)">${cnt} eventos</span></div>`).join('')
+        <span style="color:var(--muted);font-size:.78rem">${cnt} eventos</span></div>`).join('')
     : '<div style="color:var(--muted);font-size:.78rem">—</div>';
 
   // Páginas
   const pages = Object.entries(f.pageCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
   document.getElementById('telFamilyDetailPages').innerHTML = pages.length
-    ? pages.map(([p,cnt]) => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:.78rem"><span style="color:var(--text)">${_telEsc(p)}</span><span style="color:var(--muted)">${cnt}</span></div>`).join('')
+    ? pages.map(([p,cnt]) => `<div class="tel-detail-row"><span style="color:var(--text)">${_telEsc(p)}</span><span style="color:var(--muted);font-size:.78rem">${cnt}</span></div>`).join('')
     : '<div style="color:var(--muted);font-size:.78rem">—</div>';
 
   document.getElementById('telFamilyDetail').style.display = '';

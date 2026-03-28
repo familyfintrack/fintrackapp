@@ -133,11 +133,7 @@ async function _telFlush() {
       } else if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('RLS') || error.message?.includes('permission')) {
         // RLS bloqueando INSERT — execute migration_telemetry_rls.sql no Supabase
         _tel.enabled = false;
-        console.warn('[telemetry] INSERT bloqueado por RLS. Execute no Supabase SQL Editor:\n  ALTER TABLE app_telemetry DISABLE ROW LEVEL SECURITY;\n  -- ou: CREATE POLICY "allow_insert" ON app_telemetry FOR INSERT WITH CHECK (true);');
-      } else if (error.message?.includes('recursion')) {
-        // Recursão de RLS — mesma causa do bug grocery (ft_get_my_family_ids sem SECURITY DEFINER)
-        _tel.enabled = false;
-        console.warn('[telemetry] Recursão infinita de RLS detectada. Corrija as funções ft_get_my_family_ids e ft_is_admin com SECURITY DEFINER.');
+        console.warn('[telemetry] INSERT bloqueado por RLS. Execute migration_telemetry_rls.sql no Supabase SQL Editor para corrigir.');
       }
       // outros erros: descarta silenciosamente (não re-queue para evitar acúmulo)
     }
