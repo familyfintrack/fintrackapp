@@ -3563,3 +3563,48 @@ body.ft-platform-windows .modal-close {
   color: #23483B;
   border-bottom: 1px solid #D8EADF;
 }
+
+
+/* =========================
+   DESKTOP ONLY FIXES
+   ========================= */
+@media (min-width: 768px) {
+
+  /* TRANSAÇÕES - RECONCILIAÇÃO + AGRUPADO POR DATA */
+  #page-transactions.reconcile-mode #txMainTable {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable th:nth-child(2),
+  #page-transactions.reconcile-mode #txMainTable td:nth-child(2) {
+    width: 10%;
+    min-width: 10%;
+    max-width: 10%;
+    white-space: nowrap;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* RELATÓRIOS - PREVISÃO */
+  #page-reports #forecastTable {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  #page-reports #forecastTable th:nth-child(1),
+  #page-reports #forecastTable td:nth-child(1) {
+    width: 10%;
+    min-width: 10%;
+    max-width: 10%;
+    white-space: nowrap;
+  }
+
+  #page-reports #forecastTable td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
