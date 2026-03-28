@@ -1983,8 +1983,35 @@ canvas { cursor: default; }
   #page-transactions #txFlatCard tbody td{ padding:0; border:0; }
 
   /* Group view (txGroupContainer) — keep table layout, just make it scrollable */
-  #txGroupContainer .table-wrap{ overflow-x: auto; }
-  #txGroupContainer table{ min-width: 320px; }
+  #txGroupContainer { width: 100%; box-sizing: border-box; }
+  #txGroupContainer .tx-group-card { width: 100%; }
+  #txGroupContainer .table-wrap{ overflow-x: auto; width: 100%; }
+  #txGroupContainer table{ min-width: 320px; width: 100%; table-layout: auto; }
+
+  /* Garantir que as células do group view NÃO herdem o display:block do flat card */
+  #txGroupContainer table,
+  #txGroupContainer tbody,
+  #txGroupContainer thead,
+  #txGroupContainer tr,
+  #txGroupContainer td,
+  #txGroupContainer th { display: revert; width: revert; }
+  #txGroupContainer thead { display: table-header-group; }
+  #txGroupContainer tbody { display: table-row-group; }
+  #txGroupContainer tr    { display: table-row; background: none; border: none; border-radius: 0; padding: 0; margin: 0; }
+  #txGroupContainer td    { display: table-cell; }
+
+  /* Descrição não pode ser cortada no group view mobile */
+  #txGroupContainer .tx-v2-desc-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+  }
+  #txGroupContainer .tx-v2-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 
   /* EXCEÇÃO: linhas de "título do grupo" (nome da conta)
      Normalmente são linhas com 1 célula ocupando tudo (colspan)
