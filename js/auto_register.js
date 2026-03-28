@@ -366,10 +366,11 @@ async function sendScheduledWhatsappNotification(sc, date, amount, mode) {
 }
 
 async function invokeScheduledTelegram(payload) {
-  if (!sb?.functions?.invoke) throw new Error('Supabase Edge Functions não disponíveis nesta sessão.');
-  const { data, error } = await sb.functions.invoke('send-scheduled-telegram', { body: payload });
-  if (error) throw error;
-  return data || null;
+  const chatId  = payload?.chat_id || '';
+  const message = payload?.message || '';
+  if (!chatId) throw new Error('chat_id ausente no payload do Telegram');
+  // Use the same Edge Function + direct API fallback
+  return await _sendTelegramWithFallback(chatId, message, payload);
 }
 
 async function sendScheduledTelegramNotification(sc, date, amount, mode) {
@@ -637,6 +638,118 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_auto_register
 
 
 
+/* ── Telegram Bot Token helpers ───────────────────────────────────────────── */
+const _TG_BOT_KEY = 'fintrack_telegram_bot_token';
+
+function getTelegramBotToken() {
+  try { return (localStorage.getItem(_TG_BOT_KEY) || '').trim(); } catch { return ''; }
+}
+
+/** Send via direct Telegram Bot API — no Edge Function needed */
+async function _sendTelegramDirect(chatId, text) {
+  const token = getTelegramBotToken();
+  if (!token) throw new Error('Bot token não configurado em Configurações → Conexão');
+  const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+  });
+  const json = await resp.json();
+  if (!json.ok) throw new Error(`Telegram API: ${json.description || 'erro desconhecido'} (code ${json.error_code})`);
+  return json;
+}
+
+/** Try Edge Function first; fall back to direct API */
+async function _sendTelegramWithFallback(chatId, message, extraBody = {}) {
+  // 1 — Edge Function (bot token lives server-side as secret)
+  try {
+    if (sb && typeof sb.functions?.invoke === 'function') {
+      const { data, error } = await sb.functions.invoke('send-scheduled-telegram', {
+        body: { chat_id: chatId, message, ...extraBody },
+      });
+      if (error) throw new Error(error.message || JSON.stringify(error));
+      console.info('[Telegram] Edge Function OK');
+      return data;
+    }
+  } catch (efErr) {
+    console.warn('[Telegram] Edge Function falhou, tentando API direta:', efErr.message);
+  }
+
+  // 2 — Direct HTTP to api.telegram.org (bot token from localStorage)
+  const result = await _sendTelegramDirect(chatId, message);
+  console.info('[Telegram] Direct API OK');
+  return result;
+}
+
+// ── Settings UI helpers (called from index.html) ──────────────────────────
+
+window.saveTelegramBotToken = async function() {
+  const input   = document.getElementById('telegramBotTokenInput');
+  const statusEl = document.getElementById('tgBotStatus');
+  const dot      = document.getElementById('tgBotStatusDot');
+  const token    = (input?.value || '').trim();
+
+  try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
+  await saveAppSetting('telegram_bot_token', token).catch(() => {});
+
+  if (!token) {
+    if (dot) dot.style.background = '#d1d5db';
+    if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Token removido.'; }
+    if (document.getElementById('tgBotTestBtn')) document.getElementById('tgBotTestBtn').style.display = 'none';
+    return;
+  }
+  if (dot) dot.style.background = '#22c55e';
+  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Use o botão Testar para verificar.'; }
+  if (document.getElementById('tgBotTestBtn')) document.getElementById('tgBotTestBtn').style.display = '';
+  toast('Token do Telegram salvo', 'success');
+};
+
+window.testTelegramBotToken = async function() {
+  const chatId = String(
+    document.getElementById('myProfileTelegramChatId')?.value ||
+    currentUser?.telegram_chat_id || ''
+  ).trim();
+  const statusEl = document.getElementById('tgBotStatus');
+  const btn = document.getElementById('tgBotTestBtn');
+  if (!chatId) { toast('Informe o Chat ID no perfil primeiro (aba Notificações)', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    await _sendTelegramDirect(chatId,
+      '✅ <b>FinTrack</b> — Teste de notificação Telegram!\nSe recebeu, as notificações estão funcionando corretamente.');
+    if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Mensagem enviada com sucesso!'; }
+    toast('✅ Telegram OK!', 'success');
+  } catch (e) {
+    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '❌ ' + e.message; }
+    toast('Erro Telegram: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🧪 Testar'; }
+  }
+};
+
+window._tgBotTokenOnInput = function() {
+  const dot    = document.getElementById('tgBotStatusDot');
+  const input  = document.getElementById('telegramBotTokenInput');
+  const testBtn = document.getElementById('tgBotTestBtn');
+  if (dot) dot.style.background = input?.value?.trim() ? '#f59e0b' : '#d1d5db';
+  if (testBtn) testBtn.style.display = 'none';
+};
+
+window.loadTelegramBotTokenUI = async function() {
+  const input   = document.getElementById('telegramBotTokenInput');
+  const dot     = document.getElementById('tgBotStatusDot');
+  const testBtn = document.getElementById('tgBotTestBtn');
+  if (!input) return;
+  let token = '';
+  try { token = (await getAppSetting('telegram_bot_token', '')) || ''; } catch {}
+  if (!token) token = getTelegramBotToken();
+  if (token) {
+    try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
+    input.value = token;
+    if (dot) dot.style.background = '#22c55e';
+    if (testBtn) testBtn.style.display = '';
+  }
+};
+
 /* ── Notify on manual/auto transaction ────────────────────────────────────── */
 async function notifyOnTransaction(tx, sc = null) {
   try {
@@ -680,43 +793,32 @@ async function notifyOnTransaction(tx, sc = null) {
     if (user.notify_tx_wa && user.whatsapp_number) {
       const number = String(user.whatsapp_number).replace(/\D+/g, '');
       if (number) {
-        promises.push(
-          (async () => {
-            try {
-              await sb.functions.invoke('send-scheduled-whatsapp', {
-                body: {
-                  recipient: number,
-                  message: msgLines,
-                  notification_type: 'tx_registered',
-                  amount: tx?.amount,
-                  lang: 'pt_BR',
-                }
-              });
-            } catch(e) { console.warn('[notifyTx] whatsapp:', e.message); }
-          })()
-        );
+        promises.push((async () => {
+          try {
+            const { error } = await sb.functions.invoke('send-scheduled-whatsapp', {
+              body: { recipient: number, message: msgLines, notification_type: 'tx_registered', amount: tx?.amount, lang: 'pt_BR' }
+            });
+            if (error) console.warn('[notifyTx] whatsapp error:', error.message || error);
+          } catch(e) { console.warn('[notifyTx] whatsapp:', e.message); }
+        })());
       }
     }
 
-    // Telegram
+    // Telegram — Edge Function with direct API fallback
     if (user.notify_tx_tg && user.telegram_chat_id) {
       const chatId = String(user.telegram_chat_id).trim();
       if (chatId) {
-        promises.push(
-          (async () => {
-            try {
-              await sb.functions.invoke('send-scheduled-telegram', {
-                body: {
-                  chat_id: chatId,
-                  message: `✅ FinTrack: Transação Registrada
-${msgLines}`,
-                  notification_type: 'tx_registered',
-                  amount: tx?.amount,
-                }
-              });
-            } catch(e) { console.warn('[notifyTx] telegram:', e.message); }
-          })()
-        );
+        promises.push((async () => {
+          try {
+            const msg = `✅ <b>FinTrack</b>: Transação Registrada\n${msgLines}`;
+            await _sendTelegramWithFallback(chatId, msg, { notification_type: 'tx_registered', amount: tx?.amount });
+          } catch(e) {
+            console.warn('[notifyTx] telegram all methods failed:', e.message);
+            if (state?.currentPage === 'transactions') {
+              toast('⚠️ Notificação Telegram: ' + e.message, 'warning');
+            }
+          }
+        })());
       }
     }
 

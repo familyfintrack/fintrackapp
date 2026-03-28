@@ -605,6 +605,9 @@ function loadSettings() {
   // IA settings
   if (typeof initAiSettings === 'function') initAiSettings();
 
+  // Telegram bot token
+  if (typeof loadTelegramBotTokenUI === 'function') loadTelegramBotTokenUI();
+
 
 
 
