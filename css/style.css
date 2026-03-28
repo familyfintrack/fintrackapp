@@ -5515,7 +5515,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   tr.tx-date-band-alt td.tx-date-header-cell { color: var(--text2) !important; }
 
   /* ── Card shell ── */
-  #page-transactions tbody tr {
+  #page-transactions #txFlatCard tbody tr {
     display: grid !important;
     grid-template-columns: 38px 1fr auto;
     grid-template-rows: 1fr;
@@ -5529,10 +5529,23 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
     transition: box-shadow .15s, transform .12s;
   }
-  #page-transactions tbody tr:active {
+  #page-transactions #txFlatCard tbody tr:active {
     transform: scale(.982);
     box-shadow: none !important;
   }
+  /* ── Grouped view: reset to normal table rows (not grid cards) ── */
+  #page-transactions #txGroupContainer tbody tr {
+    display: table-row !important;
+    grid-template-columns: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  #page-transactions #txGroupContainer tbody tr:active { transform: none !important; box-shadow: none !important; }
+  #page-transactions #txGroupContainer tbody td { display: table-cell !important; }
 
   /* Colour-coded left border per date band */
   tr.tx-date-band:not(.tx-date-header-row) {
@@ -6030,7 +6043,58 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .tx-v2-right { text-align:right; vertical-align:top; padding: 6px 12px 6px 4px !important; white-space: nowrap; }
 .tx-v2-amt-wrap { display:flex; flex-direction:column; align-items:flex-end; }
 .tx-v2-act, .tx-v2-th-act { display:none !important; }
-#page-transactions tbody tr { grid-template-columns: 40px minmax(0,1fr) auto !important; }
+/* Scoped to flat view only — grouped view must NOT inherit grid */
+#page-transactions #txFlatCard tbody tr { grid-template-columns: 40px minmax(0,1fr) auto !important; }
+/* Grouped view: reset to normal table row — override any inherited grid/flex */
+#page-transactions #txGroupContainer tbody tr {
+  display: table-row !important;
+  grid-template-columns: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+#page-transactions #txGroupContainer tbody td {
+  display: table-cell !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+#page-transactions #txGroupContainer tbody tr:last-child td { border-bottom: none !important; }
+/* Grouped view column widths via inline style on table — reinforce here */
+#page-transactions #txGroupContainer table { width: 100% !important; table-layout: fixed !important; }
+#page-transactions #txGroupContainer td.tx-v2-date {
+  width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+  padding: 9px 4px 9px 12px !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+}
+#page-transactions #txGroupContainer td.tx-v2-body {
+  padding: 9px 6px !important;
+  overflow: hidden !important;
+  vertical-align: middle !important;
+}
+#page-transactions #txGroupContainer td.tx-v2-right {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  padding: 9px 12px 9px 4px !important;
+  text-align: right !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+/* Description text must not overflow */
+#page-transactions #txGroupContainer .tx-v2-desc-text {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  max-width: 100% !important;
+}
+#page-transactions #txGroupContainer .tx-v2-amt { font-size: .82rem !important; white-space: nowrap !important; }
+#page-transactions #txGroupContainer .tx-v2-brl { font-size: .7rem !important; white-space: nowrap !important; display: block !important; }
 @media (max-width: 640px) {
   .tx-v2-title { font-size:.865rem; line-height:1.18; }
   .tx-v2-category { font-size:.7rem; }
@@ -7663,6 +7727,131 @@ tr.tx-row-new td:first-child {
   .sup-desc      { font-size: .83rem; }
   .sup-amt       { font-size: .84rem; }
   .sup-icon      { width: 28px; height: 28px; font-size: .8rem; }
+}
+
+/* ── Green-toned upcoming items (next 10 days) ─────────────────────────── */
+
+/* Day 0–1: Today → full accent green header */
+.sup-group:has(.sup-item--today) .sup-group-hdr {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  border-bottom: 2px solid var(--accent);
+}
+.sup-group:has(.sup-item--today) .sup-group-dow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Day pill upgrades — graduated green shades */
+.sup-day-pill {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+.sup-day-num { color: color-mix(in srgb, var(--accent) 70%, var(--text)); }
+.sup-day-pill--today {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.sup-day-pill--today span { color: #fff; font-weight: 800; font-size: .76rem; }
+.sup-day-pill--tmrw {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+.sup-day-pill--tmrw span { color: var(--accent); font-weight: 700; font-size: .72rem; }
+
+/* Upcoming panel header: green accent */
+#scUpcomingPanel .sc-panel__header {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 10%, var(--surface2)) 0%,
+    var(--surface2) 100%
+  );
+  border-left: 3px solid var(--accent);
+}
+#scUpcomingPanel .sc-panel__title { color: var(--accent); }
+#scUpcomingPanel .sc-panel__badge {
+  background: var(--accent-lt);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* ── Mobile: improved scheduled layout ────────────────────────────────── */
+@media (max-width: 800px) {
+  /* Compact page header — single row */
+  .sc-page-header {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .sc-view-toggle { gap: 2px; }
+  .sc-view-btn { padding: 5px 8px; font-size: .75rem; }
+  .sc-view-lbl { display: none; } /* icons only on mobile */
+
+  /* Mobile KPI bar — more compact, green accent on upcoming */
+  .sc-mobile-kpis { gap: 6px; margin-bottom: 10px; }
+  .sc-mkpi {
+    padding: 7px 8px;
+    border-radius: 10px;
+  }
+  .sc-mkpi-val { font-size: .82rem; }
+  .sc-mkpi-lbl { font-size: .58rem; }
+
+  /* Upcoming panel on mobile: green card with accent left border */
+  #scUpcomingPanel {
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+    border: 1.5px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  #scUpcomingPanel .sc-panel__header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  }
+  #scUpcomingPanel .sc-panel__body { overflow: visible; }
+
+  /* sup-group inside mobile: no extra border (panel already has one) */
+  .sc-panel #scUpcomingPanel .sup-group {
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border));
+  }
+  .sc-panel #scUpcomingPanel .sup-group:last-child { border-bottom: none; }
+  .sc-panel #scUpcomingPanel .sup-group-hdr {
+    background: transparent;
+    padding: 8px 14px;
+  }
+  .sc-panel #scUpcomingPanel .sup-item { padding: 8px 14px; }
+
+  /* Item today highlight: green tint */
+  .sup-item--today {
+    background: color-mix(in srgb, var(--accent) 7%, transparent) !important;
+    border-left: 2px solid var(--accent);
+  }
+
+  /* Register button: bigger tap target on mobile */
+  .sup-register-btn {
+    height: 28px;
+    padding: 0 12px;
+    font-size: .74rem;
+    border-radius: 8px;
+  }
+  .sup-ignore-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    font-size: .7rem;
+  }
+
+  /* Recurrents section on mobile: cleaner header */
+  .sc-mobile-recurrents-label {
+    padding: 14px 0 6px;
+    font-size: .68rem;
+    letter-spacing: .08em;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -19146,15 +19335,15 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     gap: 0;
   }
 
-  /* Remove panel card chrome on mobile — panels flow as sections */
-  .sc-panel {
+  /* Remove panel card chrome on mobile — EXCEPT scUpcomingPanel which has green styling */
+  .sc-panel:not(#scUpcomingPanel) {
     background: transparent;
     border: none;
     border-radius: 0;
     box-shadow: none;
     overflow: visible;
   }
-  .sc-panel__header {
+  .sc-panel:not(#scUpcomingPanel) .sc-panel__header {
     background: transparent;
     border-bottom: none;
     padding: 0 0 8px;
@@ -20000,122 +20189,5 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     height: 30px;
     flex-basis: 30px;
     font-size: .7rem;
-  }
-}
-
-
-/* === 2026-03-28 surgical hotfix: mobile grouped-by-account transactions === */
-@media (max-width: 640px) {
-  #page-transactions #txGroupContainer .tx-group-table,
-  #page-transactions #txGroupContainer .tx-group-table tbody {
-    display: table !important;
-    width: 100% !important;
-    table-layout: fixed !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table thead {
-    display: none !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table tbody tr.tx-row-clickable {
-    display: grid !important;
-    grid-template-columns: 52px minmax(0,1fr) auto !important;
-    gap: 6px 10px !important;
-    align-items: center !important;
-    margin: 0 !important;
-    padding: 10px 12px !important;
-    border-top: 1px solid var(--border) !important;
-    background: var(--surface) !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table tbody tr.tx-row-clickable:first-child {
-    border-top: 0 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table tbody td.tx-v2-date,
-  #page-transactions #txGroupContainer .tx-group-table tbody td.tx-v2-body,
-  #page-transactions #txGroupContainer .tx-group-table tbody td.tx-v2-right {
-    display: block !important;
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: 0 !important;
-    float: none !important;
-    position: static !important;
-    transform: none !important;
-    overflow: visible !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table tbody td.tx-v2-date {
-    grid-column: 1 !important;
-    text-align: center !important;
-    align-self: start !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table tbody td.tx-v2-body {
-    grid-column: 2 !important;
-    align-self: center !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table tbody td.tx-v2-right {
-    grid-column: 3 !important;
-    text-align: right !important;
-    white-space: nowrap !important;
-    align-self: center !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-title,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-category,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-payee-line,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-desc-text {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    min-width: 0 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-title {
-    align-items: center !important;
-    gap: 6px !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    line-height: 1.18 !important;
-    margin: 0 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-desc-text,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-category,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-payee-line {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-category {
-    margin-top: 3px !important;
-    font-size: .72rem !important;
-    line-height: 1.15 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-payee-line {
-    margin-top: 2px !important;
-    font-size: .69rem !important;
-    color: var(--muted) !important;
-    line-height: 1.12 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-account-line,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-act,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-th-act,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-chk,
-  #page-transactions #txGroupContainer .tx-group-table .tx-v2-th-chk {
-    display: none !important;
   }
 }
