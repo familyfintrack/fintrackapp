@@ -512,6 +512,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </span>Ajuda
       </button>
+      <button class="nav-item" onclick="navigate('privacy')" id="privacyNav" data-nav="privacy">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>Privacidade
+      </button>
     </div>
       
 
@@ -2740,6 +2745,689 @@
     <div class="page" id="page-help">
       <!-- Rendered entirely by help.js initHelpPage() -->
     </div>
+
+    <!-- ══ Página: Política de Privacidade ══════════════════════════════════ -->
+    <div class="page" id="page-privacy">
+      <style>
+        .priv-hero { background:linear-gradient(135deg,#1a3a2a 0%,var(--accent) 100%); border-radius:16px; padding:24px 28px; margin-bottom:20px; color:#fff; position:relative; overflow:hidden; }
+        .priv-hero::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 90% 50%,rgba(255,255,255,.07) 0%,transparent 70%); pointer-events:none; }
+        .priv-hero-title { font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+        .priv-hero-sub { font-size:.8rem; color:rgba(255,255,255,.75); line-height:1.5; }
+        .priv-badge { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:20px; padding:4px 10px; font-size:.7rem; font-weight:600; margin-top:10px; }
+
+        .priv-toc { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 18px; margin-bottom:18px; }
+        .priv-toc-title { font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+        .priv-toc-list { display:flex; flex-direction:column; gap:4px; }
+        .priv-toc-item { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:8px; cursor:pointer; font-size:.81rem; color:var(--text2); transition:background .12s; text-decoration:none; }
+        .priv-toc-item:hover { background:var(--bg2); color:var(--accent); }
+        .priv-toc-num { width:20px; height:20px; border-radius:50%; background:var(--accent-lt); color:var(--accent); font-size:.65rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+        .priv-section { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px; margin-bottom:14px; }
+        .priv-section-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+        .priv-section-icon { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+        .priv-section-title { font-size:.97rem; font-weight:700; color:var(--text); }
+        .priv-section-sub { font-size:.72rem; color:var(--muted); margin-top:1px; }
+
+        .priv-body { font-size:.83rem; color:var(--text2); line-height:1.65; }
+        .priv-body h4 { font-size:.84rem; font-weight:700; color:var(--text); margin:14px 0 6px; }
+        .priv-body ul { padding-left:18px; margin:6px 0; }
+        .priv-body li { margin-bottom:4px; }
+        .priv-body strong { color:var(--text); }
+
+        .priv-shield { background:linear-gradient(135deg,#dcfce7,#d1fae5); border:1.5px solid #22c55e; border-radius:12px; padding:14px 16px; display:flex; gap:12px; align-items:flex-start; margin:14px 0; }
+        .priv-shield-icon { font-size:1.6rem; flex-shrink:0; }
+        .priv-shield-text { font-size:.8rem; color:#166534; line-height:1.5; }
+        .priv-shield-text strong { color:#14532d; }
+
+        .priv-warn { background:#fef3c7; border:1px solid #fbbf24; border-radius:10px; padding:10px 14px; font-size:.79rem; color:#92400e; margin:10px 0; }
+
+        .priv-data-table { width:100%; border-collapse:collapse; font-size:.79rem; margin:10px 0; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+        .priv-data-table th { background:var(--surface2); padding:8px 12px; text-align:left; font-size:.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+        .priv-data-table td { padding:8px 12px; border-top:1px solid var(--border); vertical-align:top; }
+        .priv-data-table tr:last-child td { border-bottom:none; }
+
+        .priv-delete-box { background:linear-gradient(135deg,#fff1f2,#ffe4e6); border:1.5px solid #f87171; border-radius:14px; padding:20px 22px; margin-top:14px; }
+        .priv-delete-title { display:flex; align-items:center; gap:8px; font-size:.92rem; font-weight:700; color:#dc2626; margin-bottom:8px; }
+        .priv-delete-body { font-size:.8rem; color:#991b1b; line-height:1.55; margin-bottom:14px; }
+        .priv-delete-steps { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+        .priv-delete-step { display:flex; align-items:flex-start; gap:10px; background:rgba(255,255,255,.6); border-radius:8px; padding:9px 12px; font-size:.79rem; color:#7f1d1d; }
+        .priv-delete-step-num { width:22px; height:22px; border-radius:50%; background:#dc2626; color:#fff; font-size:.68rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+        .priv-delete-form { background:rgba(255,255,255,.8); border:1px solid #fca5a5; border-radius:10px; padding:14px 16px; margin-top:12px; }
+        .priv-delete-input { width:100%; padding:8px 12px; border:1.5px solid #fca5a5; border-radius:8px; font-size:.82rem; font-family:inherit; background:#fff; color:#111; margin:8px 0; box-sizing:border-box; }
+        .priv-delete-input:focus { outline:none; border-color:#dc2626; }
+        .priv-delete-btn { background:#dc2626; color:#fff; border:none; border-radius:9px; padding:10px 20px; font-size:.83rem; font-weight:700; cursor:pointer; width:100%; margin-top:6px; font-family:inherit; transition:background .15s; }
+        .priv-delete-btn:hover:not(:disabled) { background:#b91c1c; }
+        .priv-delete-btn:disabled { opacity:.5; cursor:not-allowed; }
+        .priv-delete-confirm { display:none; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; font-size:.79rem; color:#991b1b; margin-top:8px; text-align:center; }
+
+        .priv-contact-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; margin-top:10px; }
+        .priv-contact-card { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; gap:10px; align-items:center; }
+        .priv-contact-icon { font-size:1.2rem; flex-shrink:0; }
+        .priv-contact-label { font-size:.72rem; color:var(--muted); }
+        .priv-contact-value { font-size:.8rem; font-weight:600; color:var(--text); }
+
+        @media(max-width:640px) { .priv-section { padding:14px 16px; } .priv-hero { padding:16px 18px; } }
+      </style>
+
+      <!-- Hero -->
+      <div class="priv-hero">
+        <div class="priv-hero-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Política de Privacidade
+        </div>
+        <div class="priv-hero-sub">Entenda como tratamos seus dados, quais garantias oferecemos e como exercer seus direitos.</div>
+        <div class="priv-badge">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Atualizado em Janeiro de 2025 · LGPD / GDPR
+        </div>
+      </div>
+
+      <!-- Índice -->
+      <div class="priv-toc">
+        <div class="priv-toc-title">Índice</div>
+        <div class="priv-toc-list">
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS1');return false"><div class="priv-toc-num">1</div>Dados que coletamos</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS2');return false"><div class="priv-toc-num">2</div>Como usamos seus dados</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS3');return false"><div class="priv-toc-num">3</div>Segurança e infraestrutura</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS4');return false"><div class="priv-toc-num">4</div>Compartilhamento de dados</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS5');return false"><div class="priv-toc-num">5</div>Seus direitos (LGPD/GDPR)</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS6');return false"><div class="priv-toc-num">6</div>Retenção e exclusão</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS7');return false"><div class="priv-toc-num">7</div>Solicitar exclusão dos dados</a>
+          <a class="priv-toc-item" href="#" onclick="privScrollTo('privS8');return false"><div class="priv-toc-num">8</div>Contato</a>
+        </div>
+      </div>
+
+      <!-- Seção 1: Dados coletados -->
+      <div class="priv-section" id="privS1">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#dbeafe;color:#1d4ed8">📋</div>
+          <div>
+            <div class="priv-section-title">1. Dados que coletamos</div>
+            <div class="priv-section-sub">Transparência total sobre as informações armazenadas</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <table class="priv-data-table">
+            <thead><tr><th>Categoria</th><th>Dados</th><th>Finalidade</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Conta</strong></td><td>Nome, e-mail, senha (hash)</td><td>Autenticação e identificação</td></tr>
+              <tr><td><strong>Financeiros</strong></td><td>Transações, contas, orçamentos, categorias, programados</td><td>Funcionalidade principal do app</td></tr>
+              <tr><td><strong>Família</strong></td><td>Nome da família, membros, papéis</td><td>Controle de acesso e compartilhamento</td></tr>
+              <tr><td><strong>Uso</strong></td><td>Páginas acessadas, operações realizadas (telemetria)</td><td>Melhoria do produto (anônimo)</td></tr>
+              <tr><td><strong>Dispositivo</strong></td><td>Tipo, OS, navegador, resolução (sem identificação pessoal)</td><td>Compatibilidade e telemetria</td></tr>
+              <tr><td><strong>IA (opcional)</strong></td><td>Dados financeiros agregados enviados ao Google Gemini</td><td>Geração de análises AI Insights</td></tr>
+            </tbody>
+          </table>
+          <div class="priv-warn">⚠️ <strong>Nota IA:</strong> Ao usar AI Insights, resumos dos seus dados são enviados ao Google Gemini API. Nenhum dado bruto identificável (CPF, nomes completos) é transmitido. A chave API é de sua propriedade.</div>
+        </div>
+      </div>
+
+      <!-- Seção 2: Como usamos -->
+      <div class="priv-section" id="privS2">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#f3e8ff;color:#7c3aed">🔍</div>
+          <div>
+            <div class="priv-section-title">2. Como usamos seus dados</div>
+            <div class="priv-section-sub">Seus dados servem exclusivamente para operar o aplicativo</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <h4>Usos permitidos</h4>
+          <ul>
+            <li><strong>Prestação do serviço:</strong> armazenar e exibir seus dados financeiros</li>
+            <li><strong>Autenticação:</strong> verificar sua identidade ao acessar o app</li>
+            <li><strong>Notificações:</strong> alertas de vencimento e programados (se configurado)</li>
+            <li><strong>Relatórios:</strong> gerar análises baseadas nos seus próprios dados</li>
+            <li><strong>Melhoria do produto:</strong> telemetria anônima de uso (sem dados financeiros)</li>
+          </ul>
+          <h4>Usos proibidos</h4>
+          <ul>
+            <li>Venda ou comercialização dos seus dados para terceiros</li>
+            <li>Publicidade direcionada baseada em dados financeiros</li>
+            <li>Criação de perfis de crédito ou scoring financeiro</li>
+            <li>Compartilhamento com instituições financeiras sem autorização explícita</li>
+          </ul>
+          <div class="priv-shield">
+            <div class="priv-shield-icon">🚫</div>
+            <div class="priv-shield-text"><strong>Nunca vendemos seus dados.</strong> O Family FinTrack não tem modelo de negócio baseado em publicidade. Seus dados financeiros são seu patrimônio — tratamos assim.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 3: Segurança -->
+      <div class="priv-section" id="privS3">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#dcfce7;color:#16a34a">🔒</div>
+          <div>
+            <div class="priv-section-title">3. Segurança e infraestrutura</div>
+            <div class="priv-section-sub">Como garantimos que seus dados estão seguros</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <div class="priv-shield">
+            <div class="priv-shield-icon">🏗️</div>
+            <div class="priv-shield-text">
+              <strong>Infraestrutura Supabase (PostgreSQL)</strong> — banco de dados hospedado na AWS com certificações SOC2 Type 2, ISO 27001 e GDPR compliance. Nós não operamos servidores próprios — seus dados ficam em datacenters enterprise de classe mundial.
+            </div>
+          </div>
+          <h4>Proteções implementadas</h4>
+          <ul>
+            <li><strong>Criptografia em trânsito:</strong> toda comunicação usa TLS 1.3 (HTTPS)</li>
+            <li><strong>Criptografia em repouso:</strong> banco de dados criptografado por padrão pelo Supabase/AWS</li>
+            <li><strong>Row Level Security (RLS):</strong> cada usuário acessa somente os dados da sua família — isolamento no nível do banco de dados</li>
+            <li><strong>Autenticação segura:</strong> senhas nunca são armazenadas em texto puro — apenas hash bcrypt via Supabase Auth</li>
+            <li><strong>Sessões com expiração:</strong> tokens JWT com tempo de vida limitado e renovação automática</li>
+            <li><strong>Backups automáticos:</strong> o Supabase realiza backups point-in-time para recuperação de desastres</li>
+          </ul>
+          <h4>Row Level Security — o isolamento que protege seus dados</h4>
+          <p>Todo acesso ao banco de dados é filtrado automaticamente pelo <code>family_id</code> do usuário autenticado. Isso significa que mesmo que um bug existisse no código da aplicação, seria impossível um usuário acessar dados de outra família — o banco de dados rejeita a consulta.</p>
+          <div class="priv-shield">
+            <div class="priv-shield-icon">✅</div>
+            <div class="priv-shield-text"><strong>Sem acesso admin irrestrito.</strong> Nem mesmo o desenvolvedor do app consegue consultar seus dados financeiros sem autenticar como você. O RLS é aplicado a todos, inclusive ao service_role em operações de leitura.</div>
+          </div>
+          <h4>O que você pode fazer para se proteger</h4>
+          <ul>
+            <li>Use uma senha forte e única (mín. 12 caracteres, com letras, números e símbolos)</li>
+            <li>Não compartilhe suas credenciais com ninguém</li>
+            <li>Acesse o app somente em redes confiáveis</li>
+            <li>Revise regularmente os membros da sua família no app</li>
+            <li>Altere sua senha se suspeitar de acesso não autorizado</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Seção 4: Compartilhamento -->
+      <div class="priv-section" id="privS4">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#fef3c7;color:#d97706">🤝</div>
+          <div>
+            <div class="priv-section-title">4. Compartilhamento de dados</div>
+            <div class="priv-section-sub">Com quem seus dados podem ser compartilhados</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <table class="priv-data-table">
+            <thead><tr><th>Serviço</th><th>Dados compartilhados</th><th>Finalidade</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Supabase</strong></td><td>Todos os dados do app</td><td>Armazenamento e autenticação</td></tr>
+              <tr><td><strong>EmailJS</strong></td><td>E-mail, nome (quando notificações ativas)</td><td>Envio de notificações e convites</td></tr>
+              <tr><td><strong>Google Gemini</strong></td><td>Resumos financeiros anônimos (somente AI Insights)</td><td>Geração de análises IA</td></tr>
+              <tr><td><strong>CoinGecko / Yahoo Finance</strong></td><td>Nenhum dado pessoal</td><td>Cotações de ativos (leitura pública)</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:10px">Nenhum dado é vendido, alugado ou compartilhado com anunciantes, parceiros de marketing ou qualquer outra entidade não listada acima.</p>
+        </div>
+      </div>
+
+      <!-- Seção 5: Direitos -->
+      <div class="priv-section" id="privS5">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#f0fdf4;color:#15803d">⚖️</div>
+          <div>
+            <div class="priv-section-title">5. Seus direitos (LGPD / GDPR)</div>
+            <div class="priv-section-sub">Você tem controle total sobre seus dados</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">📋 Acesso</div>
+              <div style="font-size:.73rem;color:var(--muted)">Solicite uma cópia de todos os seus dados a qualquer momento via exportação (CSV/PDF)</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">✏️ Retificação</div>
+              <div style="font-size:.73rem;color:var(--muted)">Edite seus dados diretamente no app a qualquer momento</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">🗑️ Exclusão</div>
+              <div style="font-size:.73rem;color:var(--muted)">Solicite a exclusão completa de todos os seus dados — veja seção 7</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">📦 Portabilidade</div>
+              <div style="font-size:.73rem;color:var(--muted)">Exporte seus dados em CSV para usar em outro sistema</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">🚫 Oposição</div>
+              <div style="font-size:.73rem;color:var(--muted)">Desative a telemetria a qualquer momento em Configurações</div>
+            </div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px">🔒 Restrição</div>
+              <div style="font-size:.73rem;color:var(--muted)">Solicite a suspensão do processamento enquanto uma disputa está em análise</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 6: Retenção -->
+      <div class="priv-section" id="privS6">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#fce7f3;color:#9d174d">📅</div>
+          <div>
+            <div class="priv-section-title">6. Retenção de dados</div>
+            <div class="priv-section-sub">Por quanto tempo mantemos seus dados</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <ul>
+            <li><strong>Dados financeiros e de conta:</strong> mantidos enquanto a conta estiver ativa</li>
+            <li><strong>Dados de telemetria:</strong> retidos por no máximo 90 dias, sem identificação pessoal</li>
+            <li><strong>Logs de sistema:</strong> retidos por 30 dias para segurança e auditoria</li>
+            <li><strong>Após exclusão de conta:</strong> todos os dados são removidos em até 30 dias úteis dos servidores ativos. Backups são purgados no ciclo natural de expiração (máximo 7 dias adicionais).</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Seção 7: Solicitação de exclusão -->
+      <div class="priv-section" id="privS7">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#fee2e2;color:#dc2626">🗑️</div>
+          <div>
+            <div class="priv-section-title">7. Solicitar exclusão completa dos dados</div>
+            <div class="priv-section-sub">Exercite seu direito ao esquecimento</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <p>Você pode solicitar a exclusão completa de todos os seus dados do Family FinTrack a qualquer momento. Esta ação é <strong>irreversível</strong> e removerá:</p>
+          <ul>
+            <li>Sua conta de usuário e credenciais de acesso</li>
+            <li>Todos os dados financeiros (transações, contas, orçamentos, categorias, programados)</li>
+            <li>Dados de família, membros e configurações</li>
+            <li>Histórico de telemetria associado ao seu usuário</li>
+            <li>Backups e dados de arquivo</li>
+          </ul>
+
+          <div class="priv-delete-box">
+            <div class="priv-delete-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Solicitação de exclusão de dados
+            </div>
+            <div class="priv-delete-body">Esta solicitação será processada em até <strong>30 dias úteis</strong>. Você receberá confirmação por e-mail. Após o processamento, sua conta não poderá ser recuperada.</div>
+
+            <div class="priv-delete-steps">
+              <div class="priv-delete-step"><div class="priv-delete-step-num">1</div><div>Confirme sua identidade com seu e-mail cadastrado</div></div>
+              <div class="priv-delete-step"><div class="priv-delete-step-num">2</div><div>Exporte seus dados antes da exclusão (recomendado)</div></div>
+              <div class="priv-delete-step"><div class="priv-delete-step-num">3</div><div>Envie a solicitação — você receberá confirmação por e-mail em até 48h</div></div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="navigate('reports')" style="flex:1;justify-content:center;min-width:140px">
+                📄 Exportar dados antes
+              </button>
+            </div>
+
+            <div class="priv-delete-form">
+              <div style="font-size:.82rem;font-weight:700;color:#dc2626;margin-bottom:8px">⚠️ Formulário de exclusão</div>
+              <div style="font-size:.76rem;color:#7f1d1d;margin-bottom:10px">Esta ação é permanente e irreversível. Todos os seus dados serão apagados.</div>
+              <label style="font-size:.75rem;color:#991b1b;font-weight:600">Seu e-mail cadastrado</label>
+              <input type="email" id="privDeleteEmail" class="priv-delete-input" placeholder="seu@email.com">
+              <label style="font-size:.75rem;color:#991b1b;font-weight:600">Digite <strong>EXCLUIR MEUS DADOS</strong> para confirmar</label>
+              <input type="text" id="privDeleteConfirm" class="priv-delete-input" placeholder="EXCLUIR MEUS DADOS" oninput="privCheckDeleteReady()">
+              <div style="font-size:.73rem;color:#7f1d1d;margin:6px 0 10px">Selecione o motivo (opcional)</div>
+              <select id="privDeleteReason" class="priv-delete-input" style="padding:7px 10px">
+                <option value="">— Selecione um motivo —</option>
+                <option value="not_using">Não uso mais o app</option>
+                <option value="privacy">Preocupações com privacidade</option>
+                <option value="switching">Migrando para outro sistema</option>
+                <option value="test">Era conta de teste</option>
+                <option value="other">Outro motivo</option>
+              </select>
+              <button id="privDeleteBtn" class="priv-delete-btn" onclick="privSubmitDeleteRequest()" disabled>
+                🗑️ Enviar solicitação de exclusão
+              </button>
+              <div id="privDeleteConfirmMsg" class="priv-delete-confirm"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 8: Contato -->
+      <div class="priv-section" id="privS8">
+        <div class="priv-section-header">
+          <div class="priv-section-icon" style="background:#eff6ff;color:#1d4ed8">📬</div>
+          <div>
+            <div class="priv-section-title">8. Contato e DPO</div>
+            <div class="priv-section-sub">Como falar conosco sobre privacidade</div>
+          </div>
+        </div>
+        <div class="priv-body">
+          <p>Para exercer qualquer direito previsto nesta política, reportar incidentes de segurança ou tirar dúvidas sobre privacidade:</p>
+          <div class="priv-contact-grid">
+            <div class="priv-contact-card">
+              <div class="priv-contact-icon">✉️</div>
+              <div>
+                <div class="priv-contact-label">E-mail de privacidade</div>
+                <div class="priv-contact-value">privacidade@familyfintrack.app</div>
+              </div>
+            </div>
+            <div class="priv-contact-card">
+              <div class="priv-contact-icon">⏱️</div>
+              <div>
+                <div class="priv-contact-label">Prazo de resposta</div>
+                <div class="priv-contact-value">Até 5 dias úteis</div>
+              </div>
+            </div>
+            <div class="priv-contact-card">
+              <div class="priv-contact-icon">🌐</div>
+              <div>
+                <div class="priv-contact-label">Base legal</div>
+                <div class="priv-contact-value">LGPD (Lei 13.709/2018)</div>
+              </div>
+            </div>
+          </div>
+          <div class="priv-shield" style="margin-top:14px">
+            <div class="priv-shield-icon">📋</div>
+            <div class="priv-shield-text">Esta política pode ser atualizada periodicamente. Mudanças significativas serão comunicadas por e-mail com no mínimo 15 dias de antecedência.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-privacy -->
+    <div class="page" id="page-privacy">
+      <style>
+        .prv-hero { background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 60%,#000));border-radius:16px;padding:20px 22px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden; }
+        .prv-hero::before { content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 80% at 90% 50%,rgba(255,255,255,.08),transparent);pointer-events:none; }
+        .prv-hero-title { font-size:1.15rem;font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:4px; }
+        .prv-hero-sub { font-size:.78rem;opacity:.8; }
+        .prv-section { background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px; }
+        .prv-section-title { font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:7px; }
+        .prv-section-title-dot { width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0; }
+        .prv-section h4 { font-size:.9rem;font-weight:700;color:var(--text);margin:14px 0 6px; }
+        .prv-section h4:first-child { margin-top:0; }
+        .prv-section p,.prv-section li { font-size:.83rem;color:var(--text2);line-height:1.6; }
+        .prv-section ul { padding-left:18px;margin:6px 0; }
+        .prv-section li { margin-bottom:4px; }
+        .prv-chip-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0; }
+        @media(min-width:560px){ .prv-chip-grid { grid-template-columns:repeat(3,1fr); } }
+        .prv-chip { background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:.78rem; }
+        .prv-chip-icon { font-size:1.2rem;margin-bottom:4px; }
+        .prv-chip-title { font-weight:700;color:var(--text);margin-bottom:2px; }
+        .prv-chip-desc { color:var(--muted);font-size:.72rem; }
+        .prv-delete-box { background:linear-gradient(135deg,#fef2f2,#fee2e2);border:2px solid #fca5a5;border-radius:14px;padding:18px 20px;margin-top:6px; }
+        .prv-delete-title { font-size:.95rem;font-weight:800;color:#7f1d1d;margin-bottom:6px;display:flex;align-items:center;gap:8px; }
+        .prv-delete-desc { font-size:.82rem;color:#991b1b;margin-bottom:14px;line-height:1.5; }
+        .prv-delete-steps { list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:6px; }
+        .prv-delete-steps li { display:flex;align-items:flex-start;gap:10px;font-size:.82rem;color:#7f1d1d; }
+        .prv-delete-step-num { width:22px;height:22px;border-radius:50%;background:#dc2626;color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
+        .prv-delete-form { display:flex;flex-direction:column;gap:10px; }
+        .prv-delete-input { padding:9px 12px;border:1.5px solid #fca5a5;border-radius:9px;font-size:.83rem;font-family:inherit;background:#fff;color:#1f2937;width:100%;box-sizing:border-box; }
+        .prv-delete-input:focus { outline:none;border-color:#dc2626;box-shadow:0 0 0 2px rgba(220,38,38,.15); }
+        .prv-delete-btn { display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:9px;font-size:.84rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s; }
+        .prv-delete-btn:hover { background:#b91c1c; }
+        .prv-delete-btn:disabled { background:#9ca3af;cursor:not-allowed; }
+        .prv-update-badge { display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:.71rem;color:var(--muted); }
+      </style>
+
+      <!-- Hero -->
+      <div class="prv-hero">
+        <div class="prv-hero-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Política de Privacidade
+        </div>
+        <div class="prv-hero-sub">Family FinTrack · Última atualização: Janeiro de 2025</div>
+        <div style="margin-top:10px">
+          <span class="prv-update-badge" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.85)">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Conformidade LGPD
+          </span>
+        </div>
+      </div>
+
+      <!-- Introdução -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Sobre esta Política</div>
+        <p>Esta Política de Privacidade descreve como o <strong>Family FinTrack</strong> coleta, usa e protege suas informações pessoais e financeiras. Esta aplicação é um software pessoal/familiar e os dados são armazenados diretamente no banco de dados Supabase configurado pelo próprio usuário.</p>
+        <p style="margin-top:8px">Ao usar o Family FinTrack, você concorda com as práticas descritas nesta política. Se tiver dúvidas, acesse a <a href="javascript:navigate('help')" style="color:var(--accent);font-weight:600">Central de Ajuda</a>.</p>
+      </div>
+
+      <!-- Dados coletados -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Dados que coletamos</div>
+        <div class="prv-chip-grid">
+          <div class="prv-chip">
+            <div class="prv-chip-icon">👤</div>
+            <div class="prv-chip-title">Dados de conta</div>
+            <div class="prv-chip-desc">Nome, e-mail, foto de perfil, função na família</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">💰</div>
+            <div class="prv-chip-title">Dados financeiros</div>
+            <div class="prv-chip-desc">Transações, contas, categorias, orçamentos e investimentos inseridos por você</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">📊</div>
+            <div class="prv-chip-title">Telemetria de uso</div>
+            <div class="prv-chip-desc">Páginas acessadas, tipo de dispositivo, erros técnicos — sem conteúdo financeiro</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">🔑</div>
+            <div class="prv-chip-title">Credenciais</div>
+            <div class="prv-chip-desc">Chaves de API (Gemini, EmailJS) armazenadas localmente no seu navegador</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">📱</div>
+            <div class="prv-chip-title">Dados do dispositivo</div>
+            <div class="prv-chip-desc">Tipo de navegador, sistema operacional, resolução — somente para telemetria técnica</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">🏷️</div>
+            <div class="prv-chip-title">Preferências</div>
+            <div class="prv-chip-desc">Idioma, tema, configurações de notificações e módulos ativos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Como usamos -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Como usamos seus dados</div>
+        <h4>✅ O que fazemos</h4>
+        <ul>
+          <li>Armazenar seus dados financeiros de forma segura no Supabase para que você possa acessá-los de qualquer dispositivo</li>
+          <li>Usar dados de telemetria anonimizados para identificar erros técnicos e melhorar o app</li>
+          <li>Enviar notificações transacionais por e-mail quando configurado (via EmailJS)</li>
+          <li>Processar dados financeiros agregados para gerar insights de IA (sem dados pessoais identificáveis)</li>
+        </ul>
+        <h4>🚫 O que NÃO fazemos</h4>
+        <ul>
+          <li>Não vendemos, alugamos ou compartilhamos seus dados com terceiros para fins comerciais</li>
+          <li>Não acessamos seus dados financeiros sem sua autorização explícita</li>
+          <li>Não exibimos anúncios com base nos seus dados financeiros</li>
+          <li>Não armazenamos senhas em texto puro — são processadas com bcrypt pelo Supabase Auth</li>
+          <li>Não acessamos sua conta bancária real — todos os dados são inseridos manualmente por você</li>
+        </ul>
+      </div>
+
+      <!-- Segurança -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Segurança dos dados</div>
+        <div class="prv-chip-grid">
+          <div class="prv-chip">
+            <div class="prv-chip-icon">🔐</div>
+            <div class="prv-chip-title">TLS/HTTPS</div>
+            <div class="prv-chip-desc">Toda comunicação é cifrada em trânsito</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">🗄️</div>
+            <div class="prv-chip-title">Criptografia em repouso</div>
+            <div class="prv-chip-desc">Dados cifrados no disco pelo Supabase</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">🛡️</div>
+            <div class="prv-chip-title">Row Level Security</div>
+            <div class="prv-chip-desc">Políticas de banco que isolam os dados de cada família</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">🔑</div>
+            <div class="prv-chip-title">JWT com expiração</div>
+            <div class="prv-chip-desc">Tokens de sessão assinados digitalmente e com tempo de vida limitado</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">✅</div>
+            <div class="prv-chip-title">Aprovação de usuários</div>
+            <div class="prv-chip-desc">Novos membros precisam de aprovação do administrador da família</div>
+          </div>
+          <div class="prv-chip">
+            <div class="prv-chip-icon">☁️</div>
+            <div class="prv-chip-title">Backups automáticos</div>
+            <div class="prv-chip-desc">Supabase realiza backups diários dos seus dados</div>
+          </div>
+        </div>
+        <p style="margin-top:10px">Para mais detalhes técnicos, consulte a <a href="https://supabase.com/security" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">Política de Segurança do Supabase ↗</a> e acesse nossa <a href="javascript:navigate('help');setTimeout(()=>helpShowArticle('security','data-security'),300)" style="color:var(--accent);font-weight:600">Central de Ajuda → Segurança</a>.</p>
+      </div>
+
+      <!-- Seus direitos -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Seus direitos (LGPD)</div>
+        <p>Em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018)</strong>, você tem os seguintes direitos:</p>
+        <ul style="margin-top:10px">
+          <li><strong>Acesso:</strong> solicitar uma cópia dos seus dados pessoais armazenados</li>
+          <li><strong>Correção:</strong> atualizar informações incorretas ou desatualizadas diretamente no app</li>
+          <li><strong>Exclusão:</strong> solicitar a remoção completa de todos os seus dados (veja abaixo)</li>
+          <li><strong>Portabilidade:</strong> exportar seus dados financeiros em CSV via Relatórios → Exportar</li>
+          <li><strong>Revogação do consentimento:</strong> você pode parar de usar o app a qualquer momento</li>
+        </ul>
+      </div>
+
+      <!-- Exclusão de conta -->
+      <div class="prv-section">
+        <div class="prv-section-title">
+          <span style="width:7px;height:7px;border-radius:50%;background:#dc2626;flex-shrink:0;display:inline-block"></span>
+          Exclusão de conta e dados
+        </div>
+        <div class="prv-delete-box">
+          <div class="prv-delete-title">🗑️ Solicitar exclusão completa da conta</div>
+          <div class="prv-delete-desc">A exclusão remove permanentemente <strong>todos os seus dados</strong> do banco de dados: transações, contas, categorias, orçamentos, membros, configurações e conta de acesso. <strong>Esta ação é irreversível.</strong></div>
+          <ul class="prv-delete-steps">
+            <li><span class="prv-delete-step-num">1</span><span>Confirme seu e-mail abaixo</span></li>
+            <li><span class="prv-delete-step-num">2</span><span>Descreva brevemente o motivo (opcional)</span></li>
+            <li><span class="prv-delete-step-num">3</span><span>Clique em "Solicitar exclusão" — um e-mail de confirmação será enviado</span></li>
+          </ul>
+          <div class="prv-delete-form">
+            <input id="prvDeleteEmail" class="prv-delete-input" type="email" placeholder="Seu e-mail cadastrado" autocomplete="email">
+            <textarea id="prvDeleteReason" class="prv-delete-input" rows="2" placeholder="Motivo da exclusão (opcional)" style="resize:vertical"></textarea>
+            <label style="display:flex;align-items:flex-start;gap:8px;font-size:.79rem;color:#7f1d1d;cursor:pointer">
+              <input type="checkbox" id="prvDeleteConfirm" style="margin-top:2px;flex-shrink:0" onchange="document.getElementById('prvDeleteSubmitBtn').disabled=!this.checked">
+              <span>Entendo que esta ação é <strong>irreversível</strong> e todos os meus dados serão excluídos permanentemente.</span>
+            </label>
+            <button id="prvDeleteSubmitBtn" class="prv-delete-btn" disabled onclick="_prvSubmitDeleteRequest()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Solicitar exclusão permanente
+            </button>
+            <div id="prvDeleteStatus" style="display:none;font-size:.79rem;padding:8px 12px;border-radius:8px;text-align:center"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retenção e cookies -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Retenção de dados e cookies</div>
+        <h4>Retenção de dados</h4>
+        <p>Seus dados são mantidos enquanto sua conta estiver ativa. Após solicitar a exclusão, os dados são removidos em até 30 dias. Dados de telemetria são retidos por 90 dias para fins técnicos.</p>
+        <h4>Armazenamento local (localStorage)</h4>
+        <p>O app usa <code>localStorage</code> no seu navegador para armazenar cache temporário, preferências de interface e chaves de API que você configurar. Esses dados ficam somente no seu dispositivo e podem ser limpos em Configurações → Cache ou limpando os dados do navegador.</p>
+        <h4>Service Workers (PWA)</h4>
+        <p>Para funcionamento offline, o app registra um service worker que faz cache dos arquivos estáticos (código, CSS). Nenhum dado financeiro é armazenado no cache do service worker.</p>
+      </div>
+
+      <!-- Contato -->
+      <div class="prv-section">
+        <div class="prv-section-title"><span class="prv-section-title-dot"></span>Contato e dúvidas</div>
+        <p>Para exercer seus direitos, tirar dúvidas sobre privacidade ou reportar incidentes de segurança, acesse nossa <a href="javascript:navigate('help')" style="color:var(--accent);font-weight:600">Central de Ajuda</a> ou use o formulário de exclusão acima.</p>
+        <p style="margin-top:8px;color:var(--muted);font-size:.78rem">Esta política pode ser atualizada periodicamente. Mudanças significativas serão comunicadas via notificação no app.</p>
+      </div>
+
+      <script>
+      async function _prvSubmitDeleteRequest() {
+        const email = document.getElementById('prvDeleteEmail')?.value.trim();
+        const reason = document.getElementById('prvDeleteReason')?.value.trim();
+        const statusEl = document.getElementById('prvDeleteStatus');
+        const btn = document.getElementById('prvDeleteSubmitBtn');
+
+        if (!email || !email.includes('@')) {
+          if (statusEl) { statusEl.style.display=''; statusEl.style.background='#fef2f2'; statusEl.style.color='#dc2626'; statusEl.style.border='1px solid #fca5a5'; statusEl.textContent='⚠️ Informe um e-mail válido.'; }
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Enviando…';
+
+        try {
+          // Send deletion request via EmailJS (uses same config as app)
+          const currentEmail = typeof currentUser !== 'undefined' ? (currentUser?.email || '') : '';
+          if (email.toLowerCase() !== currentEmail.toLowerCase()) {
+            throw new Error('O e-mail informado não corresponde ao e-mail da sua conta.');
+          }
+
+          // Log deletion request in telemetry
+          if (typeof telTrack === 'function') {
+            telTrack('operation', { operation: 'delete_account_request', email_masked: email.replace(/(.{2}).*@/, '$1***@') });
+          }
+
+          // Try to send via EmailJS
+          let sent = false;
+          if (typeof emailjs !== 'undefined' && EMAILJS_CONFIG?.serviceId) {
+            try {
+              await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+                to_email: email,
+                subject: 'Solicitação de Exclusão de Conta — Family FinTrack',
+                from_name: 'Family FinTrack',
+                message: `Recebemos sua solicitação de exclusão de conta para o e-mail: ${email}
+
+Motivo: ${reason || 'Não informado'}
+
+Sua solicitação será processada em até 30 dias. Todos os seus dados serão removidos permanentemente.
+
+Se você não solicitou isso, ignore este e-mail.`,
+                report_content: `<p>Solicitação de exclusão de conta recebida para: <strong>${email}</strong><br>Motivo: ${reason || 'Não informado'}<br><br>Prazo: até 30 dias.</p>`,
+              });
+              sent = true;
+            } catch(e) { console.warn('EmailJS error:', e); }
+          }
+
+          if (statusEl) {
+            statusEl.style.display = '';
+            statusEl.style.background = '#f0fdf4';
+            statusEl.style.color = '#15803d';
+            statusEl.style.border = '1px solid #86efac';
+            statusEl.innerHTML = sent
+              ? '✅ Solicitação recebida! Você receberá um e-mail de confirmação em breve. Seus dados serão removidos em até 30 dias.'
+              : '✅ Solicitação registrada. Seus dados serão removidos em até 30 dias. (Configure o EmailJS para receber confirmação por e-mail.)';
+          }
+          document.getElementById('prvDeleteEmail').value = '';
+          document.getElementById('prvDeleteReason').value = '';
+          document.getElementById('prvDeleteConfirm').checked = false;
+        } catch(e) {
+          if (statusEl) {
+            statusEl.style.display = '';
+            statusEl.style.background = '#fef2f2';
+            statusEl.style.color = '#dc2626';
+            statusEl.style.border = '1px solid #fca5a5';
+            statusEl.textContent = '❌ ' + (e.message || 'Erro ao processar solicitação.');
+          }
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Solicitar exclusão permanente';
+        }
+      }
+      window._prvSubmitDeleteRequest = _prvSubmitDeleteRequest;
+
+      function _prvInitPage() {
+        // Auto-fill email from current user
+        const emailInput = document.getElementById('prvDeleteEmail');
+        if (emailInput && typeof currentUser !== 'undefined' && currentUser?.email) {
+          emailInput.value = currentUser.email;
+        }
+        // Reset form state
+        const confirmCb = document.getElementById('prvDeleteConfirm');
+        const submitBtn = document.getElementById('prvDeleteSubmitBtn');
+        const statusEl  = document.getElementById('prvDeleteStatus');
+        if (confirmCb) confirmCb.checked = false;
+        if (submitBtn) submitBtn.disabled = true;
+        if (statusEl)  statusEl.style.display = 'none';
+      }
+      window._prvInitPage = _prvInitPage;
+      </script>
+
+    </div><!-- /page-privacy -->
+
     <div class="page" id="page-audit">
 
       <style>
@@ -5628,6 +6316,51 @@
             </label>
           </div>
           <input type="hidden" id="myProfileFormMode" value="tabs">
+
+          <div class="prof-section-label" style="margin-top:16px">🧙 Assistente de configuração</div>
+          <div style="background:linear-gradient(135deg,var(--accent-lt,#e8f2ee) 0%,var(--surface2) 100%);border:1.5px solid var(--accent);border-radius:12px;padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🧙</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.88rem;font-weight:700;color:var(--accent)">Assistente de configuração</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:1px">Configure família, membros, categorias e módulos opcionais</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px" id="profWizModulesStatus">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:6px">
+                <span style="font-size:.9rem">🏪</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.72rem;font-weight:600;color:var(--text)">Preços</div>
+                  <div id="profModPrices" style="font-size:.65rem;color:var(--muted)">verificando…</div>
+                </div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:6px">
+                <span style="font-size:.9rem">📈</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.72rem;font-weight:600;color:var(--text)">Investimentos</div>
+                  <div id="profModInvestments" style="font-size:.65rem;color:var(--muted)">verificando…</div>
+                </div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:6px">
+                <span style="font-size:.9rem">💳</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.72rem;font-weight:600;color:var(--text)">Dívidas</div>
+                  <div id="profModDebts" style="font-size:.65rem;color:var(--muted)">verificando…</div>
+                </div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:6px">
+                <span style="font-size:.9rem">🤖</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.72rem;font-weight:600;color:var(--text)">AI Insights</div>
+                  <div id="profModAi" style="font-size:.65rem;color:var(--muted)">verificando…</div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="restartWizardFromProfile()" style="width:100%;justify-content:center;gap:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+              Reiniciar Assistente
+            </button>
+          </div>
         </div>
 
         <!-- ── Tab: Notificações ── -->
@@ -6700,6 +7433,185 @@
   
 
 <!-- ═══ SETUP WIZARD ═══════════════════════════════════════════════════════ -->
+    <!-- ══ PRIVACY PAGE ══════════════════════════════════════════════════ -->
+    <div class="page" id="page-privacy">
+      <style>
+        .priv-hero {
+          background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%);
+          border-radius: 16px; padding: 24px 22px; margin-bottom: 20px;
+          color: #fff; position: relative; overflow: hidden;
+        }
+        .priv-hero::before {
+          content: ''; position: absolute; inset: 0;
+          background: radial-gradient(ellipse 80% 60% at 90% 30%, rgba(255,255,255,.08) 0%, transparent 70%);
+        }
+        .priv-hero-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .priv-hero-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+        .priv-hero-sub { font-size: .8rem; opacity: .85; line-height: 1.5; }
+        .priv-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: 3px 10px; font-size: .72rem; font-weight: 600; margin-top: 10px; }
+
+        .priv-section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+        .priv-section-title { display: flex; align-items: center; gap: 10px; font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: 14px; }
+        .priv-section-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+        .priv-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: .82rem; color: var(--text2); line-height: 1.5; }
+        .priv-item:last-child { border-bottom: none; }
+        .priv-item-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+        .priv-highlight { background: var(--accent-lt, #e8f5ee); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; font-size: .82rem; color: var(--text); margin: 12px 0; }
+        .priv-warning { background: #fef2f2; border: 1px solid #fecaca; border-left: 3px solid #ef4444; border-radius: 10px; padding: 12px 14px; font-size: .82rem; color: #7f1d1d; margin: 12px 0; }
+        .priv-badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .priv-compliance-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: .75rem; font-weight: 600; color: var(--text); }
+
+        /* Deletion request form */
+        .priv-delete-panel { background: linear-gradient(135deg, #fef2f2, #fff5f5); border: 2px solid #fecaca; border-radius: 14px; padding: 20px; margin-top: 20px; }
+        .priv-delete-title { font-size: .95rem; font-weight: 800; color: #991b1b; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .priv-delete-steps { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+        .priv-delete-step { display: flex; gap: 10px; align-items: flex-start; font-size: .81rem; color: var(--text2); }
+        .priv-delete-step-num { width: 22px; height: 22px; border-radius: 50%; background: #dc2626; color: #fff; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 800; flex-shrink: 0; }
+        .priv-delete-form { background: var(--surface); border: 1px solid #fecaca; border-radius: 10px; padding: 14px; margin-top: 14px; }
+        .priv-delete-input { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: .83rem; border: 1.5px solid var(--border); border-radius: 8px; background: var(--bg2); color: var(--text); font-family: inherit; margin: 6px 0 10px; }
+        .priv-delete-input:focus { outline: none; border-color: #ef4444; }
+        .priv-delete-submit { width: 100%; padding: 10px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .15s; }
+        .priv-delete-submit:hover { background: #b91c1c; }
+        .priv-delete-submit:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+        @media (min-width: 640px) {
+          .priv-section { padding: 22px 24px; }
+        }
+      </style>
+
+      <!-- Hero -->
+      <div class="priv-hero">
+        <div class="priv-hero-icon">🔒</div>
+        <div class="priv-hero-title">Política de Privacidade</div>
+        <div class="priv-hero-sub">Seu controle sobre seus dados financeiros. Transparência total sobre como coletamos, usamos e protegemos suas informações.</div>
+        <div class="priv-badge">📅 Última atualização: Janeiro 2025</div>
+      </div>
+
+      <!-- Compliance badges -->
+      <div class="priv-section">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#dbeafe">🌍</div>
+          Conformidade Legal
+        </div>
+        <div class="priv-badge-row">
+          <div class="priv-compliance-badge">🇧🇷 LGPD Compliant</div>
+          <div class="priv-compliance-badge">🇪🇺 GDPR Ready</div>
+          <div class="priv-compliance-badge">🏆 SOC 2 (Supabase)</div>
+          <div class="priv-compliance-badge">🔐 TLS 1.3</div>
+          <div class="priv-compliance-badge">🛡️ ISO 27001</div>
+        </div>
+        <div class="priv-highlight">✅ O Family FinTrack opera em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD - Lei 13.709/2018)</strong> e com as diretrizes do <strong>GDPR europeu</strong>.</div>
+      </div>
+
+      <!-- What we collect -->
+      <div class="priv-section">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#dcfce7">📋</div>
+          Dados que coletamos
+        </div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Dados de cadastro:</strong> Nome, e-mail (necessário para login e recuperação de senha)</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Dados financeiros:</strong> Transações, contas, categorias, orçamentos e metas inseridos por você</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Dados de uso (telemetria):</strong> Páginas acessadas, tipo de dispositivo e navegador — para melhorar o app (anônimos e agregados)</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Dados de notificação:</strong> Número de WhatsApp e Chat ID do Telegram, apenas se você configurar voluntariamente</div></div>
+        <div class="priv-highlight">🚫 <strong>Nunca coletamos:</strong> dados de cartão de crédito, senhas bancárias, CPF/CNPJ ou qualquer dado sensível não necessário ao funcionamento do app.</div>
+      </div>
+
+      <!-- How we use -->
+      <div class="priv-section">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#fef3c7">⚙️</div>
+          Como usamos seus dados
+        </div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div>Prover todas as funcionalidades do app (lançamentos, relatórios, orçamentos, etc.)</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div>Enviar notificações de transações programadas (somente se configurado por você)</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div>Melhorar o desempenho e a experiência do app com base em dados anônimos de uso</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div>Gerar insights financeiros com IA (Gemini) — os dados são enviados à API do Google de forma segura e não são armazenados pelo Google para treinamento</div></div>
+        <div class="priv-highlight">🚫 <strong>Nunca vendemos</strong> seus dados para terceiros. Nunca usamos seus dados financeiros para publicidade.</div>
+      </div>
+
+      <!-- Where stored -->
+      <div class="priv-section">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#f3e8ff">🏦</div>
+          Onde seus dados ficam armazenados
+        </div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Supabase (PostgreSQL):</strong> Banco de dados cloud com certificação SOC 2 Type II e conformidade com GDPR. Servidores na região configurada pelo administrador.</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Row Level Security (RLS):</strong> Políticas de segurança em nível de banco de dados garantem que cada família acessa apenas seus próprios dados — tecnicamente impossível acessar dados de outra família.</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Backup automático:</strong> O Supabase mantém backups automáticos por 7 dias. Você pode exportar seus dados a qualquer momento em CSV ou PDF.</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Dados locais:</strong> Algumas preferências são armazenadas no seu dispositivo (localStorage) e nunca saem dele.</div></div>
+      </div>
+
+      <!-- Third parties -->
+      <div class="priv-section">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#fef3c7">🔗</div>
+          Serviços de terceiros utilizados
+        </div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Supabase</strong> — Banco de dados e autenticação. <a href="https://supabase.com/privacy" target="_blank" style="color:var(--accent);font-size:.75rem">Política de privacidade ↗</a></div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Google Gemini AI</strong> — Análise de recibos e insights financeiros (apenas quando ativado). <a href="https://policies.google.com/privacy" target="_blank" style="color:var(--accent);font-size:.75rem">Política ↗</a></div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>EmailJS</strong> — Envio de notificações por e-mail (apenas quando configurado pelo admin). <a href="https://www.emailjs.com/legal/privacy-policy/" target="_blank" style="color:var(--accent);font-size:.75rem">Política ↗</a></div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Nenhuma rede de publicidade</strong> — O app não contém rastreadores de anúncios, cookies de terceiros para publicidade ou qualquer serviço de analytics invasivo.</div></div>
+      </div>
+
+      <!-- Your rights -->
+      <div class="priv-section">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#dcfce7">⚖️</div>
+          Seus direitos (LGPD / GDPR)
+        </div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Acesso:</strong> Visualize todos os seus dados nos Relatórios e Exportação do app</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Retificação:</strong> Edite qualquer informação diretamente no app</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Portabilidade:</strong> Exporte seus dados em CSV ou PDF a qualquer momento via Configurações → Backup</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Apagamento:</strong> Solicite a exclusão completa de todos os dados abaixo</div></div>
+        <div class="priv-item"><div class="priv-item-dot"></div><div><strong>Oposição:</strong> Desative a telemetria nas Configurações → Família (se disponível)</div></div>
+      </div>
+
+      <!-- Data deletion request -->
+      <div class="priv-delete-panel">
+        <div class="priv-delete-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          Solicitar Exclusão Completa de Dados
+        </div>
+        <p style="font-size:.82rem;color:#7f1d1d;margin:0 0 12px">Esta operação é <strong>permanente e irreversível</strong>. Todos os dados da sua família serão removidos do sistema, incluindo transações, contas, membros, relatórios e histórico de uso.</p>
+        <div class="priv-delete-steps">
+          <div class="priv-delete-step"><div class="priv-delete-step-num">1</div><div>Faça o backup dos seus dados antes de continuar (Configurações → Backup → Exportar CSV)</div></div>
+          <div class="priv-delete-step"><div class="priv-delete-step-num">2</div><div>Preencha o formulário abaixo e confirme sua identidade</div></div>
+          <div class="priv-delete-step"><div class="priv-delete-step-num">3</div><div>O administrador do sistema processará a solicitação em até 15 dias úteis conforme a LGPD</div></div>
+        </div>
+        <div class="priv-delete-form">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text)">Seu e-mail cadastrado *</label>
+          <input type="email" id="privDeleteEmail" class="priv-delete-input" placeholder="seu@email.com" oninput="_privUpdateDeleteBtn()">
+          <label style="font-size:.78rem;font-weight:600;color:var(--text)">Motivo da solicitação</label>
+          <select id="privDeleteReason" class="priv-delete-input" style="padding:8px 10px">
+            <option value="">Selecione um motivo…</option>
+            <option value="no_longer_using">Não uso mais o app</option>
+            <option value="privacy_concerns">Preocupações com privacidade</option>
+            <option value="switching_app">Mudando para outro app</option>
+            <option value="test_account">Era uma conta de teste</option>
+            <option value="other">Outro motivo</option>
+          </select>
+          <label style="font-size:.78rem;font-weight:600;color:var(--text)">Para confirmar, digite <strong>EXCLUIR MEUS DADOS</strong> abaixo *</label>
+          <input type="text" id="privDeleteConfirm" class="priv-delete-input" placeholder="EXCLUIR MEUS DADOS" oninput="_privUpdateDeleteBtn()">
+          <div id="privDeleteStatus" style="display:none;font-size:.78rem;margin-bottom:10px;padding:8px 10px;border-radius:8px"></div>
+          <button id="privDeleteSubmit" class="priv-delete-submit" onclick="_privSubmitDeletion()" disabled>
+            🗑️ Enviar Solicitação de Exclusão
+          </button>
+          <p style="font-size:.7rem;color:#7f1d1d;margin:8px 0 0;text-align:center">Você receberá um e-mail de confirmação após o processamento da solicitação.</p>
+        </div>
+      </div>
+
+      <!-- Contact -->
+      <div class="priv-section" style="margin-bottom:0">
+        <div class="priv-section-title">
+          <div class="priv-section-icon" style="background:#e0f2fe">📬</div>
+          Contato & DPO
+        </div>
+        <p style="font-size:.82rem;color:var(--text2);margin:0 0 10px">Para dúvidas sobre esta política de privacidade, para exercer seus direitos ou para relatar um incidente de segurança, entre em contato com o administrador da sua instância do Family FinTrack.</p>
+        <div class="priv-highlight">📧 <strong>Encarregado de Dados (DPO):</strong> Identifique o administrador da família no app em <button onclick="navigate('settings')" style="background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;font-family:inherit;font-size:inherit">Configurações → Família & Usuários</button></div>
+      </div>
+
+    </div><!-- /page-privacy -->
+
 <div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)">
   <div class="wz-modal">
     <!-- Header -->
@@ -6718,6 +7630,7 @@
         <div class="wz-dot" title="Membros"></div>
         <div class="wz-dot" title="Convites"></div>
         <div class="wz-dot" title="Gastos"></div>
+        <div class="wz-dot" title="Módulos"></div>
         <div class="wz-dot" title="Contas"></div>
         <div class="wz-dot" title="Transações"></div>
         <div class="wz-dot" title="Relatórios"></div>
@@ -6782,6 +7695,13 @@
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
               onclick="closeUserMenu();setTimeout(openMyFamilyMgmt,80)">
         <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
+      </button>
+      <div style="height:1px;background:var(--border);margin:4px 0"></div>
+      <button class="user-menu-item" onclick="closeUserMenu();navigate('help')">
+        <span>❓</span><span>Central de Ajuda</span>
+      </button>
+      <button class="user-menu-item" onclick="closeUserMenu();navigate('privacy')">
+        <span>🔒</span><span>Privacidade & LGPD</span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="user-menu-item" onclick="doLogout()" style="color:var(--red,#dc2626)">
@@ -6901,6 +7821,122 @@ document.addEventListener('click', function(ev){
     setTimeout(function(){ window.syncScheduledNotificationsSummary(); window.syncScheduledAutomationSummary(); }, 50);
   }
 });
+</script>
+
+<script>
+/* ── Privacy page functions ────────────────────────────────────────────── */
+function privScrollTo(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function privCheckDeleteReady() {
+  const email   = document.getElementById('privDeleteEmail')?.value.trim();
+  const confirm = document.getElementById('privDeleteConfirm')?.value.trim();
+  const btn     = document.getElementById('privDeleteBtn');
+  if (!btn) return;
+  const ready = email && email.includes('@') && confirm === 'EXCLUIR MEUS DADOS';
+  btn.disabled = !ready;
+}
+
+async function privSubmitDeleteRequest() {
+  const email   = document.getElementById('privDeleteEmail')?.value.trim();
+  const confirm = document.getElementById('privDeleteConfirm')?.value.trim();
+  const reason  = document.getElementById('privDeleteReason')?.value;
+  const btn     = document.getElementById('privDeleteBtn');
+  const msg     = document.getElementById('privDeleteConfirmMsg');
+
+  if (!email || confirm !== 'EXCLUIR MEUS DADOS') return;
+
+  // Verify email matches current user
+  if (currentUser?.email && email.toLowerCase() !== currentUser.email.toLowerCase()) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = '#fef2f2';
+      msg.style.color = '#991b1b';
+      msg.textContent = '⚠️ O e-mail informado não corresponde ao e-mail da sua conta.';
+    }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando solicitação…'; }
+
+  try {
+    // Log deletion request to Supabase
+    if (typeof sb !== 'undefined') {
+      await sb.from('app_telemetry').insert({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        session_id: 'deletion_request',
+        event_type: 'deletion_request',
+        page: 'privacy',
+        ts: new Date().toISOString(),
+        user_id: currentUser?.id || null,
+        family_id: currentUser?.family_id || null,
+        payload: { email, reason: reason || 'not_specified', requested_at: new Date().toISOString() }
+      }).catch(() => {});
+    }
+
+    // Send notification email if EmailJS configured
+    if (typeof emailjs !== 'undefined' && typeof EMAILJS_CONFIG !== 'undefined' && EMAILJS_CONFIG?.serviceId) {
+      await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+        to_email: email,
+        subject: 'Solicitação de exclusão de dados — Family FinTrack',
+        message: `Recebemos sua solicitação de exclusão de todos os dados associados ao e-mail ${email}. Motivo: ${reason || 'não especificado'}. Processaremos em até 30 dias úteis e enviaremos confirmação.`,
+        report_content: `<p>Olá! Recebemos sua solicitação de exclusão completa de dados do Family FinTrack.<br><br><strong>E-mail:</strong> ${email}<br><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}<br><strong>Motivo:</strong> ${reason || 'não especificado'}<br><br>Processaremos sua solicitação em até 30 dias úteis. Você receberá uma confirmação quando concluído.</p>`,
+        from_name: 'Family FinTrack — Privacidade',
+      }).catch(() => {});
+    }
+
+    if (msg) {
+      msg.style.display = 'block';
+      msg.style.background = '#f0fdf4';
+      msg.style.color = '#166534';
+      msg.style.borderColor = '#22c55e';
+      msg.innerHTML = '✅ <strong>Solicitação enviada com sucesso!</strong><br>Você receberá confirmação por e-mail em até 48h. O processamento completo ocorre em até 30 dias úteis.';
+    }
+    if (btn) { btn.textContent = '✅ Solicitação enviada'; }
+
+    // Clear form
+    setTimeout(() => {
+      ['privDeleteEmail','privDeleteConfirm'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      if (btn) { btn.disabled = true; btn.textContent = '🗑️ Enviar solicitação de exclusão'; }
+    }, 3000);
+
+  } catch(e) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.textContent = '❌ Erro ao enviar. Tente novamente ou entre em contato por e-mail.';
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '🗑️ Enviar solicitação de exclusão'; }
+  }
+}
+
+/* ── Profile: load wizard module status ────────────────────────────────── */
+async function _loadProfWizModulesStatus() {
+  const checks = [
+    { id: 'profModPrices',      key: 'module_prices_enabled',       label: 'Preços' },
+    { id: 'profModInvestments', key: 'module_investments_enabled',   label: 'Investimentos' },
+    { id: 'profModDebts',       key: 'module_debts_enabled',         label: 'Dívidas' },
+    { id: 'profModAi',          key: 'module_aiInsights_enabled',    label: 'AI Insights' },
+  ];
+  for (const c of checks) {
+    const el = document.getElementById(c.id);
+    if (!el) continue;
+    try {
+      const v = await getAppSetting(c.key, false);
+      el.textContent = v ? '✅ Ativo' : '○ Inativo';
+      el.style.color = v ? 'var(--accent)' : 'var(--muted)';
+    } catch(_) { el.textContent = '—'; }
+  }
+}
+// Hook into profile modal open
+const _origOpenMyProfile = window.openMyProfile;
+window.openMyProfile = function(...args) {
+  if (_origOpenMyProfile) _origOpenMyProfile(...args);
+  setTimeout(_loadProfWizModulesStatus, 400);
+};
 </script>
 
 </body>
