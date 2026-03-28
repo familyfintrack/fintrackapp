@@ -663,8 +663,10 @@ async function ensureTelegramBotToken() {
 }
 
 /** Send via direct Telegram Bot API — no Edge Function needed */
-async function _sendTelegramDirect(chatId, text) {
-  const token = await ensureTelegramBotToken();
+async function _sendTelegramDirect(chatId, text, tokenOverride) {
+  // tokenOverride allows the settings test to pass the token from the input
+  // field directly, bypassing localStorage (which may be stale or empty)
+  const token = tokenOverride || await ensureTelegramBotToken();
   if (!token) throw new Error('Bot token não configurado em Configurações → Conexão');
   const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
@@ -678,7 +680,22 @@ async function _sendTelegramDirect(chatId, text) {
 
 /** Try Edge Function first; fall back to direct API */
 async function _sendTelegramWithFallback(chatId, message, extraBody = {}) {
-  // 1 — Edge Function (bot token lives server-side as secret)
+  // Resolve token first — if we have it locally, prefer direct API (faster, no Edge Function needed)
+  const localToken = await ensureTelegramBotToken();
+
+  // 1 — Direct API if we have a local token (most reliable path)
+  if (localToken) {
+    try {
+      const result = await _sendTelegramDirect(chatId, message, localToken);
+      console.info('[Telegram] Direct API OK (local token)');
+      return result;
+    } catch (directErr) {
+      console.warn('[Telegram] Direct API falhou:', directErr.message);
+      // Fall through to Edge Function as last resort
+    }
+  }
+
+  // 2 — Edge Function (bot token configured as Supabase secret server-side)
   try {
     if (sb && typeof sb.functions?.invoke === 'function') {
       const { data, error } = await sb.functions.invoke('send-scheduled-telegram', {
@@ -689,13 +706,15 @@ async function _sendTelegramWithFallback(chatId, message, extraBody = {}) {
       return data;
     }
   } catch (efErr) {
-    console.warn('[Telegram] Edge Function falhou, tentando API direta:', efErr.message);
+    console.warn('[Telegram] Edge Function falhou:', efErr.message);
   }
 
-  // 2 — Direct HTTP to api.telegram.org (bot token from localStorage)
-  const result = await _sendTelegramDirect(chatId, message);
-  console.info('[Telegram] Direct API OK');
-  return result;
+  // 3 — Both failed
+  throw new Error(
+    localToken
+      ? 'Telegram API: token inválido ou chat_id incorreto. Verifique o token em Configurações → Conexão.'
+      : 'Bot token não encontrado. Configure em Configurações → Conexão e clique Salvar.'
+  );
 }
 
 // ── Settings UI helpers (called from index.html) ──────────────────────────
@@ -733,14 +752,25 @@ window.saveTelegramBotToken = async function() {
 };
 
 window.testTelegramBotToken = async function() {
-  // Priority: dedicated settings field → profile modal field → currentUser DB field
+  // Read token directly from the input field (not from localStorage which may be stale)
+  const tokenInput = document.getElementById('telegramBotTokenInput');
+  const token = (tokenInput?.value || getTelegramBotToken()).trim();
+
+  // Priority for chat_id: dedicated settings field → profile modal field → currentUser
   const chatId = String(
     document.getElementById('tgBotTestChatId')?.value ||
     document.getElementById('myProfileTelegramChatId')?.value ||
     currentUser?.telegram_chat_id || ''
   ).trim();
+
   const statusEl = document.getElementById('tgBotStatus');
   const btn = document.getElementById('tgBotTestBtn');
+
+  if (!token) {
+    toast('Informe e salve o Bot Token primeiro', 'error');
+    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '⚠️ Token não encontrado. Digite o token e clique Salvar.'; }
+    return;
+  }
   if (!chatId) {
     toast('Informe o Chat ID no campo acima para testar', 'error');
     if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = '⚠️ Informe o Chat ID no campo acima.'; }
@@ -748,8 +778,10 @@ window.testTelegramBotToken = async function() {
   }
   if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   try {
+    // Pass token directly — bypasses localStorage to avoid stale/wrong value
     await _sendTelegramDirect(chatId,
-      '✅ <b>FinTrack</b> — Teste de notificação Telegram!\nSe recebeu, as notificações estão funcionando corretamente.');
+      '✅ <b>FinTrack</b> — Teste de notificação Telegram!\nSe recebeu, as notificações estão funcionando corretamente.',
+      token);
     if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Mensagem enviada com sucesso para o Chat ID ' + chatId + '!'; }
     toast('✅ Telegram OK!', 'success');
   } catch (e) {
