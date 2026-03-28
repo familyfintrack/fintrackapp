@@ -10308,6 +10308,53 @@ tr.reconcile-checked td { opacity: 1 !important; }
   line-height: 1.5;
 }
 .help-mini-card strong { display: block; color: var(--text); margin-bottom: 3px; }
+/* ── Help action buttons ───────────────────────────────────────── */
+.help-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: none;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  border-radius: 7px;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s, color .12s;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.help-action-btn:hover { background: var(--accent); color: #fff; }
+
+/* ── Help action grid (quick actions) ──────────────────────────── */
+.help-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.help-action-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  transition: border-color .15s, box-shadow .15s;
+}
+.help-action-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(0,0,0,.1);
+}
+.help-action-icon { font-size: 1.6rem; }
+.help-action-label { font-size: .74rem; font-weight: 600; color: var(--text); }
+
+
 
 /* ── Prev / Next navigation ────────────────────────────────────── */
 .help-article-nav {
