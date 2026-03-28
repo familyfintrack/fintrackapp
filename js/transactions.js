@@ -283,12 +283,12 @@ function filterTransactions(immediate = false){
 
 // ── Collapsible filter panel ──────────────────────────────────────────────
 function _txToggleFilters() {
-  const panel = document.getElementById('tx-filters-panel');
-  const btn   = document.getElementById('txFilterToggle');
-  if (!panel) return;
-  const isOpen = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  if (btn) btn.classList.toggle('active', !isOpen);
+  const body = document.getElementById('txFiltersBody');
+  const btn  = document.getElementById('txFilterToggle');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (btn) btn.classList.toggle('open', !isOpen);
 }
 window._txToggleFilters = _txToggleFilters;
 
@@ -300,7 +300,10 @@ function _txUpdateFilterBadge() {
     state.txFilter.status, state.txFilter.categoryId,
     ...(state.txFilter.memberIds || [])
   ].filter(Boolean).length;
-  btn.classList.toggle('has-filters', activeCount > 0);
+  btn.classList.toggle('has-active', activeCount > 0);
+  // Update label
+  const label = btn.querySelector('.tx-filter-count-lbl');
+  if (label) label.textContent = activeCount > 0 ? ` (${activeCount})` : '';
 }
 window._txUpdateFilterBadge = _txUpdateFilterBadge;
 
@@ -635,8 +638,10 @@ async function toggleReconcile(txId, btn) {
 
 function setTxView(v) {
   state.txView = v;
-  // Update all view buttons (handles both old .tx-view-btn and new .tx-fb-btn)
-  document.querySelectorAll('#viewBtnFlat, #viewBtnGroup').forEach(b => {
+  document.getElementById('viewBtnFlat').classList.toggle('active', v==='flat');
+  document.getElementById('viewBtnGroup').classList.toggle('active', v==='group');
+  // Also update new tx-view-btn class
+  document.querySelectorAll('.tx-view-btn').forEach(b => {
     const isFlat  = b.id === 'viewBtnFlat';
     const isGroup = b.id === 'viewBtnGroup';
     b.classList.toggle('active', (isFlat && v==='flat') || (isGroup && v==='group'));
@@ -818,7 +823,7 @@ function renderTransactionsGrouped(txs) {
       </div>
       <div id="txGroupBody-${k}" class="tx-group-card__body">
         <div class="table-wrap" style="margin:0">
-          <table style="border-radius:0;width:100%;table-layout:fixed">
+          <table class="tx-group-table" style="border-radius:0;width:100%;table-layout:fixed">
             <colgroup>
               ${state.reconcileMode ? '<col style="width:36px">' : ''}
               <col style="width:52px">
