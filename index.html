@@ -1565,8 +1565,9 @@
 
     <!-- SCHEDULED TRANSACTIONS -->
     <div class="page" id="page-scheduled">
-      <!-- Page header -->
-      <div class="sc-page-header">
+
+      <!-- ── DESKTOP header (hidden on mobile) ── -->
+      <div class="sc-page-header sc-desktop-header">
         <div class="sc-page-header__left">
           <div class="sc-view-toggle" id="scViewToggle">
             <button class="sc-view-btn active" id="scViewList" onclick="setScView('list')" title="Lista">
@@ -1594,10 +1595,62 @@
           <button class="btn btn-primary" onclick="openScheduledModal()">+ Programar</button>
         </div>
       </div>
-      <div class="sc-mobile-kpis" id="scMobileKpis">
-        <div class="sc-mkpi"><span class="sc-mkpi-val neg" id="scMKpiExpense">—</span><span class="sc-mkpi-lbl">despesas/30d</span></div>
-        <div class="sc-mkpi"><span class="sc-mkpi-val pos" id="scMKpiIncome">—</span><span class="sc-mkpi-lbl">receitas/30d</span></div>
-        <div class="sc-mkpi"><span class="sc-mkpi-val amber" id="scMKpiPending">—</span><span class="sc-mkpi-lbl">pendentes</span></div>
+
+      <!-- ── MOBILE header: ultra-compacto ── -->
+      <div class="sc-mobile-header" id="scMobileHeader">
+        <!-- Linha 1: views + novo -->
+        <div class="sc-mh-row1">
+          <div class="sc-mh-views">
+            <button class="sc-mh-view-btn active" id="scViewList" onclick="setScView('list')" aria-label="Lista">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Lista
+            </button>
+            <button class="sc-mh-view-btn" id="scViewCal" onclick="setScView('calendar')" aria-label="Calendário">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Cal.
+            </button>
+            <button class="sc-mh-view-btn" id="scViewCats" onclick="setScView('categories')" aria-label="Categorias">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              Categ.
+            </button>
+          </div>
+          <button class="sc-mh-new-btn" onclick="openScheduledModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo
+          </button>
+        </div>
+        <!-- Linha 2: KPIs inline como chips + filtros -->
+        <div class="sc-mh-row2" id="scMobileKpis">
+          <div class="sc-mh-kpi neg"><span id="scMKpiExpense">—</span><small>despesas</small></div>
+          <div class="sc-mh-kpi pos"><span id="scMKpiIncome">—</span><small>receitas</small></div>
+          <div class="sc-mh-kpi amber"><span id="scMKpiPending">—</span><small>pendentes</small></div>
+          <button class="sc-mh-filter-btn" onclick="scMobileToggleFilter()" id="scMobileFilterBtn" aria-label="Filtros">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── MOBILE filtros: painel deslizante ── -->
+      <div class="sc-mobile-filters" id="scMobileFilters" style="display:none">
+        <div class="sc-mf-inner">
+          <div class="sc-mf-search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="scSearch" placeholder="Buscar programados…" oninput="filterScheduled()" class="sc-mf-search-input">
+          </div>
+          <div class="sc-mf-chips">
+            <button class="sc-mf-chip active" id="scChipAll"    onclick="scChipFilter(event,'all')">Todos</button>
+            <button class="sc-mf-chip"        id="scChipActive" onclick="scChipFilter(event,'active')">Ativos</button>
+            <button class="sc-mf-chip"        id="scChipPaused" onclick="scChipFilter(event,'paused')">Pausados</button>
+            <button class="sc-mf-chip"        id="scChipDone"   onclick="scChipFilter(event,'finished')">Concluídos</button>
+          </div>
+          <select id="scTypeFilter" onchange="filterScheduled()" class="sc-mf-select">
+            <option value="">Todos os tipos</option>
+            <option value="expense">💸 Despesas</option>
+            <option value="income">💰 Receitas</option>
+            <option value="transfer">🔄 Transferências</option>
+            <option value="card_payment">💳 Pgto. Cartão</option>
+          </select>
+        </div>
       </div>
 
       <!-- Calendar view -->
