@@ -20246,3 +20246,132 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     font-size: .7rem;
   }
 }
+
+
+/* === 2026-03-28 v3 patch: mobile scheduled overflow + desktop flat reconcile alignment === */
+@media (max-width: 640px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
+  #page-scheduled {
+    overflow-x: hidden !important;
+  }
+
+  #page-scheduled .section-header > div,
+  #page-scheduled .sc-filter-bar {
+    flex-wrap: wrap !important;
+  }
+
+  #page-scheduled .sc-view-toggle {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #page-scheduled .sc-view-btn,
+  #page-scheduled .section-header .btn-primary,
+  #page-scheduled .sc-chip,
+  #page-scheduled .sc-type-select,
+  #page-scheduled .search-wrap {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #page-scheduled .sc-card-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto 16px !important;
+    grid-template-areas: "icon body end chev" !important;
+  }
+
+  #page-scheduled .sc-card-chevron {
+    grid-area: chev !important;
+    justify-self: end !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    flex: 0 0 16px !important;
+  }
+
+  #page-scheduled .sup-group-hdr {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  #page-scheduled .sup-group-left,
+  #page-scheduled .sup-group-dow,
+  #page-scheduled .sup-group-meta {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #page-scheduled .sup-group-left {
+    overflow: hidden !important;
+  }
+
+  #page-scheduled .sup-group-dow {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  #page-scheduled .sup-group-meta {
+    justify-self: end !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+@media (min-width: 801px) {
+  #page-transactions.reconcile-mode #txFlatCard .table-wrap {
+    overflow-x: hidden !important;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #page-transactions.reconcile-mode #txFlatCard #txBody tr.tx-date-header-row {
+    display: table-row !important;
+  }
+
+  #page-transactions.reconcile-mode #txFlatCard #txBody tr.tx-row-clickable:not(.tx-date-header-row) {
+    display: table-row !important;
+  }
+
+  #page-transactions.reconcile-mode #txFlatCard #txBody tr.tx-row-clickable:not(.tx-date-header-row) > td {
+    display: table-cell !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    vertical-align: top !important;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable thead th.th-chk,
+  #page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-chk {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable thead th.tx-v2-th-date,
+  #page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-date {
+    width: 72px !important;
+    min-width: 72px !important;
+    max-width: 72px !important;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable thead th.tx-v2-th-right,
+  #page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-right {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+  }
+
+  #page-transactions.reconcile-mode #txMainTable thead th.tx-v2-th-body,
+  #page-transactions.reconcile-mode #txMainTable tbody td.tx-v2-body {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+}
