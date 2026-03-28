@@ -20246,3 +20246,113 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     font-size: .7rem;
   }
 }
+
+
+/* === 2026-03-28 patch: scheduled mobile overflow + desktop date-group alignment === */
+@media (max-width: 640px) {
+  #page-scheduled,
+  #page-scheduled .page-body,
+  #page-scheduled .section,
+  #page-scheduled .card,
+  #page-scheduled #scheduledList,
+  #page-scheduled #scheduledUpcomingCard,
+  #page-scheduled #scheduledUpcomingList {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  #page-scheduled .section-header,
+  #page-scheduled .section-header > div,
+  #page-scheduled .sc-filter-bar,
+  #page-scheduled .sc-card-row,
+  #page-scheduled .sc-card-mid,
+  #page-scheduled .sc-card-end,
+  #page-scheduled .sup-group,
+  #page-scheduled .sup-group-hdr,
+  #page-scheduled .sup-item,
+  #page-scheduled .sup-body,
+  #page-scheduled .sup-right,
+  #page-scheduled .sc-upcoming-item,
+  #page-scheduled .sc-upcoming-left,
+  #page-scheduled .sc-upcoming-right {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  #page-scheduled .sc-card-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #page-scheduled .sc-card-mid,
+  #page-scheduled .sup-body,
+  #page-scheduled .sc-upcoming-left {
+    overflow: hidden;
+  }
+
+  #page-scheduled .sc-card-meta,
+  #page-scheduled .sup-desc,
+  #page-scheduled .sup-acct,
+  #page-scheduled .sc-upcoming-desc,
+  #page-scheduled .sc-upcoming-acct {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #page-scheduled .sc-card-end,
+  #page-scheduled .sup-right,
+  #page-scheduled .sc-upcoming-right {
+    justify-self: end;
+    align-items: flex-end;
+  }
+
+  #page-scheduled .sup-item,
+  #page-scheduled .sc-upcoming-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #page-scheduled .sup-actions,
+  #page-scheduled .sc-card-actions,
+  #page-scheduled .sc-icon-btns,
+  #page-scheduled .sc-filter-chips,
+  #page-scheduled .sc-summary-bar {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 801px) {
+  #page-transactions:not(.reconcile-mode) #txMainTable {
+    table-layout: fixed !important;
+  }
+
+  #page-transactions:not(.reconcile-mode) #txMainTable thead th.tx-v2-th-date,
+  #page-transactions:not(.reconcile-mode) #txMainTable tbody td.tx-v2-date {
+    width: 84px !important;
+    min-width: 84px !important;
+    text-align: center;
+  }
+
+  #page-transactions:not(.reconcile-mode) #txMainTable thead th.tx-v2-th-right,
+  #page-transactions:not(.reconcile-mode) #txMainTable tbody td.tx-v2-right {
+    width: 164px !important;
+    min-width: 164px !important;
+  }
+
+  #page-transactions:not(.reconcile-mode) #txMainTable tbody td.tx-v2-body {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  #page-transactions:not(.reconcile-mode) #txMainTable tbody tr.tx-date-header-row td {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
