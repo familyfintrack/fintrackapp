@@ -1390,68 +1390,88 @@ body.tx-compact .tx-table .badge{
 /* === 2026-03-26 FINAL MOBILE TX WIDTH REBALANCE === */
 @media (max-width: 720px){
   #page-transactions #txBody tr.tx-row-clickable{
-    grid-template-columns: minmax(38px, 10%) minmax(0, 60%) minmax(82px, 20%) !important;
+    grid-template-columns: 42px 1fr auto !important;
     gap: 10px !important;
     align-items: center !important;
   }
 
   #page-transactions #txBody td.tx-v2-date{
-    width: auto !important;
-    min-width: 38px !important;
-    max-width: 10% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    align-items: flex-start !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    padding: 0 !important;
+    /* flex column so date + pending stack centered */
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
     justify-content: center !important;
-    text-align: left !important;
+    gap: 3px !important;
+    text-align: center !important;
+  }
+
+  /* Pending emoji: no background, no border, just the emoji */
+  #page-transactions #txBody td.tx-v2-date .tx-v2-pend{
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: .85rem !important;
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
   }
 
   #page-transactions #txBody td.tx-v2-body{
-    width: auto !important;
+    width: 0 !important;           /* force grid to distribute 1fr correctly */
     min-width: 0 !important;
     max-width: none !important;
-    padding-right: 6px !important;
-    overflow: hidden !important;
+    padding: 0 !important;
+    padding-right: 4px !important;
+    overflow: hidden !important;   /* contain account pill inside card */
   }
 
-  #page-transactions #txBody td.tx-v2-right{
-    width: auto !important;
-    min-width: 82px !important;
-    max-width: 20% !important;
-    padding-right: 0 !important;
-    white-space: nowrap !important;
-  }
-
-  #page-transactions .tx-v2-title{
-    display: -webkit-box !important;
-    -webkit-box-orient: vertical !important;
-    -webkit-line-clamp: 2 !important;
-    line-clamp: 2 !important;
-    white-space: normal !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: none !important;
-    line-height: 1.12 !important;
-  }
-
-  #page-transactions .tx-v2-mobile-meta{
-    display: block !important;
-    max-width: none !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-
+  /* Account pill: must not escape the body cell */
   #page-transactions .tx-v2-account-line{
     display: block !important;
-    max-width: none !important;
+    max-width: 100% !important;
     min-width: 0 !important;
+    overflow: hidden !important;
   }
 
   #page-transactions .tx-v2-account-line .tx-v2-acct-pill{
     max-width: 100% !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+  }
+
+  /* Title: allow 2-line wrap */
+  #page-transactions .tx-v2-title{
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    line-height: 1.12 !important;
+  }
+
+  #page-transactions .tx-v2-mobile-meta{
+    display: block !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  #page-transactions #txBody td.tx-v2-right{
+    width: auto !important;
+    min-width: 76px !important;
+    max-width: 26% !important;
+    padding: 0 !important;
     white-space: nowrap !important;
   }
 
