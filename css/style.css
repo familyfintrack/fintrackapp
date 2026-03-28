@@ -20003,136 +20003,108 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   }
 }
 
-/* ==========================================================================
-   HOTFIX 2026-03-28 — Transactions mobile / grouped by account
-   Isolated to #txGroupContainer to prevent regressions in flat view and desktop
-   ========================================================================== */
-@media (max-width: 640px) {
-  #page-transactions #txGroupContainer .table-wrap {
-    overflow: visible !important;
+/* === HOTFIX 2026-03-28 — mobile grouped transactions keep description/category visible === */
+@media (max-width: 720px){
+  /* Scope only to grouped-by-account mobile view */
+  #page-transactions #txGroupContainer tbody tr.tx-row-clickable{
+    display:grid !important;
+    grid-template-columns: 44px minmax(0,1fr) auto !important;
+    gap: 10px !important;
+    align-items:center !important;
+    border:1px solid var(--border) !important;
+    border-radius:16px !important;
+    background:var(--surface) !important;
+    padding:12px 14px !important;
+    margin:10px 0 !important;
   }
 
   #page-transactions #txGroupContainer table,
-  #page-transactions #txGroupContainer tbody {
-    width: 100% !important;
+  #page-transactions #txGroupContainer tbody{
+    width:100%;
   }
 
-  #page-transactions #txGroupContainer thead {
-    display: none !important;
+  #page-transactions #txGroupContainer thead{
+    display:none !important;
   }
 
-  #page-transactions #txGroupContainer tbody tr.tx-row-clickable {
-    display: grid !important;
-    grid-template-columns: 44px minmax(0, 1fr) auto !important;
-    grid-template-areas: 'date body right' !important;
-    gap: 8px 10px !important;
-    align-items: center !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 12px 14px !important;
-    border-top: 1px solid var(--border) !important;
-    background: var(--surface) !important;
+  #page-transactions #txGroupContainer tbody td{
+    border:0 !important;
+    padding:0 !important;
+    min-width:0 !important;
   }
 
-  #page-transactions #txGroupContainer tbody tr.tx-row-clickable:first-child {
-    border-top: 0 !important;
+  #page-transactions #txGroupContainer tbody td.tx-v2-date{
+    grid-column:1 !important;
+    width:44px !important;
+    min-width:44px !important;
+    text-align:center !important;
+    justify-self:start !important;
   }
 
-  #page-transactions #txGroupContainer tbody td.tx-v2-date,
-  #page-transactions #txGroupContainer tbody td.tx-v2-body,
-  #page-transactions #txGroupContainer tbody td.tx-v2-right,
-  #page-transactions #txGroupContainer tbody td.tx-v2-chk {
-    display: block !important;
-    width: auto !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    margin: 0 !important;
+  #page-transactions #txGroupContainer tbody td.tx-v2-body{
+    grid-column:2 !important;
+    width:auto !important;
+    min-width:0 !important;
+    overflow:hidden !important;
   }
 
-  #page-transactions #txGroupContainer tbody td.tx-v2-date {
-    grid-area: date !important;
-    width: 44px !important;
-    min-width: 44px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
+  #page-transactions #txGroupContainer tbody td.tx-v2-right{
+    grid-column:3 !important;
+    width:auto !important;
+    min-width:88px !important;
+    text-align:right !important;
+    justify-self:end !important;
+    white-space:nowrap !important;
   }
 
-  #page-transactions #txGroupContainer tbody td.tx-v2-body {
-    grid-area: body !important;
-    overflow: hidden !important;
+  #page-transactions #txGroupContainer .tx-v2-title{
+    display:flex !important;
+    align-items:center !important;
+    gap:6px !important;
+    min-width:0 !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    line-height:1.15 !important;
   }
 
-  #page-transactions #txGroupContainer tbody td.tx-v2-right {
-    grid-area: right !important;
-    align-self: center !important;
-    justify-self: end !important;
-    text-align: right !important;
-    white-space: nowrap !important;
+  #page-transactions #txGroupContainer .tx-v2-desc-text{
+    display:block !important;
+    min-width:0 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
 
-  #page-transactions #txGroupContainer tbody td.tx-v2-chk {
-    display: none !important;
+  /* Re-enable category line specifically for grouped view */
+  #page-transactions #txGroupContainer .tx-v2-category{
+    display:flex !important;
+    align-items:center !important;
+    gap:4px !important;
+    min-width:0 !important;
+    margin-top:2px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
 
-  body.reconcile-mode #page-transactions #txGroupContainer tbody tr.tx-row-clickable,
-  #page-transactions.reconcile-mode #txGroupContainer tbody tr.tx-row-clickable {
-    grid-template-columns: 28px 44px minmax(0, 1fr) auto !important;
-    grid-template-areas: 'chk date body right' !important;
+  #page-transactions #txGroupContainer .tx-v2-payee-line{
+    display:block !important;
+    min-width:0 !important;
+    margin-top:2px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
   }
 
-  body.reconcile-mode #page-transactions #txGroupContainer tbody td.tx-v2-chk,
-  #page-transactions.reconcile-mode #txGroupContainer tbody td.tx-v2-chk {
-    grid-area: chk !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 28px !important;
-    min-width: 28px !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-title,
-  #page-transactions #txGroupContainer .tx-v2-desc-text {
-    display: block !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-title {
-    font-size: .92rem !important;
-    line-height: 1.2 !important;
-    margin: 0 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-category,
-  #page-transactions #txGroupContainer .tx-v2-payee-line,
-  #page-transactions #txGroupContainer .tx-v2-meta,
-  #page-transactions #txGroupContainer .tx-v2-account-line {
-    display: block !important;
-    min-width: 0 !important;
-    margin-top: 2px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-amt-wrap {
-    align-items: flex-end !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-amt {
-    font-size: 1rem !important;
-    line-height: 1.15 !important;
-  }
-
-  #page-transactions #txGroupContainer .tx-v2-brl,
-  #page-transactions #txGroupContainer .tx-v2-bal {
-    font-size: .68rem !important;
-    line-height: 1.1 !important;
+  /* In grouped-by-account view, keep only the grouped-specific lines */
+  #page-transactions #txGroupContainer .tx-v2-mobile-meta,
+  #page-transactions #txGroupContainer .tx-v2-account-line,
+  #page-transactions #txGroupContainer td.tx-v2-act,
+  #page-transactions #txGroupContainer td.tx-v2-chk,
+  #page-transactions #txGroupContainer th.tx-v2-th-act,
+  #page-transactions #txGroupContainer th.th-chk{
+    display:none !important;
   }
 }
