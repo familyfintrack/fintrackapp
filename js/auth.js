@@ -288,7 +288,8 @@ async function _loadCurrentUserContext(authCtx = null) {
   };
 
   currentUser = {
-    id:                   user.id,
+    id:                   user.id,          // auth.uid — usado para auth Supabase
+    app_user_id:          appUserRow?.id || null,  // app_users.id — usado para FKs internas
     email:                user.email || '',
     name:                 appUserRow?.name || user.email || 'Usuário',
     role:                 activeRole,
@@ -1639,23 +1640,14 @@ async function doRegister() {
     // Capture preferred language from register form (if present)
     const regLang = document.getElementById('regLanguage')?.value || 'pt';
 
-    // Insert pending record — NOT approved, NOT active, no Supabase Auth account yet
-    const { error: insErr } = await sb.from('app_users').insert({
-      name,
-      email,
-      password_hash:      pwdHash,
-      role:               'viewer',
-      approved:           false,
-      active:             false,
-      can_view:           true,
-      can_create:         false,
-      can_edit:           false,
-      can_delete:         false,
-      can_export:         false,
-      can_import:         false,
-      can_admin:          false,
-      must_change_pwd:    false,
-      preferred_language: regLang,
+    // Insert pending record via SECURITY DEFINER RPC — bypasses RLS for anon users.
+    // The direct sb.from('app_users').insert() fails with RLS when the user is not
+    // authenticated yet. The RPC runs with definer privileges so anon can call it.
+    const { error: insErr } = await sb.rpc('register_pending_user', {
+      p_name:          name,
+      p_email:         email,
+      p_password_hash: pwdHash,
+      p_lang:          regLang,
     });
     if (insErr) throw insErr;
 
@@ -3262,7 +3254,10 @@ async function saveUser() {
     record.must_change_pwd = false;
     record.active          = true;
     record.approved        = true;
-    record.created_by      = currentUser?.id;
+    // created_by must reference app_users.id (the PK), NOT auth.uid (currentUser.id)
+    const creatorAppId = currentUser?.app_user_id || null;
+    if (creatorAppId) record.created_by = creatorAppId;
+    // Do NOT set created_by if we can't resolve the app_users PK — avoids FK violation
   }
 
   try {
