@@ -2531,9 +2531,12 @@
                   <span id="tgBotStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0;display:inline-block"></span>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:6px">
-                  <input type="password" id="telegramBotTokenInput"
-                    placeholder="123456789:ABC-DEF…" autocomplete="off"
-                    style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)"
+                  <input type="text" id="telegramBotTokenInput"
+                    placeholder="123456789:ABC-DEF…"
+                    autocomplete="new-password"
+                    autocorrect="off" autocapitalize="none" spellcheck="false"
+                    inputmode="text"
+                    style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface);-webkit-text-security:disc"
                     oninput="_tgBotTokenOnInput()">
                   <button class="btn btn-ghost btn-sm" onclick="saveTelegramBotToken()">Salvar</button>
                 </div>
@@ -5056,7 +5059,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="tx-amount-row">
             <div class="amt-wrap" style="flex:1">
               <button type="button" class="amt-sign-btn" id="scAmountSignBtn" onclick="toggleAmtSign('scAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="updateScCurrencyPreview()">
+              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="updateScCurrencyPreview()" onblur="_amtFieldBlur('scAmount')" onfocus="_amtFieldFocus('scAmount')">
             </div>
             <select id="scCurrencySelect" onchange="onScCurrencyChange()" class="tx-currency-sel">
               <option value="BRL">BRL</option>
@@ -5357,7 +5360,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <p id="registerOccDesc" style="margin-bottom:14px;color:var(--muted);font-size:.875rem"></p>
       <div class="form-grid">
         <div class="form-group"><label>Data real *</label><input type="date" id="occDate"></div>
-        <div class="form-group"><label>Valor real *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="occAmountSignBtn" onclick="toggleAmtSign('occAmount')" aria-label="Alternar sinal">+</button><input type="text" id="occAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"></div></div>
+        <div class="form-group"><label>Valor real *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="occAmountSignBtn" onclick="toggleAmtSign('occAmount')" aria-label="Alternar sinal">+</button><input type="text" id="occAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" onblur="_amtFieldBlur('occAmount')" onfocus="_amtFieldFocus('occAmount')"></div></div>
         <div class="form-group full"><label>Memo</label><input type="text" id="occMemo" placeholder="Observação desta ocorrência"></div>
       </div>
       <input type="hidden" id="occScId">
@@ -5578,7 +5581,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="tx-amount-row">
             <div class="amt-wrap" style="flex:1">
               <button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="onTxAmountInput()">
+              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="onTxAmountInput()" onblur="_amtFieldBlur('txAmount')" onfocus="_amtFieldFocus('txAmount')">
             </div>
             <select id="txCurrencySelect" onchange="onTxCurrencyChange()" class="tx-currency-sel">
               <option value="BRL">BRL</option>
@@ -5852,7 +5855,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </div>
-        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
+        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
         <div class="form-group full">
           <label>Ícone</label>
           <div class="icon-picker" id="accountIconPicker">
@@ -6433,7 +6436,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <label>Valor limite *</label>
           <div class="amt-wrap">
             <button type="button" class="amt-sign-btn" style="visibility:hidden">+</button>
-            <input type="text" id="budgetAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off">
+            <input type="text" id="budgetAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" onblur="_amtFieldBlur('budgetAmount')" onfocus="_amtFieldFocus('budgetAmount')">
           </div>
         </div>
 
