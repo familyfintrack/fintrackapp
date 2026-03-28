@@ -4805,17 +4805,13 @@ html, body{
 }
 .tx-v2-bal.neg { color: var(--red, #c0392b); }
 
-/* Pending badge */
+/* Pending emoji indicator in date cell — no background, just sized */
 .tx-v2-pend {
-  display: inline-block;
-  font-size: .6rem;
-  font-weight: 700;
-  background: #fef9c3;
-  color: #92400e;
-  border: 1px solid #fcd34d;
-  border-radius: 4px;
-  padding: 0px 5px;
-  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .82rem;
+  line-height: 1;
   flex-shrink: 0;
 }
 .tx-v2-clip { opacity: .55; font-size: .72rem; flex-shrink: 0; }
@@ -5011,6 +5007,28 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     text-align: center;
     width: 38px !important;
     min-width: 38px;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+  /* Pending icon inside date cell: compact, no block margin */
+  #page-transactions #txFlatCard .tx-v2-pend {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1;
+  }
+  /* Date strings inside date cell */
+  #page-transactions #txFlatCard .tx-date-day,
+  #page-transactions #txFlatCard .tx-date-mon {
+    display: block;
+    text-align: center;
+    line-height: 1.15;
   }
 
   /* Col 2: body */
@@ -5020,6 +5038,33 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
     min-width: 0;
     max-width: none;
     align-self: center;
+    overflow: hidden;   /* prevent account pill from escaping card */
+    width: 0;           /* let flex/grid distribute remaining space */
+  }
+  /* Account pill: must be contained inside the body cell */
+  #page-transactions #txFlatCard .tx-v2-account-line {
+    overflow: hidden;
+    width: 100%;
+  }
+  #page-transactions #txFlatCard .tx-v2-acct-pill {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Title + meta lines: must not overflow */
+  #page-transactions #txFlatCard .tx-v2-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+  }
+  #page-transactions #txFlatCard .tx-v2-mobile-meta,
+  #page-transactions #txFlatCard .tx-v2-payee-line {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
   }
 
   /* Col 3: amount */
@@ -5413,12 +5458,14 @@ label { font-size: .7rem; }
   .tx-cat-chip { background: rgba(42,96,73,.10); color: var(--accent); border-color: rgba(42,96,73,.22); }
 }
 
-/* Pending dot in date cell */
+/* Pending indicator in date cell */
 .tx-v2-pend {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: .75rem;
-  margin-top: 2px;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 /* Clip icon */
@@ -5581,6 +5628,11 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     text-align: center;
     width: 38px !important;
     min-width: 38px;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
   }
 
   /* Body col */
@@ -5590,6 +5642,8 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     min-width: 0;
     max-width: none;
     align-self: center;
+    overflow: hidden;
+    width: 0;
   }
 
   /* Right col: amount */
