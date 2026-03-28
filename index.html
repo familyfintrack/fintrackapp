@@ -2467,6 +2467,29 @@
               </div>
               <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Configurar</button>
             </div>
+            <!-- Telegram Bot Token -->
+            <div class="cfg-row" id="telegramBotRow">
+              <div class="cfg-row-icon" style="background:#e7f3ff">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </div>
+              <div class="cfg-row-info" style="flex:1;min-width:0">
+                <div class="cfg-row-label" style="display:flex;align-items:center;gap:7px">
+                  Telegram Bot Token
+                  <span id="tgBotStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0;display:inline-block"></span>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:6px">
+                  <input type="password" id="telegramBotTokenInput"
+                    placeholder="123456789:ABC-DEF…" autocomplete="off"
+                    style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)"
+                    oninput="_tgBotTokenOnInput()">
+                  <button class="btn btn-ghost btn-sm" onclick="saveTelegramBotToken()">Salvar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="testTelegramBotToken()" id="tgBotTestBtn" style="display:none">🧪 Testar</button>
+                </div>
+                <div id="tgBotStatus" style="font-size:.7rem;margin-top:3px;color:var(--muted)">
+                  Token do bot usado para enviar notificações. Crie um bot com <strong>@BotFather</strong> no Telegram.
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="cfg-section-label">Cache</div>
