@@ -1594,12 +1594,10 @@ const SC_MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 function setScView(view) {
   _scView = view;
 
-  const listBtn  = document.getElementById('scViewList');
-  const calBtn   = document.getElementById('scViewCal');
-  const catsBtn  = document.getElementById('scViewCats');
-  if (listBtn)  listBtn.classList.toggle('active',  view === 'list');
-  if (calBtn)   calBtn.classList.toggle('active',   view === 'calendar');
-  if (catsBtn)  catsBtn.classList.toggle('active',  view === 'categories');
+  // Update all view buttons — handles both desktop and mobile variants
+  document.querySelectorAll('#scViewList').forEach(b => b.classList.toggle('active', view === 'list'));
+  document.querySelectorAll('#scViewCal').forEach(b  => b.classList.toggle('active', view === 'calendar'));
+  document.querySelectorAll('#scViewCats').forEach(b => b.classList.toggle('active', view === 'categories'));
 
   const listView = document.getElementById('scListView');
   const calView  = document.getElementById('scCalendarView');
@@ -1629,6 +1627,20 @@ function setScView(view) {
     renderUpcoming();
   }
 }
+
+function scMobileToggleFilter() {
+  const panel = document.getElementById('scMobileFilters');
+  const btn   = document.getElementById('scMobileFilterBtn');
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : '';
+  if (btn) btn.classList.toggle('active', !open);
+  if (!open) {
+    // focus search input when opening
+    setTimeout(() => { const s = document.getElementById('scSearch'); if (s) s.focus(); }, 50);
+  }
+}
+window.scMobileToggleFilter = scMobileToggleFilter;
 
 // ── Navigation ────────────────────────────────────────────────────
 function scCalMove(delta) {
