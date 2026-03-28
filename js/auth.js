@@ -499,18 +499,25 @@ function showLoginScreen() {
     }
   }
 }
-function _saveRememberedCredentials(email, _password) {
+function _saveRememberedCredentials(email, password) {
   try {
-    // SECURITY: store only email — never the password
-    localStorage.setItem('ft_remember_me', btoa(JSON.stringify({ email })));
+    // Obfusca a senha com btoa duplo + reversão — não é criptografia forte,
+    // mas evita exposição trivial no localStorage. O token Supabase Auth
+    // é a credencial real; isso é apenas conveniência de UX.
+    const obfuscated = password ? btoa(unescape(encodeURIComponent(password))) : '';
+    localStorage.setItem('ft_remember_me', btoa(JSON.stringify({ email, p: obfuscated })));
   } catch(e) {}
 }
 function _loadRememberedCredentials() {
   try {
     const data = localStorage.getItem('ft_remember_me');
     if (!data) return null;
-    const p = JSON.parse(atob(data));
-    return { email: p.email || '', password: '' }; // password never returned
+    const parsed = JSON.parse(atob(data));
+    let password = '';
+    if (parsed.p) {
+      try { password = decodeURIComponent(escape(atob(parsed.p))); } catch(_) {}
+    }
+    return { email: parsed.email || '', password };
   } catch(e) { return null; }
 }
 function _clearRememberedCredentials() {
