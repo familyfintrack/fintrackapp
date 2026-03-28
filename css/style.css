@@ -20541,20 +20541,19 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 
 /* ══════════════════════════════════════════════════════════════════════════
    PROGRAMADOS — Mobile UX completo (≤640px)
-   Redesenho full da experiência mobile: header, KPIs, próximos, recorrentes
+   Redesenho full: header, KPIs, próximos, cards de recorrentes
    ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
-  /* ── Página raiz: sem overflow lateral ── */
+  /* ── Página: sem overflow lateral, espaço para FAB ── */
   #page-scheduled {
     overflow-x: hidden;
-    padding-bottom: 80px; /* espaço para o FAB */
+    padding-bottom: 80px;
   }
 
-  /* ══ 1. HEADER COMPACTO ══ */
+  /* ══ 1. HEADER ══ */
   .sc-page-header {
     display: flex;
-    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
     margin-bottom: 12px;
@@ -20564,14 +20563,14 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   .sc-page-header__left { flex: 1 1 auto; min-width: 0; }
   .sc-page-header__right { flex-shrink: 0; }
   .sc-page-header__right .btn-primary {
-    padding: 9px 16px;
-    font-size: .85rem;
+    padding: 9px 14px;
+    font-size: .84rem;
     font-weight: 700;
     border-radius: 12px;
     white-space: nowrap;
   }
 
-  /* Toggle de views: 3 botões iguais, compactos */
+  /* Toggle de views: ícone + label, 3 colunas */
   .sc-view-toggle {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -20590,7 +20589,7 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     gap: 5px;
     padding: 8px 4px;
     border-radius: 9px;
-    font-size: .75rem;
+    font-size: .72rem;
     font-weight: 500;
     min-height: 36px;
     border: none;
@@ -20605,12 +20604,10 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     font-weight: 700;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
   }
-  .sc-view-lbl { display: inline !important; font-size: .72rem; }
-
-  /* KPI strip desktop: oculto */
+  .sc-view-lbl { display: inline !important; font-size: .7rem; }
   .sc-kpi-strip { display: none !important; }
 
-  /* ══ 2. BARRA DE KPIs MOBILE ══ */
+  /* ══ 2. KPIs MOBILE ══ */
   .sc-mobile-kpis {
     display: grid !important;
     grid-template-columns: 1fr 1fr 1fr;
@@ -20621,7 +20618,7 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 10px 8px;
+    padding: 10px 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -20630,14 +20627,14 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   }
   .sc-mkpi-val {
     font-family: var(--font-serif);
-    font-size: .9rem;
+    font-size: .88rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     line-height: 1.1;
   }
   .sc-mkpi-lbl {
-    font-size: .58rem;
+    font-size: .56rem;
     font-weight: 600;
     color: var(--muted);
     text-transform: uppercase;
@@ -20646,45 +20643,45 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     white-space: nowrap;
   }
 
-  /* ══ 3. LAYOUT: coluna única, sem cromo de painel ══ */
+  /* ══ 3. LAYOUT: coluna única ══ */
   .sc-list-view {
     display: flex;
     flex-direction: column;
     gap: 0;
   }
 
-  /* Painel upcoming: cartão verde topo */
+  /* Painel upcoming: cartão com sotaque accent */
   #scUpcomingPanel {
-    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-    border: 1.5px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+    border: 1.5px solid color-mix(in srgb, var(--accent) 22%, var(--border));
     border-radius: 16px;
     overflow: hidden;
-    margin-bottom: 18px;
-    box-shadow: 0 2px 8px rgba(42,96,73,.07);
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(42,96,73,.06);
   }
   #scUpcomingPanel .sc-panel__header {
     padding: 11px 14px 10px;
-    background: color-mix(in srgb, var(--accent) 8%, var(--surface2));
-    border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface2));
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   }
   #scUpcomingPanel .sc-panel__title {
-    font-size: .78rem;
+    font-size: .75rem;
     color: var(--accent);
     font-weight: 800;
     letter-spacing: .05em;
     text-transform: uppercase;
   }
   #scUpcomingPanel .sc-panel__badge {
-    font-size: .75rem;
+    font-size: .73rem;
     padding: 3px 10px;
     border-radius: 20px;
   }
   #scUpcomingPanel .sc-panel__body {
-    max-height: none;
-    overflow: visible;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
-  /* Painel recorrentes: sem cromo */
+  /* Painel recorrentes: sem cromo, transparente */
   .sc-panel--recurrents {
     background: transparent !important;
     border: none !important;
@@ -20698,13 +20695,13 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     overflow: visible !important;
   }
 
-  /* Label de separação entre seções */
+  /* Label separador entre seções */
   .sc-mobile-recurrents-label {
-    display: flex;
+    display: flex !important;
     align-items: center;
     gap: 7px;
-    padding: 4px 0 10px;
-    font-size: .7rem;
+    padding: 2px 0 10px;
+    font-size: .68rem;
     font-weight: 800;
     color: var(--text2);
     text-transform: uppercase;
@@ -20713,8 +20710,6 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   .sc-mobile-recurrents-label svg { color: var(--accent); flex-shrink: 0; }
 
   /* ══ 4. PRÓXIMOS — grupos por data ══ */
-
-  /* Grupo = separador de data com itens abaixo */
   .sup-group {
     border: none;
     border-radius: 0;
@@ -20722,8 +20717,6 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     margin-bottom: 0;
     overflow: visible;
   }
-
-  /* Header do grupo: data pill + nome do dia + total */
   .sup-group-hdr {
     background: transparent;
     padding: 14px 0 6px;
@@ -20732,346 +20725,288 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   }
   .sup-group-hdr:hover { background: transparent; }
   .sup-group-left { gap: 10px; }
+  .sup-day-pill { min-width: 40px; padding: 4px 8px; border-radius: 10px; }
+  .sup-day-num  { font-size: .92rem; }
+  .sup-day-mon  { font-size: .56rem; }
+  .sup-group-dow { font-size: .84rem; font-weight: 700; color: var(--text); }
+  .sup-day-total { font-size: .8rem; }
+  .sup-day-count { font-size: .65rem; padding: 2px 7px; }
 
-  /* Pill de data */
-  .sup-day-pill {
-    min-width: 42px;
-    padding: 5px 8px;
-    border-radius: 10px;
-  }
-  .sup-day-num { font-size: .95rem; }
-  .sup-day-mon { font-size: .58rem; }
-
-  .sup-group-dow {
-    font-size: .85rem;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .sup-day-total { font-size: .82rem; }
-  .sup-day-count {
-    font-size: .67rem;
-    padding: 2px 7px;
-    background: var(--bg2);
-    border-radius: 20px;
-  }
-
-  /* Container de linhas */
   .sup-rows {
     border-top: none;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-bottom: 4px;
+    gap: 7px;
+    padding-bottom: 6px;
   }
 
-  /* Item individual: card elevado com toque fácil */
+  /* Item individual: card */
   .sup-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 11px !important;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 12px 14px;
-    gap: 11px;
+    padding: 12px 13px !important;
     box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    min-height: 58px;
     transition: box-shadow .12s, transform .1s;
-    min-height: 56px;
   }
   .sup-item:active { transform: scale(.988); box-shadow: none; }
   .sup-item:last-child { border-bottom: 1px solid var(--border); }
-
-  /* Hoje: destaque âmbar com borda esquerda */
   .sup-item--today {
     border-left: 3px solid var(--amber, #f59e0b);
     background: color-mix(in srgb, var(--amber) 5%, var(--surface));
   }
-
-  /* Ícone */
   .sup-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 11px;
-    font-size: .95rem;
-    flex-shrink: 0;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 11px !important;
+    font-size: .95rem !important;
+    flex-shrink: 0 !important;
   }
-
-  /* Corpo: descrição + conta */
-  .sup-body { gap: 3px; }
+  .sup-body {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden;
+    gap: 3px;
+  }
   .sup-desc {
-    font-size: .88rem;
+    font-size: .87rem;
     font-weight: 700;
-    gap: 6px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .sup-acct {
-    font-size: .71rem;
+    font-size: .7rem;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
-  /* Lado direito: valor + botões */
   .sup-right {
-    gap: 6px;
-    align-items: flex-end;
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
+    max-width: 44vw !important;
+    align-items: flex-end !important;
+    gap: 6px !important;
   }
-  .sup-amt {
-    font-size: .97rem;
-    white-space: nowrap;
-  }
-
-  /* Botões de ação: toque mínimo 40px */
-  .sup-actions { gap: 5px; }
-
+  .sup-amt { font-size: .95rem; white-space: nowrap; }
+  .sup-actions { gap: 6px; }
   .sup-ignore-btn {
-    width: 32px;
-    height: 32px;
+    width: 32px; height: 32px;
     border-radius: 9px;
     font-size: .75rem;
-    border: 1.5px solid var(--border);
   }
-
   .sup-register-btn {
     height: 32px;
     padding: 0 14px;
     border-radius: 9px;
-    font-size: .78rem;
+    font-size: .77rem;
     font-weight: 700;
-    letter-spacing: .01em;
   }
 
-  /* ══ 5. RECORRENTES — sc-cards ══ */
-  #scheduledList .sc-card {
+  /* ══ 5. CARDS DE RECORRENTES ══
+     Layout flex — mais simples e robusto que grid no mobile */
+  #page-scheduled #scheduledList .sc-card {
     border-radius: 14px;
     margin-bottom: 8px;
     border: 1px solid var(--border);
     box-shadow: 0 1px 4px rgba(0,0,0,.05);
     overflow: hidden;
   }
-  #scheduledList .sc-card:active { transform: scale(.989); }
+  #page-scheduled #scheduledList .sc-card:active { transform: scale(.989); }
 
-  /* Linha principal do card */
-  .sc-card-row {
-    display: grid;
-    grid-template-columns: 38px 1fr auto 20px;
-    align-items: center;
-    gap: 0 10px;
-    padding: 12px 12px 12px 12px;
+  /* Linha clicável do card: flex com quebra controlada */
+  #page-scheduled .sc-card-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 13px 12px !important;
+    min-height: 62px !important;
     cursor: pointer;
-    min-height: 60px;
   }
-
-  /* Ícone do tipo */
-  .sc-card-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
-    font-size: 1rem;
+  #page-scheduled .sc-card-icon {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+    font-size: 1.05rem !important;
+    flex-shrink: 0 !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
   }
-
-  /* Corpo central */
-  .sc-card-mid {
-    min-width: 0;
+  #page-scheduled .sc-card-mid {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 3px;
   }
-  .sc-card-title2 {
-    font-size: .88rem;
-    font-weight: 700;
+  #page-scheduled .sc-card-title2 {
+    font-size: .9rem !important;
+    font-weight: 700 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text);
   }
-  .sc-card-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    row-gap: 3px;
+  #page-scheduled .sc-card-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 4px !important;
+    row-gap: 3px !important;
   }
-  .sc-freq-pill {
-    font-size: .63rem !important;
-    padding: 1px 6px !important;
-    border-radius: 8px !important;
-  }
-  .sc-card-meta-text {
-    font-size: .71rem;
+  #page-scheduled .sc-card-meta-text {
+    font-size: .7rem;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 130px;
+    max-width: 110px;
   }
-
-  /* Lado direito: valor + badges */
-  .sc-card-end {
+  #page-scheduled .sc-freq-pill {
+    font-size: .62rem !important;
+    padding: 1px 6px !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  #page-scheduled .sc-card-end {
+    flex-shrink: 0 !important;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 4px;
-    flex-shrink: 0;
+    max-width: 38vw;
   }
-  .sc-card-amt {
-    font-size: .97rem;
-    font-weight: 800;
+  #page-scheduled .sc-card-amt {
+    font-size: 1rem !important;
+    font-weight: 800 !important;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
-  .sc-card-badges {
+  #page-scheduled .sc-card-badges {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 3px;
   }
-  .sc-next-pill {
-    font-size: .62rem !important;
-    padding: 2px 7px !important;
-    border-radius: 8px !important;
-    white-space: nowrap;
-  }
-  .sc-status-badge {
+  #page-scheduled .sc-next-pill {
     font-size: .6rem !important;
     padding: 2px 6px !important;
     white-space: nowrap;
   }
-
-  /* Chevron */
-  .sc-card-chevron { flex-shrink: 0; color: var(--muted); }
-
-  /* ── Barra de ações do card ── */
-  .sc-card-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 12px 12px;
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
-    flex-wrap: nowrap;
+  #page-scheduled .sc-status-badge {
+    font-size: .59rem !important;
+    padding: 2px 5px !important;
+    white-space: nowrap;
+  }
+  #page-scheduled .sc-card-chevron {
+    flex-shrink: 0;
+    color: var(--muted);
+    width: 14px;
+    height: 14px;
   }
 
-  /* Botão de registrar: cresce para preencher */
-  .sc-reg-btn {
-    flex: 1;
-    height: 38px;
-    border-radius: 10px;
-    font-size: .8rem;
-    font-weight: 700;
-    justify-content: center;
+  /* Barra de ações: botão de registrar largo + ícones de ação */
+  #page-scheduled .sc-card-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px 12px 12px !important;
+    border-top: 1px solid var(--border) !important;
+    background: var(--surface2) !important;
+    flex-wrap: nowrap !important;
+  }
+  #page-scheduled .sc-reg-btn {
+    flex: 1 !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    font-size: .81rem !important;
+    font-weight: 700 !important;
+    justify-content: center !important;
+    padding: 0 10px !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .sc-reg-none {
-    flex: 1;
-    text-align: center;
-    font-size: .75rem;
-    color: var(--muted);
+  #page-scheduled .sc-reg-none {
+    flex: 1 !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: .75rem !important;
+    color: var(--muted) !important;
     font-style: italic;
-    height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: transparent !important;
+    border: none !important;
   }
-
-  /* Botões de ícone: tamanho de toque generoso */
-  .sc-icon-btns { gap: 5px; margin-left: 0; }
-  .sc-icon-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+  #page-scheduled .sc-icon-btns { gap: 6px; margin-left: 0; }
+  #page-scheduled .sc-icon-btn {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
     flex-shrink: 0;
   }
-  .sc-icon-del { color: var(--danger, #dc2626); }
 
-  /* ── Corpo expandido do card (ocorrências) ── */
-  .sc-card-body {
+  /* Corpo expandido (ocorrências) */
+  #page-scheduled .sc-card-body {
     border-top: 1px solid var(--border);
-    padding: 10px 12px 12px;
+    padding: 10px 12px 14px;
+    background: var(--surface);
   }
-  .sc-occ-header {
-    font-size: .67rem;
+  #page-scheduled .sc-occ-header {
+    font-size: .65rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
     color: var(--muted);
     margin-bottom: 8px;
   }
-  .sc-occ-row {
+  #page-scheduled .sc-occ-row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: 80px 1fr auto auto;
     align-items: center;
     gap: 6px;
     padding: 7px 0;
     border-bottom: 1px solid var(--border);
-    font-size: .78rem;
+    font-size: .75rem;
   }
-  .sc-occ-row:last-child { border-bottom: none; }
-  .sc-occ-date {
-    font-size: .73rem;
-    font-weight: 600;
-    white-space: nowrap;
-    color: var(--text2);
-    min-width: 70px;
-  }
-  .sc-occ-label {
-    font-size: .73rem;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .sc-occ-status .sc-status-badge { font-size: .6rem !important; }
+  #page-scheduled .sc-occ-row:last-child { border-bottom: none; }
+  #page-scheduled .sc-occ-date { font-size: .72rem; font-weight: 600; white-space: nowrap; }
+  #page-scheduled .sc-occ-label { font-size: .7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* ══ 6. CALENDÁRIO — mobile ══ */
-  .sc-cal-wrap { font-size: .75rem; }
-  .sc-cal-grid { grid-template-columns: repeat(7, 1fr); }
-  .sc-cal-cell { min-height: 44px; padding: 3px 2px; }
-  .sc-cal-day-num { font-size: .78rem; }
-  .sc-cal-nav { padding: 8px 0; }
-  .sc-cal-month-label { font-size: .95rem; }
-  .sc-cal-legend { flex-wrap: wrap; gap: 6px; font-size: .71rem; }
+  /* Estado vazio */
+  #scheduledList .card { border-radius: 16px !important; }
 
-  /* ══ 7. CATEGORIAS — mobile ══ */
-  .sc-cats-controls { flex-direction: column; gap: 8px; }
-  #scCatsKpis { gap: 6px; flex-wrap: wrap; }
-
-  /* ══ 8. ESTADO VAZIO ══ */
-  #scheduledList .card[style*="text-align:center"] {
-    padding: 36px 20px !important;
-    border-radius: 16px !important;
-  }
-
-  /* ══ 9. SEÇÃO DE CONCLUÍDOS ══ */
+  /* Seção de concluídos */
   .sc-finished-toggle {
     border-radius: 12px !important;
+    min-height: 44px;
     font-size: .78rem !important;
     padding: 11px 14px !important;
-    min-height: 44px;
   }
+
+  /* Calendário */
+  .sc-cal-cell { min-height: 42px; }
+  .sc-cal-legend { flex-wrap: wrap; gap: 6px; font-size: .7rem; }
 }
 
-/* ── Ajustes finos para telas muito pequenas (≤380px) ────────────────── */
+/* ── Telas muito pequenas (≤380px) ───────────────────────────────────────── */
 @media (max-width: 380px) {
-  .sc-page-header__right .btn-primary {
-    padding: 9px 11px;
-    font-size: .78rem;
-  }
-  .sc-mkpi-val { font-size: .82rem; }
-  .sc-card-row { grid-template-columns: 34px 1fr auto 18px; gap: 0 8px; padding: 10px; }
-  .sc-card-icon { width: 34px; height: 34px; font-size: .9rem; }
-  .sc-card-amt { font-size: .88rem; }
-  .sc-reg-btn { font-size: .75rem; height: 36px; }
-  .sc-icon-btn { width: 32px; height: 32px; }
-  .sup-item { padding: 10px 12px; }
-  .sup-register-btn { height: 30px; padding: 0 11px; font-size: .75rem; }
+  .sc-page-header__right .btn-primary { padding: 9px 10px; font-size: .77rem; }
+  .sc-mkpi-val { font-size: .8rem; }
+  #page-scheduled .sc-card-row { padding: 11px 10px !important; gap: 8px !important; }
+  #page-scheduled .sc-card-icon { width: 36px !important; height: 36px !important; font-size: .95rem !important; }
+  #page-scheduled .sc-card-amt { font-size: .9rem !important; }
+  #page-scheduled .sc-card-end { max-width: 35vw; }
+  #page-scheduled .sc-reg-btn { height: 38px !important; font-size: .77rem !important; }
+  #page-scheduled .sc-icon-btn { width: 34px !important; height: 34px !important; }
+  .sup-item { padding: 10px 11px !important; }
+  .sup-register-btn { height: 30px; padding: 0 10px; font-size: .73rem; }
   .sup-ignore-btn { width: 30px; height: 30px; }
 }
