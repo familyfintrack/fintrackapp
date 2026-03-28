@@ -645,26 +645,9 @@ function getTelegramBotToken() {
   try { return (localStorage.getItem(_TG_BOT_KEY) || '').trim(); } catch { return ''; }
 }
 
-async function ensureTelegramBotToken() {
-  let token = getTelegramBotToken();
-  if (token) return token;
-  try {
-    if (typeof getAppSetting === 'function') {
-      token = String(await getAppSetting('telegram_bot_token', '') || '').trim();
-      if (token) {
-        try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
-        return token;
-      }
-    }
-  } catch (e) {
-    console.warn('[Telegram] Não foi possível carregar token salvo:', e?.message || e);
-  }
-  return '';
-}
-
 /** Send via direct Telegram Bot API — no Edge Function needed */
 async function _sendTelegramDirect(chatId, text) {
-  const token = await ensureTelegramBotToken();
+  const token = getTelegramBotToken();
   if (!token) throw new Error('Bot token não configurado em Configurações → Conexão');
   const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
@@ -672,7 +655,15 @@ async function _sendTelegramDirect(chatId, text) {
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
   });
   const json = await resp.json();
-  if (!json.ok) throw new Error(`Telegram API: ${json.description || 'erro desconhecido'} (code ${json.error_code})`);
+  if (!json.ok) {
+    if (Number(json.error_code) === 401 && !options._retriedWithFreshToken) {
+      const freshToken = await ensureTelegramBotToken(true);
+      if (freshToken && freshToken !== token) {
+        return _sendTelegramDirect(chatId, text, { forceRefreshToken: true, _retriedWithFreshToken: true });
+      }
+    }
+    throw new Error(`Telegram API: ${json.description || 'erro desconhecido'} (code ${json.error_code})`);
+  }
   return json;
 }
 

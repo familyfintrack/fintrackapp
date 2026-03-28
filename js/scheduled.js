@@ -1463,10 +1463,18 @@ async function runScheduledAutoRegister() {
 
         try{
           const cfg2 = getAutoCheckConfig ? getAutoCheckConfig() : null;
-          const method = cfg2?.method || 'browser';
           const emailTo = sc.notify_email ? (sc.notify_email_addr || cfg2?.emailDefault || currentUser?.email) : null;
-          if(method==='email' && emailTo && typeof sendScheduledNotification==='function') {
+          if (emailTo && typeof sendScheduledNotification === 'function') {
             await sendScheduledNotification(sc, d, result.amount, emailTo);
+          }
+          if (sc.notify_whatsapp && sc.notify_whatsapp_on_processed && typeof sendScheduledWhatsappNotification === 'function') {
+            await sendScheduledWhatsappNotification(sc, d, result.amount, 'processed');
+          }
+          if (sc.notify_telegram && sc.notify_telegram_on_processed && typeof sendScheduledTelegramNotification === 'function') {
+            await sendScheduledTelegramNotification(sc, d, result.amount, 'processed');
+          }
+          if (result?.transaction && typeof notifyOnTransaction === 'function') {
+            await notifyOnTransaction(result.transaction, sc);
           }
         }catch(e){ console.warn('[auto_register notify]', e.message); }
 
