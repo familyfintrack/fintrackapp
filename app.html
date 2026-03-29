@@ -527,7 +527,7 @@
 </nav>
 
 <!-- MAIN -->
-<div class="main" id="mainApp">
+<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
     <div class="topbar-left">
       <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
@@ -1720,17 +1720,18 @@
 
         <!-- LEFT panel: Próximos 10 dias -->
         <div class="sc-panel sc-panel--upcoming" id="scUpcomingPanel">
-          <div class="sc-panel__header">
+          <div class="sc-panel__header" onclick="toggleUpcomingDesktopPanel()" style="cursor:pointer;user-select:none">
             <div class="sc-panel__title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               Próximos 10 dias
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;align-items:center;gap:8px">
               <span id="scheduledUpcomingTotal" class="sc-panel__badge"></span>
               <span id="scheduledUpcomingCount" class="sc-panel__count"></span>
+              <svg id="upcomingDesktopArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transition:transform .25s;color:var(--muted)"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </div>
-          <div id="scheduledUpcomingList" class="sc-panel__body sc-upcoming-list"></div>
+          <div id="scheduledUpcomingList" class="sc-panel__body sc-upcoming-list" style="display:none"></div>
         </div>
 
         <!-- Separador mobile entre Próximos e Programados -->
@@ -1742,9 +1743,14 @@
         <!-- RIGHT panel: Recorrentes -->
         <div class="sc-panel sc-panel--recurrents" id="scRecurrentsPanel">
           <div class="sc-panel__header">
-            <div class="sc-panel__title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              Recorrentes
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+              <div class="sc-panel__title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                Recorrentes
+              </div>
+              <button onclick="scShowAllRecurrents()" style="font-family:var(--font-sans);font-size:.72rem;font-weight:600;color:var(--accent);background:transparent;border:1px solid var(--border-green,rgba(42,96,73,.2));border-radius:8px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all .18s" onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='transparent'">
+                Ver todos →
+              </button>
             </div>
             <div class="sc-panel__filters">
               <div class="sc-panel__search-wrap">
@@ -2579,6 +2585,24 @@
             <div class="cfg-pane-header-text">
               <div class="cfg-pane-header-title">Automação de Programados</div>
               <div class="cfg-pane-header-sub">Verificação e notificações automáticas</div>
+            </div>
+          </div>
+
+          <!-- Acesso Beta / Lista de espera -->
+          <div class="cfg-section-label" id="cfgWaitlistSection">Acesso &amp; Lista de Espera</div>
+          <div class="cfg-card" id="cfgWaitlistSection">
+            <div class="cfg-row">
+              <div class="cfg-row-icon" style="background:#e8f5ee">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2a6049" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-title">Exibir link "Solicitar Acesso"</div>
+                <div class="cfg-row-sub">Exibe o botão de solicitação de acesso na tela de login</div>
+              </div>
+              <label class="cfg-toggle">
+                <input type="checkbox" id="cfgShowAccessRequest" onchange="saveShowAccessRequest(this.checked)">
+                <span class="cfg-toggle-slider"></span>
+              </label>
             </div>
           </div>
 
@@ -4634,7 +4658,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div><!-- /mainApp -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <div id="loginScreen" class="login-screen-shell login-bg-opt1" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
+  <div id="loginScreen" class="login-screen-shell login-bg-opt1" style="display:flex;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
 
     <!-- Decorative background layers -->
     <!-- Opção 2: Névoa difusa + linhas diagonais -->
@@ -4720,7 +4744,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
           <span data-i18n="auth.no_account">Não tem conta?</span>
-          <button onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline" data-i18n="auth.request_access">Solicitar acesso</button>
+          <button id="loginRequestAccessBtn" onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline" data-i18n="auth.request_access">Solicitar acesso</button>
         </div>
       </div>
 
