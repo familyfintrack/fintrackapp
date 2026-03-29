@@ -2423,7 +2423,6 @@ window.executeTelemetryDelete = async function() {
   const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
   const btn   = document.getElementById('telDelConfirmBtn');
 
-  // Confirmação extra — ação irreversível
   const msg = scope === 'all'
     ? 'Confirma a exclusão de TODOS os registros de telemetria? Esta ação é irreversível.'
     : scope === 'period'
@@ -2431,32 +2430,25 @@ window.executeTelemetryDelete = async function() {
     : `Confirma a exclusão de todos os registros do tipo "${document.getElementById('telDelEventType')?.value}"?`;
 
   if (!confirm(msg)) return;
-
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Excluindo…'; }
 
   try {
-    let query = sb.from('app_telemetry').delete();
-
+    // Usa RPC SECURITY DEFINER — DELETE direto é bloqueado pelo RLS
+    const params = { p_scope: scope };
     if (scope === 'period') {
       const before = document.getElementById('telDelBeforeDate')?.value;
       if (!before) throw new Error('Data não selecionada.');
-      query = query.lt('ts', before + 'T00:00:00.000Z');
+      params.p_before = before + 'T00:00:00.000Z';
     } else if (scope === 'type') {
       const evType = document.getElementById('telDelEventType')?.value;
       if (!evType) throw new Error('Tipo de evento não selecionado.');
-      query = query.eq('event_type', evType);
-    } else {
-      // "all" — Supabase requer um filtro mesmo para delete total;
-      // usa um filtro que corresponde a todos os registros
-      query = query.gte('ts', '2000-01-01T00:00:00.000Z');
+      params.p_event_type = evType;
     }
-
-    const { error } = await query;
+    const { data: deleted, error } = await sb.rpc('delete_telemetry', params);
     if (error) throw error;
-
-    toast('✅ Registros de telemetria excluídos com sucesso.', 'success');
+    const n = (deleted || 0).toLocaleString('pt-BR');
+    toast(`✅ ${n} registro(s) de telemetria excluído(s).`, 'success');
     closeModal('telDeleteModal');
-    // Recarregar dashboard com dados atualizados
     await loadTelemetryDashboard();
   } catch(e) {
     toast('Erro ao excluir: ' + e.message, 'error');

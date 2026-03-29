@@ -3481,25 +3481,23 @@ async function _notifyAdminNewRegistration(userName, userEmail) {
   const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
   if (!tplId) return;
 
-  // Buscar email do admin: 1) config de automação, 2) role=owner no banco
-  let adminEmail = '';
+  // Coleta todos os emails de admin: 1) config de automação + 2) todos owner/admin ativos
+  const adminEmails = new Set();
   try {
     const raw = localStorage.getItem('fintrack_auto_check_config');
-    if (raw) adminEmail = JSON.parse(raw).emailDefault || '';
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      if (cfg.emailDefault) adminEmails.add(cfg.emailDefault.trim().toLowerCase());
+    }
+  } catch(e) {}
+  try {
+    const { data } = await sb.from('app_users')
+      .select('email').in('role', ['owner', 'admin']).eq('active', true);
+    (data || []).forEach(u => { if (u.email) adminEmails.add(u.email.trim().toLowerCase()); });
   } catch(e) {}
 
-  if (!adminEmail) {
-    try {
-      // Tenta buscar o owner/admin com email no banco
-      const { data } = await sb.from('app_users')
-        .select('email').in('role', ['owner', 'admin'])
-        .eq('active', true).limit(1).maybeSingle();
-      adminEmail = data?.email || '';
-    } catch(e) {}
-  }
-
-  if (!adminEmail) {
-    console.warn('[approval] Sem email de admin configurado. Configure em Configurações → Automação → E-mail de Notificações.');
+  if (!adminEmails.size) {
+    console.warn('[approval] Sem emails de admin. Configure em Configurações → Automação → E-mail de Notificações.');
     return;
   }
 
@@ -3507,70 +3505,53 @@ async function _notifyAdminNewRegistration(userName, userEmail) {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
-
   const nameEsc  = (userName  || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   const emailEsc = (userEmail || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
   const body =
     '<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">' +
     '<div style="max-width:540px;margin:0 auto;background:#ffffff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">' +
-
-    // Header
     '<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:22px 28px">' +
     '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">JF Family FinTrack</div>' +
     '<div style="font-size:20px;font-weight:700;color:#fff">&#128276; Nova solicitação de acesso</div>' +
     '</div>' +
-
-    // Body
     '<div style="padding:24px 28px">' +
-    '<p style="color:#374151;margin:0 0 20px;font-size:14px;line-height:1.6">' +
-    'Um novo usuário se cadastrou e está <strong>aguardando sua aprovação</strong> para acessar o sistema.' +
-    '</p>' +
-
-    // User card
+    '<p style="color:#374151;margin:0 0 20px;font-size:14px;line-height:1.6">Um novo usuário se cadastrou e está <strong>aguardando sua aprovação</strong> para acessar o sistema.</p>' +
     '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px;margin-bottom:20px">' +
     '<table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:#374151;border-collapse:collapse">' +
-    '<tr><td style="padding:7px 0;color:#6b7280;width:100px;font-weight:600">&#128100; Nome</td>' +
-    '<td style="padding:7px 0;font-weight:700;color:#111827">' + nameEsc + '</td></tr>' +
-    '<tr style="border-top:1px solid #e2e8f0"><td style="padding:7px 0;color:#6b7280;font-weight:600">&#128140; E-mail</td>' +
-    '<td style="padding:7px 0;color:#111827">' + emailEsc + '</td></tr>' +
-    '<tr style="border-top:1px solid #e2e8f0"><td style="padding:7px 0;color:#6b7280;font-weight:600">&#128197; Enviado</td>' +
-    '<td style="padding:7px 0;color:#111827">' + now + '</td></tr>' +
-    '</table>' +
-    '</div>' +
-
-    // Warning
+    '<tr><td style="padding:7px 0;color:#6b7280;width:100px;font-weight:600">&#128100; Nome</td><td style="padding:7px 0;font-weight:700;color:#111827">' + nameEsc + '</td></tr>' +
+    '<tr style="border-top:1px solid #e2e8f0"><td style="padding:7px 0;color:#6b7280;font-weight:600">&#128140; E-mail</td><td style="padding:7px 0;color:#111827">' + emailEsc + '</td></tr>' +
+    '<tr style="border-top:1px solid #e2e8f0"><td style="padding:7px 0;color:#6b7280;font-weight:600">&#128197; Enviado</td><td style="padding:7px 0;color:#111827">' + now + '</td></tr>' +
+    '</table></div>' +
     '<div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
     '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:3px">&#9888;&#65039; Acesso bloqueado</div>' +
-    '<div style="font-size:12px;color:#b45309">O usuário <strong>' + nameEsc + '</strong> não tem acesso ao sistema até você aprovar ou rejeitar a solicitação.</div>' +
+    '<div style="font-size:12px;color:#b45309">O usuário <strong>' + nameEsc + '</strong> não tem acesso até você aprovar a solicitação.</div>' +
     '</div>' +
-
-    // Action hint
     '<p style="font-size:13px;color:#6b7280;margin:0">Para aprovar: abra o app &#8594; <strong>Configurações</strong> &#8594; <strong>Gerenciar Usuários</strong>.</p>' +
     '</div>' +
-
-    // Footer
     '<div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">' +
     '<div style="font-size:11px;color:#9ca3af">JF Family FinTrack &middot; Notificação automática &middot; Não responda este e-mail</div>' +
-    '</div>' +
+    '</div></div></div>';
 
-    '</div></div>';
-
-  try {
-    emailjs.init(EMAILJS_CONFIG.publicKey);
-    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
-      to_email:       adminEmail,
-      report_subject: '[Family FinTrack] Nova solicitação de acesso — ' + (userName || userEmail),
-      Subject:        '[Family FinTrack] Nova solicitação de acesso — ' + (userName || userEmail),
-      month_year:     now,
-      report_content: body,
-    });
-    console.log('[approval] Email enviado para admin:', adminEmail);
-  } catch(e) {
-    console.warn('[approval] Falha ao enviar email para admin:', e.message || e);
+  emailjs.init(EMAILJS_CONFIG.publicKey);
+  let sentCount = 0;
+  for (const adminEmail of adminEmails) {
+    try {
+      await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+        to_email:       adminEmail,
+        report_subject: '[Family FinTrack] Nova solicitação de acesso — ' + (userName || userEmail),
+        Subject:        '[Family FinTrack] Nova solicitação de acesso — ' + (userName || userEmail),
+        month_year:     now,
+        report_content: body,
+      });
+      sentCount++;
+      console.log('[approval] Email enviado para admin:', adminEmail);
+    } catch(e) {
+      console.warn('[approval] Falha ao enviar email para', adminEmail, ':', e.message || e);
+    }
   }
+  if (sentCount === 0) console.warn('[approval] Nenhum email de admin enviado.');
 }
-
 // ── Email de boas-vindas ao usuário aprovado ─────────────────────────────
 async function _sendApprovalEmail(email, name, familyName) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
@@ -4131,6 +4112,17 @@ async function _checkPendingApprovals() {
     }
     const count = pendingUsers.length;
 
+    // ── Popup de alerta quando chegou novo usuário ──
+    const _prevCount = window._pendingApprovalLastCount ?? -1;
+    window._pendingApprovalLastCount = count;
+    if (count > 0 && count > _prevCount && _prevCount >= 0) {
+      // Novo usuário chegou desde a última verificação
+      _showPendingApprovalPopup(pendingUsers[pendingUsers.length - 1], count);
+    } else if (count > 0 && _prevCount === -1) {
+      // Primeira carga com pendentes — mostra popup
+      _showPendingApprovalPopup(pendingUsers[0], count);
+    }
+
     // ── Badge no botão "Gerenciar" ──
     const btn = document.getElementById('userMgmtBadgeBtn');
     if (btn) {
@@ -4185,6 +4177,62 @@ async function _checkPendingApprovals() {
     }
   } catch(e) { console.warn('[_checkPendingApprovals]', e); }
 }
+
+// ── Popup de alerta para admin: novo usuário aguardando aprovação ─────────────
+function _showPendingApprovalPopup(user, totalCount) {
+  document.getElementById('pendingApprovalPopup')?.remove();
+  const name  = user?.name  || 'Novo usuário';
+  const email = user?.email || '';
+  const uid   = user?.id    || '';
+  const uname = (name + '').replace(/"/g, '&quot;');
+  const countLabel = totalCount === 1
+    ? '1 solicitação aguardando aprovação'
+    : `${totalCount} solicitações aguardando aprovação`;
+  const popup = document.createElement('div');
+  popup.id = 'pendingApprovalPopup';
+  popup.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:99999;max-width:320px;width:calc(100vw - 32px);background:var(--surface);border:1.5px solid var(--amber,#f59e0b);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;animation:slideUpFadeIn .3s ease';
+  popup.innerHTML = `
+    <div style="background:linear-gradient(135deg,#b45309,#d97706);padding:12px 14px 10px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.3rem">🔔</span>
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-size:.82rem;font-weight:800;line-height:1.2">${countLabel}</div>
+      </div>
+      <button onclick="document.getElementById('pendingApprovalPopup')?.remove()"
+        style="background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+    <div style="padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--amber-lt,#fef3c7);border:2px solid var(--amber,#f59e0b);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#92400e;flex-shrink:0">
+          ${(name[0]||'?').toUpperCase()}
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name.replace(/</g,'&lt;')}</div>
+          <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${email.replace(/</g,'&lt;')}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button onclick="document.getElementById('pendingApprovalPopup')?.remove();navigate('settings')"
+          style="flex:1;padding:8px;border-radius:9px;border:1.5px solid var(--amber,#f59e0b);background:var(--amber-lt,#fef3c7);color:#92400e;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
+          Ver solicitações
+        </button>
+        ${uid ? `<button data-uid="${uid}" data-uname="${uname}"
+          onclick="document.getElementById('pendingApprovalPopup')?.remove();approveUser(this.dataset.uid,this.dataset.uname)"
+          style="flex:1;padding:8px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
+          ✓ Aprovar
+        </button>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(popup);
+  setTimeout(() => popup?.remove(), 30000);
+}
+// Keyframe de animação para o popup
+(function() {
+  if (document.getElementById('_pendingPopupStyle')) return;
+  const s = document.createElement('style');
+  s.id = '_pendingPopupStyle';
+  s.textContent = '@keyframes slideUpFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}';
+  document.head.appendChild(s);
+})();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FAMILY MANAGEMENT PANEL (owner) — openMyFamilyMgmt + helpers
