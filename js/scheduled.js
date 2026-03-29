@@ -333,9 +333,13 @@ function filterScheduled() {
       if(statusF === 'finished') return !st.label.includes('Ativo') && !st.label.includes('Atrasado') && s.status !== 'paused';
     });
   }
+  // Store filtered list globally so calendar + upcoming also respect active filters
+  state._scFiltered = list;
   renderScheduled(list);
   renderUpcoming();
   _renderScKpis();
+  // Re-render calendar if active — it also needs to respect filters
+  if (typeof _scView !== 'undefined' && _scView === 'calendar') renderScCalendar();
 }
 
 
@@ -588,7 +592,9 @@ function renderUpcoming() {
   const limitStr = limit.toISOString().slice(0, 10);
 
   const upcoming = [];
-  state.scheduled.forEach(sc => {
+  // Use filtered list so type/search filters affect upcoming panel too
+  const _srcList = state._scFiltered || state.scheduled;
+  _srcList.forEach(sc => {
     if(sc.status === 'paused') return;
     const pendingDates=new Set(
       (sc.occurrences||[])
@@ -1593,6 +1599,12 @@ const SC_MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ── View switch ───────────────────────────────────────────────────
 function setScView(view) {
   _scView = view;
+  // Persist preference to localStorage + Supabase app_users
+  try { localStorage.setItem('sc_view_pref', view); } catch(_) {}
+  if (typeof sb !== 'undefined' && sb && typeof currentUser !== 'undefined' && currentUser?.id) {
+    sb.from('app_users').update({ preferred_sc_view: view }).eq('id', currentUser.id)
+      .then(() => {}).catch(() => {});
+  }
 
   // Update all view buttons — handles both desktop and mobile variants
   document.querySelectorAll('#scViewList').forEach(b => b.classList.toggle('active', view === 'list'));
@@ -1668,7 +1680,9 @@ function _scCalBuildDayMap(year, month) {
   const scanFrom = `${String(year).padStart(4,'0')}-${String(month+1).padStart(2,'0')}-01`;
   const scanTo   = new Date(year, month + 3, 0).toISOString().slice(0,10);
 
-  (state.scheduled || []).forEach(sc => {
+  // Use filtered list so type filter applies to calendar view too
+  const _calSrc = state._scFiltered || state.scheduled;
+  _calSrc.forEach(sc => {
     if (sc.status === 'finished') return;
     // Generate enough occurrences to cover the visible month + overflow
     const occDates = generateOccurrences(sc, 200);
@@ -1884,14 +1898,14 @@ function _scCalRenderDetail(dateStr, data) {
       ? '<span style="font-size:.65rem;color:var(--green);font-weight:700;margin-left:4px">✓ Registrada</span>'
       : (isPast && !isToday ? '<span style="font-size:.65rem;color:var(--amber);font-weight:700;margin-left:4px">⚠ Pendente</span>' : '');
 
-    const nextIsThis = !it.isRegistered;
-    const actionBtn = nextIsThis
+    const actionBtn = !it.isRegistered
       ? `<button class="btn btn-ghost btn-sm"
-           onclick="event.stopPropagation();openRegisterOcc('${sc.id}','${it.dateStr}')"
-           style="font-size:.72rem;padding:4px 10px;white-space:nowrap">
+           data-scid="${sc.id}" data-date="${it.dateStr}"
+           onclick="event.stopPropagation();openRegisterOcc(this.dataset.scid,this.dataset.date)"
+           style="font-size:.75rem;padding:5px 12px;white-space:nowrap;background:var(--accent);color:#fff;border-color:var(--accent)">
            ✓ Registrar
          </button>`
-      : '';
+      : `<span style="font-size:.7rem;color:var(--green);font-weight:700;padding:4px 8px;background:var(--green-lt);border-radius:6px">✓ Registrada</span>`;
 
     return `
       <div class="sc-cal-detail-item">

@@ -972,7 +972,13 @@ function navigate(page){
     if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
     if (typeof _scCalSelDay !== 'undefined') { window._scCalSelDay = null; }
     loadScheduled().then(() => {
-      if (typeof setScView === 'function') setScView('calendar');
+      if (typeof setScView === 'function') {
+        // Load saved preference: Supabase > localStorage > default 'calendar'
+        const savedView = currentUser?.preferred_sc_view ||
+                          localStorage.getItem('sc_view_pref') ||
+                          'calendar';
+        setScView(savedView);
+      }
     });
   }
   else if(page==='import')initImportPage();

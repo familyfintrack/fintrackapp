@@ -773,9 +773,6 @@ async function openInvPositionDetail(positionId) {
       <td>${(+(tx.quantity)).toFixed(4)}</td>
       <td>${fmt(tx.unit_price)}</td>
       <td class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
-      <td style="text-align:right">
-        <button class="btn-icon" onclick="deleteInvMovement('${tx.id}')" title="Excluir movimentação">🗑️</button>
-      </td>
     </tr>`).join('');
 
   const modal = document.createElement('div');
@@ -786,7 +783,14 @@ async function openInvPositionDetail(positionId) {
   <div class="modal" style="max-width:560px"><div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title">${t.emoji} ${esc(pos.ticker)} — ${esc(pos.name || pos.ticker)}</span>
-      <button class="modal-close" onclick="closeModal('invDetailModal')">✕</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="deleteInvPosition('${positionId}')"
+          style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:var(--danger,#dc2626);background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .2s"
+          onmouseover="this.style.background='rgba(220,38,38,.15)'" onmouseout="this.style.background='rgba(220,38,38,.08)'">
+          🗑️ Excluir
+        </button>
+        <button class="modal-close" onclick="closeModal('invDetailModal')">✕</button>
+      </div>
     </div>
     <div class="modal-body">
       <!-- KPIs -->
@@ -825,7 +829,7 @@ async function openInvPositionDetail(positionId) {
       ${txRows ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <thead><tr style="background:var(--surface2)">
           <th style="padding:6px 8px;text-align:left">Data</th>
-          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th><th style="text-align:right">Ações</th>
+          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th>
         </tr></thead>
         <tbody>${txRows}</tbody>
       </table>` : '<div style="color:var(--muted);font-size:.82rem">Nenhuma movimentação registrada.</div>'}
@@ -839,87 +843,6 @@ async function openInvPositionDetail(positionId) {
   </div>`;
   document.body.appendChild(modal);
 }
-
-
-async function _invRebuildPositionFromHistory(positionId) {
-  const { data: txsRaw, error } = await sb.from('investment_transactions')
-    .select('id,type,quantity,unit_price,date')
-    .eq('position_id', positionId)
-    .order('date', { ascending: true });
-  if (error) throw error;
-
-  const txs = [...(txsRaw || [])].sort((a, b) => {
-    const ad = String(a.date || '');
-    const bd = String(b.date || '');
-    if (ad !== bd) return ad.localeCompare(bd);
-    return String(a.id || '').localeCompare(String(b.id || ''));
-  });
-
-  let qty = 0;
-  let avgCost = 0;
-  for (const tx of txs) {
-    const q = +(tx.quantity || 0);
-    const unit = +(tx.unit_price || 0);
-    if (tx.type === 'buy') {
-      const nextQty = qty + q;
-      avgCost = nextQty > 0 ? ((qty * avgCost) + (q * unit)) / nextQty : 0;
-      qty = nextQty;
-    } else if (tx.type === 'sell') {
-      qty = Math.max(0, qty - q);
-    }
-  }
-
-  const { error: updErr } = await sb.from('investment_positions').update({
-    quantity: qty,
-    avg_cost: qty > 0 ? avgCost : 0,
-    updated_at: new Date().toISOString(),
-  }).eq('id', positionId);
-  if (updErr) throw updErr;
-
-  return { qty, avgCost };
-}
-
-async function deleteInvMovement(invTxId) {
-  if (!invTxId) return;
-  const mov = _inv.transactions.find(t => t.id === invTxId);
-  if (!mov) {
-    toast('Movimentação não encontrada.', 'error');
-    return;
-  }
-
-  const actionLabel = mov.type === 'buy' ? 'compra' : 'venda';
-  if (!confirm(`Excluir esta ${actionLabel} de ${mov.investment_positions?.ticker || 'investimento'}?
-
-O caixa e a posição serão recalculados.`)) return;
-
-  try {
-    const { error: invDelErr } = await sb.from('investment_transactions').delete().eq('id', invTxId);
-    if (invDelErr) throw invDelErr;
-
-    if (mov.tx_id) {
-      const { error: cashDelErr } = await sb.from('transactions').delete().eq('id', mov.tx_id);
-      if (cashDelErr) throw cashDelErr;
-    }
-
-    await _invRebuildPositionFromHistory(mov.position_id);
-
-    await loadInvestments(true);
-    DB.accounts.bust();
-    await DB.accounts.load(true);
-    _invAugmentAccountBalances();
-    _renderInvestmentsPage();
-    if (document.getElementById('invDetailModal')) {
-      closeModal('invDetailModal');
-      await openInvPositionDetail(mov.position_id);
-    }
-    if (state.currentPage === 'accounts') renderAccounts?.();
-    if (state.currentPage === 'dashboard') loadDashboard?.();
-    toast('Movimentação excluída com sucesso.', 'success');
-  } catch (e) {
-    toast('Erro ao excluir movimentação: ' + (e.message || e), 'error');
-  }
-}
-window.deleteInvMovement = deleteInvMovement;
 
 async function updateManualPrice(positionId) {
   const val = parseFloat(document.getElementById('invManualPrice')?.value?.replace(',','.'));
@@ -1228,3 +1151,54 @@ function _renderInvGainLossChart(pos, history) {
     }
   });
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXCLUIR POSIÇÃO DE INVESTIMENTO
+// ══════════════════════════════════════════════════════════════════════════════
+async function deleteInvPosition(positionId) {
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) { toast('Posição não encontrada', 'error'); return; }
+
+  // Two-step confirmation — critical financial data
+  const step1 = await new Promise(resolve => {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10020;display:flex;align-items:center;justify-content:center;padding:24px';
+    d.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--r-lg);padding:28px 24px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3)">
+        <div style="font-size:1.5rem;text-align:center;margin-bottom:14px">⚠️</div>
+        <div style="font-family:var(--font-serif);font-size:1.1rem;font-weight:600;color:var(--text);text-align:center;margin-bottom:10px">Excluir posição?</div>
+        <div style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:6px">
+          <strong>${esc(pos.ticker)}</strong> — ${esc(pos.name || pos.ticker)}
+        </div>
+        <div style="font-size:.78rem;color:var(--danger,#dc2626);text-align:center;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.15);border-radius:8px;padding:10px;margin-bottom:20px">
+          Isso também excluirá todas as transações e histórico de preços desta posição. Ação irreversível.
+        </div>
+        <div style="display:flex;gap:10px">
+          <button onclick="this.closest('[style*=fixed]').remove();window._invDelResolve(false)"
+            style="flex:1;padding:11px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);font-family:var(--font-sans);font-size:.88rem;cursor:pointer">Cancelar</button>
+          <button onclick="this.closest('[style*=fixed]').remove();window._invDelResolve(true)"
+            style="flex:1;padding:11px;border-radius:var(--r-sm);border:none;background:var(--danger,#dc2626);color:#fff;font-family:var(--font-sans);font-size:.88rem;font-weight:700;cursor:pointer">Excluir</button>
+        </div>
+      </div>`;
+    window._invDelResolve = resolve;
+    document.body.appendChild(d);
+  });
+  delete window._invDelResolve;
+  if (!step1) return;
+
+  try {
+    // Delete in order: price history → transactions → position
+    await sb.from('investment_price_history').delete().eq('position_id', positionId);
+    await sb.from('investment_transactions').delete().eq('position_id', positionId);
+    const { error } = await sb.from('investment_positions').delete().eq('id', positionId);
+    if (error) throw error;
+
+    toast(`✓ Posição ${pos.ticker} excluída com sucesso.`, 'success');
+    closeModal('invDetailModal');
+    await loadInvestments(true);
+    _renderInvestmentsPage();
+  } catch(e) {
+    toast('Erro ao excluir: ' + e.message, 'error');
+  }
+}
+window.deleteInvPosition = deleteInvPosition;

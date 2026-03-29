@@ -8,8 +8,36 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const _sb  = supabase.createClient(SUPA_URL, SUPA_KEY);
 const _ej  = { serviceId:'', templateId:'', publicKey:'' };
 let   _geminiKey = '';
-let   _senderName  = '';  // nome de quem convidou (preenchido após cadastro)
+let   _senderName  = '';
 let   _senderEmail = '';
+
+/* ── Landing Telemetry ──────────────────────────────────────────── */
+const _lTelSession = Math.random().toString(36).slice(2,10);
+function _lTelTrack(event_type, payload = {}) {
+  try {
+    const row = {
+      session_id:     _lTelSession,
+      event_type,
+      page:           'landing',
+      ts:             new Date().toISOString(),
+      device_type:    /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+      device_browser: (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)||['unknown'])[0],
+      device_os:      /Win/i.test(navigator.userAgent) ? 'windows' : /Mac/i.test(navigator.userAgent) ? 'macos' : /Android/i.test(navigator.userAgent) ? 'android' : /iPhone|iPad/i.test(navigator.userAgent) ? 'ios' : 'other',
+      payload: { source: 'landing', url: location.href, ...payload },
+    };
+    _sb.from('app_telemetry').insert(row).then(() => {}).catch(() => {});
+  } catch(_) {}
+}
+// Track page load immediately
+_lTelTrack('page_view', { referrer: document.referrer || null });
+// Track scroll depth milestones
+let _telScrolled25 = false, _telScrolled50 = false, _telScrolled75 = false;
+window.addEventListener('scroll', () => {
+  const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  if (!_telScrolled25 && pct >= 25) { _telScrolled25 = true; _lTelTrack('scroll_depth', { depth: 25 }); }
+  if (!_telScrolled50 && pct >= 50) { _telScrolled50 = true; _lTelTrack('scroll_depth', { depth: 50 }); }
+  if (!_telScrolled75 && pct >= 75) { _telScrolled75 = true; _lTelTrack('scroll_depth', { depth: 75 }); }
+}, { passive: true });
 
 /* ── Carrega EmailJS + Gemini key do Supabase ──────────────────── */
 (async () => {
@@ -137,7 +165,10 @@ async function handleWl(e) {
     _senderName  = name;
     _senderEmail = email;
 
-    // 3. Pré-preencher textarea de convite com mensagem padrão
+    // 3. Track waitlist submission
+    _lTelTrack('waitlist_submit', { role, has_whatsapp: !!phone });
+
+    // 4. Pré-preencher textarea de convite com mensagem padrão
     const fn = name.split(' ')[0];
     const invMsg = document.getElementById('invMsg');
     if (invMsg && !invMsg.value) {
@@ -175,89 +206,6 @@ async function handleWl(e) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   REDAÇÃO DE CONVITE COM GEMINI IA
-══════════════════════════════════════════════════════════════ */
-async function writeInviteWithAI() {
-  const btn    = document.getElementById('invAiBtn');
-  const btnTxt = document.getElementById('invAiBtnTxt');
-  const msgEl  = document.getElementById('invMsg');
-  const emailsEl = document.getElementById('invEmails');
-
-  if (!_geminiKey) {
-    showInviteErr('⚠️ Chave da IA não configurada. A IA não está disponível no momento.');
-    return;
-  }
-
-  // Feedback visual
-  btn.disabled = true;
-  btnTxt.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="animation:spin .8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Redigindo…';
-
-  // Contexto para o Gemini
-  const senderFirstName = (_senderName || 'Seu amigo').split(' ')[0];
-  const recipientEmails = emailsEl?.value?.trim() || '';
-  const currentDraft    = msgEl?.value?.trim()    || '';
-
-  const prompt = `Você é um especialista em marketing de relacionamento e redação persuasiva em português brasileiro.
-
-Redija uma mensagem de convite pessoal para um amigo entrar na lista de espera do app **Family FinTrack**.
-
-**Contexto:**
-- Quem convida: ${senderFirstName}
-- App: Family FinTrack — gestão financeira familiar com Inteligência Artificial embarcada
-- Objetivo: indicar o amigo para entrar NA LISTA DE ESPERA (não para acesso direto)
-- Status: beta exclusivo, acesso por lista de espera gratuita
-- URL: ${location.origin}
-${recipientEmails ? `- Destinatários: ${recipientEmails}` : ''}
-${currentDraft ? `- Rascunho atual para melhorar: "${currentDraft}"` : ''}
-
-**Diretrizes:**
-- Tom: humano, caloroso, pessoal — como se fosse uma mensagem genuína de um amigo
-- Máximo 5 parágrafos curtos
-- Destaque o aspecto da FAMÍLIA e da INTELIGÊNCIA ARTIFICIAL como diferencial
-- Deixe claro que é uma INDICAÇÃO para lista de espera gratuita — o amigo precisa se cadastrar
-- Termine com a URL do site
-- NÃO use emojis em excesso (máximo 2-3)
-- NÃO pareça spam ou marketing genérico
-- Escreva em primeira pessoa como se fosse ${senderFirstName} escrevendo
-
-Retorne APENAS o texto da mensagem, sem explicações, sem aspas, sem prefácios.`;
-
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${_geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.82, maxOutputTokens: 512 }
-        })
-      }
-    );
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) throw new Error('IA não retornou texto.');
-    if (msgEl) {
-      msgEl.value = text.trim();
-      // Efeito de digitação suave
-      msgEl.style.transition = 'background .4s';
-      msgEl.style.background = 'rgba(125,194,66,.12)';
-      setTimeout(() => { msgEl.style.background = 'rgba(255,255,255,.07)'; }, 1000);
-    }
-  } catch(err) {
-    console.warn('[invite-ai]', err.message);
-    showInviteErr('⚠️ Erro ao gerar com IA: ' + err.message);
-  } finally {
-    btn.disabled = false;
-    btnTxt.innerHTML = '✨ Redigir com IA';
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════
    ENVIO DE CONVITES POR EMAIL
 ══════════════════════════════════════════════════════════════ */
 async function sendInvites() {
@@ -277,7 +225,7 @@ async function sendInvites() {
   if (rawEmails.length > 5)  { showInviteErr('Máximo de 5 destinatários por vez.'); return; }
 
   const msg = (msgEl?.value||'').trim();
-  if (!msg) { showInviteErr('Escreva uma mensagem de indicação, ou use o botão ✨ Redigir com IA para gerar automaticamente.'); return; }
+  if (!msg) { showInviteErr('Escreva uma mensagem de indicação para seus amigos.'); return; }
 
   if (!_ej.serviceId || !_ej.templateId || !_ej.publicKey) {
     showInviteErr('Sistema de email não configurado. Tente mais tarde.');
@@ -311,6 +259,7 @@ async function sendInvites() {
   sendTxt.innerHTML='Enviar convites';
 
   if (sent>0) {
+    _lTelTrack('invite_sent', { count: sent, failed });
     okEl.textContent = sent===rawEmails.length
       ? `✅ ${sent} indicação(ões) enviada(s) com sucesso!`
       : `✅ ${sent} enviado(s). ${failed} falhou — verifique os endereços.`;
