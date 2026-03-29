@@ -21244,3 +21244,118 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   .sup-register-btn { height: 28px !important; padding: 0 9px !important; }
   .sup-ignore-btn { width: 28px !important; height: 28px !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX: Próximos 10 dias — contenção de overflow no mobile
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* Painel upcoming: contém tudo dentro dos limites da tela */
+  #scUpcomingPanel {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* Body do painel: não vaza para fora */
+  #scUpcomingPanel .sc-panel__body {
+    overflow: hidden !important;
+    padding: 8px 10px 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Grupos e rows: contidos */
+  #scUpcomingPanel .sup-group,
+  #scUpcomingPanel .sup-rows {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* Item: flex row estritamente contido */
+  #scUpcomingPanel .sup-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    /* Sem padding extra que cause overflow */
+    padding: 10px 10px !important;
+    gap: 8px !important;
+  }
+
+  /* Ícone: tamanho fixo, não encolhe nem cresce */
+  #scUpcomingPanel .sup-icon {
+    flex: 0 0 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Corpo: ocupa o espaço disponível, textos cortados */
+  #scUpcomingPanel .sup-body {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  #scUpcomingPanel .sup-desc,
+  #scUpcomingPanel .sup-acct {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Lado direito: largura máxima controlada, não vaza */
+  #scUpcomingPanel .sup-right {
+    flex: 0 0 auto !important;
+    max-width: 42% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    align-items: flex-end !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  #scUpcomingPanel .sup-amt {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: .88rem !important;
+  }
+  #scUpcomingPanel .sup-actions {
+    display: flex !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+  #scUpcomingPanel .sup-register-btn {
+    height: 28px !important;
+    padding: 0 9px !important;
+    font-size: .72rem !important;
+    white-space: nowrap !important;
+  }
+  #scUpcomingPanel .sup-ignore-btn {
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Header do grupo: também contido */
+  #scUpcomingPanel .sup-group-hdr {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px 2px 5px !important;
+    overflow: hidden !important;
+  }
+  #scUpcomingPanel .sup-group-meta {
+    flex-shrink: 0 !important;
+    gap: 6px !important;
+  }
+  #scUpcomingPanel .sup-day-total {
+    font-size: .76rem !important;
+    white-space: nowrap !important;
+  }
+}
