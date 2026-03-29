@@ -700,10 +700,10 @@ function renderUpcoming() {
         <div class="sup-group-meta">
           <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
           <span class="sup-day-count">${items.length}</span>
-          <svg class="sc-upcoming-day-arrow ${((new Date(date+'T12:00:00').getTime() - new Date(today+'T12:00:00').getTime()) / 86400000) <= 1 ? 'open' : ''}" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg class="sc-upcoming-day-arrow" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
-      <div class="sup-rows" id="${gid}" style="display:${((new Date(date+'T12:00:00').getTime() - new Date(today+'T12:00:00').getTime()) / 86400000) <= 1 ? '' : 'none'}">${rows}</div>
+      <div class="sup-rows" id="${gid}" style="display:none">${rows}</div>
     </div>`;
   }).join('');
 
@@ -712,7 +712,7 @@ function renderUpcoming() {
   const _upBody  = document.getElementById('scheduledUpcomingList');
   const _upArrow = document.getElementById('upcomingDesktopArrow');
   if (_upBody && upcoming.length > 0) {
-    _upBody.style.display = '';
+    _upBody.style.setProperty('display', 'block', 'important');
     _upcomingDesktopOpen  = true;
     if (_upArrow) _upArrow.style.transform = 'rotate(180deg)';
   }
@@ -2309,7 +2309,15 @@ window.toggleUpcomingDesktopPanel = function() {
   _upcomingDesktopOpen = !_upcomingDesktopOpen;
   const body  = document.getElementById('scheduledUpcomingList');
   const arrow = document.getElementById('upcomingDesktopArrow');
-  if (body)  body.style.display  = _upcomingDesktopOpen ? '' : 'none';
+  if (body) {
+    // Use setProperty with important to override mobile CSS !important rules
+    if (_upcomingDesktopOpen) {
+      body.style.removeProperty('display');
+      body.style.setProperty('display', 'block', 'important');
+    } else {
+      body.style.setProperty('display', 'none', 'important');
+    }
+  }
   if (arrow) arrow.style.transform = _upcomingDesktopOpen ? 'rotate(180deg)' : 'rotate(0)';
 };
 
@@ -2342,7 +2350,7 @@ function _openUpcomingIfHasEvents() {
   const body  = document.getElementById('scheduledUpcomingList');
   const arrow = document.getElementById('upcomingDesktopArrow');
   if (body && body.children.length > 0) {
-    body.style.display  = '';
+    body.style.setProperty('display', 'block', 'important');
     _upcomingDesktopOpen = true;
     if (arrow) arrow.style.transform = 'rotate(180deg)';
   }
@@ -2359,7 +2367,13 @@ window.toggleCalUpcomingPanel = function() {
   _calUpcomingOpen = !_calUpcomingOpen;
   const body  = document.getElementById('scCalUpcomingList');
   const arrow = document.getElementById('scCalUpcomingArrow');
-  if (body)  body.style.display   = _calUpcomingOpen ? '' : 'none';
+  if (body) {
+    if (_calUpcomingOpen) {
+      body.style.setProperty('display', 'block', 'important');
+    } else {
+      body.style.setProperty('display', 'none', 'important');
+    }
+  }
   if (arrow) arrow.style.transform = _calUpcomingOpen ? 'rotate(180deg)' : 'rotate(0)';
 };
 
@@ -2464,15 +2478,15 @@ function _renderCalUpcoming() {
         <div class="sup-group-meta">
           <span class="sup-day-total ${dayTot >= 0 ? 'pos' : 'neg'}">${dayTot >= 0 ? '+' : ''}${typeof fmt === 'function' ? fmt(dayTot) : dayTot.toFixed(2)}</span>
           <span class="sup-day-count">${items.length}</span>
-          <svg class="sc-upcoming-day-arrow ${autoOpen ? 'open' : ''}" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg class="sc-upcoming-day-arrow" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
-      <div class="sup-rows" id="${gid}" style="display:${autoOpen ? '' : 'none'}">${rows}</div>
+      <div class="sup-rows" id="${gid}" style="display:none">${rows}</div>
     </div>`;
   }).join('');
 
   // Open the upcoming panel
-  listEl.style.display = '';
+  listEl.style.setProperty('display', 'block', 'important');
   _calUpcomingOpen = true;
   if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
 }
