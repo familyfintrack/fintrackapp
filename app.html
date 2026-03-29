@@ -1655,39 +1655,98 @@
 
       <!-- Calendar view -->
       <div id="scCalendarView" style="display:none">
-        <!-- Nav bar -->
-        <div class="sc-cal-nav">
-          <button class="sc-cal-nav-btn" onclick="scCalMove(-1)" aria-label="Mês anterior">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div class="sc-cal-month-label" id="scCalMonthLabel">—</div>
-          <button class="sc-cal-nav-btn" onclick="scCalMove(1)" aria-label="Próximo mês">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-          <button class="sc-cal-today-btn" onclick="scCalGoToday()">Hoje</button>
-        </div>
-        <!-- Legend -->
-        <div class="sc-cal-legend">
-          <span class="sc-cal-leg-item"><span class="sc-cal-dot sc-cal-dot-expense"></span>Despesa</span>
-          <span class="sc-cal-leg-item"><span class="sc-cal-dot sc-cal-dot-transfer"></span>Transferência</span>
-          <span class="sc-cal-leg-item"><span class="sc-cal-dot sc-cal-dot-income"></span>Receita</span>
-        </div>
-        <!-- Calendar grid -->
-        <div class="sc-cal-wrap" id="scCalWrap">
-          <!-- Day-of-week header -->
-          <div class="sc-cal-grid sc-cal-header-grid">
-            <div class="sc-cal-dow">Dom</div>
-            <div class="sc-cal-dow">Seg</div>
-            <div class="sc-cal-dow">Ter</div>
-            <div class="sc-cal-dow">Qua</div>
-            <div class="sc-cal-dow">Qui</div>
-            <div class="sc-cal-dow">Sex</div>
-            <div class="sc-cal-dow">Sáb</div>
+        <!-- Desktop split layout: left=calendar, right=detail+panels -->
+        <div class="sc-cal-desktop-layout">
+
+          <!-- LEFT COLUMN: nav + legend + grid -->
+          <div class="sc-cal-left">
+            <div class="sc-cal-nav">
+              <button class="sc-cal-nav-btn" onclick="scCalMove(-1)" aria-label="Mês anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div class="sc-cal-month-label" id="scCalMonthLabel">—</div>
+              <button class="sc-cal-nav-btn" onclick="scCalMove(1)" aria-label="Próximo mês">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button class="sc-cal-today-btn" onclick="scCalGoToday()">Hoje</button>
+            </div>
+            <div class="sc-cal-legend">
+              <span class="sc-cal-leg-item"><span class="sc-cal-dot sc-cal-dot-expense"></span>Despesa</span>
+              <span class="sc-cal-leg-item"><span class="sc-cal-dot sc-cal-dot-transfer"></span>Transferência</span>
+              <span class="sc-cal-leg-item"><span class="sc-cal-dot sc-cal-dot-income"></span>Receita</span>
+            </div>
+            <div class="sc-cal-wrap" id="scCalWrap">
+              <div class="sc-cal-grid sc-cal-header-grid">
+                <div class="sc-cal-dow">Dom</div>
+                <div class="sc-cal-dow">Seg</div>
+                <div class="sc-cal-dow">Ter</div>
+                <div class="sc-cal-dow">Qua</div>
+                <div class="sc-cal-dow">Qui</div>
+                <div class="sc-cal-dow">Sex</div>
+                <div class="sc-cal-dow">Sáb</div>
+              </div>
+              <div class="sc-cal-grid sc-cal-days-grid" id="scCalGrid"></div>
+            </div>
           </div>
-          <div class="sc-cal-grid sc-cal-days-grid" id="scCalGrid"></div>
-        </div>
-        <!-- Day detail panel -->
-        <div class="sc-cal-detail card" id="scCalDetail" style="display:none;margin-top:12px"></div>
+
+          <!-- RIGHT COLUMN: day detail + upcoming 10 dias + recorrentes -->
+          <div class="sc-cal-right">
+
+            <!-- Day detail panel — always visible on desktop -->
+            <div class="sc-cal-detail card" id="scCalDetail" style="min-height:120px"></div>
+
+            <!-- Próximos 10 dias (cloned panel for calendar view) -->
+            <div class="sc-panel sc-panel--upcoming sc-cal-upcoming-panel" id="scCalUpcomingPanel">
+              <div class="sc-panel__header" onclick="toggleCalUpcomingPanel()" style="cursor:pointer;user-select:none">
+                <div class="sc-panel__title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Próximos 10 dias
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span id="scCalUpcomingTotal" class="sc-panel__badge"></span>
+                  <span id="scCalUpcomingCount" class="sc-panel__count"></span>
+                  <svg id="scCalUpcomingArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transition:transform .25s;color:var(--muted)"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+              <div id="scCalUpcomingList" class="sc-panel__body sc-upcoming-list"></div>
+            </div>
+
+            <!-- Recorrentes (cloned panel for calendar view) -->
+            <div class="sc-panel sc-panel--recurrents sc-cal-recurrents-panel" id="scCalRecurrentsPanel">
+              <div class="sc-panel__header">
+                <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+                  <div class="sc-panel__title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    Recorrentes
+                  </div>
+                  <button onclick="scShowAllRecurrents()" style="font-family:var(--font-sans);font-size:.72rem;font-weight:600;color:var(--accent);background:transparent;border:1px solid var(--border-green,rgba(42,96,73,.2));border-radius:8px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all .18s" onmouseover="this.style.background='var(--accent-lt)'" onmouseout="this.style.background='transparent'">
+                    Ver todos →
+                  </button>
+                </div>
+                <div class="sc-panel__filters">
+                  <div class="sc-panel__search-wrap">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" id="scCalSearch" placeholder="Buscar..." oninput="filterScheduledCal()" class="sc-panel__search-input">
+                  </div>
+                  <div class="sc-filter-chips" style="margin-top:6px">
+                    <button class="sc-chip active" id="scCalChipAll"    onclick="scCalChipFilter(event,'all')">Todos</button>
+                    <button class="sc-chip"        id="scCalChipActive" onclick="scCalChipFilter(event,'active')">Ativos</button>
+                    <button class="sc-chip"        id="scCalChipPaused" onclick="scCalChipFilter(event,'paused')">Pausados</button>
+                    <select id="scCalTypeFilter" onchange="filterScheduledCal()" class="sc-type-select">
+                      <option value="">Todos os tipos</option>
+                      <option value="expense">💸 Despesas</option>
+                      <option value="income">💰 Receitas</option>
+                      <option value="transfer">🔄 Transferências</option>
+                      <option value="card_payment">💳 Pgto. Cartão</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="sc-panel__body" id="scCalScheduledList"></div>
+            </div>
+
+          </div><!-- /sc-cal-right -->
+        </div><!-- /sc-cal-desktop-layout -->
       </div>
 
       <!-- Categories chart view -->
