@@ -304,9 +304,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
 <!-- NAV -->
 <nav id="nav">
   <a href="#" class="nl">
-    <div style="background:#fff;border-radius:10px;padding:5px 12px;display:inline-block;box-shadow:0 2px 12px rgba(0,0,0,.18)">
-      <img src="logo.jpg" alt="Family FinTrack" style="height:30px;width:auto;display:block">
-    </div>
+    <img src="logo_transparent.png" alt="Family FinTrack">
   </a>
   <div class="nc">
     <a href="#familia" class="nk">Para sua família</a>
@@ -335,9 +333,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
     </div>
 
     <div class="hlogo">
-      <div style="background:#fff;border-radius:20px;padding:14px 28px;display:inline-block;box-shadow:0 8px 40px rgba(0,0,0,.22),0 0 0 1px rgba(255,255,255,.08);backdrop-filter:blur(4px)">
-        <img src="logo.jpg" alt="Family FinTrack" style="height:60px;width:auto;display:block">
-      </div>
+      <img src="logo_transparent.png" alt="Family FinTrack">
     </div>
 
     <p class="slogan">Família Inteligente, Finanças sob Controle.</p>
@@ -567,8 +563,12 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
               <input type="text" id="invEmails" placeholder="amigo@email.com, familiar@email.com, colega@email.com" style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
             </div>
             <div>
-              <div style="margin-bottom:5px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
                 <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">Mensagem personalizada</label>
+                <button type="button" id="invAiBtn" onclick="writeInviteWithAI()" style="font-family:var(--sans);font-size:.65rem;font-weight:800;letter-spacing:.06em;color:var(--g900);background:linear-gradient(135deg,var(--lime),var(--lime2));border:none;border-radius:8px;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                  <span id="invAiBtnTxt">✨ Redigir com IA</span>
+                </button>
               </div>
               <textarea id="invMsg" rows="4" placeholder="Escreva uma mensagem para seus amigos..." style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;resize:vertical;transition:border-color .2s;line-height:1.6" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
             </div>
@@ -589,9 +589,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
 <footer>
   <div class="fi">
     <a href="#" class="flogo">
-      <div style="background:#fff;border-radius:8px;padding:4px 10px;display:inline-block">
-        <img src="logo.jpg" alt="Family FinTrack" style="height:26px;width:auto;display:block;opacity:.9">
-      </div>
+      <img src="logo_transparent.png" alt="Family FinTrack">
     </a>
     <div class="fcp">
       Potencializado por Inteligência Artificial &nbsp;·&nbsp; Beta Privado 2025<br>
