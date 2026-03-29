@@ -393,70 +393,84 @@ function getAmtField(fieldId) {
 }
 
 // Bind centavo-first mask to a field (idempotent)
+// Estratégia: interceptar ANTES do browser alterar o campo.
+//   - beforeinput: captura dígito digitado → acumula centavos → escreve valor formatado → cancela evento nativo
+//   - keydown: trata Backspace e Delete antes do browser agir
+//   - paste: interpreta texto colado como valor monetário
 function _bindAmtMask(fieldId, extraInputCb) {
   const el = document.getElementById(fieldId);
   if (!el || el._amtMaskBound) return;
   el._amtMaskBound = true;
 
-  // Garantir atributos corretos
   el.setAttribute('inputmode', 'numeric');
   el.setAttribute('autocomplete', 'off');
   el.setAttribute('autocorrect', 'off');
   el.setAttribute('autocapitalize', 'off');
   el.setAttribute('spellcheck', 'false');
 
-  // Inicializar cents a partir do valor atual (caso setAmtField já tenha sido chamado)
+  // Inicializar cents a partir do valor atual (setAmtField pode ter sido chamado antes)
   if (!el.dataset.amtCents) {
-    const raw   = el.value.replace(/\./g, '').replace(',', '.');
-    const num   = Math.abs(parseFloat(raw) || 0);
-    el.dataset.amtCents = Math.round(num * 100);
+    const raw = el.value.replace(/\./g, '').replace(',', '.');
+    el.dataset.amtCents = Math.round(Math.abs(parseFloat(raw) || 0) * 100);
   }
 
+  function _apply(cents) {
+    el.dataset.amtCents = cents;
+    el.value = cents > 0 ? _amtFormatCents(cents) : '';
+    try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
+    if (extraInputCb) extraInputCb();
+  }
+
+  // beforeinput: captura dígitos antes do browser inserir no campo
+  el.addEventListener('beforeinput', function(ev) {
+    if (!ev.data) return; // Backspace/Delete chegam via keydown
+    const digit = ev.data.replace(/\D/g, ''); // aceita só dígito
+    if (!digit) { ev.preventDefault(); return; } // bloqueia vírgula, ponto, letras etc.
+    ev.preventDefault();
+    const cur = _amtGetCents(el);
+    const next = Math.min(cur * 10 + parseInt(digit, 10), 9999999999);
+    _apply(next);
+  });
+
+  // keydown: Backspace e Delete (antes do browser agir)
   el.addEventListener('keydown', function(ev) {
-    // Backspace: remove último dígito
     if (ev.key === 'Backspace' || ev.keyCode === 8) {
       ev.preventDefault();
-      let cents = _amtGetCents(el);
-      cents = Math.floor(cents / 10);
-      el.dataset.amtCents = cents;
-      el.value = cents > 0 ? _amtFormatCents(cents) : '';
-      if (extraInputCb) extraInputCb();
-    }
-    // Delete: zera tudo
-    if (ev.key === 'Delete' || ev.keyCode === 46) {
+      _apply(Math.floor(_amtGetCents(el) / 10));
+    } else if (ev.key === 'Delete' || ev.keyCode === 46) {
       ev.preventDefault();
-      el.dataset.amtCents = 0;
-      el.value = '';
-      if (extraInputCb) extraInputCb();
+      _apply(0);
     }
   });
 
+  // input: fallback para mobile/IME que não dispara beforeinput corretamente
   el.addEventListener('input', function() {
-    // Extrai apenas dígitos do que está no campo (ignora pontos e vírgulas da formatação)
-    const digits  = el.value.replace(/[^\d]/g, '');
-    const newCents = Math.min(parseInt(digits || '0', 10), 9999999999);
-    el.dataset.amtCents = newCents;
-    const formatted = newCents > 0 ? _amtFormatCents(newCents) : '';
-    el.value = formatted;
-    // Cursor sempre no final
-    try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
-    if (extraInputCb) extraInputCb();
+    // Se o valor do campo divergiu do que esperamos (ex: teclado virtual inseriu direto),
+    // recalcular a partir dos dígitos presentes no campo
+    const expectedVal = _amtGetCents(el) > 0 ? _amtFormatCents(_amtGetCents(el)) : '';
+    if (el.value === expectedVal) return; // nada mudou inesperadamente
+    const digits = el.value.replace(/\D/g, '');
+    const cents  = Math.min(parseInt(digits || '0', 10), 9999999999);
+    _apply(cents);
   });
 
   el.addEventListener('focus', function() {
-    // Seleciona tudo ao focar para facilitar substituição
     setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
   });
 
   el.addEventListener('paste', function(ev) {
     ev.preventDefault();
-    const pasted = (ev.clipboardData || window.clipboardData).getData('text');
-    const clean  = pasted.replace(/[^\d,\.]/g, '').replace(',', '.');
-    const num    = Math.abs(parseFloat(clean) || 0);
-    const cents  = Math.round(num * 100);
-    el.dataset.amtCents = cents;
-    el.value = cents > 0 ? _amtFormatCents(cents) : '';
-    if (extraInputCb) extraInputCb();
+    const raw    = (ev.clipboardData || window.clipboardData).getData('text');
+    const pasted = raw.replace(/[^\d,\.]/g, ''); // remove R$, espaços, etc.
+    // Detecta formato BR (vírgula como decimal): ex "1.500,00" → 1500.00
+    let num;
+    if (/,\d{1,2}$/.test(pasted.trim())) {
+      num = parseFloat(pasted.replace(/\./g, '').replace(',', '.'));
+    } else {
+      num = parseFloat(pasted.replace(/,/g, ''));
+    }
+    const cents = Math.round(Math.abs(num || 0) * 100);
+    _apply(cents);
   });
 }
 
