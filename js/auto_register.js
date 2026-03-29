@@ -639,26 +639,48 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_auto_register
 
 
 /* ── Telegram Bot Token helpers ───────────────────────────────────────────── */
-const _TG_BOT_KEY = 'fintrack_telegram_bot_token';
+// Chave única usada em TODOS os lugares — localStorage + getAppSetting/saveAppSetting
+const _TG_BOT_KEY = 'telegram_bot_token';
+// Chave legada (antes do fix) — migrada automaticamente na primeira leitura
+const _TG_BOT_KEY_LEGACY = 'fintrack_telegram_bot_token';
 
 function getTelegramBotToken() {
-  try { return (localStorage.getItem(_TG_BOT_KEY) || '').trim(); } catch { return ''; }
+  try {
+    // Lê chave principal
+    let t = (localStorage.getItem(_TG_BOT_KEY) || '').trim();
+    if (t) return t;
+    // Migração automática da chave legada
+    t = (localStorage.getItem(_TG_BOT_KEY_LEGACY) || '').trim();
+    if (t) {
+      try { localStorage.setItem(_TG_BOT_KEY, t); localStorage.removeItem(_TG_BOT_KEY_LEGACY); } catch {}
+    }
+    return t;
+  } catch { return ''; }
 }
 
 async function ensureTelegramBotToken() {
+  // 1 — localStorage (mais rápido, sem rede)
   let token = getTelegramBotToken();
   if (token) return token;
+
+  // 2 — Banco Supabase (app_settings) — query direta, não usa getAppSetting() que só lê cache
   try {
-    if (typeof getAppSetting === 'function') {
-      token = String(await getAppSetting('telegram_bot_token', '') || '').trim();
+    if (sb) {
+      const { data } = await sb
+        .from('app_settings')
+        .select('value')
+        .eq('key', _TG_BOT_KEY)
+        .maybeSingle();
+      token = String(data?.value || '').trim();
       if (token) {
         try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
         return token;
       }
     }
   } catch (e) {
-    console.warn('[Telegram] Não foi possível carregar token salvo:', e?.message || e);
+    console.warn('[Telegram] Erro ao buscar token do banco:', e?.message || e);
   }
+
   return '';
 }
 
@@ -725,15 +747,41 @@ window.saveTelegramBotToken = async function() {
   const dot      = document.getElementById('tgBotStatusDot');
   const token    = (input?.value || '').trim();
 
-  try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
-  await saveAppSetting('telegram_bot_token', token).catch(() => {});
-
   if (!token) {
+    try { localStorage.removeItem(_TG_BOT_KEY); localStorage.removeItem(_TG_BOT_KEY_LEGACY); } catch {}
+    try {
+      if (sb) await sb.from('app_settings').delete().eq('key', _TG_BOT_KEY);
+    } catch {}
     if (dot) dot.style.background = '#d1d5db';
     if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Token removido.'; }
     if (document.getElementById('tgBotTestBtn')) document.getElementById('tgBotTestBtn').style.display = 'none';
     return;
   }
+
+  // Validate token format: must be digits:alphanumeric (e.g. 123456789:ABC-DEF...)
+  // iOS Safari ignores autocomplete="off" on password fields and may inject a saved password
+  const validFormat = /^\d{8,12}:[A-Za-z0-9_-]{30,50}$/.test(token);
+  if (!validFormat) {
+    if (dot) dot.style.background = '#f59e0b';
+    if (statusEl) {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = '⚠️ Formato inválido. O token do BotFather tem o formato: 123456789:ABC-DEFxyz… Verifique se o browser não preencheu automaticamente com outra senha.';
+    }
+    toast('⚠️ Token com formato inválido — cole o token correto do @BotFather', 'error');
+    return; // Don't save invalid token
+  }
+
+  try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
+  // Salva diretamente no Supabase (não usa saveAppSetting que só faz upsert local)
+  try {
+    if (sb) {
+      await sb.from('app_settings').upsert({ key: _TG_BOT_KEY, value: token }, { onConflict: 'key' });
+    }
+  } catch(e) {
+    console.warn('[Telegram] Erro ao salvar token no DB:', e?.message);
+    // Continua — localStorage ainda funciona para a sessão atual
+  }
+
   if (dot) dot.style.background = '#22c55e';
   if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Informe o Chat ID abaixo e clique Testar.'; }
   // Show the test row with chat-id field
@@ -816,19 +864,16 @@ window.loadTelegramBotTokenUI = async function() {
   const testBtn = document.getElementById('tgBotTestBtn');
   const chatIdInput = document.getElementById('tgBotTestChatId');
   if (!input) return;
-  let token = '';
-  try { token = (await getAppSetting('telegram_bot_token', '')) || ''; } catch {}
-  if (!token) token = getTelegramBotToken();
+
+  // ensureTelegramBotToken: lê localStorage → fallback Supabase DB
+  const token = await ensureTelegramBotToken();
   if (token) {
-    try { localStorage.setItem(_TG_BOT_KEY, token); } catch {}
     input.value = token;
     if (dot) dot.style.background = '#22c55e';
+    if (testRow) testRow.style.display = 'flex';
     // Pre-fill Chat ID from currentUser if available
     if (chatIdInput && !chatIdInput.value) {
-      const knownChatId = String(
-        document.getElementById('myProfileTelegramChatId')?.value ||
-        currentUser?.telegram_chat_id || ''
-      ).trim();
+      const knownChatId = String(currentUser?.telegram_chat_id || '').trim();
       if (knownChatId) {
         chatIdInput.value = knownChatId;
         if (testBtn) testBtn.style.display = '';
