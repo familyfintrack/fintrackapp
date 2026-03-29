@@ -565,7 +565,10 @@ async function bootApp(){
     return;
   }
   // Dados secundários em background — não bloqueiam o dashboard
-  loadScheduled().catch(() => {});
+  loadScheduled().then(() => {
+    if (typeof _showUserLoginNotifications === 'function')
+      setTimeout(() => _showUserLoginNotifications().catch(()=>{}), 800);
+  }).catch(() => {});
   initFxRates().catch(e => console.warn('[FX] boot init failed:', e.message));
   // Load family composition (members) in background
   if (typeof loadFamilyComposition === 'function') {
@@ -589,6 +592,9 @@ async function bootApp(){
   state.txFilter.month=ym;
   // Navegar para dashboard
   navigate('dashboard');
+  // Notificações de login para o usuário (transações do dia + saúde financeira)
+  // Notifications: run after loadScheduled resolves so data is ready
+
   // Sincronizar favoritos de categoria do servidor (após boot — userId disponível)
   if (typeof _syncCatFavsFromServer === 'function') {
     setTimeout(() => _syncCatFavsFromServer().then(() => {

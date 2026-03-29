@@ -1677,7 +1677,7 @@ function scCalGoToday() {
   const now = new Date();
   _scCalYear  = now.getFullYear();
   _scCalMonth = now.getMonth();
-  _scCalSelDay = null;
+  _scCalSelDay = now.toISOString().slice(0,10); // select today
   renderScCalendar();
 }
 
@@ -1793,17 +1793,21 @@ function renderScCalendar() {
     // CSS classes
     const cls = [
       'sc-cal-day',
-      !inMonth            ? 'sc-cal-day--other-month' : '',
-      isToday             ? 'sc-cal-day--today'       : '',
-      hasEvts             ? 'sc-cal-day--has-events'  : '',
-      isSel && hasEvts    ? 'sc-cal-day--selected'    : '',
+      !inMonth   ? 'sc-cal-day--other-month' : '',
+      isToday    ? 'sc-cal-day--today'       : '',
+      hasEvts    ? 'sc-cal-day--has-events'  : '',
+      isSel      ? 'sc-cal-day--selected'    : '',   // selected regardless of events
     ].filter(Boolean).join(' ');
 
     // Day number
     const dayNumHtml = `<div class="sc-cal-day-num">${day}</div>`;
 
     if (!hasEvts) {
-      return `<div class="${cls}">${dayNumHtml}</div>`;
+      // Empty days: clicking selects/deselects and shows "no events" message
+      const emptyOnclick = isSel
+        ? `onclick="scCalSelectDay('${dateStr}')"` // deselect on second click
+        : `onclick="scCalShowEmpty('${dateStr}')"`;
+      return `<div class="${cls}" ${emptyOnclick} style="cursor:pointer">${dayNumHtml}</div>`;
     }
 
     // Dot row — max 5 dots, then "…"
@@ -1870,22 +1874,9 @@ function scCalSelectDay(dateStr) {
 }
 
 function scCalShowEmpty(dateStr) {
-  // Show empty state when clicking a day with no events
-  const det = document.getElementById('scCalDetail');
-  if (!det) return;
-  // Clear previous selection
-  _scCalSelDay = null;
+  // Set selection state and re-render — renderScCalendar handles the empty message
+  _scCalSelDay = (_scCalSelDay === dateStr) ? null : dateStr;
   renderScCalendar();
-  // Show empty message
-  const [y, m, d] = dateStr.split('-');
-  const label = `${parseInt(d)} de ${SC_MONTHS[parseInt(m)-1]} de ${y}`;
-  det.style.display = '';
-  det.innerHTML = `
-    <div style="padding:24px 18px;text-align:center">
-      <div style="font-size:2rem;margin-bottom:10px;opacity:.5">📅</div>
-      <div style="font-size:.88rem;font-weight:700;color:var(--text2);margin-bottom:6px">${label}</div>
-      <div style="font-size:.78rem;color:var(--muted)">Nenhum evento programado neste dia.</div>
-    </div>`;
 }
 
 function _scCalRenderDetail(dateStr, data) {
