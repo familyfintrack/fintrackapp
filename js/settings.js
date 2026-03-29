@@ -2349,8 +2349,21 @@ window.openTelemetryDeleteModal = function() {
   // Resetar estado do modal
   const allRadio = document.getElementById('telDelScopeAll');
   if (allRadio) allRadio.checked = true;
-  document.getElementById('telDelPeriodOpts').style.display = 'none';
-  document.getElementById('telDelTypeOpts').style.display   = 'none';
+  const step1 = document.getElementById('telDelStep1');
+  const step2 = document.getElementById('telDelStep2');
+  const step3 = document.getElementById('telDelStep3');
+  const periodOpts = document.getElementById('telDelPeriodOpts');
+  const typeOpts   = document.getElementById('telDelTypeOpts');
+  const confirmBtn = document.getElementById('telDelConfirmBtn');
+  const execBtn    = document.getElementById('telDelExecuteBtn');
+  if (step1) step1.style.display = 'flex';
+  if (step2) step2.style.display = 'none';
+  if (step3) step3.style.display = 'none';
+  if (periodOpts) periodOpts.style.display = 'none';
+  if (typeOpts) typeOpts.style.display = 'none';
+  if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = '🗑️ Excluir'; }
+  if (execBtn) { execBtn.disabled = false; execBtn.textContent = 'Sim, excluir tudo'; }
+  if (typeof _telDelSetProgress === 'function') _telDelSetProgress(0, 'Pronto para excluir', 'Selecione o escopo e confirme.');
   _telDelUpdatePreview();
   openModal('telDeleteModal');
 };
@@ -2419,18 +2432,50 @@ window._telDelUpdatePreview = async function() {
   }
 };
 
+window._telDelShowConfirm = function() {
+  const step1 = document.getElementById('telDelStep1');
+  const step2 = document.getElementById('telDelStep2');
+  const confirmText = document.getElementById('telDelConfirmText');
+  const previewHtml = document.getElementById('telDelPreview')?.innerHTML || '';
+  const btn = document.getElementById('telDelConfirmBtn');
+  if (btn?.disabled) return;
+  if (confirmText) confirmText.innerHTML = previewHtml;
+  if (step1) step1.style.display = 'none';
+  if (step2) step2.style.display = 'flex';
+};
+
+window._telDelBackToStep1 = function() {
+  const step1 = document.getElementById('telDelStep1');
+  const step2 = document.getElementById('telDelStep2');
+  if (step2) step2.style.display = 'none';
+  if (step1) step1.style.display = 'flex';
+};
+
+function _telDelSetProgress(pct, label, sub) {
+  const safePct = Math.max(0, Math.min(100, Number(pct) || 0));
+  const circle = document.getElementById('telDelProgressCircle');
+  const pctEl  = document.getElementById('telDelProgressPct');
+  const barEl  = document.getElementById('telDelProgressBar');
+  const labelEl= document.getElementById('telDelProgressLabel');
+  const subEl  = document.getElementById('telDelProgressSub');
+  const circumference = 264;
+  if (circle) circle.style.strokeDashoffset = String(circumference - (circumference * safePct / 100));
+  if (pctEl) pctEl.textContent = `${Math.round(safePct)}%`;
+  if (barEl) barEl.style.width = `${safePct}%`;
+  if (labelEl && label) labelEl.textContent = label;
+  if (subEl && sub) subEl.textContent = sub;
+}
+
 window.executeTelemetryDelete = async function() {
   const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
-  const btn   = document.getElementById('telDelConfirmBtn');
+  const btn   = document.getElementById('telDelExecuteBtn');
+  const step2 = document.getElementById('telDelStep2');
+  const step3 = document.getElementById('telDelStep3');
 
-  const msg = scope === 'all'
-    ? 'Confirma a exclusão de TODOS os registros de telemetria? Esta ação é irreversível.'
-    : scope === 'period'
-    ? `Confirma a exclusão dos registros anteriores a ${document.getElementById('telDelBeforeDate')?.value}?`
-    : `Confirma a exclusão de todos os registros do tipo "${document.getElementById('telDelEventType')?.value}"?`;
-
-  if (!confirm(msg)) return;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Excluindo…'; }
+  if (step2) step2.style.display = 'none';
+  if (step3) step3.style.display = 'flex';
+  _telDelSetProgress(15, 'Preparando exclusão…', 'Validando critérios selecionados.');
 
   try {
     // Usa RPC SECURITY DEFINER — DELETE direto é bloqueado pelo RLS
@@ -2444,15 +2489,20 @@ window.executeTelemetryDelete = async function() {
       if (!evType) throw new Error('Tipo de evento não selecionado.');
       params.p_event_type = evType;
     }
+    _telDelSetProgress(55, 'Excluindo registros…', 'Chamando a rotina protegida no Supabase.');
     const { data: deleted, error } = await sb.rpc('delete_telemetry', params);
     if (error) throw error;
     const n = (deleted || 0).toLocaleString('pt-BR');
+    _telDelSetProgress(100, 'Exclusão concluída', `${n} registro(s) removido(s).`);
     toast(`✅ ${n} registro(s) de telemetria excluído(s).`, 'success');
-    closeModal('telDeleteModal');
     await loadTelemetryDashboard();
+    setTimeout(() => closeModal('telDeleteModal'), 500);
   } catch(e) {
+    _telDelSetProgress(0, 'Falha na exclusão', e.message || 'Não foi possível concluir a operação.');
     toast('Erro ao excluir: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '🗑️ Excluir'; }
+    if (step3) step3.style.display = 'none';
+    if (step2) step2.style.display = 'flex';
+    if (btn) { btn.disabled = false; btn.textContent = 'Sim, excluir tudo'; }
   }
 };
 

@@ -901,6 +901,19 @@ function openScheduledModal(id='') {
   }
 
   updateScPreview();
+
+  // Normalize the scheduled amount field on every modal open.
+  // This avoids stale masking state and guarantees the field stays editable.
+  const scAmountEl = document.getElementById('scAmount');
+  if (scAmountEl) {
+    try {
+      scAmountEl.readOnly = false;
+      scAmountEl.disabled = false;
+      scAmountEl.removeAttribute('readonly');
+      scAmountEl.removeAttribute('disabled');
+    } catch(e) {}
+  }
+
   openModal('scheduledModal');
   if (typeof initScFormMode === "function") initScFormMode();
   if (typeof initScFormMode === 'function') initScFormMode();
@@ -908,6 +921,14 @@ function openScheduledModal(id='') {
   requestAnimationFrame(() => {
     const body = document.querySelector('#scheduledModal .modal-body');
     if (body) body.scrollTop = 0;
+    const amtInput = document.getElementById('scAmount');
+    if (amtInput) {
+      try { amtInput.focus({ preventScroll: true }); } catch(e) { try { amtInput.focus(); } catch(_) {} }
+      try {
+        const pos = amtInput.value ? amtInput.value.length : 0;
+        amtInput.setSelectionRange(pos, pos);
+      } catch(e) {}
+    }
   });
 }
 
