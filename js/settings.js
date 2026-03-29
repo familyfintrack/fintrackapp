@@ -1578,31 +1578,59 @@ async function loadTelemetryDashboard() {
   const kpiEl = document.getElementById('telKpis');
   if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon" style="animation:tel-shimmer 1.5s infinite">⏳</div><div class="tel-empty-text">Carregando dados…</div></div>';
 
-  // ── Queries em paralelo ───────────────────────────────────────────────────
-  const [telCountRes, telRes, usersRes, famsRes] = await Promise.all([
-    // COUNT exato no período — sem limit, retorna apenas o número total real
+  // ── COUNT exato + metadados em paralelo ───────────────────────────────────
+  const [telCountRes, usersRes, famsRes] = await Promise.all([
     sb.from('app_telemetry')
       .select('*', { count: 'exact', head: true })
       .gte('ts', since),
-    // Dados para análise — limitado a 8000 para performance do browser
-    sb.from('app_telemetry')
-      .select('event_type,page,ts,user_id,family_id,device_type,device_browser,device_os,payload')
-      .gte('ts', since)
-      .order('ts', { ascending: false })
-      .limit(8000),
     sb.from('app_users').select('id,name,email,role').order('name'),
     sb.from('families').select('id,name').order('name'),
   ]);
 
-  if (telRes.error) {
-    const el = document.getElementById('telKpis');
-    if (el) el.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);font-size:.82rem;padding:8px">Erro: ${telRes.error.message}</div>`;
-    return;
+  const totalReal = telCountRes.count ?? 0;
+  _telDash.totalReal = totalReal;
+
+  // Atualiza loading com progresso
+  if (kpiEl) kpiEl.innerHTML = `<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon" style="animation:tel-shimmer 1.5s infinite">⏳</div><div class="tel-empty-text">Carregando ${totalReal.toLocaleString('pt-BR')} eventos…</div></div>`;
+
+  // ── Busca TODOS os eventos via paginação (Supabase limita 1000/request) ───
+  const PAGE_SIZE = 1000;
+  const allRows = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE;
+    const to   = from + PAGE_SIZE - 1;
+
+    const { data, error } = await sb
+      .from('app_telemetry')
+      .select('event_type,page,ts,user_id,family_id,device_type,device_browser,device_os,payload')
+      .gte('ts', since)
+      .order('ts', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      if (kpiEl) kpiEl.innerHTML = `<div style="grid-column:1/-1;color:var(--danger);font-size:.82rem;padding:8px">Erro: ${error.message}</div>`;
+      return;
+    }
+
+    if (data && data.length > 0) {
+      allRows.push(...data);
+      hasMore = data.length === PAGE_SIZE; // se retornou menos que PAGE_SIZE, acabou
+    } else {
+      hasMore = false;
+    }
+
+    page++;
+
+    // Atualiza progresso visualmente a cada página
+    if (hasMore && kpiEl) {
+      kpiEl.innerHTML = `<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon" style="animation:tel-shimmer 1.5s infinite">⏳</div><div class="tel-empty-text">Carregando… ${allRows.length.toLocaleString('pt-BR')} / ${totalReal.toLocaleString('pt-BR')} eventos</div></div>`;
+    }
   }
 
-  // totalReal = contagem exata do banco no período (ignora o limit(8000) dos dados carregados)
-  _telDash.totalReal = telCountRes.count ?? telRes.data?.length ?? 0;
-  _telDash.rawRows  = telRes.data  || [];
+  _telDash.rawRows  = allRows;
   _telDash.allUsers = usersRes.data || [];
   _telDash.allFams  = famsRes.data  || [];
 
@@ -1756,41 +1784,34 @@ function _telRenderEmpty() {
 
 // ── KPI cards ─────────────────────────────────────────────────────────────────
 function _telRenderKpis(rows, days, totalReal) {
-  const loadedCount = rows.length;
-  const total       = totalReal ?? loadedCount;  // usa count real do banco
+  const total     = totalReal ?? rows.length;
   const users     = new Set(rows.filter(r => r.user_id).map(r => r.user_id)).size;
   const families  = new Set(rows.filter(r => r.family_id).map(r => r.family_id)).size;
   const errors    = rows.filter(r => r.event_type === 'error' || r.event_type === 'uncaught').length;
   const aiCalls   = rows.filter(r => r.event_type === 'ai_call').length;
   const pageViews = rows.filter(r => r.event_type === 'page_view').length;
   const perDay    = days > 0 ? (total / days).toFixed(1) : '—';
-  const truncated = loadedCount < total;  // há mais eventos no banco do que foram carregados
 
   const kpiEl = document.getElementById('telKpis');
   if (!kpiEl) return;
 
   kpiEl.innerHTML = [
-    { v: total.toLocaleString('pt-BR') + (truncated ? ` <span title="Mostrando ${loadedCount.toLocaleString('pt-BR')} dos ${total.toLocaleString('pt-BR')} eventos" style="font-size:.6rem;opacity:.7;font-weight:400">↑ real</span>` : ''), lb: 'Total eventos', icon: '📊' },
-    { v: pageViews.toLocaleString('pt-BR'), lb: 'Page views',       icon: '👁️' },
-    { v: users.toLocaleString('pt-BR'),     lb: 'Usuários únicos',  icon: '👤' },
-    { v: families.toLocaleString('pt-BR'),  lb: 'Famílias ativas',  icon: '🏠' },
-    { v: perDay,                            lb: 'Eventos / dia',    icon: '📈' },
-    { v: aiCalls.toLocaleString('pt-BR'),   lb: 'Chamadas IA',      icon: '🤖' },
-    { v: errors.toLocaleString('pt-BR'),    lb: 'Erros',            icon: '🔴', danger: errors > 0 },
+    { v: total.toLocaleString('pt-BR'),     lb: 'Total eventos',   icon: '📊' },
+    { v: pageViews.toLocaleString('pt-BR'), lb: 'Page views',      icon: '👁️' },
+    { v: users.toLocaleString('pt-BR'),     lb: 'Usuários únicos', icon: '👤' },
+    { v: families.toLocaleString('pt-BR'),  lb: 'Famílias ativas', icon: '🏠' },
+    { v: perDay,                            lb: 'Eventos / dia',   icon: '📈' },
+    { v: aiCalls.toLocaleString('pt-BR'),   lb: 'Chamadas IA',     icon: '🤖' },
+    { v: errors.toLocaleString('pt-BR'),    lb: 'Erros',           icon: '🔴', danger: errors > 0 },
   ].map(c => `<div class="tel-kpi-card${c.danger ? ' danger' : ''}">
     <span class="tel-kpi-icon">${c.icon}</span>
     <span class="tel-kpi-val${c.danger ? ' danger' : ''}">${c.v}</span>
     <span class="tel-kpi-lbl">${c.lb}</span>
   </div>`).join('');
 
-  // Aviso de truncamento: análise parcial quando há mais eventos do que os carregados
+  // Ocultar aviso de truncamento (não há mais truncamento)
   const warnEl = document.getElementById('telTruncWarn');
-  if (warnEl) {
-    warnEl.style.display = truncated ? '' : 'none';
-    warnEl.textContent = truncated
-      ? `⚠️ Análise parcial: exibindo os ${loadedCount.toLocaleString('pt-BR')} eventos mais recentes de ${total.toLocaleString('pt-BR')} no período. Reduza o período para ver todos.`
-      : '';
-  }
+  if (warnEl) warnEl.style.display = 'none';
 }
 
 // ── Daily chart ───────────────────────────────────────────────────────────────
@@ -2319,3 +2340,134 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TELEMETRIA — Exclusão de registros
+   ══════════════════════════════════════════════════════════════════════════ */
+
+window.openTelemetryDeleteModal = function() {
+  // Resetar estado do modal
+  const allRadio = document.getElementById('telDelScopeAll');
+  if (allRadio) allRadio.checked = true;
+  document.getElementById('telDelPeriodOpts').style.display = 'none';
+  document.getElementById('telDelTypeOpts').style.display   = 'none';
+  _telDelUpdatePreview();
+  openModal('telDeleteModal');
+};
+
+window._telDelScopeChange = function() {
+  const scope = document.querySelector('input[name="telDelScope"]:checked')?.value;
+  document.getElementById('telDelPeriodOpts').style.display = scope === 'period' ? '' : 'none';
+  document.getElementById('telDelTypeOpts').style.display   = scope === 'type'   ? '' : 'none';
+  // Destacar opção selecionada
+  ['All','Period','Type'].forEach(s => {
+    const lbl = document.getElementById(`telDelScope${s}_lbl`);
+    if (lbl) lbl.style.borderColor = scope === s.toLowerCase() ? 'var(--accent)' : 'var(--border)';
+  });
+  _telDelUpdatePreview();
+};
+
+window._telDelSetQuick = function(daysBack) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBack);
+  const dateEl = document.getElementById('telDelBeforeDate');
+  if (dateEl) dateEl.value = d.toISOString().slice(0, 10);
+  _telDelUpdatePreview();
+};
+
+window._telDelUpdatePreview = async function() {
+  const scope   = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
+  const preview = document.getElementById('telDelPreview');
+  const btn     = document.getElementById('telDelConfirmBtn');
+  if (!preview) return;
+
+  preview.innerHTML = '<span style="color:var(--muted)">⏳ Calculando…</span>';
+
+  try {
+    let query = sb.from('app_telemetry').select('*', { count: 'exact', head: true });
+
+    if (scope === 'period') {
+      const before = document.getElementById('telDelBeforeDate')?.value;
+      if (!before) {
+        preview.innerHTML = '<span style="color:var(--muted)">Selecione uma data.</span>';
+        if (btn) btn.disabled = true;
+        return;
+      }
+      query = query.lt('ts', before + 'T00:00:00.000Z');
+    } else if (scope === 'type') {
+      const evType = document.getElementById('telDelEventType')?.value;
+      if (evType) query = query.eq('event_type', evType);
+    }
+
+    const { count, error } = await query;
+    if (error) throw error;
+
+    const n = (count || 0).toLocaleString('pt-BR');
+    if (count === 0) {
+      preview.innerHTML = '<span style="color:var(--muted)">Nenhum registro encontrado para os critérios selecionados.</span>';
+      if (btn) btn.disabled = true;
+    } else {
+      const scopeLabel = scope === 'all'    ? 'todos os registros'
+                       : scope === 'period' ? `registros anteriores a ${document.getElementById('telDelBeforeDate')?.value}`
+                       : `registros do tipo "${document.getElementById('telDelEventType')?.value}"`;
+      preview.innerHTML = `<strong style="color:var(--danger,#dc2626)">${n} registro(s)</strong> serão excluídos — ${scopeLabel}.`;
+      if (btn) btn.disabled = false;
+    }
+  } catch(e) {
+    preview.innerHTML = `<span style="color:var(--danger)">Erro ao calcular: ${e.message}</span>`;
+    if (btn) btn.disabled = true;
+  }
+};
+
+window.executeTelemetryDelete = async function() {
+  const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
+  const btn   = document.getElementById('telDelConfirmBtn');
+
+  // Confirmação extra — ação irreversível
+  const msg = scope === 'all'
+    ? 'Confirma a exclusão de TODOS os registros de telemetria? Esta ação é irreversível.'
+    : scope === 'period'
+    ? `Confirma a exclusão dos registros anteriores a ${document.getElementById('telDelBeforeDate')?.value}?`
+    : `Confirma a exclusão de todos os registros do tipo "${document.getElementById('telDelEventType')?.value}"?`;
+
+  if (!confirm(msg)) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Excluindo…'; }
+
+  try {
+    let query = sb.from('app_telemetry').delete();
+
+    if (scope === 'period') {
+      const before = document.getElementById('telDelBeforeDate')?.value;
+      if (!before) throw new Error('Data não selecionada.');
+      query = query.lt('ts', before + 'T00:00:00.000Z');
+    } else if (scope === 'type') {
+      const evType = document.getElementById('telDelEventType')?.value;
+      if (!evType) throw new Error('Tipo de evento não selecionado.');
+      query = query.eq('event_type', evType);
+    } else {
+      // "all" — Supabase requer um filtro mesmo para delete total;
+      // usa um filtro que corresponde a todos os registros
+      query = query.gte('ts', '2000-01-01T00:00:00.000Z');
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+
+    toast('✅ Registros de telemetria excluídos com sucesso.', 'success');
+    closeModal('telDeleteModal');
+    // Recarregar dashboard com dados atualizados
+    await loadTelemetryDashboard();
+  } catch(e) {
+    toast('Erro ao excluir: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '🗑️ Excluir'; }
+  }
+};
+
+// Atualiza preview ao mudar data ou tipo em tempo real
+document.addEventListener('DOMContentLoaded', () => {
+  const dateEl = document.getElementById('telDelBeforeDate');
+  if (dateEl) dateEl.addEventListener('change', window._telDelUpdatePreview);
+  const typeEl = document.getElementById('telDelEventType');
+  if (typeEl) typeEl.addEventListener('change', window._telDelUpdatePreview);
+});
