@@ -4395,6 +4395,10 @@ Se você não solicitou isso, ignore este e-mail.`,
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Famílias
         </button>
+        <button id="telTab_landing" class="tel-tab-btn" onclick="_telSetTab('landing')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Landing Page
+        </button>
       </div>
 
       <!-- ── ABA: Visão Geral ── -->
@@ -4534,6 +4538,13 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
         </div>
       </div><!-- /telPane_families -->
+
+      <!-- ── ABA: Landing Page ── -->
+      <div id="telPane_landing" style="display:none">
+        <div id="telLandingContent" style="padding:20px">
+          <div style="text-align:center;padding:28px;color:var(--muted)">Carregando dados da landing page…</div>
+        </div>
+      </div>
 
       <!-- Modal: Excluir Telemetria — usa modal-overlay padrão do app -->
       <div class="modal-overlay" id="telDeleteModal">
