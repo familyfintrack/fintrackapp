@@ -350,36 +350,12 @@ function _updateSignBtn(fieldId) {
   btn.classList.toggle('positive', !isNeg);
 }
 
-// ─── Máscara monetária centavo-first (ATM-style) ─────────────────────────
-// Formata pt-BR em tempo real: cada dígito empurra centavos para a esquerda.
-// Ex: digitar 1→"0,01"  12→"0,12"  123→"1,23"  1234→"12,34"  12345→"123,45"
-// Funciona em mobile (inputmode=numeric, sem vírgula no teclado) e desktop.
-
-function _amtFormatCents(cents) {
-  cents = Math.max(0, isFinite(cents) ? Math.floor(cents) : 0);
-  const intPart = Math.floor(cents / 100);
-  const decPart = String(cents % 100).padStart(2, '0');
-  const intStr  = String(intPart).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return intStr + ',' + decPart;
-}
-
-function _amtGetCents(el) {
-  // Lê os centavos acumulados do dataset, inicializando se necessário
-  const stored = parseInt(el.dataset.amtCents || '0', 10);
-  return isFinite(stored) ? stored : 0;
-}
-
 // Set amount field value and sign btn state from a numeric value (e.g. when editing)
 function setAmtField(fieldId, value) {
   const isNeg = (value < 0);
   _amtSignState[fieldId] = isNeg;
   const el = document.getElementById(fieldId);
-  if (el) {
-    const abs   = Math.abs(value || 0);
-    const cents = Math.round(abs * 100);
-    el.dataset.amtCents = cents;
-    el.value = cents > 0 ? _amtFormatCents(cents) : '';
-  }
+  if (el) el.value = value !== 0 ? Math.abs(value).toFixed(2).replace('.', ',') : '';
   _updateSignBtn(fieldId);
 }
 
@@ -387,115 +363,91 @@ function setAmtField(fieldId, value) {
 function getAmtField(fieldId) {
   const el = document.getElementById(fieldId);
   if (!el) return 0;
-  const cents = _amtGetCents(el);
-  const abs   = cents / 100;
+  const raw = el.value.trim();
+  if (!raw) return 0;
+  // Parse the absolute value
+  let clean = raw.replace(/\./g, '').replace(',', '.'); // handle BR format
+  if (!/[.,]/.test(raw)) clean = raw; // plain integer
+  const abs = Math.abs(parseFloat(clean) || 0);
   return _amtSignState[fieldId] ? -abs : abs;
 }
 
-// Bind centavo-first mask to a field (idempotent)
-// Estratégia: interceptar ANTES do browser alterar o campo.
-//   - beforeinput: captura dígito digitado → acumula centavos → escreve valor formatado → cancela evento nativo
-//   - keydown: trata Backspace e Delete antes do browser agir
-//   - paste: interpreta texto colado como valor monetário
-function _bindAmtMask(fieldId, extraInputCb) {
+/**
+ * onblur: formata o valor digitado como moeda BR (ex: 10500 → 10.500,00)
+ * Chamado via onblur nos campos de valor dos modais de programados.
+ */
+function _amtFieldBlur(fieldId) {
   const el = document.getElementById(fieldId);
-  if (!el || el._amtMaskBound) return;
-  el._amtMaskBound = true;
+  if (!el) return;
+  const raw = el.value.trim();
+  if (!raw) return;
+  // Parse lenientemente: aceita 10500 / 10500,00 / 10.500,00 / 10500.00
+  let clean = raw.replace(/\./g, '').replace(',', '.');
+  if (!/[.,]/.test(raw)) clean = raw;
+  const num = Math.abs(parseFloat(clean) || 0);
+  if (num === 0) { el.value = ''; return; }
+  // Formatar com separador de milhar BR e 2 casas decimais
+  el.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-  el.setAttribute('inputmode', 'numeric');
-  el.setAttribute('autocomplete', 'off');
-  el.setAttribute('autocorrect', 'off');
-  el.setAttribute('autocapitalize', 'off');
-  el.setAttribute('spellcheck', 'false');
+/**
+ * onfocus: remove formatação para facilitar edição
+ * (ex: 10.500,00 → 10500,00 → mantém vírgula mas sem ponto de milhar)
+ */
+function _amtFieldFocus(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const raw = el.value.trim();
+  if (!raw) return;
+  // Remove pontos de milhar mas mantém vírgula decimal
+  el.value = raw.replace(/\./g, '');
+  // Seleciona todo o conteúdo para facilitar substituição
+  setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
+}
 
-  // Inicializar cents a partir do valor atual (setAmtField pode ter sido chamado antes)
-  if (!el.dataset.amtCents) {
-    const raw = el.value.replace(/\./g, '').replace(',', '.');
-    el.dataset.amtCents = Math.round(Math.abs(parseFloat(raw) || 0) * 100);
+/**
+ * oninput: formata em tempo real enquanto o usuário digita.
+ * Estratégia: aceita dígitos e vírgula; insere separador de milhar
+ * ao sair de cada grupo de 3 dígitos após a última vírgula.
+ * Mantém o cursor na posição correta.
+ */
+function _amtFieldInput(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+
+  // Salva posição do cursor antes de reformatar
+  const selStart = el.selectionStart;
+  const prevLen  = el.value.length;
+
+  // Remove tudo exceto dígitos e a primeira vírgula
+  let raw = el.value.replace(/[^\d,]/g, '');
+
+  // Garante no máximo uma vírgula
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx !== -1) {
+    // Parte inteira + parte decimal (máx 2 casas)
+    const intPart = raw.slice(0, commaIdx).replace(/\D/g, '');
+    const decPart = raw.slice(commaIdx + 1).replace(/\D/g, '').slice(0, 2);
+    raw = intPart + ',' + decPart;
   }
 
-  function _apply(cents) {
-    el.dataset.amtCents = cents;
-    el.value = cents > 0 ? _amtFormatCents(cents) : '';
-    try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
-    if (extraInputCb) extraInputCb();
-  }
+  // Separa parte inteira para adicionar pontos de milhar
+  const hasComma = raw.includes(',');
+  const intStr   = hasComma ? raw.split(',')[0] : raw;
+  const decStr   = hasComma ? raw.split(',')[1] : null;
 
-  // beforeinput: captura dígitos antes do browser inserir no campo
-  el.addEventListener('beforeinput', function(ev) {
-    if (!ev.data) return; // Backspace/Delete chegam via keydown
-    const digit = ev.data.replace(/\D/g, ''); // aceita só dígito
-    if (!digit) { ev.preventDefault(); return; } // bloqueia vírgula, ponto, letras etc.
-    ev.preventDefault();
-    const cur = _amtGetCents(el);
-    const next = Math.min(cur * 10 + parseInt(digit, 10), 9999999999);
-    _apply(next);
-  });
+  // Formata parte inteira com pontos de milhar
+  const intFormatted = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-  // keydown: Backspace e Delete (antes do browser agir)
-  el.addEventListener('keydown', function(ev) {
-    if (ev.key === 'Backspace' || ev.keyCode === 8) {
-      ev.preventDefault();
-      _apply(Math.floor(_amtGetCents(el) / 10));
-    } else if (ev.key === 'Delete' || ev.keyCode === 46) {
-      ev.preventDefault();
-      _apply(0);
-    }
-  });
+  const newVal = decStr !== null ? intFormatted + ',' + decStr : intFormatted;
+  el.value = newVal;
 
-  // input: fallback para mobile/IME que não dispara beforeinput corretamente
-  el.addEventListener('input', function() {
-    // Se o valor do campo divergiu do que esperamos (ex: teclado virtual inseriu direto),
-    // recalcular a partir dos dígitos presentes no campo
-    const expectedVal = _amtGetCents(el) > 0 ? _amtFormatCents(_amtGetCents(el)) : '';
-    if (el.value === expectedVal) return; // nada mudou inesperadamente
-    const digits = el.value.replace(/\D/g, '');
-    const cents  = Math.min(parseInt(digits || '0', 10), 9999999999);
-    _apply(cents);
-  });
-
-  el.addEventListener('focus', function() {
-    setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
-  });
-
-  el.addEventListener('paste', function(ev) {
-    ev.preventDefault();
-    const raw    = (ev.clipboardData || window.clipboardData).getData('text');
-    const pasted = raw.replace(/[^\d,\.]/g, ''); // remove R$, espaços, etc.
-    // Detecta formato BR (vírgula como decimal): ex "1.500,00" → 1500.00
-    let num;
-    if (/,\d{1,2}$/.test(pasted.trim())) {
-      num = parseFloat(pasted.replace(/\./g, '').replace(',', '.'));
-    } else {
-      num = parseFloat(pasted.replace(/,/g, ''));
-    }
-    const cents = Math.round(Math.abs(num || 0) * 100);
-    _apply(cents);
-  });
+  // Reposiciona o cursor compensando os pontos de milhar adicionados/removidos
+  const newLen   = newVal.length;
+  const lenDiff  = newLen - prevLen;
+  const newCaret = Math.max(0, selStart + lenDiff);
+  try { el.setSelectionRange(newCaret, newCaret); } catch(e) {}
 }
-
-// Inicializar masks nos campos de transação e programados
-function _initAmtMasks() {
-  _bindAmtMask('txAmount', function() {
-    if (typeof onTxAmountInput === 'function') onTxAmountInput();
-  });
-  _bindAmtMask('scAmount', function() {
-    if (typeof updateScCurrencyPreview === 'function') updateScCurrencyPreview();
-  });
-  _bindAmtMask('occAmount');
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _initAmtMasks);
-} else {
-  _initAmtMasks();
-}
-
-// Manter compatibilidade: _amtFieldInput/Blur/Focus ainda podem ser chamados do HTML
-// mas agora são no-ops seguros (a máscara é gerenciada pelos listeners acima)
-function _amtFieldInput(fieldId) { /* gerenciado por _bindAmtMask */ }
-function _amtFieldBlur(fieldId)  { /* no-op */ }
-function _amtFieldFocus(fieldId) { /* no-op */ }
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
