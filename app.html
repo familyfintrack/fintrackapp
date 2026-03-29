@@ -4867,11 +4867,35 @@ Se você não solicitou isso, ignore este e-mail.`,
           </button>
           <button class="tab active" id="uaTabUsers" onclick="switchUATab('users')" style="padding:12px 16px;font-size:.85rem">👤 Usuários</button>
           <button class="tab" id="uaTabFamilies" onclick="switchUATab('families')" style="padding:12px 16px;font-size:.85rem">🏠 Famílias</button>
+          <button class="tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')" style="padding:12px 16px;font-size:.85rem;position:relative">
+            📋 Lista de Espera<span id="uaWaitlistBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#2a6049;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
+          </button>
         </div>
 
         <!-- Pending approvals tab -->
         <div id="uaPending" style="display:none;padding:20px">
           <div id="uaPendingContent">
+            <div style="text-align:center;padding:30px;color:var(--muted)">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- Waitlist tab -->
+        <div id="uaWaitlist" style="display:none;padding:0">
+          <div style="padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+            <div>
+              <span style="font-size:.82rem;font-weight:700;color:var(--text)">Lista de Espera</span>
+              <span style="font-size:.75rem;color:var(--muted);margin-left:8px" id="uaWaitlistCount"></span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="uaWlFilter" onchange="loadWaitlist()" style="font-family:var(--font-sans);font-size:.75rem;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)">
+                <option value="pending">⏳ Aguardando</option>
+                <option value="invited">✉️ Convidados</option>
+                <option value="all">Todos</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="loadWaitlist()" title="Recarregar">↺</button>
+            </div>
+          </div>
+          <div id="uaWaitlistContent" style="padding:14px 20px;max-height:420px;overflow-y:auto">
             <div style="text-align:center;padding:30px;color:var(--muted)">Carregando...</div>
           </div>
         </div>
