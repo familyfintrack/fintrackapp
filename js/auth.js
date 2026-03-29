@@ -464,7 +464,7 @@ function showLoginScreen() {
   const mainApp = document.getElementById('mainApp');
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
-  if (mainApp) mainApp.style.display = 'none';
+  if (mainApp) { mainApp.style.display = 'none'; mainApp.style.visibility = 'hidden'; mainApp.style.opacity = '0'; }
   if (sidebar) sidebar.style.display = 'none';
   if (sidebarOverlay) sidebarOverlay.style.display = 'none';
 
@@ -519,12 +519,21 @@ function _clearRememberedCredentials() {
 }
 function hideLoginScreen() {
   const ls = document.getElementById('loginScreen');
-  if (ls) ls.style.display = 'none';
-  // Show main app
+  if (ls) {
+    ls.style.transition = 'opacity .2s ease';
+    ls.style.opacity = '0';
+    setTimeout(() => { ls.style.display = 'none'; ls.style.opacity = ''; ls.style.transition = ''; }, 200);
+  }
   const mainApp = document.getElementById('mainApp');
   const sidebar = document.getElementById('sidebar');
-  if (mainApp) mainApp.style.display = '';
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  if (mainApp) {
+    mainApp.style.display = '';
+    mainApp.style.visibility = 'visible';
+    requestAnimationFrame(() => { mainApp.style.opacity = '1'; });
+  }
   if (sidebar) sidebar.style.display = '';
+  if (sidebarOverlay) sidebarOverlay.style.display = '';
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
@@ -806,6 +815,9 @@ async function onLoginSuccess() {
 
   hideLoginScreen();
 
+  // Apply access request visibility based on admin setting
+  if (typeof initAccessRequestVisibility === 'function') initAccessRequestVisibility().catch(()=>{});
+
   // If the user has no family_id and is not a global admin/owner,
   // launch the wizard so they can create their own family as Owner.
   if (!currentUser?.family_id &&
@@ -924,7 +936,10 @@ function updateUserUI() {
   });
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display = isAdmin ? '' : 'none';
-  if (isAdmin) _checkPendingApprovals();
+  if (isAdmin) {
+    _checkPendingApprovals();
+    _checkWaitlistOnLogin().catch(() => {});
+  }
 
   // Family switcher (only when user has 2+ families)
   _renderFamilySwitcher();
@@ -5185,4 +5200,64 @@ function _buildOfficialInviteEmail(firstName, email, personalMsg) {
     </div>
   </div>
 </div></div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NOTIFICAÇÃO DE LOGIN — lista de espera + aprovações pendentes (admin)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _wlLastNotifiedCount = -1; // para evitar notificar na mesma sessão
+
+async function _checkWaitlistOnLogin() {
+  if (!currentUser?.can_admin || !sb) return;
+
+  try {
+    const { count } = await sb
+      .from('waitlist')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    const n = count || 0;
+    if (n === 0 || n === _wlLastNotifiedCount) return;
+    _wlLastNotifiedCount = n;
+
+    // Mostrar popup combinado se também houver aprovações pendentes
+    _showAdminLoginNotification(n);
+  } catch(e) {
+    console.debug('[waitlist login check]', e.message);
+  }
+}
+
+function _showAdminLoginNotification(waitlistCount) {
+  document.getElementById('adminLoginNotifPopup')?.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'adminLoginNotifPopup';
+  popup.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:99998;max-width:300px;width:calc(100vw - 32px);background:var(--surface);border:1.5px solid var(--accent);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;animation:slideUpFadeIn .3s ease';
+
+  popup.innerHTML = `
+    <div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.2rem">📋</span>
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-size:.82rem;font-weight:800;line-height:1.2">Atenção Admin</div>
+      </div>
+      <button onclick="document.getElementById('adminLoginNotifPopup')?.remove()"
+        style="background:rgba(255,255,255,.18);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:.8rem;flex-shrink:0">✕</button>
+    </div>
+    <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:.82rem">
+      ${waitlistCount > 0 ? `<div style="display:flex;align-items:center;gap:8px;color:var(--text)">
+        <span style="width:8px;height:8px;background:#f59e0b;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px #f59e0b"></span>
+        <span><strong>${waitlistCount}</strong> pessoa(s) na lista de espera aguardando convite</span>
+      </div>` : ''}
+      <div style="display:flex;gap:7px;margin-top:4px">
+        <button onclick="document.getElementById('adminLoginNotifPopup')?.remove();navigate('settings');setTimeout(()=>{openUserAdmin();setTimeout(()=>{switchUATab('waitlist')},300)},400)"
+          style="flex:1;padding:7px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-lt,#e8f2ee);color:var(--accent);font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
+          Ver lista de espera
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(popup);
+  // Auto-dismiss after 12s
+  setTimeout(() => popup?.remove(), 12000);
 }

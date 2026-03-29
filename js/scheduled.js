@@ -1800,7 +1800,7 @@ function renderScCalendar() {
       ${(totD>0||totC>0) ? `<div class="sc-cal-day-total-row bal">${bal>=0?'+':''}${_scCalFmt(bal)}</div>` : ''}
     </div>`;
 
-    const onclick = hasEvts ? `onclick="scCalSelectDay('${dateStr}')"` : '';
+    const onclick = hasEvts ? `onclick="scCalSelectDay('${dateStr}')"` : `onclick="scCalShowEmpty('${dateStr}')"` ;
     return `<div class="${cls}" ${onclick}>${dayNumHtml}${dotsHtml}${totHtml}</div>`;
   }).join('');
 
@@ -1827,8 +1827,26 @@ function _scCalFmt(v) {
 // ── Day click → detail panel ──────────────────────────────────────
 function scCalSelectDay(dateStr) {
   _scCalSelDay = (_scCalSelDay === dateStr) ? null : dateStr;
-  // Re-render to update selected state
   renderScCalendar();
+}
+
+function scCalShowEmpty(dateStr) {
+  // Show empty state when clicking a day with no events
+  const det = document.getElementById('scCalDetail');
+  if (!det) return;
+  // Clear previous selection
+  _scCalSelDay = null;
+  renderScCalendar();
+  // Show empty message
+  const [y, m, d] = dateStr.split('-');
+  const label = `${parseInt(d)} de ${SC_MONTHS[parseInt(m)-1]} de ${y}`;
+  det.style.display = '';
+  det.innerHTML = `
+    <div style="padding:24px 18px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:10px;opacity:.5">📅</div>
+      <div style="font-size:.88rem;font-weight:700;color:var(--text2);margin-bottom:6px">${label}</div>
+      <div style="font-size:.78rem;color:var(--muted)">Nenhum evento programado neste dia.</div>
+    </div>`;
 }
 
 function _scCalRenderDetail(dateStr, data) {
@@ -2241,3 +2259,37 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Desktop upcoming panel: collapse/expand ───────────────────────────────
+let _upcomingDesktopOpen = false;
+window.toggleUpcomingDesktopPanel = function() {
+  _upcomingDesktopOpen = !_upcomingDesktopOpen;
+  const body  = document.getElementById('scheduledUpcomingList');
+  const arrow = document.getElementById('upcomingDesktopArrow');
+  if (body)  body.style.display  = _upcomingDesktopOpen ? '' : 'none';
+  if (arrow) arrow.style.transform = _upcomingDesktopOpen ? 'rotate(180deg)' : 'rotate(0)';
+};
+
+// Opens upcoming panel if it has items (called after renderUpcoming)
+function _autoOpenUpcomingIfItems() {
+  const body = document.getElementById('scheduledUpcomingList');
+  if (body && body.children.length > 0 && !_upcomingDesktopOpen) {
+    // Already has items from renderUpcoming — keep collapsed per spec
+    // User explicitly clicks to open
+  }
+}
+
+// ── Show all recurrents — scroll to recurrents panel and clear filter ────
+window.scShowAllRecurrents = function() {
+  // Clear filters to show all
+  const chipAll  = document.getElementById('scChipAll');
+  const typeFilter = document.getElementById('scTypeFilter');
+  const search   = document.getElementById('scSearch');
+  if (chipAll)    chipAll.click();
+  if (typeFilter) typeFilter.value = '';
+  if (search)     search.value = '';
+  if (typeof filterScheduled === 'function') filterScheduled();
+  // Scroll to recurrents panel
+  const panel = document.getElementById('scRecurrentsPanel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};

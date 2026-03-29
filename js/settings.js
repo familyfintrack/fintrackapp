@@ -223,7 +223,8 @@ window.forceActivateModule = forceActivateModule;
 
 function showEmailConfig() {
   // Populate fields with saved values
-  document.getElementById('ejServiceId').value  = EMAILJS_CONFIG.serviceId;
+  loadShowAccessRequestSetting();
+    document.getElementById('ejServiceId').value  = EMAILJS_CONFIG.serviceId;
   document.getElementById('ejTemplateId').value = EMAILJS_CONFIG.templateId;
   const stpl = document.getElementById('ejSchedTemplateId');
   if(stpl) stpl.value = EMAILJS_CONFIG.scheduledTemplateId || '';
@@ -2560,3 +2561,51 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeEl = document.getElementById('telDelEventType');
   if (typeEl) typeEl.addEventListener('change', window._telDelUpdatePreview);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO: Exibir link "Solicitar Acesso" na tela de login
+══════════════════════════════════════════════════════════════════════════ */
+
+// Carrega o estado do toggle ao abrir settings
+async function loadShowAccessRequestSetting() {
+  const toggle = document.getElementById('cfgShowAccessRequest');
+  if (!toggle) return;
+  try {
+    const raw = await getAppSetting('show_access_request', 'true');
+    const enabled = raw === true || raw === 'true' || raw === 1;
+    toggle.checked = enabled;
+  } catch(e) {
+    toggle.checked = true; // default: mostrar
+  }
+}
+
+// Salva e aplica imediatamente
+window.saveShowAccessRequest = async function(enabled) {
+  await saveAppSetting('show_access_request', enabled ? 'true' : 'false');
+  _applyAccessRequestVisibility(enabled);
+  toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
+};
+
+function _applyAccessRequestVisibility(enabled) {
+  const btn    = document.getElementById('loginRequestAccessBtn');
+  const parent = btn?.parentElement;
+  if (btn)    btn.style.display    = enabled ? '' : 'none';
+  // Also hide the "Não tem conta?" text when button is hidden
+  if (parent) {
+    const texts = parent.querySelectorAll('span[data-i18n="auth.no_account"]');
+    texts.forEach(t => { t.style.display = enabled ? '' : 'none'; });
+  }
+}
+
+// Apply on page load (called by auth.js after settings load)
+async function initAccessRequestVisibility() {
+  try {
+    const raw     = await getAppSetting('show_access_request', 'true');
+    const enabled = raw === true || raw === 'true' || raw === 1 || raw === null;
+    _applyAccessRequestVisibility(enabled);
+  } catch(e) {
+    // Default: show
+    _applyAccessRequestVisibility(true);
+  }
+}
+window.initAccessRequestVisibility = initAccessRequestVisibility;
