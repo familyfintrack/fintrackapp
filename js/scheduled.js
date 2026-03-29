@@ -1582,7 +1582,7 @@ async function showAutoRegisterNotification(items){
 ══════════════════════════════════════════════════════════════════ */
 
 // ── State ─────────────────────────────────────────────────────────
-let _scView       = 'list';           // 'list' | 'calendar'
+let _scView       = 'calendar';       // 'list' | 'calendar' — padrão: calendário
 let _scCalYear    = new Date().getFullYear();
 let _scCalMonth   = new Date().getMonth(); // 0-indexed
 let _scCalSelDay  = null;             // 'YYYY-MM-DD' | null

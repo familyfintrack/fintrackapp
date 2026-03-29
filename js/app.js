@@ -965,7 +965,16 @@ function navigate(page){
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();
   else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
-  else if(page==='scheduled')loadScheduled();
+  else if(page==='scheduled') {
+    // Sempre abre no calendário apontando para o mês/dia de hoje
+    const _now = new Date();
+    if (typeof _scCalYear  !== 'undefined') { window._scCalYear  = _now.getFullYear(); }
+    if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
+    if (typeof _scCalSelDay !== 'undefined') { window._scCalSelDay = null; }
+    loadScheduled().then(() => {
+      if (typeof setScView === 'function') setScView('calendar');
+    });
+  }
   else if(page==='import')initImportPage();
   else if(page==='settings')loadSettings();
   else if(page==='audit')loadAuditLogs();

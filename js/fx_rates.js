@@ -38,8 +38,30 @@ let _fxPromise    = null;           // deduplicador
 // ─────────────────────────────────────────────────────────────────────────
 async function initFxRates() {
   if (_fxPromise) return _fxPromise;
-  _fxPromise = _initFxRates();
+  _fxPromise = _initFxRates().finally(() => {
+    // Reseta a promise após resolução para que próximas chamadas
+    // (ex: ao navegar para outra página e voltar) reavaliem o TTL
+    _fxPromise = null;
+  });
   return _fxPromise;
+}
+
+// Auto-refresh a cada 30 minutos enquanto a app estiver aberta
+let _fxAutoRefreshTimer = null;
+function _startFxAutoRefresh() {
+  if (_fxAutoRefreshTimer) return; // já iniciado
+  _fxAutoRefreshTimer = setInterval(async () => {
+    const currencies = _usedCurrencies();
+    if (!currencies.length) return;
+    // Só atualiza se o cache estiver stale (>= TTL)
+    if (_fxAgeMin() >= _FX_TTL_MIN) {
+      await _fetchRates(currencies).catch(e =>
+        console.warn('[FX] auto-refresh falhou:', e.message)
+      );
+      _renderFxBadge();
+      console.info('[FX] cotações atualizadas automaticamente');
+    }
+  }, 30 * 60 * 1000); // 30 minutos
 }
 
 async function _initFxRates() {
@@ -59,6 +81,9 @@ async function _initFxRates() {
     );
   }
   _renderFxBadge();
+
+  // 4. Inicia auto-refresh periódico (apenas uma vez por sessão)
+  _startFxAutoRefresh();
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -190,16 +215,21 @@ async function _fetchRates(currencies) {
   });
   window._fxRates   = newRates;
   window._fxRatesTs = new Date().toISOString();
-  // Salvar no banco em background — NÃO bloqueia quem chamou _fetchRates
-  Promise.all([
-    saveAppSetting(_FX_CACHE_KEY, newRates),
-    saveAppSetting(_FX_TS_KEY,    window._fxRatesTs),
-  ]).catch(e => console.warn('[FX] erro ao persistir cache:', e.message));
+
   // Salvar no localStorage imediatamente como fallback offline
   try {
     localStorage.setItem(_FX_CACHE_KEY, JSON.stringify(newRates));
     localStorage.setItem(_FX_TS_KEY, window._fxRatesTs);
   } catch {}
+
+  // Salvar no banco Supabase diretamente (upsert) — não usa saveAppSetting
+  // que só escreve no localStorage/cache e nunca persiste no DB de forma confiável
+  if (sb) {
+    Promise.all([
+      sb.from('app_settings').upsert({ key: _FX_CACHE_KEY, value: newRates },      { onConflict: 'key' }),
+      sb.from('app_settings').upsert({ key: _FX_TS_KEY,    value: window._fxRatesTs }, { onConflict: 'key' }),
+    ]).catch(e => console.warn('[FX] erro ao persistir cache no DB:', e.message));
+  }
 }
 
 function _renderFxBadge() {
