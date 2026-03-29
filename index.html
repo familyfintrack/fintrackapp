@@ -3,6 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<script>
+// Redirect to app.html if running as installed PWA (standalone mode)
+// This runs synchronously before any render to avoid flash of landing page
+(function(){
+  var isStandalone =
+    window.navigator.standalone === true ||                          // iOS Safari
+    window.matchMedia('(display-mode: standalone)').matches ||      // Android / Desktop PWA
+    window.matchMedia('(display-mode: fullscreen)').matches ||      // some Android
+    document.referrer.includes('android-app://');                   // TWA
+
+  if (isStandalone) {
+    // Running as installed PWA — go straight to app login, never show landing
+    window.location.replace('app.html');
+  }
+})();
+</script>
 <title>Family FinTrack — Gestão Financeira com Inteligência Artificial</title>
 <meta name="description" content="O app de gestão financeira familiar criado 100% com IA. Acesso por convite. Entre na lista de espera.">
 <meta name="theme-color" content="#0d2318">
