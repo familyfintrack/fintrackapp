@@ -472,6 +472,8 @@ function showLoginScreen() {
   const ls = document.getElementById('loginScreen');
   if (ls) {
     ls.style.display = 'flex';
+    // Re-apply access request visibility every time login screen is shown
+    _applyAccessRequestVisibilityFromLocalStorage();
     // Fix logo: use same LOGO_URL used throughout the app
     const img = document.getElementById('loginLogoImg');
     if (typeof setAppLogo==='function') {
@@ -538,7 +540,26 @@ function hideLoginScreen() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
+  // Apply access request visibility immediately from localStorage cache
+  // (no Supabase auth required — value was saved to localStorage by saveAppSetting)
+  _applyAccessRequestVisibilityFromLocalStorage();
 });
+
+// ── Access request link visibility — reads localStorage only, no auth needed ──
+function _applyAccessRequestVisibilityFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem('show_access_request');
+    // Default to visible when setting has never been saved
+    const enabled = (raw === null) || (raw === 'true') || (raw === '1') || (raw === true);
+    const btn    = document.getElementById('loginRequestAccessBtn');
+    const parent = btn?.parentElement;
+    if (btn) btn.style.display = enabled ? '' : 'none';
+    if (parent) {
+      parent.querySelectorAll('[data-i18n="auth.no_account"]')
+        .forEach(t => { t.style.display = enabled ? '' : 'none'; });
+    }
+  } catch(_) {}
+}
 
 function toggleLoginPwd() {
   const inp = document.getElementById('loginPassword');
@@ -5261,4 +5282,292 @@ function _showAdminLoginNotification(waitlistCount) {
   document.body.appendChild(popup);
   // Auto-dismiss after 12s
   setTimeout(() => popup?.remove(), 12000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NOTIFICAÇÕES DE LOGIN — Transações do dia + Saúde financeira
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function _showUserLoginNotifications() {
+  if (!currentUser || !sb) return;
+
+  // Ensure animation keyframes exist (admin popup may not have run)
+  if (!document.getElementById('_userNotifStyles')) {
+    const s = document.createElement('style');
+    s.id = '_userNotifStyles';
+    s.textContent = '@keyframes slideUpFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}';
+    document.head.appendChild(s);
+  }
+
+  // Collect both notification sources in parallel
+  const [todayItems, healthData] = await Promise.all([
+    _getScheduledForToday(),
+    _getFinancialHealthSnapshot(),
+  ]);
+
+  // Nothing to show — silent exit
+  if (!todayItems.length && !healthData.alert) return;
+
+  // Show notifications with slight cascade
+  if (todayItems.length) {
+    _showScheduledTodayNotif(todayItems);
+  }
+
+  if (healthData.alert) {
+    const delay = todayItems.length ? 600 : 0;
+    setTimeout(() => _showFinancialHealthNotif(healthData), delay);
+  }
+}
+window._showUserLoginNotifications = _showUserLoginNotifications;
+
+/* ── Collect today's scheduled transactions ──────────────────────────────── */
+async function _getScheduledForToday() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const scheduled = state?.scheduled || [];
+    if (!scheduled.length) return [];
+
+    const todayItems = [];
+    scheduled.forEach(sc => {
+      if (sc.status === 'paused' || sc.status === 'finished') return;
+      // Check generated occurrences
+      if (typeof generateOccurrences === 'function') {
+        // Use limit=60 to catch mid-sequence occurrences (e.g. monthly on day 15)
+        const occs = generateOccurrences(sc, 60);
+        if (occs.includes(today)) {
+          // Check if not already executed today
+          const alreadyDone = (sc.occurrences || []).some(
+            o => o.scheduled_date === today &&
+                 (o.execution_status === 'executed' || o.execution_status === 'processing')
+          );
+          if (!alreadyDone) {
+            todayItems.push({
+              desc:    sc.description || '—',
+              amount:  sc.amount || 0,
+              type:    sc.type || 'expense',
+              account: sc.accounts?.name || '',
+            });
+          }
+        }
+      }
+      // Also include explicit pending occurrences for today
+      (sc.occurrences || []).forEach(o => {
+        if (o.scheduled_date === today &&
+            (o.execution_status === 'pending' || o.execution_status === 'skipped')) {
+          // Avoid duplicate if already added via generateOccurrences
+          if (!todayItems.find(i => i.desc === sc.description)) {
+            todayItems.push({
+              desc:    sc.description || '—',
+              amount:  sc.amount || 0,
+              type:    sc.type || 'expense',
+              account: sc.accounts?.name || '',
+            });
+          }
+        }
+      });
+    });
+    return todayItems;
+  } catch(e) {
+    console.debug('[user notif] scheduled:', e.message);
+    return [];
+  }
+}
+
+/* ── Financial health snapshot ───────────────────────────────────────────── */
+async function _getFinancialHealthSnapshot() {
+  try {
+    const accs = state?.accounts || [];
+    if (!accs.length) return { alert: false };
+
+    // Total liquid balance (exclude credit cards)
+    const totalBRL = accs
+      .filter(a => a.type !== 'cartao_credito')
+      .reduce((s, a) => s + (typeof toBRL === 'function' ? toBRL(+(a.balance||0), a.currency||'BRL') : +(a.balance||0)), 0);
+
+    // Negative accounts
+    const negAccs = accs.filter(a => a.type !== 'cartao_credito' && +(a.balance||0) < 0);
+
+    // Upcoming 10 days — net cash flow
+    const today = new Date().toISOString().slice(0, 10);
+    const limit = new Date(); limit.setDate(limit.getDate() + 10);
+    const limitStr = limit.toISOString().slice(0, 10);
+
+    let upcomingNet = 0;
+    (state?.scheduled || []).forEach(sc => {
+      if (sc.status === 'paused' || sc.status === 'finished') return;
+      if (typeof generateOccurrences === 'function') {
+        generateOccurrences(sc, 15).forEach(date => {
+          if (date >= today && date <= limitStr) {
+            const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+            upcomingNet += isExp ? -Math.abs(sc.amount || 0) : Math.abs(sc.amount || 0);
+          }
+        });
+      }
+    });
+
+    // Credit card balance (debt)
+    const creditCardDebt = accs
+      .filter(a => a.type === 'cartao_credito')
+      .reduce((s, a) => s + Math.abs(+(a.balance||0) < 0 ? +(a.balance||0) : 0), 0);
+
+    // Determine alert level
+    let alert = false;
+    let level = 'info'; // 'warning' | 'danger' | 'info'
+    let title = '';
+    let messages = [];
+    let icon = '💰';
+    let color = 'var(--accent)';
+
+    if (totalBRL < 0) {
+      alert = true; level = 'danger';
+      icon = '🚨'; color = 'var(--danger,#dc2626)';
+      title = 'Saldo total negativo';
+      messages.push(`Saldo líquido: <strong style="color:var(--danger,#dc2626)">${typeof fmt === 'function' ? fmt(totalBRL) : totalBRL.toFixed(2)}</strong>`);
+    } else if (negAccs.length) {
+      alert = true; level = 'warning';
+      icon = '⚠️'; color = 'var(--amber,#f59e0b)';
+      title = negAccs.length === 1 ? '1 conta com saldo negativo' : `${negAccs.length} contas com saldo negativo`;
+      messages.push(negAccs.slice(0,2).map(a => `${a.name}: <strong>${typeof fmt==='function'?fmt(a.balance,a.currency):a.balance}</strong>`).join(' · '));
+    } else if (upcomingNet < -1000) {
+      alert = true; level = 'warning';
+      icon = '📅'; color = 'var(--amber,#f59e0b)';
+      title = 'Atenção com os próximos 10 dias';
+      messages.push(`Saldo projetado: <strong>${typeof fmt==='function'?fmt(upcomingNet):'R$ '+upcomingNet.toFixed(2)}</strong> nos próximos 10 dias`);
+    }
+
+    if (creditCardDebt > 500 && level !== 'danger') {
+      if (!alert) { alert = true; level = 'info'; icon = '💳'; color = 'var(--accent)'; title = 'Fatura de cartão em aberto'; }
+      messages.push(`Cartões de crédito: <strong>${typeof fmt==='function'?fmt(creditCardDebt):'R$ '+creditCardDebt.toFixed(2)}</strong> em aberto`);
+    }
+
+    // All good?
+    if (!alert && totalBRL > 0 && upcomingNet >= 0) {
+      // Show positive health only occasionally (not every login — check last shown date)
+      const lastShown = localStorage.getItem('_healthNotifDate');
+      const today2 = new Date().toISOString().slice(0, 10);
+      if (lastShown !== today2) {
+        alert = true; level = 'good';
+        icon = '✅'; color = 'var(--accent)';
+        title = 'Saúde financeira estável';
+        messages.push(`Saldo líquido: <strong style="color:var(--accent)">${typeof fmt==='function'?fmt(totalBRL):'R$ '+totalBRL.toFixed(2)}</strong>`);
+        if (upcomingNet > 0) messages.push(`Próximos 10 dias: <strong>+${typeof fmt==='function'?fmt(upcomingNet):'R$ '+upcomingNet.toFixed(2)}</strong> projetado`);
+        localStorage.setItem('_healthNotifDate', today2);
+      }
+    }
+
+    return { alert, level, icon, color, title, messages, totalBRL, upcomingNet };
+  } catch(e) {
+    console.debug('[user notif] health:', e.message);
+    return { alert: false };
+  }
+}
+
+/* ── Popup: Transações do dia ────────────────────────────────────────────── */
+function _showScheduledTodayNotif(items) {
+  document.getElementById('userScheduledTodayPopup')?.remove();
+
+  const fn = (currentUser?.name || '').split(' ')[0];
+  const total = items.reduce((s, it) => {
+    const isExp = it.type === 'expense' || it.type === 'card_payment' || it.type === 'transfer';
+    return s + (isExp ? -Math.abs(it.amount) : Math.abs(it.amount));
+  }, 0);
+  const totalStr = typeof fmt === 'function' ? fmt(Math.abs(total)) : Math.abs(total).toFixed(2);
+  const totalColor = total >= 0 ? 'var(--accent)' : 'var(--danger,#dc2626)';
+
+  const popup = document.createElement('div');
+  popup.id = 'userScheduledTodayPopup';
+  popup.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:99997;max-width:320px;width:calc(100vw - 32px);background:var(--surface);border:1.5px solid var(--accent);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;animation:slideUpFadeIn .35s ease';
+
+  const itemRows = items.slice(0, 4).map(it => {
+    const isExp = it.type === 'expense' || it.type === 'card_payment' || it.type === 'transfer';
+    const typeIcon = it.type === 'transfer' ? '🔄' : isExp ? '💸' : '💰';
+    const amtStr   = typeof fmt === 'function' ? fmt(Math.abs(it.amount)) : Math.abs(it.amount).toFixed(2);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.95rem;flex-shrink:0">${typeIcon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.desc)}</div>
+        ${it.account ? `<div style="font-size:.68rem;color:var(--muted)">${esc(it.account)}</div>` : ''}
+      </div>
+      <span style="font-size:.8rem;font-weight:700;color:${isExp?'var(--danger,#dc2626)':'var(--accent)'};flex-shrink:0">${isExp?'−':'+'}${amtStr}</span>
+    </div>`;
+  }).join('');
+
+  const moreNote = items.length > 4
+    ? `<div style="font-size:.7rem;color:var(--muted);text-align:center;padding:4px 0">+${items.length - 4} mais hoje</div>`
+    : '';
+
+  popup.innerHTML = `
+    <div style="background:linear-gradient(135deg,var(--accent),var(--accent2,#3d7a5e));padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.25rem">📅</span>
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-size:.82rem;font-weight:800;line-height:1.2">
+          ${fn ? `${fn}, hoje ` : 'Hoje '}você tem ${items.length} transação${items.length > 1 ? 'ões' : ''} programada${items.length > 1 ? 's' : ''}
+        </div>
+        <div style="color:rgba(255,255,255,.7);font-size:.7rem;margin-top:2px">
+          Saldo do dia: <span style="color:#fff;font-weight:700">${total >= 0 ? '+' : '−'}${totalStr}</span>
+        </div>
+      </div>
+      <button onclick="document.getElementById('userScheduledTodayPopup')?.remove()"
+        style="background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.85rem;flex-shrink:0;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="padding:10px 14px 4px">
+      ${itemRows}
+      ${moreNote}
+    </div>
+    <div style="padding:8px 14px 12px;display:flex;gap:7px">
+      <button onclick="document.getElementById('userScheduledTodayPopup')?.remove();navigate('scheduled')"
+        style="flex:1;padding:8px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-lt,#e8f2ee);color:var(--accent);font-size:.76rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
+        Ver programados →
+      </button>
+    </div>`;
+
+  document.body.appendChild(popup);
+  setTimeout(() => popup?.remove(), 20000);
+}
+
+/* ── Popup: Saúde financeira ─────────────────────────────────────────────── */
+function _showFinancialHealthNotif(data) {
+  document.getElementById('userFinancialHealthPopup')?.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'userFinancialHealthPopup';
+  const borderColor = data.level === 'danger' ? 'var(--danger,#dc2626)' : data.level === 'warning' ? 'var(--amber,#f59e0b)' : data.level === 'good' ? 'var(--accent)' : 'var(--border)';
+  const headerBg   = data.level === 'danger' ? 'linear-gradient(135deg,#b91c1c,#dc2626)' : data.level === 'warning' ? 'linear-gradient(135deg,#b45309,#d97706)' : 'linear-gradient(135deg,var(--accent),var(--accent2,#3d7a5e))';
+
+  popup.style.cssText = `position:fixed;bottom:80px;left:16px;z-index:99996;max-width:300px;width:calc(100vw - 32px);background:var(--surface);border:1.5px solid ${borderColor};border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;animation:slideUpFadeIn .35s .1s ease both`;
+
+  const _hFn = (currentUser?.name || '').split(' ')[0];
+  const _subtitle = data.level === 'good'
+    ? (_hFn ? `Tudo certo, ${_hFn}! ` : '') + 'Finanças em dia.'
+    : data.level === 'danger' ? 'Atenção necessária imediatamente'
+    : data.level === 'warning' ? 'Fique de olho'
+    : 'Resumo financeiro';
+
+  popup.innerHTML = `
+    <div style="background:${headerBg};padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.3rem">${data.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="color:#fff;font-size:.82rem;font-weight:800;line-height:1.2">${data.title}</div>
+        <div style="color:rgba(255,255,255,.7);font-size:.68rem;margin-top:1px">${_subtitle}</div>
+      </div>
+      <button onclick="document.getElementById('userFinancialHealthPopup')?.remove()"
+        style="background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.85rem;flex-shrink:0;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+      ${data.messages.map(m => `<div style="font-size:.8rem;color:var(--text2);line-height:1.55">${m}</div>`).join('')}
+    </div>
+    <div style="padding:0 14px 12px;display:flex;gap:7px">
+      ${(data.level === 'danger' || data.level === 'warning') ? `
+      <button onclick="document.getElementById('userFinancialHealthPopup')?.remove();navigate('accounts')"
+        style="flex:1;padding:8px;border-radius:9px;border:1.5px solid ${borderColor};background:transparent;color:var(--text2);font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
+        Ver contas →
+      </button>` : ''}
+      <button onclick="document.getElementById('userFinancialHealthPopup')?.remove();navigate('dashboard')"
+        style="flex:1;padding:8px;border-radius:9px;border:1.5px solid ${borderColor};background:var(--accent-lt,rgba(42,96,73,.08));color:var(--accent);font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
+        Ver dashboard →
+      </button>
+    </div>`;
+
+  document.body.appendChild(popup);
+  setTimeout(() => popup?.remove(), data.level === 'danger' ? 30000 : 15000);
 }
