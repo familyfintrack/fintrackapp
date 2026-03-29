@@ -345,7 +345,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
     </p>
 
     <div class="hctas">
-      <a href="#acesso" class="ctp">✨ Quero meu acesso</a>
+      <a href="#acesso" class="ctp">📋 Quero entrar na lista de espera</a>
       <a href="#familia" class="ctg">Como funciona →</a>
     </div>
 
@@ -552,15 +552,15 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
         <!-- Bloco de compartilhamento -->
         <div style="width:100%;margin-top:20px;background:rgba(255,255,255,.06);border:1px solid rgba(125,194,66,.2);border-radius:16px;padding:22px 20px;text-align:left">
           <div style="font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lime2);margin-bottom:4px;display:flex;align-items:center;gap:7px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            Convide amigos para a lista
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Indique amigos para a lista de espera
           </div>
-          <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6">Ajude seus amigos a descobrirem o Family FinTrack. Eles também entrarão na lista de espera.</p>
+          <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6">Indique amigos e familiares para também entrarem na lista de espera. Eles receberão um email com o convite para se cadastrar.</p>
 
           <div style="display:flex;flex-direction:column;gap:10px">
             <div>
-              <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);display:block;margin-bottom:5px">E-mails dos amigos (separados por vírgula)</label>
-              <input type="text" id="invEmails" placeholder="amigo1@email.com, amigo2@email.com" style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+              <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);display:block;margin-bottom:5px">E-mails para indicar (separados por vírgula · máx. 5)</label>
+              <input type="text" id="invEmails" placeholder="amigo@email.com, familiar@email.com, colega@email.com" style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
             </div>
             <div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -576,7 +576,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
             <div id="invOk" style="font-size:.78rem;color:var(--lime2);display:none;padding:8px 12px;background:rgba(125,194,66,.08);border:1px solid rgba(125,194,66,.2);border-radius:8px;text-align:center;font-weight:600"></div>
             <button type="button" id="invSendBtn" onclick="sendInvites()" style="font-family:var(--sans);font-size:.9rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime),var(--lime2));border:none;border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .25s;box-shadow:0 4px 20px rgba(125,194,66,.25)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              <span id="invSendTxt">Enviar convites</span>
+              <span id="invSendTxt">Indicar amigos →</span>
             </button>
           </div>
         </div>
