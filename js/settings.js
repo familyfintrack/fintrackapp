@@ -2364,10 +2364,18 @@ window.openTelemetryDeleteModal = function() {
 
 // Avança do Step 1 → Step 2 (confirmação inline, sem confirm() nativo)
 window._telDelShowConfirm = function() {
-  const btn = document.getElementById('telDelConfirmBtn');
-  if (btn && btn.disabled) return; // nenhum registro encontrado
-
   const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
+
+  // Único bloqueio válido: período sem data selecionada
+  if (scope === 'period') {
+    const before = document.getElementById('telDelBeforeDate')?.value;
+    if (!before) {
+      const preview = document.getElementById('telDelPreview');
+      if (preview) preview.innerHTML = '<span style="color:var(--danger)">⚠ Selecione uma data antes de continuar.</span>';
+      return;
+    }
+  }
+
   const msg = scope === 'all'
     ? 'Todos os registros de telemetria serão permanentemente excluídos.'
     : scope === 'period'
@@ -2417,6 +2425,18 @@ window._telDelUpdatePreview = async function() {
   const btn     = document.getElementById('telDelConfirmBtn');
   if (!preview) return;
 
+  // Período sem data selecionada: único caso que bloqueia
+  if (scope === 'period') {
+    const before = document.getElementById('telDelBeforeDate')?.value;
+    if (!before) {
+      preview.innerHTML = '<span style="color:var(--muted)">Selecione uma data.</span>';
+      if (btn) btn.disabled = true;
+      return;
+    }
+  }
+
+  // Habilitar botão imediatamente — não esperar a contagem
+  if (btn) btn.disabled = false;
   preview.innerHTML = '<span style="color:var(--muted)">⏳ Calculando…</span>';
 
   try {
@@ -2424,11 +2444,6 @@ window._telDelUpdatePreview = async function() {
 
     if (scope === 'period') {
       const before = document.getElementById('telDelBeforeDate')?.value;
-      if (!before) {
-        preview.innerHTML = '<span style="color:var(--muted)">Selecione uma data.</span>';
-        if (btn) btn.disabled = true;
-        return;
-      }
       query = query.lt('ts', before + 'T00:00:00.000Z');
     } else if (scope === 'type') {
       const evType = document.getElementById('telDelEventType')?.value;
@@ -2450,8 +2465,10 @@ window._telDelUpdatePreview = async function() {
       if (btn) btn.disabled = false;
     }
   } catch(e) {
-    preview.innerHTML = `<span style="color:var(--danger)">Erro ao calcular: ${e.message}</span>`;
-    if (btn) btn.disabled = true;
+    // Erro de RLS ou rede: mostrar aviso mas NÃO bloquear o botão
+    // (o usuário pode tentar excluir mesmo sem conseguir contar)
+    preview.innerHTML = `<span style="color:var(--muted)">Não foi possível calcular o total (${e.message}). O botão continua ativo.</span>`;
+    if (btn) btn.disabled = false;
   }
 };
 

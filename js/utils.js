@@ -350,12 +350,36 @@ function _updateSignBtn(fieldId) {
   btn.classList.toggle('positive', !isNeg);
 }
 
+// ─── Máscara monetária centavo-first (ATM-style) ─────────────────────────
+// Formata pt-BR em tempo real: cada dígito empurra centavos para a esquerda.
+// Ex: digitar 1→"0,01"  12→"0,12"  123→"1,23"  1234→"12,34"  12345→"123,45"
+// Funciona em mobile (inputmode=numeric, sem vírgula no teclado) e desktop.
+
+function _amtFormatCents(cents) {
+  cents = Math.max(0, isFinite(cents) ? Math.floor(cents) : 0);
+  const intPart = Math.floor(cents / 100);
+  const decPart = String(cents % 100).padStart(2, '0');
+  const intStr  = String(intPart).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return intStr + ',' + decPart;
+}
+
+function _amtGetCents(el) {
+  // Lê os centavos acumulados do dataset, inicializando se necessário
+  const stored = parseInt(el.dataset.amtCents || '0', 10);
+  return isFinite(stored) ? stored : 0;
+}
+
 // Set amount field value and sign btn state from a numeric value (e.g. when editing)
 function setAmtField(fieldId, value) {
   const isNeg = (value < 0);
   _amtSignState[fieldId] = isNeg;
   const el = document.getElementById(fieldId);
-  if (el) el.value = value !== 0 ? Math.abs(value).toFixed(2).replace('.', ',') : '';
+  if (el) {
+    const abs   = Math.abs(value || 0);
+    const cents = Math.round(abs * 100);
+    el.dataset.amtCents = cents;
+    el.value = cents > 0 ? _amtFormatCents(cents) : '';
+  }
   _updateSignBtn(fieldId);
 }
 
@@ -363,91 +387,100 @@ function setAmtField(fieldId, value) {
 function getAmtField(fieldId) {
   const el = document.getElementById(fieldId);
   if (!el) return 0;
-  const raw = el.value.trim();
-  if (!raw) return 0;
-  // Parse the absolute value
-  let clean = raw.replace(/\./g, '').replace(',', '.'); // handle BR format
-  if (!/[.,]/.test(raw)) clean = raw; // plain integer
-  const abs = Math.abs(parseFloat(clean) || 0);
+  const cents = _amtGetCents(el);
+  const abs   = cents / 100;
   return _amtSignState[fieldId] ? -abs : abs;
 }
 
-/**
- * onblur: formata o valor digitado como moeda BR (ex: 10500 → 10.500,00)
- * Chamado via onblur nos campos de valor dos modais de programados.
- */
-function _amtFieldBlur(fieldId) {
+// Bind centavo-first mask to a field (idempotent)
+function _bindAmtMask(fieldId, extraInputCb) {
   const el = document.getElementById(fieldId);
-  if (!el) return;
-  const raw = el.value.trim();
-  if (!raw) return;
-  // Parse lenientemente: aceita 10500 / 10500,00 / 10.500,00 / 10500.00
-  let clean = raw.replace(/\./g, '').replace(',', '.');
-  if (!/[.,]/.test(raw)) clean = raw;
-  const num = Math.abs(parseFloat(clean) || 0);
-  if (num === 0) { el.value = ''; return; }
-  // Formatar com separador de milhar BR e 2 casas decimais
-  el.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+  if (!el || el._amtMaskBound) return;
+  el._amtMaskBound = true;
 
-/**
- * onfocus: remove formatação para facilitar edição
- * (ex: 10.500,00 → 10500,00 → mantém vírgula mas sem ponto de milhar)
- */
-function _amtFieldFocus(fieldId) {
-  const el = document.getElementById(fieldId);
-  if (!el) return;
-  const raw = el.value.trim();
-  if (!raw) return;
-  // Remove pontos de milhar mas mantém vírgula decimal
-  el.value = raw.replace(/\./g, '');
-  // Seleciona todo o conteúdo para facilitar substituição
-  setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
-}
+  // Garantir atributos corretos
+  el.setAttribute('inputmode', 'numeric');
+  el.setAttribute('autocomplete', 'off');
+  el.setAttribute('autocorrect', 'off');
+  el.setAttribute('autocapitalize', 'off');
+  el.setAttribute('spellcheck', 'false');
 
-/**
- * oninput: formata em tempo real enquanto o usuário digita.
- * Estratégia: aceita dígitos e vírgula; insere separador de milhar
- * ao sair de cada grupo de 3 dígitos após a última vírgula.
- * Mantém o cursor na posição correta.
- */
-function _amtFieldInput(fieldId) {
-  const el = document.getElementById(fieldId);
-  if (!el) return;
-
-  // Salva posição do cursor antes de reformatar
-  const selStart = el.selectionStart;
-  const prevLen  = el.value.length;
-
-  // Remove tudo exceto dígitos e a primeira vírgula
-  let raw = el.value.replace(/[^\d,]/g, '');
-
-  // Garante no máximo uma vírgula
-  const commaIdx = raw.indexOf(',');
-  if (commaIdx !== -1) {
-    // Parte inteira + parte decimal (máx 2 casas)
-    const intPart = raw.slice(0, commaIdx).replace(/\D/g, '');
-    const decPart = raw.slice(commaIdx + 1).replace(/\D/g, '').slice(0, 2);
-    raw = intPart + ',' + decPart;
+  // Inicializar cents a partir do valor atual (caso setAmtField já tenha sido chamado)
+  if (!el.dataset.amtCents) {
+    const raw   = el.value.replace(/\./g, '').replace(',', '.');
+    const num   = Math.abs(parseFloat(raw) || 0);
+    el.dataset.amtCents = Math.round(num * 100);
   }
 
-  // Separa parte inteira para adicionar pontos de milhar
-  const hasComma = raw.includes(',');
-  const intStr   = hasComma ? raw.split(',')[0] : raw;
-  const decStr   = hasComma ? raw.split(',')[1] : null;
+  el.addEventListener('keydown', function(ev) {
+    // Backspace: remove último dígito
+    if (ev.key === 'Backspace' || ev.keyCode === 8) {
+      ev.preventDefault();
+      let cents = _amtGetCents(el);
+      cents = Math.floor(cents / 10);
+      el.dataset.amtCents = cents;
+      el.value = cents > 0 ? _amtFormatCents(cents) : '';
+      if (extraInputCb) extraInputCb();
+    }
+    // Delete: zera tudo
+    if (ev.key === 'Delete' || ev.keyCode === 46) {
+      ev.preventDefault();
+      el.dataset.amtCents = 0;
+      el.value = '';
+      if (extraInputCb) extraInputCb();
+    }
+  });
 
-  // Formata parte inteira com pontos de milhar
-  const intFormatted = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  el.addEventListener('input', function() {
+    // Extrai apenas dígitos do que está no campo (ignora pontos e vírgulas da formatação)
+    const digits  = el.value.replace(/[^\d]/g, '');
+    const newCents = Math.min(parseInt(digits || '0', 10), 9999999999);
+    el.dataset.amtCents = newCents;
+    const formatted = newCents > 0 ? _amtFormatCents(newCents) : '';
+    el.value = formatted;
+    // Cursor sempre no final
+    try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
+    if (extraInputCb) extraInputCb();
+  });
 
-  const newVal = decStr !== null ? intFormatted + ',' + decStr : intFormatted;
-  el.value = newVal;
+  el.addEventListener('focus', function() {
+    // Seleciona tudo ao focar para facilitar substituição
+    setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
+  });
 
-  // Reposiciona o cursor compensando os pontos de milhar adicionados/removidos
-  const newLen   = newVal.length;
-  const lenDiff  = newLen - prevLen;
-  const newCaret = Math.max(0, selStart + lenDiff);
-  try { el.setSelectionRange(newCaret, newCaret); } catch(e) {}
+  el.addEventListener('paste', function(ev) {
+    ev.preventDefault();
+    const pasted = (ev.clipboardData || window.clipboardData).getData('text');
+    const clean  = pasted.replace(/[^\d,\.]/g, '').replace(',', '.');
+    const num    = Math.abs(parseFloat(clean) || 0);
+    const cents  = Math.round(num * 100);
+    el.dataset.amtCents = cents;
+    el.value = cents > 0 ? _amtFormatCents(cents) : '';
+    if (extraInputCb) extraInputCb();
+  });
 }
+
+// Inicializar masks nos campos de transação e programados
+function _initAmtMasks() {
+  _bindAmtMask('txAmount', function() {
+    if (typeof onTxAmountInput === 'function') onTxAmountInput();
+  });
+  _bindAmtMask('scAmount', function() {
+    if (typeof updateScCurrencyPreview === 'function') updateScCurrencyPreview();
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initAmtMasks);
+} else {
+  _initAmtMasks();
+}
+
+// Manter compatibilidade: _amtFieldInput/Blur/Focus ainda podem ser chamados do HTML
+// mas agora são no-ops seguros (a máscara é gerenciada pelos listeners acima)
+function _amtFieldInput(fieldId) { /* gerenciado por _bindAmtMask */ }
+function _amtFieldBlur(fieldId)  { /* no-op */ }
+function _amtFieldFocus(fieldId) { /* no-op */ }
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
