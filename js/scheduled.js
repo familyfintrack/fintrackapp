@@ -1832,6 +1832,10 @@ function renderScCalendar() {
     return `<div class="${cls}" ${onclick}>${dayNumHtml}${dotsHtml}${totHtml}</div>`;
   }).join('');
 
+  // Sync right-column panels (desktop calendar view)
+  _renderCalUpcoming();
+  _renderCalScheduledList();
+
   // Re-render detail if a day is selected
   if (_scCalSelDay && dayMap[_scCalSelDay]) {
     // Selected day has events — show detail
@@ -1852,7 +1856,15 @@ function renderScCalendar() {
     }
   } else {
     const det = document.getElementById('scCalDetail');
-    if (det) det.style.display = 'none';
+    if (det) {
+      det.classList.remove('visible');
+      // Desktop: show placeholder; Mobile: hide
+      det.innerHTML = `<div style="padding:32px 20px;text-align:center;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:10px;opacity:.3">📅</div>
+        <div style="font-size:.85rem;font-weight:600;color:var(--text2);margin-bottom:4px">Selecione um dia</div>
+        <div style="font-size:.76rem">Clique em qualquer dia do calendário para ver os eventos.</div>
+      </div>`;
+    }
   }
 }
 
@@ -1936,6 +1948,7 @@ function _scCalRenderDetail(dateStr, data) {
   }).join('');
 
   det.style.display = '';
+  det.classList.add('visible'); // mobile: override display:none !important
   det.innerHTML = `
     <div class="sc-cal-detail-header">
       <div class="sc-cal-detail-date">${dateLabel}${isToday?' <span style="font-size:.75rem;color:var(--accent);font-weight:700">— Hoje</span>':''}</div>
@@ -2332,5 +2345,184 @@ function _openUpcomingIfHasEvents() {
     body.style.display  = '';
     _upcomingDesktopOpen = true;
     if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CALENDAR VIEW — Right column panels (Upcoming + Recorrentes)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _calUpcomingOpen = true;
+let _calScStatusChip = 'all';
+
+window.toggleCalUpcomingPanel = function() {
+  _calUpcomingOpen = !_calUpcomingOpen;
+  const body  = document.getElementById('scCalUpcomingList');
+  const arrow = document.getElementById('scCalUpcomingArrow');
+  if (body)  body.style.display   = _calUpcomingOpen ? '' : 'none';
+  if (arrow) arrow.style.transform = _calUpcomingOpen ? 'rotate(180deg)' : 'rotate(0)';
+};
+
+function _renderCalUpcoming() {
+  const listEl   = document.getElementById('scCalUpcomingList');
+  const totalEl  = document.getElementById('scCalUpcomingTotal');
+  const countEl  = document.getElementById('scCalUpcomingCount');
+  const arrowEl  = document.getElementById('scCalUpcomingArrow');
+  if (!listEl) return;
+
+  const today    = new Date().toISOString().slice(0, 10);
+  const limit    = new Date(); limit.setDate(limit.getDate() + 10);
+  const limitStr = limit.toISOString().slice(0, 10);
+
+  const upcoming = [];
+  const srcList  = state._scFiltered || state.scheduled;
+  srcList.forEach(sc => {
+    if (sc.status === 'paused' || sc.status === 'finished') return;
+    const pendingSet = new Set(
+      (sc.occurrences || [])
+        .filter(o => (o.execution_status === 'pending' || o.execution_status === 'skipped') && o.scheduled_date >= today && o.scheduled_date <= limitStr)
+        .map(o => o.scheduled_date)
+    );
+    const executedSet = new Set(
+      (sc.occurrences || []).filter(o => o.execution_status === 'executed' || o.execution_status === 'processing').map(o => o.scheduled_date)
+    );
+    const occs = generateOccurrences(sc, 30);
+    occs.forEach(date => {
+      if (date >= today && date <= limitStr && !executedSet.has(date))
+        upcoming.push({ sc, date, isPending: pendingSet.has(date) });
+    });
+    pendingSet.forEach(date => {
+      if (!occs.includes(date)) upcoming.push({ sc, date, isPending: true });
+    });
+  });
+  upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+  if (countEl) countEl.textContent = upcoming.length + ' item' + (upcoming.length !== 1 ? 's' : '');
+  if (totalEl) {
+    const tot = upcoming.reduce((s, { sc }) => {
+      const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+      return s + (isExp ? -1 : 1) * Math.abs(sc.amount);
+    }, 0);
+    totalEl.textContent = (tot >= 0 ? '+' : '') + (typeof fmt === 'function' ? fmt(tot) : tot.toFixed(2));
+    totalEl.className   = 'badge ' + (tot >= 0 ? 'badge-green' : 'badge-red');
+  }
+
+  if (!upcoming.length) {
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Nenhum evento nos próximos 10 dias.</div>';
+    return;
+  }
+
+  const today2   = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomStr   = tomorrow.toISOString().slice(0, 10);
+  const byDate   = {};
+  upcoming.forEach(u => { (byDate[u.date] = byDate[u.date] || []).push(u); });
+  const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
+    const isToday    = date === today2;
+    const isTomorrow = date === tomStr;
+    const dayDiff    = (new Date(date + 'T12:00:00') - new Date(today2 + 'T12:00:00')) / 86400000;
+    const dow        = DOW[new Date(date + 'T12:00:00').getDay()];
+    const dayNum     = new Date(date + 'T12:00:00').getDate();
+    const dayMon     = new Date(date + 'T12:00:00').toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+    const gid        = 'calupg_' + date.replace(/-/g, '');
+    const autoOpen   = dayDiff <= 1; // today + tomorrow open by default
+
+    const dayPill = isToday
+      ? `<div class="sup-day-pill sup-day-pill--today"><span>Hoje</span></div>`
+      : isTomorrow
+      ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
+      : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
+
+    const dayTot = items.reduce((s, { sc }) => {
+      const isExp = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+      return s + (isExp ? -1 : 1) * Math.abs(sc.amount);
+    }, 0);
+
+    const rows = items.map(({ sc, isPending }) => {
+      const isExp    = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
+      const isIncome = sc.type === 'income';
+      const typeIcon = sc.type === 'transfer' ? '🔄' : isExp ? '💸' : '💰';
+      const amtStr   = typeof fmt === 'function' ? fmt(Math.abs(sc.amount)) : Math.abs(sc.amount).toFixed(2);
+      const pendingBadge = isPending
+        ? `<span class="sc-occ-pending-dot" title="Pendente"></span>` : '';
+      return `<div class="sup-item${isToday ? ' sup-item--today' : ''}">
+        <span class="sup-type-icon">${typeIcon}</span>
+        <div class="sup-item-mid">
+          <div class="sup-item-desc">${esc(sc.description || '—')}${pendingBadge}</div>
+          <div class="sup-item-meta">${esc((state.accounts || []).find(a => a.id === sc.account_id)?.name || '')}</div>
+        </div>
+        <span class="sup-item-amt ${isExp ? 'neg' : 'pos'}">${isExp ? '−' : '+'}${amtStr}</span>
+        <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
+      </div>`;
+    }).join('');
+
+    return `<div class="sup-group">
+      <div class="sup-group-hdr" onclick="toggleUpcomingGroup('${gid}')">
+        <div class="sup-group-left">${dayPill}<span class="sup-group-dow">${dow}</span></div>
+        <div class="sup-group-meta">
+          <span class="sup-day-total ${dayTot >= 0 ? 'pos' : 'neg'}">${dayTot >= 0 ? '+' : ''}${typeof fmt === 'function' ? fmt(dayTot) : dayTot.toFixed(2)}</span>
+          <span class="sup-day-count">${items.length}</span>
+          <svg class="sc-upcoming-day-arrow ${autoOpen ? 'open' : ''}" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+      <div class="sup-rows" id="${gid}" style="display:${autoOpen ? '' : 'none'}">${rows}</div>
+    </div>`;
+  }).join('');
+
+  // Open the upcoming panel
+  listEl.style.display = '';
+  _calUpcomingOpen = true;
+  if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
+}
+
+function filterScheduledCal() {
+  const search = (document.getElementById('scCalSearch')?.value || '').toLowerCase();
+  const typeF  = document.getElementById('scCalTypeFilter')?.value || '';
+  let list = state.scheduled;
+  if (search) list = list.filter(s => s.description?.toLowerCase().includes(search) || s.payees?.name?.toLowerCase().includes(search));
+  if (typeF) list = list.filter(s => s.type === typeF);
+  if (_calScStatusChip && _calScStatusChip !== 'all') {
+    list = list.filter(s => {
+      const st = typeof scStatusLabel === 'function' ? scStatusLabel(s) : { label: '' };
+      if (_calScStatusChip === 'active')  return st.label.includes('Ativo') || st.label.includes('Atrasado');
+      if (_calScStatusChip === 'paused')  return s.status === 'paused';
+      return false;
+    });
+  }
+  _renderCalList(list);
+}
+window.filterScheduledCal = filterScheduledCal;
+
+window.scCalChipFilter = function(e, chip) {
+  _calScStatusChip = chip;
+  document.querySelectorAll('#scCalRecurrentsPanel .sc-chip').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  filterScheduledCal();
+};
+
+function _renderCalScheduledList() {
+  filterScheduledCal();
+}
+
+function _renderCalList(list) {
+  const el = document.getElementById('scCalScheduledList');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:.8rem">Nenhuma transação recorrente.</div>';
+    return;
+  }
+  // Reuse existing _scCardHtml if available
+  if (typeof _scCardHtml === 'function') {
+    const renderableActive   = list.filter(sc => { const st = typeof scStatusLabel === 'function' ? scStatusLabel(sc) : { label:'Ativo' }; return !st.label.includes('Concluído'); });
+    const renderableFinished = list.filter(sc => { const st = typeof scStatusLabel === 'function' ? scStatusLabel(sc) : { label:'' }; return st.label.includes('Concluído'); });
+    el.innerHTML = renderableActive.map(sc => _scCardHtml(sc)).join('');
+    if (renderableFinished.length) {
+      el.innerHTML += `<div style="font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 14px 4px">Concluídos</div>`;
+      el.innerHTML += renderableFinished.map(sc => _scCardHtml(sc)).join('');
+    }
+  } else {
+    el.innerHTML = list.map(sc => `<div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:.84rem">${esc(sc.description||'—')}</div>`).join('');
   }
 }
