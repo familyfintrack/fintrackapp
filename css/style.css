@@ -21359,3 +21359,7 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     white-space: nowrap !important;
   }
 }
+
+/* ── Upcoming day group arrow ── */
+.sc-upcoming-day-arrow { transition: transform .22s ease; }
+.sc-upcoming-day-arrow.open { transform: rotate(180deg); }
