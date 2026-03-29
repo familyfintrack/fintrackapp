@@ -898,14 +898,12 @@ async function notifyOnTransaction(tx, sc = null) {
           .eq('id', user.id)
           .single();
         if (freshUser) {
-          // Merge fresh notification prefs into local user object
           user = { ...user, ...freshUser };
-          // Also update currentUser in-place so next call is fresh too
           if (typeof currentUser !== 'undefined' && currentUser) {
-            currentUser.notify_on_tx    = freshUser.notify_on_tx;
-            currentUser.notify_tx_email = freshUser.notify_tx_email;
-            currentUser.notify_tx_wa    = freshUser.notify_tx_wa;
-            currentUser.notify_tx_tg    = freshUser.notify_tx_tg;
+            currentUser.notify_on_tx     = freshUser.notify_on_tx;
+            currentUser.notify_tx_email  = freshUser.notify_tx_email;
+            currentUser.notify_tx_wa     = freshUser.notify_tx_wa;
+            currentUser.notify_tx_tg     = freshUser.notify_tx_tg;
             currentUser.telegram_chat_id = freshUser.telegram_chat_id || currentUser.telegram_chat_id;
             currentUser.whatsapp_number  = freshUser.whatsapp_number  || currentUser.whatsapp_number;
           }
@@ -917,20 +915,91 @@ async function notifyOnTransaction(tx, sc = null) {
 
     if (!user?.notify_on_tx) return;
 
-    const desc    = tx?.description || sc?.description || 'Transação';
-    const amount  = typeof fmt === 'function' ? fmt(tx?.amount ?? 0) : String(tx?.amount ?? 0);
-    const date    = typeof fmtDate === 'function' ? fmtDate(tx?.date || new Date().toISOString().slice(0,10)) : (tx?.date || '');
-    const accName = (state?.accounts || []).find(a => a.id === tx?.account_id)?.name || '';
-    const catName = (state?.categories || []).find(c => c.id === tx?.category_id)?.name || '';
-    const type    = tx?.amount >= 0 ? '💰 Receita' : '💸 Despesa';
+    // ── Buscar transação completa com joins para ter todos os nomes ──
+    let fullTx = tx;
+    if (tx?.id && sb) {
+      try {
+        const { data: fetched } = await sb
+          .from('transactions')
+          .select(`
+            id, description, amount, currency, brl_amount, date, memo, status,
+            is_transfer, is_card_payment, tags, check_number, balance_after,
+            accounts:account_id(name, currency, icon),
+            payees:payee_id(name),
+            categories:category_id(name, icon, color),
+            transfer_to:transfer_to_account_id(name),
+            family_members_data:family_member_id(name, avatar_emoji)
+          `)
+          .eq('id', tx.id)
+          .single();
+        if (fetched) fullTx = { ...tx, ...fetched };
+      } catch(e) {
+        console.debug('[notifyTx] could not fetch full tx, using partial data:', e?.message);
+      }
+    }
 
-    const msgLines = [
-      `${type}: ${desc}`,
-      `Valor: ${amount}`,
-      date ? `Data: ${date}` : '',
-      accName ? `Conta: ${accName}` : '',
-      catName ? `Categoria: ${catName}` : '',
-    ].filter(Boolean).join('\n');
+    // ── Resolver nomes com fallback para state ──
+    const desc     = fullTx?.description || sc?.description || 'Transação';
+    const amount   = fullTx?.amount ?? 0;
+    const currency = (fullTx?.currency || 'BRL').toUpperCase();
+    const brl      = fullTx?.brl_amount;
+    const date     = typeof fmtDate === 'function'
+      ? fmtDate(fullTx?.date || new Date().toISOString().slice(0,10))
+      : (fullTx?.date || '');
+    const status   = (fullTx?.status || 'confirmed') === 'pending' ? '⏳ Pendente' : '✅ Confirmada';
+    const memo     = fullTx?.memo || '';
+    const tags     = Array.isArray(fullTx?.tags) ? fullTx.tags.join(', ') : (fullTx?.tags || '');
+    const checkNum = fullTx?.check_number || '';
+    const isTransfer    = !!(fullTx?.is_transfer);
+    const isCardPayment = !!(fullTx?.is_card_payment);
+
+    // Nomes resolvidos: joins > state > vazio
+    const accName  = fullTx?.accounts?.name
+      || (state?.accounts || []).find(a => a.id === fullTx?.account_id)?.name || '';
+    const accIcon  = fullTx?.accounts?.icon || '🏦';
+    const toAccName = fullTx?.transfer_to?.name
+      || (state?.accounts || []).find(a => a.id === fullTx?.transfer_to_account_id)?.name || '';
+    const payeeName = fullTx?.payees?.name
+      || (state?.payees || []).find(p => p.id === fullTx?.payee_id)?.name || '';
+    const catName   = fullTx?.categories?.name
+      || (state?.categories || []).find(c => c.id === fullTx?.category_id)?.name || '';
+    const catIcon   = fullTx?.categories?.icon || '';
+    const memberName = fullTx?.family_members_data?.name || '';
+    const memberEmoji = fullTx?.family_members_data?.avatar_emoji || '';
+
+    // ── Tipo e sinal ──
+    let typeEmoji, typeLabel;
+    if (isCardPayment)       { typeEmoji = '💳'; typeLabel = 'Pgto. Cartão'; }
+    else if (isTransfer)     { typeEmoji = '🔄'; typeLabel = 'Transferência'; }
+    else if (amount >= 0)    { typeEmoji = '💰'; typeLabel = 'Receita'; }
+    else                     { typeEmoji = '💸'; typeLabel = 'Despesa'; }
+
+    const amtFmt = typeof fmt === 'function' ? fmt(Math.abs(amount), currency) : String(Math.abs(amount));
+    const sign   = amount >= 0 && !isTransfer ? '+' : (isTransfer ? '' : '−');
+
+    // ── Montar mensagem HTML para Telegram ──
+    const lines = [
+      `${typeEmoji} <b>${typeLabel}</b> — ${sign}${amtFmt}`,
+      ...(currency !== 'BRL' && brl != null ? [`   <i>= ${typeof fmt === 'function' ? fmt(Math.abs(brl), 'BRL') : ''}  (BRL)</i>`] : []),
+      ``,
+      `📝 <b>${_tgEsc(desc)}</b>`,
+      ...(memo        ? [`💬 ${_tgEsc(memo)}`] : []),
+      ``,
+      `📅 ${date}   ${status}`,
+      ...(accName     ? [`🏦 ${_tgEsc(accName)}${isTransfer && toAccName ? ` → ${_tgEsc(toAccName)}` : ''}`] : []),
+      ...(payeeName   ? [`👤 ${_tgEsc(payeeName)}`] : []),
+      ...(catName     ? [`🏷️ ${catIcon ? catIcon + ' ' : ''}${_tgEsc(catName)}`] : []),
+      ...(memberName  ? [`👨‍👩‍👧 ${memberEmoji ? memberEmoji + ' ' : ''}${_tgEsc(memberName)}`] : []),
+      ...(tags        ? [`🔖 ${_tgEsc(tags)}`] : []),
+      ...(checkNum    ? [`🔢 Cheque: ${_tgEsc(checkNum)}`] : []),
+    ];
+    const msg = `<b>FinTrack</b> · Nova Transação\n` + lines.join('\n');
+
+    // Versão plain text para WhatsApp (sem tags HTML)
+    const msgPlain = lines
+      .map(l => l.replace(/<[^>]+>/g, ''))
+      .join('\n')
+      .trim();
 
     const promises = [];
 
@@ -938,13 +1007,28 @@ async function notifyOnTransaction(tx, sc = null) {
     if (user.notify_tx_email && user.email) {
       const tplId = (typeof EMAILJS_CONFIG !== 'undefined') ? (EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId) : null;
       if (tplId && EMAILJS_CONFIG.serviceId && EMAILJS_CONFIG.publicKey) {
+        const htmlContent = `
+          <div style="font-family:Arial,sans-serif;padding:16px;max-width:480px">
+            <h3 style="margin:0 0 12px;color:#2a6049">${typeEmoji} ${typeLabel}: ${_tgEsc(desc)}</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+              <tr><td style="padding:5px 0;color:#666">Valor</td><td style="font-weight:700">${sign}${amtFmt}${currency !== 'BRL' && brl != null ? ` <small style="color:#888">(${typeof fmt === 'function' ? fmt(Math.abs(brl),'BRL') : ''})</small>` : ''}</td></tr>
+              <tr><td style="padding:5px 0;color:#666">Data</td><td>${date}</td></tr>
+              <tr><td style="padding:5px 0;color:#666">Status</td><td>${status}</td></tr>
+              ${accName   ? `<tr><td style="padding:5px 0;color:#666">Conta</td><td>${_tgEsc(accName)}${isTransfer && toAccName ? ` → ${_tgEsc(toAccName)}` : ''}</td></tr>` : ''}
+              ${payeeName ? `<tr><td style="padding:5px 0;color:#666">Beneficiário</td><td>${_tgEsc(payeeName)}</td></tr>` : ''}
+              ${catName   ? `<tr><td style="padding:5px 0;color:#666">Categoria</td><td>${catIcon} ${_tgEsc(catName)}</td></tr>` : ''}
+              ${memo      ? `<tr><td style="padding:5px 0;color:#666">Memo</td><td>${_tgEsc(memo)}</td></tr>` : ''}
+              ${memberName? `<tr><td style="padding:5px 0;color:#666">Membro</td><td>${memberEmoji} ${_tgEsc(memberName)}</td></tr>` : ''}
+              ${tags      ? `<tr><td style="padding:5px 0;color:#666">Tags</td><td>${_tgEsc(tags)}</td></tr>` : ''}
+            </table>
+          </div>`;
         promises.push(
           emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
             to_email:       user.email,
-            report_subject: `[FinTrack] ${type}: ${desc}`,
-            Subject:        `[FinTrack] ${type}: ${desc}`,
+            report_subject: `[FinTrack] ${typeLabel}: ${desc}`,
+            Subject:        `[FinTrack] ${typeLabel}: ${desc}`,
             month_year:     date,
-            report_content: `<div style="font-family:Arial,sans-serif;padding:14px"><strong>${desc}</strong><br>Valor: ${amount}<br>Data: ${date}${accName?'<br>Conta: '+accName:''}${catName?'<br>Categoria: '+catName:''}</div>`,
+            report_content: htmlContent,
           }).catch(e => console.warn('[notifyTx] email:', e.message))
         );
       }
@@ -957,7 +1041,7 @@ async function notifyOnTransaction(tx, sc = null) {
         promises.push((async () => {
           try {
             const { error } = await sb.functions.invoke('send-scheduled-whatsapp', {
-              body: { recipient: number, message: msgLines, notification_type: 'tx_registered', amount: tx?.amount, lang: 'pt_BR' }
+              body: { recipient: number, message: msgPlain, notification_type: 'tx_registered', amount: tx?.amount, lang: 'pt_BR' }
             });
             if (error) console.warn('[notifyTx] whatsapp error:', error.message || error);
           } catch(e) { console.warn('[notifyTx] whatsapp:', e.message); }
@@ -965,24 +1049,23 @@ async function notifyOnTransaction(tx, sc = null) {
       }
     }
 
-    // Telegram — Edge Function with direct API fallback
+    // Telegram
     if (user.notify_tx_tg) {
       const chatId = String(user.telegram_chat_id || '').trim();
       if (chatId) {
         promises.push((async () => {
           try {
-            const msg = `✅ <b>FinTrack</b>: Transação Registrada\n${msgLines}`;
             await _sendTelegramWithFallback(chatId, msg, { notification_type: 'tx_registered', amount: tx?.amount });
             console.info('[notifyTx] telegram OK → chatId', chatId);
           } catch(e) {
-            console.warn('[notifyTx] telegram all methods failed:', e.message);
+            console.warn('[notifyTx] telegram failed:', e.message);
             if (state?.currentPage === 'transactions') {
               toast('⚠️ Notificação Telegram: ' + e.message, 'warning');
             }
           }
         })());
       } else {
-        console.warn('[notifyTx] notify_tx_tg=true mas telegram_chat_id está vazio. Configure no perfil (aba Notificações).');
+        console.warn('[notifyTx] notify_tx_tg=true mas telegram_chat_id está vazio. Configure no perfil.');
       }
     }
 
@@ -990,6 +1073,11 @@ async function notifyOnTransaction(tx, sc = null) {
   } catch(e) {
     console.warn('[notifyOnTransaction]', e.message);
   }
+}
+
+/** Escapa caracteres especiais para mensagens HTML do Telegram */
+function _tgEsc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 window.notifyOnTransaction = notifyOnTransaction;
 
