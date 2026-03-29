@@ -141,7 +141,7 @@ async function handleWl(e) {
     const fn = name.split(' ')[0];
     const invMsg = document.getElementById('invMsg');
     if (invMsg && !invMsg.value) {
-      invMsg.value = `Olá! Entrei para a lista de espera do Family FinTrack e achei que você ia adorar.\n\nÉ um app de gestão financeira familiar com Inteligência Artificial — ajuda a família toda a ter controle financeiro de verdade.\n\nAinda está em beta exclusivo, mas você pode entrar na lista de espera gratuitamente.\n\nAcesse: ${location.origin}\n\n${fn}`;
+      invMsg.value = `Olá! Acabei de entrar na lista de espera do Family FinTrack e quero te indicar também.\n\nÉ um app de gestão financeira familiar com Inteligência Artificial — ajuda a família toda a ter controle e planejamento financeiro de verdade.\n\nO acesso ainda é restrito (beta exclusivo), mas você pode se cadastrar gratuitamente na lista de espera e garantir sua posição.\n\nAcesse e cadastre-se: ${location.origin}\n\n${fn}`;
     }
 
     // 4. Enviar email de confirmação
@@ -204,6 +204,7 @@ Redija uma mensagem de convite pessoal para um amigo entrar na lista de espera d
 **Contexto:**
 - Quem convida: ${senderFirstName}
 - App: Family FinTrack — gestão financeira familiar com Inteligência Artificial embarcada
+- Objetivo: indicar o amigo para entrar NA LISTA DE ESPERA (não para acesso direto)
 - Status: beta exclusivo, acesso por lista de espera gratuita
 - URL: ${location.origin}
 ${recipientEmails ? `- Destinatários: ${recipientEmails}` : ''}
@@ -213,7 +214,7 @@ ${currentDraft ? `- Rascunho atual para melhorar: "${currentDraft}"` : ''}
 - Tom: humano, caloroso, pessoal — como se fosse uma mensagem genuína de um amigo
 - Máximo 5 parágrafos curtos
 - Destaque o aspecto da FAMÍLIA e da INTELIGÊNCIA ARTIFICIAL como diferencial
-- Mencione que é gratuito entrar na lista
+- Deixe claro que é uma INDICAÇÃO para lista de espera gratuita — o amigo precisa se cadastrar
 - Termine com a URL do site
 - NÃO use emojis em excesso (máximo 2-3)
 - NÃO pareça spam ou marketing genérico
@@ -276,7 +277,7 @@ async function sendInvites() {
   if (rawEmails.length > 5)  { showInviteErr('Máximo de 5 destinatários por vez.'); return; }
 
   const msg = (msgEl?.value||'').trim();
-  if (!msg) { showInviteErr('Escreva uma mensagem para seus amigos, ou use o botão ✨ Redigir com IA.'); return; }
+  if (!msg) { showInviteErr('Escreva uma mensagem de indicação, ou use o botão ✨ Redigir com IA para gerar automaticamente.'); return; }
 
   if (!_ej.serviceId || !_ej.templateId || !_ej.publicKey) {
     showInviteErr('Sistema de email não configurado. Tente mais tarde.');
@@ -294,8 +295,8 @@ async function sendInvites() {
       const htmlBody = buildInviteEmail(fn, _senderEmail, recipientEmail, msg);
       await emailjs.send(_ej.serviceId, _ej.templateId, {
         to_email:       recipientEmail,
-        report_subject: `${fn} te convidou para o Family FinTrack 💚`,
-        Subject:        `${fn} te convidou para o Family FinTrack 💚`,
+        report_subject: `${fn} te indicou para a lista de espera do Family FinTrack 💚`,
+        Subject:        `${fn} te indicou para a lista de espera do Family FinTrack 💚`,
         month_year:     new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),
         report_content: htmlBody,
       });
@@ -311,7 +312,7 @@ async function sendInvites() {
 
   if (sent>0) {
     okEl.textContent = sent===rawEmails.length
-      ? `✅ ${sent} convite(s) enviado(s) com sucesso!`
+      ? `✅ ${sent} indicação(ões) enviada(s) com sucesso!`
       : `✅ ${sent} enviado(s). ${failed} falhou — verifique os endereços.`;
     okEl.style.display='block';
     emailsEl.value='';
@@ -404,7 +405,7 @@ function buildInviteEmail(senderFirstName, senderEmail, recipientEmail, personal
     <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px;font-weight:700">Family FinTrack · Convite Exclusivo</div>
     <div style="font-size:2.8rem;margin-bottom:16px">🛡️</div>
     <h1 style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:#fff;margin:0;line-height:1.25">
-      <strong style="color:#9ed45f">${senderFirstName}</strong> quer te apresentar<br>o Family FinTrack
+      <strong style="color:#9ed45f">${senderFirstName}</strong> te indicou para<br>a lista de espera do Family FinTrack
     </h1>
   </div>
 
@@ -439,7 +440,7 @@ function buildInviteEmail(senderFirstName, senderEmail, recipientEmail, personal
 
   <div style="padding:20px 40px;text-align:center">
     <div style="font-size:11px;color:#8aaa96;line-height:1.85">
-      Você recebeu este convite de <strong>${senderFirstName}</strong>${senderEmail ? ` (${senderEmail})` : ''}<br>
+      Você foi indicado por <strong>${senderFirstName}</strong>${senderEmail ? ` (${senderEmail})` : ''}<br>
       Family FinTrack · Família Inteligente, Finanças sob Controle<br>
       <span style="opacity:.65">Potencializado por Inteligência Artificial</span>
     </div>
