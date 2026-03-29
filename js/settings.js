@@ -2346,26 +2346,49 @@ function getPeriodColor(period) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 window.openTelemetryDeleteModal = function() {
-  // Resetar estado do modal
+  // Resetar para Step 1
+  const s1 = document.getElementById('telDelStep1');
+  const s2 = document.getElementById('telDelStep2');
+  const s3 = document.getElementById('telDelStep3');
+  if (s1) { s1.style.display = 'flex'; }
+  if (s2) { s2.style.display = 'none'; }
+  if (s3) { s3.style.display = 'none'; }
+
   const allRadio = document.getElementById('telDelScopeAll');
   if (allRadio) allRadio.checked = true;
-  const step1 = document.getElementById('telDelStep1');
-  const step2 = document.getElementById('telDelStep2');
-  const step3 = document.getElementById('telDelStep3');
-  const periodOpts = document.getElementById('telDelPeriodOpts');
-  const typeOpts   = document.getElementById('telDelTypeOpts');
-  const confirmBtn = document.getElementById('telDelConfirmBtn');
-  const execBtn    = document.getElementById('telDelExecuteBtn');
-  if (step1) step1.style.display = 'flex';
-  if (step2) step2.style.display = 'none';
-  if (step3) step3.style.display = 'none';
-  if (periodOpts) periodOpts.style.display = 'none';
-  if (typeOpts) typeOpts.style.display = 'none';
-  if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = '🗑️ Excluir'; }
-  if (execBtn) { execBtn.disabled = false; execBtn.textContent = 'Sim, excluir tudo'; }
-  if (typeof _telDelSetProgress === 'function') _telDelSetProgress(0, 'Pronto para excluir', 'Selecione o escopo e confirme.');
+  document.getElementById('telDelPeriodOpts').style.display = 'none';
+  document.getElementById('telDelTypeOpts').style.display   = 'none';
   _telDelUpdatePreview();
   openModal('telDeleteModal');
+};
+
+// Avança do Step 1 → Step 2 (confirmação inline, sem confirm() nativo)
+window._telDelShowConfirm = function() {
+  const btn = document.getElementById('telDelConfirmBtn');
+  if (btn && btn.disabled) return; // nenhum registro encontrado
+
+  const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
+  const msg = scope === 'all'
+    ? 'Todos os registros de telemetria serão permanentemente excluídos.'
+    : scope === 'period'
+    ? `Todos os registros anteriores a ${document.getElementById('telDelBeforeDate')?.value} serão excluídos.`
+    : `Todos os registros do tipo "${document.getElementById('telDelEventType')?.value}" serão excluídos.`;
+
+  const confirmText = document.getElementById('telDelConfirmText');
+  if (confirmText) confirmText.textContent = msg;
+
+  const s1 = document.getElementById('telDelStep1');
+  const s2 = document.getElementById('telDelStep2');
+  if (s1) s1.style.display = 'none';
+  if (s2) { s2.style.display = 'flex'; }
+};
+
+// Volta do Step 2 → Step 1
+window._telDelBackToStep1 = function() {
+  const s1 = document.getElementById('telDelStep1');
+  const s2 = document.getElementById('telDelStep2');
+  if (s1) s1.style.display = 'flex';
+  if (s2) s2.style.display = 'none';
 };
 
 window._telDelScopeChange = function() {
@@ -2432,53 +2455,32 @@ window._telDelUpdatePreview = async function() {
   }
 };
 
-window._telDelShowConfirm = function() {
-  const step1 = document.getElementById('telDelStep1');
-  const step2 = document.getElementById('telDelStep2');
-  const confirmText = document.getElementById('telDelConfirmText');
-  const previewHtml = document.getElementById('telDelPreview')?.innerHTML || '';
-  const btn = document.getElementById('telDelConfirmBtn');
-  if (btn?.disabled) return;
-  if (confirmText) confirmText.innerHTML = previewHtml;
-  if (step1) step1.style.display = 'none';
-  if (step2) step2.style.display = 'flex';
-};
-
-window._telDelBackToStep1 = function() {
-  const step1 = document.getElementById('telDelStep1');
-  const step2 = document.getElementById('telDelStep2');
-  if (step2) step2.style.display = 'none';
-  if (step1) step1.style.display = 'flex';
-};
-
-function _telDelSetProgress(pct, label, sub) {
-  const safePct = Math.max(0, Math.min(100, Number(pct) || 0));
-  const circle = document.getElementById('telDelProgressCircle');
-  const pctEl  = document.getElementById('telDelProgressPct');
-  const barEl  = document.getElementById('telDelProgressBar');
-  const labelEl= document.getElementById('telDelProgressLabel');
-  const subEl  = document.getElementById('telDelProgressSub');
-  const circumference = 264;
-  if (circle) circle.style.strokeDashoffset = String(circumference - (circumference * safePct / 100));
-  if (pctEl) pctEl.textContent = `${Math.round(safePct)}%`;
-  if (barEl) barEl.style.width = `${safePct}%`;
-  if (labelEl && label) labelEl.textContent = label;
-  if (subEl && sub) subEl.textContent = sub;
-}
-
 window.executeTelemetryDelete = async function() {
   const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
-  const btn   = document.getElementById('telDelExecuteBtn');
-  const step2 = document.getElementById('telDelStep2');
-  const step3 = document.getElementById('telDelStep3');
 
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Excluindo…'; }
-  if (step2) step2.style.display = 'none';
-  if (step3) step3.style.display = 'flex';
-  _telDelSetProgress(15, 'Preparando exclusão…', 'Validando critérios selecionados.');
+  // Mostrar Step 3 (progresso) — ocultar Step 2
+  const s2 = document.getElementById('telDelStep2');
+  const s3 = document.getElementById('telDelStep3');
+  if (s2) s2.style.display = 'none';
+  if (s3) { s3.style.display = 'flex'; }
+
+  // Helpers de progresso
+  const circle  = document.getElementById('telDelProgressCircle');
+  const pctEl   = document.getElementById('telDelProgressPct');
+  const labelEl = document.getElementById('telDelProgressLabel');
+  const subEl   = document.getElementById('telDelProgressSub');
+  const barEl   = document.getElementById('telDelProgressBar');
+  const setProgress = (pct, label, sub) => {
+    const dashOffset = 264 * (1 - pct / 100);
+    if (circle)  circle.style.strokeDashoffset = dashOffset;
+    if (barEl)   barEl.style.width = pct + '%';
+    if (pctEl)   pctEl.textContent = Math.round(pct) + '%';
+    if (label && labelEl) labelEl.textContent = label;
+    if (sub !== undefined && subEl) subEl.textContent = sub;
+  };
+  setProgress(10, 'Excluindo registros…', 'Aguarde, não feche o app');
 
   try {
-    // Usa RPC SECURITY DEFINER — DELETE direto é bloqueado pelo RLS
     const params = { p_scope: scope };
     if (scope === 'period') {
       const before = document.getElementById('telDelBeforeDate')?.value;
@@ -2489,20 +2491,24 @@ window.executeTelemetryDelete = async function() {
       if (!evType) throw new Error('Tipo de evento não selecionado.');
       params.p_event_type = evType;
     }
-    _telDelSetProgress(55, 'Excluindo registros…', 'Chamando a rotina protegida no Supabase.');
+
+    setProgress(40, 'Comunicando com servidor…', 'Aguarde…');
     const { data: deleted, error } = await sb.rpc('delete_telemetry', params);
     if (error) throw error;
+
+    setProgress(100, 'Concluído!', '');
     const n = (deleted || 0).toLocaleString('pt-BR');
-    _telDelSetProgress(100, 'Exclusão concluída', `${n} registro(s) removido(s).`);
+
+    await new Promise(r => setTimeout(r, 700));
     toast(`✅ ${n} registro(s) de telemetria excluído(s).`, 'success');
+    closeModal('telDeleteModal');
     await loadTelemetryDashboard();
-    setTimeout(() => closeModal('telDeleteModal'), 500);
   } catch(e) {
-    _telDelSetProgress(0, 'Falha na exclusão', e.message || 'Não foi possível concluir a operação.');
     toast('Erro ao excluir: ' + e.message, 'error');
-    if (step3) step3.style.display = 'none';
-    if (step2) step2.style.display = 'flex';
-    if (btn) { btn.disabled = false; btn.textContent = 'Sim, excluir tudo'; }
+    // Voltar ao Step 1 em caso de erro
+    if (s3) s3.style.display = 'none';
+    const s1 = document.getElementById('telDelStep1');
+    if (s1) s1.style.display = 'flex';
   }
 };
 

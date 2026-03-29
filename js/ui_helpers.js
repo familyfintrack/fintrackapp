@@ -487,10 +487,9 @@ function setCatPickerValue(catId, ctx) {
 
   function _shouldMask(el){
     if(!el || el.disabled || el.readOnly) return false;
-    // opt-in by id (surgical: no CSS/class refactor)
-    // scAmount keeps its dedicated inline mask/preview handlers in scheduledModal.
-    // Binding the generic money mask there causes handler overlap and can make the field feel unresponsive.
-    const ids = ['txAmount','accountBalance','budgetAmount','debtFormAmount','consolidateAmount'];
+    // txAmount e scAmount são gerenciados por _amtFieldInput/Blur/Focus em utils.js
+    // — NÃO incluir aqui para evitar conflito de handlers
+    const ids = ['accountBalance','budgetAmount','debtFormAmount','consolidateAmount'];
     return ids.includes(el.id);
   }
 
@@ -507,10 +506,9 @@ function setCatPickerValue(catId, ctx) {
     el.setAttribute('autocapitalize','off');
     el.setAttribute('spellcheck','false');
 
-    // iOS: beforeinput is more reliable than keydown
+    // iOS: beforeinput é mais confiável que keydown para bloquear não-dígitos
     el.addEventListener('beforeinput', function(ev){
       if(ev && ev.inputType === 'insertText' && ev.data && /\D/.test(ev.data)) {
-        // block non-digits coming from suggestions/locale separators
         ev.preventDefault();
       }
     });
@@ -522,7 +520,6 @@ function setCatPickerValue(catId, ctx) {
     });
 
     el.addEventListener('focus', function(){
-      // If field is empty, initialize it so user sees the money format immediately
       if(!el.value) el.value = '0,00';
       setTimeout(function(){
         try{ el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
@@ -538,7 +535,8 @@ function setCatPickerValue(catId, ctx) {
   }
 
   function initMoneyInputs(){
-    ['txAmount','accountBalance','budgetAmount','debtFormAmount','consolidateAmount'].forEach(function(id){
+    // txAmount e scAmount excluídos — gerenciados por utils.js (_amtFieldInput/Blur/Focus)
+    ['accountBalance','budgetAmount','debtFormAmount','consolidateAmount'].forEach(function(id){
       const el = document.getElementById(id);
       if(el) bindMoneyInput(el);
     });
