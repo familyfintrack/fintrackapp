@@ -404,6 +404,50 @@ function _amtFieldFocus(fieldId) {
   // Seleciona todo o conteúdo para facilitar substituição
   setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
 }
+
+/**
+ * oninput: formata em tempo real enquanto o usuário digita.
+ * Estratégia: aceita dígitos e vírgula; insere separador de milhar
+ * ao sair de cada grupo de 3 dígitos após a última vírgula.
+ * Mantém o cursor na posição correta.
+ */
+function _amtFieldInput(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+
+  // Salva posição do cursor antes de reformatar
+  const selStart = el.selectionStart;
+  const prevLen  = el.value.length;
+
+  // Remove tudo exceto dígitos e a primeira vírgula
+  let raw = el.value.replace(/[^\d,]/g, '');
+
+  // Garante no máximo uma vírgula
+  const commaIdx = raw.indexOf(',');
+  if (commaIdx !== -1) {
+    // Parte inteira + parte decimal (máx 2 casas)
+    const intPart = raw.slice(0, commaIdx).replace(/\D/g, '');
+    const decPart = raw.slice(commaIdx + 1).replace(/\D/g, '').slice(0, 2);
+    raw = intPart + ',' + decPart;
+  }
+
+  // Separa parte inteira para adicionar pontos de milhar
+  const hasComma = raw.includes(',');
+  const intStr   = hasComma ? raw.split(',')[0] : raw;
+  const decStr   = hasComma ? raw.split(',')[1] : null;
+
+  // Formata parte inteira com pontos de milhar
+  const intFormatted = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  const newVal = decStr !== null ? intFormatted + ',' + decStr : intFormatted;
+  el.value = newVal;
+
+  // Reposiciona o cursor compensando os pontos de milhar adicionados/removidos
+  const newLen   = newVal.length;
+  const lenDiff  = newLen - prevLen;
+  const newCaret = Math.max(0, selStart + lenDiff);
+  try { el.setSelectionRange(newCaret, newCaret); } catch(e) {}
+}
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
