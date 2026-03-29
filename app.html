@@ -5317,7 +5317,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
         <div class="form-grid" style="margin-top:14px">
           <div class="form-group full">
-            <label>Descrição <span class="req-star">*</span></label>
+            <label>Descrição <span class="opt-label">opcional</span> <span style="font-size:.68rem;color:var(--muted);font-weight:400">— gerada automaticamente se vazia</span></label>
             <input type="text" id="scDesc" placeholder="Ex: Aluguel, Salário..."
               oninput="_aiSmartDebounce(this.value,'sc')"
               onblur="_aiSmartTrigger(this.value,'sc')">
@@ -5334,6 +5334,28 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="form-group"><label>Conta Origem <span class="req-star">*</span></label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
           <div class="form-group" id="scTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select></div>
           <div class="form-group"><label>Status</label><select id="scStatus"><option value="active">Ativo</option><option value="paused">Pausado</option></select></div>
+          <div class="form-group" id="scPayeeGroup" style="position:relative">
+            <label>Beneficiário / Fonte <span class="req-star">*</span></label>
+            <input type="hidden" id="scPayeeId">
+            <div class="payee-input-wrap">
+              <input type="text" id="scPayeeName" placeholder="Buscar ou criar..." autocomplete="off"
+                oninput="onPayeeInput(this.value,'sc')" onblur="onPayeeBlur('sc')" onkeydown="onPayeeKey(event,'sc')">
+              <span id="scPayeeStatus" class="payee-status"></span>
+            </div>
+            <div id="scPayeeDropdown" class="payee-dropdown" style="display:none"></div>
+          </div>
+          <div class="form-group" id="scCategoryGroup">
+            <label>Categoria <span class="req-star">*</span></label>
+            <input type="hidden" id="scCategoryId">
+            <div class="cat-picker-wrap" id="scCatPickerWrap">
+              <button type="button" class="cat-picker-btn" id="scCatPickerBtn" onclick="toggleCatPicker('sc')">
+                <span class="cat-picker-dot" id="scCatPickerDot" style="display:none"></span>
+                <span id="scCatPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
+                <span class="cat-picker-caret">▼</span>
+              </button>
+              <div class="cat-picker-dropdown" id="scCatPickerDropdown"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Currency panel -->
@@ -5395,28 +5417,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <!-- ── TAB/STEP 1: Detalhes ───────────────────────────────── -->
       <div class="tx-ctx-pane" id="scCtxDetalhes" style="display:none;padding:16px">
         <div class="form-grid">
-          <div class="form-group" id="scPayeeGroup" style="position:relative">
-            <label>Beneficiário / Fonte <span class="opt-label">opcional</span></label>
-            <input type="hidden" id="scPayeeId">
-            <div class="payee-input-wrap">
-              <input type="text" id="scPayeeName" placeholder="Buscar ou criar..." autocomplete="off"
-                oninput="onPayeeInput(this.value,'sc')" onblur="onPayeeBlur('sc')" onkeydown="onPayeeKey(event,'sc')">
-              <span id="scPayeeStatus" class="payee-status"></span>
-            </div>
-            <div id="scPayeeDropdown" class="payee-dropdown" style="display:none"></div>
-          </div>
-          <div class="form-group" id="scCategoryGroup">
-            <label>Categoria <span class="opt-label">opcional</span></label>
-            <input type="hidden" id="scCategoryId">
-            <div class="cat-picker-wrap" id="scCatPickerWrap">
-              <button type="button" class="cat-picker-btn" id="scCatPickerBtn" onclick="toggleCatPicker('sc')">
-                <span class="cat-picker-dot" id="scCatPickerDot" style="display:none"></span>
-                <span id="scCatPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
-                <span class="cat-picker-caret">▼</span>
-              </button>
-              <div class="cat-picker-dropdown" id="scCatPickerDropdown"></div>
-            </div>
-          </div>
+
           <div class="form-group full" id="scFamilyMemberGroup">
             <label>Membro(s) da família <span class="opt-label">opcional</span></label>
             <div id="scFamilyMemberPicker" class="fmc-picker-container"><div class="fmc-picker-empty">👨‍👩‍👧 Família (geral)</div></div>
@@ -5841,7 +5842,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="form-group"><label>Data <span class="req-star">*</span></label><input type="date" id="txDate"></div>
           <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
           <div class="form-group full">
-            <label>Descrição <span class="req-star">*</span></label>
+            <label>Descrição <span class="opt-label">opcional</span> <span style="font-size:.68rem;color:var(--muted);font-weight:400">— gerada automaticamente se vazia</span></label>
             <input type="text" id="txDesc" placeholder="Ex: Almoço no restaurante"
               oninput="_aiSmartDebounce(this.value,'tx')"
               onblur="_aiSmartTrigger(this.value,'tx')">
@@ -5860,6 +5861,34 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
           <div class="form-group"><label>Conta <span class="req-star">*</span></label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
           <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
+          <div class="form-group" id="txPayeeGroup" style="position:relative">
+            <label>Beneficiário / Fonte <span class="req-star">*</span></label>
+            <input type="hidden" id="txPayeeId">
+            <div class="payee-input-wrap">
+              <input type="text" id="txPayeeName" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="onPayeeInput(this.value)" onblur="onPayeeBlur()" onkeydown="onPayeeKey(event)">
+              <span id="txPayeeStatus" class="payee-status"></span>
+            </div>
+            <div id="txPayeeDropdown" class="payee-dropdown" style="display:none"></div>
+            <div id="txPayeeSimilarBanner" class="payee-similar-banner" style="display:none"></div>
+          </div>
+          <div class="form-group" id="txCategoryGroup">
+            <label>Categoria <span class="req-star">*</span></label>
+            <input type="hidden" id="txCategoryId">
+            <div class="cat-picker-wrap" id="catPickerWrap">
+              <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker()">
+                <span class="cat-picker-dot" id="catPickerDot" style="display:none"></span>
+                <span id="catPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
+                <span class="cat-picker-caret">▼</span>
+              </button>
+              <div class="cat-picker-dropdown" id="catPickerDropdown"></div>
+            </div>
+            <div class="cat-suggestion" id="catSuggestion" onclick="applyCatSuggestion()">
+              <span class="cat-sug-dot" id="catSugDot"></span>
+              <span class="cat-sug-label">Última usada:</span>
+              <span class="cat-sug-name" id="catSugName"></span>
+              <span class="cat-sug-dismiss" onclick="event.stopPropagation();hideCatSuggestion()" title="Dispensar">✕</span>
+            </div>
+          </div>
         </div>
 
         <!-- Best card suggestion -->
@@ -5902,34 +5931,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <!-- ── TAB / STEP 1: Detalhes ─────────────────────────────── -->
       <div class="tx-ctx-pane" id="txCtxDetalhes" style="display:none;padding:16px">
         <div class="form-grid">
-          <div class="form-group" id="txPayeeGroup" style="position:relative">
-            <label>Beneficiário / Fonte <span class="opt-label">opcional</span></label>
-            <input type="hidden" id="txPayeeId">
-            <div class="payee-input-wrap">
-              <input type="text" id="txPayeeName" placeholder="Digite para buscar ou criar..." autocomplete="off" oninput="onPayeeInput(this.value)" onblur="onPayeeBlur()" onkeydown="onPayeeKey(event)">
-              <span id="txPayeeStatus" class="payee-status"></span>
-            </div>
-            <div id="txPayeeDropdown" class="payee-dropdown" style="display:none"></div>
-            <div id="txPayeeSimilarBanner" class="payee-similar-banner" style="display:none"></div>
-          </div>
-          <div class="form-group" id="txCategoryGroup">
-            <label>Categoria <span class="opt-label">opcional</span></label>
-            <input type="hidden" id="txCategoryId">
-            <div class="cat-picker-wrap" id="catPickerWrap">
-              <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker()">
-                <span class="cat-picker-dot" id="catPickerDot" style="display:none"></span>
-                <span id="catPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
-                <span class="cat-picker-caret">▼</span>
-              </button>
-              <div class="cat-picker-dropdown" id="catPickerDropdown"></div>
-            </div>
-            <div class="cat-suggestion" id="catSuggestion" onclick="applyCatSuggestion()">
-              <span class="cat-sug-dot" id="catSugDot"></span>
-              <span class="cat-sug-label">Última usada:</span>
-              <span class="cat-sug-name" id="catSugName"></span>
-              <span class="cat-sug-dismiss" onclick="event.stopPropagation();hideCatSuggestion()" title="Dispensar">✕</span>
-            </div>
-          </div>
+
           <div class="form-group" id="txFamilyMemberGroup">
             <label>Membro(s) da família <span class="opt-label">opcional</span></label>
             <div id="txFamilyMemberPicker" class="fmc-picker-container"><div class="fmc-picker-empty">Carregando…</div></div>
