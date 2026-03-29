@@ -4,323 +4,363 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <script>
-// Redirect to app.html if running as installed PWA (standalone mode)
-// This runs synchronously before any render to avoid flash of landing page
 (function(){
-  var isStandalone =
-    window.navigator.standalone === true ||                          // iOS Safari
-    window.matchMedia('(display-mode: standalone)').matches ||      // Android / Desktop PWA
-    window.matchMedia('(display-mode: fullscreen)').matches ||      // some Android
-    document.referrer.includes('android-app://');                   // TWA
-
-  if (isStandalone) {
-    // Running as installed PWA — go straight to app login, never show landing
-    window.location.replace('app.html');
-  }
+  var s = window.navigator.standalone===true ||
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    document.referrer.includes("android-app://");
+  if(s){ window.location.replace("app.html"); }
 })();
 </script>
-<title>Family FinTrack — Gestão Financeira com Inteligência Artificial</title>
-<meta name="description" content="O app de gestão financeira familiar criado 100% com IA. Acesso por convite. Entre na lista de espera.">
-<meta name="theme-color" content="#0d2318">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>Family FinTrack — Família Inteligente, Finanças sob Controle</title>
+<meta name="description" content="O app de gestão financeira familiar com Inteligência Artificial. Para famílias que querem prosperar juntas.">
+<meta name="theme-color" content="#0a1e12">
+<link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --forest:#0d2318;--forest2:#162e20;--forest3:#1e4a32;
-  --accent:#2a6049;--accent2:#3d7a5e;--accent3:#5a9e80;
-  --gold:#c9a84c;--gold2:#e8c56d;--gold3:#f0d98a;
-  --cream:#f7f3ec;--cream2:#ede8df;--cream3:#e4ddd3;
-  --text:#1a1a1a;--text2:#374151;--muted:#6b7280;--muted2:#9ca3af;
-  --on-dark:rgba(255,255,255,.85);--on-dark2:rgba(255,255,255,.55);--on-dark3:rgba(255,255,255,.25);
-  --border-dark:rgba(255,255,255,.08);--border-dark2:rgba(255,255,255,.14);
-  --border-green:rgba(42,96,73,.18);--border-green2:rgba(42,96,73,.35);
-  --glow-green:rgba(42,96,73,.25);--glow-gold:rgba(201,168,76,.2);
-  --serif:"Lora",Georgia,serif;
-  --sans:"Outfit",system-ui,sans-serif;
-  --mono:"JetBrains Mono",monospace;
-  --r:20px;--r-sm:12px;
+  /* Cores extraídas do logo Family FinTrack */
+  --g900:#0a1e12;   /* verde quase preto */
+  --g800:#122a1a;   /* verde escuro */
+  --g700:#1a3d27;   /* verde logo dark */
+  --g600:#235234;   /* verde floresta */
+  --g500:#2d6a44;   /* verde médio */
+  --g400:#3d8a5a;   /* verde sálvia */
+  --g300:#5aaa78;   /* verde claro */
+  --lime:#7dc242;   /* verde limão do logo */
+  --lime2:#9ed45f;  /* limão mais claro */
+  --lime3:#c8eea0;  /* limão suave */
+  --cream:#f4f8f2;  /* fundo suave esverdeado */
+  --cream2:#e8f0e4;
+  --white:#ffffff;
+  --text:#0e2016;
+  --text2:#2d4a38;
+  --muted:#5a7a64;
+  --border-d:rgba(125,194,66,.14);
+  --border-d2:rgba(125,194,66,.28);
+  --glow:rgba(125,194,66,.2);
+  --on-dark:rgba(255,255,255,.92);
+  --on-dark2:rgba(255,255,255,.62);
+  --on-dark3:rgba(255,255,255,.3);
+  --serif:"Playfair Display",Georgia,serif;
+  --sans:"Plus Jakarta Sans",system-ui,sans-serif;
 }
 html{scroll-behavior:smooth}
 body{font-family:var(--sans);background:var(--cream);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
-/* CANVAS */
-#pc{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5}
+/* ── Canvas partículas ─────────────────────────── */
+#bgc{position:fixed;inset:0;z-index:0;pointer-events:none}
 
-/* NAV */
+/* ── NAV ───────────────────────────────────────── */
 nav{
   position:fixed;top:0;left:0;right:0;z-index:200;
   display:flex;align-items:center;justify-content:space-between;
-  padding:18px 48px;
-  background:rgba(13,35,24,.92);
+  padding:14px 48px;
+  background:rgba(10,30,18,.92);
   backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-  border-bottom:1px solid var(--border-dark);
-  transition:padding .35s ease;
+  border-bottom:1px solid var(--border-d);
+  transition:padding .3s;
 }
-nav.sc{padding:13px 48px}
-.nl{display:flex;align-items:center;gap:11px;text-decoration:none}
-.nm{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent3));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.95rem;box-shadow:0 4px 14px var(--glow-green);flex-shrink:0}
-.nt{font-family:var(--serif);font-size:1.05rem;font-weight:600;color:#fff;letter-spacing:.01em}
+nav.sc{padding:10px 48px}
+.nl{display:flex;align-items:center;gap:0;text-decoration:none}
+.nl img{height:42px;width:auto}
 .nc{display:flex;align-items:center;gap:28px}
-.nk{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--on-dark2);text-decoration:none;transition:color .2s}
-.nk:hover{color:#fff}
+.nk{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--on-dark2);text-decoration:none;transition:color .2s}
+.nk:hover{color:var(--lime)}
 .nr{display:flex;align-items:center;gap:10px}
-.nb{font-size:.6rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.28);border-radius:100px;padding:4px 13px}
-.na{font-family:var(--sans);font-size:.78rem;font-weight:700;color:var(--gold2);background:rgba(201,168,76,.08);border:1.5px solid rgba(201,168,76,.22);border-radius:10px;padding:9px 22px;text-decoration:none;transition:all .25s;letter-spacing:.02em}
-.na:hover{background:rgba(201,168,76,.18);border-color:rgba(201,168,76,.5);box-shadow:0 0 24px var(--glow-gold)}
-@media(max-width:768px){nav{padding:15px 20px}nav.sc{padding:11px 20px}.nc{display:none}.nb{display:none}}
+.nbadge{font-size:.58rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.28);border-radius:100px;padding:4px 12px}
+.nlogin{font-family:var(--sans);font-size:.78rem;font-weight:800;color:var(--g900);background:var(--lime);border:none;border-radius:10px;padding:9px 22px;text-decoration:none;transition:all .25s;letter-spacing:.02em}
+.nlogin:hover{background:var(--lime2);box-shadow:0 0 24px var(--glow);transform:translateY(-1px)}
+@media(max-width:768px){nav{padding:12px 18px}nav.sc{padding:9px 18px}.nc,.nbadge{display:none}}
 
-/* HERO */
+/* ── HERO ──────────────────────────────────────── */
 .hero{
-  position:relative;z-index:1;
-  min-height:100dvh;
-  background:var(--forest);
+  position:relative;z-index:1;min-height:100dvh;
+  background:var(--g900);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:100px 24px 80px;
-  overflow:hidden;
+  text-align:center;padding:100px 24px 80px;overflow:hidden;
 }
-.hm{position:absolute;inset:0;pointer-events:none}
-.hm::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at 20% 25%,rgba(42,96,73,.32) 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 65%,rgba(42,96,73,.18) 0%,transparent 60%),radial-gradient(ellipse 80% 40% at 50% 95%,rgba(201,168,76,.06) 0%,transparent 50%);animation:meshPulse 10s ease-in-out infinite alternate}
-@keyframes meshPulse{from{opacity:.75;transform:scale(1)}to{opacity:1;transform:scale(1.05)}}
-.hg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:52px 52px;opacity:.6}
-.hc{position:relative;z-index:2;max-width:820px}
-.he{display:inline-flex;align-items:center;gap:9px;font-size:.67rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.22);border-radius:100px;padding:7px 18px;margin-bottom:32px;animation:fadeUp .8s ease both}
-.hed{width:5px;height:5px;background:var(--gold);border-radius:50%;box-shadow:0 0 8px var(--gold);animation:blink 2s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-.hero h1{font-family:var(--serif);font-size:clamp(2.9rem,7.5vw,5.8rem);font-weight:500;color:#fff;line-height:1.06;letter-spacing:-.02em;margin-bottom:8px;animation:fadeUp .8s .1s ease both}
-.hero h1 em{font-style:italic;font-weight:600;background:linear-gradient(135deg,#7cc8a0 0%,var(--gold) 55%,#7cc8a0 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:textShimmer 5s ease-in-out infinite}
-@keyframes textShimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-.hero h1 strong{font-weight:700;display:block}
-.hs{font-size:clamp(.95rem,2.5vw,1.15rem);color:var(--on-dark2);line-height:1.75;max-width:620px;margin:24px auto 40px;animation:fadeUp .8s .25s ease both}
-.hs strong{color:var(--on-dark);font-weight:600}
-.hctas{display:flex;gap:13px;justify-content:center;flex-wrap:wrap;animation:fadeUp .8s .4s ease both;margin-bottom:72px}
-.btn-p{font-family:var(--sans);font-size:.92rem;font-weight:800;color:var(--forest);background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold) 100%);background-size:200% 100%;border:none;border-radius:14px;padding:16px 36px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:9px;letter-spacing:.02em;transition:all .3s;box-shadow:0 4px 28px var(--glow-gold);animation:glowP 3s ease-in-out infinite}
-@keyframes glowP{0%,100%{box-shadow:0 4px 28px rgba(201,168,76,.25)}50%{box-shadow:0 6px 44px rgba(201,168,76,.42)}}
-.btn-p:hover{transform:translateY(-3px) scale(1.02);background-position:100% 0;box-shadow:0 12px 48px rgba(201,168,76,.55)}
-.btn-g{font-family:var(--sans);font-size:.92rem;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.06);border:1.5px solid var(--border-dark2);border-radius:14px;padding:16px 28px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;letter-spacing:.02em;transition:all .25s}
-.btn-g:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);box-shadow:0 0 28px rgba(42,96,73,.18)}
-.hstats{display:flex;justify-content:center;padding-top:36px;border-top:1px solid var(--border-dark);animation:fadeUp .8s .55s ease both;flex-wrap:wrap;gap:0}
-.hst{flex:1;min-width:110px;max-width:170px;text-align:center;padding:0 22px;border-right:1px solid var(--border-dark)}
+.hbg{position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.3) 0%,transparent 60%),
+    radial-gradient(ellipse 70% 80% at 90% 75%, rgba(26,61,39,.25) 0%,transparent 55%),
+    radial-gradient(ellipse 55% 35% at 50% -5%, rgba(125,194,66,.07) 0%,transparent 55%);
+  animation:bgp 14s ease-in-out infinite alternate;
+}
+@keyframes bgp{from{opacity:.8}to{opacity:1;transform:scale(1.03)}}
+.hgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(125,194,66,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.025) 1px,transparent 1px);background-size:48px 48px}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+.o1{width:520px;height:520px;background:rgba(45,106,68,.26);top:-160px;left:-130px;animation:od 24s ease-in-out infinite alternate}
+.o2{width:380px;height:380px;background:rgba(125,194,66,.09);bottom:-60px;right:-80px;animation:od 18s ease-in-out infinite alternate-reverse}
+.o3{width:260px;height:260px;background:rgba(26,61,39,.2);top:40%;left:55%;animation:od 20s ease-in-out infinite alternate}
+@keyframes od{0%{transform:translate(0,0)}100%{transform:translate(35px,-25px)}}
+
+.hc{position:relative;z-index:2;max-width:880px}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:9px;font-size:.65rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--lime);background:rgba(125,194,66,.08);border:1px solid rgba(125,194,66,.22);border-radius:100px;padding:7px 18px;margin-bottom:24px;animation:fup .9s ease both}
+.bdot{width:6px;height:6px;background:var(--lime);border-radius:50%;box-shadow:0 0 8px var(--lime);animation:bpulse 2s ease-in-out infinite}
+@keyframes bpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+
+/* Logo hero */
+.hlogo{margin-bottom:20px;animation:fup .9s .05s ease both}
+.hlogo img{height:72px;width:auto;filter:drop-shadow(0 0 28px rgba(125,194,66,.25))}
+
+/* Slogan */
+.slogan{font-family:var(--serif);font-size:clamp(.95rem,2.5vw,1.25rem);font-style:italic;color:var(--lime2);letter-spacing:.03em;margin-bottom:14px;opacity:.92;animation:fup .9s .12s ease both}
+
+/* H1 */
+.hero h1{font-family:var(--serif);font-size:clamp(2.8rem,7.5vw,5.6rem);color:#fff;line-height:1.05;letter-spacing:-.022em;margin-bottom:22px;animation:fup .9s .2s ease both;font-weight:600}
+.hero h1 em{font-style:italic;background:linear-gradient(135deg,var(--lime3) 0%,var(--lime) 50%,#5c9e2a 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gsh 5s ease-in-out infinite}
+@keyframes gsh{0%,100%{background-position:0%}50%{background-position:100%}}
+
+/* Sub */
+.hsub{font-size:clamp(.95rem,2.3vw,1.12rem);color:var(--on-dark2);line-height:1.75;max-width:620px;margin:0 auto 42px;animation:fup .9s .3s ease both}
+.hsub strong{color:var(--on-dark);font-weight:600}
+
+/* CTAs */
+.hctas{display:flex;gap:13px;justify-content:center;flex-wrap:wrap;animation:fup .9s .42s ease both;margin-bottom:76px}
+.ctp{font-family:var(--sans);font-size:.98rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime) 0%,var(--lime2) 100%);border:none;border-radius:14px;padding:16px 36px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:9px;letter-spacing:.01em;transition:all .3s;box-shadow:0 4px 30px rgba(125,194,66,.3);animation:lglow 3s ease-in-out infinite}
+@keyframes lglow{0%,100%{box-shadow:0 4px 30px rgba(125,194,66,.25)}50%{box-shadow:0 6px 48px rgba(125,194,66,.48)}}
+.ctp:hover{transform:translateY(-3px);box-shadow:0 12px 48px rgba(125,194,66,.55)}
+.ctg{font-family:var(--sans);font-size:.95rem;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);border-radius:14px;padding:16px 26px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s}
+.ctg:hover{background:rgba(255,255,255,.12);border-color:rgba(125,194,66,.3)}
+
+/* Stats */
+.hstats{display:flex;justify-content:center;flex-wrap:wrap;border-top:1px solid var(--border-d);padding-top:34px;animation:fup .9s .55s ease both;gap:0}
+.hst{flex:1;min-width:105px;max-width:170px;text-align:center;padding:0 20px;border-right:1px solid var(--border-d)}
 .hst:last-child{border-right:none}
 .hsn{font-family:var(--serif);font-size:2rem;font-weight:600;color:#fff;line-height:1;margin-bottom:5px;display:flex;align-items:baseline;gap:2px;justify-content:center}
-.hsn span{font-size:1.1rem;color:var(--accent3)}
-.hsl{font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--on-dark3)}
-.scroll-hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--on-dark3);font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;animation:fadeUp 1s 1.3s ease both}
-.scroll-mouse{width:20px;height:32px;border:1.5px solid rgba(255,255,255,.18);border-radius:100px;position:relative}
-.scroll-mouse::after{content:'';position:absolute;top:5px;left:50%;transform:translateX(-50%);width:2.5px;height:5px;background:var(--accent3);border-radius:100px;animation:mouseWheel 2.2s ease-in-out infinite}
-@keyframes mouseWheel{0%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0;transform:translateX(-50%) translateY(12px)}}
-@media(max-width:640px){.hst{padding:14px 16px;border-right:none;border-bottom:1px solid var(--border-dark)}.hst:last-child{border-bottom:none}.hstats{flex-direction:column;align-items:center}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+.hsn em{font-style:normal;font-size:1.1rem;color:var(--lime)}
+.hsl{font-size:.56rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--on-dark3)}
+@media(max-width:580px){.hst{padding:14px 16px;border-right:none;border-bottom:1px solid var(--border-d)}.hst:last-child{border-bottom:none}.hstats{flex-direction:column;align-items:center}}
 
-/* RIBBON */
-.ribbon{position:relative;z-index:1;padding:16px 24px;background:linear-gradient(90deg,var(--forest2),var(--forest3),var(--forest2));border-top:1px solid var(--border-green);border-bottom:1px solid var(--border-green);overflow:hidden}
-.ribbon::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(201,168,76,.05) 50%,transparent 100%);animation:rShimmer 4s ease-in-out infinite}
-@keyframes rShimmer{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
+.shint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--on-dark3);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;animation:fup 1s 1.2s ease both}
+.smouse{width:20px;height:32px;border:1.5px solid rgba(125,194,66,.2);border-radius:100px;position:relative}
+.smouse::after{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);width:2px;height:5px;background:var(--lime);border-radius:100px;animation:msw 2.2s ease-in-out infinite}
+@keyframes msw{0%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0;transform:translateX(-50%) translateY(12px)}}
+@keyframes fup{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── RIBBON ─────────────────────────────────────── */
+.ribbon{position:relative;z-index:1;padding:14px 24px;background:var(--g800);border-top:1px solid var(--border-d);border-bottom:1px solid var(--border-d);overflow:hidden}
+.ribbon::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(125,194,66,.05),transparent);animation:rsh 4s ease-in-out infinite}
+@keyframes rsh{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
 .ri{position:relative;max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
-.rp{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:var(--gold);color:var(--forest);border-radius:100px;padding:4px 14px;animation:rPulse 2.4s ease-in-out infinite}
-@keyframes rPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.rp{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:var(--lime);color:var(--g900);border-radius:100px;padding:4px 13px;animation:rpu 2.5s ease-in-out infinite}
+@keyframes rpu{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 .rt{font-size:.82rem;color:var(--on-dark2);font-weight:500}
-.rt strong{color:var(--gold)}
+.rt strong{color:var(--lime2)}
 
-/* VIBE SECTION */
-.vibe{position:relative;z-index:1;padding:110px 24px;background:var(--forest);text-align:center;overflow:hidden}
-.vibe::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 50% at 50% 50%,rgba(42,96,73,.14) 0%,transparent 70%)}
-.vc{position:relative;z-index:2;max-width:740px;margin:0 auto}
-.stag{display:inline-flex;align-items:center;gap:10px;font-size:.63rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent3);margin-bottom:22px}
-.stag-line{width:28px;height:1px;background:var(--accent3);opacity:.45}
-.stl{font-family:var(--serif);font-size:clamp(2rem,5vw,3.8rem);font-weight:500;color:#fff;line-height:1.1;letter-spacing:-.01em;margin-bottom:20px}
-.stl em{font-style:italic;color:var(--gold);font-weight:600}
-.stb{font-size:.98rem;color:var(--on-dark2);line-height:1.8;margin-bottom:44px}
-.stb strong{color:var(--on-dark);font-weight:600}
-/* Terminal */
-.tw{max-width:700px;margin:0 auto;text-align:left}
-.term{background:#040e07;border:1px solid var(--border-green2);border-radius:18px;overflow:hidden;box-shadow:0 24px 72px rgba(0,0,0,.5)}
-.th{display:flex;align-items:center;gap:7px;padding:12px 18px;background:rgba(42,96,73,.08);border-bottom:1px solid var(--border-green)}
-.td1{width:10px;height:10px;border-radius:50%;background:#ff5f57}
-.td2{width:10px;height:10px;border-radius:50%;background:#febc2e}
-.td3{width:10px;height:10px;border-radius:50%;background:#28c840}
-.tf{margin-left:auto;margin-right:auto;font-family:var(--mono);font-size:.66rem;color:var(--on-dark3);letter-spacing:.06em}
-.tb{padding:22px;font-family:var(--mono);font-size:.78rem;line-height:1.95}
-.tc{color:#4a7a5a}.tk{color:var(--accent3)}.tv{color:var(--gold)}.ts{color:#a8d5a2}.tn{color:#f9a87b}.to{color:var(--on-dark3)}.tfn{color:#7cb8a0}
-.tcur{display:inline-block;width:7px;height:1em;background:var(--accent3);margin-left:2px;vertical-align:text-bottom;animation:blink .8s step-end infinite}
+/* ── REVEAL ─────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .75s ease,transform .75s ease}
+.rv.in{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.07s}.d2{transition-delay:.15s}.d3{transition-delay:.24s}
+.d4{transition-delay:.33s}.d5{transition-delay:.42s}
 
-/* FEATURES */
-.feat{position:relative;z-index:1;padding:100px 24px 110px;background:var(--cream)}
-.fhd{text-align:center;max-width:620px;margin:0 auto 68px}
-.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1100px;margin:0 auto}
-@media(max-width:900px){.fgrid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.fgrid{grid-template-columns:1fr}}
-.fc{
-  position:relative;
-  background:#fff;
-  border:1px solid rgba(0,0,0,.065);
-  border-radius:var(--r);
-  padding:26px 24px;
-  overflow:hidden;
-  transition:all .38s cubic-bezier(.25,.46,.45,.94);
-  cursor:default;
-}
-.fc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent3),transparent);opacity:0;transition:opacity .35s}
-.fc:hover{transform:translateY(-5px);box-shadow:0 24px 60px rgba(0,0,0,.08);border-color:var(--border-green)}
-.fc:hover::before{opacity:1}
-.fc.ai{background:linear-gradient(135deg,var(--forest) 0%,var(--forest2) 100%);border-color:transparent;grid-column:span 2}
-.fc.ai::before{background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.fc.ai:hover{box-shadow:0 24px 60px rgba(13,35,24,.28)}
-@media(max-width:900px){.fc.ai{grid-column:span 1}}
-.fat{position:absolute;top:18px;right:18px;font-size:.56rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(201,168,76,.1);color:var(--gold);border:1px solid rgba(201,168,76,.25);border-radius:100px;padding:3px 10px}
-.fi{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:18px;transition:all .3s}
-.fc:not(.ai) .fi{background:var(--cream2);border:1px solid var(--border-green)}
-.fc:hover:not(.ai) .fi{background:rgba(42,96,73,.08);border-color:var(--border-green2)}
-.fc.ai .fi{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.18)}
-.fc.ai:hover .fi{background:rgba(201,168,76,.18)}
-.ftl{font-family:var(--serif);font-size:1.1rem;font-weight:700;color:var(--forest);margin-bottom:9px}
-.fc.ai .ftl{color:#fff}
-.fdc{font-size:.83rem;color:var(--muted);line-height:1.65}
-.fc.ai .fdc{color:var(--on-dark2)}
-.fchs{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px}
-.fch{font-size:.6rem;font-weight:600;letter-spacing:.06em;border-radius:100px;padding:3px 10px}
-.fc:not(.ai) .fch{background:rgba(42,96,73,.07);color:var(--accent);border:1px solid var(--border-green)}
-.fc.ai .fch{background:rgba(201,168,76,.1);color:var(--gold);border:1px solid rgba(201,168,76,.2)}
+/* ── SECTION TAG ─────────────────────────────────── */
+.stag{display:inline-flex;align-items:center;gap:10px;font-size:.62rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:18px}
+.stag-l{width:26px;height:1px;opacity:.45}
+.stag.g{color:var(--g500)}.stag.g .stag-l{background:var(--g500)}
+.stag.lm{color:var(--lime)}.stag.lm .stag-l{background:var(--lime)}
 
-/* QUOTE */
-.qsec{position:relative;z-index:1;padding:72px 24px;background:var(--forest)}
-.qcard{max-width:780px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid var(--border-green2);border-radius:24px;padding:56px 48px;position:relative;overflow:hidden;text-align:center}
-.qcard::before{content:'';position:absolute;top:-1px;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,var(--accent3),var(--gold),var(--accent3),transparent)}
-.qm{font-family:var(--serif);font-size:5.5rem;color:var(--accent3);opacity:.18;line-height:.3;margin-bottom:20px;display:block}
-.qt{font-family:var(--serif);font-size:clamp(1.2rem,3vw,1.85rem);font-style:italic;font-weight:400;color:var(--on-dark);line-height:1.55;margin-bottom:24px}
-.qa{font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+/* ── WHY SECTION (família) ───────────────────────── */
+.why{position:relative;z-index:1;padding:110px 24px;background:var(--cream);text-align:center}
+.why-hd{max-width:660px;margin:0 auto 64px}
+.sec-t{font-family:var(--serif);font-size:clamp(2rem,4.5vw,3.5rem);line-height:1.1;letter-spacing:-.015em;margin-bottom:14px;color:var(--text);font-weight:600}
+.sec-s{font-size:.97rem;line-height:1.8;color:var(--muted);max-width:600px;margin:0 auto}
+
+/* Family cards */
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1060px;margin:0 auto}
+@media(max-width:880px){.why-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.why-grid{grid-template-columns:1fr}}
+.wcard{background:#fff;border:1px solid rgba(0,0,0,.065);border-radius:22px;padding:30px 24px;text-align:left;position:relative;overflow:hidden;transition:all .38s cubic-bezier(.25,.46,.45,.94);cursor:default}
+.wcard::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--g400),transparent);opacity:0;transition:opacity .35s}
+.wcard:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(0,0,0,.08);border-color:rgba(45,106,68,.2)}
+.wcard:hover::after{opacity:1}
+.wcard.dark{background:linear-gradient(160deg,var(--g700) 0%,var(--g800) 100%);border:none;color:#fff}
+.wcard.dark:hover{box-shadow:0 24px 60px rgba(10,30,18,.4)}
+.wcard.dark::after{background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+.wc-ico{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.45rem;margin-bottom:20px;transition:transform .3s}
+.wcard:hover .wc-ico{transform:scale(1.1) rotate(-4deg)}
+.wcard:not(.dark) .wc-ico{background:var(--cream2);border:1px solid rgba(45,106,68,.14)}
+.wcard.dark .wc-ico{background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.18)}
+.wc-t{font-family:var(--serif);font-size:1.15rem;font-weight:600;margin-bottom:8px}
+.wcard:not(.dark) .wc-t{color:var(--text)}
+.wcard.dark .wc-t{color:#fff}
+.wc-d{font-size:.84rem;line-height:1.65}
+.wcard:not(.dark) .wc-d{color:var(--muted)}
+.wcard.dark .wc-d{color:var(--on-dark2)}
+.wc-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px}
+.wc-p{font-size:.6rem;font-weight:700;letter-spacing:.06em;border-radius:100px;padding:3px 10px}
+.wcard:not(.dark) .wc-p{background:rgba(45,106,68,.07);color:var(--g500);border:1px solid rgba(45,106,68,.15)}
+.wcard.dark .wc-p{background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.2)}
+
+/* ── QUOTE ───────────────────────────────────────── */
+.qsec{position:relative;z-index:1;padding:72px 24px;background:var(--g900)}
+.qcard{max-width:800px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid var(--border-d2);border-radius:26px;padding:56px 48px;position:relative;overflow:hidden;text-align:center}
+.qcard::before{content:"";position:absolute;top:-1px;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+.qm{font-family:var(--serif);font-size:5rem;color:var(--lime);opacity:.15;line-height:.3;margin-bottom:18px;display:block}
+.qt{font-family:var(--serif);font-size:clamp(1.15rem,2.8vw,1.8rem);font-style:italic;color:var(--on-dark);line-height:1.55;margin-bottom:22px;font-weight:400}
+.qa{font-size:.67rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lime2)}
 @media(max-width:640px){.qcard{padding:36px 24px}}
 
-/* HOW */
-.how{position:relative;z-index:1;padding:96px 24px;background:var(--cream)}
-.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:980px;margin:0 auto}
-@media(max-width:720px){.sgrid{grid-template-columns:1fr;gap:14px}}
-.sc2{background:#fff;border:1px solid rgba(0,0,0,.065);border-radius:var(--r);padding:30px 26px;position:relative;overflow:hidden;transition:all .32s}
-.sc2:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,.07);border-color:var(--border-green)}
-.snw{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-.sn{font-family:var(--serif);font-size:2.4rem;font-weight:700;background:linear-gradient(135deg,var(--accent3),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
-.si2{font-size:1.2rem}
-.stt{font-family:var(--serif);font-size:1.05rem;font-weight:700;color:var(--forest);margin-bottom:9px}
-.sd{font-size:.83rem;color:var(--muted);line-height:1.68}
+/* ── FEATURES ─────────────────────────────────────── */
+.feat{position:relative;z-index:1;padding:100px 24px 110px;background:var(--cream)}
+.feat-hd{text-align:center;max-width:620px;margin:0 auto 66px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1060px;margin:0 auto}
+@media(max-width:880px){.feat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
+.fc{background:#fff;border:1px solid rgba(0,0,0,.065);border-radius:20px;padding:26px 22px;position:relative;overflow:hidden;transition:all .38s cubic-bezier(.25,.46,.45,.94)}
+.fc::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g400),transparent);opacity:0;transition:opacity .35s}
+.fc:hover{transform:translateY(-5px);box-shadow:0 20px 56px rgba(0,0,0,.08);border-color:rgba(45,106,68,.2)}
+.fc:hover::before{opacity:1}
+.fc.hl{background:linear-gradient(160deg,var(--g700),var(--g800));border:none;grid-column:span 2}
+.fc.hl:hover{box-shadow:0 20px 56px rgba(10,30,18,.32)}
+.fc.hl::before{background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+@media(max-width:880px){.fc.hl{grid-column:span 1}}
+.fc-ai{position:absolute;top:16px;right:16px;font-size:.55rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.22);border-radius:100px;padding:3px 9px}
+.fc-ico{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin-bottom:18px;transition:all .3s}
+.fc:not(.hl) .fc-ico{background:var(--cream2);border:1px solid rgba(45,106,68,.13)}
+.fc:not(.hl):hover .fc-ico{background:rgba(45,106,68,.08)}
+.fc.hl .fc-ico{background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.18)}
+.fc-t{font-family:var(--serif);font-size:1.1rem;font-weight:600;margin-bottom:8px}
+.fc:not(.hl) .fc-t{color:var(--text)}
+.fc.hl .fc-t{color:#fff}
+.fc-d{font-size:.83rem;line-height:1.65}
+.fc:not(.hl) .fc-d{color:var(--muted)}
+.fc.hl .fc-d{color:var(--on-dark2)}
+.fc-ps{display:flex;flex-wrap:wrap;gap:5px;margin-top:13px}
+.fc-pi{font-size:.59rem;font-weight:700;letter-spacing:.06em;border-radius:100px;padding:3px 9px}
+.fc:not(.hl) .fc-pi{background:rgba(45,106,68,.07);color:var(--g500);border:1px solid rgba(45,106,68,.14)}
+.fc.hl .fc-pi{background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.2)}
 
-/* CTA / WAITLIST */
+/* ── HOW IT WORKS ─────────────────────────────────── */
+.how{position:relative;z-index:1;padding:96px 24px;background:var(--g900)}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:980px;margin:0 auto}
+@media(max-width:720px){.how-grid{grid-template-columns:1fr;gap:14px}}
+.hc2{background:rgba(255,255,255,.04);border:1px solid var(--border-d);border-radius:20px;padding:30px 24px;position:relative;transition:all .32s}
+.hc2:hover{border-color:var(--border-d2);transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,.25)}
+.hn{font-family:var(--serif);font-size:2.4rem;font-weight:700;background:linear-gradient(135deg,var(--lime2),var(--g300));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:14px}
+.ht{font-family:var(--serif);font-size:1.05rem;font-weight:600;color:#fff;margin-bottom:8px}
+.hd{font-size:.83rem;color:var(--on-dark2);line-height:1.68}
+
+/* ── WAITLIST CTA ─────────────────────────────────── */
 .cta{position:relative;z-index:1;padding:80px 24px 110px;background:var(--cream)}
-.ctacard{max-width:660px;margin:0 auto;background:var(--forest);border-radius:28px;padding:54px 46px;text-align:center;position:relative;overflow:hidden}
-.ctacard::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 55% at 25% 25%,rgba(42,96,73,.3),transparent 60%),radial-gradient(ellipse 60% 70% at 75% 75%,rgba(201,168,76,.06),transparent 60%)}
+.ctacard{max-width:660px;margin:0 auto;background:var(--g700);border-radius:28px;padding:52px 46px;text-align:center;position:relative;overflow:hidden;box-shadow:0 32px 80px rgba(10,30,18,.2)}
+.ctacard::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 75% 50% at 20% 20%,rgba(45,106,68,.35),transparent 60%),radial-gradient(ellipse 60% 70% at 80% 80%,rgba(125,194,66,.08),transparent 60%)}
+.ctacard::after{content:"";position:absolute;top:-1px;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--lime),transparent)}
 .ctai{position:relative;z-index:2}
-.ctaey{display:inline-flex;align-items:center;gap:9px;font-size:.63rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;border:1px solid rgba(201,168,76,.2);border-radius:100px;padding:5px 16px;background:rgba(201,168,76,.06)}
-.ctat{font-family:var(--serif);font-size:clamp(1.9rem,4.5vw,2.9rem);font-weight:600;color:#fff;line-height:1.15;margin-bottom:14px}
-.ctas{font-size:.92rem;color:var(--on-dark2);line-height:1.7;margin-bottom:36px}
+.ctaey{display:inline-flex;align-items:center;gap:9px;font-size:.62rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--lime2);margin-bottom:16px;border:1px solid rgba(125,194,66,.2);border-radius:100px;padding:5px 16px;background:rgba(125,194,66,.06)}
+.ctatit{font-family:var(--serif);font-size:clamp(1.9rem,4.5vw,2.9rem);font-weight:600;color:#fff;line-height:1.15;margin-bottom:13px}
+.ctasub{font-size:.92rem;color:var(--on-dark2);line-height:1.72;margin-bottom:34px}
+
 /* Form */
 .wf{display:flex;flex-direction:column;gap:13px}
 .wr{display:flex;gap:11px}
 @media(max-width:520px){.wr{flex-direction:column}}
 .wg{display:flex;flex-direction:column;gap:6px;flex:1}
-.wl2{font-size:.63rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--on-dark3);text-align:left}
-.wi2{font-family:var(--sans);font-size:.88rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid var(--border-dark);border-radius:11px;padding:13px 16px;outline:none;width:100%;transition:all .2s}
-.wi2::placeholder{color:var(--on-dark3)}
-.wi2:focus{border-color:var(--accent3);background:rgba(255,255,255,.11);box-shadow:0 0 0 3px rgba(42,96,73,.15)}
-.wse{font-family:var(--sans);font-size:.88rem;color:var(--on-dark2);background:rgba(255,255,255,.07);border:1.5px solid var(--border-dark);border-radius:11px;padding:13px 16px;outline:none;width:100%;cursor:pointer;-webkit-appearance:none;appearance:none;transition:all .2s}
-.wse:focus{border-color:var(--accent3);background:rgba(255,255,255,.11)}
-.wse option{background:var(--forest);color:#fff}
-.wsub{font-family:var(--sans);font-size:.98rem;font-weight:800;color:var(--forest);background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold) 100%);background-size:200% 100%;border:none;border-radius:13px;padding:17px 32px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;letter-spacing:.02em;transition:all .3s;box-shadow:0 5px 28px rgba(201,168,76,.28);margin-top:2px}
-.wsub:hover:not(:disabled){transform:translateY(-2px);background-position:100% 0;box-shadow:0 10px 44px rgba(201,168,76,.45)}
+.wl{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.32);text-align:left}
+.wi,.wse{font-family:var(--sans);font-size:.88rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:11px;padding:13px 16px;outline:none;width:100%;transition:all .2s}
+.wi::placeholder{color:rgba(255,255,255,.28)}
+.wi:focus,.wse:focus{border-color:var(--lime);background:rgba(125,194,66,.08);box-shadow:0 0 0 3px rgba(125,194,66,.12)}
+.wse{color:rgba(255,255,255,.7);-webkit-appearance:none;appearance:none;cursor:pointer}
+.wse option{background:var(--g700);color:#fff}
+.wsub{font-family:var(--sans);font-size:.98rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime) 0%,var(--lime2) 100%);border:none;border-radius:13px;padding:17px 32px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .3s;box-shadow:0 5px 28px rgba(125,194,66,.28);margin-top:2px}
+.wsub:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 44px rgba(125,194,66,.45)}
 .wsub:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.wpr{font-size:.68rem;color:var(--on-dark3);text-align:center;line-height:1.6}
+.wpr{font-size:.68rem;color:rgba(255,255,255,.28);text-align:center;line-height:1.6}
 .werr{font-size:.76rem;color:#f87171;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.18);border-radius:9px;padding:11px 15px;display:none;text-align:center}
 .wsuc{display:none;flex-direction:column;align-items:center;gap:14px;padding:14px 0}
-.wsic{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent3));display:flex;align-items:center;justify-content:center;font-size:2rem;box-shadow:0 8px 36px rgba(42,96,73,.35);animation:popIn .5s cubic-bezier(.175,.885,.32,1.275) both}
-@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.wsic{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--g500),var(--lime));display:flex;align-items:center;justify-content:center;font-size:2rem;box-shadow:0 8px 36px rgba(125,194,66,.3);animation:popin .5s cubic-bezier(.175,.885,.32,1.275) both}
+@keyframes popin{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
 .wsit{font-family:var(--serif);font-size:1.75rem;font-weight:700;color:#fff}
 .wsis{font-size:.88rem;color:var(--on-dark2);line-height:1.65;max-width:380px}
-.wsin{color:var(--gold);font-weight:700}
+.wsin{color:var(--lime2);font-weight:700}
 @media(max-width:640px){.ctacard{padding:36px 20px;border-radius:20px}}
 
-/* FOOTER */
-footer{position:relative;z-index:1;padding:44px 40px;background:var(--forest);border-top:1px solid var(--border-green)}
-.fi2{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
-.flw{display:flex;align-items:center;gap:9px;text-decoration:none}
-.flm{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),var(--accent3));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
-.flt{font-family:var(--serif);font-size:.95rem;font-weight:600;color:var(--on-dark2)}
+/* ── FOOTER ──────────────────────────────────────── */
+footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);border-top:1px solid var(--border-d)}
+.fi{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
+.flogo{display:flex;align-items:center;gap:0;text-decoration:none}
+.flogo img{height:34px;width:auto;opacity:.7;transition:opacity .2s}
+.flogo:hover img{opacity:1}
 .fcp{font-size:.7rem;color:var(--on-dark3);text-align:center;line-height:1.7}
-.fll{font-family:var(--sans);font-size:.75rem;font-weight:700;letter-spacing:.06em;color:var(--accent3);border:1px solid var(--border-green2);border-radius:9px;padding:9px 20px;text-decoration:none;display:flex;align-items:center;gap:7px;transition:all .22s}
-.fll:hover{background:rgba(42,96,73,.2);box-shadow:0 0 20px var(--glow-green)}
-@media(max-width:640px){footer{padding:36px 20px}.fi2{flex-direction:column;text-align:center}.fll{justify-content:center}}
-
-/* SECTION SHARED */
-.sec-hd{text-align:center;max-width:620px;margin:0 auto 64px}
-.stit{font-family:var(--serif);font-size:clamp(1.8rem,4vw,3rem);font-weight:600;color:var(--forest);line-height:1.18;margin-bottom:14px}
-.ssub{font-size:.97rem;color:var(--muted);line-height:1.7}
-.stit-w{color:#fff}
-.ssub-w{color:var(--on-dark2)}
-
-/* REVEAL */
-.rv{opacity:0;transform:translateY(30px);transition:opacity .75s ease,transform .75s ease}
-.rv.in{opacity:1;transform:translateY(0)}
-.d1{transition-delay:.08s}.d2{transition-delay:.17s}.d3{transition-delay:.27s}.d4{transition-delay:.37s}.d5{transition-delay:.47s}
-
-/* SPIN */
-@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.fll{font-family:var(--sans);font-size:.75rem;font-weight:700;letter-spacing:.06em;color:var(--lime2);border:1px solid var(--border-d2);border-radius:9px;padding:9px 20px;text-decoration:none;display:flex;align-items:center;gap:7px;transition:all .22s}
+.fll:hover{background:rgba(125,194,66,.1);box-shadow:0 0 20px rgba(125,194,66,.15)}
+@media(max-width:640px){footer{padding:36px 20px}.fi{flex-direction:column;text-align:center}.fll{justify-content:center}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<canvas id="pc"></canvas>
+<canvas id="bgc"></canvas>
 
 <!-- NAV -->
 <nav id="nav">
   <a href="#" class="nl">
-    <div class="nm">💚</div>
-    <span class="nt">Family FinTrack</span>
+    <img src="logo_transparent.png" alt="Family FinTrack">
   </a>
   <div class="nc">
-    <a href="#features" class="nk">Funcionalidades</a>
-    <a href="#como" class="nk">Como funciona</a>
-    <a href="#waitlist" class="nk">Acesso</a>
+    <a href="#familia" class="nk">Para sua família</a>
+    <a href="#recursos" class="nk">Recursos</a>
+    <a href="#acesso" class="nk">Acesso</a>
   </div>
   <div class="nr">
-    <span class="nb">✦ Beta Privado</span>
-    <a href="app.html" class="na">Entrar no App →</a>
+    <span class="nbadge">✦ Beta Exclusivo</span>
+    <a href="app.html" class="nlogin">Entrar no App →</a>
   </div>
 </nav>
 
-<!-- HERO -->
+<!-- ══ HERO ══════════════════════════════════════ -->
 <section class="hero">
-  <div class="hm"><div class="hg"></div></div>
+  <div class="hbg"></div>
+  <div class="hgrid"></div>
+  <div class="o1 orb"></div>
+  <div class="o2 orb"></div>
+  <div class="o3 orb"></div>
+
   <div class="hc">
-    <div class="he">
-      <div class="hed"></div>
-      Criado com IA · Feito para famílias reais
-      <div class="hed"></div>
+    <div class="badge">
+      <div class="bdot"></div>
+      Família Inteligente · Finanças sob Controle
+      <div class="bdot"></div>
     </div>
-    <h1>
-      <em>Inteligência Artificial</em>
-      <strong>a serviço da sua família</strong>
-    </h1>
-    <p class="hs">
-      O app de gestão financeira familiar criado <strong>100% via Vibe Coding</strong> — onde visão humana e IA se uniram para construir algo que nenhuma família deveria ficar sem. Simples, poderoso, e genuinamente <strong>inteligente</strong>.
+
+    <div class="hlogo">
+      <img src="logo_transparent.png" alt="Family FinTrack">
+    </div>
+
+    <p class="slogan">Família Inteligente, Finanças sob Controle.</p>
+
+    <h1>Sua família<br>merece o melhor<br><em>futuro financeiro</em></h1>
+
+    <p class="hsub">
+      O único app de gestão financeira familiar com <strong>Inteligência Artificial embarcada</strong> — que aprende com os padrões da sua família, antecipa necessidades e transforma dados em decisões inteligentes.
     </p>
+
     <div class="hctas">
-      <a href="#waitlist" class="btn-p">✨ Quero meu convite</a>
-      <a href="#features" class="btn-g">Ver o que a IA fez →</a>
+      <a href="#acesso" class="ctp">✨ Quero meu acesso</a>
+      <a href="#familia" class="ctg">Como funciona →</a>
     </div>
+
     <div class="hstats">
       <div class="hst">
-        <div class="hsn">100<span>%</span></div>
-        <div class="hsl">Vibe Coding + IA</div>
+        <div class="hsn">IA<em>+</em></div>
+        <div class="hsl">Inteligência embarcada</div>
       </div>
       <div class="hst">
-        <div class="hsn">0<span>%</span></div>
-        <div class="hsl">Código manual</div>
-      </div>
-      <div class="hst">
-        <div class="hsn">40<span>+</span></div>
+        <div class="hsn">40<em>+</em></div>
         <div class="hsl">Funcionalidades</div>
+      </div>
+      <div class="hst">
+        <div class="hsn">360<em>°</em></div>
+        <div class="hsl">Visão financeira familiar</div>
       </div>
       <div class="hst">
         <div class="hsn">∞</div>
@@ -328,223 +368,198 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--forest);bo
       </div>
     </div>
   </div>
-  <div class="scroll-hint">
-    <div class="scroll-mouse"></div>
-    scroll
-  </div>
+
+  <div class="shint"><div class="smouse"></div>descobrir</div>
 </section>
 
 <!-- RIBBON -->
 <div class="ribbon">
   <div class="ri">
     <span class="rp">BETA</span>
-    <span class="rt">App em <strong>fase de testes exclusivos</strong>. Acesso apenas por convite. <strong>Solicite o seu abaixo.</strong></span>
+    <span class="rt">App em <strong>fase de testes exclusivos</strong> — acesso apenas por convite. <strong>Solicite o seu.</strong></span>
   </div>
 </div>
 
-<!-- VIBE SECTION -->
-<section class="vibe">
-  <div class="vc">
-    <div class="stag rv"><div class="stag-line"></div>A origem do projeto<div class="stag-line"></div></div>
-    <h2 class="stl rv d1">Nascido de uma <em>parceria imersiva</em><br>entre humano e IA</h2>
-    <p class="stb rv d2">
-      Family FinTrack não foi programado — foi <strong>co-criado</strong>. Em sessões intensas de Vibe Coding, cada funcionalidade emergiu do diálogo entre intenção humana e inteligência artificial. Nenhuma linha de código foi escrita manualmente. É um convite para você entrar no mundo da IA — porque este app faz uso dela em toda a sua extensão, todos os dias, para simplificar sua vida financeira.
-    </p>
-    <div class="tw rv d3">
-      <div class="term">
-        <div class="th">
-          <div class="td1"></div><div class="td2"></div><div class="td3"></div>
-          <span class="tf">vibe_coding_session.js</span>
-        </div>
-        <div class="tb">
-          <div><span class="tc">// Family FinTrack — Sessão de Vibe Coding</span></div>
-          <div><span class="tc">// Criador: Décio Franchini + Claude (Anthropic)</span></div>
-          <br>
-          <div><span class="tk">const</span> <span class="tfn">projeto</span> <span class="to">=</span> <span class="to">{</span></div>
-          <div>&nbsp;&nbsp;<span class="tk">nome</span><span class="to">:</span> <span class="ts">"Family FinTrack"</span><span class="to">,</span></div>
-          <div>&nbsp;&nbsp;<span class="tk">criador</span><span class="to">:</span> <span class="ts">"Décio Franchini"</span><span class="to">,</span></div>
-          <div>&nbsp;&nbsp;<span class="tk">parceiro</span><span class="to">:</span> <span class="ts">"Claude — Anthropic"</span><span class="to">,</span></div>
-          <div>&nbsp;&nbsp;<span class="tk">codigoManual</span><span class="to">:</span> <span class="tn">0</span><span class="to">,</span></div>
-          <div>&nbsp;&nbsp;<span class="tk">funcionalidades</span><span class="to">:</span> <span class="tn">40</span> <span class="to">+</span> <span class="ts">" e crescendo"</span><span class="to">,</span></div>
-          <div>&nbsp;&nbsp;<span class="tk">filosofia</span><span class="to">:</span> <span class="ts">"Visão humana + IA = magia real"</span></div>
-          <div><span class="to">};</span></div>
-          <br>
-          <div><span class="tfn">console</span><span class="to">.</span><span class="tfn">log</span><span class="to">(</span><span class="ts">"O futuro do software já chegou."</span><span class="to">);</span><span class="tcur"></span></div>
-        </div>
-      </div>
+<!-- ══ FAMÍLIA ════════════════════════════════════ -->
+<section class="why" id="familia">
+  <div class="why-hd">
+    <div class="stag g rv"><div class="stag-l"></div>Para famílias reais<div class="stag-l"></div></div>
+    <h2 class="sec-t rv d1">Cada família tem<br>uma história financeira única</h2>
+    <p class="sec-s rv d2">O Family FinTrack foi pensado para proteger e fazer prosperar o que há de mais precioso: sua família. Com IA que entende o seu contexto, não apenas seus números.</p>
+  </div>
+  <div class="why-grid">
+    <div class="wcard rv">
+      <div class="wc-ico">🛡️</div>
+      <div class="wc-t">Proteção & Controle</div>
+      <div class="wc-d">Visão completa das finanças familiares em tempo real. Saiba exatamente onde cada real entra, sai e cresce.</div>
+      <div class="wc-pills"><span class="wc-p">Multi-contas</span><span class="wc-p">Saldo em tempo real</span></div>
+    </div>
+    <div class="wcard dark rv d1">
+      <div class="wc-ico">🤖</div>
+      <div class="wc-t">IA que entende sua família</div>
+      <div class="wc-d">Insights personalizados gerados por Inteligência Artificial. Detecta padrões, antecipa gastos e sugere ações antes que os problemas apareçam.</div>
+      <div class="wc-pills"><span class="wc-p">Análise preditiva</span><span class="wc-p">Chat IA</span><span class="wc-p">Insights automáticos</span></div>
+    </div>
+    <div class="wcard rv d2">
+      <div class="wc-ico">👨‍👩‍👧‍👦</div>
+      <div class="wc-t">Toda a família conectada</div>
+      <div class="wc-d">Perfis individuais para cada membro. Cada um acompanha o que lhe pertence. Decisões financeiras tomadas juntos, com mais informação.</div>
+      <div class="wc-pills"><span class="wc-p">Multi-usuário</span><span class="wc-p">Permissões</span></div>
+    </div>
+    <div class="wcard rv d1">
+      <div class="wc-ico">📅</div>
+      <div class="wc-t">Planejamento automático</div>
+      <div class="wc-d">Contas programadas, recorrências e lembretes automáticos via Telegram e WhatsApp. Nunca mais esqueça um vencimento importante.</div>
+      <div class="wc-pills"><span class="wc-p">Telegram</span><span class="wc-p">WhatsApp</span><span class="wc-p">Auto-registro</span></div>
+    </div>
+    <div class="wcard rv d2">
+      <div class="wc-ico">🔮</div>
+      <div class="wc-t">Futuro financeiro visível</div>
+      <div class="wc-d">Previsão de fluxo de caixa para 90 dias calculada por IA. Veja o futuro financeiro da sua família antes que ele aconteça.</div>
+      <div class="wc-pills"><span class="wc-p">Forecast 90 dias</span><span class="wc-p">IA</span></div>
+    </div>
+    <div class="wcard rv d3">
+      <div class="wc-ico">🔒</div>
+      <div class="wc-t">Segurança de ponta</div>
+      <div class="wc-d">Criptografia PBKDF2, segurança por linha de dados (RLS) e backup automático na nuvem. Seus dados familiares protegidos.</div>
+      <div class="wc-pills"><span class="wc-p">Criptografia</span><span class="wc-p">Backup auto</span></div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="feat" id="features">
-  <div class="fhd">
-    <div class="stag rv"><div class="stag-line" style="background:var(--accent)"></div>Funcionalidades<div class="stag-line" style="background:var(--accent)"></div></div>
-    <h2 class="stit rv d1">O que a IA construiu<br>para sua família</h2>
-    <p class="ssub rv d2">Cada recurso foi concebido e implementado em parceria com inteligência artificial, pensando em famílias reais.</p>
-  </div>
-  <div class="fgrid">
-
-    <div class="fc ai rv">
-      <span class="fat">✦ IA Core</span>
-      <div class="fi">🤖</div>
-      <h3 class="ftl">IA Financeira Integrada</h3>
-      <p class="fdc">Motor de análise com Gemini AI que lê seus dados, detecta padrões, prevê gastos futuros e gera insights em linguagem natural. Chat direto com a IA para entender suas finanças.</p>
-      <div class="fchs">
-        <span class="fch">Análise preditiva</span>
-        <span class="fch">Chat com IA</span>
-        <span class="fch">Health Score</span>
-        <span class="fch">Insights automáticos</span>
-        <span class="fch">Projeção 90 dias</span>
-      </div>
-    </div>
-
-    <div class="fc rv d1">
-      <span class="fat">✦ IA</span>
-      <div class="fi" style="background:rgba(42,96,73,.08)">📱</div>
-      <h3 class="ftl">Leitura de Recibos por IA</h3>
-      <p class="fdc">Fotografe qualquer recibo e a IA extrai valor, data, estabelecimento e sugere categoria. Zero digitação.</p>
-      <div class="fchs"><span class="fch">OCR com IA</span><span class="fch">Auto-categoria</span></div>
-    </div>
-
-    <div class="fc rv d2">
-      <span class="fat">✦ IA</span>
-      <div class="fi" style="background:rgba(42,96,73,.08)">🔮</div>
-      <h3 class="ftl">Forecast Inteligente</h3>
-      <p class="fdc">Previsão de fluxo de caixa para 90 dias baseada em padrões históricos, calculada por IA.</p>
-      <div class="fchs"><span class="fch">90 dias</span><span class="fch">Multi-conta</span></div>
-    </div>
-
-    <div class="fc rv d1">
-      <div class="fi" style="background:rgba(42,96,73,.08)">📅</div>
-      <h3 class="ftl">Transações Programadas</h3>
-      <p class="fdc">Agende receitas e despesas recorrentes. O app registra automaticamente e notifica pelo Telegram ou WhatsApp.</p>
-      <div class="fchs"><span class="fch">Auto-registro</span><span class="fch">Telegram</span><span class="fch">WhatsApp</span></div>
-    </div>
-
-    <div class="fc rv d2">
-      <div class="fi" style="background:rgba(42,96,73,.08)">👨‍👩‍👧‍👦</div>
-      <h3 class="ftl">Gestão Familiar</h3>
-      <p class="fdc">Múltiplos usuários com perfis e permissões individuais. Cada membro da família vinculado às suas transações.</p>
-      <div class="fchs"><span class="fch">Multi-usuário</span><span class="fch">Permissões</span></div>
-    </div>
-
-    <div class="fc rv d3">
-      <div class="fi" style="background:rgba(42,96,73,.08)">💹</div>
-      <h3 class="ftl">Carteira de Investimentos</h3>
-      <p class="fdc">Acompanhe seus ativos, cotações em tempo real e rentabilidade histórica com gráficos automáticos.</p>
-      <div class="fchs"><span class="fch">Cotações live</span><span class="fch">Gráficos</span></div>
-    </div>
-
-    <div class="fc rv d2">
-      <div class="fi" style="background:rgba(42,96,73,.08)">🛒</div>
-      <h3 class="ftl">Lista de Mercado + Preços</h3>
-      <p class="fdc">Lista de compras colaborativa com histórico de preços por produto e loja. Saiba sempre onde comprar mais barato.</p>
-      <div class="fchs"><span class="fch">Histórico preços</span><span class="fch">Colaborativo</span></div>
-    </div>
-
-    <div class="fc rv d3">
-      <div class="fi" style="background:rgba(42,96,73,.08)">🛡️</div>
-      <h3 class="ftl">Segurança & Backup</h3>
-      <p class="fdc">Dados na nuvem com RLS por linha, criptografia PBKDF2 com 100k iterações, backup automático e restauração total.</p>
-      <div class="fchs"><span class="fch">Supabase RLS</span><span class="fch">PBKDF2 100k</span></div>
-    </div>
-
-    <div class="fc rv d4">
-      <div class="fi" style="background:rgba(42,96,73,.08)">📊</div>
-      <h3 class="ftl">Relatórios & Telemetria</h3>
-      <p class="fdc">Relatórios detalhados por período e categoria, exportação em PDF, e dashboard de telemetria de uso para o administrador.</p>
-      <div class="fchs"><span class="fch">Exportar PDF</span><span class="fch">Dashboard admin</span></div>
-    </div>
-
-  </div>
-</section>
-
-<!-- QUOTE -->
+<!-- ══ QUOTE ═════════════════════════════════════ -->
 <section class="qsec">
   <div class="qcard rv">
     <span class="qm">"</span>
-    <p class="qt">Este app é um convite para entrar no mundo da Inteligência Artificial. Cada decisão, cada funcionalidade, cada pixel foi construído em diálogo íntimo entre uma visão humana e uma IA com capacidade ilimitada de realização.</p>
-    <div class="qa">Décio Franchini · Criador · Vibe Coder · Pai de família</div>
+    <p class="qt">Este app nasceu de um sonho simples: que todas as famílias pudessem tomar decisões financeiras com a mesma inteligência e clareza que antes era privilégio de poucos. A Inteligência Artificial tornou isso possível — e acessível.</p>
+    <div class="qa">Décio Franchini · Criador · Family FinTrack</div>
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="how" id="como">
-  <div class="sec-hd">
-    <div class="stag rv"><div class="stag-line" style="background:var(--accent)"></div>Jornada de acesso<div class="stag-line" style="background:var(--accent)"></div></div>
-    <h2 class="stit rv d1">Do cadastro ao app completo</h2>
+<!-- ══ RECURSOS ═══════════════════════════════════ -->
+<section class="feat" id="recursos">
+  <div class="feat-hd">
+    <div class="stag g rv"><div class="stag-l"></div>Recursos<div class="stag-l"></div></div>
+    <h2 class="sec-t rv d1">Tudo que uma família<br>precisa em um só lugar</h2>
+    <p class="sec-s rv d2" style="color:var(--muted)">Potencializado por Inteligência Artificial em cada funcionalidade.</p>
   </div>
-  <div class="sgrid">
-    <div class="sc2 rv">
-      <div class="snw"><div class="sn">01</div><div class="si2">📝</div></div>
-      <div class="stt">Cadastre-se na lista</div>
-      <div class="sd">Preencha o formulário com seu nome, email e perfil. Você entra na fila e recebe confirmação imediata no email.</div>
+  <div class="feat-grid">
+    <div class="fc hl rv">
+      <span class="fc-ai">✦ IA</span>
+      <div class="fc-ico">🤖</div>
+      <div class="fc-t">AI Insights — IA Financeira</div>
+      <div class="fc-d">Motor de análise com Gemini AI que lê os dados da sua família, identifica padrões invisíveis, prevê cenários e gera recomendações em linguagem natural. Chat direto com a IA para entender suas finanças.</div>
+      <div class="fc-ps"><span class="fc-pi">Análise preditiva</span><span class="fc-pi">Chat com IA</span><span class="fc-pi">Health Score</span><span class="fc-pi">Projeção 90 dias</span></div>
     </div>
-    <div class="sc2 rv d1">
-      <div class="snw"><div class="sn">02</div><div class="si2">✉️</div></div>
-      <div class="stt">Receba seu convite</div>
-      <div class="sd">Quando seu acesso for aprovado, você recebe um email com credenciais e um guia completo de primeiros passos.</div>
+    <div class="fc rv d1">
+      <span class="fc-ai">✦ IA</span>
+      <div class="fc-ico">📱</div>
+      <div class="fc-t">Leitura de Recibos por IA</div>
+      <div class="fc-d">Fotografe qualquer recibo. A IA extrai valor, data, estabelecimento e categoria automaticamente. Zero digitação.</div>
+      <div class="fc-ps"><span class="fc-pi">OCR com IA</span><span class="fc-pi">Auto-categoria</span></div>
     </div>
-    <div class="sc2 rv d2">
-      <div class="snw"><div class="sn">03</div><div class="si2">🚀</div></div>
-      <div class="stt">Acesso completo</div>
-      <div class="sd">Instale como PWA na tela inicial do iPhone ou Android. Sem App Store. Todas as funcionalidades, sem limitações.</div>
+    <div class="fc rv d2">
+      <div class="fc-ico">💹</div>
+      <div class="fc-t">Carteira de Investimentos</div>
+      <div class="fc-d">Acompanhe ativos, cotações em tempo real e rentabilidade. Gráficos automáticos e comparativos históricos.</div>
+      <div class="fc-ps"><span class="fc-pi">Cotações live</span><span class="fc-pi">Gráficos</span></div>
+    </div>
+    <div class="fc rv d1">
+      <div class="fc-ico">🛒</div>
+      <div class="fc-t">Lista de Mercado + Preços</div>
+      <div class="fc-d">Lista de compras colaborativa com histórico de preços por produto e loja. Saiba onde comprar mais barato.</div>
+      <div class="fc-ps"><span class="fc-pi">Histórico preços</span><span class="fc-pi">Colaborativo</span></div>
+    </div>
+    <div class="fc rv d2">
+      <div class="fc-ico">📊</div>
+      <div class="fc-t">Relatórios & Orçamentos</div>
+      <div class="fc-d">Relatórios detalhados por período, categoria e conta. Orçamentos por categoria com alertas inteligentes.</div>
+      <div class="fc-ps"><span class="fc-pi">Exportar PDF</span><span class="fc-pi">Alertas</span></div>
+    </div>
+    <div class="fc rv d3">
+      <div class="fc-ico">💳</div>
+      <div class="fc-t">Dívidas & Cartões</div>
+      <div class="fc-d">Controle de dívidas com amortização automática. Gestão de cartões de crédito com fatura e pagamento integrados.</div>
+      <div class="fc-ps"><span class="fc-pi">Amortização auto</span><span class="fc-pi">Fatura</span></div>
     </div>
   </div>
 </section>
 
-<!-- WAITLIST -->
-<section class="cta" id="waitlist">
+<!-- ══ HOW IT WORKS ═══════════════════════════════ -->
+<section class="how">
+  <div class="feat-hd" style="margin-bottom:56px">
+    <div class="stag lm rv"><div class="stag-l"></div>Como funciona<div class="stag-l"></div></div>
+    <h2 class="sec-t rv d1" style="color:#fff">Do convite à transformação<br>financeira da sua família</h2>
+  </div>
+  <div class="how-grid">
+    <div class="hc2 rv">
+      <div class="hn">01</div>
+      <div class="ht">Solicite seu convite</div>
+      <div class="hd">Preencha o formulário abaixo. Você entra na lista de espera e recebe confirmação imediata por email.</div>
+    </div>
+    <div class="hc2 rv d1">
+      <div class="hn">02</div>
+      <div class="ht">Receba o acesso</div>
+      <div class="hd">Quando aprovado, você recebe um email com credenciais e um guia completo para começar em minutos.</div>
+    </div>
+    <div class="hc2 rv d2">
+      <div class="hn">03</div>
+      <div class="ht">Transforme sua família</div>
+      <div class="hd">Instale como app no iPhone ou Android, convide sua família e comece a prosperar com a IA ao seu lado.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WAITLIST ═══════════════════════════════════ -->
+<section class="cta" id="acesso">
   <div class="ctacard rv">
     <div class="ctai">
       <div class="ctaey">✦ Vagas limitadas</div>
-      <h2 class="ctat">Entre para o<br>programa beta</h2>
-      <p class="ctas">Seja um dos primeiros a experimentar o futuro da gestão financeira familiar. Acesso gratuito durante o beta.</p>
+      <h2 class="ctatit">Transforme o futuro<br>financeiro da sua família</h2>
+      <p class="ctasub">Junte-se às famílias que já descobriram o poder da Inteligência Artificial a serviço de quem mais importa. Acesso gratuito durante o beta.</p>
 
       <form class="wf" id="wlFrm" onsubmit="handleWl(event)">
         <div class="wr">
-          <div class="wg"><label class="wl2">Nome completo *</label><input type="text" class="wi2" id="wlN" placeholder="Seu nome completo" required autocomplete="name"></div>
-          <div class="wg"><label class="wl2">E-mail *</label><input type="email" class="wi2" id="wlE" placeholder="seu@email.com" required autocomplete="email"></div>
+          <div class="wg"><label class="wl">Nome completo *</label><input type="text" class="wi" id="wlN" placeholder="Seu nome" required autocomplete="name"></div>
+          <div class="wg"><label class="wl">E-mail *</label><input type="email" class="wi" id="wlE" placeholder="seu@email.com" required autocomplete="email"></div>
         </div>
         <div class="wr">
-          <div class="wg"><label class="wl2">WhatsApp (opcional)</label><input type="tel" class="wi2" id="wlP" placeholder="+55 11 99999-9999" autocomplete="tel"></div>
-          <div class="wg"><label class="wl2">Como vai usar</label>
+          <div class="wg"><label class="wl">WhatsApp (opcional)</label><input type="tel" class="wi" id="wlP" placeholder="+55 11 99999-9999" autocomplete="tel"></div>
+          <div class="wg"><label class="wl">Perfil da família</label>
             <select class="wse" id="wlR">
-              <option value="personal">Uso pessoal</option>
-              <option value="family">Família completa</option>
+              <option value="family">Família com filhos</option>
+              <option value="couple">Casal</option>
+              <option value="personal">Uso individual</option>
               <option value="business">Empreendedor</option>
-              <option value="curious">Curioso sobre IA</option>
             </select>
           </div>
         </div>
         <div class="werr" id="wlErr"></div>
-        <button type="submit" class="wsub" id="wlBtn"><span id="wlBT">✨ Garantir meu lugar na lista</span></button>
-        <p class="wpr">🔒 Seus dados são usados apenas para o convite. Sem spam, jamais.</p>
+        <button type="submit" class="wsub" id="wlBtn"><span id="wlBT">✨ Quero meu convite exclusivo</span></button>
+        <p class="wpr">🔒 Seus dados são usados apenas para o convite. Sem spam.</p>
       </form>
 
       <div class="wsuc" id="wlSuc">
         <div class="wsic">🎉</div>
         <div class="wsit">Você está dentro!</div>
-        <p class="wsis">Olá, <span class="wsin" id="sNm"></span>! Cadastro confirmado. Verifique <strong id="sEm" style="color:rgba(255,255,255,.6)"></strong> — enviamos todos os detalhes. Até breve! 🚀</p>
+        <p class="wsis">Olá, <span class="wsin" id="sNm"></span>! Cadastro confirmado. Verifique <strong id="sEm" style="color:rgba(255,255,255,.55)"></strong> — seu convite chegará em breve. Bem-vindo à família! 🚀</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- ══ FOOTER ════════════════════════════════════ -->
 <footer>
-  <div class="fi2">
-    <a href="#" class="flw">
-      <div class="flm">💚</div>
-      <span class="flt">Family FinTrack</span>
+  <div class="fi">
+    <a href="#" class="flogo">
+      <img src="logo_transparent.png" alt="Family FinTrack">
     </a>
     <div class="fcp">
-      Desenvolvido 100% via Vibe Coding &amp; IA &nbsp;·&nbsp; Beta Privado 2025<br>
-      <span style="opacity:.5">Claude · Gemini · GPT &nbsp;·&nbsp; Supabase · EmailJS &nbsp;·&nbsp; Uma experiência imersiva em IA</span>
+      Potencializado por Inteligência Artificial &nbsp;·&nbsp; Beta Privado 2025<br>
+      <span style="opacity:.55">Desenvolvido com Vibe Coding e IA &nbsp;·&nbsp; Gemini &middot; Claude &middot; Supabase</span>
     </div>
     <a href="app.html" class="fll">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
       Acessar o App
     </a>
   </div>

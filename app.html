@@ -4511,10 +4511,9 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div><!-- /telPane_families -->
 
-      <!-- ── Modal: Excluir Telemetria ── -->
-      <!-- Modal: Excluir Telemetria (sem confirm() nativo — não funciona em PWA mobile) -->
-      <div class="modal" id="telDeleteModal" style="display:none">
-        <div class="modal-box" style="max-width:460px">
+      <!-- Modal: Excluir Telemetria — usa modal-overlay padrão do app -->
+      <div class="modal-overlay" id="telDeleteModal">
+        <div class="modal" style="max-width:460px">
           <div class="modal-header">
             <span class="modal-title" style="color:var(--danger,#dc2626);display:flex;align-items:center;gap:6px">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -4580,7 +4579,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
 
           <!-- STEP 2: Confirmação inline (sem confirm() nativo) -->
-          <div id="telDelStep2" style="display:none;padding:18px 20px 20px;display:none;flex-direction:column;gap:16px">
+          <div id="telDelStep2" style="display:none;padding:18px 20px 20px;flex-direction:column;gap:16px">
             <div style="background:var(--red-lt,#fef2f2);border:2px solid var(--danger,#dc2626);border-radius:12px;padding:16px">
               <div style="font-size:1.1rem;font-weight:800;color:var(--danger,#dc2626);margin-bottom:8px;display:flex;align-items:center;gap:8px">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
