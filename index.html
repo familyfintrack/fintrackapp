@@ -376,7 +376,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
 <div class="ribbon">
   <div class="ri">
     <span class="rp">BETA</span>
-    <span class="rt">App em <strong>fase de testes exclusivos</strong> — acesso apenas por convite. <strong>Solicite o seu.</strong></span>
+    <span class="rt">App em <strong>fase de testes exclusivos</strong> — acesso por lista de espera. <strong>Cadastro gratuito. Garanta sua posição.</strong></span>
   </div>
 </div>
 
@@ -494,8 +494,8 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   <div class="how-grid">
     <div class="hc2 rv">
       <div class="hn">01</div>
-      <div class="ht">Solicite seu convite</div>
-      <div class="hd">Preencha o formulário abaixo. Você entra na lista de espera e recebe confirmação imediata por email.</div>
+      <div class="ht">Entre para a lista</div>
+      <div class="hd">Cadastre-se gratuitamente na lista de espera. Você recebe confirmação imediata por email e garante sua posição.</div>
     </div>
     <div class="hc2 rv d1">
       <div class="hn">02</div>
@@ -514,9 +514,15 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
 <section class="cta" id="acesso">
   <div class="ctacard rv">
     <div class="ctai">
-      <div class="ctaey">✦ Vagas limitadas</div>
-      <h2 class="ctatit">Transforme o futuro<br>financeiro da sua família</h2>
-      <p class="ctasub">Junte-se às famílias que já descobriram o poder da Inteligência Artificial a serviço de quem mais importa. Acesso gratuito durante o beta.</p>
+      <div class="ctaey">✦ Lista de Espera · Beta Exclusivo</div>
+      <h2 class="ctatit">Entre para a lista<br>de espera gratuita</h2>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;color:rgba(255,255,255,.55)">
+          <span style="width:8px;height:8px;background:var(--lime);border-radius:50%;box-shadow:0 0 8px var(--lime);animation:bpulse 2s ease-in-out infinite;flex-shrink:0"></span>
+          Cadastro gratuito · Acesso por ordem de inscrição
+        </div>
+      </div>
+      <p class="ctasub">Faça seu cadastro na lista de espera e garanta sua posição no programa beta. Você será notificado assim que seu acesso for liberado — <strong style="color:rgba(255,255,255,.85)">gratuitamente</strong>.</p>
 
       <form class="wf" id="wlFrm" onsubmit="handleWl(event)">
         <div class="wr">
@@ -535,14 +541,45 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
           </div>
         </div>
         <div class="werr" id="wlErr"></div>
-        <button type="submit" class="wsub" id="wlBtn"><span id="wlBT">✨ Quero meu convite exclusivo</span></button>
+        <button type="submit" class="wsub" id="wlBtn"><span id="wlBT">📋 Entrar para a lista de espera</span></button>
         <p class="wpr">🔒 Seus dados são usados apenas para o convite. Sem spam.</p>
       </form>
 
       <div class="wsuc" id="wlSuc">
         <div class="wsic">🎉</div>
-        <div class="wsit">Você está dentro!</div>
-        <p class="wsis">Olá, <span class="wsin" id="sNm"></span>! Cadastro confirmado. Verifique <strong id="sEm" style="color:rgba(255,255,255,.55)"></strong> — seu convite chegará em breve. Bem-vindo à família! 🚀</p>
+        <div class="wsit">Você está na lista!</div>
+        <p class="wsis">Olá, <span class="wsin" id="sNm"></span>! Sua posição na lista de espera foi confirmada. Verifique <strong id="sEm" style="color:var(--lime2)"></strong> — enviaremos seu acesso assim que disponível.</p>
+        <!-- Bloco de compartilhamento -->
+        <div style="width:100%;margin-top:20px;background:rgba(255,255,255,.06);border:1px solid rgba(125,194,66,.2);border-radius:16px;padding:22px 20px;text-align:left">
+          <div style="font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lime2);margin-bottom:4px;display:flex;align-items:center;gap:7px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Convide amigos para a lista
+          </div>
+          <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6">Ajude seus amigos a descobrirem o Family FinTrack. Eles também entrarão na lista de espera.</p>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+              <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);display:block;margin-bottom:5px">E-mails dos amigos (separados por vírgula)</label>
+              <input type="text" id="invEmails" placeholder="amigo1@email.com, amigo2@email.com" style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">Mensagem personalizada</label>
+                <button type="button" id="invAiBtn" onclick="writeInviteWithAI()" style="font-family:var(--sans);font-size:.65rem;font-weight:800;letter-spacing:.06em;color:var(--g900);background:linear-gradient(135deg,var(--lime),var(--lime2));border:none;border-radius:8px;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                  <span id="invAiBtnTxt">✨ Redigir com IA</span>
+                </button>
+              </div>
+              <textarea id="invMsg" rows="4" placeholder="Escreva uma mensagem para seus amigos..." style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;resize:vertical;transition:border-color .2s;line-height:1.6" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+            </div>
+            <div id="invErr" style="font-size:.75rem;color:#f87171;display:none;padding:8px 12px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px"></div>
+            <div id="invOk" style="font-size:.78rem;color:var(--lime2);display:none;padding:8px 12px;background:rgba(125,194,66,.08);border:1px solid rgba(125,194,66,.2);border-radius:8px;text-align:center;font-weight:600"></div>
+            <button type="button" id="invSendBtn" onclick="sendInvites()" style="font-family:var(--sans);font-size:.9rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime),var(--lime2));border:none;border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .25s;box-shadow:0 4px 20px rgba(125,194,66,.25)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              <span id="invSendTxt">Enviar convites</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
