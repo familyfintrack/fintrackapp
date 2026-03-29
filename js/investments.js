@@ -773,6 +773,9 @@ async function openInvPositionDetail(positionId) {
       <td>${(+(tx.quantity)).toFixed(4)}</td>
       <td>${fmt(tx.unit_price)}</td>
       <td class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
+      <td style="text-align:right">
+        <button class="btn-icon" onclick="deleteInvMovement('${tx.id}')" title="Excluir movimentação">🗑️</button>
+      </td>
     </tr>`).join('');
 
   const modal = document.createElement('div');
@@ -822,7 +825,7 @@ async function openInvPositionDetail(positionId) {
       ${txRows ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <thead><tr style="background:var(--surface2)">
           <th style="padding:6px 8px;text-align:left">Data</th>
-          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th>
+          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th><th style="text-align:right">Ações</th>
         </tr></thead>
         <tbody>${txRows}</tbody>
       </table>` : '<div style="color:var(--muted);font-size:.82rem">Nenhuma movimentação registrada.</div>'}
@@ -836,6 +839,87 @@ async function openInvPositionDetail(positionId) {
   </div>`;
   document.body.appendChild(modal);
 }
+
+
+async function _invRebuildPositionFromHistory(positionId) {
+  const { data: txsRaw, error } = await sb.from('investment_transactions')
+    .select('id,type,quantity,unit_price,date')
+    .eq('position_id', positionId)
+    .order('date', { ascending: true });
+  if (error) throw error;
+
+  const txs = [...(txsRaw || [])].sort((a, b) => {
+    const ad = String(a.date || '');
+    const bd = String(b.date || '');
+    if (ad !== bd) return ad.localeCompare(bd);
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+
+  let qty = 0;
+  let avgCost = 0;
+  for (const tx of txs) {
+    const q = +(tx.quantity || 0);
+    const unit = +(tx.unit_price || 0);
+    if (tx.type === 'buy') {
+      const nextQty = qty + q;
+      avgCost = nextQty > 0 ? ((qty * avgCost) + (q * unit)) / nextQty : 0;
+      qty = nextQty;
+    } else if (tx.type === 'sell') {
+      qty = Math.max(0, qty - q);
+    }
+  }
+
+  const { error: updErr } = await sb.from('investment_positions').update({
+    quantity: qty,
+    avg_cost: qty > 0 ? avgCost : 0,
+    updated_at: new Date().toISOString(),
+  }).eq('id', positionId);
+  if (updErr) throw updErr;
+
+  return { qty, avgCost };
+}
+
+async function deleteInvMovement(invTxId) {
+  if (!invTxId) return;
+  const mov = _inv.transactions.find(t => t.id === invTxId);
+  if (!mov) {
+    toast('Movimentação não encontrada.', 'error');
+    return;
+  }
+
+  const actionLabel = mov.type === 'buy' ? 'compra' : 'venda';
+  if (!confirm(`Excluir esta ${actionLabel} de ${mov.investment_positions?.ticker || 'investimento'}?
+
+O caixa e a posição serão recalculados.`)) return;
+
+  try {
+    const { error: invDelErr } = await sb.from('investment_transactions').delete().eq('id', invTxId);
+    if (invDelErr) throw invDelErr;
+
+    if (mov.tx_id) {
+      const { error: cashDelErr } = await sb.from('transactions').delete().eq('id', mov.tx_id);
+      if (cashDelErr) throw cashDelErr;
+    }
+
+    await _invRebuildPositionFromHistory(mov.position_id);
+
+    await loadInvestments(true);
+    DB.accounts.bust();
+    await DB.accounts.load(true);
+    _invAugmentAccountBalances();
+    _renderInvestmentsPage();
+    if (document.getElementById('invDetailModal')) {
+      closeModal('invDetailModal');
+      await openInvPositionDetail(mov.position_id);
+    }
+    if (state.currentPage === 'accounts') renderAccounts?.();
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+    toast('Movimentação excluída com sucesso.', 'success');
+  } catch (e) {
+    toast('Erro ao excluir movimentação: ' + (e.message || e), 'error');
+  }
+}
+window.deleteInvMovement = deleteInvMovement;
 
 async function updateManualPrice(positionId) {
   const val = parseFloat(document.getElementById('invManualPrice')?.value?.replace(',','.'));

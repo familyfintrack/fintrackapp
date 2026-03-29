@@ -482,6 +482,7 @@ function _initAmtMasks() {
   _bindAmtMask('scAmount', function() {
     if (typeof updateScCurrencyPreview === 'function') updateScCurrencyPreview();
   });
+  _bindAmtMask('occAmount');
 }
 
 if (document.readyState === 'loading') {

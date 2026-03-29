@@ -2472,6 +2472,41 @@ window._telDelUpdatePreview = async function() {
   }
 };
 
+
+async function _telDeleteDirect(params = {}, onProgress = null) {
+  const scope = params.p_scope || 'all';
+  const batchSize = 500;
+  let deletedTotal = 0;
+
+  while (true) {
+    let query = sb.from('app_telemetry').select('id').order('ts', { ascending: true }).limit(batchSize);
+
+    if (scope === 'period' && params.p_before) {
+      query = query.lt('ts', params.p_before);
+    } else if (scope === 'type' && params.p_event_type) {
+      query = query.eq('event_type', params.p_event_type);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    const ids = (data || []).map(r => r.id).filter(Boolean);
+    if (!ids.length) break;
+
+    const { error: delErr } = await sb.from('app_telemetry').delete().in('id', ids);
+    if (delErr) throw delErr;
+
+    deletedTotal += ids.length;
+    if (typeof onProgress === 'function') {
+      const pct = Math.max(45, Math.min(96, 45 + Math.log10(deletedTotal + 10) * 18));
+      onProgress(pct, 'Excluindo em lotes…', `${deletedTotal.toLocaleString('pt-BR')} registro(s) removido(s)`);
+    }
+
+    if (ids.length < batchSize) break;
+  }
+
+  return deletedTotal;
+}
+
 window.executeTelemetryDelete = async function() {
   const scope = document.querySelector('input[name="telDelScope"]:checked')?.value || 'all';
 
@@ -2510,8 +2545,16 @@ window.executeTelemetryDelete = async function() {
     }
 
     setProgress(40, 'Comunicando com servidor…', 'Aguarde…');
-    const { data: deleted, error } = await sb.rpc('delete_telemetry', params);
-    if (error) throw error;
+    let deleted = 0;
+
+    const rpcRes = await sb.rpc('delete_telemetry', params);
+    const rpcError = rpcRes?.error || null;
+    if (!rpcError) {
+      deleted = rpcRes?.data || 0;
+    } else {
+      console.warn('[telemetry] RPC delete_telemetry falhou; usando exclusão direta em lotes.', rpcError.message || rpcError);
+      deleted = await _telDeleteDirect(params, setProgress);
+    }
 
     setProgress(100, 'Concluído!', '');
     const n = (deleted || 0).toLocaleString('pt-BR');

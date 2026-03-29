@@ -281,6 +281,13 @@ const _dashboard = {
         if (brl > 0) income += brl; else expense += Math.abs(brl);
       });
 
+      // Garantir que o market value mais recente dos investimentos já esteja refletido
+      // antes de somar o patrimônio total no dashboard.
+      try {
+        if (typeof loadInvestments === 'function') await loadInvestments();
+        if (typeof invPostBalanceHook === 'function') invPostBalanceHook();
+      } catch (_) { /* módulo opcional ou ainda não inicializado */ }
+
       // Patrimônio Total:
       //   + saldo de cada conta (cartão de crédito já entra negativo)
       //   + para contas de investimento: usa _totalPortfolioBalance (inclui market value das posições)
