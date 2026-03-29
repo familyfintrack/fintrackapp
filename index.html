@@ -4073,6 +4073,13 @@ Se você não solicitou isso, ignore este e-mail.`,
           color:#fff; cursor:pointer; font-size:1rem; transition:background .15s;
         }
         .tel-reload-btn:hover { background:rgba(255,255,255,.22); }
+        .tel-delete-btn {
+          display:inline-flex; align-items:center; justify-content:center;
+          width:34px; height:34px; border-radius:8px;
+          border:1.5px solid rgba(239,68,68,.5); background:rgba(239,68,68,.15);
+          color:#fca5a5; cursor:pointer; font-size:1rem; transition:all .15s;
+        }
+        .tel-delete-btn:hover { background:rgba(239,68,68,.3); color:#fff; border-color:rgba(239,68,68,.8); }
 
         /* ── Tabs ── */
         .tel-tabs {
@@ -4340,6 +4347,11 @@ Se você não solicitou isso, ignore este e-mail.`,
                 <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
               </svg>
             </button>
+            <button class="tel-delete-btn" onclick="openTelemetryDeleteModal()" title="Excluir registros">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -4497,6 +4509,86 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
         </div>
       </div><!-- /telPane_families -->
+
+      <!-- ── Modal: Excluir Telemetria ── -->
+      <div class="modal" id="telDeleteModal" style="display:none">
+        <div class="modal-box" style="max-width:460px">
+          <div class="modal-header">
+            <span class="modal-title" style="color:var(--danger,#dc2626)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:6px;vertical-align:middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              Excluir Registros de Telemetria
+            </span>
+            <button class="modal-close" onclick="closeModal('telDeleteModal')">✕</button>
+          </div>
+          <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px">
+
+            <!-- Escopo: o que excluir -->
+            <div>
+              <label style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">O que excluir</label>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;transition:border-color .14s" id="telDelScopeAll_lbl">
+                  <input type="radio" name="telDelScope" id="telDelScopeAll" value="all" checked onchange="_telDelScopeChange()">
+                  <span style="font-size:.85rem;font-weight:600">Tudo</span>
+                  <span style="font-size:.73rem;color:var(--muted);margin-left:auto">Apaga todos os registros</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;transition:border-color .14s" id="telDelScopePeriod_lbl">
+                  <input type="radio" name="telDelScope" id="telDelScopePeriod" value="period" onchange="_telDelScopeChange()">
+                  <span style="font-size:.85rem;font-weight:600">Por período</span>
+                  <span style="font-size:.73rem;color:var(--muted);margin-left:auto">Antes de uma data</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;transition:border-color .14s" id="telDelScopeType_lbl">
+                  <input type="radio" name="telDelScope" id="telDelScopeType" value="type" onchange="_telDelScopeChange()">
+                  <span style="font-size:.85rem;font-weight:600">Por tipo de evento</span>
+                  <span style="font-size:.73rem;color:var(--muted);margin-left:auto">Ex: erros, page_view…</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Opções condicionais -->
+            <div id="telDelPeriodOpts" style="display:none">
+              <label style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Excluir registros anteriores a</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="telDelBeforeDate" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;font-family:var(--font-sans);background:var(--surface)">
+                <button class="btn btn-ghost btn-sm" onclick="_telDelSetQuick(30)">-30d</button>
+                <button class="btn btn-ghost btn-sm" onclick="_telDelSetQuick(90)">-90d</button>
+                <button class="btn btn-ghost btn-sm" onclick="_telDelSetQuick(180)">-180d</button>
+              </div>
+            </div>
+
+            <div id="telDelTypeOpts" style="display:none">
+              <label style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Tipo de evento</label>
+              <select id="telDelEventType" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;font-family:var(--font-sans);background:var(--surface)">
+                <option value="page_view">page_view — Navegações</option>
+                <option value="error">error — Erros</option>
+                <option value="uncaught">uncaught — Erros não tratados</option>
+                <option value="ai_call">ai_call — Chamadas IA</option>
+                <option value="tx_save">tx_save — Transações salvas</option>
+                <option value="login">login — Logins</option>
+                <option value="session_start">session_start — Sessões</option>
+              </select>
+            </div>
+
+            <!-- Preview do que será excluído -->
+            <div id="telDelPreview" style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;font-size:.78rem;color:var(--muted);min-height:36px">
+              Selecione as opções acima para ver o que será excluído.
+            </div>
+
+            <!-- Aviso de perigo -->
+            <div style="background:var(--red-lt,#fef2f2);border:1px solid rgba(220,38,38,.25);border-radius:9px;padding:10px 13px;font-size:.75rem;color:var(--danger,#dc2626)">
+              ⚠️ <strong>Ação irreversível.</strong> Os registros excluídos não poderão ser recuperados.
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-ghost" onclick="closeModal('telDeleteModal')">Cancelar</button>
+              <button class="btn" id="telDelConfirmBtn"
+                style="background:var(--danger,#dc2626);color:#fff;border:none;font-weight:700"
+                onclick="executeTelemetryDelete()">
+                🗑️ Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div><!-- /page-telemetry -->
 
