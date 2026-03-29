@@ -705,7 +705,17 @@ function renderUpcoming() {
       </div>
       <div class="sup-rows" id="${gid}" style="display:${((new Date(date+'T12:00:00').getTime() - new Date(today+'T12:00:00').getTime()) / 86400000) <= 1 ? '' : 'none'}">${rows}</div>
     </div>`;
-  }).join('');;
+  }).join('');
+
+  // Auto-open the desktop upcoming panel after rendering
+  // (panel body starts display:none; open it so events are visible)
+  const _upBody  = document.getElementById('scheduledUpcomingList');
+  const _upArrow = document.getElementById('upcomingDesktopArrow');
+  if (_upBody && upcoming.length > 0) {
+    _upBody.style.display = '';
+    _upcomingDesktopOpen  = true;
+    if (_upArrow) _upArrow.style.transform = 'rotate(180deg)';
+  }
 }
 
 // Feature 1: toggle entire upcoming panel open/closed
@@ -1820,7 +1830,22 @@ function renderScCalendar() {
 
   // Re-render detail if a day is selected
   if (_scCalSelDay && dayMap[_scCalSelDay]) {
+    // Selected day has events — show detail
     _scCalRenderDetail(_scCalSelDay, dayMap[_scCalSelDay]);
+  } else if (_scCalSelDay) {
+    // Selected day exists but has no events — show empty message
+    const det = document.getElementById('scCalDetail');
+    if (det) {
+      const [y, m, d] = _scCalSelDay.split('-');
+      const label = `${parseInt(d)} de ${SC_MONTHS[parseInt(m)-1]} de ${y}`;
+      const isToday = _scCalSelDay === new Date().toISOString().slice(0,10);
+      det.style.display = '';
+      det.innerHTML = `<div style="padding:24px 18px;text-align:center">
+        <div style="font-size:2rem;margin-bottom:10px;opacity:.45">${isToday ? '☀️' : '📅'}</div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text2);margin-bottom:6px">${isToday ? 'Hoje — ' : ''}${label}</div>
+        <div style="font-size:.78rem;color:var(--muted)">Nenhum evento programado neste dia.</div>
+      </div>`;
+    }
   } else {
     const det = document.getElementById('scCalDetail');
     if (det) det.style.display = 'none';
@@ -2307,3 +2332,14 @@ window.scShowAllRecurrents = function() {
   const panel = document.getElementById('scRecurrentsPanel');
   if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+
+// Called from app.js after loadScheduled to open upcoming panel if it has events
+function _openUpcomingIfHasEvents() {
+  const body  = document.getElementById('scheduledUpcomingList');
+  const arrow = document.getElementById('upcomingDesktopArrow');
+  if (body && body.children.length > 0) {
+    body.style.display  = '';
+    _upcomingDesktopOpen = true;
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+}
