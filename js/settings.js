@@ -1579,7 +1579,12 @@ async function loadTelemetryDashboard() {
   if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon" style="animation:tel-shimmer 1.5s infinite">⏳</div><div class="tel-empty-text">Carregando dados…</div></div>';
 
   // ── Queries em paralelo ───────────────────────────────────────────────────
-  const [telRes, usersRes, famsRes] = await Promise.all([
+  const [telCountRes, telRes, usersRes, famsRes] = await Promise.all([
+    // COUNT exato no período — sem limit, retorna apenas o número total real
+    sb.from('app_telemetry')
+      .select('*', { count: 'exact', head: true })
+      .gte('ts', since),
+    // Dados para análise — limitado a 8000 para performance do browser
     sb.from('app_telemetry')
       .select('event_type,page,ts,user_id,family_id,device_type,device_browser,device_os,payload')
       .gte('ts', since)
@@ -1595,6 +1600,8 @@ async function loadTelemetryDashboard() {
     return;
   }
 
+  // totalReal = contagem exata do banco no período (ignora o limit(8000) dos dados carregados)
+  _telDash.totalReal = telCountRes.count ?? telRes.data?.length ?? 0;
   _telDash.rawRows  = telRes.data  || [];
   _telDash.allUsers = usersRes.data || [];
   _telDash.allFams  = famsRes.data  || [];
@@ -1704,7 +1711,7 @@ function _telRenderCurrentTab() {
 
   if (_telDash.activeTab === 'overview') {
     if (!rows.length) { _telRenderEmpty(); return; }
-    _telRenderKpis(rows, days);
+    _telRenderKpis(rows, days, _telDash.totalReal);
     _telRenderDailyChart(rows, days);
     _telRenderPagesChart(rows);
     _telRenderEventTypes(rows);
@@ -1748,20 +1755,22 @@ function _telRenderEmpty() {
 }
 
 // ── KPI cards ─────────────────────────────────────────────────────────────────
-function _telRenderKpis(rows, days) {
-  const total     = rows.length;
+function _telRenderKpis(rows, days, totalReal) {
+  const loadedCount = rows.length;
+  const total       = totalReal ?? loadedCount;  // usa count real do banco
   const users     = new Set(rows.filter(r => r.user_id).map(r => r.user_id)).size;
   const families  = new Set(rows.filter(r => r.family_id).map(r => r.family_id)).size;
   const errors    = rows.filter(r => r.event_type === 'error' || r.event_type === 'uncaught').length;
   const aiCalls   = rows.filter(r => r.event_type === 'ai_call').length;
   const pageViews = rows.filter(r => r.event_type === 'page_view').length;
   const perDay    = days > 0 ? (total / days).toFixed(1) : '—';
+  const truncated = loadedCount < total;  // há mais eventos no banco do que foram carregados
 
   const kpiEl = document.getElementById('telKpis');
   if (!kpiEl) return;
 
   kpiEl.innerHTML = [
-    { v: total.toLocaleString('pt-BR'),     lb: 'Total eventos',    icon: '📊' },
+    { v: total.toLocaleString('pt-BR') + (truncated ? ` <span title="Mostrando ${loadedCount.toLocaleString('pt-BR')} dos ${total.toLocaleString('pt-BR')} eventos" style="font-size:.6rem;opacity:.7;font-weight:400">↑ real</span>` : ''), lb: 'Total eventos', icon: '📊' },
     { v: pageViews.toLocaleString('pt-BR'), lb: 'Page views',       icon: '👁️' },
     { v: users.toLocaleString('pt-BR'),     lb: 'Usuários únicos',  icon: '👤' },
     { v: families.toLocaleString('pt-BR'),  lb: 'Famílias ativas',  icon: '🏠' },
@@ -1773,6 +1782,15 @@ function _telRenderKpis(rows, days) {
     <span class="tel-kpi-val${c.danger ? ' danger' : ''}">${c.v}</span>
     <span class="tel-kpi-lbl">${c.lb}</span>
   </div>`).join('');
+
+  // Aviso de truncamento: análise parcial quando há mais eventos do que os carregados
+  const warnEl = document.getElementById('telTruncWarn');
+  if (warnEl) {
+    warnEl.style.display = truncated ? '' : 'none';
+    warnEl.textContent = truncated
+      ? `⚠️ Análise parcial: exibindo os ${loadedCount.toLocaleString('pt-BR')} eventos mais recentes de ${total.toLocaleString('pt-BR')} no período. Reduza o período para ver todos.`
+      : '';
+  }
 }
 
 // ── Daily chart ───────────────────────────────────────────────────────────────
