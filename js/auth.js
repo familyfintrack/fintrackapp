@@ -1733,6 +1733,10 @@ async function openUserAdmin() {
       badge.textContent   = pending?.length || 0;
       badge.style.display = (pending?.length || 0) > 0 ? 'inline-block' : 'none';
     }
+    // Show waitlist tab only for admins; load badge count in background
+    const wlTabBtn = document.getElementById('uaTabWaitlist');
+    if (wlTabBtn) wlTabBtn.style.display = '';
+    _updateWaitlistBadge().catch(()=>{});
   } else {
     // Owner: apenas aba Famílias
     switchUATab('families');
@@ -1753,15 +1757,16 @@ function _ownedFamilies() {
 }
 
 function switchUATab(tab) {
-  ['pending','users','families'].forEach(t => {
+  ['pending','users','families','waitlist'].forEach(t => {
     const panel = document.getElementById('uaTab' + t[0].toUpperCase() + t.slice(1));
     const pane  = document.getElementById('ua' + t[0].toUpperCase() + t.slice(1));
     if (panel) panel.classList.toggle('active', t === tab);
     if (pane)  pane.style.display = t === tab ? '' : 'none';
   });
-  if (tab === 'pending') _renderPendingTab();
-  if (tab === 'users')   loadUsersList().catch(e => console.warn('loadUsersList:', e));
+  if (tab === 'pending')  _renderPendingTab();
+  if (tab === 'users')    loadUsersList().catch(e => console.warn('loadUsersList:', e));
   if (tab === 'families') loadFamiliesList().catch(e => console.warn('loadFamiliesList:', e));
+  if (tab === 'waitlist') loadWaitlist().catch(e => console.warn('loadWaitlist:', e));
 }
 
 async function _renderPendingTab() {
@@ -4880,4 +4885,304 @@ function getPeriodColor(period) {
     case 'yearly': return '#9b59b6';
     default: return '#1F6B4F';
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LISTA DE ESPERA — Gerenciamento admin
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function _updateWaitlistBadge() {
+  try {
+    const { count } = await sb.from('waitlist')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    const badge = document.getElementById('uaWaitlistBadge');
+    if (badge) {
+      badge.textContent   = count || 0;
+      badge.style.display = (count || 0) > 0 ? 'inline-block' : 'none';
+    }
+  } catch(e) { console.debug('[waitlist badge]', e.message); }
+}
+
+async function loadWaitlist() {
+  const el      = document.getElementById('uaWaitlistContent');
+  const countEl = document.getElementById('uaWaitlistCount');
+  if (!el) return;
+
+  el.innerHTML = '<div style="text-align:center;padding:28px;color:var(--muted)">⏳ Carregando…</div>';
+
+  const filter = document.getElementById('uaWlFilter')?.value || 'pending';
+
+  try {
+    let query = sb.from('waitlist')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (filter === 'pending') query = query.eq('status', 'pending');
+    else if (filter === 'invited') query = query.eq('status', 'invited');
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const rows = data || [];
+    if (countEl) countEl.textContent = rows.length + ' registro(s)';
+    _updateWaitlistBadge();
+
+    if (!rows.length) {
+      el.innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:2.2rem;margin-bottom:12px">📋</div>
+          <div style="font-size:.9rem;font-weight:600;color:var(--text)">Lista vazia</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:4px">
+            ${filter === 'pending' ? 'Nenhum cadastro aguardando convite.' : 'Nenhum registro neste filtro.'}
+          </div>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = rows.map(r => {
+      const date     = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
+      const roleLabel = {family:'Família',couple:'Casal',personal:'Individual',business:'Empreendedor',curious:'Curioso IA'}[r.role] || r.role || '—';
+      const initials  = (r.name||'?').trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      const isPending = r.status === 'pending';
+      const isInvited = r.status === 'invited';
+      const statusPill = isPending
+        ? '<span style="font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(245,158,11,.12);color:#b45309;border:1px solid rgba(245,158,11,.25);border-radius:100px;padding:2px 8px">⏳ Aguardando</span>'
+        : '<span style="font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(42,96,73,.1);color:var(--accent);border:1px solid rgba(42,96,73,.2);border-radius:100px;padding:2px 8px">✉️ Convidado</span>';
+
+      const invBtn = isPending ? `
+        <button
+          data-id="${esc(r.id)}" data-name="${esc(r.name||'')}" data-email="${esc(r.email||'')}"
+          onclick="inviteFromWaitlist(this.dataset.id, this.dataset.name, this.dataset.email)"
+          style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:8px;padding:6px 14px;cursor:pointer;white-space:nowrap;transition:all .2s"
+          onmouseover="this.style.background='var(--accent2)'" onmouseout="this.style.background='var(--accent)'">
+          ✉️ Convidar
+        </button>` : `
+        <button
+          data-id="${esc(r.id)}" data-name="${esc(r.name||'')}" data-email="${esc(r.email||'')}"
+          onclick="inviteFromWaitlist(this.dataset.id, this.dataset.name, this.dataset.email)"
+          title="Reenviar convite"
+          style="font-family:var(--font-sans);font-size:.72rem;font-weight:600;color:var(--muted);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap;transition:all .2s">
+          ↩ Reenviar
+        </button>`;
+
+      const removeBtn = `
+        <button
+          data-id="${esc(r.id)}" data-name="${esc(r.name||r.email||'')}"
+          onclick="removeFromWaitlist(this.dataset.id, this.dataset.name)"
+          title="Remover da lista"
+          style="font-family:var(--font-sans);font-size:.72rem;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;transition:all .2s"
+          onmouseover="this.style.color='var(--danger)';this.style.borderColor='var(--danger)'"
+          onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+          ✕
+        </button>`;
+
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:#fff;flex-shrink:0">${initials}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.84rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name||'—')}</div>
+            <div style="font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.email||'')}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
+              ${statusPill}
+              <span style="font-size:.65rem;color:var(--muted2)">${roleLabel}</span>
+              <span style="font-size:.65rem;color:var(--muted2)">${date}</span>
+              ${r.whatsapp ? `<span style="font-size:.65rem;color:var(--muted2)">📱 ${esc(r.whatsapp)}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:5px;flex-shrink:0">
+            ${invBtn}
+            ${removeBtn}
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--danger);font-size:.82rem;padding:16px">Erro: ${e.message}</div>`;
+  }
+}
+window.loadWaitlist = loadWaitlist;
+
+async function inviteFromWaitlist(wlId, name, email) {
+  if (!wlId || !email) { toast('Dados inválidos', 'error'); return; }
+
+  // Verificar se já é usuário
+  const { data: existing } = await sb.from('app_users').select('id').eq('email', email).maybeSingle();
+  if (existing) {
+    toast(`${name || email} já é um usuário do sistema.`, 'warning');
+    return;
+  }
+
+  // Abrir modal de confirmação/envio de convite
+  _openWaitlistInviteModal(wlId, name, email);
+}
+window.inviteFromWaitlist = inviteFromWaitlist;
+
+async function removeFromWaitlist(wlId, name) {
+  if (!confirm(`Remover "${name}" da lista de espera?`)) return;
+  try {
+    const { error } = await sb.from('waitlist').delete().eq('id', wlId);
+    if (error) throw error;
+    toast(`✓ ${name} removido da lista de espera.`, 'success');
+    loadWaitlist();
+  } catch(e) {
+    toast('Erro ao remover: ' + e.message, 'error');
+  }
+}
+window.removeFromWaitlist = removeFromWaitlist;
+
+// ── Modal de convite oficial ─────────────────────────────────────────────────
+function _openWaitlistInviteModal(wlId, name, email) {
+  let m = document.getElementById('wlInviteModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'wlInviteModal';
+    m.className = 'modal-overlay';
+    m.innerHTML = `
+      <div class="modal" style="max-width:480px">
+        <div class="modal-header">
+          <span class="modal-title">✉️ Enviar Convite Oficial</span>
+          <button class="modal-close" onclick="closeModal('wlInviteModal')">✕</button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div id="wlInvRecipient" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-size:.84rem"></div>
+          <div class="form-group">
+            <label style="font-size:.72rem;font-weight:600;color:var(--text2)">Mensagem de boas-vindas</label>
+            <textarea id="wlInvMsg" rows="5" style="width:100%;font-family:var(--font-sans);font-size:.84rem;resize:vertical;padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface)"></textarea>
+          </div>
+          <div style="background:var(--accent-lt,var(--bg2));border:1px solid var(--border-green,var(--border));border-radius:var(--r-sm);padding:10px 14px;font-size:.76rem;color:var(--text2)">
+            💡 O email conterá um link para o aplicativo e orientações de como se cadastrar como usuário.
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost" onclick="closeModal('wlInviteModal')">Cancelar</button>
+            <button class="btn btn-primary" id="wlInvSendBtn" onclick="_sendOfficialInvite()">
+              ✉️ Enviar Convite
+            </button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+
+  // Preencher dados
+  const fn = (name||'').split(' ')[0] || 'Olá';
+  document.getElementById('wlInvRecipient').innerHTML =
+    `<strong>${esc(name||'—')}</strong><br><span style="color:var(--muted);font-size:.78rem">${esc(email)}</span>`;
+  document.getElementById('wlInvMsg').value =
+    `Olá, ${fn}!\n\nSua vez chegou! 🎉 Você está sendo convidado(a) para acessar o Family FinTrack — o app de gestão financeira familiar com Inteligência Artificial.\n\nClique no link abaixo para se cadastrar e começar a usar:\n${location.origin}/app.html\n\nSeu acesso é gratuito durante o período beta.\n\nBem-vindo(a) à família!\n\nEquipe Family FinTrack`;
+
+  // Guardar dados no modal para uso no envio
+  m.dataset.wlId  = wlId;
+  m.dataset.name  = name;
+  m.dataset.email = email;
+
+  openModal('wlInviteModal');
+}
+
+async function _sendOfficialInvite() {
+  const m     = document.getElementById('wlInviteModal');
+  const wlId  = m?.dataset.wlId;
+  const name  = m?.dataset.name  || '';
+  const email = m?.dataset.email || '';
+  const msg   = document.getElementById('wlInvMsg')?.value?.trim() || '';
+  const btn   = document.getElementById('wlInvSendBtn');
+
+  if (!email || !msg) { toast('Preencha a mensagem', 'error'); return; }
+
+  btn.disabled   = true;
+  btn.textContent = '⏳ Enviando…';
+
+  try {
+    // 1. Enviar email via EmailJS
+    if (EMAILJS_CONFIG.serviceId && EMAILJS_CONFIG.templateId && EMAILJS_CONFIG.publicKey) {
+      const fn   = name.split(' ')[0] || 'Olá';
+      const body = _buildOfficialInviteEmail(fn, email, msg);
+      await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+        to_email:       email,
+        report_subject: '[Family FinTrack] 🎉 Seu convite chegou! Acesso liberado.',
+        Subject:        '[Family FinTrack] Seu acesso ao Family FinTrack foi liberado!',
+        month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+        report_content: body,
+      });
+    } else {
+      throw new Error('EmailJS não configurado. Configure em Configurações → Email.');
+    }
+
+    // 2. Marcar como 'invited' na lista de espera
+    await sb.from('waitlist').update({
+      status:     'invited',
+      updated_at: new Date().toISOString(),
+    }).eq('id', wlId);
+
+    toast(`✅ Convite enviado para ${name || email}!`, 'success');
+    closeModal('wlInviteModal');
+    loadWaitlist();
+
+  } catch(e) {
+    toast('Erro ao enviar convite: ' + e.message, 'error');
+    btn.disabled   = false;
+    btn.textContent = '✉️ Enviar Convite';
+  }
+}
+window._sendOfficialInvite = _sendOfficialInvite;
+
+function _buildOfficialInviteEmail(firstName, email, personalMsg) {
+  const safeMsg  = personalMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  const appUrl   = location.origin + '/app.html';
+  const landUrl  = location.origin;
+
+  return `
+<div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;background:#0a1e12;padding:0;margin:0">
+<div style="max-width:580px;margin:0 auto">
+
+  <div style="background:linear-gradient(160deg,#0a1e12 0%,#1a3d27 50%,#235234 100%);padding:52px 40px 44px;text-align:center;border-bottom:2px solid rgba(125,194,66,.3)">
+    <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:14px;font-weight:700">Family FinTrack · Acesso Beta</div>
+    <div style="width:80px;height:80px;background:linear-gradient(135deg,#2d6a44,#7dc242);border-radius:22px;display:inline-flex;align-items:center;justify-content:center;font-size:2.5rem;margin-bottom:20px;box-shadow:0 10px 40px rgba(125,194,66,.3)">🎉</div>
+    <h1 style="font-family:Georgia,serif;font-size:30px;font-weight:700;color:#fff;margin:0;line-height:1.2">Seu acesso foi liberado!</h1>
+    <div style="width:56px;height:3px;background:linear-gradient(90deg,#7dc242,#9ed45f);border-radius:100px;margin:22px auto 0"></div>
+  </div>
+
+  <div style="background:#122a1a;padding:42px 40px">
+    <p style="font-family:Georgia,serif;font-size:17px;color:rgba(255,255,255,.88);margin:0 0 24px;line-height:1.65">
+      Olá, <strong style="color:#9ed45f">${firstName}</strong>! 👋
+    </p>
+
+    <div style="background:rgba(125,194,66,.07);border-left:3px solid #7dc242;border-radius:0 14px 14px 0;padding:20px 22px;margin-bottom:28px;font-size:14px;color:rgba(255,255,255,.7);line-height:1.8;font-style:italic">
+      ${safeMsg}
+    </div>
+
+    <div style="background:linear-gradient(135deg,#0a1e12,#1a3d27);border:1px solid rgba(125,194,66,.25);border-radius:18px;padding:28px;text-align:center;margin-bottom:28px">
+      <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:12px;font-weight:700">Sua situação</div>
+      <div style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#7dc242;margin-bottom:8px">✅ Acesso Liberado</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.35)">Gratuito durante o período beta exclusivo</div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:28px">
+      <a href="${appUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:16px;font-weight:800;color:#0a1e12;background:linear-gradient(135deg,#7dc242,#9ed45f);border-radius:14px;padding:16px 44px;text-decoration:none;box-shadow:0 6px 28px rgba(125,194,66,.35)">
+        Acessar o Family FinTrack →
+      </a>
+      <div style="font-size:11px;color:rgba(255,255,255,.25);margin-top:12px">${appUrl}</div>
+    </div>
+
+    <div style="border-top:1px solid rgba(125,194,66,.12);padding-top:22px">
+      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:14px;font-weight:600">Com o Family FinTrack você tem:</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        ${[
+          ['🤖','IA Financeira','Análise inteligente com Gemini AI, insights e previsões'],
+          ['👨‍👩‍👧‍👦','Gestão familiar','Toda a família conectada com perfis individuais'],
+          ['📅','Automação','Contas programadas com alertas no Telegram e WhatsApp'],
+          ['🔮','Visão do futuro','Previsão de fluxo de caixa para 90 dias'],
+        ].map(([ic,t,d])=>`<tr><td style="padding:8px 0;border-bottom:1px solid rgba(125,194,66,.08);vertical-align:top;width:30px;font-size:1.1rem">${ic}</td><td style="padding:8px 8px 8px 6px;border-bottom:1px solid rgba(125,194,66,.08)"><div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:1px">${t}</div><div style="font-size:11px;color:rgba(255,255,255,.38)">${d}</div></td></tr>`).join('')}
+      </table>
+    </div>
+  </div>
+
+  <div style="padding:22px 40px;text-align:center;background:#0a1e12;border-top:1px solid rgba(125,194,66,.1)">
+    <div style="font-size:11px;color:rgba(255,255,255,.2);line-height:1.85">
+      Family FinTrack · Beta Privado 2025<br>
+      Família Inteligente, Finanças sob Controle<br>
+      <span style="opacity:.6">Potencializado por Inteligência Artificial</span>
+    </div>
+  </div>
+</div></div>`;
 }
