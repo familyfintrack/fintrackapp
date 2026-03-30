@@ -837,6 +837,9 @@ async function onLoginSuccess() {
 
   hideLoginScreen();
 
+  // Check for new feedback reports (admin only)
+  if (typeof _checkNewFeedbackOnLogin === 'function') _checkNewFeedbackOnLogin().catch(()=>{});
+
   // Apply access request visibility based on admin setting
   if (typeof initAccessRequestVisibility === 'function') initAccessRequestVisibility().catch(()=>{});
 
@@ -1732,6 +1735,8 @@ function _switchFamTab(familyId) {
 
 
 async function openUserAdmin() {
+  // Refresh feedback badge when admin opens panel
+  if (typeof _checkNewFeedbackOnLogin === 'function') _checkNewFeedbackOnLogin().catch(()=>{});
   const isAdmin       = currentUser?.role === 'admin';       // acesso total
   const isFamilyOwner = _currentUserIsFamilyOwner();         // owner de ≥1 família
   if (!isAdmin && !isFamilyOwner) { toast('Acesso restrito','error'); return; }
@@ -1794,7 +1799,7 @@ function _ownedFamilies() {
 }
 
 function switchUATab(tab) {
-  ['pending','users','families','waitlist'].forEach(t => {
+  ['pending','users','families','waitlist','feedback'].forEach(t => {
     const panel = document.getElementById('uaTab' + t[0].toUpperCase() + t.slice(1));
     const pane  = document.getElementById('ua' + t[0].toUpperCase() + t.slice(1));
     if (panel) panel.classList.toggle('active', t === tab);
@@ -1804,6 +1809,7 @@ function switchUATab(tab) {
   if (tab === 'users')    loadUsersList().catch(e => console.warn('loadUsersList:', e));
   if (tab === 'families') loadFamiliesList().catch(e => console.warn('loadFamiliesList:', e));
   if (tab === 'waitlist') loadWaitlist().catch(e => console.warn('loadWaitlist:', e));
+  if (tab === 'feedback') { if (typeof loadFeedbackReports === 'function') loadFeedbackReports(); }
 }
 
 async function _renderPendingTab() {
