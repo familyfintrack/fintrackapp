@@ -99,16 +99,82 @@ function _renderGroceryLists() {
 function openCreateGroceryList() {
   const el = document.getElementById('groceryNewListName');
   if (el) el.value = '';
+  // Reset store fields
+  const storeInput = document.getElementById('groceryStoreInput');
+  const storeId    = document.getElementById('groceryStoreId');
+  const payeeId    = document.getElementById('groceryPayeeId');
+  if (storeInput) storeInput.value = '';
+  if (storeId)    storeId.value    = '';
+  // Reset to generic type
+  const genericRadio = document.querySelector('input[name="groceryListType"][value="generic"]');
+  if (genericRadio) { genericRadio.checked = true; groceryListTypeChanged('generic'); }
+  // Populate payees
+  const payeeSel = document.getElementById('groceryPayeeId');
+  if (payeeSel && window.state?.payees?.length) {
+    payeeSel.innerHTML = '<option value="">— Nenhum —</option>' +
+      (window.state.payees || []).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
   openModal('groceryCreateModal');
 }
+
+function groceryListTypeChanged(type) {
+  const storeFields = document.getElementById('groceryStoreFields');
+  const genericLbl  = document.getElementById('groceryTypeGenericLbl');
+  const storeLbl    = document.getElementById('groceryTypeStoreLbl');
+  if (!storeFields) return;
+  storeFields.style.display  = type === 'store' ? 'flex' : 'none';
+  if (genericLbl) genericLbl.style.borderColor = type === 'generic' ? 'var(--accent)' : 'var(--border)';
+  if (storeLbl)   storeLbl.style.borderColor   = type === 'store'   ? 'var(--accent)' : 'var(--border)';
+}
+
+function _groceryStoreSearch(val) {
+  const suggest = document.getElementById('groceryStoreSuggest');
+  const hidEl   = document.getElementById('groceryStoreId');
+  if (hidEl) hidEl.value = '';
+  if (!val?.trim()) { if (suggest) suggest.style.display = 'none'; return; }
+  const q = val.toLowerCase();
+  // Use price_stores from _px if available, else payees
+  let stores = [];
+  if (window._px?.stores?.length) stores = window._px.stores;
+  else if (window.state?.payees?.length) stores = window.state.payees.map(p => ({ id: p.id, name: p.name }));
+  const matches = stores.filter(s => s.name.toLowerCase().includes(q));
+  if (!suggest) return;
+  if (!matches.length) { suggest.style.display = 'none'; return; }
+  suggest.style.display = '';
+  suggest.innerHTML = matches.slice(0, 8).map(s =>
+    `<div style="padding:7px 10px;cursor:pointer;font-size:.82rem;border-bottom:1px solid var(--border)"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"
+      onclick="_grocerySelectStore('${s.id}','${(s.name||'').replace(/'/g,'\'')}')">${s.name}</div>`
+  ).join('');
+}
+window._groceryStoreSearch = _groceryStoreSearch;
+
+function _grocerySelectStore(id, name) {
+  const inp = document.getElementById('groceryStoreInput');
+  const hid = document.getElementById('groceryStoreId');
+  const sug = document.getElementById('groceryStoreSuggest');
+  if (inp) inp.value = name;
+  if (hid) hid.value = id;
+  if (sug) sug.style.display = 'none';
+}
+window._grocerySelectStore = _grocerySelectStore;
 
 async function saveGroceryList() {
   const name = document.getElementById('groceryNewListName')?.value?.trim();
   if (!name) { toast('Informe o nome da lista', 'error'); return; }
-  const { data, error } = await sb.from('grocery_lists').insert({
-    name, family_id: famId(), status: 'open',
+  const listType = document.querySelector('input[name="groceryListType"]:checked')?.value || 'generic';
+  const storeId  = listType === 'store' ? (document.getElementById('groceryStoreId')?.value || null) : null;
+  const payeeId  = listType === 'store' ? (document.getElementById('groceryPayeeId')?.value || null) : null;
+  const storeName = listType === 'store' ? (document.getElementById('groceryStoreInput')?.value?.trim() || null) : null;
+  // Use store name in list name if no explicit name difference
+  const finalName = name || (storeName ? `Lista ${storeName}` : 'Nova Lista');
+  const payload = {
+    name: finalName, family_id: famId(), status: 'open',
     updated_at: new Date().toISOString(),
-  }).select().single();
+  };
+  // store_id and payee_id columns may not exist yet — add defensively
+  if (storeId) payload.store_id = storeId;
+  const { data, error } = await sb.from('grocery_lists').insert(payload).select().single();
   if (error) { toast('Erro ao criar lista: ' + error.message, 'error'); return; }
   closeModal('groceryCreateModal');
   toast('Lista criada!', 'success');

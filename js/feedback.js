@@ -343,12 +343,39 @@ function _fbAdminCard(item) {
             onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
             💾 Salvar
           </button>
+          <button onclick="_fbDeleteFeedback('${item.id}', document.getElementById('fbcard_${item.id}'))"
+            title="Excluir este feedback"
+            style="padding:8px 10px;font-size:.8rem;font-family:var(--font-sans);font-weight:600;
+                   border:1.5px solid rgba(220,38,38,.3);background:transparent;color:#dc2626;border-radius:8px;
+                   cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0"
+            onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+            🗑
+          </button>
         </div>
       </details>
 
     </div>
   </div>`;
 }
+window._fbDeleteFeedback = async function(id, card) {
+  if (!confirm('Excluir este feedback permanentemente?')) return;
+  try {
+    const { error } = await sb.from('app_feedback').delete().eq('id', id);
+    if (error) throw error;
+    if (card) card.remove();
+    _updateFeedbackBadge();
+    // Update count
+    const cntEl = document.getElementById('uaFeedbackCount');
+    if (cntEl) {
+      const cur = parseInt(cntEl.textContent) || 0;
+      if (cur > 0) cntEl.textContent = (cur - 1) + ' item' + (cur - 1 !== 1 ? 's' : '');
+    }
+    if (typeof toast === 'function') toast('Feedback excluído', 'success');
+  } catch(e) {
+    if (typeof toast === 'function') toast('Erro: ' + e.message, 'error');
+  }
+};
+
 window._fbSetStatus = async function(id, status, card) {
   try {
     const { error } = await sb.from('app_feedback').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
@@ -425,6 +452,11 @@ function _updateFeedbackBadge(count) {
 }
 
 function _showFeedbackLoginNotif(count) {
+  // Check if dismissed today
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    if (localStorage.getItem('notif_dismiss_fbLoginNotif') === today) return;
+  } catch(_) {}
   // Don't stack multiple popups
   document.getElementById('fbLoginNotifPopup')?.remove();
 
@@ -456,6 +488,10 @@ function _showFeedbackLoginNotif(count) {
           <button onclick="document.getElementById('fbLoginNotifPopup')?.remove()"
             style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);background:transparent;border-radius:8px;cursor:pointer;color:var(--text2)">
             Depois
+          </button>
+          <button onclick="(typeof _dismissNotifToday==='function'?_dismissNotifToday('fbLoginNotif'):localStorage.setItem('notif_dismiss_fbLoginNotif',new Date().toISOString().slice(0,10)));document.getElementById('fbLoginNotifPopup')?.remove()"
+            style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);background:transparent;border-radius:8px;cursor:pointer;color:var(--muted)">
+            Não hoje
           </button>
         </div>
       </div>

@@ -355,7 +355,10 @@ function _forecastDateParts(iso){
       const payeeLine = t.payees?.name
         ? `<div class="forecast-line forecast-payee">${esc(t.payees.name)}</div>`
         : '';
-      return `${groupHeader}<tr class="${rowClass} ${balClass} forecast-tx-row">
+      const _drillDate  = t.date;
+      const _drillLabel = t.description || dateParts.short;
+      return `${groupHeader}<tr class="${rowClass} ${balClass} forecast-tx-row"
+        style="cursor:pointer" onclick="if(typeof _forecastDrillRow==='function')_forecastDrillRow('${_drillDate}','${_drillLabel.replace(/'/g,\'\')}')" title="Ver detalhes desta data">
         <td class="forecast-date-cell ${isToday ? 'forecast-date-cell--today' : ''}">
           <div class="forecast-date-card forecast-date-card--compact" aria-label="${dateParts.short}">
             <div class="forecast-date-weekday">${dateParts.weekday}</div>

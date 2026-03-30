@@ -131,6 +131,9 @@ function _drillOpen(opts) {
     '</div>';
 
   panel.style.display = 'flex';
+  // Scroll the reports page to top so drill panel is fully visible
+  const rptPage = document.getElementById('page-reports') || document.querySelector('.content');
+  if (rptPage) rptPage.scrollTop = 0;
   requestAnimationFrame(() => {
     panel.style.transform = 'translateX(0)';
     panel.style.opacity   = '1';
@@ -171,6 +174,23 @@ function _drillClose() {
 }
 window._drillClose = _drillClose;
 window._drillOpen  = _drillOpen;
+
+// ── Forecast table drill-down: click row → show tx details ──────────
+window._forecastDrillRow = function(dateStr, label) {
+  const txSlice = (rptState.txData || []).filter(t => t.date === dateStr);
+  if (!txSlice.length) {
+    // Try from forecast state
+    const allTx = window._forecastTxCache || [];
+    const fSlice = allTx.filter(t => t.date === dateStr);
+    if (fSlice.length) {
+      _drillOpen({ title: label || dateStr, subtitle: 'Transações previstas', txs: fSlice, color: 'var(--accent)' });
+      return;
+    }
+    toast('Sem transações nesta data', 'warning');
+    return;
+  }
+  _drillOpen({ title: label || dateStr, subtitle: 'Transações · ' + dateStr, txs: txSlice, color: 'var(--accent)' });
+};
 
 
 function setRptCatChart(chartType, which) {

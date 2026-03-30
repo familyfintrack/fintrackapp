@@ -534,6 +534,83 @@ function setPayeeCatValue(catId, closeDropdown) {
   }
   if (closeDropdown && dd) dd.style.display = 'none';
 }
+// ── Payee logo/icon upload + AI suggest ──────────────────────────────────
+window.payeePreviewLogo = function(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('Imagem muito grande (máx 2MB)', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('payeeLogoPreview');
+    const removeBtn = document.getElementById('payeeLogoRemoveBtn');
+    if (preview) {
+      preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">`;
+    }
+    if (removeBtn) removeBtn.style.display = '';
+    window._payeeLogoPending = { dataUrl: e.target.result, file };
+  };
+  reader.readAsDataURL(file);
+};
+
+window.payeeRemoveLogo = function() {
+  const preview = document.getElementById('payeeLogoPreview');
+  const removeBtn = document.getElementById('payeeLogoRemoveBtn');
+  const urlInput  = document.getElementById('payeeLogoUrl');
+  const flagInput = document.getElementById('payeeLogoRemoveFlag');
+  if (preview) preview.innerHTML = '🏢';
+  if (removeBtn) removeBtn.style.display = 'none';
+  if (urlInput)  urlInput.value  = '';
+  if (flagInput) flagInput.value = '1';
+  window._payeeLogoPending = null;
+};
+
+window.payeeAiSuggestLogo = async function() {
+  const name = document.getElementById('payeeName')?.value?.trim();
+  if (!name) { toast('Informe o nome do beneficiário primeiro', 'warning'); return; }
+  const panel   = document.getElementById('payeeAiSuggestPanel');
+  const content = document.getElementById('payeeAiSuggestContent');
+  if (!panel || !content) return;
+  panel.style.display = '';
+  content.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:12px">⏳ Buscando sugestões…</div>';
+
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '');
+    if (!apiKey) { content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>'; return; }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const prompt = `Sugira 3 emojis/ícones que representem visualmente o estabelecimento ou empresa chamado "${name}". Responda APENAS com JSON: {"suggestions":[{"emoji":"🛒","label":"Supermercado","reason":"..."},{"emoji":"...","label":"...","reason":"..."},{"emoji":"...","label":"...","reason":"..."}]}`;
+    const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:300,temperature:0.3} }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    const sugs = parsed.suggestions || [];
+    if (!sugs.length) throw new Error('Sem sugestões');
+    content.innerHTML = sugs.map(s => `
+      <div onclick="payeeSelectAiLogo('${s.emoji}')"
+        style="flex:1;min-width:80px;text-align:center;padding:10px 8px;border:1.5px solid var(--border);
+               border-radius:10px;cursor:pointer;transition:all .15s;background:var(--surface)"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-lt)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
+        <div style="font-size:2rem;line-height:1;margin-bottom:4px">${s.emoji}</div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:2px">${esc(s.label)}</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.3">${esc(s.reason||'')}</div>
+      </div>`).join('');
+  } catch(e) {
+    content.innerHTML = `<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Erro: ${esc(e.message)}</div>`;
+  }
+};
+
+window.payeeSelectAiLogo = function(emoji) {
+  const preview = document.getElementById('payeeLogoPreview');
+  const urlInput = document.getElementById('payeeLogoUrl');
+  if (preview) preview.innerHTML = `<span style="font-size:2rem">${emoji}</span>`;
+  if (urlInput) urlInput.value = 'emoji:' + emoji;
+  window._payeeLogoPending = { emoji };
+  document.getElementById('payeeAiSuggestPanel').style.display = 'none';
+  toast('Ícone selecionado!', 'success');
+};
+
 async function savePayee(){
   const id=document.getElementById('payeeId').value;
   const data={

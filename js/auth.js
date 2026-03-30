@@ -5269,6 +5269,22 @@ async function _checkWaitlistOnLogin() {
   }
 }
 
+
+// ── Notification dismiss helpers ─────────────────────────────────────────────
+function _dismissNotifToday(key) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    localStorage.setItem('notif_dismiss_' + key, today);
+  } catch(_) {}
+}
+function _isNotifDismissedToday(key) {
+  try {
+    const stored = localStorage.getItem('notif_dismiss_' + key);
+    return stored === new Date().toISOString().slice(0, 10);
+  } catch(_) { return false; }
+}
+window._dismissNotifToday    = _dismissNotifToday;
+window._isNotifDismissedToday = _isNotifDismissedToday;
 function _showAdminLoginNotification(waitlistCount) {
   document.getElementById('adminLoginNotifPopup')?.remove();
 

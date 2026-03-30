@@ -1203,8 +1203,10 @@ async function renderDashboardUpcoming(memberIds = null) {
       ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
       : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
 
+    const groupId = 'supGroup-' + date;
+    const isCollapsed = !isToday && !isTomorrow; // today/tomorrow expanded by default
     return `<div class="sup-group">
-      <div class="sup-group-hdr">
+      <div class="sup-group-hdr" onclick="toggleSupGroup('${date}')" style="cursor:pointer;user-select:none">
         <div class="sup-group-left">
           ${dayPill}
           <span class="sup-group-dow">${dow}</span>
@@ -1212,9 +1214,10 @@ async function renderDashboardUpcoming(memberIds = null) {
         <div class="sup-group-meta">
           <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
           <span class="sup-day-count">${items.length}</span>
+          <span class="sup-group-toggle" id="supArrow-${date}" style="font-size:.7rem;color:var(--muted);transition:transform .2s;display:inline-block;transform:rotate(${isCollapsed?'-90deg':'0deg'})">▾</span>
         </div>
       </div>
-      <div class="sup-rows">${rows}</div>
+      <div class="sup-rows" id="${groupId}" style="overflow:hidden;transition:max-height .22s ease;max-height:${isCollapsed?'0':'2000px'}">${rows}</div>
     </div>`;
   }).join('');
 }
@@ -1546,11 +1549,72 @@ function getPeriodColor(period) {
 
 
 // === Navigate to forecast report on chart click ===
-function attachForecastNavigation(chartInstance) {
+function attachForecastNavigation(chartInstance, labelsArr, txByLabel) {
   if (!chartInstance) return;
   chartInstance.options.onClick = function(evt, elements) {
-    // navigate regardless of specific point clicked
-    const url = '#/reports?tab=forecast&range=90d&source=dashboard';
-    window.location.href = url;
+    if (elements && elements.length && labelsArr && txByLabel) {
+      const idx   = elements[0].index;
+      const label = labelsArr[idx];
+      const txs   = txByLabel[label] || [];
+      if (txs.length) {
+        // Show inline drill panel on dashboard
+        _dashForecastDrill(label, txs);
+        return;
+      }
+    }
+    // Default: navigate to forecast report
+    navigate('reports');
+    setTimeout(() => {
+      if (typeof setReportView === 'function') setReportView('forecast');
+    }, 300);
   };
+  chartInstance.options.onHover = function(evt, elements) {
+    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+  };
+  chartInstance.update();
 }
+
+function _dashForecastDrill(label, txs) {
+  const el = document.getElementById('dashForecastDrillPanel');
+  if (!el) return;
+  const isExp = txs.some(t => t.amount < 0);
+  const total = txs.reduce((s,t) => s + Math.abs(Number(t.amount)||0), 0);
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(label)}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${txs.length} transação${txs.length!==1?'ões':''} · ${fmt(total)}</div>
+      </div>
+      <button onclick="document.getElementById('dashForecastDrillPanel').style.display='none';document.getElementById('dashForecastChartWrap').style.display=''"
+        style="background:none;border:1px solid var(--border);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;color:var(--muted)">
+        ← Gráfico
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
+      ${txs.map(t => {
+        const isNeg = t.amount < 0;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</div>
+            <div style="font-size:.68rem;color:var(--muted)">${t.date||''}${t.accounts?.name?' · '+esc(t.accounts.name):''}</div>
+          </div>
+          <span style="font-size:.82rem;font-weight:700;color:${isNeg?'var(--red,#c0392b)':'var(--green,#2a7a4a)'}">
+            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0))}
+          </span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  document.getElementById('dashForecastChartWrap').style.display = 'none';
+  el.style.display = 'block';
+}
+window._dashForecastDrill = _dashForecastDrill;
+
+function toggleSupGroup(date) {
+  const body  = document.getElementById('supGroup-' + date);
+  const arrow = document.getElementById('supArrow-' + date);
+  if (!body) return;
+  const isOpen = body.style.maxHeight !== '0px' && body.style.maxHeight !== '0';
+  body.style.maxHeight  = isOpen ? '0' : '2000px';
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+window.toggleSupGroup = toggleSupGroup;

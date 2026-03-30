@@ -1273,6 +1273,10 @@ async function _goToSavedTransaction(txId, txData = {}) {
   // Load the page — row will now be in the DOM
   try { await loadTransactions(); } catch (_) {}
 
+  // First scroll the content area to top so the highlight scroll is predictable
+  const _contentEl = document.querySelector('.content') || document.getElementById('page-transactions');
+  if (_contentEl) _contentEl.scrollTop = 0;
+
   // Highlight and scroll to the saved row
   _highlightNewTxRow(txId);
 }
@@ -1282,7 +1286,7 @@ function _highlightNewTxRow(txId) {
     const row = document.querySelector(`[data-tx-id="${txId}"]`);
     if (row) {
       // Scroll into view with some breathing room at top
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       // Add entrance animation class
       row.classList.remove('tx-row-new'); // reset if already there
       void row.offsetWidth;               // force reflow to restart animation
