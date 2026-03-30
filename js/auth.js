@@ -472,8 +472,8 @@ function showLoginScreen() {
   const ls = document.getElementById('loginScreen');
   if (ls) {
     ls.style.display = 'flex';
-    // Re-apply access request visibility every time login screen is shown
-    _applyAccessRequestVisibilityFromLocalStorage();
+    // Re-apply access request visibility from DB every time login screen is shown
+    _fetchAccessRequestSettingAnon();
     // Fix logo: use same LOGO_URL used throughout the app
     const img = document.getElementById('loginLogoImg');
     if (typeof setAppLogo==='function') {
@@ -540,10 +540,7 @@ function hideLoginScreen() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
-  // 1. Apply immediately from localStorage (instant, no network)
-  _applyAccessRequestVisibilityFromLocalStorage();
-  // 2. Also fetch from Supabase anon (for mobile users who never set it locally)
-  //    Uses a short timeout so it doesn't block anything
+  // Fetch visibility setting from DB (never localStorage — config is server-side only)
   _fetchAccessRequestSettingAnon();
 });
 
@@ -561,32 +558,30 @@ async function _fetchAccessRequestSettingAnon() {
       .eq('key', 'show_access_request')
       .limit(1)
       .maybeSingle();
-    if (!data) return; // not set in DB → default visible
+    // Sem registro no banco → padrão visível
+    if (!data) { _applyAccessRequestVisibility(true); return; }
     const raw     = data.value;
     const enabled = raw === null || raw === true || raw === 'true' || raw === 1 || raw === '1';
-    // Persist locally for next load
-    try { localStorage.setItem('show_access_request', String(enabled)); } catch(_) {}
-    // Apply
-    _applyAccessRequestVisibilityFromLocalStorage();
+    // Aplica diretamente — NUNCA persiste em localStorage ou dispositivo
+    _applyAccessRequestVisibility(enabled);
   } catch(_) {
-    // Non-fatal: default stays visible
+    // Non-fatal: mantém visível por padrão
+    _applyAccessRequestVisibility(true);
   }
 }
 
-// ── Access request link visibility — reads localStorage only, no auth needed ──
-function _applyAccessRequestVisibilityFromLocalStorage() {
+// ── Access request link visibility — sempre do banco, nunca do dispositivo ──
+function _applyAccessRequestVisibility(enabled) {
   try {
-    const raw = localStorage.getItem('show_access_request');
-    // Default to visible when setting has never been saved
-    const enabled = (raw === null) || (raw === 'true') || (raw === '1') || (raw === true);
-    const btn    = document.getElementById('loginRequestAccessBtn');
-    const parent = btn?.parentElement;
-    if (btn) btn.style.display = enabled ? '' : 'none';
-    if (parent) {
-      parent.querySelectorAll('[data-i18n="auth.no_account"]')
-        .forEach(t => { t.style.display = enabled ? '' : 'none'; });
-    }
+    const btn  = document.getElementById('loginRequestAccessBtn');
+    const wrap = document.getElementById('loginRequestAccessWrap');
+    if (btn)  btn.style.display  = enabled ? '' : 'none';
+    if (wrap) wrap.style.display = enabled ? '' : 'none';
   } catch(_) {}
+}
+// Alias para compatibilidade com chamadas legadas (settings.js, etc.)
+function _applyAccessRequestVisibilityFromLocalStorage() {
+  _fetchAccessRequestSettingAnon();
 }
 
 function toggleLoginPwd() {
@@ -1827,7 +1822,7 @@ function _ownedFamilies() {
 }
 
 function switchUATab(tab) {
-  ['pending','users','families','waitlist','feedback'].forEach(t => {
+  ['pending','users','families','waitlist'].forEach(t => {
     const panel = document.getElementById('uaTab' + t[0].toUpperCase() + t.slice(1));
     const pane  = document.getElementById('ua' + t[0].toUpperCase() + t.slice(1));
     if (panel) panel.classList.toggle('active', t === tab);
@@ -1837,7 +1832,7 @@ function switchUATab(tab) {
   if (tab === 'users')    loadUsersList().catch(e => console.warn('loadUsersList:', e));
   if (tab === 'families') loadFamiliesList().catch(e => console.warn('loadFamiliesList:', e));
   if (tab === 'waitlist') loadWaitlist().catch(e => console.warn('loadWaitlist:', e));
-  if (tab === 'feedback') { if (typeof loadFeedbackReports === 'function') loadFeedbackReports(); }
+  // 'feedback' foi movido para o painel Admin/Telemetria
 }
 
 async function _renderPendingTab() {

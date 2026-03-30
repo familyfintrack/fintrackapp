@@ -1715,13 +1715,15 @@ function _telApplyFilters() {
 
   // Re-renderizar aba ativa
   _telRenderCurrentTab();
+  // Atualizar badge de feedbacks novos
+  if (typeof _telUpdateFeedbackBadge === 'function') _telUpdateFeedbackBadge();
 }
 window._telApplyFilters = _telApplyFilters;
 
 // ── Controle de abas ──────────────────────────────────────────────────────────
 function _telSetTab(tab) {
   _telDash.activeTab = tab;
-  ['overview','users','families','landing'].forEach(t => {
+  ['overview','users','families','landing','feedbacks'].forEach(t => {
     const pane = document.getElementById('telPane_' + t);
     const btn  = document.getElementById('telTab_'  + t);
     if (!pane || !btn) return;
@@ -1731,6 +1733,36 @@ function _telSetTab(tab) {
   });
   _telRenderCurrentTab();
 }
+
+// ── Aba Feedbacks no painel admin ────────────────────────────────────
+function _telRenderFeedbacksTab() {
+  if (typeof loadFeedbackReports === 'function') {
+    loadFeedbackReports();
+  } else {
+    const el = document.getElementById('uaFeedbackContent');
+    if (el) el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Módulo de feedback não disponível.</div>';
+  }
+  // Update badge count
+  _telUpdateFeedbackBadge();
+}
+
+async function _telUpdateFeedbackBadge() {
+  try {
+    const badge = document.getElementById('telFeedbackBadge');
+    if (!badge || !window.sb) return;
+    const { count } = await sb.from('feedback_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'new');
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(_) {}
+}
+window._telUpdateFeedbackBadge = _telUpdateFeedbackBadge;
+
 window._telSetTab = _telSetTab;
 
 function _telRenderCurrentTab() {
@@ -1753,6 +1785,8 @@ function _telRenderCurrentTab() {
     _telRenderFamiliesTable(rows);
   } else if (_telDash.activeTab === 'landing') {
     _telRenderLandingTab(rows);
+  } else if (_telDash.activeTab === 'feedbacks') {
+    _telRenderFeedbacksTab();
   }
 }
 
@@ -2588,26 +2622,23 @@ window.saveShowAccessRequest = async function(enabled) {
   toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
 };
 
+// _applyAccessRequestVisibility delegated to auth.js (single source of truth)
 function _applyAccessRequestVisibility(enabled) {
-  const btn    = document.getElementById('loginRequestAccessBtn');
-  const parent = btn?.parentElement;
-  if (btn)    btn.style.display    = enabled ? '' : 'none';
-  // Also hide the "Não tem conta?" text when button is hidden
-  if (parent) {
-    const texts = parent.querySelectorAll('span[data-i18n="auth.no_account"]');
-    texts.forEach(t => { t.style.display = enabled ? '' : 'none'; });
+  if (typeof window._applyAccessRequestVisibility === 'function' &&
+      window._applyAccessRequestVisibility !== _applyAccessRequestVisibility) {
+    window._applyAccessRequestVisibility(enabled);
+  } else {
+    const btn  = document.getElementById('loginRequestAccessBtn');
+    const wrap = document.getElementById('loginRequestAccessWrap');
+    if (btn)  btn.style.display  = enabled ? '' : 'none';
+    if (wrap) wrap.style.display = enabled ? '' : 'none';
   }
 }
 
-// Apply on page load (called by auth.js after settings load)
+// Apply on page load — reads from DB via auth.js fetch (no localStorage)
 async function initAccessRequestVisibility() {
-  try {
-    const raw     = await getAppSetting('show_access_request', 'true');
-    const enabled = raw === true || raw === 'true' || raw === 1 || raw === null;
-    _applyAccessRequestVisibility(enabled);
-  } catch(e) {
-    // Default: show
-    _applyAccessRequestVisibility(true);
+  if (typeof _fetchAccessRequestSettingAnon === 'function') {
+    await _fetchAccessRequestSettingAnon();
   }
 }
 window.initAccessRequestVisibility = initAccessRequestVisibility;
