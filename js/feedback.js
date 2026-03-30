@@ -137,7 +137,7 @@ window.submitFeedback = async function() {
 
   try {
     const payload = {
-      user_id:     currentUser?.id     || null,
+      user_id:     currentUser?.app_user_id || null,  // app_users.id — não auth.uid
       family_id:   famId?.()           || null,
       type:        typeEl.value,
       module:      modEl.value,

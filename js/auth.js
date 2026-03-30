@@ -472,8 +472,8 @@ function showLoginScreen() {
   const ls = document.getElementById('loginScreen');
   if (ls) {
     ls.style.display = 'flex';
-    // Re-apply access request visibility from DB every time login screen is shown
-    _fetchAccessRequestSettingAnon();
+    // Re-apply access request visibility every time login screen is shown
+    _applyAccessRequestVisibilityFromLocalStorage();
     // Fix logo: use same LOGO_URL used throughout the app
     const img = document.getElementById('loginLogoImg');
     if (typeof setAppLogo==='function') {
@@ -540,48 +540,107 @@ function hideLoginScreen() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
-  // Fetch visibility setting from DB (never localStorage — config is server-side only)
+  // 1. Apply immediately from localStorage (instant, no network)
+  _applyAccessRequestVisibilityFromLocalStorage();
+  // 2. Also fetch from Supabase anon (for mobile users who never set it locally)
+  //    Uses a short timeout so it doesn't block anything
   _fetchAccessRequestSettingAnon();
 });
 
 async function _fetchAccessRequestSettingAnon() {
+  // Strategy: try multiple sources in order of reliability
+  // 1. Supabase anon query (may fail if RLS blocks anon)
+  // 2. Supabase via RPC (SECURITY DEFINER — bypasses RLS)
+  // 3. localStorage (set when admin saved, or from previous successful fetch)
+  // Note: if no source returns data, we default to VISIBLE (safe default)
+
   try {
-    // Wait for sb to be ready (may need a tick after DOM)
     let attempts = 0;
-    while (!window.sb && attempts++ < 20) {
+    while (!window.sb && attempts++ < 30) {
       await new Promise(r => setTimeout(r, 100));
     }
     if (!window.sb) return;
-    const { data } = await sb
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'show_access_request')
-      .limit(1)
-      .maybeSingle();
-    // Sem registro no banco → padrão visível
-    if (!data) { _applyAccessRequestVisibility(true); return; }
-    const raw     = data.value;
-    const enabled = raw === null || raw === true || raw === 'true' || raw === 1 || raw === '1';
-    // Aplica diretamente — NUNCA persiste em localStorage ou dispositivo
-    _applyAccessRequestVisibility(enabled);
+
+    let raw = null;
+    let found = false;
+
+    // Try 1: direct select (works if app_settings has anon SELECT policy)
+    try {
+      const { data, error } = await sb
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'show_access_request')
+        .limit(1)
+        .maybeSingle();
+      if (!error && data !== null && data !== undefined) {
+        raw   = data?.value;
+        found = true;
+      }
+    } catch(_) {}
+
+    // Try 2: RPC get_public_app_setting (SECURITY DEFINER — bypasses RLS)
+    if (!found) {
+      try {
+        const { data, error } = await sb.rpc('get_public_app_setting', {
+          p_key: 'show_access_request'
+        });
+        if (!error && data !== null && data !== undefined) {
+          raw   = data;
+          found = true;
+        }
+      } catch(_) {}
+    }
+
+    // If found from DB, compute enabled and persist
+    if (found) {
+      // raw can be: null, true, false, 'true', 'false', 1, 0, '"true"', '"false"'
+      // Normalise: parse JSON if it looks like JSON-encoded string
+      let val = raw;
+      if (typeof val === 'string') {
+        try { val = JSON.parse(val); } catch(_) {}
+      }
+      const enabled = val === null || val === true || val === 'true' || val === 1 || val === '1';
+      try { localStorage.setItem('show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
+      _applyAccessRequestVisibilityFromLocalStorage();
+    }
+    // If not found from DB at all: leave localStorage as-is (may have been set before)
+    // _applyAccessRequestVisibilityFromLocalStorage already ran from DOMContentLoaded
   } catch(_) {
-    // Non-fatal: mantém visível por padrão
-    _applyAccessRequestVisibility(true);
+    // Non-fatal
   }
 }
 
-// ── Access request link visibility — sempre do banco, nunca do dispositivo ──
-function _applyAccessRequestVisibility(enabled) {
+// Called by loadAppSettings (post-login) to persist the admin setting to localStorage
+// so that the NEXT page load will have it available for mobile users
+function _persistAccessRequestSetting() {
   try {
-    const btn  = document.getElementById('loginRequestAccessBtn');
-    const wrap = document.getElementById('loginRequestAccessWrap');
-    if (btn)  btn.style.display  = enabled ? '' : 'none';
-    if (wrap) wrap.style.display = enabled ? '' : 'none';
+    const raw = _appSettingsCache && ('show_access_request' in _appSettingsCache)
+      ? _appSettingsCache['show_access_request']
+      : localStorage.getItem('show_access_request');
+    if (raw === null || raw === undefined) return;
+    let val = raw;
+    if (typeof val === 'string') { try { val = JSON.parse(val); } catch(_) {} }
+    const enabled = val === null || val === true || val === 'true' || val === 1 || val === '1';
+    // Write normalised boolean string — so next read is unambiguous
+    localStorage.setItem('show_access_request', enabled ? 'true' : 'false');
   } catch(_) {}
 }
-// Alias para compatibilidade com chamadas legadas (settings.js, etc.)
+window._persistAccessRequestSetting = _persistAccessRequestSetting;
+
+// ── Access request link visibility — reads localStorage only, no auth needed ──
 function _applyAccessRequestVisibilityFromLocalStorage() {
-  _fetchAccessRequestSettingAnon();
+  try {
+    const raw = localStorage.getItem('show_access_request');
+    // Default to visible when setting has never been saved
+    const enabled = (raw === null) || (raw === 'true') || (raw === '1') || (raw === true);
+    const btn    = document.getElementById('loginRequestAccessBtn');
+    const parent = btn?.parentElement;
+    if (btn) btn.style.display = enabled ? '' : 'none';
+    if (parent) {
+      parent.querySelectorAll('[data-i18n="auth.no_account"]')
+        .forEach(t => { t.style.display = enabled ? '' : 'none'; });
+    }
+  } catch(_) {}
 }
 
 function toggleLoginPwd() {
@@ -1822,7 +1881,7 @@ function _ownedFamilies() {
 }
 
 function switchUATab(tab) {
-  ['pending','users','families','waitlist'].forEach(t => {
+  ['pending','users','families','waitlist','feedback'].forEach(t => {
     const panel = document.getElementById('uaTab' + t[0].toUpperCase() + t.slice(1));
     const pane  = document.getElementById('ua' + t[0].toUpperCase() + t.slice(1));
     if (panel) panel.classList.toggle('active', t === tab);
@@ -1832,7 +1891,7 @@ function switchUATab(tab) {
   if (tab === 'users')    loadUsersList().catch(e => console.warn('loadUsersList:', e));
   if (tab === 'families') loadFamiliesList().catch(e => console.warn('loadFamiliesList:', e));
   if (tab === 'waitlist') loadWaitlist().catch(e => console.warn('loadWaitlist:', e));
-  // 'feedback' foi movido para o painel Admin/Telemetria
+  if (tab === 'feedback') { if (typeof loadFeedbackReports === 'function') loadFeedbackReports(); }
 }
 
 async function _renderPendingTab() {
