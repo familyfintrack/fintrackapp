@@ -336,11 +336,35 @@ async function loadDashboard(){
     // ── Build HTML ────────────────────────────────────────────────────────
     let html = '';
 
-    // Favorites section — always at top if any exist
+    // Favorites section — always at top if any exist, grouped by type
     if (favs.length) {
-      html += `<div class="dash-favs-section">
-        <div class="dash-favs-grid">${favs.map(rowHtml).join('')}</div>
-      </div>`;
+      // Group favorites: credit cards | checking+savings | others
+      const favCC      = favs.filter(a => a.type === 'cartao_credito');
+      const favCheck   = favs.filter(a => a.type === 'corrente' || a.type === 'poupanca');
+      const favOthers  = favs.filter(a => !['cartao_credito','corrente','poupanca'].includes(a.type));
+
+      const _favTypeSep = (items, label, totalSign) => {
+        if (!items.length) return '';
+        const total = items.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+        const totalColor = total < 0 ? 'var(--red)' : label === 'Cartão de Crédito' ? 'rgba(192,57,43,.75)' : 'var(--accent)';
+        return `<div class="dash-fav-type-group">
+          <div class="dash-fav-type-header">
+            <span class="dash-fav-type-label">${label}</span>
+            <span class="dash-fav-type-total" style="color:${totalColor}">${dashFmt(Math.abs(total),'BRL')}</span>
+          </div>
+          <div class="dash-favs-grid">${items.map(rowHtml).join('')}</div>
+        </div>`;
+      };
+
+      const favHtml = (favCC.length || favCheck.length || favOthers.length)
+        ? _favTypeSep(favCC, 'Cartão de Crédito') +
+          (favCC.length && (favCheck.length || favOthers.length) ? '<div class="dash-fav-type-divider"></div>' : '') +
+          _favTypeSep(favCheck, 'Contas Correntes / Poupança') +
+          (favOthers.length ? '<div class="dash-fav-type-divider"></div>' : '') +
+          _favTypeSep(favOthers, 'Outros')
+        : `<div class="dash-favs-grid">${favs.map(rowHtml).join('')}</div>`;
+
+      html += `<div class="dash-favs-section">${favHtml}</div>`;
 
       // Non-favorites: split BRL vs foreign, both collapsed by default
       const nonFavs = accs.filter(a => !a.is_favorite);
@@ -448,12 +472,95 @@ async function renderCashflowChart(memberIds = null){
   const balances = cashRows.map(r => r.balance);
   labels.length = 0;
   cashRows.forEach(r => labels.push(r.label));
-  _dashRenderChart('cashflowChart','bar',labels,[
+  // Store monthly data for drill-down
+  window._cashflowMonthData = {};
+  cashRows.forEach(r => { window._cashflowMonthData[r.label] = r; });
+
+  const chartInst = _dashRenderChart('cashflowChart','bar',labels,[
     {label:'Receitas',data:incomes,backgroundColor:'rgba(42,122,74,.8)',borderRadius:6,borderSkipped:false,order:2},
     {label:'Despesas',data:expenses,backgroundColor:'rgba(192,57,43,.75)',borderRadius:6,borderSkipped:false,order:2},
     {label:'Saldo',data:balances,type:'line',borderColor:'#1e5ba8',backgroundColor:'rgba(30,91,168,.12)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1e5ba8',fill:true,tension:0.35,order:1},
-  ]);
+  ],{
+    onClick(evt, elements) {
+      if (!elements.length) return;
+      const idx    = elements[0].index;
+      const label  = labels[idx];
+      const dsIdx  = elements[0].datasetIndex;
+      const isInc  = dsIdx === 0;
+      const isExp  = dsIdx === 1;
+      _dashCashflowDrill(label, isInc ? 'income' : isExp ? 'expense' : null);
+    },
+    onHover(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+  });
 }
+
+async function _dashCashflowDrill(monthLabel, type) {
+  const wrap  = document.getElementById('dashForecastChartWrap');
+  const drill = document.getElementById('dashCashflowDrill');
+  if (!wrap || !drill) return;
+
+  drill.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem">⏳ Carregando…</div>';
+  wrap.style.display = 'none';
+  drill.style.display = 'block';
+
+  // Parse month from label (e.g. "Jan/25" → 2025-01)
+  const monthMap = {Jan:'01',Fev:'02',Mar:'03',Abr:'04',Mai:'05',Jun:'06',Jul:'07',Ago:'08',Set:'09',Out:'10',Nov:'11',Dez:'12'};
+  const parts = monthLabel.split('/');
+  const monthNum = monthMap[parts[0]] || '01';
+  const yearFull = parts[1] ? (parseInt(parts[1]) < 50 ? '20'+parts[1] : '19'+parts[1]) : new Date().getFullYear();
+  const from = `${yearFull}-${monthNum}-01`;
+  const lastDay = new Date(parseInt(yearFull), parseInt(monthNum), 0).getDate();
+  const to = `${yearFull}-${monthNum}-${String(lastDay).padStart(2,'0')}`;
+
+  try {
+    let q = famQ(sb.from('transactions')
+      .select('id,date,description,amount,accounts!transactions_account_id_fkey(name),categories(name,color)'))
+      .gte('date', from).lte('date', to).order('date',{ascending:false});
+    if (type === 'income')  q = q.gt('amount', 0);
+    if (type === 'expense') q = q.lt('amount', 0);
+    const { data: txs } = await q;
+
+    const typeLabel = type === 'income' ? 'Receitas' : type === 'expense' ? 'Despesas' : 'Tudo';
+    const total = (txs||[]).reduce((s,t) => s + Math.abs(Number(t.amount)||0), 0);
+
+    drill.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div>
+          <span style="font-size:.88rem;font-weight:700;color:var(--text)">${monthLabel} · ${typeLabel}</span>
+          <span style="font-size:.72rem;color:var(--muted);margin-left:8px">${(txs||[]).length} transações · ${fmt(total)}</span>
+        </div>
+        <button onclick="document.getElementById('dashCashflowDrill').style.display='none';document.getElementById('dashForecastChartWrap').style.display=''"
+          style="display:flex;align-items:center;gap:4px;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">
+          ← Voltar ao gráfico
+        </button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto">
+        ${(txs||[]).length ? (txs||[]).map(t => {
+          const isNeg = t.amount < 0;
+          const catColor = t.categories?.color || (isNeg ? 'var(--red)' : 'var(--green)');
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px;cursor:pointer;transition:background .12s"
+            onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'"
+            onclick="if(typeof openTransactionEdit==='function')openTransactionEdit('${t.id}')">
+            <div style="width:6px;height:6px;border-radius:50%;background:${catColor};flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</div>
+              <div style="font-size:.65rem;color:var(--muted)">${t.date}${t.accounts?.name?' · '+esc(t.accounts.name):''}</div>
+            </div>
+            <span style="font-size:.8rem;font-weight:700;flex-shrink:0;color:${isNeg?'var(--red,#c0392b)':'var(--green,#2a7a4a)'}">
+              ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0))}
+            </span>
+          </div>`;
+        }).join('') : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem">Nenhuma transação</div>'}
+      </div>`;
+  } catch(e) {
+    drill.innerHTML = `<div style="color:var(--red,#dc2626);padding:12px;font-size:.8rem">Erro: ${esc(e.message)}</div>
+      <button onclick="document.getElementById('dashCashflowDrill').style.display='none';document.getElementById('dashForecastChartWrap').style.display=''"
+        style="margin-top:8px;padding:5px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);cursor:pointer;font-size:.78rem">
+        ← Voltar
+      </button>`;
+  }
+}
+window._dashCashflowDrill = _dashCashflowDrill;
 // ─── Category chart: rich palette + click-to-drill ───────────────────────
 // Stores raw transaction data so click handler can filter without re-fetching
 let _catChartRawData = [];  // [{name, color, brl, t}]

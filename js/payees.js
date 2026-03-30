@@ -378,6 +378,20 @@ function py2SetTypeFilter(btn, type) {
   filterPayees();
 }
 async function openPayeeModal(id=''){
+  // Reset logo state
+  window._payeeLogoPending = null;
+  const logoPreview = document.getElementById('payeeLogoPreview');
+  const logoFile    = document.getElementById('payeeLogoFile');
+  const logoRemove  = document.getElementById('payeeLogoRemoveBtn');
+  const logoUrl     = document.getElementById('payeeLogoUrl');
+  const logoFlag    = document.getElementById('payeeLogoRemoveFlag');
+  const aiPanel     = document.getElementById('payeeAiSuggestPanel');
+  if (logoPreview) logoPreview.innerHTML = '🏢';
+  if (logoFile)    { try { logoFile.value = ''; } catch(_) {} }
+  if (logoRemove)  logoRemove.style.display = 'none';
+  if (logoUrl)     logoUrl.value = '';
+  if (logoFlag)    logoFlag.value = '';
+  if (aiPanel)     aiPanel.style.display = 'none';
   const form={id:'',name:'',type:'beneficiario',default_category_id:'',notes:''};
   if(id){const p=state.payees.find(x=>x.id===id);if(p)Object.assign(form,p);}
 
@@ -390,6 +404,17 @@ async function openPayeeModal(id=''){
   document.getElementById('payeeName').value  = form.name;
   document.getElementById('payeeType').value  = form.type;
   document.getElementById('payeeNotes').value = form.notes || '';
+  // Restore logo / icon if editing existing payee
+  const _logoPreview = document.getElementById('payeeLogoPreview');
+  const _logoRemove  = document.getElementById('payeeLogoRemoveBtn');
+  const _logoUrl     = document.getElementById('payeeLogoUrl');
+  if (form.avatar_url && _logoPreview) {
+    _logoPreview.innerHTML = form.avatar_url.startsWith('emoji:')
+      ? `<span style="font-size:2rem">${form.avatar_url.slice(6)}</span>`
+      : `<img src="${form.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">`;
+    if (_logoRemove) _logoRemove.style.display = '';
+    if (_logoUrl)    _logoUrl.value = form.avatar_url;
+  }
   document.getElementById('payeeModalTitle').textContent = id ? 'Editar Beneficiário' : 'Novo Beneficiário';
   // Campos de contato/localização
   document.getElementById('payeeAddress').value  = form.address  || '';

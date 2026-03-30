@@ -5311,6 +5311,11 @@ function _showAdminLoginNotification(waitlistCount) {
           style="flex:1;padding:7px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-lt,#e8f2ee);color:var(--accent);font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">
           Ver lista de espera
         </button>
+        <button onclick="_dismissNotifToday('adminLoginNotif');document.getElementById('adminLoginNotifPopup')?.remove()"
+          style="padding:7px 10px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;font-family:var(--font-sans);flex-shrink:0"
+          title="Não mostrar hoje">
+          Não hoje
+        </button>
       </div>
     </div>`;
 
