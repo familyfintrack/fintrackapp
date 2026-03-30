@@ -6,6 +6,173 @@ let _rptCatTypeExp = 'bar';    // expense chart type
 let _rptCatTypeInc = 'bar';    // income chart type
 let _rptCatDataCache = { expEntries: [], incEntries: [] };
 
+/* ══════════════════════════════════════════════════════════════════
+   DRILL-DOWN — painel deslizante de detalhamento
+══════════════════════════════════════════════════════════════════ */
+let _drillChart = null; // Chart.js instance inside drill panel
+
+function _drillOpen(opts) {
+  const { title = '', subtitle = '', txs = [], color = 'var(--accent)' } = opts;
+  const _rBrl = t => typeof txToBRL === 'function'
+    ? Math.abs(txToBRL(t)) : Math.abs(t.brl_amount ?? t.amount ?? 0);
+
+  const totAmt  = txs.reduce((s, t) => s + _rBrl(t), 0);
+  const avgAmt  = txs.length ? totAmt / txs.length : 0;
+
+  // Mini spark: distribuição diária
+  const dailyMap = {};
+  txs.forEach(t => {
+    const d = t.date?.slice(0, 10) || '?';
+    dailyMap[d] = (dailyMap[d] || 0) + _rBrl(t);
+  });
+  const dailyDates = Object.keys(dailyMap).sort();
+  const dailyVals  = dailyDates.map(d => +dailyMap[d].toFixed(2));
+
+  // Sort txs by date desc
+  const sorted = [...txs].sort((a, b) => (b.date || '') < (a.date || '') ? -1 : 1);
+
+  // Payee breakdown
+  const payMap = {};
+  txs.forEach(t => {
+    const k = t.payees?.name || t.description || '—';
+    payMap[k] = (payMap[k] || 0) + _rBrl(t);
+  });
+  const topPayees = Object.entries(payMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const payTotal  = topPayees.reduce((s, [, v]) => s + v, 0);
+
+  const panel = document.getElementById('rptDrillPanel');
+  if (!panel) return;
+
+  const topPayeesHtml = topPayees.length > 1 ? `
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Top benefici\u00e1rios</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${topPayees.map(([name, val]) => {
+            const pct = payTotal > 0 ? (val / payTotal * 100).toFixed(0) : 0;
+            return '<div style="display:flex;align-items:center;gap:8px">' +
+              '<div style="font-size:.78rem;color:var(--text);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(name) + '</div>' +
+              '<div style="width:80px;height:5px;background:var(--border);border-radius:3px;flex-shrink:0">' +
+                '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div>' +
+              '</div>' +
+              '<div style="font-size:.75rem;font-weight:600;color:var(--text2);flex-shrink:0;width:60px;text-align:right">' + fmt(val) + '</div>' +
+            '</div>';
+          }).join('')}
+        </div>
+      </div>` : '';
+
+  const sparkHtml = dailyDates.length > 1 ? `
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Distribui\u00e7\u00e3o no per\u00edodo</div>
+        <div style="height:64px;position:relative"><canvas id="drillSparkChart" style="width:100%;height:64px"></canvas></div>
+      </div>` : '';
+
+  const txRowsHtml = sorted.length
+    ? sorted.map(t => {
+        const amt      = _rBrl(t);
+        const isNeg    = t.amount < 0;
+        const catColor = t.categories?.color || color;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);cursor:pointer;transition:background .12s;border-bottom:1px solid var(--border)" ' +
+          'onmouseover="this.style.background=\'var(--surface2)\'" ' +
+          'onmouseout="this.style.background=\'var(--surface)\'" ' +
+          'onclick="openTransactionEdit(\'' + t.id + '\')" title="Abrir transa\u00e7\u00e3o">' +
+          '<div style="width:7px;height:7px;border-radius:50%;background:' + catColor + ';flex-shrink:0"></div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(t.description || '—') + '</div>' +
+            '<div style="font-size:.68rem;color:var(--muted);margin-top:1px">' +
+              fmtDate(t.date) +
+              (t.payees?.name ? ' \u00b7 ' + esc(t.payees.name) : '') +
+              (t.accounts?.name ? ' \u00b7 ' + esc(t.accounts.name) : '') +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:.84rem;font-weight:700;color:' + (isNeg ? 'var(--red,#c0392b)' : 'var(--green,#2a7a4a)') + ';flex-shrink:0">' +
+            (isNeg ? '\u2212' : '+') + fmt(amt) +
+          '</div>' +
+        '</div>';
+      }).join('')
+    : '<div style="padding:24px;text-align:center;color:var(--muted);font-size:.82rem">Nenhuma transa\u00e7\u00e3o</div>';
+
+  panel.innerHTML =
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0">' +
+      '<div style="min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">' +
+          '<div style="width:12px;height:12px;border-radius:50%;background:' + color + ';flex-shrink:0"></div>' +
+          '<div style="font-size:.95rem;font-weight:700;color:var(--text);line-height:1.2">' + esc(title) + '</div>' +
+        '</div>' +
+        '<div style="font-size:.75rem;color:var(--muted);padding-left:20px">' + esc(subtitle) + '</div>' +
+      '</div>' +
+      '<button onclick="_drillClose()" ' +
+        'style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:all .15s" ' +
+        'onmouseover="this.style.background=\'var(--surface2)\';this.style.color=\'var(--text)\'" ' +
+        'onmouseout="this.style.background=\'none\';this.style.color=\'var(--muted)\'">&#x2715;</button>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 20px;flex-shrink:0;border-bottom:1px solid var(--border)">' +
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border-left:3px solid ' + color + '">' +
+        '<div style="font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total</div>' +
+        '<div style="font-size:1rem;font-weight:700;color:var(--text)">' + fmt(totAmt) + '</div>' +
+      '</div>' +
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px 12px">' +
+        '<div style="font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Qtd</div>' +
+        '<div style="font-size:1rem;font-weight:700;color:var(--text)">' + txs.length + '</div>' +
+      '</div>' +
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px 12px">' +
+        '<div style="font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Ticket m\u00e9dio</div>' +
+        '<div style="font-size:1rem;font-weight:700;color:var(--text)">' + fmt(avgAmt) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:14px 20px;display:flex;flex-direction:column;gap:14px">' +
+      sparkHtml +
+      topPayeesHtml +
+      '<div>' +
+        '<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Transa\u00e7\u00f5es (' + sorted.length + ')</div>' +
+        '<div style="display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden">' +
+          txRowsHtml +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  panel.style.display = 'flex';
+  requestAnimationFrame(() => {
+    panel.style.transform = 'translateX(0)';
+    panel.style.opacity   = '1';
+  });
+
+  // Draw sparkline after DOM is ready
+  if (dailyDates.length > 1) {
+    setTimeout(() => {
+      const ctx = document.getElementById('drillSparkChart')?.getContext('2d');
+      if (!ctx) return;
+      if (_drillChart) { try { _drillChart.destroy(); } catch(_) {} }
+      _drillChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: dailyDates.map(d => d.slice(5)),
+          datasets: [{ data: dailyVals, backgroundColor: color + 'aa', borderColor: color, borderWidth: 1, borderRadius: 2 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmt(c.raw) } } },
+          scales: {
+            x: { ticks: { font: { size: 9 }, color: '#888' }, grid: { display: false } },
+            y: { display: false, beginAtZero: true },
+          },
+        },
+      });
+    }, 80);
+  }
+}
+
+function _drillClose() {
+  const panel = document.getElementById('rptDrillPanel');
+  if (!panel) return;
+  panel.style.transform = 'translateX(100%)';
+  panel.style.opacity   = '0';
+  setTimeout(() => { panel.style.display = 'none'; }, 260);
+  if (_drillChart) { try { _drillChart.destroy(); } catch(_) {} _drillChart = null; }
+}
+window._drillClose = _drillClose;
+window._drillOpen  = _drillOpen;
+
+
 function setRptCatChart(chartType, which) {
   // which = 'exp' | 'inc'
   if (which === 'exp') {
@@ -30,25 +197,77 @@ function _renderSingleCatChart(canvasId, entries, chartType) {
   const colors = new Set();
   if (chartType === 'bar') {
     const top = entries.slice(0, 12);
+    // Determine type (expense vs income) from canvas ID for drill-down coloring
+    const _drillIsInc = canvasId === 'reportIncomeChart';
     renderChart(canvasId, 'bar',
       top.map(e => e[0]),
       [{ data: top.map(e => +e[1].total.toFixed(2)),
          backgroundColor: top.map((e, i) => _catColor(e[1].rawColor, i, colors)),
          borderRadius: 5, borderSkipped: false }],
       { indexAxis: 'y',
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => '  ' + fmt(ctx.raw) } },
+        },
         scales: {
           x: { beginAtZero: true, ticks: { callback: v => fmt(v) } },
-          y: { ticks: { font: { size: 11 } } }
-        }
+          y: { ticks: { font: { size: 11 }, cursor: 'pointer' } }
+        },
+        onClick(evt, elements) {
+          if (!elements.length) return;
+          const idx  = elements[0].index;
+          const entry = top[idx];
+          if (!entry) return;
+          const catName  = entry[0];
+          const catColor = entry[1].rawColor || 'var(--accent)';
+          const txSlice  = (rptState.txData || []).filter(t =>
+            (t.categories?.name || 'Sem categoria') === catName &&
+            (_drillIsInc ? t.amount > 0 : t.amount < 0)
+          );
+          const { from, to } = getRptDateRange();
+          _drillOpen({
+            title: catName,
+            subtitle: (_drillIsInc ? 'Receitas' : 'Despesas') + ' · ' + fmtDate(from) + ' → ' + fmtDate(to),
+            txs: txSlice,
+            color: catColor,
+          });
+        },
+        onHover(evt, elements) {
+          evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        },
       }
     );
   } else {
+    const _drillIsIncD = canvasId === 'reportIncomeChart';
     renderChart(canvasId, 'doughnut',
       entries.map(e => e[0]),
       [{ data: entries.map(e => +e[1].total.toFixed(2)),
          backgroundColor: entries.map((e, i) => _catColor(e[1].rawColor, i, colors)),
-         borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }]
+         borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }],
+      {
+        onClick(evt, elements) {
+          if (!elements.length) return;
+          const idx   = elements[0].index;
+          const entry = entries[idx];
+          if (!entry) return;
+          const catName  = entry[0];
+          const catColor = entry[1].rawColor || 'var(--accent)';
+          const txSlice  = (rptState.txData || []).filter(t =>
+            (t.categories?.name || 'Sem categoria') === catName &&
+            (_drillIsIncD ? t.amount > 0 : t.amount < 0)
+          );
+          const { from, to } = getRptDateRange();
+          _drillOpen({
+            title: catName,
+            subtitle: (_drillIsIncD ? 'Receitas' : 'Despesas') + ' · ' + fmtDate(from) + ' → ' + fmtDate(to),
+            txs: txSlice,
+            color: catColor,
+          });
+        },
+        onHover(evt, elements) {
+          evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        },
+      }
     );
   }
 }
@@ -291,7 +510,28 @@ async function loadReports() {
     renderChart('reportAccountChart','bar',accE.map(e=>e[0]),[
       {label:t('rpt.expense'),data:accE.map(e=>+e[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.8)',borderRadius:5,borderSkipped:false},
       {label:t('rpt.income'),data:accE.map(e=>+e[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
-    ]);
+    ],{
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        const aIdx    = elements[0].index;
+        const dsIdx   = elements[0].datasetIndex;  // 0=exp, 1=inc
+        const accName = accE[aIdx]?.[0];
+        if (!accName) return;
+        const isInc   = dsIdx === 1;
+        const txSlice = (rptState.txData||[]).filter(t =>
+          (t.accounts?.name||'—') === accName && (isInc ? t.amount>0 : t.amount<0)
+        );
+        const { from, to } = getRptDateRange();
+        const accColor = accE[aIdx]?.[1]?.color || (isInc ? '#2a7a4a' : '#c0392b');
+        _drillOpen({
+          title:    accName,
+          subtitle: (isInc?'Receitas':'Despesas') + ' · ' + fmtDate(from) + ' → ' + fmtDate(to),
+          txs:      txSlice,
+          color:    accColor,
+        });
+      },
+      onHover(evt,el){ evt.native.target.style.cursor=el.length?'pointer':'default'; },
+    });
 
   /* Evolução */
   await renderTrendChart(from, to);
@@ -326,10 +566,16 @@ async function loadReports() {
     const totInc = incE.reduce((s, e) => s + e.total, 0);
     const totTrn = trnE.reduce((s, e) => s + e.total, 0);
 
-    function groupRows(entries, groupTotal, amtClass, sign) {
-      return entries.map(v => `<tr>
+    function groupRows(entries, groupTotal, amtClass, sign, isIncome) {
+      return entries.map(v => `<tr
+        style="cursor:pointer;transition:background .12s"
+        onmouseover="this.style.background='var(--surface2)'"
+        onmouseout="this.style.background=''"
+        onclick="_drillByCatRow('${esc(v.name)}', '${esc(v.color)}', ${!!isIncome})"
+        title="Ver transações de ${esc(v.name)}">
         <td style="padding-left:18px">
           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.color};margin-right:6px;flex-shrink:0;vertical-align:middle"></span>${esc(v.name)}
+          <span style="font-size:.65rem;color:var(--muted);margin-left:4px">↗</span>
         </td>
         <td class="text-muted" style="text-align:center">${v.count}</td>
         <td class="${amtClass}">${sign}${fmt(v.total)}</td>
@@ -358,21 +604,38 @@ async function loadReports() {
     let html = '';
     if (expE.length) {
       html += groupHeader('💸 Despesas', totExp, 'var(--red,#c0392b)', 'amount-neg', '-', expE.length);
-      html += groupRows(expE, totExp, 'amount-neg', '-');
+      html += groupRows(expE, totExp, 'amount-neg', '-', false);
     }
     if (incE.length) {
       html += groupHeader('📈 Receitas', totInc, 'var(--green,#2a7a4a)', 'amount-pos', '', incE.length);
-      html += groupRows(incE, totInc, 'amount-pos', '');
+      html += groupRows(incE, totInc, 'amount-pos', '', true);
     }
     if (trnE.length) {
       html += groupHeader('🔄 Transferências', totTrn, 'var(--accent,#2a6049)', 'amount-transfer', '', trnE.length);
-      html += groupRows(trnE, totTrn, 'text-muted', '');
+      html += groupRows(trnE, totTrn, 'text-muted', '', false);
     }
     if (!html) html = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:28px">Nenhuma transação no período</td></tr>';
 
     document.getElementById('reportCatBody').innerHTML = html;
   })();
 }
+
+
+/* ── Drill-down helpers called from table rows and trend/account charts ── */
+function _drillByCatRow(catName, catColor, isIncome) {
+  const txSlice = (rptState.txData || []).filter(t =>
+    (t.categories?.name || 'Sem categoria') === catName &&
+    (isIncome ? t.amount > 0 : t.amount < 0)
+  );
+  const { from, to } = getRptDateRange();
+  _drillOpen({
+    title:    catName,
+    subtitle: (isIncome ? 'Receitas' : 'Despesas') + ' · ' + fmtDate(from) + ' → ' + fmtDate(to),
+    txs:      txSlice,
+    color:    catColor || 'var(--accent)',
+  });
+}
+window._drillByCatRow = _drillByCatRow;
 
 async function renderTrendChart(from, to) {
   const MNAMES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -394,7 +657,21 @@ async function renderTrendChart(from, to) {
     if(wks.length) renderChart('reportTrendChart','bar',wks.map(w=>'Sem '+w[0]),[
       {label:'Receitas',data:wks.map(w=>+w[1].inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
       {label:'Despesas',data:wks.map(w=>+w[1].exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
-    ]);
+    ],{
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        const wIdx = elements[0].index;
+        const wn   = wks[wIdx]?.[0];
+        if (!wn) return;
+        const isInc = elements[0].datasetIndex === 0;
+        const txSlice = (rptState.txData||[]).filter(t => {
+          const d = new Date(t.date+'T12:00');
+          return Math.min(Math.ceil(d.getDate()/7),4) === wn && (isInc ? t.amount>0 : t.amount<0);
+        });
+        _drillOpen({ title: 'Semana '+wn, subtitle: (isInc?'Receitas':'Despesas')+' · Semana '+wn, txs: txSlice, color: isInc?'#2a7a4a':'#c0392b' });
+      },
+      onHover(evt,el){ evt.native.target.style.cursor=el.length?'pointer':'default'; },
+    });
     return;
   }
   rptState.txData.forEach(t=>{
@@ -404,7 +681,25 @@ async function renderTrendChart(from, to) {
   renderChart('reportTrendChart','bar',months.map(m=>m.label),[
     {label:'Receitas',data:months.map(m=>+m.inc.toFixed(2)),backgroundColor:'rgba(42,122,74,.8)',borderRadius:5,borderSkipped:false},
     {label:'Despesas',data:months.map(m=>+m.exp.toFixed(2)),backgroundColor:'rgba(192,57,43,.75)',borderRadius:5,borderSkipped:false},
-  ]);
+  ],{
+    onClick(evt, elements) {
+      if (!elements.length) return;
+      const mIdx  = elements[0].index;
+      const month = months[mIdx];
+      if (!month) return;
+      const isInc = elements[0].datasetIndex === 0;
+      const txSlice = (rptState.txData||[]).filter(t =>
+        t.date?.slice(0,7) === month.key && (isInc ? t.amount>0 : t.amount<0)
+      );
+      _drillOpen({
+        title:    (isInc?'Receitas':'Despesas') + ' · ' + month.label,
+        subtitle: month.key,
+        txs:      txSlice,
+        color:    isInc ? '#2a7a4a' : '#c0392b',
+      });
+    },
+    onHover(evt,el){ evt.native.target.style.cursor=el.length?'pointer':'default'; },
+  });
 }
 
 /* ═══ VIEW: TRANSAÇÕES ═══ */

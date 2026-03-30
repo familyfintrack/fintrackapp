@@ -1877,3 +1877,398 @@ async function confirmAddToGroceryList() {
     if (btn) { btn.disabled = false; btn.textContent = 'Adicionar'; }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GERENCIADOR DE SUBCATEGORIAS & TIPOS  (openPxHierManager)
+// CRUD completo: criar, renomear, excluir subcategorias e tipos.
+// Ao excluir uma subcategoria, limpa todos os vínculos de itens afetados.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function openPxHierManager() {
+  // Garante dados frescos
+  if (_pxHierCache     === null) await _pxHierLoad();
+  if (_pxItemMetaCache === null) await _pxItemMetaLoad();
+
+  // Popula select de categorias com todas as que têm dados OU que existem no hierarchy
+  const catSel = document.getElementById('pxhmCatSel');
+  if (catSel) {
+    const usedCatIds = new Set([
+      ..._px.items.map(i => i.category_id).filter(Boolean),
+      ...Object.keys(_pxHierCache || {}).filter(k => k !== '__none__'),
+    ]);
+    const cats = (state.categories || [])
+      .filter(c => c.type !== 'income')
+      .sort((a, b) => a.name.localeCompare(b.name));
+    catSel.innerHTML = '<option value="">— Sem categoria —</option>' +
+      cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    catSel.value = '';
+  }
+
+  openModal('pxHierManagerModal');
+  pxhmLoadCat();
+}
+window.openPxHierManager = openPxHierManager;
+
+// Renderiza lista de subcategorias para o catId selecionado
+function pxhmLoadCat() {
+  const catId = document.getElementById('pxhmCatSel')?.value || null;
+  _pxhmRender(catId);
+}
+window.pxhmLoadCat = pxhmLoadCat;
+
+function _pxhmRender(catId) {
+  const el = document.getElementById('pxhmSubcatList');
+  if (!el) return;
+
+  const subcats = _pxSubcatsForCat(catId);
+
+  if (!subcats.length) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:32px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:8px;opacity:.4">🏷️</div>
+        <div style="font-size:.85rem;font-weight:600;margin-bottom:4px">Nenhuma subcategoria</div>
+        <div style="font-size:.78rem">Clique em <strong>+ Nova subcategoria</strong> para começar.</div>
+      </div>`;
+    return;
+  }
+
+  // Count how many items are bound to each subcat/type
+  const meta = _pxItemMetaCache || {};
+  const countBySubcat = {};
+  const countByType   = {};
+  Object.values(meta).forEach(v => {
+    const parts = (v || '').split(__SEP__);
+    if (parts.length < 2) return;
+    const [mCatId, mSubcatKey, mTypeLabel] = parts;
+    const groupCatId = catId || null;
+    if ((groupCatId ? mCatId === groupCatId : !mCatId || mCatId === '') || catId === null) {
+      const sk = mSubcatKey;
+      if (sk) {
+        countBySubcat[sk] = (countBySubcat[sk] || 0) + 1;
+        if (mTypeLabel) {
+          const tk = sk + '||' + mTypeLabel;
+          countByType[tk] = (countByType[tk] || 0) + 1;
+        }
+      }
+    }
+  });
+
+  el.innerHTML = subcats.map(sub => {
+    const itemCount = countBySubcat[sub.key] || 0;
+    const types = sub.types || [];
+
+    const typeRows = types.length ? types.map(tl => {
+      const tc = countByType[sub.key + '||' + tl] || 0;
+      return `<div class="pxhm-type-row" id="pxhmType_${esc(sub.key)}_${esc(tl)}">
+        <span class="pxhm-type-dot"></span>
+        <span class="pxhm-type-label" id="pxhmTypeLbl_${esc(sub.key)}_${esc(tl)}">${esc(tl)}</span>
+        ${tc ? `<span class="pxhm-badge">${tc} item${tc !== 1 ? 's' : ''}</span>` : ''}
+        <div class="pxhm-type-actions">
+          <button class="pxhm-btn-icon" title="Renomear tipo"
+            onclick="pxhmRenameType('${esc(catId||'')}','${esc(sub.key)}','${esc(tl)}')" >✏️</button>
+          <button class="pxhm-btn-icon pxhm-btn-del" title="Excluir tipo"
+            onclick="pxhmDeleteType('${esc(catId||'')}','${esc(sub.key)}','${esc(tl)}',${tc})">🗑</button>
+        </div>
+      </div>`;
+    }).join('') : `<div class="pxhm-type-empty">Nenhum tipo — clique em <strong>+ Tipo</strong></div>`;
+
+    return `<div class="pxhm-subcat-block" id="pxhmSub_${esc(sub.key)}">
+      <div class="pxhm-subcat-header">
+        <div class="pxhm-subcat-dot"></div>
+        <span class="pxhm-subcat-label" id="pxhmSubLbl_${esc(sub.key)}">${esc(sub.label)}</span>
+        ${itemCount ? `<span class="pxhm-badge pxhm-badge-main">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>` : ''}
+        <div class="pxhm-subcat-actions">
+          <button class="pxhm-btn-sm" title="Adicionar tipo"
+            onclick="pxhmAddType('${esc(catId||'')}','${esc(sub.key)}')">+ Tipo</button>
+          <button class="pxhm-btn-icon" title="Renomear subcategoria"
+            onclick="pxhmRenameSubcat('${esc(catId||'')}','${esc(sub.key)}','${esc(sub.label)}')">✏️</button>
+          <button class="pxhm-btn-icon pxhm-btn-del" title="Excluir subcategoria"
+            onclick="pxhmDeleteSubcat('${esc(catId||'')}','${esc(sub.key)}','${esc(sub.label)}',${itemCount})">🗑</button>
+        </div>
+      </div>
+      <div class="pxhm-types-list">${typeRows}</div>
+    </div>`;
+  }).join('');
+
+  // Inject scoped CSS once
+  if (!document.getElementById('pxhmStyle')) {
+    const s = document.createElement('style');
+    s.id = 'pxhmStyle';
+    s.textContent = `
+      .pxhm-subcat-block { border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; }
+      .pxhm-subcat-header { display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--surface2); flex-wrap:wrap; }
+      .pxhm-subcat-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+      .pxhm-subcat-label { font-weight:700; font-size:.88rem; color:var(--text); flex:1; min-width:0; }
+      .pxhm-subcat-actions { display:flex; gap:4px; align-items:center; margin-left:auto; flex-shrink:0; }
+      .pxhm-types-list { padding:8px 14px 10px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
+      .pxhm-type-row { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:7px; background:var(--bg2); }
+      .pxhm-type-dot { width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+      .pxhm-type-label { font-size:.82rem; color:var(--text); flex:1; min-width:0; }
+      .pxhm-type-actions { display:flex; gap:3px; margin-left:auto; flex-shrink:0; }
+      .pxhm-type-empty { font-size:.75rem; color:var(--muted); padding:4px 8px; font-style:italic; }
+      .pxhm-badge { font-size:.65rem; font-weight:700; padding:2px 7px; border-radius:99px; background:var(--accent-lt); color:var(--accent); white-space:nowrap; }
+      .pxhm-badge-main { background:rgba(42,96,73,.12); color:var(--accent); }
+      .pxhm-btn-sm { font-size:.72rem; font-weight:700; font-family:var(--font-sans); padding:4px 9px; border-radius:6px; border:1.5px solid var(--accent); background:transparent; color:var(--accent); cursor:pointer; white-space:nowrap; transition:all .15s; }
+      .pxhm-btn-sm:hover { background:var(--accent); color:#fff; }
+      .pxhm-btn-icon { background:none; border:none; cursor:pointer; font-size:.88rem; padding:3px 5px; border-radius:5px; transition:background .12s; line-height:1; }
+      .pxhm-btn-icon:hover { background:var(--surface2); }
+      .pxhm-btn-del:hover { background:rgba(192,57,43,.1); }
+      .pxhm-inline-edit { display:flex; align-items:center; gap:6px; }
+      .pxhm-inline-input { font-size:.85rem; font-family:var(--font-sans); padding:4px 8px; border:1.5px solid var(--accent); border-radius:6px; background:var(--surface); color:var(--text); flex:1; outline:none; }
+      .pxhm-save-btn { font-size:.75rem; font-weight:700; font-family:var(--font-sans); padding:4px 10px; border-radius:6px; border:none; background:var(--accent); color:#fff; cursor:pointer; white-space:nowrap; }
+      .pxhm-cancel-btn { font-size:.75rem; font-family:var(--font-sans); padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; }
+    `;
+    document.head.appendChild(s);
+  }
+}
+
+// ── ADD SUBCAT ───────────────────────────────────────────────────────────────
+async function pxhmAddSubcat() {
+  const catId = document.getElementById('pxhmCatSel')?.value || null;
+  const catName = document.getElementById('pxhmCatSel')?.selectedOptions?.[0]?.text || 'Sem categoria';
+
+  // Inline input na área de lista
+  const el = document.getElementById('pxhmSubcatList');
+  if (!el) return;
+
+  // Check se já há um input inline aberto
+  if (document.getElementById('pxhmNewSubcatInput')) return;
+
+  const addRow = document.createElement('div');
+  addRow.style.cssText = 'margin-bottom:10px;padding:10px 14px;border:1.5px dashed var(--accent);border-radius:10px;background:var(--accent-lt)';
+  addRow.innerHTML = `
+    <div style="font-size:.72rem;font-weight:700;color:var(--accent);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Nova subcategoria em "${esc(catName)}"</div>
+    <div class="pxhm-inline-edit">
+      <input id="pxhmNewSubcatInput" class="pxhm-inline-input" type="text"
+        placeholder="Ex: Bebidas, Laticínios, Frios…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')pxhmConfirmAddSubcat('${esc(catId||'')}');if(event.key==='Escape')this.closest('[style]').remove()">
+      <button class="pxhm-save-btn" onclick="pxhmConfirmAddSubcat('${esc(catId||'')}')">Adicionar</button>
+      <button class="pxhm-cancel-btn" onclick="this.closest('[style]').remove()">✕</button>
+    </div>`;
+  el.insertBefore(addRow, el.firstChild);
+  document.getElementById('pxhmNewSubcatInput')?.focus();
+}
+window.pxhmAddSubcat = pxhmAddSubcat;
+
+async function pxhmConfirmAddSubcat(catId) {
+  const inp = document.getElementById('pxhmNewSubcatInput');
+  const label = inp?.value?.trim();
+  if (!label) { inp?.focus(); return; }
+  inp.disabled = true;
+  const key = await _pxAddSubcat(catId || null, label);
+  inp.closest('[style]')?.remove();
+  if (key) {
+    toast(`✓ Subcategoria "${label}" criada`, 'success');
+    _pxhmRender(catId || null);
+    // Refresh filtros da página
+    _populatePxSubcatFilter();
+  } else {
+    toast('Erro ao criar subcategoria', 'error');
+  }
+}
+window.pxhmConfirmAddSubcat = pxhmConfirmAddSubcat;
+
+// ── RENAME SUBCAT ────────────────────────────────────────────────────────────
+async function pxhmRenameSubcat(catId, subcatKey, currentLabel) {
+  const headerEl = document.getElementById(`pxhmSub_${subcatKey}`)?.querySelector('.pxhm-subcat-header');
+  if (!headerEl) return;
+  const lblEl = document.getElementById(`pxhmSubLbl_${subcatKey}`);
+  if (!lblEl) return;
+
+  // Replace label with inline input
+  const orig = lblEl.outerHTML;
+  lblEl.outerHTML = `<div class="pxhm-inline-edit" style="flex:1;min-width:0">
+    <input id="pxhmRenameSubInput_${subcatKey}" class="pxhm-inline-input" type="text"
+      value="${esc(currentLabel)}" autocomplete="off"
+      onkeydown="if(event.key==='Enter')pxhmConfirmRenameSubcat('${esc(catId)}','${esc(subcatKey)}');if(event.key==='Escape')pxhmLoadCat()">
+    <button class="pxhm-save-btn" onclick="pxhmConfirmRenameSubcat('${esc(catId)}','${esc(subcatKey)}')">Salvar</button>
+    <button class="pxhm-cancel-btn" onclick="pxhmLoadCat()">✕</button>
+  </div>`;
+  document.getElementById(`pxhmRenameSubInput_${subcatKey}`)?.select();
+}
+window.pxhmRenameSubcat = pxhmRenameSubcat;
+
+async function pxhmConfirmRenameSubcat(catId, subcatKey) {
+  const inp = document.getElementById(`pxhmRenameSubInput_${subcatKey}`);
+  const newLabel = inp?.value?.trim();
+  if (!newLabel) { inp?.focus(); return; }
+
+  const hierKey = catId || '__none__';
+  if (!_pxHierCache?.[hierKey]?.subcategories?.[subcatKey]) {
+    toast('Subcategoria não encontrada', 'error'); return;
+  }
+  _pxHierCache[hierKey].subcategories[subcatKey].label = newLabel;
+  await _pxHierSave();
+  toast(`✓ Renomeada para "${newLabel}"`, 'success');
+  _pxhmRender(catId || null);
+  _populatePxSubcatFilter();
+  _renderPricesPage();
+}
+window.pxhmConfirmRenameSubcat = pxhmConfirmRenameSubcat;
+
+// ── DELETE SUBCAT ────────────────────────────────────────────────────────────
+async function pxhmDeleteSubcat(catId, subcatKey, label, itemCount) {
+  const msg = itemCount
+    ? `Excluir a subcategoria "${label}"?\n\nAtenção: ${itemCount} item(s) perderão este vínculo. O histórico de preços não será afetado.`
+    : `Excluir a subcategoria "${label}"?`;
+  if (!confirm(msg)) return;
+
+  const hierKey = catId || '__none__';
+
+  // Remove da hierarquia
+  if (_pxHierCache?.[hierKey]?.subcategories?.[subcatKey]) {
+    delete _pxHierCache[hierKey].subcategories[subcatKey];
+    // Limpa hierKey vazio
+    if (!Object.keys(_pxHierCache[hierKey].subcategories).length) {
+      delete _pxHierCache[hierKey];
+    }
+    await _pxHierSave();
+  }
+
+  // Remove vínculos de itens afetados do item meta
+  if (_pxItemMetaCache) {
+    let changed = false;
+    for (const [itemId, val] of Object.entries(_pxItemMetaCache)) {
+      const parts = (val || '').split(__SEP__);
+      if (parts[0] === (catId || '') && parts[1] === subcatKey) {
+        delete _pxItemMetaCache[itemId];
+        changed = true;
+      }
+    }
+    if (changed) await _pxItemMetaSave();
+  }
+
+  toast(`✓ Subcategoria "${label}" excluída`, 'success');
+  _pxhmRender(catId || null);
+  _populatePxSubcatFilter();
+  _renderPricesPage();
+}
+window.pxhmDeleteSubcat = pxhmDeleteSubcat;
+
+// ── ADD TYPE ─────────────────────────────────────────────────────────────────
+async function pxhmAddType(catId, subcatKey) {
+  const typesListEl = document.querySelector(`#pxhmSub_${subcatKey} .pxhm-types-list`);
+  if (!typesListEl) return;
+  if (document.getElementById(`pxhmNewTypeInput_${subcatKey}`)) return;
+
+  const addRow = document.createElement('div');
+  addRow.style.cssText = 'padding:6px 8px;border:1.5px dashed var(--accent);border-radius:7px;background:var(--accent-lt);margin-top:4px';
+  addRow.innerHTML = `
+    <div class="pxhm-inline-edit">
+      <input id="pxhmNewTypeInput_${subcatKey}" class="pxhm-inline-input" type="text"
+        placeholder="Ex: Refrigerante, Integral, Gasolina…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')pxhmConfirmAddType('${esc(catId)}','${esc(subcatKey)}');if(event.key==='Escape')this.closest('[style]').remove()">
+      <button class="pxhm-save-btn" onclick="pxhmConfirmAddType('${esc(catId)}','${esc(subcatKey)}')">Adicionar</button>
+      <button class="pxhm-cancel-btn" onclick="this.closest('[style]').remove()">✕</button>
+    </div>`;
+  typesListEl.appendChild(addRow);
+  document.getElementById(`pxhmNewTypeInput_${subcatKey}`)?.focus();
+}
+window.pxhmAddType = pxhmAddType;
+
+async function pxhmConfirmAddType(catId, subcatKey) {
+  const inp = document.getElementById(`pxhmNewTypeInput_${subcatKey}`);
+  const typeLabel = inp?.value?.trim();
+  if (!typeLabel) { inp?.focus(); return; }
+  inp.disabled = true;
+  await _pxAddType(catId || null, subcatKey, typeLabel);
+  inp.closest('[style]')?.remove();
+  toast(`✓ Tipo "${typeLabel}" adicionado`, 'success');
+  _pxhmRender(catId || null);
+  // Refresh tipo no formulário de item se aberto
+  const pifCat = document.getElementById('pifCategory')?.value;
+  const pifSub = document.getElementById('pifSubcat')?.value;
+  if (pifCat === (catId || '') && pifSub === subcatKey) {
+    _pxPopulateFormTypes(catId || null, subcatKey);
+  }
+}
+window.pxhmConfirmAddType = pxhmConfirmAddType;
+
+// ── RENAME TYPE ──────────────────────────────────────────────────────────────
+async function pxhmRenameType(catId, subcatKey, typeLabel) {
+  const rowEl = document.getElementById(`pxhmType_${subcatKey}_${typeLabel}`);
+  const lblEl = document.getElementById(`pxhmTypeLbl_${subcatKey}_${typeLabel}`);
+  if (!rowEl || !lblEl) return;
+
+  const safeKey = subcatKey + '_' + typeLabel.replace(/[^a-z0-9]/gi, '_');
+  lblEl.outerHTML = `<div class="pxhm-inline-edit" style="flex:1;min-width:0">
+    <input id="pxhmRenameTypeInput_${safeKey}" class="pxhm-inline-input" type="text"
+      value="${esc(typeLabel)}" autocomplete="off"
+      onkeydown="if(event.key==='Enter')pxhmConfirmRenameType('${esc(catId)}','${esc(subcatKey)}','${esc(typeLabel)}','${safeKey}');if(event.key==='Escape')pxhmLoadCat()">
+    <button class="pxhm-save-btn" onclick="pxhmConfirmRenameType('${esc(catId)}','${esc(subcatKey)}','${esc(typeLabel)}','${safeKey}')">Salvar</button>
+    <button class="pxhm-cancel-btn" onclick="pxhmLoadCat()">✕</button>
+  </div>`;
+  document.getElementById(`pxhmRenameTypeInput_${safeKey}`)?.select();
+}
+window.pxhmRenameType = pxhmRenameType;
+
+async function pxhmConfirmRenameType(catId, subcatKey, oldLabel, safeKey) {
+  const inp = document.getElementById(`pxhmRenameTypeInput_${safeKey}`);
+  const newLabel = inp?.value?.trim();
+  if (!newLabel || newLabel === oldLabel) { inp?.focus(); return; }
+
+  const hierKey = catId || '__none__';
+  const types = _pxHierCache?.[hierKey]?.subcategories?.[subcatKey]?.types;
+  if (!types) { toast('Tipo não encontrado', 'error'); return; }
+
+  const idx = types.indexOf(oldLabel);
+  if (idx !== -1) types[idx] = newLabel;
+  await _pxHierSave();
+
+  // Atualiza vínculos de itens: substitui o typeLabel antigo pelo novo
+  if (_pxItemMetaCache) {
+    let changed = false;
+    for (const [itemId, val] of Object.entries(_pxItemMetaCache)) {
+      const parts = (val || '').split(__SEP__);
+      if (parts[0] === (catId || '') && parts[1] === subcatKey && parts[2] === oldLabel) {
+        _pxItemMetaCache[itemId] = [parts[0], parts[1], newLabel].join(__SEP__);
+        changed = true;
+      }
+    }
+    if (changed) await _pxItemMetaSave();
+  }
+
+  toast(`✓ Tipo renomeado para "${newLabel}"`, 'success');
+  _pxhmRender(catId || null);
+}
+window.pxhmConfirmRenameType = pxhmConfirmRenameType;
+
+// ── DELETE TYPE ──────────────────────────────────────────────────────────────
+async function pxhmDeleteType(catId, subcatKey, typeLabel, itemCount) {
+  const msg = itemCount
+    ? `Excluir o tipo "${typeLabel}"?\n\n${itemCount} item(s) perderão este tipo (a subcategoria é mantida).`
+    : `Excluir o tipo "${typeLabel}"?`;
+  if (!confirm(msg)) return;
+
+  const hierKey = catId || '__none__';
+  const types = _pxHierCache?.[hierKey]?.subcategories?.[subcatKey]?.types;
+  if (types) {
+    const idx = types.indexOf(typeLabel);
+    if (idx !== -1) types.splice(idx, 1);
+    await _pxHierSave();
+  }
+
+  // Remove typeLabel dos vínculos de itens afetados (mantém subcategoria)
+  if (_pxItemMetaCache) {
+    let changed = false;
+    for (const [itemId, val] of Object.entries(_pxItemMetaCache)) {
+      const parts = (val || '').split(__SEP__);
+      if (parts[0] === (catId || '') && parts[1] === subcatKey && parts[2] === typeLabel) {
+        // Mantém catId + subcatKey, remove typeLabel
+        _pxItemMetaCache[itemId] = [parts[0], parts[1], ''].join(__SEP__);
+        changed = true;
+      }
+    }
+    if (changed) await _pxItemMetaSave();
+  }
+
+  toast(`✓ Tipo "${typeLabel}" excluído`, 'success');
+  _pxhmRender(catId || null);
+  // Refresh form se aberto
+  const pifCat = document.getElementById('pifCategory')?.value;
+  const pifSub = document.getElementById('pifSubcat')?.value;
+  if (pifCat === (catId || '') && pifSub === subcatKey) {
+    _pxPopulateFormTypes(catId || null, subcatKey);
+  }
+}
+window.pxhmDeleteType = pxhmDeleteType;
