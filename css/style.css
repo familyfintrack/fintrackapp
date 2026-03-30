@@ -6185,6 +6185,10 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   min-width: 24px;
   max-width: 24px;
 }
+@media (min-width: 768px) {
+  .forecast-date-cell { width: 90px !important; min-width: 90px; padding: 4px 8px; }
+  .forecast-head-date { width: 90px; min-width: 90px; max-width: 90px; }
+}
 .forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
 /* Forecast category icon in date column */
@@ -6565,11 +6569,20 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 .sc-cal-day--today .sc-cal-day-num {
   background: var(--accent);
-  color: #fff;
+  color: #fff !important;
   border-radius: 50%;
-  width: 24px; height: 24px;
+  width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: .88rem;
+  box-shadow: 0 2px 6px rgba(42,96,73,.45);
+  margin: -2px auto 2px;
+}
+/* Quando hoje também está selecionado: mantém círculo verde + número branco */
+.sc-cal-day--today.sc-cal-day--selected .sc-cal-day-num {
+  background: var(--accent);
+  color: #fff !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .sc-cal-day--has-events { cursor: pointer; }
 .sc-cal-day--has-events:hover { background: var(--bg2); }
@@ -6679,6 +6692,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   }
   .sc-cal-day--today .sc-cal-day-num {
     width: 20px; height: 20px;
+    color: #fff !important;
   }
   .sc-cal-day-dot { width: 6px; height: 6px; }
   .sc-cal-dots { gap: 2px; margin-bottom: 3px; }
@@ -8328,6 +8342,7 @@ tr.tx-row-new td:first-child {
   padding: 14px 16px 12px;
   overflow: hidden;
   transition: box-shadow .15s;
+  min-width: 120px;
 }
 
 .rpt-kpi::before {
@@ -14946,7 +14961,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Hero header: total portfolio value ── */
 .inv-hero {
-  background: linear-gradient(135deg, #0d2318 0%, #1a3d2a 60%, #2a6049 100%);
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 60%, #0e3520 100%);
   border-radius: 16px;
   padding: 22px 22px 18px;
   margin-bottom: 18px;
@@ -21518,3 +21533,14 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     min-width: 140px;
   }
 }
+
+/* Payee alternating row background */
+#payeeGroups .table-wrap table tbody tr:nth-child(even) { background: var(--surface2); }
+#payeeGroups .table-wrap table tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent) !important; }
+
+/* Dashboard: larger font for non-fav accounts and group titles */
+#dashAccounts .dash-group-title,
+#dashAccounts [style*="text-transform:uppercase"][style*="letter-spacing"] span:last-child {
+  font-size: .8rem !important;
+}
+#dashAccounts [style*="font-size:.92rem"] span { font-size: 1rem !important; }
