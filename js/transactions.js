@@ -1369,7 +1369,110 @@ function updateFxPreview() {
   preview.textContent = `= ${fmt(converted, dst)}`;
 }
 
+// ── Duplicate confirmation dialog ────────────────────────────────────────────
+async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel }) {
+  return new Promise(resolve => {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:19999;display:flex;align-items:center;justify-content:center;padding:24px';
+    d.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--r-lg);padding:0;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.35);overflow:hidden">
+        <div style="background:linear-gradient(135deg,#b45309,#d97706);padding:18px 20px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.6rem">⚠️</span>
+          <div>
+            <div style="color:#fff;font-size:.95rem;font-weight:800;line-height:1.2">Possível transação duplicada</div>
+            <div style="color:rgba(255,255,255,.75);font-size:.75rem;margin-top:2px">Já existe um lançamento com os mesmos dados</div>
+          </div>
+        </div>
+        <div style="padding:20px">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:16px;font-size:.84rem">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;color:var(--text2)">
+              <span style="color:var(--muted);font-weight:600">Beneficiário</span><span>${esc(payeeName)}</span>
+              <span style="color:var(--muted);font-weight:600">Categoria</span><span>${esc(catLabel)}</span>
+              <span style="color:var(--muted);font-weight:600">Valor</span><span style="font-weight:700;color:var(--text)">${esc(amtFmt)}</span>
+              <span style="color:var(--muted);font-weight:600">Data</span><span>${esc(dateLabel)}</span>
+            </div>
+          </div>
+          <div style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+            Um lançamento com os mesmos dados já existe. Tem certeza que deseja registrar novamente?
+          </div>
+          <div style="display:flex;gap:10px">
+            <button id="_dupNo2" style="flex:1;padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--font-sans);font-size:.9rem;font-weight:600;cursor:pointer">
+              Cancelar
+            </button>
+            <button id="_dupYes2" style="flex:1;padding:12px;border-radius:var(--r-sm);border:none;background:var(--amber,#d97706);color:#fff;font-family:var(--font-sans);font-size:.9rem;font-weight:700;cursor:pointer">
+              Lançar mesmo assim
+            </button>
+          </div>
+        </div>
+      </div>`;
+    d.querySelector('#_dupNo2').onclick  = () => { d.remove(); resolve(false); };
+    d.querySelector('#_dupYes2').onclick = () => { d.remove(); resolve(true);  };
+    document.body.appendChild(d);
+  });
+}
+
+// ── Duplicate transaction guard ─────────────────────────────────────────────
+let _txSaving = false; // re-entrancy guard against concurrent double-clicks
+
 async function saveTransaction(){
+  // ── Duplicate detection ──────────────────────────────────────────────────
+  const _isEdit = !!document.getElementById('txId').value;
+
+  // Hard guard: block concurrent saves (button clicked again while save is running)
+  if (_txSaving && !_isEdit) return;
+
+  if (!_isEdit) {
+    const _date      = document.getElementById('txDate').value;
+    const _accountId = document.getElementById('txAccountId').value;
+    const _amount    = Math.abs(getAmtField('txAmount'));
+    const _payeeId   = document.getElementById('txPayeeId').value   || null;
+    const _catId     = document.getElementById('txCategoryId').value || null;
+    const _desc      = document.getElementById('txDesc').value.trim();
+    const _type      = document.getElementById('txTypeField').value;
+
+    // Query DB for an existing transaction matching all key fields on same date
+    if (_date && _accountId && _amount > 0) {
+      try {
+        let q = famQ(sb.from('transactions').select('id,description,amount,payee_id,category_id'))
+          .eq('date', _date)
+          .eq('account_id', _accountId)
+          .eq('is_transfer', _type === 'transfer' || _type === 'card_payment');
+
+        // Match amount (stored as negative for expenses)
+        const _storedAmt = (_type === 'expense' || _type === 'transfer' || _type === 'card_payment')
+          ? -_amount : _amount;
+        q = q.gte('amount', _storedAmt - 0.01).lte('amount', _storedAmt + 0.01);
+
+        const { data: existing } = await q.limit(5);
+
+        if (existing && existing.length > 0) {
+          // Check if any match on payee + category + description
+          const match = existing.find(e => {
+            const samePayee    = !_payeeId || !e.payee_id    || e.payee_id    === _payeeId;
+            const sameCat      = !_catId   || !e.category_id || e.category_id === _catId;
+            const sameDesc     = !_desc    || !e.description  || e.description.toLowerCase() === _desc.toLowerCase();
+            return samePayee && sameCat && sameDesc;
+          });
+
+          if (match) {
+            // Build human-readable summary of the duplicate
+            const payeeName = document.getElementById('txPayeeName')?.value?.trim() || '—';
+            const catLabel  = document.getElementById('catPickerLabel')?.textContent?.replace(/^—.*—$/, '').trim() || '—';
+            const amtFmt    = typeof fmt === 'function' ? fmt(_storedAmt) : _storedAmt.toFixed(2);
+            const dateLabel = _date;
+
+            const confirmed = await _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel });
+            if (!confirmed) return;
+          }
+        }
+      } catch(e) {
+        console.debug('[dup-check]', e.message); // non-fatal — proceed on error
+      }
+    }
+  }
+  _txSaving = true;
+  // ── End duplicate detection ──────────────────────────────────────────────
+
   const id=document.getElementById('txId').value,type=document.getElementById('txTypeField').value;
   let amount=getAmtField('txAmount');
   const isTransfer = type==='transfer' || type==='card_payment';
@@ -1424,8 +1527,19 @@ async function saveTransaction(){
 
   const txDescEl = document.getElementById('txDesc');
   let autoTxDesc = txDescEl?.value?.trim() || '';
-  if (!autoTxDesc && typeof ensureTransactionDescription === 'function') {
-    autoTxDesc = (await ensureTransactionDescription(txDescEl)).trim();
+  if (!autoTxDesc) {
+    // Auto-generate from payee name + category name
+    const payeeName    = document.getElementById('txPayeeName')?.value?.trim() || '';
+    const catLabel     = document.getElementById('catPickerLabel')?.textContent?.trim() || '';
+    const cleanCat     = catLabel.replace(/^—.*—$/, '').trim();
+    if (payeeName && cleanCat && cleanCat.length > 0) {
+      autoTxDesc = payeeName + ' — ' + cleanCat;
+    } else if (payeeName) {
+      autoTxDesc = payeeName;
+    } else if (typeof ensureTransactionDescription === 'function') {
+      autoTxDesc = (await ensureTransactionDescription(txDescEl)).trim();
+    }
+    if (txDescEl && autoTxDesc) txDescEl.value = autoTxDesc;
   }
 
   const data={
@@ -1460,6 +1574,26 @@ async function saveTransaction(){
     })()
   };
   if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
+  // Beneficiário obrigatório para não-transferências
+  if(!isTransfer && !data.payee_id) {
+    toast('Beneficiário / Fonte é obrigatório.','error');
+    // Switch to Principal tab to show the field
+    if(typeof switchTxTab==='function') {
+      const btn = document.querySelector('[data-tab="txCtxPrincipal"]');
+      if(btn) switchTxTab('txCtxPrincipal', btn);
+    }
+    setTimeout(()=>document.getElementById('txPayeeName')?.focus(),100);
+    return;
+  }
+  // Categoria obrigatória para não-transferências
+  if(!isTransfer && !data.category_id) {
+    toast('Categoria é obrigatória.','error');
+    if(typeof switchTxTab==='function') {
+      const btn = document.querySelector('[data-tab="txCtxPrincipal"]');
+      if(btn) switchTxTab('txCtxPrincipal', btn);
+    }
+    return;
+  }
   let err,txResult;
   if(id){
     ({error:err}=await sb.from('transactions').update(data).eq('id',id));
@@ -1520,7 +1654,7 @@ async function saveTransaction(){
       }
     }
   }
-  if(err){toast(err.message,'error');return;}
+  if(err){_txSaving = false; toast(err.message,'error');return;}
 
   // Create IOF mirror transaction if international (new transactions only)
   // Keep this BEFORE attachment upload. Otherwise an attachment upload failure would
@@ -1559,6 +1693,7 @@ async function saveTransaction(){
   if (!id && txResult?.id && window._pendingAmortDebtId && typeof postDebtAmortizationEntry === 'function') {
     await postDebtAmortizationEntry(data.amount, data.date, txResult.id).catch(() => {});
   }
+  _txSaving = false; // release guard
   toast(id?'✓ Atualizado!':'✓ Transação salva!','success');
   // Notify user on new transaction if enabled
   if (!id && savedId && typeof notifyOnTransaction === 'function') {
