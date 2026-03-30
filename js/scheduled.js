@@ -1644,6 +1644,9 @@ let _scView       = 'calendar';       // 'list' | 'calendar' — padrão: calend
 let _scCalYear    = new Date().getFullYear();
 let _scCalMonth   = new Date().getMonth(); // 0-indexed
 let _scCalSelDay  = null;             // 'YYYY-MM-DD' | null
+// Expose setter so app.js can set today's date from outside this module
+window._setScCalSelDay = function(d) { _scCalSelDay = d; };
+window._getScCalSelDay = function()  { return _scCalSelDay; };
 
 const SC_MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];

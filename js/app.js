@@ -977,7 +977,8 @@ function navigate(page){
     // Always reset calendar to current month/day
     if (typeof _scCalYear  !== 'undefined') { window._scCalYear  = _now.getFullYear(); }
     if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
-    if (typeof _scCalSelDay !== 'undefined') { window._scCalSelDay = _todayStr; }
+    // Use the exposed setter so the module-scoped variable is actually set
+    if (typeof window._setScCalSelDay === 'function') window._setScCalSelDay(_todayStr);
     loadScheduled().then(() => {
       if (typeof setScView === 'function') {
         const savedView = currentUser?.preferred_sc_view ||
