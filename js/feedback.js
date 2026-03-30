@@ -209,7 +209,13 @@ function _fbAdminCard(item) {
   const dt  = item.created_at
     ? new Date(item.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     : '—';
-  const user = item.app_users?.name || item.app_users?.email || 'Usuário desconhecido';
+  const user     = item.app_users?.name || item.app_users?.email || 'Usuário desconhecido';
+  const userId   = item.user_id || '';
+  const userLink = userId
+    ? `<span onclick="_fbOpenUserTelemetry('${userId}','${esc(user)}')"
+         style="cursor:pointer;color:var(--accent);text-decoration:underline;text-decoration-style:dotted;font-weight:600"
+         title="Ver telemetria do usuário">${esc(user)}</span>`
+    : esc(user);
 
   const hasScreen = !!item.screenshot_b64;
   const screenHtml = hasScreen
@@ -239,7 +245,7 @@ function _fbAdminCard(item) {
       <span style="font-size:.72rem;color:var(--muted)">•</span>
       <span style="font-size:.75rem;color:var(--muted)">${mod}</span>
       <span style="flex:1"></span>
-      <span style="font-size:.7rem;color:var(--muted)">${user}</span>
+      <span style="font-size:.7rem">${userLink}</span>
       <span style="font-size:.7rem;color:var(--muted)">${dt}</span>
       <span style="font-size:.75rem;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--surface);border:1px solid var(--border)">${st.icon} ${st.label}</span>
     </div>
@@ -373,6 +379,94 @@ function _showFeedbackLoginNotif(count) {
   document.body.appendChild(popup);
   setTimeout(() => popup?.remove(), 12000);
 }
+
+window._fbOpenUserTelemetry = function(userId, userName) {
+  // Navigate to telemetry dashboard filtered by user
+  // This reuses the existing telemetry page with a user filter
+  if (!userId) return;
+  navigate('telemetry');
+  setTimeout(() => {
+    // Try to apply user filter if telemetry supports it
+    const filterEl = document.getElementById('telUserFilter');
+    if (filterEl) {
+      filterEl.value = userId;
+      filterEl.dispatchEvent(new Event('change'));
+    } else {
+      // Open a simple telemetry modal showing user activity
+      _fbShowUserTelemetryModal(userId, userName);
+    }
+  }, 600);
+};
+
+window._fbShowUserTelemetryModal = async function(userId, userName) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:19999;display:flex;align-items:center;justify-content:center;padding:16px';
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--muted);padding:4px';
+  closeBtn.onclick = function() { overlay.remove(); };
+
+  const contentDiv = document.createElement('div');
+  contentDiv.id = '_fbTelContent';
+  contentDiv.style.cssText = 'overflow-y:auto;padding:16px;flex:1';
+  contentDiv.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando…</div>';
+
+  const headerDiv = document.createElement('div');
+  headerDiv.style.cssText = 'padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between';
+  headerDiv.innerHTML = '<div><div style="font-size:.95rem;font-weight:700">📊 Telemetria — ' + esc(userName) + '</div><div style="font-size:.72rem;color:var(--muted);margin-top:2px">Últimos 30 dias de atividade</div></div>';
+  headerDiv.appendChild(closeBtn);
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--surface);border-radius:var(--r-lg);max-width:560px;width:100%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.35)';
+  modal.appendChild(headerDiv);
+  modal.appendChild(contentDiv);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  try {
+    const since = new Date(); since.setDate(since.getDate() - 30);
+    const { data: events } = await sb.from('app_telemetry')
+      .select('event_type,page,created_at,meta')
+      .eq('user_id', userId)
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    const el = document.getElementById('_fbTelContent');
+    if (!el) return;
+
+    if (!events || !events.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.85rem">Nenhum evento nos últimos 30 dias.</div>';
+      return;
+    }
+
+    const counts = {};
+    events.forEach(function(e) { counts[e.event_type] = (counts[e.event_type] || 0) + 1; });
+    const topEvents = Object.entries(counts).sort(function(a,b){ return b[1]-a[1]; }).slice(0,8);
+
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:16px">';
+    topEvents.forEach(function(pair) {
+      html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center">'
+            + '<div style="font-size:1.1rem;font-weight:700;color:var(--accent)">' + pair[1] + '</div>'
+            + '<div style="font-size:.68rem;color:var(--muted);margin-top:2px;word-break:break-all">' + esc(pair[0]) + '</div>'
+            + '</div>';
+    });
+    html += '</div>';
+    html += '<div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Eventos recentes</div>';
+    events.slice(0,30).forEach(function(e) {
+      const dt = new Date(e.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      html += '<div style="display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem">'
+            + '<span style="color:var(--muted);flex-shrink:0;width:100px">' + dt + '</span>'
+            + '<span style="font-weight:600;color:var(--text);flex-shrink:0">' + esc(e.event_type) + '</span>'
+            + '<span style="color:var(--muted)">' + esc(e.page || '') + '</span>'
+            + '</div>';
+    });
+    el.innerHTML = html;
+  } catch(err) {
+    const el = document.getElementById('_fbTelContent');
+    if (el) el.innerHTML = '<div style="color:var(--danger,#dc2626);padding:12px">Erro: ' + err.message + '</div>';
+  }
+};
 
 window._checkNewFeedbackOnLogin = _checkNewFeedbackOnLogin;
 window._updateFeedbackBadge     = _updateFeedbackBadge;

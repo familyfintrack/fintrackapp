@@ -540,10 +540,38 @@ function hideLoginScreen() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
-  // Apply access request visibility immediately from localStorage cache
-  // (no Supabase auth required — value was saved to localStorage by saveAppSetting)
+  // 1. Apply immediately from localStorage (instant, no network)
   _applyAccessRequestVisibilityFromLocalStorage();
+  // 2. Also fetch from Supabase anon (for mobile users who never set it locally)
+  //    Uses a short timeout so it doesn't block anything
+  _fetchAccessRequestSettingAnon();
 });
+
+async function _fetchAccessRequestSettingAnon() {
+  try {
+    // Wait for sb to be ready (may need a tick after DOM)
+    let attempts = 0;
+    while (!window.sb && attempts++ < 20) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (!window.sb) return;
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'show_access_request')
+      .limit(1)
+      .maybeSingle();
+    if (!data) return; // not set in DB → default visible
+    const raw     = data.value;
+    const enabled = raw === null || raw === true || raw === 'true' || raw === 1 || raw === '1';
+    // Persist locally for next load
+    try { localStorage.setItem('show_access_request', String(enabled)); } catch(_) {}
+    // Apply
+    _applyAccessRequestVisibilityFromLocalStorage();
+  } catch(_) {
+    // Non-fatal: default stays visible
+  }
+}
 
 // ── Access request link visibility — reads localStorage only, no auth needed ──
 function _applyAccessRequestVisibilityFromLocalStorage() {

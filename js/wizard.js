@@ -733,6 +733,32 @@ function _wzStep9_done(body, title, subtitle) {
       <div class="wz-status-row" id="wzSt_modules" style="display:none">⏳ Ativando módulos…</div>
     </div>
     <div id="wzDoneBtn" style="display:none;text-align:center;margin-top:20px">
+      <!-- Feedback highlight card -->
+      <div style="margin:0 auto 20px;max-width:400px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:1.5px solid rgba(99,102,241,.35);border-radius:16px;padding:18px 20px;text-align:left">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <div style="color:#e0e7ff;font-size:.88rem;font-weight:700;line-height:1.2">Sua opinião importa! 💡</div>
+            <div style="color:rgba(199,210,254,.6);font-size:.72rem;margin-top:2px">Ajude a melhorar o Family FinTrack</div>
+          </div>
+        </div>
+        <p style="color:rgba(199,210,254,.8);font-size:.8rem;line-height:1.6;margin:0 0 12px">
+          Encontrou um bug? Tem uma ideia de melhoria? O botão 
+          <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:6px;padding:2px 7px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span style="font-size:.72rem;color:#a5b4fc;font-weight:600">Feedback</span>
+          </span>
+          na barra superior está sempre disponível para você reportar qualquer coisa a qualquer momento.
+        </p>
+        <button onclick="_wzClose();setTimeout(()=>openFeedbackModal(),400)"
+          style="width:100%;padding:9px;border:1px solid rgba(99,102,241,.5);border-radius:10px;background:rgba(99,102,241,.15);color:#a5b4fc;font-family:var(--font-sans);font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s"
+          onmouseover="this.style.background='rgba(99,102,241,.3)'"
+          onmouseout="this.style.background='rgba(99,102,241,.15)'">
+          💬 Enviar meu primeiro feedback →
+        </button>
+      </div>
       <button class="btn btn-primary" style="padding:12px 36px;font-size:.95rem" onclick="_wzFinish()">
         Ir para o Dashboard →
       </button>
