@@ -1080,7 +1080,55 @@
     </div>
 
     <!-- REPORTS -->
-    <div class="page" id="page-reports">
+    <div class="page" id="page-reports" style="position:relative;overflow:hidden">
+
+
+      <!-- ══ Drill-down slide panel ═══════════════════════════════════════ -->
+      <style>
+        #rptDrillPanel {
+          position: absolute;
+          top: 0; right: 0; bottom: 0;
+          width: min(440px, 100%);
+          background: var(--surface);
+          border-left: 1px solid var(--border);
+          box-shadow: -8px 0 32px rgba(0,0,0,.12);
+          z-index: 120;
+          display: none;
+          flex-direction: column;
+          transform: translateX(100%);
+          opacity: 0;
+          transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s ease;
+          border-radius: var(--r-lg, 12px) 0 0 var(--r-lg, 12px);
+        }
+        @media (max-width: 640px) {
+          #rptDrillPanel {
+            width: 100%;
+            border-radius: 0;
+            border-left: none;
+            border-top: 1px solid var(--border);
+            top: auto;
+            height: 75dvh;
+            bottom: 0;
+            transform: translateY(100%);
+            transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s ease;
+          }
+          #rptDrillPanel[style*="translateX(0)"] {
+            transform: translateY(0) !important;
+          }
+        }
+        /* Backdrop dimmer for the content behind the panel */
+        #rptDrillBackdrop {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,.25);
+          z-index: 119;
+          display: none;
+          animation: _drillFadeIn .2s ease both;
+        }
+        @keyframes _drillFadeIn { from{opacity:0} to{opacity:1} }
+      </style>
+      <div id="rptDrillBackdrop" onclick="_drillClose()"></div>
+      <div id="rptDrillPanel"></div>
 
       <!-- ── Reports page header ── -->
       <div class="rpt-page-header mb-4">
@@ -8813,6 +8861,24 @@ window.openMyProfile = function(...args) {
 .feedback-type-opt.selected { border-color:var(--accent);background:var(--accent-lt);color:var(--accent); }
 </style>
 
+
+  <script>
+  /* Drill-down backdrop wiring — appended after reports.js loads */
+  (function() {
+    const _origOpen  = window._drillOpen;
+    const _origClose = window._drillClose;
+    window._drillOpen = function(opts) {
+      const bd = document.getElementById('rptDrillBackdrop');
+      if (bd) bd.style.display = 'block';
+      _origOpen(opts);
+    };
+    window._drillClose = function() {
+      const bd = document.getElementById('rptDrillBackdrop');
+      if (bd) bd.style.display = 'none';
+      _origClose();
+    };
+  })();
+  </script>
 </body>
 </html>
 
