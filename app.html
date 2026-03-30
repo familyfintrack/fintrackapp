@@ -4626,27 +4626,56 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- ── ABA: Feedbacks (Admin) ── -->
       <div id="telPane_feedbacks" style="display:none">
-        <div style="padding:14px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:12px">
-          <div>
-            <span style="font-size:.9rem;font-weight:700;color:var(--text)">💬 Reports de Usuários</span>
-            <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted);margin-left:8px"></span>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            <select id="uaFeedbackFilter" onchange="loadFeedbackReports()" style="font-family:var(--font-sans);font-size:.75rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)">
+
+        <!-- Toolbar: filtros + stats -->
+        <div style="padding:14px 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px">
+          <!-- Filtros em chips + select -->
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            <span style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:2px">Filtro</span>
+            <select id="uaFeedbackFilter" onchange="loadFeedbackReports()"
+              style="font-family:var(--font-sans);font-size:.8rem;padding:6px 12px;
+                     border:1.5px solid var(--border);border-radius:20px;
+                     background:var(--surface);color:var(--text);cursor:pointer;
+                     outline:none;transition:border-color .15s"
+              onfocus="this.style.borderColor='var(--accent)'"
+              onblur="this.style.borderColor='var(--border)'">
               <option value="new">🔴 Novos</option>
-              <option value="backlog">📦 Backlog</option>
               <option value="priority">⭐ Prioritários</option>
               <option value="flagged">🚩 Flagados</option>
+              <option value="backlog">📦 Backlog</option>
               <option value="done">✅ Implementados</option>
               <option value="irrelevant">🚫 Irrelevantes</option>
-              <option value="all">Todos</option>
+              <option value="all">📋 Todos</option>
             </select>
-            <button onclick="loadFeedbackReports()" style="padding:6px 12px;font-size:.75rem;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);cursor:pointer" title="Recarregar">↺</button>
+            <button onclick="loadFeedbackReports()"
+              style="padding:6px 12px;font-size:.78rem;font-family:var(--font-sans);font-weight:600;
+                     border:1.5px solid var(--border);border-radius:20px;background:var(--surface);
+                     color:var(--text2);cursor:pointer;transition:all .15s"
+              onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"
+              title="Recarregar lista">↺ Atualizar</button>
+            <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted);margin-left:4px"></span>
+          </div>
+          <!-- Legenda rápida de status -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font-size:.7rem;color:var(--muted)">Status rápido:</span>
+            <span style="font-size:.7rem">🔴 Novo</span>
+            <span style="font-size:.7rem">⭐ Prioritário</span>
+            <span style="font-size:.7rem">🚩 Flagado</span>
+            <span style="font-size:.7rem">📦 Backlog</span>
+            <span style="font-size:.7rem">✅ Implementado</span>
+            <span style="font-size:.7rem">🚫 Irrelevante</span>
           </div>
         </div>
-        <div id="uaFeedbackContent" style="overflow-y:auto;padding:0 0 20px;display:flex;flex-direction:column;gap:10px;min-height:200px">
-          <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">Carregando feedbacks…</div>
+
+        <!-- Lista de cards -->
+        <div id="uaFeedbackContent"
+          style="display:flex;flex-direction:column;gap:12px;
+                 max-height:calc(100vh - 320px);overflow-y:auto;
+                 padding-right:4px;padding-bottom:20px">
+          <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">⏳ Carregando…</div>
         </div>
+
       </div>
 
       <!-- Modal: Excluir Telemetria — usa modal-overlay padrão do app -->
