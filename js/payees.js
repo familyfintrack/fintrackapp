@@ -636,25 +636,66 @@ window.payeeSelectAiLogo = function(emoji) {
   toast('Ícone selecionado!', 'success');
 };
 
-async function savePayee(){
-  const id=document.getElementById('payeeId').value;
-  const data={
-    name:              normalizePayeeName(document.getElementById('payeeName').value),
-    type:              document.getElementById('payeeType').value,
-    default_category_id: document.getElementById('payeeCategory').value||null,
-    notes:             document.getElementById('payeeNotes').value,
-    address:           document.getElementById('payeeAddress').value.trim()  || null,
-    city:              document.getElementById('payeeCity').value.trim()     || null,
-    state_uf:          document.getElementById('payeeStateUf').value.trim()  || null,
-    zip_code:          document.getElementById('payeeZip').value.trim()      || null,
-    phone:             document.getElementById('payeePhone').value.trim()    || null,
-    whatsapp:          document.getElementById('payeeWhatsapp').value.trim() || null,
-    website:           document.getElementById('payeeWebsite').value.trim()  || null,
-    cnpj_cpf:          document.getElementById('payeeCnpj').value.trim()     || null,
+async function savePayee() {
+  const id = document.getElementById('payeeId').value;
+  const data = {
+    name:                normalizePayeeName(document.getElementById('payeeName').value),
+    type:                document.getElementById('payeeType').value,
+    default_category_id: document.getElementById('payeeCategory').value || null,
+    notes:               document.getElementById('payeeNotes').value,
+    address:             document.getElementById('payeeAddress').value.trim()  || null,
+    city:                document.getElementById('payeeCity').value.trim()     || null,
+    state_uf:            document.getElementById('payeeStateUf').value.trim()  || null,
+    zip_code:            document.getElementById('payeeZip').value.trim()      || null,
+    phone:               document.getElementById('payeePhone').value.trim()    || null,
+    whatsapp:            document.getElementById('payeeWhatsapp').value.trim() || null,
+    website:             document.getElementById('payeeWebsite').value.trim()  || null,
+    cnpj_cpf:            document.getElementById('payeeCnpj').value.trim()     || null,
   };
-  if(!data.name){toast(t('toast.err_name'),'error');return;}
-  if(!id) data.family_id=famId(); let err;if(id){({error:err}=await sb.from('payees').update(data).eq('id',id));}else{({error:err}=await sb.from('payees').insert(data));}
-  if(err){toast(err.message,'error');return;}const _pyNew=!document.getElementById('payeeId').value;toast('Salvo!','success');closeModal('payeeModal');DB.payees.bust();await loadPayees(true);if(typeof populateSelects==='function') populateSelects();if(_pyNew)_scrollTopAndHighlight('.payee-card:first-child,.payee-row:first-child');renderPayees();
+  if (!data.name) { toast(t('toast.err_name'), 'error'); return; }
+
+  // ── Logo / icon ───────────────────────────────────────────────────────
+  const _pending    = window._payeeLogoPending;
+  const _logoUrl    = document.getElementById('payeeLogoUrl')?.value || '';
+  const _removeFlag = document.getElementById('payeeLogoRemoveFlag')?.value;
+
+  if (_removeFlag === '1') {
+    data.avatar_url = null;
+  } else if (_pending?.emoji) {
+    data.avatar_url = 'emoji:' + _pending.emoji;
+  } else if (_pending?.file) {
+    try {
+      const fid  = famId();
+      const ext  = (_pending.file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `payees/${fid}/${Date.now()}.${ext}`;
+      const { error: upErr } = await sb.storage
+        .from('fintrack-attachments')
+        .upload(path, _pending.file, { upsert: true, contentType: _pending.file.type });
+      if (!upErr) {
+        const { data: urlData } = sb.storage.from('fintrack-attachments').getPublicUrl(path);
+        if (urlData?.publicUrl) data.avatar_url = urlData.publicUrl;
+      }
+    } catch(_) {}
+  } else if (_logoUrl) {
+    data.avatar_url = _logoUrl;
+  }
+  window._payeeLogoPending = null;
+  // ─────────────────────────────────────────────────────────────────────
+
+  if (!id) data.family_id = famId();
+  let err;
+  if (id) { ({ error: err } = await sb.from('payees').update(data).eq('id', id)); }
+  else    { ({ error: err } = await sb.from('payees').insert(data)); }
+  if (err) { toast(err.message, 'error'); return; }
+
+  const _pyNew = !id;
+  toast('Salvo!', 'success');
+  closeModal('payeeModal');
+  DB.payees.bust();
+  await loadPayees(true);
+  if (typeof populateSelects === 'function') populateSelects();
+  if (_pyNew) _scrollTopAndHighlight('.payee-card:first-child,.payee-row:first-child');
+  renderPayees();
 }
 async function deletePayee(id) {
   const payee = state.payees.find(p => p.id === id);

@@ -1460,6 +1460,17 @@ async function _renderDashForecast() {
   if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minVal, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
   if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxVal, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
 
+  // Build tx-by-label map for drill-down
+  const _fcTxByLabel = {};
+  if (typeof _forecastTxAll !== 'undefined') {
+    Object.entries(_forecastTxAll||{}).forEach(([date,txArr]) => {
+      const label = _fcDateToLabel?.(date) || date;
+      if (!_fcTxByLabel[label]) _fcTxByLabel[label] = [];
+      _fcTxByLabel[label].push(...txArr);
+    });
+  }
+  const _fcLabels = datasets[0]?.data?.map(d => d.x) || [];
+
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
     data: { datasets },
@@ -1475,6 +1486,16 @@ async function _renderDashForecast() {
       scales: {
         x: { type:'category', ticks:{ maxTicksLimit:8, color:'#8c8278', font:{size:10} }, grid:{ color:'#e8e4de33' } },
         y: { ticks:{ callback:v=>fmt(v), color:'#8c8278', font:{size:10} }, grid:{ color: ctx=>ctx.tick.value===0?'rgba(220,38,38,0.2)':'#e8e4de33' } },
+      },
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        const idx   = elements[0].index;
+        const label = _fcLabels[idx] || '';
+        const txs   = _fcTxByLabel[label] || [];
+        if (label) _dashForecastDrill(label, txs);
+      },
+      onHover(evt, elements) {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
       },
     },
   });

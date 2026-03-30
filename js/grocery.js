@@ -122,7 +122,9 @@ function groceryListTypeChanged(type) {
   const genericLbl  = document.getElementById('groceryTypeGenericLbl');
   const storeLbl    = document.getElementById('groceryTypeStoreLbl');
   if (!storeFields) return;
-  storeFields.style.display  = type === 'store' ? 'flex' : 'none';
+  storeFields.style.display       = type === 'store' ? 'flex' : 'none';
+  storeFields.style.flexDirection = 'column';
+  storeFields.style.gap           = '10px';
   if (genericLbl) genericLbl.style.borderColor = type === 'generic' ? 'var(--accent)' : 'var(--border)';
   if (storeLbl)   storeLbl.style.borderColor   = type === 'store'   ? 'var(--accent)' : 'var(--border)';
 }
