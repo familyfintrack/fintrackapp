@@ -2663,24 +2663,6 @@
             </div>
           </div>
 
-          <!-- Acesso Beta / Lista de espera -->
-          <div class="cfg-section-label" id="cfgWaitlistSection">Acesso &amp; Lista de Espera</div>
-          <div class="cfg-card" id="cfgWaitlistSection">
-            <div class="cfg-row">
-              <div class="cfg-row-icon" style="background:#e8f5ee">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2a6049" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </div>
-              <div class="cfg-row-text">
-                <div class="cfg-row-title">Exibir link "Solicitar Acesso"</div>
-                <div class="cfg-row-sub">Exibe o botão de solicitação de acesso na tela de login</div>
-              </div>
-              <label class="cfg-toggle">
-                <input type="checkbox" id="cfgShowAccessRequest" onchange="saveShowAccessRequest(this.checked)">
-                <span class="cfg-toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-
           <div class="cfg-section-label">Verificação automática</div>
           <div class="cfg-card cfg-card-accent">
             <div class="cfg-row">
@@ -2899,6 +2881,23 @@
               <div class="cfg-pane-header-sub">Manutenção e administração do sistema</div>
             </div>
           </div>
+          <div class="cfg-section-label">Acesso &amp; Registro</div>
+          <div class="cfg-card">
+            <div class="cfg-row">
+              <div class="cfg-row-icon" style="background:#e8f5ee">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2a6049" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-title">Exibir link "Solicitar Acesso"</div>
+                <div class="cfg-row-sub">Controla o botão de solicitação na tela de login. Configuração salva no banco de dados.</div>
+              </div>
+              <label class="cfg-toggle">
+                <input type="checkbox" id="cfgShowAccessRequest" onchange="saveShowAccessRequest(this.checked)">
+                <span class="cfg-toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
           <div class="cfg-section-label">Integridade de dados</div>
           <div class="cfg-card" id="orphanScanSection2">
             <div style="padding:14px 16px">
@@ -4474,6 +4473,10 @@ Se você não solicitou isso, ignore este e-mail.`,
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Landing Page
         </button>
+        <button id="telTab_feedbacks" class="tel-tab-btn" onclick="_telSetTab('feedbacks')" style="position:relative">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Feedbacks<span id="telFeedbackBadge" style="display:none;position:absolute;top:6px;right:6px;min-width:15px;height:15px;border-radius:999px;background:#dc2626;color:#fff;font-size:.58rem;font-weight:700;padding:0 3px;line-height:15px;text-align:center"></span>
+        </button>
       </div>
 
       <!-- ── ABA: Visão Geral ── -->
@@ -4618,6 +4621,31 @@ Se você não solicitou isso, ignore este e-mail.`,
       <div id="telPane_landing" style="display:none">
         <div id="telLandingContent" style="padding:20px">
           <div style="text-align:center;padding:28px;color:var(--muted)">Carregando dados da landing page…</div>
+        </div>
+      </div>
+
+      <!-- ── ABA: Feedbacks (Admin) ── -->
+      <div id="telPane_feedbacks" style="display:none">
+        <div style="padding:14px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:12px">
+          <div>
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">💬 Reports de Usuários</span>
+            <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted);margin-left:8px"></span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <select id="uaFeedbackFilter" onchange="loadFeedbackReports()" style="font-family:var(--font-sans);font-size:.75rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)">
+              <option value="new">🔴 Novos</option>
+              <option value="backlog">📦 Backlog</option>
+              <option value="priority">⭐ Prioritários</option>
+              <option value="flagged">🚩 Flagados</option>
+              <option value="done">✅ Implementados</option>
+              <option value="irrelevant">🚫 Irrelevantes</option>
+              <option value="all">Todos</option>
+            </select>
+            <button onclick="loadFeedbackReports()" style="padding:6px 12px;font-size:.75rem;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);cursor:pointer" title="Recarregar">↺</button>
+          </div>
+        </div>
+        <div id="uaFeedbackContent" style="overflow-y:auto;padding:0 0 20px;display:flex;flex-direction:column;gap:10px;min-height:200px">
+          <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">Carregando feedbacks…</div>
         </div>
       </div>
 
@@ -4828,7 +4856,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
 
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
-        <div style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
+        <div id="loginRequestAccessWrap" style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
           <span data-i18n="auth.no_account">Não tem conta?</span>
           <button id="loginRequestAccessBtn" onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline" data-i18n="auth.request_access">Solicitar acesso</button>
         </div>
@@ -4980,9 +5008,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <button class="tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')" style="padding:12px 16px;font-size:.85rem;position:relative">
             📋 Lista de Espera<span id="uaWaitlistBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#2a6049;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
           </button>
-          <button class="tab" id="uaTabFeedback" onclick="switchUATab('feedback')" style="padding:12px 16px;font-size:.85rem;position:relative">
-            💬 Feedbacks<span id="uaFeedbackBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
-          </button>
+          <!-- Feedbacks movido para o painel Admin/Telemetria -->
         </div>
 
         <!-- Pending approvals tab -->
@@ -5013,30 +5039,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
         </div>
 
-        <!-- Feedback tab -->
-        <div id="uaFeedback" style="display:none;padding:0">
-          <div style="padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-            <div>
-              <span style="font-size:.82rem;font-weight:700">Reports de Usuários</span>
-              <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted);margin-left:8px"></span>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <select id="uaFeedbackFilter" onchange="loadFeedbackReports()" style="font-family:var(--font-sans);font-size:.75rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
-                <option value="new">🔴 Novos</option>
-                <option value="backlog">📦 Backlog</option>
-                <option value="priority">⭐ Prioritários</option>
-                <option value="flagged">🚩 Flagados</option>
-                <option value="done">✅ Implementados</option>
-                <option value="irrelevant">🚫 Irrelevantes</option>
-                <option value="all">Todos</option>
-              </select>
-              <button onclick="loadFeedbackReports()" style="padding:5px 10px;font-size:.75rem;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer" title="Recarregar">↺</button>
-            </div>
-          </div>
-          <div id="uaFeedbackContent" style="max-height:500px;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
-            <div style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Selecione a aba Feedbacks para carregar.</div>
-          </div>
-        </div>
+        <!-- Feedback tab removida — ver painel Admin/Telemetria -->
 
         <!-- Users tab -->
         <div id="uaUsers" style="padding:20px">
