@@ -575,6 +575,11 @@
         <button class="topbar-icon-btn" id="settingsNavTopbar" data-nav="settings" onclick="navigate('settings')" title="Configurações">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
+        <!-- Reportar Feedback -->
+        <button class="topbar-icon-btn" id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" style="position:relative">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="feedbackBadge" style="display:none;position:absolute;top:3px;right:3px;width:8px;height:8px;background:var(--danger,#dc2626);border-radius:50%;border:1.5px solid var(--surface)"></span>
+        </button>
         <!-- Sair -->
         <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -4968,6 +4973,9 @@ Se você não solicitou isso, ignore este e-mail.`,
           <button class="tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')" style="padding:12px 16px;font-size:.85rem;position:relative">
             📋 Lista de Espera<span id="uaWaitlistBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#2a6049;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
           </button>
+          <button class="tab" id="uaTabFeedback" onclick="switchUATab('feedback')" style="padding:12px 16px;font-size:.85rem;position:relative">
+            💬 Feedbacks<span id="uaFeedbackBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
+          </button>
         </div>
 
         <!-- Pending approvals tab -->
@@ -4995,6 +5003,31 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
           <div id="uaWaitlistContent" style="padding:14px 20px;max-height:420px;overflow-y:auto">
             <div style="text-align:center;padding:30px;color:var(--muted)">Carregando...</div>
+          </div>
+        </div>
+
+        <!-- Feedback tab -->
+        <div id="uaFeedback" style="display:none;padding:0">
+          <div style="padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+            <div>
+              <span style="font-size:.82rem;font-weight:700">Reports de Usuários</span>
+              <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted);margin-left:8px"></span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <select id="uaFeedbackFilter" onchange="loadFeedbackReports()" style="font-family:var(--font-sans);font-size:.75rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface)">
+                <option value="new">🔴 Novos</option>
+                <option value="backlog">📦 Backlog</option>
+                <option value="priority">⭐ Prioritários</option>
+                <option value="flagged">🚩 Flagados</option>
+                <option value="done">✅ Implementados</option>
+                <option value="irrelevant">🚫 Irrelevantes</option>
+                <option value="all">Todos</option>
+              </select>
+              <button onclick="loadFeedbackReports()" style="padding:5px 10px;font-size:.75rem;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer" title="Recarregar">↺</button>
+            </div>
+          </div>
+          <div id="uaFeedbackContent" style="max-height:500px;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+            <div style="text-align:center;padding:28px;color:var(--muted);font-size:.85rem">Selecione a aba Feedbacks para carregar.</div>
           </div>
         </div>
 
@@ -6842,6 +6875,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/import.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/feedback.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/autocheck.js"></script>
   <script src="js/auto_register.js"></script>
@@ -8651,6 +8685,111 @@ window.openMyProfile = function(...args) {
   setTimeout(_loadProfWizModulesStatus, 400);
 };
 </script>
+
+<!-- ══ Modal: Reportar Feedback ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">💬 Reportar Erro, Bug ou Melhoria</span>
+      <button class="modal-close" onclick="closeModal('feedbackModal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Tipo -->
+      <div class="form-group">
+        <label>Tipo <span class="req-star">*</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="feedbackTypeGroup">
+          <label class="feedback-type-opt" data-val="bug">
+            <input type="radio" name="feedbackType" value="bug"> 🐛 Bug
+          </label>
+          <label class="feedback-type-opt" data-val="error">
+            <input type="radio" name="feedbackType" value="error"> ⚠️ Erro
+          </label>
+          <label class="feedback-type-opt" data-val="improvement">
+            <input type="radio" name="feedbackType" value="improvement"> ✨ Melhoria
+          </label>
+          <label class="feedback-type-opt" data-val="feature">
+            <input type="radio" name="feedbackType" value="feature"> 🚀 Nova funcionalidade
+          </label>
+        </div>
+      </div>
+
+      <!-- Módulo -->
+      <div class="form-group">
+        <label>Módulo <span class="req-star">*</span></label>
+        <select id="feedbackModule" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--font-sans);font-size:.88rem;background:var(--surface)">
+          <option value="">— Selecione o módulo —</option>
+          <option value="dashboard">Dashboard</option>
+          <option value="transactions">Transações</option>
+          <option value="accounts">Contas</option>
+          <option value="reports">Relatórios</option>
+          <option value="budgets">Orçamentos</option>
+          <option value="categories">Categorias</option>
+          <option value="payees">Beneficiários</option>
+          <option value="scheduled">Programados</option>
+          <option value="investments">Investimentos</option>
+          <option value="debts">Dívidas</option>
+          <option value="prices">Preços / Mercado</option>
+          <option value="ai_insights">AI Insights</option>
+          <option value="settings">Configurações</option>
+          <option value="import">Importar / Backup</option>
+          <option value="landing">Landing Page</option>
+          <option value="other">Outro / Geral</option>
+        </select>
+      </div>
+
+      <!-- Descrição -->
+      <div class="form-group">
+        <label>Descrição <span class="req-star">*</span></label>
+        <textarea id="feedbackDesc" rows="4" placeholder="Descreva o problema ou sugestão em detalhes..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--font-sans);font-size:.88rem;resize:vertical;background:var(--surface)"></textarea>
+      </div>
+
+      <!-- Screenshot -->
+      <div class="form-group">
+        <label>Screenshot <span style="font-size:.72rem;color:var(--muted);font-weight:400">opcional — PNG, JPG, WebP (máx. 5 MB)</span></label>
+        <div id="feedbackScreenDropZone"
+          style="border:2px dashed var(--border);border-radius:var(--r-sm);padding:18px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bg2)"
+          onclick="document.getElementById('feedbackScreenFile').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+          ondragleave="this.style.borderColor='var(--border)'"
+          ondrop="feedbackHandleDrop(event)">
+          <input type="file" id="feedbackScreenFile" accept="image/*" style="display:none" onchange="feedbackHandleFile(this.files[0])">
+          <div id="feedbackScreenLabel" style="font-size:.83rem;color:var(--muted)">
+            📎 Clique ou arraste uma imagem aqui
+          </div>
+          <div id="feedbackScreenPreview" style="display:none;margin-top:10px">
+            <img id="feedbackScreenImg" style="max-height:120px;border-radius:6px;border:1px solid var(--border)" alt="preview">
+            <div style="margin-top:6px;font-size:.75rem;color:var(--muted)" id="feedbackScreenName"></div>
+            <button type="button" onclick="event.stopPropagation();feedbackClearFile()" style="font-size:.7rem;color:var(--danger,#dc2626);background:none;border:none;cursor:pointer;margin-top:4px">✕ Remover</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Erro -->
+      <div id="feedbackErr" style="display:none;font-size:.8rem;color:var(--danger,#dc2626);background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.15);border-radius:var(--r-sm);padding:10px 14px"></div>
+
+      <!-- Footer actions -->
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:4px">
+        <button class="btn btn-ghost" onclick="closeModal('feedbackModal')">Cancelar</button>
+        <button class="btn btn-primary" id="feedbackSubmitBtn" onclick="submitFeedback()">
+          <span id="feedbackSubmitTxt">📤 Enviar report</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.feedback-type-opt {
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  padding:7px 14px;border:1.5px solid var(--border);border-radius:100px;
+  font-size:.82rem;font-weight:600;transition:all .18s;user-select:none;
+}
+.feedback-type-opt:hover { border-color:var(--accent);background:var(--accent-lt); }
+.feedback-type-opt input { display:none; }
+.feedback-type-opt.selected { border-color:var(--accent);background:var(--accent-lt);color:var(--accent); }
+</style>
 
 </body>
 </html>
