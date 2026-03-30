@@ -488,7 +488,7 @@ async function loadReports() {
     <div class="rpt-kpi rpt-kpi--exp"><div class="rpt-kpi-label">Despesas</div><div class="rpt-kpi-value">${fmt(totExp)}</div></div>
     <div class="rpt-kpi rpt-kpi--bal ${bal>=0?'pos':'neg'}"><div class="rpt-kpi-label">Saldo</div><div class="rpt-kpi-value">${fmt(bal)}</div></div>
     <div class="rpt-kpi"><div class="rpt-kpi-label">Transações</div><div class="rpt-kpi-value">${txs.length}</div></div>
-    <div class="report-kpi"><div class="report-kpi-label">Ticket médio</div><div class="report-kpi-value">${exps.length?fmt(totExp/exps.length):'—'}</div></div>
+    <div class="rpt-kpi"><div class="rpt-kpi-label">Ticket médio</div><div class="rpt-kpi-value">${exps.length?fmt(totExp/exps.length):'—'}</div></div>
   `;
   document.getElementById('reportDataInfo').textContent =
     `${fmtDate(from)} → ${fmtDate(to)}  ·  ${txs.length} transações`;
