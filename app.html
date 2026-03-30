@@ -641,7 +641,7 @@
               <option value="" data-i18n="tx.all_accounts">Todas as contas</option>
             </select>
           </div>
-          <canvas id="cashflowChart" height="200"></canvas>
+          <div id="dashForecastChartWrap"><canvas id="cashflowChart" height="200"></canvas></div>
         </div>
         <div class="card" id="catChartCard">
           <div class="card-header">
@@ -718,6 +718,7 @@
         </div>
         <div style="position:relative;height:180px;margin-top:4px">
           <canvas id="dashForecastChart"></canvas>
+      <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
         </div>
         <div id="dashForecastSummary" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 0 2px 0;font-size:.78rem"></div>
       </div>
@@ -1629,13 +1630,13 @@
       <div class="sc-page-header sc-desktop-header">
         <div class="sc-page-header__left">
           <div class="sc-view-toggle" id="scViewToggle">
-            <button class="sc-view-btn active" id="scViewList" onclick="setScView('list')" title="Lista">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              <span class="sc-view-lbl">Lista</span>
-            </button>
-            <button class="sc-view-btn" id="scViewCal" onclick="setScView('calendar')" title="Calendário">
+            <button class="sc-view-btn active" id="scViewCal" onclick="setScView('calendar')" title="Calendário">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               <span class="sc-view-lbl">Calendário</span>
+            </button>
+            <button class="sc-view-btn" id="scViewList" onclick="setScView('list')" title="Lista">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span class="sc-view-lbl">Lista</span>
             </button>
             <button class="sc-view-btn" id="scViewCats" onclick="setScView('categories')" title="Categorias">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
@@ -1660,11 +1661,11 @@
         <!-- Linha 1: views + novo -->
         <div class="sc-mh-row1">
           <div class="sc-mh-views">
-            <button class="sc-mh-view-btn active" id="scViewList" onclick="setScView('list')" aria-label="Lista">
+            <button class="sc-mh-view-btn" id="scViewList" onclick="setScView('list')" aria-label="Lista">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               Lista
             </button>
-            <button class="sc-mh-view-btn" id="scViewCal" onclick="setScView('calendar')" aria-label="Calendário">
+            <button class="sc-mh-view-btn active" id="scViewCal" onclick="setScView('calendar')" aria-label="Calendário">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Cal.
             </button>
@@ -4841,7 +4842,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
     <div class="login-card login-card-a" style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:28px">
-        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:200px;height:auto;object-fit:contain;margin-bottom:12px">
+        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:230px;height:auto;object-fit:contain;margin-bottom:12px">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
       </div>
       <div id="loginFormArea">
@@ -6714,6 +6715,35 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
         </div>
         <div class="form-group full"><label>Notas</label><textarea id="payeeNotes" rows="2" placeholder="Observações..."></textarea></div>
+        <!-- Logo / ícone do beneficiário -->
+        <div class="form-group full" style="margin-top:4px">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>Logotipo / Ícone</span>
+            <button type="button" onclick="payeeAiSuggestLogo()" title="Buscar com IA"
+              style="display:flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:all .15s"
+              onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+              onmouseout="this.style.background='var(--accent-lt)';this.style.color='var(--accent)'">
+              🤖 Sugerir com IA
+            </button>
+          </label>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <div id="payeeLogoPreview" style="width:56px;height:56px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;flex-shrink:0">🏢</div>
+            <div style="flex:1;min-width:0">
+              <input type="file" id="payeeLogoFile" accept="image/*" style="font-size:.75rem;max-width:100%" onchange="payeePreviewLogo(this)">
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">PNG, JPG ou SVG — max 2MB</div>
+              <button type="button" id="payeeLogoRemoveBtn" onclick="payeeRemoveLogo()" style="display:none;font-size:.72rem;color:var(--muted);background:none;border:none;cursor:pointer;margin-top:2px;padding:0">✕ Remover</button>
+            </div>
+          </div>
+          <input type="hidden" id="payeeLogoUrl" value="">
+          <input type="hidden" id="payeeLogoRemoveFlag" value="">
+          <!-- AI suggestions panel -->
+          <div id="payeeAiSuggestPanel" style="display:none;margin-top:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
+            <div id="payeeAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Seção de contato / localização (colapsável) -->
@@ -8467,7 +8497,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
 <!-- Feature 4: Grocery modals -->
 <div class="modal-overlay" id="groceryCreateModal">
-  <div class="modal" style="max-width:380px"><div class="modal-handle"></div>
+  <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title">🛒 Nova Lista de Compras</span>
       <button class="modal-close" onclick="closeModal('groceryCreateModal')">✕</button>
@@ -8475,7 +8505,36 @@ Se você não solicitou isso, ignore este e-mail.`,
     <div class="modal-body">
       <div class="form-group">
         <label>Nome da lista *</label>
-        <input type="text" id="groceryNewListName" placeholder="Ex: Compras da semana">
+        <input type="text" id="groceryNewListName" placeholder="Ex: Compras da semana"
+          onkeydown="if(event.key==='Enter')saveGroceryList()">
+      </div>
+      <div class="form-group" style="margin-top:10px">
+        <label>Tipo de lista</label>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;font-size:.83rem" id="groceryTypeGenericLbl">
+            <input type="radio" name="groceryListType" value="generic" checked onchange="groceryListTypeChanged(this.value)" style="accent-color:var(--accent)">
+            🛒 Genérica
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:6px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;font-size:.83rem" id="groceryTypeStoreLbl">
+            <input type="radio" name="groceryListType" value="store" onchange="groceryListTypeChanged(this.value)" style="accent-color:var(--accent)">
+            🏪 Estabelecimento
+          </label>
+        </div>
+      </div>
+      <div id="groceryStoreFields" style="display:none;margin-top:10px;display:flex;flex-direction:column;gap:10px">
+        <div class="form-group">
+          <label>Estabelecimento</label>
+          <input type="text" id="groceryStoreInput" placeholder="Buscar ou digitar nome…"
+            autocomplete="off" oninput="_groceryStoreSearch(this.value)">
+          <input type="hidden" id="groceryStoreId">
+          <div id="groceryStoreSuggest" style="display:none;border:1px solid var(--border);border-radius:8px;background:var(--surface);margin-top:3px;max-height:160px;overflow-y:auto;box-shadow:var(--shadow-sm)"></div>
+        </div>
+        <div class="form-group">
+          <label>Beneficiário vinculado <span style="font-size:.7rem;color:var(--muted)">(opcional)</span></label>
+          <select id="groceryPayeeId" style="font-family:var(--font-sans)">
+            <option value="">— Nenhum —</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
