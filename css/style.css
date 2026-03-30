@@ -7264,10 +7264,25 @@ tr.tx-row-new td:first-child {
   padding: 4px 0 12px;
 }
 
+/* Each type group's grid fills full width */
+.dash-fav-type-group .dash-favs-grid {
+  max-width: 100%;
+}
+
 .dash-favs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;        /* always one line on desktop */
   gap: 12px;
+  align-items: stretch;
+}
+
+/* Each card: shrink equally when needed, never below 120px, cap at 240px */
+.dash-favs-grid .dash-fav-card {
+  flex: 1 1 0;
+  min-width: 0;             /* allow shrinking below content width */
+  max-width: 240px;
+  box-sizing: border-box;
 }
 
 .dash-fav-card {
@@ -7382,13 +7397,16 @@ tr.tx-row-new td:first-child {
 }
 
 .dash-fav-card__balance {
-  font-size: 1.35rem;
+  font-size: clamp(.92rem, 1.6vw, 1.35rem);
   font-weight: 700;
   font-family: var(--font-serif, monospace);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
   line-height: 1.15;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dash-fav-card__balance.neg {
@@ -7430,10 +7448,14 @@ tr.tx-row-new td:first-child {
 /* Mobile: 2-col on small screens, 1-col on very small */
 @media (max-width: 480px) {
   .dash-favs-grid {
-    grid-template-columns: repeat(2, 1fr);
+    flex-wrap: wrap;         /* allow wrapping on mobile */
     gap: 10px;
   }
-  .dash-fav-card {
+  /* On mobile: 2 cards per row */
+  .dash-favs-grid .dash-fav-card {
+    flex: 1 1 calc(50% - 6px);
+    max-width: none;
+    min-width: calc(50% - 6px);
     padding: 13px 14px 15px;
   }
   .dash-fav-card__balance { font-size: 1.1rem; }
@@ -21572,4 +21594,14 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   background: var(--border);
   margin: 6px 0 10px;
   opacity: .6;
+}
+
+/* ── Dashboard fav cards: intermediate screen padding ── */
+@media (min-width: 481px) and (max-width: 900px) {
+  .dash-favs-grid .dash-fav-card {
+    padding: 13px 12px 14px;
+  }
+  .dash-fav-card__balance {
+    font-size: clamp(.82rem, 1.4vw, 1.15rem);
+  }
 }
