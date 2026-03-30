@@ -742,8 +742,13 @@ function toggleUpcomingGroup(gid) {
   const rows = document.getElementById(gid);
   const arrow = document.getElementById(gid + '_arr');
   if (!rows) return;
-  const isOpen = rows.style.display !== 'none';
-  rows.style.display = isOpen ? 'none' : '';
+  // Use getComputedStyle to detect actual visibility (CSS may override inline style)
+  const isOpen = rows.style.display !== 'none' && getComputedStyle(rows).display !== 'none';
+  if (isOpen) {
+    rows.style.setProperty('display', 'none', 'important');
+  } else {
+    rows.style.setProperty('display', 'block', 'important');
+  }
   if (arrow) arrow.classList.toggle('open', !isOpen);
 }
 
@@ -1875,7 +1880,9 @@ function renderScCalendar() {
 
   // Re-render detail if a day is selected
   if (_scCalSelDay && dayMap[_scCalSelDay]) {
-    // Selected day has events — show detail
+    // Selected day has events — show detail (desktop always visible, mobile needs .visible)
+    const _det = document.getElementById('scCalDetail');
+    if (_det) { _det.classList.add('visible'); _det.style.removeProperty('display'); }
     _scCalRenderDetail(_scCalSelDay, dayMap[_scCalSelDay]);
   } else if (_scCalSelDay) {
     // Selected day exists but has no events — show empty message
@@ -1885,6 +1892,7 @@ function renderScCalendar() {
       const label = `${parseInt(d)} de ${SC_MONTHS[parseInt(m)-1]} de ${y}`;
       const isToday = _scCalSelDay === new Date().toISOString().slice(0,10);
       det.style.display = '';
+      det.classList.add('visible'); // mobile
       det.innerHTML = `<div style="padding:24px 18px;text-align:center">
         <div style="font-size:2rem;margin-bottom:10px;opacity:.45">${isToday ? '☀️' : '📅'}</div>
         <div style="font-size:.88rem;font-weight:700;color:var(--text2);margin-bottom:6px">${isToday ? 'Hoje — ' : ''}${label}</div>
