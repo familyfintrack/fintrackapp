@@ -1654,10 +1654,13 @@
 
       <!-- Calendar view -->
       <div id="scCalendarView" style="display:none">
-        <!-- Desktop split layout: left=calendar, right=detail+panels -->
+        <!-- Desktop calendar layout:
+             TOP ROW  → left=calendar grid  |  right=próximos 10 dias (sticky)
+             BOTTOM ROW → day detail (full width) + recorrentes (full width)
+        -->
         <div class="sc-cal-desktop-layout">
 
-          <!-- LEFT COLUMN: nav + legend + grid -->
+          <!-- TOP-LEFT: nav + legend + grid -->
           <div class="sc-cal-left">
             <div class="sc-cal-nav">
               <button class="sc-cal-nav-btn" onclick="scCalMove(-1)" aria-label="Mês anterior">
@@ -1688,13 +1691,8 @@
             </div>
           </div>
 
-          <!-- RIGHT COLUMN: day detail + upcoming 10 dias + recorrentes -->
+          <!-- TOP-RIGHT: Próximos 10 dias (sticky sidebar) -->
           <div class="sc-cal-right">
-
-            <!-- Day detail panel — always visible on desktop -->
-            <div class="sc-cal-detail card" id="scCalDetail" style="min-height:120px"></div>
-
-            <!-- Próximos 10 dias (cloned panel for calendar view) -->
             <div class="sc-panel sc-panel--upcoming sc-cal-upcoming-panel" id="scCalUpcomingPanel">
               <div class="sc-panel__header" onclick="toggleCalUpcomingPanel()" style="cursor:pointer;user-select:none">
                 <div class="sc-panel__title">
@@ -1709,8 +1707,15 @@
               </div>
               <div id="scCalUpcomingList" class="sc-panel__body sc-upcoming-list"></div>
             </div>
+          </div>
 
-            <!-- Recorrentes (cloned panel for calendar view) -->
+          <!-- BOTTOM ROW: day detail + recorrentes (full width, spans 2 cols) -->
+          <div class="sc-cal-bottom">
+
+            <!-- Transações do dia selecionado -->
+            <div class="sc-cal-detail card" id="scCalDetail"></div>
+
+            <!-- Recorrentes -->
             <div class="sc-panel sc-panel--recurrents sc-cal-recurrents-panel" id="scCalRecurrentsPanel">
               <div class="sc-panel__header">
                 <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
@@ -1744,7 +1749,7 @@
               <div class="sc-panel__body" id="scCalScheduledList"></div>
             </div>
 
-          </div><!-- /sc-cal-right -->
+          </div><!-- /sc-cal-bottom -->
         </div><!-- /sc-cal-desktop-layout -->
       </div>
 
