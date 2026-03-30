@@ -2479,6 +2479,13 @@
             Avançado
           </button>
 
+          <button class="cfg-tab" onclick="cfgShowPane('pane-feedbacks')" id="cfgNavBtn-feedbacks" style="display:none;position:relative">
+            <div class="cfg-tab-icon" style="background:#fef2f2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            Feedbacks<span id="cfgFeedbackBadge" style="display:none;position:absolute;top:6px;right:6px;min-width:14px;height:14px;border-radius:999px;background:#dc2626;color:#fff;font-size:.55rem;font-weight:700;padding:0 3px;line-height:14px;text-align:center"></span>
+          </button>
+
           <button class="cfg-tab" onclick="cfgShowPane('pane-sobre')" id="cfgNavBtn-sobre">
             <div class="cfg-tab-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -2921,6 +2928,37 @@
             <div id="translationsAdminWrap" style="padding:4px 0 8px">
               <div style="padding:24px;text-align:center;color:var(--muted);font-size:.83rem">Carregando…</div>
             </div>
+          </div>
+        </div>
+
+        <!-- ══ PANE: FEEDBACKS (admin) ══════════════════════════════════════ -->
+        <div class="cfg-pane" id="pane-feedbacks">
+          <div class="cfg-pane-header">
+            <div class="cfg-pane-header-icon" style="background:#fef2f2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="cfg-pane-header-text">
+              <div class="cfg-pane-header-title">Feedbacks &amp; Reports</div>
+              <div class="cfg-pane-header-sub">Revisão de reports enviados pelos usuários</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <select id="uaFeedbackFilter" onchange="loadFeedbackReports()" style="font-family:var(--font-sans);font-size:.78rem;padding:7px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)">
+                <option value="new">🔴 Novos</option>
+                <option value="backlog">📦 Backlog</option>
+                <option value="priority">⭐ Prioritários</option>
+                <option value="flagged">🚩 Flagados</option>
+                <option value="done">✅ Implementados</option>
+                <option value="irrelevant">🚫 Irrelevantes</option>
+                <option value="all">Todos</option>
+              </select>
+              <button onclick="loadFeedbackReports()" style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);cursor:pointer" title="Recarregar">↺</button>
+              <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted)"></span>
+            </div>
+          </div>
+          <div id="uaFeedbackContent" style="display:flex;flex-direction:column;gap:10px;min-height:120px">
+            <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">Selecione esta aba para carregar os feedbacks.</div>
           </div>
         </div>
 
@@ -4473,10 +4511,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Landing Page
         </button>
-        <button id="telTab_feedbacks" class="tel-tab-btn" onclick="_telSetTab('feedbacks')" style="position:relative">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Feedbacks<span id="telFeedbackBadge" style="display:none;position:absolute;top:6px;right:6px;min-width:15px;height:15px;border-radius:999px;background:#dc2626;color:#fff;font-size:.58rem;font-weight:700;padding:0 3px;line-height:15px;text-align:center"></span>
-        </button>
+        <!-- Feedbacks movido para Configurações → Avançado -->
       </div>
 
       <!-- ── ABA: Visão Geral ── -->
@@ -4624,59 +4659,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
 
-      <!-- ── ABA: Feedbacks (Admin) ── -->
-      <div id="telPane_feedbacks" style="display:none">
-
-        <!-- Toolbar: filtros + stats -->
-        <div style="padding:14px 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px">
-          <!-- Filtros em chips + select -->
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-            <span style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:2px">Filtro</span>
-            <select id="uaFeedbackFilter" onchange="loadFeedbackReports()"
-              style="font-family:var(--font-sans);font-size:.8rem;padding:6px 12px;
-                     border:1.5px solid var(--border);border-radius:20px;
-                     background:var(--surface);color:var(--text);cursor:pointer;
-                     outline:none;transition:border-color .15s"
-              onfocus="this.style.borderColor='var(--accent)'"
-              onblur="this.style.borderColor='var(--border)'">
-              <option value="new">🔴 Novos</option>
-              <option value="priority">⭐ Prioritários</option>
-              <option value="flagged">🚩 Flagados</option>
-              <option value="backlog">📦 Backlog</option>
-              <option value="done">✅ Implementados</option>
-              <option value="irrelevant">🚫 Irrelevantes</option>
-              <option value="all">📋 Todos</option>
-            </select>
-            <button onclick="loadFeedbackReports()"
-              style="padding:6px 12px;font-size:.78rem;font-family:var(--font-sans);font-weight:600;
-                     border:1.5px solid var(--border);border-radius:20px;background:var(--surface);
-                     color:var(--text2);cursor:pointer;transition:all .15s"
-              onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-              onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"
-              title="Recarregar lista">↺ Atualizar</button>
-            <span id="uaFeedbackCount" style="font-size:.75rem;color:var(--muted);margin-left:4px"></span>
-          </div>
-          <!-- Legenda rápida de status -->
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <span style="font-size:.7rem;color:var(--muted)">Status rápido:</span>
-            <span style="font-size:.7rem">🔴 Novo</span>
-            <span style="font-size:.7rem">⭐ Prioritário</span>
-            <span style="font-size:.7rem">🚩 Flagado</span>
-            <span style="font-size:.7rem">📦 Backlog</span>
-            <span style="font-size:.7rem">✅ Implementado</span>
-            <span style="font-size:.7rem">🚫 Irrelevante</span>
-          </div>
-        </div>
-
-        <!-- Lista de cards -->
-        <div id="uaFeedbackContent"
-          style="display:flex;flex-direction:column;gap:12px;
-                 max-height:calc(100vh - 320px);overflow-y:auto;
-                 padding-right:4px;padding-bottom:20px">
-          <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">⏳ Carregando…</div>
-        </div>
-
-      </div>
+      <!-- telPane_feedbacks removido — ver Configurações → Avançado -->
 
       <!-- Modal: Excluir Telemetria — usa modal-overlay padrão do app -->
       <div class="modal-overlay" id="telDeleteModal">
