@@ -1,6 +1,21 @@
 // ── State ──────────────────────────────────────────────
 state.scheduled = [];
 
+/**
+ * Retorna a data LOCAL do dispositivo do usuário no formato 'YYYY-MM-DD'.
+ * Evita o bug do toISOString() que retorna a data em UTC, podendo mostrar
+ * o dia anterior/posterior para usuários em fusos diferentes de UTC (ex: Brasil UTC-3).
+ * @param {Date} [d] - Objeto Date opcional; usa new Date() se omitido.
+ * @returns {string} 'YYYY-MM-DD'
+ */
+function localDateStr(d) {
+  const dt = d || new Date();
+  const y  = dt.getFullYear();
+  const m  = String(dt.getMonth() + 1).padStart(2, '0');
+  const dy = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
+}
+
 
 async function _createPairedTransferLeg(originTx, sc, actualDate, memoOverride=null) {
   if(!sc?.transfer_to_account_id) return null;
@@ -209,7 +224,7 @@ function nextDate(from, freq, customInterval, customUnit) {
       else if(customUnit === 'years')  d.setFullYear(d.getFullYear() + n);
       break;
   }
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 
 function generateOccurrences(sc, limit = 12) {
@@ -219,7 +234,7 @@ function generateOccurrences(sc, limit = 12) {
     return dates;
   }
   let cur = sc.start_date;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   let count = 0;
   const maxCount = sc.end_count || 999;
   const endDate = sc.end_date || '2099-12-31';
@@ -233,7 +248,7 @@ function generateOccurrences(sc, limit = 12) {
 }
 
 function getNextOccurrence(sc) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const registered = (sc.occurrences || []).map(o => o.scheduled_date);
   if(sc.frequency === 'once') {
     return registered.includes(sc.start_date) ? null : sc.start_date;
@@ -261,7 +276,7 @@ function scStatusLabel(sc) {
   if(sc.status === 'paused') return {cls:'sc-status-paused', label:'⏸ Pausado'};
   if(sc.status === 'finished') return {cls:'sc-status-finished', label:'✓ Concluído'};
   const next = getNextOccurrence(sc);
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   if(next && next < today) return {cls:'sc-status-overdue', label:'⚠ Atrasado'};
   if(!next) return {cls:'sc-status-finished', label:'✓ Concluído'};
   return {cls:'sc-status-active', label:'● Ativo'};
@@ -356,9 +371,9 @@ function filterScheduled() {
 // ── KPI Strip ──────────────────────────────────────────────────────────
 function _renderScKpis() {
   const all = state.scheduled || [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const in30  = new Date(); in30.setDate(in30.getDate() + 30);
-  const in30s = in30.toISOString().slice(0, 10);
+  const in30s = localDateStr(in30);
 
   let expense30 = 0, income30 = 0, pending = 0;
   all.forEach(sc => {
@@ -406,7 +421,7 @@ function renderScheduled(list) {
   const bar = document.getElementById('scheduledSummaryBar');
   if(bar) {
     const all = state.scheduled;
-    const today = new Date().toISOString().slice(0,10);
+    const today = localDateStr();
     const active = all.filter(s => { const st=scStatusLabel(s); return st.label.includes('Ativo'); }).length;
     const overdue = all.filter(s => scStatusLabel(s).label.includes('Atrasado')).length;
     const paused = all.filter(s => s.status==='paused').length;
@@ -471,7 +486,7 @@ function renderScheduled(list) {
 function _scCardHtml(sc) {
   const st = scStatusLabel(sc);
   const next = getNextOccurrence(sc);
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   const isExpense     = sc.type === 'expense' || sc.type === 'transfer' || sc.type === 'card_payment';
   const isCardPayment = sc.type === 'card_payment';
   const isTransferSc  = sc.type === 'transfer' || sc.type === 'card_payment';
@@ -597,9 +612,9 @@ function toggleScFinished() {
 }
 
 function renderUpcoming() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const limit = new Date(); limit.setDate(limit.getDate() + 10);
-  const limitStr = limit.toISOString().slice(0, 10);
+  const limitStr = localDateStr(limit);
 
   const upcoming = [];
   // Use filtered list so type/search filters affect upcoming panel too
@@ -652,7 +667,7 @@ function renderUpcoming() {
 
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  const tomorrowStr = localDateStr(tomorrow);
 
   if(listEl) listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
     const isToday    = date === today;
@@ -836,7 +851,7 @@ function openScheduledModal(id='') {
   }, 50);
 
   // Dates
-  document.getElementById('scStartDate').value = sc?.start_date || new Date().toISOString().slice(0,10);
+  document.getElementById('scStartDate').value = sc?.start_date || localDateStr();
 
   // Frequency
   const freq = sc?.frequency||'once';
@@ -1033,7 +1048,7 @@ async function fetchScSuggestedFxRate() {
   if (icon) icon.textContent = '⏳';
   if (sugg) sugg.style.display = 'none';
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     const res = await fetch(`${window.FX_API_BASE || 'https://api.frankfurter.dev/v1'}/${today}?base=${src}&to=${dst}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
@@ -1489,8 +1504,8 @@ async function runScheduledAutoRegister() {
     const daysAhead = parseInt(cfg?.daysAhead || 0, 10) || 0;
     const today = new Date();
     const toDate = new Date(today.getTime() + daysAhead*86400000);
-    const toStr = toDate.toISOString().slice(0,10);
-    const todayStr = today.toISOString().slice(0,10);
+    const toStr = localDateStr(toDate);
+    const todayStr = localDateStr(today);
 
     // Ensure scheduled loaded
     if(!state.scheduled || !state.scheduled.length) return 0;
@@ -1722,18 +1737,18 @@ function scCalGoToday() {
   const now = new Date();
   _scCalYear  = now.getFullYear();
   _scCalMonth = now.getMonth();
-  _scCalSelDay = now.toISOString().slice(0,10); // select today
+  _scCalSelDay = localDateStr(now); // select today
   renderScCalendar();
 }
 
 // ── Build day map: date → { expenses, transfers, incomes, totExp, totInc } ──
 function _scCalBuildDayMap(year, month) {
   const map = {};     // key = 'YYYY-MM-DD'
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
 
   // Look 3 months ahead from start of displayed month
   const scanFrom = `${String(year).padStart(4,'0')}-${String(month+1).padStart(2,'0')}-01`;
-  const scanTo   = new Date(year, month + 3, 0).toISOString().slice(0,10);
+  const scanTo   = localDateStr(new Date(year, month + 3, 0));
 
   // Use filtered list so type filter applies to calendar view too
   const _calSrc = state._scFiltered || state.scheduled;
@@ -1795,7 +1810,7 @@ function renderScCalendar() {
   const grid = document.getElementById('scCalGrid');
   if (!grid) return;
 
-  const today    = new Date().toISOString().slice(0,10);
+  const today    = localDateStr();
   const dayMap   = _scCalBuildDayMap(_scCalYear, _scCalMonth);
 
   // First day of the month (0=Sun)
@@ -1893,7 +1908,7 @@ function renderScCalendar() {
     if (det) {
       const [y, m, d] = _scCalSelDay.split('-');
       const label = `${parseInt(d)} de ${SC_MONTHS[parseInt(m)-1]} de ${y}`;
-      const isToday = _scCalSelDay === new Date().toISOString().slice(0,10);
+      const isToday = _scCalSelDay === localDateStr();
       det.style.display = '';
       det.classList.add('visible'); // mobile
       det.innerHTML = `<div style="padding:24px 18px;text-align:center">
@@ -1945,7 +1960,7 @@ function _scCalRenderDetail(dateStr, data) {
 
   const [y, m, d] = dateStr.split('-');
   const dateLabel = `${parseInt(d)} de ${SC_MONTHS[parseInt(m)-1]} de ${y}`;
-  const today     = new Date().toISOString().slice(0,10);
+  const today     = localDateStr();
   const isPast    = dateStr < today;
   const isToday   = dateStr === today;
 
@@ -2432,9 +2447,9 @@ function _renderCalUpcoming() {
   const arrowEl  = document.getElementById('scCalUpcomingArrow');
   if (!listEl) return;
 
-  const today    = new Date().toISOString().slice(0, 10);
+  const today    = localDateStr();
   const limit    = new Date(); limit.setDate(limit.getDate() + 10);
-  const limitStr = limit.toISOString().slice(0, 10);
+  const limitStr = localDateStr(limit);
 
   const upcoming = [];
   const srcList  = state._scFiltered || state.scheduled;
@@ -2474,9 +2489,9 @@ function _renderCalUpcoming() {
     return;
   }
 
-  const today2   = new Date().toISOString().slice(0, 10);
+  const today2   = localDateStr();
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomStr   = tomorrow.toISOString().slice(0, 10);
+  const tomStr   = localDateStr(tomorrow);
   const byDate   = {};
   upcoming.forEach(u => { (byDate[u.date] = byDate[u.date] || []).push(u); });
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
