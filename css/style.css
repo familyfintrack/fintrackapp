@@ -6174,11 +6174,16 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
 .forecast-tx-row td { padding:7px 10px; vertical-align:middle; }
 .forecast-date-cell {
-  width:96px;
-  padding: 7px 10px 7px 12px;
+  width:48px;
+  padding: 7px 6px 7px 6px;
   color: var(--muted);
   vertical-align: middle;
   border-right: 1px solid var(--border);
+}
+.forecast-head-date {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
 }
 .forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
@@ -6236,7 +6241,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
-  .forecast-date-cell { width:68px; padding:5px 6px; border-right:none; }
+  .forecast-date-cell { width:36px; padding:5px 6px; border-right:none; }
   .forecast-amount-cell { width:auto !important; font-size:.8rem; }
   .forecast-balance-head,
   .forecast-balance-cell {
@@ -9049,7 +9054,7 @@ body.ft-platform-windows .modal-close {
   .forecast-payee     { font-size: .79rem !important; }
 
   /* Date column wider and cleaner */
-  .forecast-date-cell      { width: 88px !important; }
+  .forecast-date-cell      { width: 44px !important; }
   .forecast-date-main      { font-size: .8rem !important; }
   .forecast-date-flag,
   .forecast-date-today     { font-size: .7rem !important; }
@@ -14222,7 +14227,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
   /* Tabela forecast mobile: células mais compactas */
   .forecast-tx-row td { padding: 6px 6px !important; }
-  .forecast-date-cell { width: 66px !important; padding-right: 4px !important; }
+  .forecast-date-cell { width: 36px !important; padding-right: 4px !important; }
   .forecast-date-main { font-size: .72rem !important; }
   .forecast-title     { font-size: .82rem !important; }
   .forecast-category  { font-size: .69rem !important; }
@@ -16969,8 +16974,8 @@ section[data-page="transactions"] .content {
 
 /* === Forecast report date refresh === */
 .forecast-date-cell{
-  width:96px !important;
-  padding-right:10px !important;
+  width:48px !important;
+  padding-right:4px !important;
   vertical-align:top;
 }
 .forecast-date-card{
@@ -16978,9 +16983,9 @@ section[data-page="transactions"] .content {
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  min-height:74px;
-  padding:8px 6px 7px;
-  border-radius:16px;
+  min-height:64px;
+  padding:6px 4px 5px;
+  border-radius:12px;
   background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(246,249,247,.96) 100%);
   border:1px solid rgba(21,80,55,.12);
   box-shadow:0 6px 16px rgba(5,34,20,.06);
@@ -16991,15 +16996,15 @@ section[data-page="transactions"] .content {
   box-shadow:0 8px 18px rgba(22,101,52,.12);
 }
 .forecast-date-weekday{
-  font-size:.6rem !important;
+  font-size:.52rem !important;
   line-height:1;
   font-weight:800;
-  letter-spacing:.12em;
+  letter-spacing:.08em;
   color:var(--muted);
-  margin-bottom:6px;
+  margin-bottom:4px;
 }
 .forecast-date-daynum{
-  font-size:1.28rem !important;
+  font-size:1.05rem !important;
   line-height:.95;
   font-weight:800;
   color:var(--text);
@@ -17046,7 +17051,7 @@ section[data-page="transactions"] .content {
   text-transform:uppercase;
 }
 @media (max-width: 1023px){
-  .forecast-date-cell{ width:82px !important; padding-right:6px !important; }
+  .forecast-date-cell{ width: 44px !important; padding-right:3px !important; }
   .forecast-date-card{ min-height:66px; border-radius:14px; padding:7px 5px 6px; }
   .forecast-date-weekday{ font-size:.54rem !important; margin-bottom:5px; }
   .forecast-date-daynum{ font-size:1.08rem !important; }
