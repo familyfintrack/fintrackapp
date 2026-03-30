@@ -6444,16 +6444,34 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 
 /* ── Calendar desktop split layout ─────────────────────────────── */
+/* ── Calendar desktop layout ─────────────────────────────────────
+   TOP ROW:    [calendar grid]  [próximos 10 dias — sticky]
+   BOTTOM ROW: [detail do dia + recorrentes — full width]
+───────────────────────────────────────────────────────────────── */
 .sc-cal-desktop-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: auto auto;
   gap: 16px;
   align-items: start;
 }
-.sc-cal-left { display: flex; flex-direction: column; gap: 0; }
+/* Left col: calendar only */
+.sc-cal-left {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+/* Right col: upcoming 10 dias — sticky alongside calendar */
 .sc-cal-right {
-  display: flex; flex-direction: column; gap: 14px;
-  position: sticky; top: 72px;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 72px;
   max-height: calc(100vh - 88px);
   overflow-y: auto;
 }
@@ -6461,32 +6479,37 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .sc-cal-right::-webkit-scrollbar-track { background: transparent; }
 .sc-cal-right::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-/* Detail panel always visible on desktop right column */
-#scCalDetail {
-  display: block !important;
-  min-height: 120px;
+/* Bottom row: detail + recurrents — spans full width */
+.sc-cal-bottom {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* Calendar view upcoming + recurrents panels */
-.sc-cal-upcoming-panel .sc-panel__body { max-height: 260px; overflow-y: auto; }
-.sc-cal-recurrents-panel .sc-panel__body { max-height: 320px; overflow-y: auto; }
+/* Detail panel — always rendered, min-height so placeholder is visible */
+#scCalDetail {
+  display: block !important;
+  min-height: 80px;
+}
 
-/* Mobile: stack everything single column */
+/* Upcoming panel scrollable body */
+.sc-cal-upcoming-panel .sc-panel__body { max-height: 400px; overflow-y: auto; }
+/* Recurrents panel — no max-height, shows all */
+.sc-cal-recurrents-panel .sc-panel__body { max-height: none; overflow-y: visible; }
+
+/* Mobile: single column, hide bottom panels, show detail only when .visible */
 @media (max-width: 900px) {
   .sc-cal-desktop-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
-  .sc-cal-right {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-  }
-  #scCalDetail {
-    display: none !important;
-  }
-  #scCalDetail.visible {
-    display: block !important;
-  }
+  .sc-cal-left  { grid-column: 1; grid-row: auto; }
+  .sc-cal-right { grid-column: 1; grid-row: auto; position: static; max-height: none; overflow-y: visible; }
+  .sc-cal-bottom { grid-column: 1; grid-row: auto; }
+  #scCalDetail { display: none !important; }
+  #scCalDetail.visible { display: block !important; }
   .sc-cal-upcoming-panel,
   .sc-cal-recurrents-panel { display: none; }
 }
@@ -21422,3 +21445,10 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 /* ── Upcoming day group arrow ── */
 .sc-upcoming-day-arrow { transition: transform .22s ease; }
 .sc-upcoming-day-arrow.open { transform: rotate(180deg); }
+
+/* ── Mobile: ocultar ícone de categoria na lista de transações ── */
+@media (max-width: 640px) {
+  .tx-v2-title .tx-v2-cat-bubble {
+    display: none !important;
+  }
+}
