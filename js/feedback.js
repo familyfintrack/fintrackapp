@@ -409,11 +409,18 @@ function _updateFeedbackBadge(count) {
   const dot = document.getElementById('feedbackBadge');
   if (dot) dot.style.display = count > 0 ? '' : 'none';
 
-  // Admin panel tab badge
+  // Admin panel tab badge (modal)
   const tabBadge = document.getElementById('uaFeedbackBadge');
   if (tabBadge) {
     tabBadge.textContent = count > 0 ? count : '';
     tabBadge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+
+  // Settings page tab badge
+  const cfgBadge = document.getElementById('cfgFeedbackBadge');
+  if (cfgBadge) {
+    cfgBadge.textContent = count > 0 ? (count > 99 ? '99+' : String(count)) : '';
+    cfgBadge.style.display = count > 0 ? 'inline-block' : 'none';
   }
 }
 

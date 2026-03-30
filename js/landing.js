@@ -21,31 +21,86 @@ const _dateUtils = window.FinTrackDateUtils || {
 
 /* ── Landing Telemetry ──────────────────────────────────────────── */
 const _lTelSession = Math.random().toString(36).slice(2,10);
+const _lTelPageStart = Date.now();
+
+function _lTelGetUtm() {
+  const p = new URLSearchParams(location.search);
+  const utm = {};
+  ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(k => {
+    if (p.get(k)) utm[k] = p.get(k);
+  });
+  return Object.keys(utm).length ? utm : undefined;
+}
+
 function _lTelTrack(event_type, payload = {}) {
   try {
+    const utm = _lTelGetUtm();
     const row = {
+      id:             'lnd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
       session_id:     _lTelSession,
       event_type,
       page:           'landing',
       ts:             new Date().toISOString(),
-      device_type:    /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+      device_type:    /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
       device_browser: (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)||['unknown'])[0],
       device_os:      /Win/i.test(navigator.userAgent) ? 'windows' : /Mac/i.test(navigator.userAgent) ? 'macos' : /Android/i.test(navigator.userAgent) ? 'android' : /iPhone|iPad/i.test(navigator.userAgent) ? 'ios' : 'other',
-      payload: { source: 'landing', url: location.href, ...payload },
+      screen_w:       screen.width  || null,
+      screen_h:       screen.height || null,
+      is_pwa:         window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+      lang:           navigator.language || document.documentElement.lang || null,
+      payload: {
+        source:   'landing',
+        url:      location.href,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        ...(utm && { utm }),
+        ...payload,
+      },
     };
     _sb.from('app_telemetry').insert(row).then(() => {}).catch(() => {});
   } catch(_) {}
 }
+
 // Track page load immediately
 _lTelTrack('page_view', { referrer: document.referrer || null });
+
 // Track scroll depth milestones
-let _telScrolled25 = false, _telScrolled50 = false, _telScrolled75 = false;
+let _telScrolled25 = false, _telScrolled50 = false, _telScrolled75 = false, _telScrolled100 = false;
 window.addEventListener('scroll', () => {
-  const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
-  if (!_telScrolled25 && pct >= 25) { _telScrolled25 = true; _lTelTrack('scroll_depth', { depth: 25 }); }
-  if (!_telScrolled50 && pct >= 50) { _telScrolled50 = true; _lTelTrack('scroll_depth', { depth: 50 }); }
-  if (!_telScrolled75 && pct >= 75) { _telScrolled75 = true; _lTelTrack('scroll_depth', { depth: 75 }); }
+  const pct = Math.min(100, (window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight)) * 100);
+  if (!_telScrolled25  && pct >= 25)  { _telScrolled25  = true; _lTelTrack('scroll_depth', { depth: 25 }); }
+  if (!_telScrolled50  && pct >= 50)  { _telScrolled50  = true; _lTelTrack('scroll_depth', { depth: 50 }); }
+  if (!_telScrolled75  && pct >= 75)  { _telScrolled75  = true; _lTelTrack('scroll_depth', { depth: 75 }); }
+  if (!_telScrolled100 && pct >= 99)  { _telScrolled100 = true; _lTelTrack('scroll_depth', { depth: 100 }); }
 }, { passive: true });
+
+// Track time on page at unload
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    _lTelTrack('page_exit', { time_on_page_sec: Math.round((Date.now() - _lTelPageStart) / 1000) });
+  }
+});
+
+// Track CTA clicks
+document.addEventListener('DOMContentLoaded', () => {
+  // Nav links
+  document.querySelectorAll('a.nk').forEach(a => {
+    a.addEventListener('click', () => _lTelTrack('cta_click', { element: 'nav_link', target: a.getAttribute('href') }));
+  });
+  // Hero / section CTA buttons
+  document.querySelectorAll('a.ctp').forEach(a => {
+    a.addEventListener('click', () => _lTelTrack('cta_click', { element: 'hero_cta', target: a.getAttribute('href') }));
+  });
+  // Waitlist form: track first field focus (intent signal)
+  let _wlIntentTracked = false;
+  document.querySelectorAll('#wlN,#wlE,#wlP,#wlR').forEach(el => {
+    el.addEventListener('focus', () => {
+      if (!_wlIntentTracked) { _wlIntentTracked = true; _lTelTrack('waitlist_intent', {}); }
+    }, { once: true });
+  });
+  // Role select change
+  const wlR = document.getElementById('wlR');
+  if (wlR) wlR.addEventListener('change', () => _lTelTrack('waitlist_role_select', { role: wlR.value }));
+});
 
 /* ── Carrega EmailJS + Gemini key do Supabase ──────────────────── */
 (async () => {

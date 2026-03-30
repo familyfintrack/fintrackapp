@@ -20,7 +20,8 @@ function cfgShowPane(paneId) {
 window.cfgShowPane = cfgShowPane;
 
 function _cfgApplyAdminNav() {
-  const isAdmin = (typeof currentUser !== 'undefined') && currentUser?.role === 'admin';
+  const role = (typeof currentUser !== 'undefined') ? currentUser?.role : null;
+  const isAdmin = role === 'admin' || role === 'owner';
   ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
@@ -32,7 +33,7 @@ async function _cfgUpdateFeedbackBadge() {
   try {
     const badge = document.getElementById('cfgFeedbackBadge');
     if (!badge || !window.sb) return;
-    const { count } = await sb.from('feedback_reports')
+    const { count } = await sb.from('app_feedback')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'new');
     if (count > 0) {
@@ -2610,13 +2611,16 @@ window.saveShowAccessRequest = async function(enabled) {
 };
 
 function _applyAccessRequestVisibility(enabled) {
-  const btn    = document.getElementById('loginRequestAccessBtn');
+  // Hide the entire wrap (button + "Não tem conta?" text) as one unit
+  const wrap = document.getElementById('loginRequestAccessWrap');
+  if (wrap) { wrap.style.display = enabled ? '' : 'none'; return; }
+  // Fallback: hide button + sibling text individually
+  const btn = document.getElementById('loginRequestAccessBtn');
+  if (btn) btn.style.display = enabled ? '' : 'none';
   const parent = btn?.parentElement;
-  if (btn)    btn.style.display    = enabled ? '' : 'none';
-  // Also hide the "Não tem conta?" text when button is hidden
   if (parent) {
-    const texts = parent.querySelectorAll('span[data-i18n="auth.no_account"]');
-    texts.forEach(t => { t.style.display = enabled ? '' : 'none'; });
+    parent.querySelectorAll('span[data-i18n="auth.no_account"]')
+      .forEach(t => { t.style.display = enabled ? '' : 'none'; });
   }
 }
 
