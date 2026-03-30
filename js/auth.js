@@ -1028,6 +1028,9 @@ function updateUserUI() {
   // Sync topbar language badge with user's actual preference
   if (typeof _i18nUpdateTopbarLabel === 'function') _i18nUpdateTopbarLabel();
 
+  // Show feedback button only for regular users (hidden for admin/owner)
+  if (typeof _updateFeedbackBtnVisibility === 'function') _updateFeedbackBtnVisibility();
+
   // Apply permission restrictions
   applyPermissions();
 
@@ -1852,17 +1855,22 @@ function _ownedFamilies() {
 }
 
 function switchUATab(tab) {
-  ['pending','users','families','waitlist','feedback'].forEach(t => {
-    const panel = document.getElementById('uaTab' + t[0].toUpperCase() + t.slice(1));
-    const pane  = document.getElementById('ua' + t[0].toUpperCase() + t.slice(1));
-    if (panel) panel.classList.toggle('active', t === tab);
-    if (pane)  pane.style.display = t === tab ? '' : 'none';
+  ['uaPending','uaUsers','uaFamilies','uaWaitlist'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; }
   });
-  if (tab === 'pending')  _renderPendingTab();
-  if (tab === 'users')    loadUsersList().catch(e => console.warn('loadUsersList:', e));
-  if (tab === 'families') loadFamiliesList().catch(e => console.warn('loadFamiliesList:', e));
-  if (tab === 'waitlist') loadWaitlist().catch(e => console.warn('loadWaitlist:', e));
-  if (tab === 'feedback') { if (typeof loadFeedbackReports === 'function') loadFeedbackReports(); }
+  ['uaTabPending','uaTabUsers','uaTabFamilies','uaTabWaitlist'].forEach(id => {
+    document.getElementById(id)?.classList.remove('active');
+  });
+  const paneId = 'ua' + tab.charAt(0).toUpperCase() + tab.slice(1);
+  const pane = document.getElementById(paneId);
+  if (pane) { pane.style.display = 'flex'; pane.style.flexDirection = 'column'; }
+  const tabId = 'uaTab' + tab.charAt(0).toUpperCase() + tab.slice(1);
+  document.getElementById(tabId)?.classList.add('active');
+  if (tab === 'pending')  { if (typeof loadPendingApprovals === 'function') loadPendingApprovals(); }
+  if (tab === 'users')    { if (typeof loadUserAdmin === 'function') loadUserAdmin(); }
+  if (tab === 'families') { if (typeof loadFamiliesAdmin === 'function') loadFamiliesAdmin(); }
+  if (tab === 'waitlist') { if (typeof loadWaitlist === 'function') loadWaitlist(); }
 }
 
 async function _renderPendingTab() {
@@ -4398,13 +4406,92 @@ async function openMyFamilyMgmt() {
 
 function mfmSwitchFamily(famId) {
   _mfmActiveFamilyId = famId;
-  // Update tab highlight
   document.querySelectorAll('[id^="mfmTab-"]').forEach(b => {
     b.classList.toggle('active', b.id === `mfmTab-${famId}`);
   });
   _mfmRender();
 }
 
+// ── Section tab switcher for the redesigned family modal ──────────────────
+function mfmSwitchTab(tab) {
+  const paneMap = { modulos:'mfmPaneModulos', membros:'mfmPaneMembros', integrantes:'mfmPaneIntegrantes', dados:'mfmPaneDados', nova:'mfmPaneNova' };
+  const navMap  = { modulos:'mfmNavModulos',  membros:'mfmNavMembros',  integrantes:'mfmNavIntegrantes',  dados:'mfmNavDados',  nova:'mfmNavNova' };
+  Object.keys(paneMap).forEach(t => {
+    document.getElementById(paneMap[t])?.classList.toggle('active', t === tab);
+    document.getElementById(navMap[t])?.classList.toggle('active', t === tab);
+  });
+  if (tab === 'membros')     _mfmRenderMembros();
+  if (tab === 'integrantes') _mfmLoadIntegrantes();
+  if (tab === 'dados')       _mfmRenderDataSection(_mfmActiveFamilyId);
+}
+window.mfmSwitchTab = mfmSwitchTab;
+
+async function _mfmRenderMembros(famId) {
+  famId = famId || _mfmActiveFamilyId;
+  if (!famId) return;
+  const listEl = document.getElementById('mfmMembersList');
+  if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:24px">⏳ Carregando…</div>';
+  let members = [];
+  try {
+    const { data: rpcData } = await sb.rpc('get_all_family_members');
+    if (rpcData) members = rpcData.filter(m => m.family_id === famId);
+  } catch(_) {}
+  if (!members.length) {
+    try {
+      const { data: fmData } = await sb.from('family_members').select('user_id, role, app_users(id,name,email,avatar_url,role,active)').eq('family_id', famId);
+      members = (fmData || []).map(r => ({ user_id: r.user_id, member_role: r.role, user_name: r.app_users?.name || '—', user_email: r.app_users?.email || '—', user_avatar: r.app_users?.avatar_url || null, user_role: r.app_users?.role || 'user', user_active: r.app_users?.active ?? true, family_id: famId }));
+    } catch(_) {}
+  }
+  if (listEl) {
+    listEl.innerHTML = !members.length
+      ? '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:24px">Nenhum membro ainda.</div>'
+      : members.map(m => `<div class="mfm2-member">
+          <div class="mfm2-member-av">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 36)}</div>
+          <div class="mfm2-member-info"><div class="mfm2-member-name">${esc(m.user_name)}</div><div class="mfm2-member-email">${esc(m.user_email)}</div></div>
+          <select class="mfm2-role-sel" onchange="mfmChangeRole(this,'${m.user_id}','${famId}')">
+            <option value="owner"  ${m.member_role==='owner'  ?'selected':''}>👑 Owner</option>
+            <option value="admin"  ${m.member_role==='admin'  ?'selected':''}>🔧 Admin</option>
+            <option value="user"   ${m.member_role==='user'   ?'selected':''}>👤 Usuário</option>
+            <option value="viewer" ${m.member_role==='viewer' ?'selected':''}>👁 Visualizador</option>
+          </select>
+          <button class="mfm2-remove-btn" title="Remover" onclick="mfmRemoveMember('${m.user_id}','${esc(m.user_name)}','${famId}')">✕</button>
+        </div>`).join('');
+  }
+  // Populate add-existing dropdown
+  const memberIds = new Set(members.map(m => m.user_id));
+  const addSel = document.getElementById('mfmAddUserSel');
+  if (addSel) {
+    try {
+      const myFamilyIds = (currentUser?.families || []).map(f => f.id).filter(Boolean);
+      let eligible = [];
+      if (myFamilyIds.length) {
+        const { data: myMembers } = await sb.from('family_members').select('user_id').in('family_id', myFamilyIds);
+        const myIds = [...new Set((myMembers || []).map(m => m.user_id))];
+        if (myIds.length) { const { data: u } = await sb.from('app_users').select('id,name,email').in('id', myIds).eq('approved', true).order('name'); eligible = u || []; }
+      }
+      const available = eligible.filter(u => !memberIds.has(u.id));
+      addSel.innerHTML = '<option value="">— Selecionar —</option>' + available.map(u => `<option value="${u.id}">${esc(u.name || u.email)}</option>`).join('');
+      const existRow = document.getElementById('mfmAddExistingRow');
+      if (existRow) existRow.style.display = available.length ? '' : 'none';
+    } catch(_) {}
+  }
+  const invEl = document.getElementById('mfmInviteEmail');
+  if (invEl) invEl.value = '';
+  _mfmMsg('', '');
+}
+window._mfmRenderMembros = _mfmRenderMembros;
+
+function _mfmLoadIntegrantes() {
+  const famId = _mfmActiveFamilyId;
+  if (!famId) return;
+  const el = document.getElementById('mfmFmcList');
+  if (!el) return;
+  if (typeof _loadAndRenderFmcForFamily === 'function') {
+    _loadAndRenderFmcForFamily(famId, 'mfmFmcList').catch(() => {
+      el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Nenhum integrante cadastrado.</div>';
+    });
+  }
+}
 
 // ── Add-member panel: switch between tabs ──────────────────────────────────
 function mfmSwitchAddTab(tab) {
@@ -4425,9 +4512,10 @@ function mfmSwitchAddTab(tab) {
 // ── Toggle add-member panel ─────────────────────────────────────────────────
 function mfmToggleAddPanel() {
   const panel = document.getElementById('mfmAddPanel');
-  const arrow = document.getElementById('mfmAddArr');
   if (!panel) return;
-  panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? '' : 'none';
+  const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
+  panel.style.display = isOpen ? 'none' : '';
+  if (!isOpen) { mfmSwitchAddTab('exist'); _mfmMsg('', ''); }
 }
 
 async function _mfmRender() {
@@ -4442,127 +4530,11 @@ async function _mfmRender() {
   if (nameEl) nameEl.textContent = fam?.name || '';
   if (descEl) descEl.textContent = fam?.description || '';
 
-  const listEl = document.getElementById('mfmMembersList');
-  if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px">⏳ Carregando...</div>';
-
-  // Buscar membros desta família
-  let members = [];
-  try {
-    const { data: rpcData } = await sb.rpc('get_all_family_members');
-    if (rpcData) members = rpcData.filter(m => m.family_id === famId);
-  } catch(_) {}
-
-  if (!members.length) {
-    // Fallback direto
-    try {
-      const { data: fmData } = await sb
-        .from('family_members')
-        .select('user_id, role, app_users(id,name,email,avatar_url,role,active)')
-        .eq('family_id', famId);
-      members = (fmData || []).map(r => ({
-        user_id:    r.user_id,
-        member_role: r.role,
-        user_name:  r.app_users?.name  || '—',
-        user_email: r.app_users?.email || '—',
-        user_avatar: r.app_users?.avatar_url || null,
-        user_role:  r.app_users?.role  || 'user',
-        user_active: r.app_users?.active ?? true,
-        family_id:  famId,
-      }));
-    } catch(_) {}
-  }
-
-  const roleIcon  = r => ({ owner:'👑', admin:'🔧', user:'👤', viewer:'👁' }[r] || '👤');
-  const roleLabel = r => ({ owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[r] || r);
-
-  if (listEl) {
-    if (!members.length) {
-      listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Nenhum membro ainda.</div>';
-    } else {
-      listEl.innerHTML = members.map(m => `
-        <div class="mfm2-member">
-          <div class="mfm2-member-av">${_userAvatarHtml({ avatar_url: m.user_avatar, role: m.user_role, name: m.user_name }, 36)}</div>
-          <div class="mfm2-member-info">
-            <div class="mfm2-member-name">${esc(m.user_name)}</div>
-            <div class="mfm2-member-email">${esc(m.user_email)}</div>
-          </div>
-          <select class="mfm2-role-sel" onchange="mfmChangeRole(this,'${m.user_id}','${famId}')">
-            <option value="owner"  ${m.member_role==='owner'  ?'selected':''}>👑 Owner</option>
-            <option value="admin"  ${m.member_role==='admin'  ?'selected':''}>🔧 Admin</option>
-            <option value="user"   ${m.member_role==='user'   ?'selected':''}>👤 Usuário</option>
-            <option value="viewer" ${m.member_role==='viewer' ?'selected':''}>👁 Visualizador</option>
-          </select>
-          <button class="mfm2-remove-btn" title="Remover" onclick="mfmRemoveMember('${m.user_id}','${esc(m.user_name)}','${famId}')">✕</button>
-        </div>`).join('');
-    }
-  }
-
-  // Populate "add existing user" dropdown — restricted to users in families
-  // the current user belongs to (privacy: cannot browse all users globally)
-  const memberIds = new Set(members.map(m => m.user_id));
-  const addSel = document.getElementById('mfmAddUserSel');
-  if (addSel) {
-    try {
-      // Get all family IDs the current user belongs to
-      const myFamilyIds = (currentUser?.families || []).map(f => f.id).filter(Boolean);
-
-      let eligibleUsers = [];
-      if (myFamilyIds.length) {
-        // Fetch user_ids of members of MY families
-        const { data: myFamMembers } = await sb
-          .from('family_members')
-          .select('user_id')
-          .in('family_id', myFamilyIds);
-
-        const myFamUserIds = [...new Set((myFamMembers || []).map(m => m.user_id))];
-
-        if (myFamUserIds.length) {
-          const { data: famUsers } = await sb
-            .from('app_users')
-            .select('id,name,email')
-            .in('id', myFamUserIds)
-            .eq('approved', true)
-            .order('name');
-          eligibleUsers = famUsers || [];
-        }
-      }
-
-      const available = eligibleUsers.filter(u => !memberIds.has(u.id));
-      addSel.innerHTML = '<option value="">— Selecionar usuário —</option>' +
-        available.map(u => `<option value="${u.id}">${esc(u.name || u.email)}</option>`).join('');
-      document.getElementById('mfmAddExistingRow').style.display = available.length ? '' : 'none';
-    } catch(_) {}
-  }
-
-  // Clear invite field and message
-  const inviteEl = document.getElementById('mfmInviteEmail');
-  if (inviteEl) inviteEl.value = '';
-  _mfmMsg('', '');
-
-  // Render feature toggle cards
+  // Default to Módulos tab; lazy-load others on click
+  mfmSwitchTab('modulos');
   _mfmRenderFeatures(_mfmActiveFamilyId);
-
-  // ── Integrantes (family_composition) ──────────────────────────────────────
-  // Carrega pais, filhos, etc. da família ativa no painel
-  const fmcListEl = document.getElementById('mfmFmcList');
-  if (fmcListEl && famId) {
-    if (typeof _loadAndRenderFmcForFamily === 'function') {
-      _loadAndRenderFmcForFamily(famId, 'mfmFmcList').catch(() => {
-        if (fmcListEl) fmcListEl.innerHTML =
-          '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0">Nenhum integrante cadastrado.</div>';
-      });
-    } else {
-      fmcListEl.innerHTML =
-        '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px 0">Módulo não disponível.</div>';
-    }
-  }
-
-  // ── Gestão de Dados: backup, snapshot, cópia, exclusão ──────────────────
-  _mfmRenderDataSection(famId);
-
-  // ── Nova Família: sempre visível (acesso já validado em openMyFamilyMgmt) ──
-  const newFamSec = document.getElementById('mfmNewFamilySection');
-  if (newFamSec) newFamSec.style.display = '';
+  // Pre-load membros in background
+  _mfmRenderMembros(famId);
 }
 
 // ── Data management section: backup, snapshot, copy, delete ─────────────────
@@ -4789,20 +4761,8 @@ async function mfmRemoveMember(userId, userName, famId) {
 // ── Nova família a partir do painel de gerenciamento ─────────────────────────
 
 function mfmScrollToNewFamily() {
-  // Abre o accordion de nova família e faz scroll até ele
-  const panel = document.getElementById('mfmNewFamPanel');
-  const sec   = document.getElementById('mfmNewFamilySection');
-  if (!panel || !sec) return;
-  // Garantir que a seção está visível
-  sec.style.display = '';
-  // Abrir o accordion se fechado
-  if (panel.style.display === 'none' || !panel.style.display) {
-    mfmToggleNewFamPanel();
-  }
-  // Scroll suave até a seção
-  setTimeout(() => {
-    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 80);
+  mfmSwitchTab('nova');
+  setTimeout(() => { document.getElementById('mfmNewFamName')?.focus(); }, 120);
 }
 
 function mfmToggleNewFamPanel() {
@@ -4872,7 +4832,7 @@ async function mfmCreateNewFamily() {
     window._families.push({ id: newFamId, name });
 
     // 5. Fechar painel de criação
-    mfmToggleNewFamPanel();
+    mfmSwitchTab('modulos');
     toast(`✓ Família "${esc(name)}" criada!`, 'success');
 
     // 6. Mudar para nova família automaticamente
@@ -4902,7 +4862,7 @@ async function mfmAddExisting() {
   if (error) { toast('Erro: ' + error.message, 'error'); return; }
   try { await sb.from('app_users').update({ family_id: famId }).eq('id', userId); } catch (_) {}
   toast('✓ Usuário adicionado', 'success');
-  await _mfmRender();
+  await _mfmRenderMembros(famId);
 }
 
 async function mfmInvite() {
@@ -4952,7 +4912,7 @@ async function mfmInvite() {
     }
 
     if (emailEl) emailEl.value = '';
-    await _mfmRender();
+    await _mfmRenderMembros(_mfmActiveFamilyId);
   } catch(e) {
     _mfmMsg('Erro: ' + e.message, 'error');
   } finally {
