@@ -576,7 +576,15 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <!-- Reportar Feedback — oculto para admin/owner, visível para usuários -->
-        <button id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" style="display:none"
+        <button id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria"
+          style="display:none;background:linear-gradient(135deg,#ea580c,#f97316);border:none;
+                 border-radius:50%;width:34px;height:34px;cursor:pointer;flex-shrink:0;
+                 align-items:center;justify-content:center;font-size:1rem;
+                 box-shadow:0 0 0 0 rgba(249,115,22,.4);
+                 animation:fbPulse 2.5s ease-in-out infinite;
+                 transition:transform .15s,box-shadow .15s"
+          onmouseover="this.style.transform='scale(1.12)';this.style.boxShadow='0 4px 16px rgba(249,115,22,.5)'"
+          onmouseout="this.style.transform='';this.style.boxShadow=''"
           style="position:relative;display:flex;align-items:center;gap:5px;padding:5px 10px;
                  border-radius:20px;border:1.5px solid rgba(99,102,241,.4);
                  background:rgba(99,102,241,.08);cursor:pointer;
@@ -3259,8 +3267,14 @@
       <!-- ── PAINEL ANÁLISE ── -->
       <div id="aiPanel-analysis">
 
-        <!-- Filter panel -->
-        <div class="ai2-filter-panel">
+        <!-- Filter panel — collapsible -->
+        <div class="ai2-filter-panel" id="aiFilterPanel">
+          <button class="ai2-params-toggle" id="aiParamsToggle" onclick="_aiToggleParams()" title="Mostrar/ocultar parâmetros">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            Parâmetros
+            <svg id="aiParamsChevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="aiParamsBody" class="ai2-params-body">
           <div class="ai2-filter-row">
             <div class="ai2-filter-group">
               <label class="ai2-filter-label">Período</label>
@@ -3302,6 +3316,7 @@
             </div>
           </div>
 
+          </div><!-- /ai2-params-body -->
           <!-- Action buttons -->
           <div class="ai2-action-bar">
             <button class="ai2-btn-analyze" onclick="runAiAnalysis()">
@@ -3327,7 +3342,7 @@
               </button>
             </div>
           </div>
-        </div>
+        </div><!-- /ai2-filter-panel -->
 
         <!-- Resultado -->
         <div class="ai2-result-wrap">
@@ -4843,7 +4858,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
     <div class="login-card login-card-a" style="width:100%;max-width:400px">
       <div style="text-align:center;margin-bottom:28px">
-        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:230px;height:auto;object-fit:contain;margin-bottom:12px">
+        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:299px;height:auto;object-fit:contain;margin-bottom:12px">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
       </div>
       <div id="loginFormArea">
@@ -4921,7 +4936,20 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div id="loginRequestAccessWrap" style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280">
           <span data-i18n="auth.no_account">Não tem conta?</span>
-          <button id="loginRequestAccessBtn" onclick="showRegisterForm()" style="background:none;border:none;color:#2a6049;font-weight:600;cursor:pointer;font-size:.8rem;text-decoration:underline" data-i18n="auth.request_access">Solicitar acesso</button>
+          <button id="loginRequestAccessBtn" onclick="showRegisterForm()"
+            style="display:inline-flex;align-items:center;gap:6px;
+                   padding:8px 18px;border-radius:24px;
+                   border:1.5px solid #2a6049;
+                   background:transparent;
+                   color:#2a6049;font-weight:700;cursor:pointer;
+                   font-size:.8rem;font-family:inherit;
+                   transition:all .2s;letter-spacing:.02em"
+            onmouseover="this.style.background='#2a6049';this.style.color='#fff'"
+            onmouseout="this.style.background='transparent';this.style.color='#2a6049'"
+            data-i18n="auth.request_access">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Solicitar acesso
+          </button>
         </div>
       </div>
 
@@ -8167,6 +8195,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         .mfm-pane { display: none; }
         .mfm-pane.active { display: block; animation: mfmIn .18s ease both; }
         @keyframes mfmIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        @keyframes fbPulse { 0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.35)} 50%{box-shadow:0 0 0 8px rgba(249,115,22,0)} }
         .mfm-pane-intro { margin-bottom: 16px; }
         .mfm-pane-intro-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 2px; }
         .mfm-pane-intro-sub { font-size: .75rem; color: var(--muted); }
