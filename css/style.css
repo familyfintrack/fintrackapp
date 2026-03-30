@@ -21474,3 +21474,13 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     display: none !important;
   }
 }
+
+
+/* Desktop only - Forecast (Relatórios > Previsão) */
+@media (min-width: 769px) {
+  .reports-page.forecast table th:nth-child(1),
+  .reports-page.forecast table td:nth-child(1) {
+    width: 20% !important;
+    min-width: 140px;
+  }
+}
