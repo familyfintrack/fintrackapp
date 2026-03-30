@@ -1,3 +1,14 @@
+const _forecastDateUtils = window.FinTrackDateUtils || {
+  getUserLocale: () => document?.documentElement?.lang || navigator.language || 'pt-BR',
+  getTodayLocalISO: () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+};
+
 
 // ── Init / refresh the forecast account multi-picker ─────────────────────────
 function _initForecastPicker(savedIds) {
@@ -264,13 +275,13 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
 function renderForecastTables(allItems, accounts) {
   const container = document.getElementById('forecastAccountsContainer');
   if (!container) return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = _forecastDateUtils.getTodayLocalISO();
 
 function _forecastDateParts(iso){
   try {
     const dt = new Date(`${String(iso || '').slice(0,10)}T12:00:00`);
     if (Number.isNaN(dt.getTime())) return { weekday:'', day:'--', monthYear:'', short:'—' };
-    const locale = document?.documentElement?.lang || 'pt-BR';
+    const locale = _forecastDateUtils.getUserLocale();
     const weekday = new Intl.DateTimeFormat(locale, { weekday:'short' }).format(dt).replace('.', '').toUpperCase();
     const day = new Intl.DateTimeFormat(locale, { day:'2-digit' }).format(dt);
     const month = new Intl.DateTimeFormat(locale, { month:'short' }).format(dt).replace('.', '').toUpperCase();

@@ -11,6 +11,14 @@ let   _geminiKey = '';
 let   _senderName  = '';
 let   _senderEmail = '';
 
+const _dateUtils = window.FinTrackDateUtils || {
+  getUserLocale: () => document?.documentElement?.lang || navigator.language || 'pt-BR',
+  formatMonthYear: (dateInput = new Date(), options = {}) => new Intl.DateTimeFormat(
+    document?.documentElement?.lang || navigator.language || 'pt-BR',
+    { month:'long', year:'numeric', ...options }
+  ).format(dateInput instanceof Date ? dateInput : new Date(dateInput)),
+};
+
 /* ── Landing Telemetry ──────────────────────────────────────────── */
 const _lTelSession = Math.random().toString(36).slice(2,10);
 function _lTelTrack(event_type, payload = {}) {
@@ -183,7 +191,7 @@ async function handleWl(e) {
           to_email:       email,
           report_subject: '[Family FinTrack] ✅ Você está na lista de espera!',
           Subject:        '[Family FinTrack] Posição garantida na lista de espera!',
-          month_year:     new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),
+          month_year:     _dateUtils.formatMonthYear(new Date()),
           report_content: buildWaitlistEmail(fn2, email, role),
         });
       } catch(ejErr) { console.warn('[landing] EmailJS:', ejErr.message); }
@@ -245,7 +253,7 @@ async function sendInvites() {
         to_email:       recipientEmail,
         report_subject: `${fn} te indicou para a lista de espera do Family FinTrack 💚`,
         Subject:        `${fn} te indicou para a lista de espera do Family FinTrack 💚`,
-        month_year:     new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),
+        month_year:     _dateUtils.formatMonthYear(new Date()),
         report_content: htmlBody,
       });
       sent++;
