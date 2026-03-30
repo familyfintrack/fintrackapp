@@ -320,7 +320,11 @@ function scChipFilter(event, status) {
 function filterScheduled() {
   const search = (document.getElementById('scSearch')?.value||'').toLowerCase();
   const statusF = _scStatusChip || '';
-  const typeF = document.getElementById('scTypeFilter')?.value||'';
+  // Read from mobile filter OR desktop panel filter — whichever has a value
+  // (desktop uses scTypeFilterDesktop to avoid duplicate-id collision with mobile)
+  const _mobileType  = document.getElementById('scTypeFilter')?.value || '';
+  const _desktopType = document.getElementById('scTypeFilterDesktop')?.value || '';
+  const typeF = _desktopType || _mobileType;
 
   let list = state.scheduled;
   if(search) list = list.filter(s => s.description?.toLowerCase().includes(search) || s.payees?.name?.toLowerCase().includes(search));
@@ -340,6 +344,12 @@ function filterScheduled() {
   _renderScKpis();
   // Re-render calendar if active — it also needs to respect filters
   if (typeof _scView !== 'undefined' && _scView === 'calendar') renderScCalendar();
+  // Keep both type selects in sync so switching between views preserves selection
+  const _syncVal = typeF;
+  const _m = document.getElementById('scTypeFilter');
+  const _d = document.getElementById('scTypeFilterDesktop');
+  if (_m && _m.value !== _syncVal) _m.value = _syncVal;
+  if (_d && _d.value !== _syncVal) _d.value = _syncVal;
 }
 
 
@@ -1164,8 +1174,19 @@ async function saveScheduled() {
 
   const scDescEl = document.getElementById('scDesc');
   let autoScDesc = scDescEl?.value?.trim() || '';
-  if (!autoScDesc && typeof ensureTransactionDescription === 'function') {
-    autoScDesc = (await ensureTransactionDescription(scDescEl)).trim();
+  if (!autoScDesc) {
+    // Auto-generate from payee name + category name
+    const scPayeeName = document.getElementById('scPayeeName')?.value?.trim() || '';
+    const scCatLabel  = document.getElementById('scCatPickerLabel')?.textContent?.trim() || '';
+    const scCleanCat  = scCatLabel.replace(/^—.*—$/, '').trim();
+    if (scPayeeName && scCleanCat && scCleanCat.length > 0) {
+      autoScDesc = scPayeeName + ' — ' + scCleanCat;
+    } else if (scPayeeName) {
+      autoScDesc = scPayeeName;
+    } else if (typeof ensureTransactionDescription === 'function') {
+      autoScDesc = (await ensureTransactionDescription(scDescEl)).trim();
+    }
+    if (scDescEl && autoScDesc) scDescEl.value = autoScDesc;
   }
 
   const data = {
@@ -1218,8 +1239,24 @@ async function saveScheduled() {
     })(),
   };
 
-  if(!data.description) { toast('Informe a descrição', 'error'); return; }
   if(!data.account_id) { toast('Selecione a conta', 'error'); return; }
+  if(!isScTransfer && !data.payee_id) {
+    toast('Beneficiário / Fonte é obrigatório.','error');
+    if(typeof switchScTab==='function') {
+      const btn = document.querySelector('[data-tab="scCtxPrincipal"]');
+      if(btn) switchScTab('scCtxPrincipal', btn);
+    }
+    setTimeout(()=>document.getElementById('scPayeeName')?.focus(),100);
+    return;
+  }
+  if(!isScTransfer && !data.category_id) {
+    toast('Categoria é obrigatória.','error');
+    if(typeof switchScTab==='function') {
+      const btn = document.querySelector('[data-tab="scCtxPrincipal"]');
+      if(btn) switchScTab('scCtxPrincipal', btn);
+    }
+    return;
+  }
   if(isScTransfer && !data.transfer_to_account_id) { toast('Selecione a conta destino da transferência', 'error'); return; }
   if(isScTransfer && data.account_id === data.transfer_to_account_id) { toast('Conta origem e destino não podem ser iguais', 'error'); return; }
   if(!data.start_date) { toast('Informe a data de início', 'error'); return; }
