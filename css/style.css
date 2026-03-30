@@ -6471,8 +6471,8 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   flex-direction: column;
   gap: 14px;
   position: sticky;
-  top: 72px;
-  max-height: calc(100vh - 88px);
+  top: 64px;
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
 }
 .sc-cal-right::-webkit-scrollbar { width: 4px; }
@@ -6495,7 +6495,11 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 
 /* Upcoming panel scrollable body */
-.sc-cal-upcoming-panel .sc-panel__body { max-height: 400px; overflow-y: auto; }
+.sc-cal-upcoming-panel .sc-panel__body {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
 /* Recurrents panel — no max-height, shows all */
 .sc-cal-recurrents-panel .sc-panel__body { max-height: none; overflow-y: visible; }
 
@@ -21348,13 +21352,19 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
     box-sizing: border-box !important;
   }
 
-  /* Grupos e rows: contidos */
-  #scUpcomingPanel .sup-group,
+  /* Grupos: contidos */
+  #scUpcomingPanel .sup-group {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+  /* sup-rows: overflow visible so collapsed rows can expand correctly */
   #scUpcomingPanel .sup-rows {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow: visible !important; /* do NOT use hidden — breaks display:none toggle */
   }
 
   /* Item: flex row estritamente contido */
