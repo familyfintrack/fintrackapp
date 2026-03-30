@@ -1306,14 +1306,14 @@ canvas { cursor: default; }
 .report-filter-bar select,
 .report-filter-bar input { width:100%; font-size:.82rem; }
 .report-kpi-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px;
 }
 .report-kpi {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r); padding: 14px 16px; box-shadow: var(--shadow-sm);
 }
 .report-kpi-label { font-size:.72rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
-.report-kpi-value { font-family:var(--font-serif); font-size:1.25rem; font-weight:600; }
+.report-kpi-value { font-family:var(--font-serif); font-size:1.25rem; font-weight:600; white-space:nowrap; }
 .report-section-title {
   font-size:.72rem; font-weight:700; text-transform:uppercase;
   letter-spacing:.08em; color:var(--muted); margin: 18px 0 8px; padding-left:2px;
@@ -8342,7 +8342,7 @@ tr.tx-row-new td:first-child {
   padding: 14px 16px 12px;
   overflow: hidden;
   transition: box-shadow .15s;
-  min-width: 120px;
+  min-width: 180px;
 }
 
 .rpt-kpi::before {
@@ -8370,12 +8370,13 @@ tr.tx-row-new td:first-child {
 }
 
 .rpt-kpi-value {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
   font-family: var(--font-serif);
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .rpt-kpi--inc .rpt-kpi-value { color: var(--green); }
@@ -8384,9 +8385,9 @@ tr.tx-row-new td:first-child {
 .rpt-kpi--bal.neg .rpt-kpi-value { color: var(--red); }
 
 /* Reuse grid from existing report-kpi-grid */
-#reportKpis {
+#reportKpis, #reportTxKpis {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
