@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<script>
+(function(){
+  var s = window.navigator.standalone===true ||
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    document.referrer.includes("android-app://");
+  if(s){ window.location.replace("app.html"); }
+})();
+</script>
+<title>Family FinTrack — Família Inteligente, Finanças sob Controle</title>
+<meta name="description" content="O app de gestão financeira familiar com Inteligência Artificial. Para famílias que querem prosperar juntas.">
+<meta name="theme-color" content="#0a1e12">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Cores extraídas do logo Family FinTrack */
+  --g900:#0a1e12;   /* verde quase preto */
+  --g800:#122a1a;   /* verde escuro */
+  --g700:#1a3d27;   /* verde logo dark */
+  --g600:#235234;   /* verde floresta */
+  --g500:#2d6a44;   /* verde médio */
+  --g400:#3d8a5a;   /* verde sálvia */
+  --g300:#5aaa78;   /* verde claro */
+  --lime:#7dc242;   /* verde limão do logo */
+  --lime2:#9ed45f;  /* limão mais claro */
+  --lime3:#c8eea0;  /* limão suave */
+  --cream:#f4f8f2;  /* fundo suave esverdeado */
+  --cream2:#e8f0e4;
+  --white:#ffffff;
+  --text:#0e2016;
+  --text2:#2d4a38;
+  --muted:#5a7a64;
+  --border-d:rgba(125,194,66,.14);
+  --border-d2:rgba(125,194,66,.28);
+  --glow:rgba(125,194,66,.2);
+  --on-dark:rgba(255,255,255,.92);
+  --on-dark2:rgba(255,255,255,.62);
+  --on-dark3:rgba(255,255,255,.3);
+  --serif:"Playfair Display",Georgia,serif;
+  --sans:"Plus Jakarta Sans",system-ui,sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--cream);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* ── Canvas partículas ─────────────────────────── */
+#bgc{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ── NAV ───────────────────────────────────────── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 48px;
+  background:rgba(10,30,18,.92);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border-d);
+  transition:padding .3s;
+}
+nav.sc{padding:6px 48px}
+.nl{display:flex;align-items:center;gap:0;text-decoration:none}
+.nl img{height:42px;width:auto}
+.nc{display:flex;align-items:center;gap:28px}
+.nk{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--on-dark2);text-decoration:none;transition:color .2s}
+.nk:hover{color:var(--lime)}
+.nr{display:flex;align-items:center;gap:10px}
+.nbadge{font-size:.58rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase;background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.28);border-radius:100px;padding:4px 12px}
+.nlogin{font-family:var(--sans);font-size:.78rem;font-weight:800;color:var(--g900);background:var(--lime);border:none;border-radius:10px;padding:9px 22px;text-decoration:none;transition:all .25s;letter-spacing:.02em}
+.nlogin:hover{background:var(--lime2);box-shadow:0 0 24px var(--glow);transform:translateY(-1px)}
+@media(max-width:768px){nav{padding:12px 18px}nav.sc{padding:9px 18px}.nc,.nbadge{display:none}}
+
+/* ── HERO ──────────────────────────────────────── */
+.hero{
+  position:relative;z-index:1;min-height:100dvh;
+  background:var(--g900);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:100px 24px 80px;overflow:hidden;
+}
+.hbg{position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.3) 0%,transparent 60%),
+    radial-gradient(ellipse 70% 80% at 90% 75%, rgba(26,61,39,.25) 0%,transparent 55%),
+    radial-gradient(ellipse 55% 35% at 50% -5%, rgba(125,194,66,.07) 0%,transparent 55%);
+  animation:bgp 14s ease-in-out infinite alternate;
+}
+@keyframes bgp{from{opacity:.8}to{opacity:1;transform:scale(1.03)}}
+.hgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(125,194,66,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.025) 1px,transparent 1px);background-size:48px 48px}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+.o1{width:520px;height:520px;background:rgba(45,106,68,.26);top:-160px;left:-130px;animation:od 24s ease-in-out infinite alternate}
+.o2{width:380px;height:380px;background:rgba(125,194,66,.09);bottom:-60px;right:-80px;animation:od 18s ease-in-out infinite alternate-reverse}
+.o3{width:260px;height:260px;background:rgba(26,61,39,.2);top:40%;left:55%;animation:od 20s ease-in-out infinite alternate}
+@keyframes od{0%{transform:translate(0,0)}100%{transform:translate(35px,-25px)}}
+
+.hc{position:relative;z-index:2;max-width:880px}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:9px;font-size:.65rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--lime);background:rgba(125,194,66,.08);border:1px solid rgba(125,194,66,.22);border-radius:100px;padding:7px 18px;margin-bottom:24px;animation:fup .9s ease both}
+.bdot{width:6px;height:6px;background:var(--lime);border-radius:50%;box-shadow:0 0 8px var(--lime);animation:bpulse 2s ease-in-out infinite}
+@keyframes bpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+
+/* Logo hero */
+.hlogo{margin-bottom:20px;animation:fup .9s .05s ease both}
+.hlogo img{height:72px;width:auto;filter:drop-shadow(0 0 28px rgba(125,194,66,.25))}
+
+/* Slogan */
+.slogan{font-family:var(--serif);font-size:clamp(.95rem,2.5vw,1.25rem);font-style:italic;color:var(--lime2);letter-spacing:.03em;margin-bottom:14px;opacity:.92;animation:fup .9s .12s ease both}
+
+/* H1 */
+.hero h1{font-family:var(--serif);font-size:clamp(2.8rem,7.5vw,5.6rem);color:#fff;line-height:1.05;letter-spacing:-.022em;margin-bottom:22px;animation:fup .9s .2s ease both;font-weight:600}
+.hero h1 em{font-style:italic;background:linear-gradient(135deg,var(--lime3) 0%,var(--lime) 50%,#5c9e2a 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gsh 5s ease-in-out infinite}
+@keyframes gsh{0%,100%{background-position:0%}50%{background-position:100%}}
+
+/* Sub */
+.hsub{font-size:clamp(.95rem,2.3vw,1.12rem);color:var(--on-dark2);line-height:1.75;max-width:620px;margin:0 auto 42px;animation:fup .9s .3s ease both}
+.hsub strong{color:var(--on-dark);font-weight:600}
+
+/* CTAs */
+.hctas{display:flex;gap:13px;justify-content:center;flex-wrap:wrap;animation:fup .9s .42s ease both;margin-bottom:76px}
+.ctp{font-family:var(--sans);font-size:.98rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime) 0%,var(--lime2) 100%);border:none;border-radius:14px;padding:16px 36px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:9px;letter-spacing:.01em;transition:all .3s;box-shadow:0 4px 30px rgba(125,194,66,.3);animation:lglow 3s ease-in-out infinite}
+@keyframes lglow{0%,100%{box-shadow:0 4px 30px rgba(125,194,66,.25)}50%{box-shadow:0 6px 48px rgba(125,194,66,.48)}}
+.ctp:hover{transform:translateY(-3px);box-shadow:0 12px 48px rgba(125,194,66,.55)}
+.ctg{font-family:var(--sans);font-size:.95rem;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);border-radius:14px;padding:16px 26px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s}
+.ctg:hover{background:rgba(255,255,255,.12);border-color:rgba(125,194,66,.3)}
+
+/* Stats */
+.hstats{display:flex;justify-content:center;flex-wrap:wrap;border-top:1px solid var(--border-d);padding-top:34px;animation:fup .9s .55s ease both;gap:0}
+.hst{flex:1;min-width:105px;max-width:170px;text-align:center;padding:0 20px;border-right:1px solid var(--border-d)}
+.hst:last-child{border-right:none}
+.hsn{font-family:var(--serif);font-size:2rem;font-weight:600;color:#fff;line-height:1;margin-bottom:5px;display:flex;align-items:baseline;gap:2px;justify-content:center}
+.hsn em{font-style:normal;font-size:1.1rem;color:var(--lime)}
+.hsl{font-size:.56rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--on-dark3)}
+@media(max-width:580px){.hst{padding:14px 16px;border-right:none;border-bottom:1px solid var(--border-d)}.hst:last-child{border-bottom:none}.hstats{flex-direction:column;align-items:center}}
+
+.shint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--on-dark3);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;animation:fup 1s 1.2s ease both}
+.smouse{width:20px;height:32px;border:1.5px solid rgba(125,194,66,.2);border-radius:100px;position:relative}
+.smouse::after{content:"";position:absolute;top:5px;left:50%;transform:translateX(-50%);width:2px;height:5px;background:var(--lime);border-radius:100px;animation:msw 2.2s ease-in-out infinite}
+@keyframes msw{0%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0;transform:translateX(-50%) translateY(12px)}}
+@keyframes fup{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── RIBBON ─────────────────────────────────────── */
+.ribbon{position:relative;z-index:1;padding:14px 24px;background:var(--g800);border-top:1px solid var(--border-d);border-bottom:1px solid var(--border-d);overflow:hidden}
+.ribbon::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(125,194,66,.05),transparent);animation:rsh 4s ease-in-out infinite}
+@keyframes rsh{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
+.ri{position:relative;max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+.rp{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:var(--lime);color:var(--g900);border-radius:100px;padding:4px 13px;animation:rpu 2.5s ease-in-out infinite}
+@keyframes rpu{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.rt{font-size:.82rem;color:var(--on-dark2);font-weight:500}
+.rt strong{color:var(--lime2)}
+
+/* ── REVEAL ─────────────────────────────────────── */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .75s ease,transform .75s ease}
+.rv.in{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.07s}.d2{transition-delay:.15s}.d3{transition-delay:.24s}
+.d4{transition-delay:.33s}.d5{transition-delay:.42s}
+
+/* ── SECTION TAG ─────────────────────────────────── */
+.stag{display:inline-flex;align-items:center;gap:10px;font-size:.62rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:18px}
+.stag-l{width:26px;height:1px;opacity:.45}
+.stag.g{color:var(--g500)}.stag.g .stag-l{background:var(--g500)}
+.stag.lm{color:var(--lime)}.stag.lm .stag-l{background:var(--lime)}
+
+/* ── WHY SECTION (família) ───────────────────────── */
+.why{position:relative;z-index:1;padding:110px 24px;background:var(--cream);text-align:center}
+.why-hd{max-width:660px;margin:0 auto 64px}
+.sec-t{font-family:var(--serif);font-size:clamp(2rem,4.5vw,3.5rem);line-height:1.1;letter-spacing:-.015em;margin-bottom:14px;color:var(--text);font-weight:600}
+.sec-s{font-size:.97rem;line-height:1.8;color:var(--muted);max-width:600px;margin:0 auto}
+
+/* Family cards */
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1060px;margin:0 auto}
+@media(max-width:880px){.why-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.why-grid{grid-template-columns:1fr}}
+.wcard{background:#fff;border:1px solid rgba(0,0,0,.065);border-radius:22px;padding:30px 24px;text-align:left;position:relative;overflow:hidden;transition:all .38s cubic-bezier(.25,.46,.45,.94);cursor:default}
+.wcard::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--g400),transparent);opacity:0;transition:opacity .35s}
+.wcard:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(0,0,0,.08);border-color:rgba(45,106,68,.2)}
+.wcard:hover::after{opacity:1}
+.wcard.dark{background:linear-gradient(160deg,var(--g700) 0%,var(--g800) 100%);border:none;color:#fff}
+.wcard.dark:hover{box-shadow:0 24px 60px rgba(10,30,18,.4)}
+.wcard.dark::after{background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+.wc-ico{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.45rem;margin-bottom:20px;transition:transform .3s}
+.wcard:hover .wc-ico{transform:scale(1.1) rotate(-4deg)}
+.wcard:not(.dark) .wc-ico{background:var(--cream2);border:1px solid rgba(45,106,68,.14)}
+.wcard.dark .wc-ico{background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.18)}
+.wc-t{font-family:var(--serif);font-size:1.15rem;font-weight:600;margin-bottom:8px}
+.wcard:not(.dark) .wc-t{color:var(--text)}
+.wcard.dark .wc-t{color:#fff}
+.wc-d{font-size:.84rem;line-height:1.65}
+.wcard:not(.dark) .wc-d{color:var(--muted)}
+.wcard.dark .wc-d{color:var(--on-dark2)}
+.wc-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px}
+.wc-p{font-size:.6rem;font-weight:700;letter-spacing:.06em;border-radius:100px;padding:3px 10px}
+.wcard:not(.dark) .wc-p{background:rgba(45,106,68,.07);color:var(--g500);border:1px solid rgba(45,106,68,.15)}
+.wcard.dark .wc-p{background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.2)}
+
+/* ── QUOTE ───────────────────────────────────────── */
+.qsec{position:relative;z-index:1;padding:72px 24px;background:var(--g900)}
+.qcard{max-width:800px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid var(--border-d2);border-radius:26px;padding:56px 48px;position:relative;overflow:hidden;text-align:center}
+.qcard::before{content:"";position:absolute;top:-1px;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+.qm{font-family:var(--serif);font-size:5rem;color:var(--lime);opacity:.15;line-height:.3;margin-bottom:18px;display:block}
+.qt{font-family:var(--serif);font-size:clamp(1.15rem,2.8vw,1.8rem);font-style:italic;color:var(--on-dark);line-height:1.55;margin-bottom:22px;font-weight:400}
+.qa{font-size:.67rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lime2)}
+@media(max-width:640px){.qcard{padding:36px 24px}}
+
+/* ── FEATURES ─────────────────────────────────────── */
+.feat{position:relative;z-index:1;padding:100px 24px 110px;background:var(--cream)}
+.feat-hd{text-align:center;max-width:620px;margin:0 auto 66px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1060px;margin:0 auto}
+@media(max-width:880px){.feat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
+.fc{background:#fff;border:1px solid rgba(0,0,0,.065);border-radius:20px;padding:26px 22px;position:relative;overflow:hidden;transition:all .38s cubic-bezier(.25,.46,.45,.94)}
+.fc::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g400),transparent);opacity:0;transition:opacity .35s}
+.fc:hover{transform:translateY(-5px);box-shadow:0 20px 56px rgba(0,0,0,.08);border-color:rgba(45,106,68,.2)}
+.fc:hover::before{opacity:1}
+.fc.hl{background:linear-gradient(160deg,var(--g700),var(--g800));border:none;grid-column:span 2}
+.fc.hl:hover{box-shadow:0 20px 56px rgba(10,30,18,.32)}
+.fc.hl::before{background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+@media(max-width:880px){.fc.hl{grid-column:span 1}}
+.fc-ai{position:absolute;top:16px;right:16px;font-size:.55rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.22);border-radius:100px;padding:3px 9px}
+.fc-ico{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin-bottom:18px;transition:all .3s}
+.fc:not(.hl) .fc-ico{background:var(--cream2);border:1px solid rgba(45,106,68,.13)}
+.fc:not(.hl):hover .fc-ico{background:rgba(45,106,68,.08)}
+.fc.hl .fc-ico{background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.18)}
+.fc-t{font-family:var(--serif);font-size:1.1rem;font-weight:600;margin-bottom:8px}
+.fc:not(.hl) .fc-t{color:var(--text)}
+.fc.hl .fc-t{color:#fff}
+.fc-d{font-size:.83rem;line-height:1.65}
+.fc:not(.hl) .fc-d{color:var(--muted)}
+.fc.hl .fc-d{color:var(--on-dark2)}
+.fc-ps{display:flex;flex-wrap:wrap;gap:5px;margin-top:13px}
+.fc-pi{font-size:.59rem;font-weight:700;letter-spacing:.06em;border-radius:100px;padding:3px 9px}
+.fc:not(.hl) .fc-pi{background:rgba(45,106,68,.07);color:var(--g500);border:1px solid rgba(45,106,68,.14)}
+.fc.hl .fc-pi{background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.2)}
+
+/* ── HOW IT WORKS ─────────────────────────────────── */
+.how{position:relative;z-index:1;padding:96px 24px;background:var(--g900)}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:980px;margin:0 auto}
+@media(max-width:720px){.how-grid{grid-template-columns:1fr;gap:14px}}
+.hc2{background:rgba(255,255,255,.04);border:1px solid var(--border-d);border-radius:20px;padding:30px 24px;position:relative;transition:all .32s}
+.hc2:hover{border-color:var(--border-d2);transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,.25)}
+.hn{font-family:var(--serif);font-size:2.4rem;font-weight:700;background:linear-gradient(135deg,var(--lime2),var(--g300));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:14px}
+.ht{font-family:var(--serif);font-size:1.05rem;font-weight:600;color:#fff;margin-bottom:8px}
+.hd{font-size:.83rem;color:var(--on-dark2);line-height:1.68}
+
+/* ── WAITLIST CTA ─────────────────────────────────── */
+.cta{position:relative;z-index:1;padding:80px 24px 110px;background:var(--cream)}
+.ctacard{max-width:660px;margin:0 auto;background:var(--g700);border-radius:28px;padding:52px 46px;text-align:center;position:relative;overflow:hidden;box-shadow:0 32px 80px rgba(10,30,18,.2)}
+.ctacard::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 75% 50% at 20% 20%,rgba(45,106,68,.35),transparent 60%),radial-gradient(ellipse 60% 70% at 80% 80%,rgba(125,194,66,.08),transparent 60%)}
+.ctacard::after{content:"";position:absolute;top:-1px;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+.ctai{position:relative;z-index:2}
+.ctaey{display:inline-flex;align-items:center;gap:9px;font-size:.62rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--lime2);margin-bottom:16px;border:1px solid rgba(125,194,66,.2);border-radius:100px;padding:5px 16px;background:rgba(125,194,66,.06)}
+.ctatit{font-family:var(--serif);font-size:clamp(1.9rem,4.5vw,2.9rem);font-weight:600;color:#fff;line-height:1.15;margin-bottom:13px}
+.ctasub{font-size:.92rem;color:var(--on-dark2);line-height:1.72;margin-bottom:34px}
+
+/* Form */
+.wf{display:flex;flex-direction:column;gap:13px}
+.wr{display:flex;gap:11px}
+@media(max-width:520px){.wr{flex-direction:column}}
+.wg{display:flex;flex-direction:column;gap:6px;flex:1}
+.wl{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.32);text-align:left}
+.wi,.wse{font-family:var(--sans);font-size:.88rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:11px;padding:13px 16px;outline:none;width:100%;transition:all .2s}
+.wi::placeholder{color:rgba(255,255,255,.28)}
+.wi:focus,.wse:focus{border-color:var(--lime);background:rgba(125,194,66,.08);box-shadow:0 0 0 3px rgba(125,194,66,.12)}
+.wse{color:rgba(255,255,255,.7);-webkit-appearance:none;appearance:none;cursor:pointer}
+.wse option{background:var(--g700);color:#fff}
+.wsub{font-family:var(--sans);font-size:.98rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime) 0%,var(--lime2) 100%);border:none;border-radius:13px;padding:17px 32px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .3s;box-shadow:0 5px 28px rgba(125,194,66,.28);margin-top:2px}
+.wsub:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 44px rgba(125,194,66,.45)}
+.wsub:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.wpr{font-size:.68rem;color:rgba(255,255,255,.28);text-align:center;line-height:1.6}
+.werr{font-size:.76rem;color:#f87171;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.18);border-radius:9px;padding:11px 15px;display:none;text-align:center}
+.wsuc{display:none;flex-direction:column;align-items:center;gap:14px;padding:14px 0}
+.wsic{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--g500),var(--lime));display:flex;align-items:center;justify-content:center;font-size:2rem;box-shadow:0 8px 36px rgba(125,194,66,.3);animation:popin .5s cubic-bezier(.175,.885,.32,1.275) both}
+@keyframes popin{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.wsit{font-family:var(--serif);font-size:1.75rem;font-weight:700;color:#fff}
+.wsis{font-size:.88rem;color:var(--on-dark2);line-height:1.65;max-width:380px}
+.wsin{color:var(--lime2);font-weight:700}
+@media(max-width:640px){.ctacard{padding:36px 20px;border-radius:20px}}
+
+/* ── FOOTER ──────────────────────────────────────── */
+footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);border-top:1px solid var(--border-d)}
+.fi{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
+.flogo{display:flex;align-items:center;gap:0;text-decoration:none}
+.flogo img{height:34px;width:auto;opacity:.7;transition:opacity .2s}
+.flogo:hover img{opacity:1}
+.fcp{font-size:.7rem;color:var(--on-dark3);text-align:center;line-height:1.7}
+.fll{font-family:var(--sans);font-size:.75rem;font-weight:700;letter-spacing:.06em;color:var(--lime2);border:1px solid var(--border-d2);border-radius:9px;padding:9px 20px;text-decoration:none;display:flex;align-items:center;gap:7px;transition:all .22s}
+.fll:hover{background:rgba(125,194,66,.1);box-shadow:0 0 20px rgba(125,194,66,.15)}
+@media(max-width:640px){footer{padding:36px 20px}.fi{flex-direction:column;text-align:center}.fll{justify-content:center}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<canvas id="bgc"></canvas>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nl">
+    <img src="logo_glow_soft.png" alt="Family FinTrack" style="height:112px;width:auto">
+  </a>
+  <div class="nc">
+    <a href="#familia" class="nk">Para sua família</a>
+    <a href="#recursos" class="nk">Recursos</a>
+    <a href="#acesso" class="nk">Acesso</a>
+  </div>
+  <div class="nr">
+    <span class="nbadge">✦ Beta Exclusivo</span>
+    <a href="app.html" class="nlogin">Entrar no App →</a>
+  </div>
+</nav>
+
+<!-- ══ HERO ══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hbg"></div>
+  <div class="hgrid"></div>
+  <div class="o1 orb"></div>
+  <div class="o2 orb"></div>
+  <div class="o3 orb"></div>
+
+  <div class="hc">
+    <div class="badge">
+      <div class="bdot"></div>
+      Família Inteligente · Finanças sob Controle
+      <div class="bdot"></div>
+    </div>
+
+    <div class="hlogo">
+      <img src="logo_glow_soft.png" alt="Family FinTrack" style="height:120px;width:auto">
+    </div>
+
+    <p class="slogan">Família Inteligente, Finanças sob Controle.</p>
+
+    <h1>Sua família<br>merece o melhor<br><em>futuro financeiro</em></h1>
+
+    <p class="hsub">
+      O único app de gestão financeira familiar com <strong>Inteligência Artificial embarcada</strong> — que aprende com os padrões da sua família, antecipa necessidades e transforma dados em decisões inteligentes.
+    </p>
+
+    <div class="hctas">
+      <a href="#acesso" class="ctp">📋 Quero entrar na lista de espera</a>
+      <a href="#familia" class="ctg">Como funciona →</a>
+    </div>
+
+    <div class="hstats">
+      <div class="hst">
+        <div class="hsn">IA<em>+</em></div>
+        <div class="hsl">Inteligência embarcada</div>
+      </div>
+      <div class="hst">
+        <div class="hsn">40<em>+</em></div>
+        <div class="hsl">Funcionalidades</div>
+      </div>
+      <div class="hst">
+        <div class="hsn">360<em>°</em></div>
+        <div class="hsl">Visão financeira familiar</div>
+      </div>
+      <div class="hst">
+        <div class="hsn">∞</div>
+        <div class="hsl">Possibilidades com IA</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shint"><div class="smouse"></div>descobrir</div>
+</section>
+
+<!-- RIBBON -->
+<div class="ribbon">
+  <div class="ri">
+    <span class="rp">BETA</span>
+    <span class="rt">App em <strong>fase de testes exclusivos</strong> — acesso por lista de espera. <strong>Cadastro gratuito. Garanta sua posição.</strong></span>
+  </div>
+</div>
+
+<!-- ══ FAMÍLIA ════════════════════════════════════ -->
+<section class="why" id="familia">
+  <div class="why-hd">
+    <div class="stag g rv"><div class="stag-l"></div>Para famílias reais<div class="stag-l"></div></div>
+    <h2 class="sec-t rv d1">Cada família tem<br>uma história financeira única</h2>
+    <p class="sec-s rv d2">O Family FinTrack foi pensado para proteger e fazer prosperar o que há de mais precioso: sua família. Com IA que entende o seu contexto, não apenas seus números.</p>
+  </div>
+  <div class="why-grid">
+    <div class="wcard rv">
+      <div class="wc-ico">🛡️</div>
+      <div class="wc-t">Proteção & Controle</div>
+      <div class="wc-d">Visão completa das finanças familiares em tempo real. Saiba exatamente onde cada real entra, sai e cresce.</div>
+      <div class="wc-pills"><span class="wc-p">Multi-contas</span><span class="wc-p">Saldo em tempo real</span></div>
+    </div>
+    <div class="wcard dark rv d1">
+      <div class="wc-ico">🤖</div>
+      <div class="wc-t">IA que entende sua família</div>
+      <div class="wc-d">Insights personalizados gerados por Inteligência Artificial. Detecta padrões, antecipa gastos e sugere ações antes que os problemas apareçam.</div>
+      <div class="wc-pills"><span class="wc-p">Análise preditiva</span><span class="wc-p">Chat IA</span><span class="wc-p">Insights automáticos</span></div>
+    </div>
+    <div class="wcard rv d2">
+      <div class="wc-ico">👨‍👩‍👧‍👦</div>
+      <div class="wc-t">Toda a família conectada</div>
+      <div class="wc-d">Perfis individuais para cada membro. Cada um acompanha o que lhe pertence. Decisões financeiras tomadas juntos, com mais informação.</div>
+      <div class="wc-pills"><span class="wc-p">Multi-usuário</span><span class="wc-p">Permissões</span></div>
+    </div>
+    <div class="wcard rv d1">
+      <div class="wc-ico">📅</div>
+      <div class="wc-t">Planejamento automático</div>
+      <div class="wc-d">Contas programadas, recorrências e lembretes automáticos via Telegram e WhatsApp. Nunca mais esqueça um vencimento importante.</div>
+      <div class="wc-pills"><span class="wc-p">Telegram</span><span class="wc-p">WhatsApp</span><span class="wc-p">Auto-registro</span></div>
+    </div>
+    <div class="wcard rv d2">
+      <div class="wc-ico">🔮</div>
+      <div class="wc-t">Futuro financeiro visível</div>
+      <div class="wc-d">Previsão de fluxo de caixa para 90 dias calculada por IA. Veja o futuro financeiro da sua família antes que ele aconteça.</div>
+      <div class="wc-pills"><span class="wc-p">Forecast 90 dias</span><span class="wc-p">IA</span></div>
+    </div>
+    <div class="wcard rv d3">
+      <div class="wc-ico">🔒</div>
+      <div class="wc-t">Segurança de ponta</div>
+      <div class="wc-d">Criptografia PBKDF2, segurança por linha de dados (RLS) e backup automático na nuvem. Seus dados familiares protegidos.</div>
+      <div class="wc-pills"><span class="wc-p">Criptografia</span><span class="wc-p">Backup auto</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ QUOTE ═════════════════════════════════════ -->
+<section class="qsec">
+  <div class="qcard rv">
+    <span class="qm">"</span>
+    <p class="qt">Este app nasceu de um sonho simples: que todas as famílias pudessem tomar decisões financeiras com a mesma inteligência e clareza que antes era privilégio de poucos. A Inteligência Artificial tornou isso possível — e acessível.</p>
+    <div class="qa">Décio Franchini · Criador · Family FinTrack</div>
+  </div>
+</section>
+
+<!-- ══ RECURSOS ═══════════════════════════════════ -->
+<section class="feat" id="recursos">
+  <div class="feat-hd">
+    <div class="stag g rv"><div class="stag-l"></div>Recursos<div class="stag-l"></div></div>
+    <h2 class="sec-t rv d1">Tudo que uma família<br>precisa em um só lugar</h2>
+    <p class="sec-s rv d2" style="color:var(--muted)">Potencializado por Inteligência Artificial em cada funcionalidade.</p>
+  </div>
+  <div class="feat-grid">
+    <div class="fc hl rv">
+      <span class="fc-ai">✦ IA</span>
+      <div class="fc-ico">🤖</div>
+      <div class="fc-t">AI Insights — IA Financeira</div>
+      <div class="fc-d">Motor de análise com Gemini AI que lê os dados da sua família, identifica padrões invisíveis, prevê cenários e gera recomendações em linguagem natural. Chat direto com a IA para entender suas finanças.</div>
+      <div class="fc-ps"><span class="fc-pi">Análise preditiva</span><span class="fc-pi">Chat com IA</span><span class="fc-pi">Health Score</span><span class="fc-pi">Projeção 90 dias</span></div>
+    </div>
+    <div class="fc rv d1">
+      <span class="fc-ai">✦ IA</span>
+      <div class="fc-ico">📱</div>
+      <div class="fc-t">Leitura de Recibos por IA</div>
+      <div class="fc-d">Fotografe qualquer recibo. A IA extrai valor, data, estabelecimento e categoria automaticamente. Zero digitação.</div>
+      <div class="fc-ps"><span class="fc-pi">OCR com IA</span><span class="fc-pi">Auto-categoria</span></div>
+    </div>
+    <div class="fc rv d2">
+      <div class="fc-ico">💹</div>
+      <div class="fc-t">Carteira de Investimentos</div>
+      <div class="fc-d">Acompanhe ativos, cotações em tempo real e rentabilidade. Gráficos automáticos e comparativos históricos.</div>
+      <div class="fc-ps"><span class="fc-pi">Cotações live</span><span class="fc-pi">Gráficos</span></div>
+    </div>
+    <div class="fc rv d1">
+      <div class="fc-ico">🛒</div>
+      <div class="fc-t">Lista de Mercado + Preços</div>
+      <div class="fc-d">Lista de compras colaborativa com histórico de preços por produto e loja. Saiba onde comprar mais barato.</div>
+      <div class="fc-ps"><span class="fc-pi">Histórico preços</span><span class="fc-pi">Colaborativo</span></div>
+    </div>
+    <div class="fc rv d2">
+      <div class="fc-ico">📊</div>
+      <div class="fc-t">Relatórios & Orçamentos</div>
+      <div class="fc-d">Relatórios detalhados por período, categoria e conta. Orçamentos por categoria com alertas inteligentes.</div>
+      <div class="fc-ps"><span class="fc-pi">Exportar PDF</span><span class="fc-pi">Alertas</span></div>
+    </div>
+    <div class="fc rv d3">
+      <div class="fc-ico">💳</div>
+      <div class="fc-t">Dívidas & Cartões</div>
+      <div class="fc-d">Controle de dívidas com amortização automática. Gestão de cartões de crédito com fatura e pagamento integrados.</div>
+      <div class="fc-ps"><span class="fc-pi">Amortização auto</span><span class="fc-pi">Fatura</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ HOW IT WORKS ═══════════════════════════════ -->
+<section class="how">
+  <div class="feat-hd" style="margin-bottom:56px">
+    <div class="stag lm rv"><div class="stag-l"></div>Como funciona<div class="stag-l"></div></div>
+    <h2 class="sec-t rv d1" style="color:#fff">Do convite à transformação<br>financeira da sua família</h2>
+  </div>
+  <div class="how-grid">
+    <div class="hc2 rv">
+      <div class="hn">01</div>
+      <div class="ht">Entre para a lista</div>
+      <div class="hd">Cadastre-se gratuitamente na lista de espera. Você recebe confirmação imediata por email e garante sua posição.</div>
+    </div>
+    <div class="hc2 rv d1">
+      <div class="hn">02</div>
+      <div class="ht">Receba o acesso</div>
+      <div class="hd">Quando aprovado, você recebe um email com credenciais e um guia completo para começar em minutos.</div>
+    </div>
+    <div class="hc2 rv d2">
+      <div class="hn">03</div>
+      <div class="ht">Transforme sua família</div>
+      <div class="hd">Instale como app no iPhone ou Android, convide sua família e comece a prosperar com a IA ao seu lado.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WAITLIST ═══════════════════════════════════ -->
+<section class="cta" id="acesso">
+  <div class="ctacard rv">
+    <div class="ctai">
+      <div class="ctaey">✦ Lista de Espera · Beta Exclusivo</div>
+      <h2 class="ctatit">Entre para a lista<br>de espera gratuita</h2>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;color:rgba(255,255,255,.55)">
+          <span style="width:8px;height:8px;background:var(--lime);border-radius:50%;box-shadow:0 0 8px var(--lime);animation:bpulse 2s ease-in-out infinite;flex-shrink:0"></span>
+          Cadastro gratuito · Acesso por ordem de inscrição
+        </div>
+      </div>
+      <p class="ctasub">Faça seu cadastro na lista de espera e garanta sua posição no programa beta. Você será notificado assim que seu acesso for liberado — <strong style="color:rgba(255,255,255,.85)">gratuitamente</strong>.</p>
+
+      <form class="wf" id="wlFrm" onsubmit="handleWl(event)">
+        <div class="wr">
+          <div class="wg"><label class="wl">Nome completo *</label><input type="text" class="wi" id="wlN" placeholder="Seu nome" required autocomplete="name"></div>
+          <div class="wg"><label class="wl">E-mail *</label><input type="email" class="wi" id="wlE" placeholder="seu@email.com" required autocomplete="email"></div>
+        </div>
+        <div class="wr">
+          <div class="wg"><label class="wl">WhatsApp (opcional)</label><input type="tel" class="wi" id="wlP" placeholder="+55 11 99999-9999" autocomplete="tel"></div>
+          <div class="wg"><label class="wl">Perfil da família</label>
+            <select class="wse" id="wlR">
+              <option value="family">Família com filhos</option>
+              <option value="couple">Casal</option>
+              <option value="personal">Uso individual</option>
+              <option value="business">Empreendedor</option>
+            </select>
+          </div>
+        </div>
+        <div class="werr" id="wlErr"></div>
+        <button type="submit" class="wsub" id="wlBtn"><span id="wlBT">📋 Entrar para a lista de espera</span></button>
+        <p class="wpr">🔒 Seus dados são usados apenas para o convite. Sem spam.</p>
+      </form>
+
+      <div class="wsuc" id="wlSuc">
+        <div class="wsic">🎉</div>
+        <div class="wsit">Você está na lista!</div>
+        <p class="wsis">Olá, <span class="wsin" id="sNm"></span>! Sua posição na lista de espera foi confirmada. Verifique <strong id="sEm" style="color:var(--lime2)"></strong> — enviaremos seu acesso assim que disponível.</p>
+        <!-- Bloco de compartilhamento -->
+        <div style="width:100%;margin-top:20px;background:rgba(255,255,255,.06);border:1px solid rgba(125,194,66,.2);border-radius:16px;padding:22px 20px;text-align:left">
+          <div style="font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lime2);margin-bottom:4px;display:flex;align-items:center;gap:7px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Indique amigos para a lista de espera
+          </div>
+          <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:16px;line-height:1.6">Indique amigos e familiares para também entrarem na lista de espera. Eles receberão um email com o convite para se cadastrar.</p>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+              <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);display:block;margin-bottom:5px">E-mails para indicar (separados por vírgula · máx. 5)</label>
+              <input type="text" id="invEmails" placeholder="amigo@email.com, familiar@email.com, colega@email.com" style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            </div>
+            <div>
+              <div style="margin-bottom:5px">
+                <label style="font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3)">Mensagem personalizada</label>
+              </div>
+              <textarea id="invMsg" rows="4" placeholder="Escreva uma mensagem para seus amigos..." style="width:100%;font-family:var(--sans);font-size:.85rem;color:#fff;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;outline:none;resize:vertical;transition:border-color .2s;line-height:1.6" onfocus="this.style.borderColor='var(--lime)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+            </div>
+            <div id="invErr" style="font-size:.75rem;color:#f87171;display:none;padding:8px 12px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px"></div>
+            <div id="invOk" style="font-size:.78rem;color:var(--lime2);display:none;padding:8px 12px;background:rgba(125,194,66,.08);border:1px solid rgba(125,194,66,.2);border-radius:8px;text-align:center;font-weight:600"></div>
+            <button type="button" id="invSendBtn" onclick="sendInvites()" style="font-family:var(--sans);font-size:.9rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime),var(--lime2));border:none;border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .25s;box-shadow:0 4px 20px rgba(125,194,66,.25)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              <span id="invSendTxt">Indicar amigos →</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ════════════════════════════════════ -->
+<footer>
+  <div class="fi">
+    <a href="#" class="flogo">
+      <img src="logo_glow_soft.png" alt="Family FinTrack" style="height:34px;width:auto;opacity:.88">
+    </a>
+    <div class="fcp">
+      Potencializado por Inteligência Artificial &nbsp;·&nbsp; Beta Privado 2025<br>
+      <span style="opacity:.55">Desenvolvido com Vibe Coding e IA &nbsp;·&nbsp; Gemini &middot; Claude &middot; Supabase</span>
+    </div>
+    <a href="app.html" class="fll">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Acessar o App
+    </a>
+  </div>
+</footer>
+
+<script src="js/landing.js"></script>
+</body>
+</html>
