@@ -11,19 +11,41 @@ function cfgShowPane(paneId) {
   if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
     initTranslationsAdmin();
   }
+  if (paneId === 'pane-feedbacks' && typeof loadFeedbackReports === 'function') {
+    loadFeedbackReports();
+  }
   // Scroll active tab into view on mobile
   if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 window.cfgShowPane = cfgShowPane;
 
 function _cfgApplyAdminNav() {
-  const isAdmin = (typeof currentUser !== 'undefined') && currentUser?.role === 'admin';
-  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado'].forEach(id => {
+  const role = (typeof currentUser !== 'undefined') ? currentUser?.role : null;
+  const isAdmin = role === 'admin' || role === 'owner';
+  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
 }
 window._cfgApplyAdminNav = _cfgApplyAdminNav;
+
+async function _cfgUpdateFeedbackBadge() {
+  try {
+    const badge = document.getElementById('cfgFeedbackBadge');
+    if (!badge || !window.sb) return;
+    const { count } = await sb.from('app_feedback')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'new');
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(_) {}
+}
+window._cfgUpdateFeedbackBadge = _cfgUpdateFeedbackBadge;
+
 
 let _appSettingsCache = null; // in-memory cache after first load
 
@@ -223,7 +245,8 @@ window.forceActivateModule = forceActivateModule;
 
 function showEmailConfig() {
   // Populate fields with saved values
-  document.getElementById('ejServiceId').value  = EMAILJS_CONFIG.serviceId;
+  loadShowAccessRequestSetting();
+    document.getElementById('ejServiceId').value  = EMAILJS_CONFIG.serviceId;
   document.getElementById('ejTemplateId').value = EMAILJS_CONFIG.templateId;
   const stpl = document.getElementById('ejSchedTemplateId');
   if(stpl) stpl.value = EMAILJS_CONFIG.scheduledTemplateId || '';
@@ -1720,7 +1743,7 @@ window._telApplyFilters = _telApplyFilters;
 // ── Controle de abas ──────────────────────────────────────────────────────────
 function _telSetTab(tab) {
   _telDash.activeTab = tab;
-  ['overview','users','families'].forEach(t => {
+  ['overview','users','families','landing'].forEach(t => {
     const pane = document.getElementById('telPane_' + t);
     const btn  = document.getElementById('telTab_'  + t);
     if (!pane || !btn) return;
@@ -1750,6 +1773,8 @@ function _telRenderCurrentTab() {
     _telRenderUsersTable(rows);
   } else if (_telDash.activeTab === 'families') {
     _telRenderFamiliesTable(rows);
+  } else if (_telDash.activeTab === 'landing') {
+    _telRenderLandingTab(rows);
   }
 }
 
@@ -2560,3 +2585,211 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeEl = document.getElementById('telDelEventType');
   if (typeEl) typeEl.addEventListener('change', window._telDelUpdatePreview);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO: Exibir link "Solicitar Acesso" na tela de login
+══════════════════════════════════════════════════════════════════════════ */
+
+// Carrega o estado do toggle ao abrir settings
+async function loadShowAccessRequestSetting() {
+  const toggle = document.getElementById('cfgShowAccessRequest');
+  if (!toggle) return;
+  try {
+    const raw = await getAppSetting('show_access_request', 'true');
+    const enabled = raw === true || raw === 'true' || raw === 1;
+    toggle.checked = enabled;
+  } catch(e) {
+    toggle.checked = true; // default: mostrar
+  }
+}
+
+// Salva e aplica imediatamente
+window.saveShowAccessRequest = async function(enabled) {
+  await saveAppSetting('show_access_request', enabled ? 'true' : 'false');
+  // Persist to localStorage so anon users see the correct state before login
+  try { localStorage.setItem('ft_show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
+  _applyAccessRequestVisibility(enabled);
+  toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
+};
+
+function _applyAccessRequestVisibility(enabled) {
+  // Hide the entire wrap (button + "Não tem conta?" text) as one unit
+  const wrap = document.getElementById('loginRequestAccessWrap');
+  if (wrap) { wrap.style.display = enabled ? '' : 'none'; return; }
+  // Fallback: hide button + sibling text individually
+  const btn = document.getElementById('loginRequestAccessBtn');
+  if (btn) btn.style.display = enabled ? '' : 'none';
+  const parent = btn?.parentElement;
+  if (parent) {
+    parent.querySelectorAll('span[data-i18n="auth.no_account"]')
+      .forEach(t => { t.style.display = enabled ? '' : 'none'; });
+  }
+}
+
+// Apply on page load (called by auth.js after settings load)
+async function initAccessRequestVisibility() {
+  try {
+    const raw     = await getAppSetting('show_access_request', 'true');
+    const enabled = raw === true || raw === 'true' || raw === 1 || raw === null;
+    _applyAccessRequestVisibility(enabled);
+  } catch(e) {
+    // Default: show
+    _applyAccessRequestVisibility(true);
+  }
+}
+window.initAccessRequestVisibility = initAccessRequestVisibility;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TELEMETRIA — Aba Landing Page
+══════════════════════════════════════════════════════════════════════════ */
+function _telRenderLandingTab(allRows) {
+  const el = document.getElementById('telLandingContent');
+  if (!el) return;
+
+  // Filter to landing source events only
+  const rows = allRows.filter(r =>
+    r.page === 'landing' ||
+    (r.payload && (r.payload.source === 'landing' || r.payload.page === 'landing'))
+  );
+
+  // Also fetch from DB if needed — landing events may not be in current filter window
+  // Use allRows for now + also fetch landing-specific from DB
+  _telRenderLandingContent(el, rows);
+}
+
+async function _telRenderLandingContent(el, cachedRows) {
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">⏳ Carregando…</div>';
+
+  // Fetch landing events from DB (last 90 days regardless of current period filter)
+  let landingRows = cachedRows.filter(r =>
+    r.page === 'landing' ||
+    (r.payload && r.payload.source === 'landing')
+  );
+
+  // Try to load more from DB if we have few cached rows
+  if (landingRows.length < 20) {
+    try {
+      const since90 = new Date(); since90.setDate(since90.getDate() - 90);
+      const { data } = await sb.from('app_telemetry')
+        .select('event_type,ts,payload,device_type,device_browser')
+        .eq('page', 'landing')
+        .gte('ts', since90.toISOString())
+        .order('ts', { ascending: false })
+        .limit(500);
+      if (data && data.length > landingRows.length) landingRows = data;
+    } catch(e) { /* use cached */ }
+  }
+
+  // Also load waitlist stats
+  let waitlistStats = { total: 0, pending: 0, invited: 0 };
+  try {
+    const { data: wl } = await sb.from('waitlist').select('status,created_at,role');
+    if (wl) {
+      waitlistStats.total   = wl.length;
+      waitlistStats.pending = wl.filter(r => r.status === 'pending').length;
+      waitlistStats.invited = wl.filter(r => r.status === 'invited').length;
+      waitlistStats.roles   = wl.reduce((acc, r) => { acc[r.role] = (acc[r.role]||0)+1; return acc; }, {});
+    }
+  } catch(e) {}
+
+  const pageViews   = landingRows.filter(r => r.event_type === 'page_view').length;
+  const submits     = landingRows.filter(r => r.event_type === 'waitlist_submit').length;
+  const invites     = landingRows.filter(r => r.event_type === 'invite_sent').length;
+  const scrollRows  = landingRows.filter(r => r.event_type === 'scroll_depth');
+  const scroll50    = scrollRows.filter(r => r.payload?.depth >= 50).length;
+  const scroll75    = scrollRows.filter(r => r.payload?.depth >= 75).length;
+  const convRate    = pageViews > 0 ? ((submits / pageViews) * 100).toFixed(1) : '—';
+  const scroll50pct = pageViews > 0 ? ((scroll50 / pageViews) * 100).toFixed(0) : '—';
+
+  // Device breakdown
+  const devices = {};
+  landingRows.forEach(r => {
+    const d = r.device_type || 'unknown';
+    devices[d] = (devices[d]||0) + 1;
+  });
+
+  // Daily visits (last 14 days)
+  const dailyMap = {};
+  for (let i=13; i>=0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    dailyMap[d.toISOString().slice(0,10)] = 0;
+  }
+  landingRows.filter(r => r.event_type === 'page_view').forEach(r => {
+    const day = (r.ts||'').slice(0,10);
+    if (day in dailyMap) dailyMap[day]++;
+  });
+
+  const roleLabels = { family:'Família', couple:'Casal', personal:'Individual', business:'Empreendedor', curious:'Curioso IA' };
+
+  el.innerHTML = `
+    <!-- KPI cards -->
+    <div class="tel-kpi-grid" style="margin-bottom:20px">
+      ${[
+        { v: pageViews.toLocaleString('pt-BR'), lb: 'Visitas totais',      icon: '👁️' },
+        { v: waitlistStats.total.toLocaleString('pt-BR'), lb: 'Na lista de espera', icon: '📋' },
+        { v: waitlistStats.invited.toLocaleString('pt-BR'), lb: 'Convidados',     icon: '✉️' },
+        { v: submits.toLocaleString('pt-BR'),  lb: 'Cadastros registrados', icon: '✅' },
+        { v: convRate + '%',                   lb: 'Taxa de conversão',     icon: '📈' },
+        { v: scroll50pct + '%',                lb: 'Leram 50%+ da página',  icon: '📜' },
+        { v: invites.toLocaleString('pt-BR'),  lb: 'Indicações enviadas',   icon: '🔗' },
+      ].map(c => `<div class="tel-kpi-card">
+        <span class="tel-kpi-icon">${c.icon}</span>
+        <span class="tel-kpi-val">${c.v}</span>
+        <span class="tel-kpi-lbl">${c.lb}</span>
+      </div>`).join('')}
+    </div>
+
+    <!-- Dois painéis lado a lado -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+      <!-- Perfis na lista de espera -->
+      <div class="tel-section">
+        <div class="tel-section-title"><span class="tel-section-title-dot"></span>Perfis na lista de espera</div>
+        ${waitlistStats.total === 0
+          ? '<div class="tel-empty"><div class="tel-empty-icon">📋</div><div class="tel-empty-text">Nenhum cadastro ainda</div></div>'
+          : Object.entries(waitlistStats.roles || {}).sort((a,b)=>b[1]-a[1]).map(([role, n]) => {
+              const pct = ((n / waitlistStats.total) * 100).toFixed(0);
+              return `<div class="tel-bar-row">
+                <span class="tel-bar-label">${roleLabels[role]||role}</span>
+                <div class="tel-bar-track"><div class="tel-bar-fill" style="width:${pct}%"></div></div>
+                <span class="tel-bar-val">${n}</span>
+              </div>`;
+            }).join('')}
+      </div>
+
+      <!-- Dispositivos dos visitantes -->
+      <div class="tel-section">
+        <div class="tel-section-title"><span class="tel-section-title-dot"></span>Dispositivos dos visitantes</div>
+        ${Object.keys(devices).length === 0
+          ? '<div class="tel-empty"><div class="tel-empty-icon">📱</div><div class="tel-empty-text">Sem dados de dispositivo</div></div>'
+          : Object.entries(devices).sort((a,b)=>b[1]-a[1]).map(([dev, n]) => {
+              const total = Object.values(devices).reduce((s,v)=>s+v,0);
+              const pct = total > 0 ? ((n/total)*100).toFixed(0) : 0;
+              const icon = dev==='mobile' ? '📱' : dev==='desktop' ? '🖥️' : '❓';
+              return `<div class="tel-bar-row">
+                <span class="tel-bar-label">${icon} ${dev}</span>
+                <div class="tel-bar-track"><div class="tel-bar-fill" style="width:${pct}%"></div></div>
+                <span class="tel-bar-val">${pct}%</span>
+              </div>`;
+            }).join('')}
+      </div>
+    </div>
+
+    <!-- Visitas diárias (últimos 14 dias) -->
+    <div class="tel-section">
+      <div class="tel-section-title"><span class="tel-section-title-dot"></span>Visitas à landing — últimos 14 dias</div>
+      ${Object.values(dailyMap).every(v=>v===0)
+        ? '<div class="tel-empty"><div class="tel-empty-icon">📊</div><div class="tel-empty-text">Nenhuma visita registrada no período</div></div>'
+        : `<div style="display:flex;align-items:flex-end;gap:4px;height:80px;padding:8px 0">
+            ${Object.entries(dailyMap).map(([day, count]) => {
+              const maxV = Math.max(...Object.values(dailyMap), 1);
+              const h = Math.round((count/maxV)*64);
+              const label = day.slice(5).replace('-','/');
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px" title="${day}: ${count} visita(s)">
+                <div style="width:100%;max-width:28px;background:var(--accent);border-radius:4px 4px 0 0;height:${h}px;min-height:${count>0?2:0}px;transition:height .3s"></div>
+                <span style="font-size:.5rem;color:var(--muted);transform:rotate(-45deg);white-space:nowrap">${label}</span>
+              </div>`;
+            }).join('')}
+          </div>`}
+    </div>`;
+}
