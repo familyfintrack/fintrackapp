@@ -922,6 +922,9 @@ async function onLoginSuccess() {
   // Check for new feedback reports (admin only)
   if (typeof _checkNewFeedbackOnLogin === 'function') _checkNewFeedbackOnLogin().catch(()=>{});
 
+  // Hide feedback button from topbar for admin/owner — they manage it, not submit it
+  if (typeof _updateFeedbackBtnVisibility === 'function') _updateFeedbackBtnVisibility();
+
   // Apply access request visibility based on admin setting
   if (typeof initAccessRequestVisibility === 'function') initAccessRequestVisibility().catch(()=>{});
 

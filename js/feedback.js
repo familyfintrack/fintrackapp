@@ -176,7 +176,7 @@ window.loadFeedbackReports = async function() {
   const filter = document.getElementById('uaFeedbackFilter')?.value || 'new';
   if (!el) return;
 
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando…</div>';
+  el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">⏳ Carregando…</div>';
 
   try {
     let q = sb.from('app_feedback')
@@ -188,87 +188,167 @@ window.loadFeedbackReports = async function() {
     const { data, error } = await q.limit(200);
     if (error) throw error;
 
-    if (cntEl) cntEl.textContent = `${(data||[]).length} item${(data||[]).length !== 1 ? 's' : ''}`;
+    const total = (data||[]).length;
+    if (cntEl) cntEl.textContent = total ? `${total} item${total !== 1 ? 's' : ''}` : '';
 
-    if (!data?.length) {
-      el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">
-        Nenhum report com este filtro.</div>`;
+    if (!total) {
+      const labels = { new:'Novos', backlog:'Backlog', priority:'Prioritários',
+        flagged:'Flagados', done:'Implementados', irrelevant:'Irrelevantes', all:'Todos' };
+      el.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px;opacity:.3">💬</div>
+        <div style="font-size:.9rem;font-weight:600;color:var(--text2);margin-bottom:4px">Nenhum report</div>
+        <div style="font-size:.8rem">Sem itens em <strong>${labels[filter]||filter}</strong></div>
+      </div>`;
       return;
     }
 
     el.innerHTML = data.map(item => _fbAdminCard(item)).join('');
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--danger,#dc2626);padding:16px;font-size:.82rem">Erro: ${e.message}</div>`;
+    el.innerHTML = `<div style="color:var(--danger,#dc2626);padding:16px;font-size:.82rem;background:rgba(220,38,38,.06);border-radius:8px;margin:8px">⚠️ Erro: ${e.message}</div>`;
   }
 };
 
 function _fbAdminCard(item) {
-  const st  = FB_STATUS_LABELS[item.status] || { icon: '❓', label: item.status };
-  const typ = FB_TYPE_LABELS[item.type]     || item.type;
-  const mod = FB_MODULE_LABELS[item.module] || item.module;
-  const dt  = item.created_at
+  const st   = FB_STATUS_LABELS[item.status] || { icon: '❓', label: item.status };
+  const typ  = FB_TYPE_LABELS[item.type]     || item.type;
+  const mod  = FB_MODULE_LABELS[item.module] || item.module;
+  const dt   = item.created_at
     ? new Date(item.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     : '—';
-  const user     = item.app_users?.name || item.app_users?.email || 'Usuário desconhecido';
+  const user     = item.app_users?.name || item.app_users?.email || 'Usuário';
   const userId   = item.user_id || '';
   const userLink = userId
     ? `<span onclick="_fbOpenUserTelemetry('${userId}','${esc(user)}')"
-         style="cursor:pointer;color:var(--accent);text-decoration:underline;text-decoration-style:dotted;font-weight:600"
-         title="Ver telemetria do usuário">${esc(user)}</span>`
-    : esc(user);
+         style="cursor:pointer;color:var(--accent);text-decoration:underline;text-decoration-style:dotted;font-weight:600;font-size:.78rem"
+         title="Ver telemetria">👤 ${esc(user)}</span>`
+    : `<span style="font-size:.78rem;color:var(--muted)">👤 ${esc(user)}</span>`;
 
+  // Screenshot thumbnail
   const hasScreen = !!item.screenshot_b64;
   const screenHtml = hasScreen
-    ? `<div style="margin:10px 0">
+    ? `<div style="margin:10px 0 6px">
         <img src="data:${item.screenshot_mime || 'image/png'};base64,${item.screenshot_b64}"
-          style="max-width:100%;max-height:180px;border-radius:6px;border:1px solid var(--border);cursor:pointer"
-          onclick="_fbExpandScreen(this)" title="Clique para ampliar">
+          style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;box-shadow:0 2px 8px rgba(0,0,0,.08)"
+          onclick="_fbExpandScreen(this)" title="Clique para ampliar 🔍">
+        <div style="font-size:.68rem;color:var(--muted);margin-top:4px">📸 Screenshot — clique para ampliar</div>
       </div>` : '';
 
-  const statusBtns = Object.entries(FB_STATUS_LABELS).map(([val, s]) =>
-    `<button onclick="_fbSetStatus('${item.id}','${val}',this.parentElement.parentElement)"
+  // Status pill color map
+  const statusColors = {
+    new:       { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' },
+    backlog:   { bg: 'var(--surface2)', border: 'var(--border)', text: 'var(--text2)' },
+    priority:  { bg: '#fffbeb', border: '#fcd34d', text: '#d97706' },
+    flagged:   { bg: '#fff7ed', border: '#fdba74', text: '#ea580c' },
+    done:      { bg: '#f0fdf4', border: '#86efac', text: '#16a34a' },
+    irrelevant:{ bg: 'var(--surface2)', border: 'var(--border)', text: 'var(--muted)' },
+  };
+  const sc = statusColors[item.status] || statusColors.backlog;
+
+  // Status action buttons — compact icon+label
+  const statusBtns = Object.entries(FB_STATUS_LABELS).map(([val, s]) => {
+    const isCur = item.status === val;
+    return `<button onclick="_fbSetStatus('${item.id}','${val}',document.getElementById('fbcard_${item.id}'))"
       title="${s.label}"
-      style="padding:4px 8px;font-size:.72rem;border-radius:6px;cursor:pointer;font-family:var(--font-sans);
-             border:1.5px solid ${item.status===val ? 'var(--accent)' : 'var(--border)'};
-             background:${item.status===val ? 'var(--accent-lt)' : 'var(--surface)'};
-             color:${item.status===val ? 'var(--accent)' : 'var(--text2)'};
-             font-weight:${item.status===val ? '700' : '400'}"
-    >${s.icon} ${s.label}</button>`
-  ).join('');
+      style="padding:5px 10px;font-size:.72rem;border-radius:8px;cursor:pointer;font-family:var(--font-sans);
+             border:1.5px solid ${isCur ? 'var(--accent)' : 'var(--border)'};
+             background:${isCur ? 'var(--accent-lt)' : 'var(--surface)'};
+             color:${isCur ? 'var(--accent)' : 'var(--text2)'};
+             font-weight:${isCur ? '700' : '500'};
+             transition:all .15s"
+      onmouseover="if(!${isCur})this.style.borderColor='var(--accent)',this.style.color='var(--accent)'"
+      onmouseout="if(!${isCur})this.style.borderColor='var(--border)',this.style.color='var(--text2)'"
+    >${s.icon} ${s.label}</button>`;
+  }).join('');
 
   const commentVal = item.admin_comment || '';
+  const hasComment = !!commentVal;
 
-  return `<div id="fbcard_${item.id}" style="border:1px solid var(--border);border-radius:var(--r);background:var(--surface);overflow:hidden">
-    <!-- Header -->
-    <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:.75rem;font-weight:700;color:var(--accent)">${typ}</span>
-      <span style="font-size:.72rem;color:var(--muted)">•</span>
-      <span style="font-size:.75rem;color:var(--muted)">${mod}</span>
+  return `<div id="fbcard_${item.id}"
+    style="border:1px solid var(--border);border-radius:12px;background:var(--surface);
+           overflow:hidden;transition:box-shadow .2s"
+    onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'"
+    onmouseout="this.style.boxShadow='none'">
+
+    <!-- ── Card header ── -->
+    <div style="padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);
+                display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <!-- Tipo pill -->
+      <span style="font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px;
+                   background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.2)">
+        ${typ}
+      </span>
+      <!-- Módulo -->
+      <span style="font-size:.72rem;color:var(--muted);background:var(--surface);
+                   padding:3px 8px;border-radius:20px;border:1px solid var(--border)">
+        📂 ${mod}
+      </span>
       <span style="flex:1"></span>
-      <span style="font-size:.7rem">${userLink}</span>
-      <span style="font-size:.7rem;color:var(--muted)">${dt}</span>
-      <span style="font-size:.75rem;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--surface);border:1px solid var(--border)">${st.icon} ${st.label}</span>
+      <!-- Status badge -->
+      <span style="font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px;
+                   background:${sc.bg};color:${sc.text};border:1px solid ${sc.border}">
+        ${st.icon} ${st.label}
+      </span>
     </div>
-    <!-- Body -->
-    <div style="padding:12px 14px">
-      <p style="margin:0 0 10px;font-size:.85rem;color:var(--text);line-height:1.6;white-space:pre-wrap">${esc(item.description)}</p>
-      ${screenHtml}
-      <!-- Status actions -->
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${statusBtns}</div>
-      <!-- Admin comment -->
-      <div style="display:flex;gap:6px;align-items:flex-end">
-        <textarea id="fbcmt_${item.id}" rows="2" placeholder="Comentário do administrador…"
-          style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:var(--font-sans);font-size:.8rem;resize:vertical;background:var(--bg2)"
-        >${esc(commentVal)}</textarea>
-        <button onclick="_fbSaveComment('${item.id}')"
-          style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);font-weight:600;border:none;background:var(--accent);color:#fff;border-radius:var(--r-sm);cursor:pointer;white-space:nowrap">
-          💾 Salvar
-        </button>
+
+    <!-- ── Card body ── -->
+    <div style="padding:14px">
+
+      <!-- Meta row: user + date -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+        ${userLink}
+        <span style="font-size:.72rem;color:var(--muted);flex-shrink:0">🕐 ${dt}</span>
       </div>
+
+      <!-- Description -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+                  padding:10px 12px;margin-bottom:12px;
+                  font-size:.84rem;color:var(--text);line-height:1.65;white-space:pre-wrap;
+                  max-height:200px;overflow-y:auto">
+        ${esc(item.description)}
+      </div>
+
+      <!-- Screenshot -->
+      ${screenHtml}
+
+      <!-- ── Status actions ── -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+                    letter-spacing:.06em;margin-bottom:6px">Marcar como</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">${statusBtns}</div>
+      </div>
+
+      <!-- ── Admin comment ── -->
+      <details ${hasComment ? 'open' : ''} style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <summary style="padding:8px 12px;background:var(--surface2);cursor:pointer;font-size:.78rem;
+                        font-weight:600;color:var(--text2);list-style:none;display:flex;
+                        align-items:center;gap:6px;user-select:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Comentário interno
+          ${hasComment ? '<span style="font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;background:var(--accent-lt);color:var(--accent)">editado</span>' : ''}
+        </summary>
+        <div style="padding:10px 12px;display:flex;gap:8px;align-items:flex-end;background:var(--surface)">
+          <textarea id="fbcmt_${item.id}" rows="3" placeholder="Notas internas, próximos passos, prioridade…"
+            style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+                   font-family:var(--font-sans);font-size:.82rem;resize:vertical;
+                   background:var(--bg2);color:var(--text);line-height:1.5;
+                   transition:border-color .15s;outline:none"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border)'"
+          >${esc(commentVal)}</textarea>
+          <button onclick="_fbSaveComment('${item.id}')"
+            style="padding:8px 14px;font-size:.8rem;font-family:var(--font-sans);font-weight:600;
+                   border:none;background:var(--accent);color:#fff;border-radius:8px;
+                   cursor:pointer;white-space:nowrap;transition:opacity .15s;flex-shrink:0"
+            onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+            💾 Salvar
+          </button>
+        </div>
+      </details>
+
     </div>
   </div>`;
 }
-
 window._fbSetStatus = async function(id, status, card) {
   try {
     const { error } = await sb.from('app_feedback').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
@@ -470,3 +550,12 @@ window._fbShowUserTelemetryModal = async function(userId, userName) {
 
 window._checkNewFeedbackOnLogin = _checkNewFeedbackOnLogin;
 window._updateFeedbackBadge     = _updateFeedbackBadge;
+
+// ── Visibilidade do botão Feedback: oculto para admin/owner ──────────────────
+window._updateFeedbackBtnVisibility = function() {
+  const btn = document.getElementById('feedbackTopbarBtn');
+  if (!btn) return;
+  const role = window.currentUser?.role;
+  const isAdmin = role === 'admin' || role === 'owner';
+  btn.style.display = isAdmin ? 'none' : '';
+};
