@@ -5351,7 +5351,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="tx-amount-row">
             <div class="amt-wrap" style="flex:1">
               <button type="button" class="amt-sign-btn" id="scAmountSignBtn" onclick="toggleAmtSign('scAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('scAmount');updateScCurrencyPreview()" onblur="_amtFieldBlur('scAmount')" onfocus="_amtFieldFocus('scAmount')">
+              <input type="text" id="scAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('scAmount');updateScCurrencyPreview()" onkeydown="_amtFieldKeydown('scAmount', event)" onblur="_amtFieldBlur('scAmount')" onfocus="_amtFieldFocus('scAmount')">
             </div>
             <select id="scCurrencySelect" onchange="onScCurrencyChange()" class="tx-currency-sel">
               <option value="BRL">BRL</option>
@@ -5653,7 +5653,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <p id="registerOccDesc" style="margin-bottom:14px;color:var(--muted);font-size:.875rem"></p>
       <div class="form-grid">
         <div class="form-group"><label>Data real *</label><input type="date" id="occDate"></div>
-        <div class="form-group"><label>Valor real *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="occAmountSignBtn" onclick="toggleAmtSign('occAmount')" aria-label="Alternar sinal">+</button><input type="text" id="occAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('occAmount')" onblur="_amtFieldBlur('occAmount')" onfocus="_amtFieldFocus('occAmount')"></div></div>
+        <div class="form-group"><label>Valor real *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="occAmountSignBtn" onclick="toggleAmtSign('occAmount')" aria-label="Alternar sinal">+</button><input type="text" id="occAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('occAmount')" onkeydown="_amtFieldKeydown('occAmount', event)" onblur="_amtFieldBlur('occAmount')" onfocus="_amtFieldFocus('occAmount')"></div></div>
         <div class="form-group full"><label>Memo</label><input type="text" id="occMemo" placeholder="Observação desta ocorrência"></div>
       </div>
       <input type="hidden" id="occScId">
@@ -5874,7 +5874,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="tx-amount-row">
             <div class="amt-wrap" style="flex:1">
               <button type="button" class="amt-sign-btn" id="txAmountSignBtn" onclick="toggleAmtSign('txAmount')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('txAmount');onTxAmountInput()" onblur="_amtFieldBlur('txAmount')" onfocus="_amtFieldFocus('txAmount')">
+              <input type="text" id="txAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('txAmount');onTxAmountInput()" onkeydown="_amtFieldKeydown('txAmount', event)" onblur="_amtFieldBlur('txAmount')" onfocus="_amtFieldFocus('txAmount')">
             </div>
             <select id="txCurrencySelect" onchange="onTxCurrencyChange()" class="tx-currency-sel">
               <option value="BRL">BRL</option>
@@ -6149,7 +6149,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </div>
-        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('accountBalance')" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
+        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('accountBalance')" onkeydown="_amtFieldKeydown('accountBalance', event)" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
         <div class="form-group full">
           <label>Ícone</label>
           <div class="icon-picker" id="accountIconPicker">
@@ -6730,7 +6730,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <label>Valor limite *</label>
           <div class="amt-wrap">
             <button type="button" class="amt-sign-btn" style="visibility:hidden">+</button>
-            <input type="text" id="budgetAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('budgetAmount')" onblur="_amtFieldBlur('budgetAmount')" onfocus="_amtFieldFocus('budgetAmount')">
+            <input type="text" id="budgetAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('budgetAmount')" onkeydown="_amtFieldKeydown('budgetAmount', event)" onblur="_amtFieldBlur('budgetAmount')" onfocus="_amtFieldFocus('budgetAmount')">
           </div>
         </div>
 
