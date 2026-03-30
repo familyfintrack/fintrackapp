@@ -575,8 +575,8 @@
         <button class="topbar-icon-btn" id="settingsNavTopbar" data-nav="settings" onclick="navigate('settings')" title="Configurações">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
-        <!-- Reportar Feedback — botão distinto, sempre visível -->
-        <button id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria"
+        <!-- Reportar Feedback — oculto para admin/owner, visível para usuários -->
+        <button id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" style="display:none"
           style="position:relative;display:flex;align-items:center;gap:5px;padding:5px 10px;
                  border-radius:20px;border:1.5px solid rgba(99,102,241,.4);
                  background:rgba(99,102,241,.08);cursor:pointer;
@@ -5052,178 +5052,330 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
+  <!-- ══ ADMIN USER MANAGEMENT MODAL — Modern tabs ═══════════════════════ -->
   <div class="modal-overlay" id="userAdminModal">
-    <div class="modal" style="max-width:760px"><div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">👥 Gerenciar Usuários & Famílias</span>
+    <div class="modal ua-modal"><div class="modal-handle"></div>
+
+      <!-- Header -->
+      <div class="ua-header">
+        <div class="ua-header-info">
+          <div class="ua-header-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Gerenciamento
+          </div>
+          <div class="ua-header-sub">Usuários, famílias e lista de espera</div>
+        </div>
         <button class="modal-close" onclick="closeModal('userAdminModal')">✕</button>
       </div>
-      <div class="modal-body" style="padding:0">
-        <!-- Tabs -->
-        <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px">
-          <button class="tab" id="uaTabPending" onclick="switchUATab('pending')" style="padding:12px 16px;font-size:.85rem;position:relative">
-            ⏳ Pendentes<span id="uaPendingBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
-          </button>
-          <button class="tab active" id="uaTabUsers" onclick="switchUATab('users')" style="padding:12px 16px;font-size:.85rem">👤 Usuários</button>
-          <button class="tab" id="uaTabFamilies" onclick="switchUATab('families')" style="padding:12px 16px;font-size:.85rem">🏠 Famílias</button>
-          <button class="tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')" style="padding:12px 16px;font-size:.85rem;position:relative">
-            📋 Lista de Espera<span id="uaWaitlistBadge" style="display:none;position:absolute;top:8px;right:4px;min-width:16px;height:16px;border-radius:999px;background:#2a6049;color:#fff;font-size:.6rem;font-weight:700;padding:0 3px;line-height:16px;text-align:center"></span>
-          </button>
-          <!-- Feedbacks movido para o painel Admin/Telemetria -->
-        </div>
 
-        <!-- Pending approvals tab -->
-        <div id="uaPending" style="display:none;padding:20px">
+      <!-- Tab bar -->
+      <div class="ua-tab-bar">
+        <button class="ua-tab" id="uaTabPending" onclick="switchUATab('pending')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Pendentes
+          <span id="uaPendingBadge" style="display:none;min-width:17px;height:17px;border-radius:999px;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:0 4px;line-height:17px;text-align:center;margin-left:2px"></span>
+        </button>
+        <button class="ua-tab active" id="uaTabUsers" onclick="switchUATab('users')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+          Usuários
+        </button>
+        <button class="ua-tab" id="uaTabFamilies" onclick="switchUATab('families')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          Famílias
+        </button>
+        <button class="ua-tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Lista de Espera
+          <span id="uaWaitlistBadge" style="display:none;min-width:17px;height:17px;border-radius:999px;background:#2a6049;color:#fff;font-size:.6rem;font-weight:700;padding:0 4px;line-height:17px;text-align:center;margin-left:2px"></span>
+        </button>
+      </div>
+
+      <!-- Pane body -->
+      <div class="ua-body">
+
+        <!-- ── PENDING TAB ── -->
+        <div id="uaPending" class="ua-pane" style="display:none">
           <div id="uaPendingContent">
-            <div style="text-align:center;padding:30px;color:var(--muted)">Carregando...</div>
+            <div class="ua-loading">⏳ Carregando…</div>
           </div>
         </div>
 
-        <!-- Waitlist tab -->
-        <div id="uaWaitlist" style="display:none;padding:0">
-          <div style="padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
-            <div>
-              <span style="font-size:.82rem;font-weight:700;color:var(--text)">Lista de Espera</span>
-              <span style="font-size:.75rem;color:var(--muted);margin-left:8px" id="uaWaitlistCount"></span>
+        <!-- ── WAITLIST TAB ── -->
+        <div id="uaWaitlist" class="ua-pane" style="display:none">
+          <div class="ua-pane-toolbar">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="ua-pane-title">Lista de Espera</span>
+              <span id="uaWaitlistCount" class="ua-count-badge"></span>
             </div>
             <div style="display:flex;gap:6px;align-items:center">
-              <select id="uaWlFilter" onchange="loadWaitlist()" style="font-family:var(--font-sans);font-size:.75rem;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)">
+              <select id="uaWlFilter" onchange="loadWaitlist()" class="ua-select">
                 <option value="pending">⏳ Aguardando</option>
                 <option value="invited">✉️ Convidados</option>
                 <option value="all">Todos</option>
               </select>
-              <button class="btn btn-ghost btn-sm" onclick="loadWaitlist()" title="Recarregar">↺</button>
+              <button class="ua-icon-btn" onclick="loadWaitlist()" title="Recarregar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </button>
             </div>
           </div>
-          <div id="uaWaitlistContent" style="padding:14px 20px;max-height:420px;overflow-y:auto">
-            <div style="text-align:center;padding:30px;color:var(--muted)">Carregando...</div>
+          <div id="uaWaitlistContent" class="ua-scroll-area">
+            <div class="ua-loading">Carregando…</div>
           </div>
         </div>
 
-        <!-- Feedback tab removida — ver painel Admin/Telemetria -->
-
-        <!-- Users tab -->
-        <div id="uaUsers" style="padding:20px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <span style="font-size:.82rem;color:var(--muted)" id="userAdminCount"></span>
-            <button class="btn btn-primary btn-sm" onclick="showNewUserForm()">+ Novo Usuário</button>
+        <!-- ── USERS TAB ── -->
+        <div id="uaUsers" class="ua-pane" style="display:flex;flex-direction:column">
+          <div class="ua-pane-toolbar">
+            <span id="userAdminCount" class="ua-count-badge"></span>
+            <button class="ua-action-btn" onclick="showNewUserForm()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo usuário
+            </button>
           </div>
-          <!-- New/Edit user form -->
-          <div id="userFormArea" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px">
-            <div style="font-size:.85rem;font-weight:600;margin-bottom:12px" id="userFormTitle">Novo Usuário</div>
+
+          <!-- User form — card style -->
+          <div id="userFormArea" style="display:none" class="ua-form-card">
+            <div class="ua-form-title" id="userFormTitle">Novo Usuário</div>
             <input type="hidden" id="editUserId">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div class="form-group">
-                <label>Nome</label>
-                <input type="text" id="uName" placeholder="Nome completo">
+
+            <div class="ua-form-grid">
+              <div class="ua-field">
+                <label>Nome completo</label>
+                <input type="text" id="uName" placeholder="Nome completo" class="ua-input">
               </div>
-              <div class="form-group">
+              <div class="ua-field">
                 <label>E-mail</label>
-                <input type="email" id="uEmail" placeholder="email@dominio.com">
+                <input type="email" id="uEmail" placeholder="email@dominio.com" class="ua-input">
               </div>
-              <div class="form-group">
-                <label>Senha <span style="font-size:.72rem;color:var(--muted)" id="pwdHint">(mín. 8 chars)</span></label>
-                <input type="password" id="uPassword" placeholder="Deixe em branco para manter">
+              <div class="ua-field">
+                <label>Senha <span style="font-size:.7rem;color:var(--muted)" id="pwdHint">(mín. 8 caracteres)</span></label>
+                <input type="password" id="uPassword" placeholder="Deixe em branco para manter" class="ua-input">
               </div>
-              <div class="form-group">
-                <label>Perfil</label>
-                <select id="uRole">
-                  <option value="viewer">Visualizador</option>
-                  <option value="user" selected>Usuário</option>
-                  <option value="admin">Administrador</option>
+              <div class="ua-field">
+                <label>Perfil de acesso</label>
+                <select id="uRole" class="ua-select-full">
+                  <option value="viewer">👁 Visualizador</option>
+                  <option value="user" selected>👤 Usuário</option>
+                  <option value="admin">🔧 Administrador</option>
                 </select>
               </div>
-              <div class="form-group" style="grid-column:1/-1">
-                <label>Família inicial <span style="font-size:.72rem;color:var(--muted)">(opcional — gerencie vínculos na aba Famílias)</span></label>
-                <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
-                  <select id="uInitFamilyId">
+              <div class="ua-field" style="grid-column:1/-1">
+                <label>Família inicial <span style="font-size:.7rem;color:var(--muted)">(opcional)</span></label>
+                <div style="display:grid;grid-template-columns:1fr 160px;gap:8px">
+                  <select id="uInitFamilyId" class="ua-select-full">
                     <option value="">— Nenhuma (admin global) —</option>
                   </select>
-                  <select id="uInitFamilyRole" style="width:148px">
+                  <select id="uInitFamilyRole" class="ua-select-full">
                     <option value="user">👤 Usuário</option>
                     <option value="admin">🔧 Admin</option>
                     <option value="viewer">👁 Visualizador</option>
                     <option value="owner">👑 Owner</option>
                   </select>
                 </div>
-                <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
-                  Para adicionar o usuário a <strong>múltiplas famílias</strong>, use a aba <strong>Famílias</strong> após criar o usuário.
-                </div>
               </div>
             </div>
-            <div style="font-size:.8rem;font-weight:600;color:var(--text2);margin:10px 0 6px">Permissões</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-              <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pView" checked> Visualizar</label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pCreate" checked> Criar</label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pEdit" checked> Editar</label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pDelete"> Excluir</label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pExport" checked> Exportar</label>
-              <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;cursor:pointer"><input type="checkbox" id="pImport"> Importar</label>
+
+            <div class="ua-perms-title">Permissões</div>
+            <div class="ua-perms-row">
+              <label class="ua-perm-toggle"><input type="checkbox" id="pView" checked><span>Visualizar</span></label>
+              <label class="ua-perm-toggle"><input type="checkbox" id="pCreate" checked><span>Criar</span></label>
+              <label class="ua-perm-toggle"><input type="checkbox" id="pEdit" checked><span>Editar</span></label>
+              <label class="ua-perm-toggle"><input type="checkbox" id="pDelete"><span>Excluir</span></label>
+              <label class="ua-perm-toggle"><input type="checkbox" id="pExport" checked><span>Exportar</span></label>
+              <label class="ua-perm-toggle"><input type="checkbox" id="pImport"><span>Importar</span></label>
             </div>
 
             <!-- Avatar -->
-            <div style="display:flex;align-items:center;gap:12px;margin:10px 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm)">
-              <div id="uAvatarPreview" style="width:52px;height:52px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--border)"></div>
+            <div class="ua-avatar-row">
+              <div id="uAvatarPreview" class="ua-avatar-preview"></div>
               <div style="flex:1;min-width:0">
-                <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin-bottom:5px">Foto de perfil</div>
-                <input type="file" id="uAvatarFile" accept="image/*" style="font-size:.75rem;max-width:200px" onchange="previewUserAvatar(this)">
+                <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px">Foto de perfil</div>
+                <input type="file" id="uAvatarFile" accept="image/*" style="font-size:.74rem;max-width:200px" onchange="previewUserAvatar(this)">
                 <button class="btn btn-ghost btn-sm" id="uAvatarRemoveBtn" onclick="removeUserAvatar()" style="font-size:.72rem;color:var(--muted);margin-top:4px;display:none">✕ Remover</button>
               </div>
             </div>
             <input type="hidden" id="uAvatarRemoveFlag" value="">
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-primary btn-sm" onclick="saveUser()">💾 Salvar</button>
+
+            <div class="ua-form-footer">
               <button class="btn btn-ghost btn-sm" onclick="document.getElementById('userFormArea').style.display='none'">Cancelar</button>
+              <button class="btn btn-primary btn-sm" onclick="saveUser()">💾 Salvar</button>
             </div>
           </div>
+
           <!-- Users list -->
           <div id="usersList"></div>
         </div>
 
-        <!-- Families tab -->
-        <div id="uaFamilies" style="display:none;padding:20px">
-          <!-- Wizard row for owner -->
-          <div id="uaWizardRow" style="display:none;background:var(--accent-lt);border:1px solid var(--accent);border-radius:var(--r-sm);padding:12px 16px;margin-bottom:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:10px">
-                <span style="font-size:1.4rem">🧭</span>
-                <div>
-                  <div style="font-size:.86rem;font-weight:700;color:var(--accent)">Assistente de Configuração</div>
-                  <div style="font-size:.75rem;color:var(--muted)" id="wizardSettingsSub">Configurar nome, membros e categorias da família</div>
-                </div>
+        <!-- ── FAMILIES TAB ── -->
+        <div id="uaFamilies" class="ua-pane" style="display:none">
+          <!-- Wizard row -->
+          <div id="uaWizardRow" style="display:none" class="ua-wizard-banner">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:1.4rem">🧭</span>
+              <div>
+                <div style="font-size:.86rem;font-weight:700;color:var(--accent)">Assistente de Configuração</div>
+                <div style="font-size:.75rem;color:var(--muted)" id="wizardSettingsSub">Configurar nome, membros e categorias da família</div>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openWizardManual()" style="white-space:nowrap;flex-shrink:0">▶ Iniciar</button>
             </div>
+            <button class="btn btn-primary btn-sm" onclick="openWizardManual()" style="flex-shrink:0">▶ Iniciar</button>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <span style="font-size:.82rem;color:var(--muted)">Gerencie as famílias e seus membros</span>
-            <button class="btn btn-primary btn-sm" onclick="showFamilyForm()">+ Nova Família</button>
+
+          <div class="ua-pane-toolbar">
+            <span style="font-size:.8rem;color:var(--muted)">Gerencie as famílias e seus membros</span>
+            <button class="ua-action-btn" onclick="showFamilyForm()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova família
+            </button>
           </div>
+
           <!-- Family form -->
-          <div id="familyFormArea" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px">
-            <div style="font-size:.85rem;font-weight:600;margin-bottom:12px" id="familyFormTitle">Nova Família</div>
+          <div id="familyFormArea" style="display:none" class="ua-form-card">
+            <div class="ua-form-title" id="familyFormTitle">Nova Família</div>
             <input type="hidden" id="editFamilyId">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div class="form-group">
-                <label>Nome da Família *</label>
-                <input type="text" id="fName" placeholder="Ex: Família Silva">
+            <div class="ua-form-grid">
+              <div class="ua-field">
+                <label>Nome da família *</label>
+                <input type="text" id="fName" placeholder="Ex: Família Silva" class="ua-input">
               </div>
-              <div class="form-group">
+              <div class="ua-field">
                 <label>Descrição</label>
-                <input type="text" id="fDesc" placeholder="Opcional">
+                <input type="text" id="fDesc" placeholder="Opcional" class="ua-input">
               </div>
             </div>
-            <div style="display:flex;gap:8px;margin-top:10px">
-              <button class="btn btn-primary btn-sm" onclick="saveFamily()">💾 Salvar</button>
+            <div class="ua-form-footer">
               <button class="btn btn-ghost btn-sm" onclick="document.getElementById('familyFormArea').style.display='none'">Cancelar</button>
+              <button class="btn btn-primary btn-sm" onclick="saveFamily()">💾 Salvar</button>
             </div>
           </div>
-          <!-- Families list -->
+
           <div id="familiesList"></div>
         </div>
-      </div>
+
+      </div><!-- /ua-body -->
+
+      <!-- Scoped styles -->
+      <style>
+        .ua-modal { max-width: 780px; display: flex; flex-direction: column; max-height: 88dvh; padding: 0; overflow: hidden; }
+        .ua-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 22px 14px;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface);
+          flex-shrink: 0;
+        }
+        .ua-header-title {
+          display: flex; align-items: center; gap: 8px;
+          font-size: .95rem; font-weight: 800; color: var(--text); margin-bottom: 2px;
+        }
+        .ua-header-sub { font-size: .75rem; color: var(--muted); }
+        .ua-tab-bar {
+          display: flex;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface2);
+          overflow-x: auto;
+          scrollbar-width: none;
+          flex-shrink: 0;
+        }
+        .ua-tab-bar::-webkit-scrollbar { display: none; }
+        .ua-tab {
+          display: flex; align-items: center; gap: 6px;
+          padding: 12px 16px;
+          font-family: var(--font-sans); font-size: .78rem; font-weight: 600;
+          color: var(--muted);
+          border: none; background: none; cursor: pointer;
+          border-bottom: 2.5px solid transparent;
+          margin-bottom: -1px;
+          white-space: nowrap;
+          transition: color .15s, border-color .15s;
+          flex-shrink: 0;
+        }
+        .ua-tab:hover { color: var(--text); }
+        .ua-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--surface); }
+        .ua-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+        .ua-pane { display: flex; flex-direction: column; gap: 0; height: 100%; overflow: hidden; }
+        .ua-scroll-area { flex: 1; overflow-y: auto; padding: 14px 20px; }
+        .ua-pane-toolbar {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 12px 20px; border-bottom: 1px solid var(--border);
+          background: var(--surface2); flex-shrink: 0;
+        }
+        .ua-pane-title { font-size: .84rem; font-weight: 700; color: var(--text); }
+        .ua-count-badge {
+          display: inline-flex; align-items: center;
+          font-size: .72rem; color: var(--muted);
+        }
+        .ua-action-btn {
+          display: flex; align-items: center; gap: 6px;
+          padding: 7px 13px;
+          font-family: var(--font-sans); font-size: .78rem; font-weight: 700;
+          color: #fff; background: var(--accent);
+          border: none; border-radius: 20px; cursor: pointer;
+          white-space: nowrap; transition: opacity .15s;
+        }
+        .ua-action-btn:hover { opacity: .88; }
+        .ua-icon-btn {
+          display: flex; align-items: center; justify-content: center;
+          width: 30px; height: 30px;
+          border: 1.5px solid var(--border); border-radius: 8px;
+          background: var(--surface); color: var(--muted); cursor: pointer;
+          transition: all .15s;
+        }
+        .ua-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .ua-select {
+          font-family: var(--font-sans); font-size: .78rem; padding: 6px 8px;
+          border: 1px solid var(--border); border-radius: 7px;
+          background: var(--surface); color: var(--text);
+        }
+        .ua-form-card {
+          margin: 14px 20px;
+          background: var(--surface2); border: 1px solid var(--border);
+          border-radius: 12px; padding: 16px 18px;
+        }
+        .ua-form-title { font-size: .88rem; font-weight: 700; color: var(--text); margin-bottom: 14px; }
+        .ua-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        @media (max-width: 560px) { .ua-form-grid { grid-template-columns: 1fr; } }
+        .ua-field label { font-size: .72rem; font-weight: 700; color: var(--text2); display: block; margin-bottom: 5px; }
+        .ua-input, .ua-select-full {
+          width: 100%; padding: 8px 10px;
+          font-family: var(--font-sans); font-size: .82rem;
+          border: 1.5px solid var(--border); border-radius: 8px;
+          background: var(--surface); color: var(--text);
+          outline: none; box-sizing: border-box; transition: border-color .15s;
+        }
+        .ua-input:focus, .ua-select-full:focus { border-color: var(--accent); }
+        .ua-perms-title { font-size: .75rem; font-weight: 700; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+        .ua-perms-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .ua-perm-toggle {
+          display: flex; align-items: center; gap: 5px;
+          padding: 5px 10px;
+          background: var(--surface); border: 1.5px solid var(--border);
+          border-radius: 20px; cursor: pointer; font-size: .75rem; font-weight: 600;
+          color: var(--text2); transition: all .15s; user-select: none;
+        }
+        .ua-perm-toggle:has(input:checked) { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
+        .ua-avatar-row {
+          display: flex; align-items: center; gap: 14px;
+          padding: 10px 12px; background: var(--surface);
+          border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px;
+        }
+        .ua-avatar-preview { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid var(--border); }
+        .ua-form-footer { display: flex; gap: 8px; justify-content: flex-end; }
+        .ua-loading { text-align: center; padding: 32px; color: var(--muted); font-size: .85rem; }
+        .ua-wizard-banner {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          flex-wrap: wrap; margin: 14px 20px 0;
+          background: var(--accent-lt); border: 1px solid var(--accent);
+          border-radius: 10px; padding: 12px 16px;
+        }
+        /* Users list — card rows */
+        #usersList { padding: 10px 20px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+        #familiesList { padding: 10px 20px; overflow-y: auto; flex: 1; }
+        #uaPendingContent { padding: 16px 20px; overflow-y: auto; flex: 1; }
+      </style>
+
     </div>
   </div>
+
 
 <!-- ── Modal: Configurar IA (Google Gemini API Key) ──────────────────────── -->
 <div class="modal-overlay" id="aiConfigModal">
@@ -7766,11 +7918,12 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <!-- ══ Modal: Gerenciar Minha Família (owner) ══════════════════════════════ -->
+  <!-- ══ FAMILY MANAGEMENT MODAL — Redesigned with tabs ══════════════════ -->
   <div class="modal-overlay" id="myFamilyMgmtModal" onclick="if(event.target===this)closeModal('myFamilyMgmtModal')">
     <div class="mfm2-sheet">
       <div class="modal-handle"></div>
 
-      <!-- ── Hero header ── -->
+      <!-- ── Compact header ── -->
       <div class="mfm2-hero">
         <div class="mfm2-hero-glow"></div>
         <div class="mfm2-hero-inner">
@@ -7780,15 +7933,12 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div class="mfm2-hero-sub" id="mfmFamilyDesc"></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <button id="mfmNewFamQuickBtn"
-                    onclick="mfmScrollToNewFamily()"
-                    title="Criar nova família"
-                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;
-                           border-radius:20px;border:1.5px solid rgba(255,255,255,.35);
-                           background:rgba(255,255,255,.15);color:#fff;font-size:.75rem;
-                           font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap"
-                    onmouseover="this.style.background='rgba(255,255,255,.25)'"
-                    onmouseout="this.style.background='rgba(255,255,255,.15)'">
+            <button id="mfmNewFamQuickBtn" onclick="mfmSwitchTab('nova')" title="Criar nova família"
+              style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;
+                     border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.15);
+                     color:#fff;font-size:.75rem;font-weight:600;cursor:pointer;transition:background .15s;white-space:nowrap"
+              onmouseover="this.style.background='rgba(255,255,255,.25)'"
+              onmouseout="this.style.background='rgba(255,255,255,.15)'">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nova família
             </button>
@@ -7797,141 +7947,324 @@ Se você não solicitou isso, ignore este e-mail.`,
             </button>
           </div>
         </div>
-        <!-- Family tabs (multi-family) -->
+        <!-- Family switcher tabs (multi-family) -->
         <div id="mfmFamilyTabs" class="mfm2-family-tabs" style="display:none"></div>
       </div>
 
-      <!-- ── Scrollable body ── -->
-      <div class="mfm2-body">
+      <!-- ── Tab bar ── -->
+      <div class="mfm-tab-bar">
+        <button class="mfm-tab active" id="mfmNavModulos"    onclick="mfmSwitchTab('modulos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Módulos
+        </button>
+        <button class="mfm-tab" id="mfmNavMembros"    onclick="mfmSwitchTab('membros')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Membros
+        </button>
+        <button class="mfm-tab" id="mfmNavIntegrantes" onclick="mfmSwitchTab('integrantes')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Integrantes
+        </button>
+        <button class="mfm-tab" id="mfmNavDados"       onclick="mfmSwitchTab('dados')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Dados
+        </button>
+        <button class="mfm-tab" id="mfmNavNova"        onclick="mfmSwitchTab('nova')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Nova
+        </button>
+      </div>
 
-        <!-- ── Módulos ── -->
-        <div class="mfm2-section">
-          <div class="mfm2-section-hd">
-            <span class="mfm2-section-title">Módulos</span>
-            <span class="mfm2-section-sub">Ative funcionalidades para esta família</span>
+      <!-- ── Tab panes ── -->
+      <div class="mfm2-body" style="overflow-y:auto;flex:1">
+
+        <!-- PANE: Módulos -->
+        <div class="mfm-pane active" id="mfmPaneModulos">
+          <div class="mfm-pane-intro">
+            <div class="mfm-pane-intro-title">Módulos ativos</div>
+            <div class="mfm-pane-intro-sub">Ative ou desative funcionalidades para esta família</div>
           </div>
           <div id="mfmFeatCards" class="mfm2-modules-grid"></div>
         </div>
 
-        <!-- ── Membros ── -->
-        <div class="mfm2-section">
-          <div class="mfm2-section-hd">
-            <span class="mfm2-section-title">Membros</span>
-            <span class="mfm2-section-sub">Gerencie quem tem acesso à família</span>
-          </div>
-          <div id="mfmMembersList" class="mfm2-members-list"></div>
-
-          <!-- Add member accordion -->
-          <div class="mfm2-add-accordion">
-            <button class="mfm2-add-trigger" onclick="mfmToggleAddPanel()" id="mfmAddToggle">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-              Adicionar membro
-            </button>
-            <div id="mfmAddPanel" class="mfm2-add-panel" style="display:none">
-              <div class="mfm2-add-tabs">
-                <button id="mfmTabExist"  class="mfm2-add-tab active" onclick="mfmSwitchAddTab('exist')">Usuário existente</button>
-                <button id="mfmTabInvite" class="mfm2-add-tab"        onclick="mfmSwitchAddTab('invite')">Convidar por e-mail</button>
-              </div>
-              <div id="mfmPaneExist" id="mfmAddExistingRow" class="mfm2-add-pane">
-                <select id="mfmAddUserSel" class="form-select">
-                  <option value="">Selecionar usuário…</option>
-                </select>
-                <div style="display:flex;gap:8px">
-                  <select id="mfmAddUserRole" class="form-select" style="flex:1">
-                    <option value="user">👤 Usuário</option>
-                    <option value="admin">🔧 Admin</option>
-                    <option value="viewer">👁 Visualizador</option>
-                    <option value="owner">👑 Owner</option>
-                  </select>
-                  <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()">Adicionar</button>
-                </div>
-              </div>
-              <div id="mfmPaneInvite" class="mfm2-add-pane" style="display:none">
-                <input type="email" id="mfmInviteEmail" class="form-input"
-                  placeholder="email@exemplo.com" onkeydown="if(event.key==='Enter')mfmInvite()">
-                <div style="display:flex;gap:8px">
-                  <select id="mfmInviteRole" class="form-select" style="flex:1">
-                    <option value="user">👤 Usuário</option>
-                    <option value="admin">🔧 Admin</option>
-                    <option value="viewer">👁 Visualizador</option>
-                    <option value="owner">👑 Owner</option>
-                  </select>
-                  <button class="btn btn-primary btn-sm" id="mfmInviteBtn" onclick="mfmInvite()">📨 Convidar</button>
-                </div>
-              </div>
-              <div id="mfmMsg" class="mfm2-msg" style="display:none"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Integrantes da família (pais, filhos, etc) ── -->
-        <div class="mfm2-section" id="mfmFmcSection">
-          <div class="mfm2-section-hd" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <!-- PANE: Membros -->
+        <div class="mfm-pane" id="mfmPaneMembros">
+          <div class="mfm-pane-intro" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
-              <span class="mfm2-section-title">👨‍👩‍👧 Integrantes</span>
-              <span class="mfm2-section-sub">Pais, filhos e demais membros da família</span>
+              <div class="mfm-pane-intro-title">Acesso à família</div>
+              <div class="mfm-pane-intro-sub">Usuários com acesso e seus papéis</div>
             </div>
-            <button class="btn btn-primary btn-sm" style="flex-shrink:0;white-space:nowrap"
-              onclick="openFamilyMemberFormForFamily(_mfmActiveFamilyId)">+ Adicionar</button>
+            <button class="mfm-add-btn" onclick="mfmToggleAddPanel()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Adicionar
+            </button>
           </div>
-          <!-- Lista renderizada dinamicamente por _loadAndRenderFmcForFamily() -->
-          <div id="mfmFmcList" style="min-height:32px">
-            <div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px 0">
-              Carregando integrantes…
+
+          <!-- Add member panel -->
+          <div id="mfmAddPanel" class="mfm-add-card" style="display:none">
+            <div class="mfm-add-tabs-bar">
+              <button id="mfmTabExist"  class="mfm-add-tab active" onclick="mfmSwitchAddTab('exist')">Usuário existente</button>
+              <button id="mfmTabInvite" class="mfm-add-tab"        onclick="mfmSwitchAddTab('invite')">Convidar por e-mail</button>
             </div>
+            <div id="mfmPaneExist" class="mfm-add-body">
+              <div id="mfmAddExistingRow">
+                <label class="mfm-field-lbl">Selecionar usuário</label>
+                <select id="mfmAddUserSel" class="mfm-select">
+                  <option value="">— Selecionar —</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <select id="mfmAddUserRole" class="mfm-select" style="flex:1">
+                  <option value="user">👤 Usuário</option>
+                  <option value="admin">🔧 Admin</option>
+                  <option value="viewer">👁 Visualizador</option>
+                  <option value="owner">👑 Owner</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="mfmAddExisting()">Adicionar</button>
+              </div>
+            </div>
+            <div id="mfmPaneInvite" class="mfm-add-body" style="display:none">
+              <label class="mfm-field-lbl">E-mail do convidado</label>
+              <input type="email" id="mfmInviteEmail" class="mfm-input"
+                placeholder="email@exemplo.com" onkeydown="if(event.key==='Enter')mfmInvite()">
+              <div style="display:flex;gap:8px;margin-top:10px">
+                <select id="mfmInviteRole" class="mfm-select" style="flex:1">
+                  <option value="user">👤 Usuário</option>
+                  <option value="admin">🔧 Admin</option>
+                  <option value="viewer">👁 Visualizador</option>
+                  <option value="owner">👑 Owner</option>
+                </select>
+                <button class="btn btn-primary btn-sm" id="mfmInviteBtn" onclick="mfmInvite()">📨 Convidar</button>
+              </div>
+            </div>
+            <div id="mfmMsg" class="mfm2-msg" style="display:none"></div>
+          </div>
+
+          <!-- Members list -->
+          <div id="mfmMembersList" class="mfm-members-list"></div>
+        </div>
+
+        <!-- PANE: Integrantes -->
+        <div class="mfm-pane" id="mfmPaneIntegrantes">
+          <div class="mfm-pane-intro" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div>
+              <div class="mfm-pane-intro-title">Composição familiar</div>
+              <div class="mfm-pane-intro-sub">Pais, filhos e demais integrantes</div>
+            </div>
+            <button class="mfm-add-btn" onclick="openFamilyMemberFormForFamily(_mfmActiveFamilyId)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Adicionar
+            </button>
+          </div>
+          <div id="mfmFmcList" class="mfm-fmc-list">
+            <div style="color:var(--muted);font-size:.8rem;text-align:center;padding:24px">Carregando…</div>
           </div>
         </div>
 
-        <!-- ── Gestão de Dados ── -->
-        <div class="mfm2-section" id="mfmDataSection">
-          <div class="mfm2-section-hd">
-            <span class="mfm2-section-title">⚙️ Gestão de Dados</span>
-            <span class="mfm2-section-sub">Backup, snapshots, cópia e exclusão</span>
+        <!-- PANE: Dados -->
+        <div class="mfm-pane" id="mfmPaneDados">
+          <div class="mfm-pane-intro">
+            <div class="mfm-pane-intro-title">Gestão de dados</div>
+            <div class="mfm-pane-intro-sub">Backup, snapshots e operações avançadas</div>
           </div>
           <div id="mfmDataActions" class="mfm2-data-actions"></div>
         </div>
 
-        <!-- ── Nova Família ── -->
-        <div class="mfm2-section" id="mfmNewFamilySection" style="display:none">
-          <div class="mfm2-section-hd">
-            <span class="mfm2-section-title">Nova Família</span>
-            <span class="mfm2-section-sub">Crie outra família e alterne entre elas</span>
+        <!-- PANE: Nova Família -->
+        <div class="mfm-pane" id="mfmPaneNova">
+          <div class="mfm-pane-intro">
+            <div class="mfm-pane-intro-title">Nova família</div>
+            <div class="mfm-pane-intro-sub">Crie outra família e alterne entre elas</div>
           </div>
-
-          <!-- Trigger accordion -->
-          <div class="mfm2-add-accordion" id="mfmNewFamAccordion">
-            <button class="mfm2-add-trigger" onclick="mfmToggleNewFamPanel()" id="mfmNewFamTrigger">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-              Criar nova família
-            </button>
-            <div id="mfmNewFamPanel" class="mfm2-add-panel" style="display:none">
-              <div class="form-group" style="margin-bottom:0">
-                <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Nome da família *</label>
-                <input type="text" id="mfmNewFamName" class="form-input"
-                  placeholder="Ex: Família Silva"
-                  maxlength="80"
-                  onkeydown="if(event.key==='Enter')mfmCreateNewFamily()">
-              </div>
-              <div id="mfmNewFamError" style="display:none;font-size:.76rem;color:var(--red);
-                padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca"></div>
-              <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button class="btn btn-ghost btn-sm" onclick="mfmToggleNewFamPanel()">Cancelar</button>
-                <button class="btn btn-primary btn-sm" id="mfmNewFamBtn" onclick="mfmCreateNewFamily()">
-                  🏠 Criar família
-                </button>
-              </div>
+          <div class="mfm-add-card">
+            <label class="mfm-field-lbl">Nome da família *</label>
+            <input type="text" id="mfmNewFamName" class="mfm-input"
+              placeholder="Ex: Família Silva" maxlength="80"
+              onkeydown="if(event.key==='Enter')mfmCreateNewFamily()">
+            <div id="mfmNewFamError" style="display:none;font-size:.76rem;color:var(--red);
+              padding:6px 10px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;margin-top:8px"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+              <button class="btn btn-ghost btn-sm" onclick="mfmSwitchTab('modulos')">Cancelar</button>
+              <button class="btn btn-primary btn-sm" id="mfmNewFamBtn" onclick="mfmCreateNewFamily()">
+                🏠 Criar família
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- bottom padding -->
-        <div style="height:20px"></div>
-
+        <div style="height:16px"></div>
       </div><!-- /mfm2-body -->
+
+      <!-- Scoped styles -->
+      <style>
+        .mfm-tab-bar {
+          display: flex;
+          gap: 2px;
+          padding: 0 16px;
+          border-bottom: 1px solid var(--border);
+          background: var(--surface);
+          overflow-x: auto;
+          scrollbar-width: none;
+          flex-shrink: 0;
+        }
+        .mfm-tab-bar::-webkit-scrollbar { display: none; }
+        .mfm-tab {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 11px 14px;
+          font-family: var(--font-sans);
+          font-size: .78rem;
+          font-weight: 600;
+          color: var(--muted);
+          border: none;
+          background: none;
+          cursor: pointer;
+          border-bottom: 2.5px solid transparent;
+          margin-bottom: -1px;
+          white-space: nowrap;
+          transition: color .15s, border-color .15s;
+          flex-shrink: 0;
+        }
+        .mfm-tab:hover { color: var(--text); }
+        .mfm-tab.active {
+          color: var(--accent);
+          border-bottom-color: var(--accent);
+        }
+        .mfm-tab svg { opacity: .7; }
+        .mfm-tab.active svg { opacity: 1; }
+        .mfm-pane { display: none; }
+        .mfm-pane.active { display: block; animation: mfmIn .18s ease both; }
+        @keyframes mfmIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        .mfm-pane-intro { margin-bottom: 16px; }
+        .mfm-pane-intro-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+        .mfm-pane-intro-sub { font-size: .75rem; color: var(--muted); }
+        .mfm-add-btn {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 13px;
+          font-family: var(--font-sans);
+          font-size: .78rem;
+          font-weight: 700;
+          color: var(--accent);
+          border: 1.5px solid var(--accent);
+          border-radius: 20px;
+          background: var(--accent-lt);
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all .15s;
+          flex-shrink: 0;
+        }
+        .mfm-add-btn:hover { background: var(--accent); color: #fff; }
+        .mfm-add-card {
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 14px 16px;
+          margin-bottom: 14px;
+        }
+        .mfm-add-tabs-bar {
+          display: flex;
+          gap: 4px;
+          margin-bottom: 12px;
+          padding: 3px;
+          background: var(--bg2);
+          border-radius: 8px;
+        }
+        .mfm-add-tab {
+          flex: 1;
+          padding: 6px;
+          font-family: var(--font-sans);
+          font-size: .75rem;
+          font-weight: 600;
+          border: none;
+          border-radius: 6px;
+          background: none;
+          color: var(--muted);
+          cursor: pointer;
+          transition: all .15s;
+        }
+        .mfm-add-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .mfm-add-body { display: flex; flex-direction: column; gap: 0; }
+        .mfm-field-lbl { font-size: .72rem; font-weight: 700; color: var(--text2); margin-bottom: 5px; display: block; }
+        .mfm-select, .mfm-input {
+          width: 100%;
+          padding: 8px 10px;
+          font-family: var(--font-sans);
+          font-size: .82rem;
+          border: 1.5px solid var(--border);
+          border-radius: 8px;
+          background: var(--surface);
+          color: var(--text);
+          outline: none;
+          transition: border-color .15s;
+          box-sizing: border-box;
+        }
+        .mfm-select:focus, .mfm-input:focus { border-color: var(--accent); }
+        .mfm-members-list { display: flex; flex-direction: column; gap: 6px; }
+        .mfm2-member {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          transition: background .12s;
+        }
+        .mfm2-member:hover { background: var(--bg2); }
+        .mfm2-member-info { flex: 1; min-width: 0; }
+        .mfm2-member-name { font-size: .84rem; font-weight: 700; color: var(--text); }
+        .mfm2-member-email { font-size: .7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mfm2-role-sel {
+          font-family: var(--font-sans);
+          font-size: .75rem;
+          padding: 5px 8px;
+          border: 1.5px solid var(--border);
+          border-radius: 7px;
+          background: var(--surface);
+          color: var(--text);
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .mfm2-remove-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--muted);
+          font-size: .9rem;
+          padding: 4px 6px;
+          border-radius: 6px;
+          transition: all .12s;
+          flex-shrink: 0;
+        }
+        .mfm2-remove-btn:hover { background: rgba(220,38,38,.1); color: #dc2626; }
+        .mfm-fmc-list { display: flex; flex-direction: column; gap: 6px; }
+        /* Keep old mfm2-section styles for data actions */
+        .mfm2-data-actions { display: flex; flex-direction: column; gap: 8px; }
+        .mfm2-data-btn {
+          display: flex; align-items: center; gap: 12px;
+          padding: 12px 14px;
+          background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+          cursor: pointer; width: 100%; text-align: left; transition: all .15s;
+          font-family: var(--font-sans);
+        }
+        .mfm2-data-btn:hover { background: var(--bg2); border-color: var(--accent); }
+        .mfm2-data-btn.warn:hover { border-color: #f59e0b; }
+        .mfm2-data-btn.danger:hover { border-color: #dc2626; background: #fef2f2; }
+        .mfm2-data-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+        .mfm2-data-label { font-size: .84rem; font-weight: 700; color: var(--text); display: block; }
+        .mfm2-data-sub { font-size: .72rem; color: var(--muted); display: block; }
+        /* Modules grid — keep existing */
+        .mfm2-modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+      </style>
+
     </div><!-- /mfm2-sheet -->
   </div>
 
   <!-- Delete Account Modal -->
+
   <div class="modal-overlay" id="deleteAccountModal">
     <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
       <div class="modal-header">
