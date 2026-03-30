@@ -397,56 +397,76 @@ function _amtFieldBlur(fieldId) {
 function _amtFieldFocus(fieldId) {
   const el = document.getElementById(fieldId);
   if (!el) return;
-  const raw = el.value.trim();
-  if (!raw) return;
-  // Remove pontos de milhar mas mantém vírgula decimal
-  el.value = raw.replace(/\./g, '');
-  // Seleciona todo o conteúdo para facilitar substituição
-  setTimeout(() => { try { el.select(); } catch(e) {} }, 0);
+  // Seleciona todo o conteúdo — o usuário pode:
+  // • digitar novo valor do zero (centavos mode toma conta)
+  // • ou começar a editar (vírgula já existe → modo livre)
+  setTimeout(() => { try { el.select(); } catch(e) {} }, 10);
 }
 
 /**
- * oninput: formata em tempo real enquanto o usuário digita.
- * Estratégia: aceita dígitos e vírgula; insere separador de milhar
- * ao sair de cada grupo de 3 dígitos após a última vírgula.
- * Mantém o cursor na posição correta.
+ * oninput: formatação em tempo real com duas estratégias:
+ *
+ * — Modo CENTAVOS (padrão para entrada limpa):
+ *   O campo interno armazena apenas dígitos. Cada dígito digitado é
+ *   inserido à direita das casas decimais. Ex: digitar "1","0","0","5","0"
+ *   exibe "0,10" → "1,00" → "10,05" → "100,50" → visual sempre formatado.
+ *
+ * — Modo VÍRGULA EXPLÍCITA:
+ *   Se o usuário digitar uma vírgula, ativa o modo livre (mantém cursor
+ *   onde está e formata normalmente), permitindo editar centavos livremente.
+ *
+ * Ambos os modos inserem separadores de milhar (ponto) automaticamente.
  */
 function _amtFieldInput(fieldId) {
   const el = document.getElementById(fieldId);
   if (!el) return;
 
-  // Salva posição do cursor antes de reformatar
-  const selStart = el.selectionStart;
-  const prevLen  = el.value.length;
+  const raw = el.value;
 
-  // Remove tudo exceto dígitos e a primeira vírgula
-  let raw = el.value.replace(/[^\d,]/g, '');
+  // Extrai só os dígitos do que foi digitado
+  const digits = raw.replace(/[^\d]/g, '');
 
-  // Garante no máximo uma vírgula
-  const commaIdx = raw.indexOf(',');
-  if (commaIdx !== -1) {
-    // Parte inteira + parte decimal (máx 2 casas)
-    const intPart = raw.slice(0, commaIdx).replace(/\D/g, '');
-    const decPart = raw.slice(commaIdx + 1).replace(/\D/g, '').slice(0, 2);
-    raw = intPart + ',' + decPart;
+  // Se o campo está vazio, limpa
+  if (!digits) { el.value = ''; return; }
+
+  // Verifica se o usuário digitou vírgula explicitamente
+  const hasExplicitComma = raw.includes(',');
+
+  let formatted;
+
+  if (hasExplicitComma) {
+    // Modo livre: respeita a vírgula onde está
+    const commaIdx = raw.indexOf(',');
+    const intDigits = raw.slice(0, commaIdx).replace(/[^\d]/g, '');
+    const decDigits = raw.slice(commaIdx + 1).replace(/[^\d]/g, '').slice(0, 2);
+
+    // Formata parte inteira com separador de milhar
+    const intFormatted = intDigits
+      ? parseInt(intDigits, 10).toLocaleString('pt-BR')
+      : '0';
+
+    formatted = intFormatted + ',' + decDigits;
+
+    el.value = formatted;
+    // Mantém cursor após a vírgula + decimais já digitados
+    const newPos = formatted.length - (2 - decDigits.length);
+    try { el.setSelectionRange(formatted.length, formatted.length); } catch(e) {}
+
+  } else {
+    // Modo centavos: dígitos são centavos (2 casas fixas à direita)
+    // Limita a 13 dígitos para evitar overflow (máx R$ 99.999.999.999,99)
+    const capped = digits.slice(-13);
+    const numCents = parseInt(capped, 10);
+    const reais  = Math.floor(numCents / 100);
+    const cents  = numCents % 100;
+
+    const intFormatted = reais.toLocaleString('pt-BR');
+    formatted = intFormatted + ',' + String(cents).padStart(2, '0');
+
+    el.value = formatted;
+    // Cursor sempre no final
+    try { el.setSelectionRange(formatted.length, formatted.length); } catch(e) {}
   }
-
-  // Separa parte inteira para adicionar pontos de milhar
-  const hasComma = raw.includes(',');
-  const intStr   = hasComma ? raw.split(',')[0] : raw;
-  const decStr   = hasComma ? raw.split(',')[1] : null;
-
-  // Formata parte inteira com pontos de milhar
-  const intFormatted = intStr.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-  const newVal = decStr !== null ? intFormatted + ',' + decStr : intFormatted;
-  el.value = newVal;
-
-  // Reposiciona o cursor compensando os pontos de milhar adicionados/removidos
-  const newLen   = newVal.length;
-  const lenDiff  = newLen - prevLen;
-  const newCaret = Math.max(0, selStart + lenDiff);
-  try { el.setSelectionRange(newCaret, newCaret); } catch(e) {}
 }
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
