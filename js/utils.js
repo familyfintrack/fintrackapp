@@ -355,7 +355,18 @@ function setAmtField(fieldId, value) {
   const isNeg = (value < 0);
   _amtSignState[fieldId] = isNeg;
   const el = document.getElementById(fieldId);
-  if (el) el.value = value !== 0 ? Math.abs(value).toFixed(2).replace('.', ',') : '';
+  if (el) {
+    const abs = Math.abs(value);
+    if (abs === 0) {
+      el.value = '';
+      el.dataset.cents = '0';
+    } else {
+      // Store raw cents so _amtFieldInput centavos-mode works after focus
+      const centsInt = Math.round(abs * 100);
+      el.dataset.cents = String(centsInt);
+      el.value = abs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+  }
   _updateSignBtn(fieldId);
 }
 
@@ -391,82 +402,94 @@ function _amtFieldBlur(fieldId) {
 }
 
 /**
- * onfocus: remove formatação para facilitar edição
- * (ex: 10.500,00 → 10500,00 → mantém vírgula mas sem ponto de milhar)
+ * onfocus: seleciona tudo e limpa os dígitos acumulados do campo
+ * para reiniciar o modo centavos do zero.
  */
 function _amtFieldFocus(fieldId) {
   const el = document.getElementById(fieldId);
   if (!el) return;
-  // Seleciona todo o conteúdo — o usuário pode:
-  // • digitar novo valor do zero (centavos mode toma conta)
-  // • ou começar a editar (vírgula já existe → modo livre)
-  setTimeout(() => { try { el.select(); } catch(e) {} }, 10);
+  // Reseta o acumulador de dígitos para o valor atual (sem formatação)
+  // Ex: "1.500,00" → acumulador = "150000"
+  const raw  = el.value.replace(/\./g, '').replace(',', '');
+  const num  = parseInt(raw.replace(/[^\d]/g, '') || '0', 10);
+  el.dataset.cents = String(num);
+  // Seleciona tudo para que o próximo dígito reinicie do zero via oninput
+  setTimeout(function() { try { el.select(); } catch(e) {} }, 0);
 }
 
 /**
- * oninput: formatação em tempo real com duas estratégias:
+ * oninput: modo centavos puro.
+ * Cada dígito digitado entra pela direita (centavos).
+ * Backspace remove o dígito mais à direita.
+ * Vírgula e ponto são ignorados (não mudam o valor).
  *
- * — Modo CENTAVOS (padrão para entrada limpa):
- *   O campo interno armazena apenas dígitos. Cada dígito digitado é
- *   inserido à direita das casas decimais. Ex: digitar "1","0","0","5","0"
- *   exibe "0,10" → "1,00" → "10,05" → "100,50" → visual sempre formatado.
- *
- * — Modo VÍRGULA EXPLÍCITA:
- *   Se o usuário digitar uma vírgula, ativa o modo livre (mantém cursor
- *   onde está e formata normalmente), permitindo editar centavos livremente.
- *
- * Ambos os modos inserem separadores de milhar (ponto) automaticamente.
+ *   digita 1 → "0,01"
+ *   digita 5 → "0,15"
+ *   digita 0 → "1,50"
+ *   digita 0 → "15,00"
+ *   digita 0 → "150,00"
+ *   digita 0 → "1.500,00"
+ *   digita 5 → "15.000,05"
  */
+// Keydown handler: intercepts Backspace and digit keys BEFORE browser modifies field
+// This is the authoritative path for physical keyboards and desktop browsers.
+function _amtFieldKeydown(fieldId, e) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+
+  // Backspace: drop last digit from accumulator
+  if (e.key === 'Backspace' || e.keyCode === 8) {
+    e.preventDefault();
+    const cents = Math.floor(parseInt(el.dataset.cents || '0', 10) / 10);
+    el.dataset.cents = String(cents);
+    _amtRender(el, cents);
+    return;
+  }
+
+  // Delete: clear field
+  if (e.key === 'Delete' || e.keyCode === 46) {
+    e.preventDefault();
+    el.dataset.cents = '0';
+    el.value = '';
+    return;
+  }
+
+  // Allow: Tab, arrows, Ctrl/Cmd combos
+  if (e.key.length > 1 || e.ctrlKey || e.metaKey) return;
+
+  // Allow only digit characters
+  if (!/[0-9]/.test(e.key)) { e.preventDefault(); return; }
+
+  e.preventDefault();
+  const digit = parseInt(e.key, 10);
+  const prev  = el.dataset.cents || '0';
+  const next  = prev + String(digit);
+  const cents = parseInt(next.slice(-13), 10);
+  el.dataset.cents = String(cents);
+  _amtRender(el, cents);
+}
+
+// Render centavos value into the field
+function _amtRender(el, cents) {
+  if (!cents) { el.value = ''; return; }
+  const reais     = Math.floor(cents / 100);
+  const centsOnly = cents % 100;
+  el.value = reais.toLocaleString('pt-BR') + ',' + String(centsOnly).padStart(2, '0');
+  try { el.setSelectionRange(el.value.length, el.value.length); } catch(_) {}
+}
+
+// oninput: fallback for paste, autofill and mobile virtual keyboards
+// (keydown may not fire reliably on all mobile soft keyboards)
 function _amtFieldInput(fieldId) {
   const el = document.getElementById(fieldId);
   if (!el) return;
 
-  const raw = el.value;
+  const rawDigits = el.value.replace(/[^0-9]/g, '');
+  if (!rawDigits) { el.dataset.cents = '0'; el.value = ''; return; }
 
-  // Extrai só os dígitos do que foi digitado
-  const digits = raw.replace(/[^\d]/g, '');
-
-  // Se o campo está vazio, limpa
-  if (!digits) { el.value = ''; return; }
-
-  // Verifica se o usuário digitou vírgula explicitamente
-  const hasExplicitComma = raw.includes(',');
-
-  let formatted;
-
-  if (hasExplicitComma) {
-    // Modo livre: respeita a vírgula onde está
-    const commaIdx = raw.indexOf(',');
-    const intDigits = raw.slice(0, commaIdx).replace(/[^\d]/g, '');
-    const decDigits = raw.slice(commaIdx + 1).replace(/[^\d]/g, '').slice(0, 2);
-
-    // Formata parte inteira com separador de milhar
-    const intFormatted = intDigits
-      ? parseInt(intDigits, 10).toLocaleString('pt-BR')
-      : '0';
-
-    formatted = intFormatted + ',' + decDigits;
-
-    el.value = formatted;
-    // Mantém cursor após a vírgula + decimais já digitados
-    const newPos = formatted.length - (2 - decDigits.length);
-    try { el.setSelectionRange(formatted.length, formatted.length); } catch(e) {}
-
-  } else {
-    // Modo centavos: dígitos são centavos (2 casas fixas à direita)
-    // Limita a 13 dígitos para evitar overflow (máx R$ 99.999.999.999,99)
-    const capped = digits.slice(-13);
-    const numCents = parseInt(capped, 10);
-    const reais  = Math.floor(numCents / 100);
-    const cents  = numCents % 100;
-
-    const intFormatted = reais.toLocaleString('pt-BR');
-    formatted = intFormatted + ',' + String(cents).padStart(2, '0');
-
-    el.value = formatted;
-    // Cursor sempre no final
-    try { el.setSelectionRange(formatted.length, formatted.length); } catch(e) {}
-  }
+  const cents = parseInt(rawDigits.slice(-13) || '0', 10);
+  el.dataset.cents = String(cents);
+  _amtRender(el, cents);
 }
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
