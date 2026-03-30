@@ -6455,7 +6455,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 ───────────────────────────────────────────────────────────────── */
 .sc-cal-desktop-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) 440px;
   grid-template-rows: auto auto;
   gap: 16px;
   align-items: start;
@@ -6501,9 +6501,10 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 
 /* Upcoming panel scrollable body */
 .sc-cal-upcoming-panel .sc-panel__body {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 160px);
   overflow-y: auto;
   scrollbar-width: thin;
+  scroll-behavior: smooth;
 }
 /* Recurrents panel — no max-height, shows all */
 .sc-cal-recurrents-panel .sc-panel__body { max-height: none; overflow-y: visible; }
@@ -21039,13 +21040,19 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   .sup-day-total { font-size: .78rem !important; }
   .sup-day-count { font-size: .64rem !important; padding: 1px 6px !important; }
 
-  .sup-rows {
+  /* sup-rows: layout when visible — display managed by JS toggleUpcomingGroup */
+  .sup-rows:not([style*="display: none"]):not([style*="display:none"]) {
     border-top: none !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 5px !important;
     padding-bottom: 4px !important;
     padding-left: 0 !important;
+  }
+  /* When JS hides it, honour the none */
+  .sup-rows[style*="display: none"],
+  .sup-rows[style*="display:none"] {
+    display: none !important;
   }
 
   /* ── Item de próximo: card limpo ── */
