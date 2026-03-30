@@ -3041,6 +3041,7 @@
         <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openPricesStoreManager()">🏪 Estabelecimentos</button>
+          <button class="btn btn-ghost btn-sm" onclick="openPxHierManager()" title="Gerenciar subcategorias e tipos">🗂️ Subcategorias</button>
           <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn" onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
           <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()">+ Novo Item</button>
         </div>
@@ -7681,6 +7682,38 @@ Se você não solicitou isso, ignore este e-mail.`,
           <button class="btn btn-ghost" onclick="closeModal('addPriceRecordModal')">Cancelar</button>
           <button class="btn btn-primary" id="aprSaveBtn" onclick="saveAddPriceRecord()">💾 Salvar</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══ Modal: Gerenciador de Subcategorias & Tipos (Preços) ══════════════ -->
+  <div class="modal-overlay" id="pxHierManagerModal">
+    <div class="modal" style="max-width:680px"><div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">🗂️ Subcategorias & Tipos de Preços</span>
+        <button class="modal-close" onclick="closeModal('pxHierManagerModal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:0">
+
+        <!-- Seletor de categoria app -->
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <label style="font-size:.78rem;font-weight:700;color:var(--text2);white-space:nowrap">Categoria app</label>
+          <select id="pxhmCatSel" onchange="pxhmLoadCat()"
+            style="flex:1;min-width:160px;font-family:var(--font-sans);font-size:.82rem;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)">
+            <option value="">— Todas / Sem categoria —</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="pxhmAddSubcat()" style="white-space:nowrap">+ Nova subcategoria</button>
+        </div>
+
+        <!-- Lista de subcategorias -->
+        <div id="pxhmSubcatList" style="padding:14px 20px;min-height:160px;max-height:calc(80dvh - 180px);overflow-y:auto">
+          <div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Selecione uma categoria acima</div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="padding:12px 20px;display:flex;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeModal('pxHierManagerModal')">Fechar</button>
       </div>
     </div>
   </div>
