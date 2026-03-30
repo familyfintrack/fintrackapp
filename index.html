@@ -300,6 +300,265 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
 .fll:hover{background:rgba(125,194,66,.1);box-shadow:0 0 20px rgba(125,194,66,.15)}
 @media(max-width:640px){footer{padding:36px 20px}.fi{flex-direction:column;text-align:center}.fll{justify-content:center}}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════════════════════
+   PRIVACY SECTION
+══════════════════════════════════════════════════ */
+.prv {
+  position: relative;
+  z-index: 1;
+  padding: 100px 24px 110px;
+  background: var(--g900);
+  overflow: hidden;
+}
+.prv::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(45,106,68,.18), transparent 55%),
+    radial-gradient(ellipse 60% 80% at 90% 80%, rgba(125,194,66,.06), transparent 55%);
+  pointer-events: none;
+}
+.prv-inner {
+  position: relative;
+  max-width: 1060px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 64px;
+}
+.prv-hd {
+  text-align: center;
+}
+
+/* ── Trust badge ── */
+.prv-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.prv-badge-ring {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid rgba(125,194,66,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: prvPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(125,194,66,.15), inset 0 0 40px rgba(125,194,66,.05);
+}
+.prv-badge-ring::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 1px solid rgba(125,194,66,.12);
+  animation: prvPulse 3s 1s ease-in-out infinite;
+}
+.prv-badge-ring::after {
+  content: '';
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  border: 1px solid rgba(125,194,66,.06);
+}
+@keyframes prvPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(125,194,66,.15), inset 0 0 40px rgba(125,194,66,.05); }
+  50%       { box-shadow: 0 0 0 18px rgba(125,194,66,.0), inset 0 0 40px rgba(125,194,66,.08); }
+}
+.prv-badge-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.prv-badge-label {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+.prv-badge-sub {
+  font-size: .6rem;
+  color: var(--on-dark2);
+  letter-spacing: .08em;
+}
+
+/* ── Pillars ── */
+.prv-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+.prv-pillar {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(125,194,66,.14);
+  border-radius: 20px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color .25s, background .25s;
+}
+.prv-pillar:hover {
+  border-color: rgba(125,194,66,.35);
+  background: rgba(125,194,66,.05);
+}
+.prv-pillar--center {
+  border-color: rgba(125,194,66,.28);
+  background: rgba(125,194,66,.06);
+  position: relative;
+}
+.prv-pillar--center::before {
+  content: '★ Núcleo de segurança';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--lime);
+  background: var(--g900);
+  padding: 3px 12px;
+  border-radius: 100px;
+  border: 1px solid rgba(125,194,66,.28);
+  white-space: nowrap;
+}
+.prv-pillar-ico {
+  font-size: 2rem;
+  line-height: 1;
+}
+.prv-pillar-t {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.prv-pillar-d {
+  font-size: .85rem;
+  color: var(--on-dark2);
+  line-height: 1.72;
+  flex: 1;
+}
+.prv-pillar-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.prv-proof-item {
+  font-size: .65rem;
+  font-weight: 700;
+  color: var(--lime2);
+  background: rgba(125,194,66,.1);
+  border: 1px solid rgba(125,194,66,.22);
+  border-radius: 100px;
+  padding: 3px 10px;
+  letter-spacing: .04em;
+}
+
+/* ── Tech guarantees ── */
+.prv-tech {
+  width: 100%;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(125,194,66,.12);
+  border-radius: 24px;
+  padding: 36px 32px;
+}
+.prv-tech-title {
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--lime);
+  margin-bottom: 24px;
+  text-align: center;
+}
+.prv-tech-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.prv-tech-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.prv-tech-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.prv-tech-name {
+  font-size: .84rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.prv-tech-desc {
+  font-size: .78rem;
+  color: var(--on-dark2);
+  line-height: 1.65;
+}
+
+/* ── Promise quote ── */
+.prv-promise {
+  width: 100%;
+  max-width: 760px;
+}
+.prv-promise-inner {
+  background: linear-gradient(135deg, rgba(45,106,68,.2), rgba(125,194,66,.08));
+  border: 1px solid rgba(125,194,66,.22);
+  border-radius: 20px;
+  padding: 36px 40px;
+  text-align: center;
+  position: relative;
+}
+.prv-promise-quote {
+  font-family: var(--serif);
+  font-size: 5rem;
+  line-height: .7;
+  color: var(--lime);
+  opacity: .35;
+  margin-bottom: 12px;
+}
+.prv-promise-text {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  color: rgba(255,255,255,.82);
+  line-height: 1.72;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+.prv-promise-sig {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--lime2);
+}
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .prv-pillars { grid-template-columns: 1fr; }
+  .prv-tech-grid { grid-template-columns: 1fr 1fr; }
+  .prv-promise-inner { padding: 28px 20px; }
+}
+@media (max-width: 560px) {
+  .prv { padding: 72px 20px 80px; }
+  .prv-tech-grid { grid-template-columns: 1fr; }
+  .prv-tech { padding: 24px 20px; }
+  .prv-promise-text { font-size: .92rem; }
+}
 </style>
 </head>
 <body>
@@ -314,6 +573,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   <div class="nc">
     <a href="#familia" class="nk">Para sua família</a>
     <a href="#recursos" class="nk">Recursos</a>
+    <a href="#privacidade" class="nk">Privacidade</a>
     <a href="#acesso" class="nk">Acesso</a>
   </div>
   <div class="nr">
@@ -512,6 +772,131 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
       <div class="ht">Transforme sua família</div>
       <div class="hd">Instale como app no iPhone ou Android, convide sua família e comece a prosperar com a IA ao seu lado.</div>
     </div>
+  </div>
+</section>
+
+
+<!-- ══ PRIVACY ════════════════════════════════════ -->
+<section class="prv" id="privacidade">
+  <div class="prv-inner">
+
+    <!-- Badge + heading -->
+    <div class="prv-hd rv">
+      <div class="stag g rv"><div class="stag-l"></div>Privacidade absoluta<div class="stag-l"></div></div>
+      <h2 class="sec-t rv d1" style="color:#fff">Seus dados são seus.<br><em>Somente seus.</em></h2>
+      <p class="sec-s rv d2" style="color:var(--on-dark2);max-width:580px;margin:0 auto">
+        Construímos o Family FinTrack com uma premissa inegociável: nenhum dado financeiro da sua família pode ser acessado, vendido ou visualizado por ninguém — nem mesmo por nós.
+      </p>
+    </div>
+
+    <!-- Central trust badge -->
+    <div class="prv-badge rv d1">
+      <div class="prv-badge-ring">
+        <div class="prv-badge-inner">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <div class="prv-badge-label">Zero Access</div>
+          <div class="prv-badge-sub">Nem nós vemos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 main pillars -->
+    <div class="prv-pillars rv d2">
+
+      <div class="prv-pillar">
+        <div class="prv-pillar-ico">🔐</div>
+        <div class="prv-pillar-t">Criptografia de ponta</div>
+        <div class="prv-pillar-d">Senhas protegidas com PBKDF2 + salt único por usuário. Dados em trânsito via TLS 1.3. Dados em repouso com AES-256. Nenhuma senha é armazenada — apenas seu hash irreversível.</div>
+        <div class="prv-pillar-proof">
+          <span class="prv-proof-item">✓ PBKDF2 + Salt</span>
+          <span class="prv-proof-item">✓ TLS 1.3</span>
+          <span class="prv-proof-item">✓ AES-256</span>
+        </div>
+      </div>
+
+      <div class="prv-pillar prv-pillar--center">
+        <div class="prv-pillar-ico">🏰</div>
+        <div class="prv-pillar-t">Isolamento total por família</div>
+        <div class="prv-pillar-d">Row-Level Security no banco de dados garante — ao nível do servidor de banco — que a família A nunca acessa dados da família B. Isso não é regra de negócio: é uma trava no banco de dados que não pode ser contornada.</div>
+        <div class="prv-pillar-proof">
+          <span class="prv-proof-item">✓ RLS PostgreSQL</span>
+          <span class="prv-proof-item">✓ JWT isolado</span>
+          <span class="prv-proof-item">✓ Multi-tenant</span>
+        </div>
+      </div>
+
+      <div class="prv-pillar">
+        <div class="prv-pillar-ico">👁️‍🗨️</div>
+        <div class="prv-pillar-t">Zero acesso nosso</div>
+        <div class="prv-pillar-d">Não temos acesso ao conteúdo das suas transações, valores ou categorias. Dados de telemetria coletam apenas navegação anônima (páginas visitadas, erros técnicos) — sem nenhuma informação financeira.</div>
+        <div class="prv-pillar-proof">
+          <span class="prv-proof-item">✓ Sem acesso financeiro</span>
+          <span class="prv-proof-item">✓ Telemetria anônima</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Technical guarantees row -->
+    <div class="prv-tech rv d3">
+      <div class="prv-tech-title">Garantias técnicas, não promessas de marketing</div>
+      <div class="prv-tech-grid">
+        <div class="prv-tech-item">
+          <div class="prv-tech-icon">🗄️</div>
+          <div class="prv-tech-body">
+            <div class="prv-tech-name">Banco de dados isolado</div>
+            <div class="prv-tech-desc">PostgreSQL com RLS ativo em cada tabela. Uma família = um escopo. Verificável e auditável.</div>
+          </div>
+        </div>
+        <div class="prv-tech-item">
+          <div class="prv-tech-icon">🔑</div>
+          <div class="prv-tech-body">
+            <div class="prv-tech-name">Chaves que não viajam</div>
+            <div class="prv-tech-desc">Credenciais de API e chaves sensíveis armazenadas em vault criptografado separado do banco principal.</div>
+          </div>
+        </div>
+        <div class="prv-tech-item">
+          <div class="prv-tech-icon">📵</div>
+          <div class="prv-tech-body">
+            <div class="prv-tech-name">Sem anúncios. Jamais.</div>
+            <div class="prv-tech-desc">Seus dados financeiros nunca são vendidos, compartilhados ou usados para segmentação publicitária. Nunca.</div>
+          </div>
+        </div>
+        <div class="prv-tech-item">
+          <div class="prv-tech-icon">🇧🇷</div>
+          <div class="prv-tech-body">
+            <div class="prv-tech-name">LGPD compliant</div>
+            <div class="prv-tech-desc">Direito de acesso, portabilidade e exclusão total dos seus dados a qualquer momento, conforme a Lei Geral de Proteção de Dados.</div>
+          </div>
+        </div>
+        <div class="prv-tech-item">
+          <div class="prv-tech-icon">🧹</div>
+          <div class="prv-tech-body">
+            <div class="prv-tech-name">Exclusão permanente</div>
+            <div class="prv-tech-desc">Ao solicitar exclusão, seus dados são removidos em cascata de todas as tabelas em até 30 dias. Sem rastros.</div>
+          </div>
+        </div>
+        <div class="prv-tech-item">
+          <div class="prv-tech-icon">🔒</div>
+          <div class="prv-tech-body">
+            <div class="prv-tech-name">Modo privacidade no app</div>
+            <div class="prv-tech-desc">Oculte todos os valores com um clique. Ideal para usar o app em locais públicos sem expor sua situação financeira.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Promise statement -->
+    <div class="prv-promise rv d3">
+      <div class="prv-promise-inner">
+        <div class="prv-promise-quote">"</div>
+        <p class="prv-promise-text">
+          Quando você registra uma transação de R$&nbsp;5.000 no Family FinTrack, esse dado pertence à sua família — e somente a ela. Não existe nenhum caminho técnico que permita a nós, à Supabase ou a qualquer terceiro ler esse valor. Isso não é uma política: é arquitetura.
+        </p>
+        <div class="prv-promise-sig">Décio Franchini · Arquiteto do FinTrack</div>
+      </div>
+    </div>
+
   </div>
 </section>
 
