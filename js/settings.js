@@ -11,6 +11,9 @@ function cfgShowPane(paneId) {
   if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
     initTranslationsAdmin();
   }
+  if (paneId === 'pane-feedbacks' && typeof loadFeedbackReports === 'function') {
+    loadFeedbackReports();
+  }
   // Scroll active tab into view on mobile
   if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
@@ -18,12 +21,30 @@ window.cfgShowPane = cfgShowPane;
 
 function _cfgApplyAdminNav() {
   const isAdmin = (typeof currentUser !== 'undefined') && currentUser?.role === 'admin';
-  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado'].forEach(id => {
+  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
 }
 window._cfgApplyAdminNav = _cfgApplyAdminNav;
+
+async function _cfgUpdateFeedbackBadge() {
+  try {
+    const badge = document.getElementById('cfgFeedbackBadge');
+    if (!badge || !window.sb) return;
+    const { count } = await sb.from('feedback_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'new');
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(_) {}
+}
+window._cfgUpdateFeedbackBadge = _cfgUpdateFeedbackBadge;
+
 
 let _appSettingsCache = null; // in-memory cache after first load
 
@@ -56,8 +77,6 @@ async function loadAppSettings() {
     }
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
-    // Persist show_access_request to localStorage so mobile users get it on next load
-    if (typeof _persistAccessRequestSetting === 'function') _persistAccessRequestSetting();
     if (typeof setAppLogo === 'function') setAppLogo(logo);
 
     // Apply menu visibility (if configured)
