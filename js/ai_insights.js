@@ -112,6 +112,43 @@ async function initAiInsightsPage() {
   _aiRefreshSnapshotButton();
 }
 
+// ── AI Insights: toggle collapsible block ────────────────────────────────
+function _airToggleBlock(hdr) {
+  const body   = hdr.nextElementSibling;
+  const chev   = hdr.querySelector('.air-block-chev');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display    = isOpen ? 'none' : '';
+  hdr.classList.toggle('air-block-hdr--collapsed', isOpen);
+  if (chev) chev.classList.toggle('air-block-chev--collapsed', isOpen);
+}
+window._airToggleBlock = _airToggleBlock;
+
+// ── AI Insights: toggle params panel ─────────────────────────────────────
+function _aiToggleParams() {
+  const body    = document.getElementById('aiParamsBody');
+  const chevron = document.getElementById('aiParamsChevron');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(-90deg)' : '';
+  try { localStorage.setItem('ai_params_open', isOpen ? '0' : '1'); } catch(_) {}
+}
+window._aiToggleParams = _aiToggleParams;
+
+// Auto-collapse params on mobile on load
+(function() {
+  try {
+    const pref = localStorage.getItem('ai_params_open');
+    if (pref === '0' || (pref === null && window.innerWidth < 768)) {
+      const body = document.getElementById('aiParamsBody');
+      const chev = document.getElementById('aiParamsChevron');
+      if (body) { body.style.display = 'none'; }
+      if (chev) chev.style.transform = 'rotate(-90deg)';
+    }
+  } catch(_) {}
+})();
+
 function _aiShowTab(tab) {
   ['analysis','snapshots','chat'].forEach(t => {
     const btn   = document.getElementById('aiTab-' + t);
@@ -2072,24 +2109,77 @@ function _aiRenderAnalysis(r) {
 </div>`;
   }
 
-  // ── Final assembly ────────────────────────────────────────────────────
+  // ── Final assembly — structured blocks ──────────────────────────────
   container.innerHTML = `
 <div class="air-root">
+
+  <!-- Block 1: Score + KPIs hero -->
   ${heroHtml}
-  ${aiVoiceHtml}
-  ${alertsHtml}
-  ${forecastBannerHtml}
-  ${ccProjHtml}
-  ${actionsHtml}
-  ${catHtml}
-  ${budgetHtml}
-  ${investHtml}
-  ${debtsHtml}
-  ${priceHtml}
-  ${memberHtml}
-  ${trendHtml}
-  ${payeeHtml}
-  ${classSugHtml}
+
+  <!-- Block 2: Visão Geral — summary + alerts strip -->
+  <div class="air-block">
+    <div class="air-block-hdr" onclick="_airToggleBlock(this)">
+      <span class="air-block-icon">🔍</span>
+      <span class="air-block-title">Visão Geral</span>
+      <svg class="air-block-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="air-block-body">
+      ${aiVoiceHtml}
+      ${alertsHtml}
+      ${forecastBannerHtml}
+    </div>
+  </div>
+
+  <!-- Block 3: Principais Despesas -->
+  ${catHtml ? `<div class="air-block">
+    <div class="air-block-hdr" onclick="_airToggleBlock(this)">
+      <span class="air-block-icon">💸</span>
+      <span class="air-block-title">Principais Despesas</span>
+      <svg class="air-block-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="air-block-body">${catHtml}${payeeHtml}</div>
+  </div>` : ''}
+
+  <!-- Block 4: Alertas & Recomendações -->
+  ${actionsHtml ? `<div class="air-block air-block--warn">
+    <div class="air-block-hdr" onclick="_airToggleBlock(this)">
+      <span class="air-block-icon">⚡</span>
+      <span class="air-block-title">Alertas & Recomendações</span>
+      <svg class="air-block-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="air-block-body">${actionsHtml}</div>
+  </div>` : ''}
+
+  <!-- Block 5: Planejamento & Orçamentos -->
+  ${(budgetHtml || ccProjHtml) ? `<div class="air-block">
+    <div class="air-block-hdr" onclick="_airToggleBlock(this)">
+      <span class="air-block-icon">🎯</span>
+      <span class="air-block-title">Planejamento & Orçamentos</span>
+      <svg class="air-block-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="air-block-body">${budgetHtml}${ccProjHtml}</div>
+  </div>` : ''}
+
+  <!-- Block 6: Patrimônio (investimentos + dívidas) -->
+  ${(investHtml || debtsHtml) ? `<div class="air-block">
+    <div class="air-block-hdr" onclick="_airToggleBlock(this)">
+      <span class="air-block-icon">📈</span>
+      <span class="air-block-title">Patrimônio</span>
+      <svg class="air-block-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="air-block-body">${investHtml}${debtsHtml}${priceHtml}</div>
+  </div>` : ''}
+
+  <!-- Block 7: Por Membro & Histórico -->
+  ${(memberHtml || trendHtml) ? `<div class="air-block">
+    <div class="air-block-hdr air-block-hdr--collapsed" onclick="_airToggleBlock(this)">
+      <span class="air-block-icon">👥</span>
+      <span class="air-block-title">Detalhamento</span>
+      <svg class="air-block-chev air-block-chev--collapsed" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="air-block-body" style="display:none">${memberHtml}${trendHtml}${classSugHtml}</div>
+  </div>` : ''}
+
   <div class="air-footer">
     <span>Análise gerada por Google Gemini · Family FinTrack</span>
   </div>

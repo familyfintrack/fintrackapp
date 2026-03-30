@@ -272,12 +272,7 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
   });
 }
 
-function renderForecastTables(allItems, accounts) {
-  const container = document.getElementById('forecastAccountsContainer');
-  if (!container) return;
-  const today = _forecastDateUtils.getTodayLocalISO();
-
-function _forecastDateParts(iso){
+function _forecastDateParts(iso) {
   try {
     const dt = new Date(`${String(iso || '').slice(0,10)}T12:00:00`);
     if (Number.isNaN(dt.getTime())) return { weekday:'', day:'--', monthYear:'', short:'—' };
@@ -292,10 +287,15 @@ function _forecastDateParts(iso){
       monthYear: `${month} · ${year}`,
       short: `${day}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
     };
-  } catch(_e){
+  } catch(_e) {
     return { weekday:'', day:'--', monthYear:'', short:'—' };
   }
 }
+
+function renderForecastTables(allItems, accounts) {
+  const container = document.getElementById('forecastAccountsContainer');
+  if (!container) return;
+  const today = _forecastDateUtils.getTodayLocalISO();
 
   if (!accounts.length) {
     container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:12px">📅</div><p>Nenhuma transação no período selecionado.</p></div>';
