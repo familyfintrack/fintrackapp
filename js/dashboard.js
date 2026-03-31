@@ -1375,7 +1375,7 @@ async function _renderDashForecast() {
 
   // Fetch real transactions in period
   let q = famQ(sb.from('transactions')
-    .select('id,date,amount,currency,brl_amount,account_id,is_transfer')
+    .select('id,date,description,amount,currency,brl_amount,account_id,is_transfer,categories(name,color,icon),payees(name),accounts!transactions_account_id_fkey(id,name,color,currency,icon,type,balance)')
     .gte('date', fromStr).lte('date', toStr).order('date'));
   if (accIds.length === 1) q = q.eq('account_id', accIds[0]);
   else if (accIds.length > 1) q = q.in('account_id', accIds);
@@ -1397,10 +1397,34 @@ async function _renderDashForecast() {
         const baseAmt = Math.abs(parseFloat(sc.amount) || 0);
         if (!accIds.length || accIds.includes(sc.account_id)) {
           const originAmount = sc.type === 'income' ? baseAmt : -baseAmt;
-          if (originAmount !== 0) scheduledItems.push({ date, amount: originAmount, account_id: sc.account_id, isScheduled: true });
+          if (originAmount !== 0) {
+            const accMeta = (state.accounts || []).find(a => a.id === sc.account_id);
+            scheduledItems.push({
+              date,
+              description: sc.description || '',
+              amount: originAmount,
+              account_id: sc.account_id,
+              currency: sc.currency || accMeta?.currency || 'BRL',
+              categories: sc.categories || null,
+              payees: sc.payees || null,
+              accounts: accMeta || null,
+              isScheduled: true
+            });
+          }
         }
         if (isTransfer && sc.transfer_to_account_id && (!accIds.length || accIds.includes(sc.transfer_to_account_id))) {
-          scheduledItems.push({ date, amount: Math.abs(parseFloat(sc.amount)||0), account_id: sc.transfer_to_account_id, isScheduled: true });
+          const accMeta = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
+          scheduledItems.push({
+            date,
+            description: sc.description || '',
+            amount: Math.abs(parseFloat(sc.amount)||0),
+            account_id: sc.transfer_to_account_id,
+            currency: accMeta?.currency || 'BRL',
+            categories: sc.categories || null,
+            payees: null,
+            accounts: accMeta || null,
+            isScheduled: true
+          });
         }
       });
     });
@@ -1466,16 +1490,17 @@ async function _renderDashForecast() {
   if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minVal, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
   if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxVal, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
 
-  // Build tx-by-label map for drill-down
-  const _fcTxByLabel = {};
-  if (typeof _forecastTxAll !== 'undefined') {
-    Object.entries(_forecastTxAll||{}).forEach(([date,txArr]) => {
-      const label = _fcDateToLabel?.(date) || date;
-      if (!_fcTxByLabel[label]) _fcTxByLabel[label] = [];
-      _fcTxByLabel[label].push(...txArr);
-    });
-  }
+  // Build tx-by-label map for drill-down using the actual dashboard dataset
   const _fcLabels = datasets[0]?.data?.map(d => d.x) || [];
+  const _fcTxByLabel = _fcLabels.reduce((acc, label) => {
+    acc[label] = allItems
+      .filter(item => item.date === label)
+      .map(item => ({
+        ...item,
+        accounts: item.accounts || (state.accounts || []).find(a => a.id === item.account_id) || null,
+      }));
+    return acc;
+  }, {});
 
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
@@ -1727,20 +1752,21 @@ function _showForecastDrillModal(label, txs) {
       </button>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
-      ${txs.map(t => {
-        const isNeg = t.amount < 0;
+      ${txs.length ? txs.map(t => {
+        const isNeg = Number(t.amount) < 0;
+        const meta = [t.date || '', t.accounts?.name ? esc(t.accounts.name) : '', t.isScheduled ? 'Programado' : 'Lançado'].filter(Boolean).join(' · ');
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${t.date||''}${t.accounts?.name?' · '+esc(t.accounts.name):''}</div>
+            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${t.isScheduled ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>' : ''}</div>
+            <div style="font-size:.68rem;color:var(--muted)">${meta}</div>
           </div>
           <span style="font-size:.82rem;font-weight:700;color:${isNeg?'var(--red,#c0392b)':'var(--green,#2a7a4a)'}">
-            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0))}
+            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0), t.currency || t.accounts?.currency || 'BRL')}
           </span>
         </div>`;
-      }).join('')}
+      }).join('') : `<div style="padding:18px 10px;text-align:center;color:var(--muted)">Nenhuma transação ou programado encontrado para este dia.</div>`}
     </div>`;
-  
+  // Inject into modal
   let modal = document.getElementById('forecastDrillModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -1750,7 +1776,6 @@ function _showForecastDrillModal(label, txs) {
     modal.innerHTML = '<div class="modal" style="max-width:520px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:16px 18px"></div></div>';
     document.body.appendChild(modal);
   }
-
   document.getElementById('forecastDrillModalBody').innerHTML = content;
   openModal('forecastDrillModal');
 }

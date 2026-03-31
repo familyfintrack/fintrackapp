@@ -79,10 +79,18 @@ async function _fcEnsureState() {
 
 // ── loadForecast — função principal ──────────────────────────────────────────
 async function loadForecast() {
-  const hasSb = !!window.sb;
-  const hasUser = !!(window.currentUser || (typeof currentUser !== 'undefined' && currentUser));
-  if (!hasSb || !hasUser) {
-    console.warn('[forecast] skipped load: missing supabase or current user context');
+  const authUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null) || null;
+  if (!window.sb || !authUser) {
+    console.warn('[forecast] aborted: missing Supabase client or authenticated user context');
+    const container = document.getElementById('forecastAccountsContainer');
+    if (container) {
+      container.innerHTML = `
+        <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+          <div style="font-size:2rem;margin-bottom:12px">🔒</div>
+          <p>Não foi possível identificar a sessão do usuário para carregar a previsão.</p>
+        </div>`;
+    }
+    _destroyForecastChart();
     return;
   }
 
@@ -204,6 +212,18 @@ async function loadForecast() {
   // ── 3. Merge ─────────────────────────────────────────────────────────────
   const allItems = [...txData, ...scheduledItems]
     .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  try {
+    window._forecastTxCache = allItems.slice();
+    window._forecastTxAll = allItems.reduce((acc, item) => {
+      const key = item?.date || '';
+      if (!key) return acc;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+    window._fcDateToLabel = function(dateStr) { return dateStr || ''; };
+  } catch(_) {}
 
   if (!allItems.length) {
     if (container) container.innerHTML = `
@@ -331,6 +351,12 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
       },
     },
   });
+  try {
+    if (typeof state !== 'undefined') {
+      state.chartInstances = state.chartInstances || {};
+      state.chartInstances['forecastChart'] = forecastChartInstance;
+    }
+  } catch(_) {}
 }
 
 // ── Tabelas por conta ─────────────────────────────────────────────────────────
