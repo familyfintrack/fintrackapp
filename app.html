@@ -587,12 +587,16 @@
           onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,.35)'">
           🤖
         </button>
-        <button id="feedbackTopbarBtn" class="topbar-feedback-btn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar erro, bug ou melhoria">
-          <span class="topbar-feedback-btn__icon" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
-          </span>
-          <span class="topbar-feedback-btn__label">Feedback</span>
-          <span id="feedbackBadge" class="topbar-feedback-btn__badge" style="display:none"></span>
+        <button id="feedbackTopbarBtn" type="button" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar feedback"
+          style="display:none;position:relative;align-items:center;justify-content:center;gap:0;
+                 width:34px;height:34px;min-width:34px;padding:0;flex-shrink:0;
+                 border:none;border-radius:50%;cursor:pointer;
+                 background:linear-gradient(135deg,#ea580c,#fb923c);color:#fff;
+                 box-shadow:0 2px 8px rgba(249,115,22,.35), 0 0 0 1px rgba(255,255,255,.14) inset;
+                 animation:fbPulse 2.5s ease-in-out infinite;
+                 transition:transform .15s ease, box-shadow .15s ease, filter .15s ease">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+          <span id="feedbackBadge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;background:#dc2626;border:2px solid #fff;border-radius:999px;font-size:.58rem;font-weight:700;color:#fff;padding:0 4px;line-height:12px;text-align:center"></span>
         </button>
         <!-- Sair -->
         <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
