@@ -577,15 +577,8 @@
         </button>
         <!-- Reportar Feedback — oculto para admin/owner, visível para usuários -->
         <!-- Agent toggle button -->
-        <button id="agentTopbarBtn" onclick="toggleAgent()" title="FinTrack Agent — Assistente IA"
-          style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border:none;
-                 border-radius:50%;width:34px;height:34px;cursor:pointer;flex-shrink:0;
-                 display:flex;align-items:center;justify-content:center;font-size:.95rem;
-                 box-shadow:0 2px 8px rgba(124,58,237,.35);
-                 transition:transform .15s,box-shadow .15s"
-          onmouseover="this.style.transform='scale(1.12)';this.style.boxShadow='0 4px 16px rgba(124,58,237,.5)'"
-          onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,.35)'">
-          🤖
+        <button id="agentTopbarBtn" class="agent-topbar-btn-premium" onclick="toggleAgent()" title="FinTrack Agent — Assistente IA">
+          <span class="agent-topbar-btn-icon">🤖</span>
         </button>
         <button id="feedbackTopbarBtn" class="feedback-topbar-bubble" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar feedback">
           <svg class="feedback-topbar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -9382,124 +9375,200 @@ window.openMyProfile = function(...args) {
   </script>
 
 <!-- ══ AGENT PANEL ══════════════════════════════════════════════════════════ -->
-<div id="agentPanel" style="display:none;position:fixed;bottom:0;right:0;z-index:99990;
-  flex-direction:column;width:min(420px,100vw);height:min(600px,90dvh);
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:16px 16px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.18);
-  font-family:var(--font-sans);overflow:hidden">
-
-  <!-- Header -->
-  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;
-    background:linear-gradient(135deg,#1d4ed8,#7c3aed);flex-shrink:0">
-    <span style="font-size:1.2rem">🤖</span>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:.88rem;font-weight:800;color:#fff">FinTrack Agent</div>
-      <div style="font-size:.68rem;color:rgba(255,255,255,.7)">Finanças · Ajuda · Ações — pergunte qualquer coisa</div>
+<div id="agentPanel" class="agent-panel-premium" style="display:none">
+  <div class="agent-panel-premium__header">
+    <div class="agent-panel-premium__brand">
+      <div class="agent-panel-premium__logo">🤖</div>
+      <div class="agent-panel-premium__titles">
+        <div class="agent-panel-premium__title">FinTrack Agent</div>
+        <div class="agent-panel-premium__subtitle">Finanças · Ajuda · Ações com um toque de copiloto</div>
+      </div>
     </div>
-    <button onclick="toggleAgent()"
-      style="background:rgba(255,255,255,.18);border:none;color:#fff;width:26px;height:26px;
-             border-radius:50%;cursor:pointer;font-size:.8rem;display:flex;align-items:center;
-             justify-content:center;flex-shrink:0">✕</button>
+    <div class="agent-panel-premium__header-actions">
+      <span class="agent-panel-premium__status"><span class="agent-panel-premium__status-dot"></span>Online</span>
+      <button onclick="toggleAgent()" class="agent-panel-premium__close" aria-label="Fechar agente">✕</button>
+    </div>
   </div>
 
-  <!-- Quick suggestions -->
-  <div style="padding:8px 12px;border-bottom:1px solid var(--border);
-    display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
-    <button onclick="agentSuggest('Quanto gastei este mês?')"
-      class="agent-chip">📊 Gastos do mês</button>
-    <button onclick="agentSuggest('Quais contas estão no vermelho?')"
-      class="agent-chip">💰 Saldo contas</button>
-    <button onclick="agentSuggest('Como adicionar uma conta?')"
-      class="agent-chip">❓ Como usar</button>
-    <button onclick="agentSuggest('Crie uma despesa de R$')"
-      class="agent-chip">➕ Nova despesa</button>
-    <button onclick="agentSuggest('Crie transação programada mensal de R$')"
-      class="agent-chip">📅 Programada</button>
-    <button onclick="agentSuggest('Resumo financeiro do mês')"
-      class="agent-chip">📈 Resumo</button>
+  <div class="agent-panel-premium__suggestions">
+    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip agent-chip--premium">📊 Gastos do mês</button>
+    <button onclick="agentSuggest('Quais contas estão no vermelho?')" class="agent-chip agent-chip--premium">💰 Saldo contas</button>
+    <button onclick="agentSuggest('Como adicionar uma conta?')" class="agent-chip agent-chip--premium">❓ Como usar</button>
+    <button onclick="agentSuggest('Crie uma despesa de R$')" class="agent-chip agent-chip--premium">➕ Nova despesa</button>
+    <button onclick="agentSuggest('Crie transação programada mensal de R$')" class="agent-chip agent-chip--premium">📅 Programada</button>
+    <button onclick="agentSuggest('Resumo financeiro do mês')" class="agent-chip agent-chip--premium">📈 Resumo</button>
   </div>
 
-  <!-- Feed -->
-  <div id="agentFeed" style="flex:1;overflow-y:auto;padding:12px 14px;
-    display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth"></div>
-
-  <!-- Loading indicator (hidden) -->
+  <div id="agentFeed" class="agent-panel-premium__feed"></div>
   <div id="agentLoading" style="display:none"></div>
 
-  <!-- Input bar -->
-  <div style="padding:10px 12px;border-top:1px solid var(--border);
-    display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:var(--surface)">
-    <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
-      <textarea id="agentInput" rows="1" onkeydown="agentKeydown(event)"
+  <div class="agent-panel-premium__composer">
+    <div class="agent-panel-premium__input-wrap">
+      <textarea id="agentInput" class="agent-panel-premium__input" rows="1" onkeydown="agentKeydown(event)"
         placeholder="Ex: Crie uma despesa de R$50 na Padaria…"
-        style="flex:1;padding:9px 12px;font-family:var(--font-sans);font-size:.84rem;
-               border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);
-               color:var(--text);resize:none;outline:none;line-height:1.4;
-               max-height:100px;overflow-y:auto;transition:border-color .15s"
-        oninput="agentInputChanged()"
-        onfocus="this.style.borderColor='var(--accent)';agentInputChanged()"
-        onblur="this.style.borderColor='var(--border)'"></textarea>
-      <div id="agentComposerSuggestions" style="display:none;flex-wrap:wrap;gap:6px"></div>
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      <button id="agentSendBtn" class="agent-panel-premium__send" onclick="agentSend()" aria-label="Enviar mensagem ao agente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
     </div>
-    <button id="agentSendBtn" onclick="agentSend()"
-      style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border:none;color:#fff;
-             width:38px;height:38px;border-radius:10px;cursor:pointer;flex-shrink:0;
-             display:flex;align-items:center;justify-content:center;font-size:.9rem;
-             transition:opacity .15s"
-      onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="22" y1="2" x2="11" y2="13"/>
-        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-      </svg>
-    </button>
+    <div class="agent-panel-premium__hint">Enter envia · Shift+Enter quebra linha</div>
   </div>
 </div>
 
 <style>
-/* Agent panel CSS */
+/* Agent premium UI */
+.agent-topbar-btn-premium {
+  background:linear-gradient(135deg,#183828 0%,#1f6f4a 52%,#22c55e 100%); border:none;
+  border-radius:50%; width:36px; height:36px; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; color:#fff;
+  box-shadow:0 6px 18px rgba(24,56,40,.28), inset 0 1px 0 rgba(255,255,255,.15);
+  transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.agent-topbar-btn-premium:hover {
+  transform:translateY(-1px) scale(1.08);
+  box-shadow:0 10px 22px rgba(24,56,40,.34), 0 0 0 4px rgba(34,197,94,.14);
+  filter:saturate(1.05);
+}
+.agent-topbar-btn-icon { font-size:1rem; line-height:1; }
+
+.agent-panel-premium {
+  position:fixed; bottom:14px; right:14px; z-index:99990; flex-direction:column;
+  width:min(430px, calc(100vw - 18px)); height:min(680px, calc(100dvh - 28px));
+  background:linear-gradient(180deg, rgba(250,255,252,.96) 0%, rgba(241,248,244,.96) 100%);
+  border:1px solid rgba(31,111,74,.16); border-radius:24px; overflow:hidden;
+  box-shadow:0 20px 60px rgba(15,23,42,.20), 0 8px 22px rgba(24,56,40,.14), inset 0 1px 0 rgba(255,255,255,.65);
+  font-family:var(--font-sans); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+}
+.agent-panel-premium::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at top right, rgba(34,197,94,.12), transparent 34%),
+             radial-gradient(circle at top left, rgba(16,185,129,.10), transparent 26%);
+}
+.agent-panel-premium__header {
+  position:relative; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:16px 16px 14px; flex-shrink:0;
+  background:linear-gradient(135deg,#183828 0%,#1f6f4a 58%,#22c55e 120%);
+  color:#fff; border-bottom:1px solid rgba(255,255,255,.12);
+}
+.agent-panel-premium__brand { display:flex; align-items:center; gap:12px; min-width:0; }
+.agent-panel-premium__logo {
+  width:40px; height:40px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.14); box-shadow:inset 0 1px 0 rgba(255,255,255,.20), 0 8px 18px rgba(0,0,0,.12);
+  font-size:1.15rem; flex-shrink:0;
+}
+.agent-panel-premium__titles { min-width:0; }
+.agent-panel-premium__title { font-size:.96rem; font-weight:800; letter-spacing:.01em; }
+.agent-panel-premium__subtitle { font-size:.72rem; color:rgba(255,255,255,.82); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.agent-panel-premium__header-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.agent-panel-premium__status {
+  display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:999px;
+  background:rgba(255,255,255,.14); color:#f7fff9; font-size:.68rem; font-weight:700;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14);
+}
+.agent-panel-premium__status-dot {
+  width:8px; height:8px; border-radius:50%; background:#9effc4; box-shadow:0 0 0 4px rgba(158,255,196,.18);
+}
+.agent-panel-premium__close {
+  width:30px; height:30px; border-radius:50%; border:none; cursor:pointer; color:#fff;
+  background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center;
+  transition:background .16s ease, transform .16s ease;
+}
+.agent-panel-premium__close:hover { background:rgba(255,255,255,.24); transform:scale(1.04); }
+
+.agent-panel-premium__suggestions {
+  position:relative; padding:10px 12px 8px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;
+  border-bottom:1px solid rgba(31,111,74,.08); background:rgba(255,255,255,.52); flex-shrink:0;
+}
+.agent-panel-premium__suggestions::-webkit-scrollbar { display:none; }
+
+.agent-panel-premium__feed {
+  position:relative; flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px;
+  scroll-behavior:smooth; background:linear-gradient(180deg, rgba(249,253,250,.96), rgba(238,246,241,.94));
+}
+.agent-panel-premium__feed::-webkit-scrollbar { width:10px; }
+.agent-panel-premium__feed::-webkit-scrollbar-thumb { background:rgba(31,111,74,.18); border-radius:999px; border:2px solid transparent; background-clip:padding-box; }
+
+.agent-panel-premium__composer {
+  position:relative; padding:12px; border-top:1px solid rgba(31,111,74,.10); background:rgba(255,255,255,.76); flex-shrink:0;
+}
+.agent-panel-premium__input-wrap {
+  display:flex; gap:10px; align-items:flex-end; padding:8px; border-radius:18px;
+  background:rgba(255,255,255,.92); border:1px solid rgba(31,111,74,.12);
+  box-shadow:0 10px 22px rgba(24,56,40,.08), inset 0 1px 0 rgba(255,255,255,.72);
+}
+.agent-panel-premium__input {
+  flex:1; padding:10px 12px; font-family:var(--font-sans); font-size:.86rem; line-height:1.45;
+  border:none; border-radius:14px; background:transparent; color:var(--text); resize:none; outline:none;
+  max-height:100px; overflow-y:auto;
+}
+.agent-panel-premium__input::placeholder { color:rgba(63,86,72,.62); }
+.agent-panel-premium__input-wrap:focus-within {
+  border-color:rgba(34,197,94,.42); box-shadow:0 0 0 4px rgba(34,197,94,.12), 0 12px 24px rgba(24,56,40,.10);
+}
+.agent-panel-premium__send {
+  background:linear-gradient(135deg,#183828 0%,#1f6f4a 62%,#22c55e 115%); border:none; color:#fff;
+  width:42px; height:42px; border-radius:14px; cursor:pointer; flex-shrink:0; display:flex;
+  align-items:center; justify-content:center; box-shadow:0 10px 18px rgba(24,56,40,.18);
+  transition:transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.agent-panel-premium__send:hover { transform:translateY(-1px); box-shadow:0 14px 24px rgba(24,56,40,.22); filter:saturate(1.06); }
+.agent-panel-premium__hint { margin-top:8px; padding-left:6px; font-size:.68rem; color:rgba(52,73,61,.68); }
+
 .agent-msg { display:flex; flex-direction:column; max-width:92%; }
 .agent-msg--user { align-self:flex-end; }
 .agent-msg--assistant { align-self:flex-start; }
-.agent-bubble {
-  display:flex; align-items:flex-start; gap:8px;
-}
+.agent-bubble { display:flex; align-items:flex-start; gap:10px; }
 .agent-avatar {
-  font-size:1.1rem; flex-shrink:0; margin-top:2px;
+  width:32px; height:32px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:1rem; flex-shrink:0; margin-top:2px; color:#fff;
+  background:linear-gradient(135deg,#183828 0%,#1f6f4a 58%,#22c55e 120%);
+  box-shadow:0 10px 18px rgba(24,56,40,.16);
 }
 .agent-text {
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:12px 12px 12px 2px;
-  padding:9px 12px; font-size:.82rem; color:var(--text); line-height:1.6;
+  background:rgba(255,255,255,.92); border:1px solid rgba(31,111,74,.10); border-radius:18px 18px 18px 6px;
+  padding:11px 13px; font-size:.83rem; color:var(--text); line-height:1.62;
+  box-shadow:0 10px 24px rgba(24,56,40,.06), inset 0 1px 0 rgba(255,255,255,.70);
 }
 .agent-text code {
-  background:var(--bg2); border-radius:4px; padding:1px 5px;
-  font-family:monospace; font-size:.78rem;
+  background:rgba(24,56,40,.08); border-radius:6px; padding:2px 6px; font-family:monospace; font-size:.78rem; color:#183828;
 }
 .agent-msg--user .agent-text {
-  background:linear-gradient(135deg,#1d4ed8,#7c3aed);
-  color:#fff; border:none; border-radius:12px 12px 2px 12px;
+  background:linear-gradient(135deg,#183828 0%,#1f6f4a 55%,#22c55e 125%);
+  color:#fff; border:none; border-radius:18px 18px 6px 18px; box-shadow:0 12px 24px rgba(24,56,40,.16);
 }
+.agent-msg--user .agent-text code { background:rgba(255,255,255,.16); color:#fff; }
 .agent-typing {
-  display:flex; gap:4px; align-items:center; padding:10px 14px;
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:12px 12px 12px 2px;
+  display:flex; gap:5px; align-items:center; padding:12px 15px; background:rgba(255,255,255,.92);
+  border:1px solid rgba(31,111,74,.10); border-radius:18px 18px 18px 6px; box-shadow:0 10px 24px rgba(24,56,40,.06);
 }
 .agent-typing span {
-  width:6px; height:6px; border-radius:50%;
-  background:var(--muted); display:inline-block;
-  animation:agentDot .9s ease-in-out infinite;
+  width:7px; height:7px; border-radius:50%; background:#2f855a; display:inline-block; animation:agentDot .9s ease-in-out infinite;
 }
 .agent-typing span:nth-child(2) { animation-delay:.2s; }
 .agent-typing span:nth-child(3) { animation-delay:.4s; }
 @keyframes agentDot { 0%,60%,100%{opacity:.2;transform:scale(.8)} 30%{opacity:1;transform:scale(1)} }
 .agent-chip {
-  white-space:nowrap; padding:4px 10px; font-size:.72rem; font-weight:600;
-  border:1px solid var(--border); border-radius:20px; background:var(--surface2);
-  color:var(--text2); cursor:pointer; font-family:var(--font-sans);
-  transition:all .15s; flex-shrink:0;
+  white-space:nowrap; padding:6px 11px; font-size:.72rem; font-weight:700; border-radius:999px; cursor:pointer;
+  font-family:var(--font-sans); transition:all .16s ease; flex-shrink:0;
 }
-.agent-chip:hover { border-color:var(--accent); background:var(--accent-lt); color:var(--accent); }
+.agent-chip--premium {
+  border:1px solid rgba(31,111,74,.11); background:rgba(255,255,255,.9); color:#28563f;
+  box-shadow:0 5px 12px rgba(24,56,40,.05), inset 0 1px 0 rgba(255,255,255,.72);
+}
+.agent-chip--premium:hover {
+  border-color:rgba(34,197,94,.36); background:rgba(226,246,233,.98); color:#183828; transform:translateY(-1px);
+  box-shadow:0 10px 20px rgba(24,56,40,.08), 0 0 0 4px rgba(34,197,94,.10);
+}
+@media (max-width: 640px) {
+  .agent-panel-premium {
+    right:8px; bottom:8px; width:calc(100vw - 16px); height:min(85dvh, 720px); border-radius:22px;
+  }
+  .agent-panel-premium__subtitle, .agent-panel-premium__hint { display:none; }
+  .agent-panel-premium__header { padding:14px; }
+}
 </style>
 
 </body>
