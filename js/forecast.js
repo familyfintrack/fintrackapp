@@ -79,7 +79,8 @@ async function _fcEnsureState() {
 
 // ── loadForecast — função principal ──────────────────────────────────────────
 async function loadForecast() {
-  if (!window.sb || !window.currentUser) return;
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+  if (!window.sb || !activeUser) return;
 
   const fromStr = document.getElementById('forecastFrom')?.value || '';
   const toStr   = document.getElementById('forecastTo')?.value   || '';

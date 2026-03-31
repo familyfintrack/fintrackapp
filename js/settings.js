@@ -2595,17 +2595,18 @@ async function loadShowAccessRequestSetting() {
   const toggle = document.getElementById('cfgShowAccessRequest');
   if (!toggle) return;
   try {
-    const raw = await getAppSetting('show_access_request', 'true');
-    const enabled = raw === true || raw === 'true' || raw === 1;
+    const raw = await getAppSetting('show_access_request', 'false');
+    const enabled = raw === true || raw === 'true' || raw === 1 || raw === '1';
     toggle.checked = enabled;
   } catch(e) {
-    toggle.checked = true; // default: mostrar
+    toggle.checked = false; // default seguro: ocultar até estar explicitamente ativado
   }
 }
 
 // Salva e aplica imediatamente
 window.saveShowAccessRequest = async function(enabled) {
   await saveAppSetting('show_access_request', enabled ? 'true' : 'false');
+  try { localStorage.setItem('ft_show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
   _applyAccessRequestVisibility(enabled);
   toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
 };
@@ -2627,12 +2628,12 @@ function _applyAccessRequestVisibility(enabled) {
 // Apply on page load (called by auth.js after settings load)
 async function initAccessRequestVisibility() {
   try {
-    const raw     = await getAppSetting('show_access_request', 'true');
-    const enabled = raw === true || raw === 'true' || raw === 1 || raw === null;
+    const raw     = await getAppSetting('show_access_request', 'false');
+    const enabled = raw === true || raw === 'true' || raw === 1 || raw === '1';
     _applyAccessRequestVisibility(enabled);
   } catch(e) {
-    // Default: show
-    _applyAccessRequestVisibility(true);
+    // Default seguro: ocultar
+    _applyAccessRequestVisibility(false);
   }
 }
 window.initAccessRequestVisibility = initAccessRequestVisibility;
