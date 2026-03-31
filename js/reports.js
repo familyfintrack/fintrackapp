@@ -363,6 +363,7 @@ async function loadCurrentReport(resetPage = false) {
   if (_rptLoading) return;                   // prevent concurrent fetches
   _rptLoading = true;
   try {
+    // For forecast view, _fcEnsureState() inside loadForecast handles dependencies
     if (rptState.view === 'regular')           await loadReports();
     else if (rptState.view === 'transactions') await loadReportTx();
     else if (rptState.view === 'forecast')     await loadForecast();
@@ -758,7 +759,7 @@ function setReportView(view) {
       document.getElementById('forecastFrom').value=today;
       document.getElementById('forecastTo').value=in3.toISOString().slice(0,10);
     }
-    // Init multi-account picker (restore saved preference)
+    // Init picker then load (dependencies handled inside loadForecast)
     if (typeof _initForecastPicker === 'function') {
       const savedIds = (() => {
         try {
