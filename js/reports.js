@@ -358,6 +358,21 @@ function _refreshRptTagFilter() {
 }
 
 let _rptLoading = false;
+async function _safeLoadForecast() {
+  const forecastLoader = window.loadForecast;
+  if (typeof forecastLoader === 'function') return forecastLoader();
+  console.warn('[reports] forecast loader not ready yet');
+  setTimeout(() => {
+    try {
+      if (typeof window.loadForecast === 'function' && rptState.view === 'forecast') {
+        window.loadForecast();
+      }
+    } catch (e) {
+      console.warn('[reports] deferred forecast load error:', e?.message);
+    }
+  }, 0);
+}
+
 async function loadCurrentReport(resetPage = false) {
   if (!sb || !currentUser) return;           // Supabase not ready yet
   if (_rptLoading) return;                   // prevent concurrent fetches
@@ -366,7 +381,7 @@ async function loadCurrentReport(resetPage = false) {
     // For forecast view, _fcEnsureState() inside loadForecast handles dependencies
     if (rptState.view === 'regular')           await loadReports();
     else if (rptState.view === 'transactions') await loadReportTx();
-    else if (rptState.view === 'forecast')     await loadForecast();
+    else if (rptState.view === 'forecast')     await _safeLoadForecast();
   } catch(e) {
     console.warn('[reports] loadCurrentReport error:', e?.message);
   } finally {
@@ -769,7 +784,7 @@ function setReportView(view) {
       })();
       _initForecastPicker(savedIds);
     }
-    loadForecast();
+    _safeLoadForecast();
   } else {
     loadCurrentReport();
   }
@@ -866,7 +881,7 @@ async function _ensureChartsRendered() {
     return;
   }
   if (rptState.view === 'forecast') {
-    if (!state.chartInstances?.['forecastChart']) await loadForecast();
+    if (!state.chartInstances?.['forecastChart']) await _safeLoadForecast();
     return;
   }
 }

@@ -305,6 +305,10 @@ async function loadDashboard(){
         // Fintech-style card for favorites
         const _cardColor  = a.color || '#2a6049';
         const _typeLabel  = accountTypeLabel(a.type) || a.type || '';
+        const _currencyLabel = (a.currency || 'BRL').toUpperCase();
+        const _metaParts  = [_typeLabel, _currencyLabel].filter(Boolean);
+        const _metaHtml   = _metaParts.map((part, idx) => `
+              <span class="dash-fav-card__meta-part${idx < (_metaParts.length - 1) ? ' has-sep' : ''}">${esc(part)}</span>`).join('');
         const _isNeg      = a.balance < 0;
         const _brlLine    = (a.currency !== 'BRL')
           ? `<div class="dash-fav-brl">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>`
@@ -323,7 +327,7 @@ async function loadDashboard(){
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
             <div class="dash-fav-card__icon">${_dashRenderIcon(a.icon,a.color,20)}</div>
-            <span class="dash-fav-card__type">${esc(_typeLabel)}</span>
+            <div class="dash-fav-card__meta">${_metaHtml}</div>
           </div>
           <div class="dash-fav-card__name">${esc(a.name)}</div>
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>

@@ -594,11 +594,9 @@ window._fbShowUserTelemetryModal = async function(userId, userName) {
 window._checkNewFeedbackOnLogin = _checkNewFeedbackOnLogin;
 window._updateFeedbackBadge     = _updateFeedbackBadge;
 
-// ── Visibilidade do botão Feedback: oculto para admin/owner ──────────────────
+// ── Visibilidade do botão Feedback: visível para qualquer usuário autenticado ──
 window._updateFeedbackBtnVisibility = function() {
   const btn = document.getElementById('feedbackTopbarBtn');
   if (!btn) return;
-  const role = window.currentUser?.role;
-  const isAdmin = role === 'admin' || role === 'owner';
-  btn.style.display = isAdmin ? 'none' : '';
+  btn.style.display = window.currentUser ? 'inline-flex' : 'none';
 };
