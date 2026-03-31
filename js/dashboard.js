@@ -1768,19 +1768,40 @@ function toggleSupGroup(date) {
 window.toggleSupGroup = toggleSupGroup;
 
 // ── Modal: Composição do Patrimônio Total ─────────────────────────────────
-function _openPatrimonioModal() {
+async function _openPatrimonioModal() {
   const accs = Array.isArray(state.accounts) ? state.accounts : [];
   if (!accs.length) return;
 
-  // Group by currency
+  // ── Match KPI calculation exactly ────────────────────────────────────────
+  // Account total: investment accounts use _totalPortfolioBalance if available
+  const accountTotal = accs.reduce((s, a) => {
+    const bal = (a.type === 'investimento' && a._totalPortfolioBalance != null)
+      ? a._totalPortfolioBalance
+      : (parseFloat(a.balance) || 0);
+    return s + toBRL(bal, a.currency || 'BRL');
+  }, 0);
+
+  // Debts: same query as KPI
+  let debtTotal = 0;
+  let debts = [];
+  try {
+    const { data: debtsData } = await famQ(
+      sb.from('debts').select('id,description,current_balance,original_amount,currency,status').eq('status', 'active')
+    );
+    debts = debtsData || [];
+    debtTotal = debts.reduce((s,d) =>
+      s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
+  } catch(_) {}
+
+  const totalBRL = accountTotal - debtTotal;
+
+  // Group accounts by currency
   const byCurrency = {};
   accs.forEach(a => {
     const cur = a.currency || 'BRL';
     if (!byCurrency[cur]) byCurrency[cur] = [];
     byCurrency[cur].push(a);
   });
-
-  const totalBRL = accs.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
   let content = `
     <div style="padding:20px 22px 24px">
@@ -1830,6 +1851,45 @@ function _openPatrimonioModal() {
         </div>
       </div>`;
   });
+
+  // ── Debts section ──────────────────────────────────────────────────────
+  if (debts.length) {
+    content += `
+      <div style="margin-bottom:16px">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">Dívidas Ativas (deduzidas)</div>
+        <div style="display:flex;flex-direction:column;gap:4px">`;
+    debts.forEach(d => {
+      const bal = parseFloat(d.current_balance ?? d.original_amount) || 0;
+      const balBRL = toBRL(bal, d.currency || 'BRL');
+      content += `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
+          <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💳</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
+            <div style="font-size:.68rem;color:var(--muted)">Dívida ativa</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
+            ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
+          </div>
+        </div>`;
+    });
+    content += `
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding:6px 10px 0;font-size:.75rem">
+          <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(debtTotal,'BRL')}</span>
+        </div>
+      </div>`;
+  }
+
+  // ── Net total line ──────────────────────────────────────────────────────
+  if (debts.length) {
+    content += `
+      <div style="border-top:2px solid var(--border);margin-top:8px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:.8rem;font-weight:700;color:var(--text)">Patrimônio Líquido</div>
+        <div style="font-size:1.1rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
+      </div>`;
+  }
 
   content += '</div>';
 

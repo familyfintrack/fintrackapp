@@ -548,13 +548,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function _fetchAccessRequestSettingAnon() {
-  // Always reads from Supabase DB — NEVER from localStorage or device storage
   try {
+    // ── Step 1: Read localStorage immediately (set by admin, no network) ──
+    // This is the primary mechanism — no flicker, no race condition.
+    const lsVal = localStorage.getItem('ft_show_access_request');
+    if (lsVal !== null) {
+      _applyAccessRequestVisibility(lsVal !== 'false');
+      return; // localStorage is authoritative — skip DB fetch
+    }
+
+    // ── Step 2: No localStorage → fetch from DB (first-ever load or cleared) ──
     let attempts = 0;
     while (!window.sb && attempts++ < 30) {
       await new Promise(r => setTimeout(r, 100));
     }
-    if (!window.sb) { _applyAccessRequestVisibility(true); return; }
+    if (!window.sb) {
+      // No Supabase and no localStorage → show by default
+      _applyAccessRequestVisibility(true);
+      return;
+    }
 
     let raw = null;
     let found = false;
@@ -586,10 +598,13 @@ async function _fetchAccessRequestSettingAnon() {
       let val = raw;
       if (typeof val === 'string') { try { val = JSON.parse(val); } catch(_) {} }
       const enabled = val === null || val === true || val === 'true' || val === 1 || val === '1';
+      // Cache in localStorage for next visit
+      try { localStorage.setItem('ft_show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
       _applyAccessRequestVisibility(enabled);
     } else {
-      // Not in DB → default visible
+      // Not in DB and no localStorage → default: show (backwards compatible)
       _applyAccessRequestVisibility(true);
+      try { localStorage.setItem('ft_show_access_request', 'true'); } catch(_) {}
     }
   } catch(_) {
     _applyAccessRequestVisibility(true);
@@ -606,6 +621,15 @@ function _applyAccessRequestVisibility(enabled) {
 }
 // Alias kept for legacy callers — delegates to DB fetch
 function _applyAccessRequestVisibilityFromLocalStorage() {
+  // Instant: read from localStorage first (no async needed)
+  try {
+    const lsVal = localStorage.getItem('ft_show_access_request');
+    if (lsVal !== null) {
+      _applyAccessRequestVisibility(lsVal !== 'false');
+      return; // Done — no async needed
+    }
+  } catch(_) {}
+  // No localStorage entry → fall back to async DB fetch
   _fetchAccessRequestSettingAnon();
 }
 

@@ -2606,6 +2606,8 @@ async function loadShowAccessRequestSetting() {
 // Salva e aplica imediatamente
 window.saveShowAccessRequest = async function(enabled) {
   await saveAppSetting('show_access_request', enabled ? 'true' : 'false');
+  // Persist to localStorage so anon users see the correct state before login
+  try { localStorage.setItem('ft_show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
   _applyAccessRequestVisibility(enabled);
   toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
 };
