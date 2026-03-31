@@ -207,6 +207,41 @@
   border-color: #dc2626 !important;
   box-shadow: 0 0 0 3px rgba(220,38,38,0.12) !important;
 }
+/* Botão do Agente — verde premium */
+.topbar-agent-btn {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  border-color: rgba(134,239,172,0.30) !important;
+  box-shadow: 0 2px 8px rgba(22,163,74,.35), inset 0 1px 0 rgba(255,255,255,.10) !important;
+}
+.topbar-agent-btn:hover {
+  background: linear-gradient(135deg, #15803d, #166534) !important;
+  border-color: rgba(134,239,172,.50) !important;
+  box-shadow: 0 4px 16px rgba(22,163,74,.45), inset 0 1px 0 rgba(255,255,255,.12) !important;
+  transform: translateY(-1px) !important;
+}
+/* Botão de Feedback — gradiente âmbar/laranja */
+.topbar-feedback-btn {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  border-color: rgba(251,191,36,.30) !important;
+  box-shadow: 0 2px 8px rgba(180,83,9,.35), inset 0 1px 0 rgba(255,255,255,.10) !important;
+  position: relative !important;
+}
+.topbar-feedback-btn:hover {
+  background: linear-gradient(135deg, #b45309, #92400e) !important;
+  border-color: rgba(251,191,36,.50) !important;
+  box-shadow: 0 4px 16px rgba(180,83,9,.45), inset 0 1px 0 rgba(255,255,255,.12) !important;
+  transform: translateY(-1px) !important;
+}
+.feedback-topbar-badge {
+  position: absolute !important;
+  top: -3px !important;
+  right: -3px !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #ef4444 !important;
+  border: 1.5px solid #fff !important;
+}
 /* Botões admin-only: ocultos por padrão via !important de ID.
    O JS (updateUserUI / applyPermissions) aplica display:'' ou display:'none' —
    mas a regra .topbar-icon-btn { display:flex !important } sobrescrevia o inline style.
@@ -582,18 +617,13 @@
         </button>
         <!-- Reportar Feedback — oculto para admin/owner, visível para usuários -->
         <!-- Agent toggle button -->
-        <button id="agentTopbarBtn" onclick="toggleAgent()" title="FinTrack Agent — Assistente IA"
-          style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border:none;
-                 border-radius:50%;width:34px;height:34px;cursor:pointer;flex-shrink:0;
-                 display:flex;align-items:center;justify-content:center;font-size:.95rem;
-                 box-shadow:0 2px 8px rgba(124,58,237,.35);
-                 transition:transform .15s,box-shadow .15s"
-          onmouseover="this.style.transform='scale(1.12)';this.style.boxShadow='0 4px 16px rgba(124,58,237,.5)'"
-          onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,.35)'">
-          🤖
+        <!-- Agent toggle button -->
+        <button class="topbar-icon-btn topbar-agent-btn" id="agentTopbarBtn" onclick="toggleAgent()" title="FinTrack Agent — Assistente IA" aria-label="Abrir agente IA">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/></svg>
         </button>
-        <button id="feedbackTopbarBtn" class="feedback-topbar-bubble" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar feedback">
-          <svg class="feedback-topbar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <!-- Feedback -->
+        <button class="topbar-icon-btn topbar-feedback-btn" id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar feedback">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span id="feedbackBadge" class="feedback-topbar-badge" style="display:none"></span>
         </button>
         <!-- Sair -->
@@ -1091,14 +1121,14 @@
     </div>
 
     <!-- REPORTS -->
-    <div class="page" id="page-reports" style="position:relative;overflow:hidden">
+    <div class="page" id="page-reports" style="position:relative">
 
 
       <!-- ══ Drill-down slide panel ═══════════════════════════════════════ -->
       <style>
         #rptDrillPanel {
-          position: absolute;
-          top: 0; right: 0; bottom: 0;
+          position: fixed;
+          top: var(--topbar-h, 58px); right: 0; bottom: 0;
           width: min(440px, 100%);
           background: var(--surface);
           border-left: 1px solid var(--border);
@@ -1129,7 +1159,7 @@
         }
         /* Backdrop dimmer for the content behind the panel */
         #rptDrillBackdrop {
-          position: absolute;
+          position: fixed;
           inset: 0;
           background: rgba(0,0,0,.25);
           z-index: 119;
@@ -5586,7 +5616,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <input type="hidden" id="scTypeField" value="expense">
 
       <!-- Context tabs: Abas mode -->
-      <div id="scContextTabBar" style="display:flex;border-bottom:1px solid var(--border);margin-top:14px;padding:0 16px;gap:0">
+      <div id="scContextTabBar" style="display:flex;margin-top:12px;padding:0 16px;gap:0">
         <button class="tx-ctx-tab active" data-tab="scCtxPrincipal" onclick="switchScTab('scCtxPrincipal',this)">Principal</button>
         <button class="tx-ctx-tab" data-tab="scCtxDetalhes" onclick="switchScTab('scCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="scCtxRecorrencia" onclick="switchScTab('scCtxRecorrencia',this)">Recorrência</button>
@@ -5637,6 +5667,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
           <div class="form-group"><label>Conta Origem <span class="req-star">*</span></label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
           <div class="form-group" id="scTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select></div>
+          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input type="date" id="scStartDatePrincipal" oninput="document.getElementById('scStartDate').value=this.value" onchange="document.getElementById('scStartDate').value=this.value"></div>
           <div class="form-group"><label>Status</label><select id="scStatus"><option value="active">Ativo</option><option value="paused">Pausado</option></select></div>
           <div class="form-group" id="scPayeeGroup" style="position:relative">
             <label>Beneficiário / Fonte <span class="req-star">*</span></label>
@@ -5734,7 +5765,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <!-- ── TAB/STEP 2: Recorrência ────────────────────────────── -->
       <div class="tx-ctx-pane" id="scCtxRecorrencia" style="display:none;padding:16px">
         <div class="form-grid">
-          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input type="date" id="scStartDate"></div>
+          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input type="date" id="scStartDate" oninput="var p=document.getElementById('scStartDatePrincipal');if(p)p.value=this.value" onchange="var p=document.getElementById('scStartDatePrincipal');if(p)p.value=this.value"></div>
           <div class="form-group"></div>
 
           <div class="form-group full">
@@ -6108,7 +6139,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       </div>
 
       <!-- Context tabs: Abas mode -->
-      <div id="txContextTabBar" style="display:flex;border-bottom:1px solid var(--border);margin-top:14px;padding:0 16px;gap:0">
+      <div id="txContextTabBar" style="display:flex;padding:0 16px;gap:0;margin-top:10px">
         <button class="tx-ctx-tab active" data-tab="txCtxPrincipal" onclick="switchTxTab('txCtxPrincipal',this)">Principal</button>
         <button class="tx-ctx-tab" data-tab="txCtxDetalhes" onclick="switchTxTab('txCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="txCtxAnexo" onclick="switchTxTab('txCtxAnexo',this)">Anexo / IA</button>
@@ -9409,40 +9440,48 @@ window.openMyProfile = function(...args) {
 
 <!-- ══ AGENT PANEL ══════════════════════════════════════════════════════════ -->
 <div id="agentPanel" style="display:none;position:fixed;bottom:0;right:0;z-index:99990;
-  flex-direction:column;width:min(420px,100vw);height:min(600px,90dvh);
+  flex-direction:column;width:min(420px,100vw);height:min(620px,90dvh);
   background:var(--surface);border:1px solid var(--border);
-  border-radius:16px 16px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.18);
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -12px 48px rgba(5,34,20,.22),0 -4px 16px rgba(22,163,74,.12);
   font-family:var(--font-sans);overflow:hidden">
 
   <!-- Header -->
-  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;
-    background:linear-gradient(135deg,#1d4ed8,#7c3aed);flex-shrink:0">
-    <span style="font-size:1.2rem">🤖</span>
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;flex-shrink:0;
+    background:linear-gradient(135deg,#0f5132 0%,#166534 45%,#16a34a 100%);
+    border-bottom:1px solid rgba(134,239,172,.20);position:relative;overflow:hidden">
+    <!-- Decorative shine -->
+    <div style="position:absolute;top:-20px;right:30px;width:80px;height:80px;
+      border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none"></div>
+    <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.15);
+      border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;backdrop-filter:blur(8px)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#86efac" stroke="none"/></svg>
+    </div>
     <div style="flex:1;min-width:0">
-      <div style="font-size:.88rem;font-weight:800;color:#fff">FinTrack Agent</div>
-      <div style="font-size:.68rem;color:rgba(255,255,255,.7)">Finanças · Ajuda · Ações — pergunte qualquer coisa</div>
+      <div style="font-size:.9rem;font-weight:800;color:#f0fdf4;letter-spacing:-.01em">FinTrack Agent</div>
+      <div style="display:flex;align-items:center;gap:5px;margin-top:1px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#4ade80;
+          box-shadow:0 0 6px #4ade80;flex-shrink:0;animation:agentPulse 2s ease-in-out infinite"></span>
+        <span style="font-size:.65rem;color:rgba(240,253,244,.75)">Online · Finanças · Ajuda · Ações</span>
+      </div>
     </div>
     <button onclick="toggleAgent()"
-      style="background:rgba(255,255,255,.18);border:none;color:#fff;width:26px;height:26px;
-             border-radius:50%;cursor:pointer;font-size:.8rem;display:flex;align-items:center;
-             justify-content:center;flex-shrink:0">✕</button>
+      style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);color:#f0fdf4;
+             width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:.75rem;
+             display:flex;align-items:center;justify-content:center;flex-shrink:0;
+             transition:background .15s">✕</button>
   </div>
 
   <!-- Quick suggestions -->
   <div style="padding:8px 12px;border-bottom:1px solid var(--border);
-    display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
-    <button onclick="agentSuggest('Quanto gastei este mês?')"
-      class="agent-chip">📊 Gastos do mês</button>
-    <button onclick="agentSuggest('Quais contas estão no vermelho?')"
-      class="agent-chip">💰 Saldo contas</button>
-    <button onclick="agentSuggest('Como adicionar uma conta?')"
-      class="agent-chip">❓ Como usar</button>
-    <button onclick="agentSuggest('Crie uma despesa de R$')"
-      class="agent-chip">➕ Nova despesa</button>
-    <button onclick="agentSuggest('Crie transação programada mensal de R$')"
-      class="agent-chip">📅 Programada</button>
-    <button onclick="agentSuggest('Resumo financeiro do mês')"
-      class="agent-chip">📈 Resumo</button>
+    display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2)">
+    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos do mês</button>
+    <button onclick="agentSuggest('Quais contas estão no vermelho?')" class="agent-chip">💰 Saldo contas</button>
+    <button onclick="agentSuggest('Como adicionar uma conta?')" class="agent-chip">❓ Como usar</button>
+    <button onclick="agentSuggest('Crie uma despesa de R$')" class="agent-chip">➕ Nova despesa</button>
+    <button onclick="agentSuggest('Crie transação programada mensal de R$')" class="agent-chip">📅 Programada</button>
+    <button onclick="agentSuggest('Resumo financeiro do mês')" class="agent-chip">📈 Resumo</button>
   </div>
 
   <!-- Feed -->
@@ -9462,14 +9501,16 @@ window.openMyProfile = function(...args) {
              color:var(--text);resize:none;outline:none;line-height:1.4;
              max-height:100px;overflow-y:auto;transition:border-color .15s"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
-      onfocus="this.style.borderColor='var(--accent)'"
+      onfocus="this.style.borderColor='#16a34a'"
       onblur="this.style.borderColor='var(--border)'"></textarea>
     <button id="agentSendBtn" onclick="agentSend()"
-      style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border:none;color:#fff;
+      style="background:linear-gradient(135deg,#15803d,#16a34a);border:none;color:#fff;
              width:38px;height:38px;border-radius:10px;cursor:pointer;flex-shrink:0;
-             display:flex;align-items:center;justify-content:center;font-size:.9rem;
-             transition:opacity .15s"
-      onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+             display:flex;align-items:center;justify-content:center;
+             box-shadow:0 2px 8px rgba(22,163,74,.35);
+             transition:opacity .15s,transform .15s"
+      onmouseover="this.style.opacity='.88';this.style.transform='translateY(-1px)'"
+      onmouseout="this.style.opacity='1';this.style.transform=''">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="22" y1="2" x2="11" y2="13"/>
@@ -9481,6 +9522,7 @@ window.openMyProfile = function(...args) {
 
 <style>
 /* Agent panel CSS */
+@keyframes agentPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 .agent-msg { display:flex; flex-direction:column; max-width:92%; }
 .agent-msg--user { align-self:flex-end; }
 .agent-msg--assistant { align-self:flex-start; }
@@ -9488,11 +9530,13 @@ window.openMyProfile = function(...args) {
   display:flex; align-items:flex-start; gap:8px;
 }
 .agent-avatar {
-  font-size:1.1rem; flex-shrink:0; margin-top:2px;
+  width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#0f5132,#16a34a);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
 }
+.agent-avatar svg { display:block; }
 .agent-text {
   background:var(--surface2); border:1px solid var(--border);
-  border-radius:12px 12px 12px 2px;
+  border-radius:4px 12px 12px 12px;
   padding:9px 12px; font-size:.82rem; color:var(--text); line-height:1.6;
 }
 .agent-text code {
@@ -9500,29 +9544,29 @@ window.openMyProfile = function(...args) {
   font-family:monospace; font-size:.78rem;
 }
 .agent-msg--user .agent-text {
-  background:linear-gradient(135deg,#1d4ed8,#7c3aed);
-  color:#fff; border:none; border-radius:12px 12px 2px 12px;
+  background:linear-gradient(135deg,#15803d,#16a34a);
+  color:#fff; border:none; border-radius:12px 4px 12px 12px;
 }
 .agent-typing {
   display:flex; gap:4px; align-items:center; padding:10px 14px;
   background:var(--surface2); border:1px solid var(--border);
-  border-radius:12px 12px 12px 2px;
+  border-radius:4px 12px 12px 12px;
 }
 .agent-typing span {
   width:6px; height:6px; border-radius:50%;
-  background:var(--muted); display:inline-block;
+  background:var(--accent); display:inline-block;
   animation:agentDot .9s ease-in-out infinite;
 }
 .agent-typing span:nth-child(2) { animation-delay:.2s; }
 .agent-typing span:nth-child(3) { animation-delay:.4s; }
 @keyframes agentDot { 0%,60%,100%{opacity:.2;transform:scale(.8)} 30%{opacity:1;transform:scale(1)} }
 .agent-chip {
-  white-space:nowrap; padding:4px 10px; font-size:.72rem; font-weight:600;
-  border:1px solid var(--border); border-radius:20px; background:var(--surface2);
+  white-space:nowrap; padding:5px 11px; font-size:.71rem; font-weight:600;
+  border:1px solid var(--border); border-radius:20px; background:var(--surface);
   color:var(--text2); cursor:pointer; font-family:var(--font-sans);
   transition:all .15s; flex-shrink:0;
 }
-.agent-chip:hover { border-color:var(--accent); background:var(--accent-lt); color:var(--accent); }
+.agent-chip:hover { border-color:var(--accent); background:var(--accent-lt,rgba(22,163,74,.1)); color:var(--accent); }
 </style>
 
 </body>
