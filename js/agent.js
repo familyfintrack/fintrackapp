@@ -534,26 +534,29 @@ function _agentParseStructured(text) {
 
   if (/(cri[ea]r?|adicionar?|adicione|lanc[ae]r?|registrar?|registre)\s.*?(transac|despesa|receita)/.test(msg)&&amount!==null) {
     const isIncome=/(receita|entrada|ganho|recebimento)/.test(msg);
+    const parts=_agentExtractTransactionEntities(raw,{kind:'transaction',isIncome});
     return {intent:'create_transaction',summary:'Criando transação',requires_confirmation:false,actions:[{type:'create_transaction',data:{
       date,amount:isIncome?Math.abs(amount):-Math.abs(amount),type:isIncome?'income':'expense',
-      description:_agentParseDescription(raw),
-      account_name:_agentExtractAfter(raw,[/na conta\s+([^,.;]+)/i,/da conta\s+([^,.;]+)/i]),
-      category_name:_agentExtractAfter(raw,[/categoria\s+([^,.;]+)/i]),
-      payee_name:_agentExtractPayee(raw),
+      description:parts.description||_agentParseDescription(raw,{kind:'transaction',isIncome}),
+      account_name:parts.account_name||'',
+      category_name:parts.category_name||'',
+      payee_name:parts.payee_name||'',
       family_member_name:_agentExtractAfter(raw,[/(?:pelo|pela)\s+([^,.;]+)/i]),
     }}]};
   }
 
   if (/programad/.test(msg)&&amount!==null) {
+    const isIncome=/receita|entrada/.test(msg);
+    const parts=_agentExtractTransactionEntities(raw,{kind:'scheduled',isIncome});
     return {intent:'create_scheduled',summary:'Criando programado',requires_confirmation:false,actions:[{type:'create_scheduled',data:{
-      date,amount:-Math.abs(amount),type:/receita|entrada/.test(msg)?'income':'expense',
-      description:_agentParseDescription(raw),
-      account_name:_agentExtractAfter(raw,[/na conta\s+([^,.;]+)/i]),
-      category_name:_agentExtractAfter(raw,[/categoria\s+([^,.;]+)/i]),
-      payee_name:_agentExtractPayee(raw),
+      date,amount:isIncome?Math.abs(amount):-Math.abs(amount),type:isIncome?'income':'expense',
+      description:parts.description||_agentParseDescription(raw,{kind:'scheduled',isIncome}),
+      account_name:parts.account_name||'',
+      category_name:parts.category_name||'',
+      payee_name:parts.payee_name||'',
       frequency:_agentParseFrequency(msg)||'monthly',
       start_date:date,installments:_agentParseInstallments(msg),
-      family_member_name:_agentExtractAfter(raw,[/(?:para|pro|pra)\s+([^,.;]+)/i]),
+      family_member_name:_agentExtractAfter(raw,[/(?:para\s+o|para\s+a|pro\s+o|pro\s+a|pra\s+o|pra\s+a)\s+([^,.;]+)/i]),
     }}]};
   }
 
@@ -732,8 +735,12 @@ async function _agentGetKey(){if(_agent.apiKey)return _agent.apiKey;try{const k=
 function _agentGetUser(){try{if(typeof currentUser!=='undefined'&&currentUser)return currentUser;}catch(_){}return window.currentUser||state?.user||null;}
 function _agentGetFamilyId(){const u=_agentGetUser();try{if(typeof famId==='function')return famId()||u?.family_id||state?.familyId||null;}catch(_){}return u?.family_id||state?.familyId||null;}
 async function _agentEnsureContextLoaded(){
-  if(!window.sb) throw new Error('Supabase não disponível.');
-  if(!_agentGetFamilyId()) throw new Error('Sessão não identificada.');
+  const client=window.sb||window.ensureSupabaseClient?.()||null;
+  if(!client) throw new Error('Cliente Supabase não inicializado.');
+  let session=null;
+  try{session=(await client.auth?.getSession?.())?.data?.session||null;}catch(e){console.warn('[agent]session',e?.message||e);}
+  if(!session && !_agentGetUser()) throw new Error('Sessão expirada ou usuário não autenticado.');
+  if(!_agentGetFamilyId()) throw new Error('Família não identificada na sessão atual.');
   try{
     if((!state.accounts||!state.accounts.length)&&typeof DB!=='undefined'&&DB.accounts?.load) await DB.accounts.load();
     if((!state.categories||!state.categories.length)&&typeof loadCategories==='function') await loadCategories();
@@ -749,10 +756,94 @@ function _agentParseDate(text){const msg=String(text||'').toLowerCase();const dt
 function _agentParseFrequency(msg){if(/seman/.test(msg))return'weekly';if(/anual|ano/.test(msg))return'yearly';if(/di[aá]ri/.test(msg))return'daily';if(/mensa|m[eê]s/.test(msg))return'monthly';return null;}
 function _agentParseInstallments(msg){const m=String(msg||'').match(/(\d+)\s*parcelas?/i);if(!m)return null;const n=Number(m[1]);return Number.isFinite(n)?n:null;}
 function _agentParseColor(msg){const map={azul:'#2563eb',verde:'#16a34a',vermelho:'#dc2626',laranja:'#f97316',roxo:'#7c3aed',amarelo:'#f59e0b',rosa:'#ec4899',cinza:'#6b7280'};return map[Object.keys(map).find(c=>msg.includes(c))||'']||'#2a6049';}
-function _agentExtractAfter(text,regexes){for(const rx of regexes){const m=String(text||'').match(rx);if(m?.[1])return m[1].trim().replace(/["""]/g,'');}return'';}
-function _agentExtractPayee(text){return _agentExtractAfter(text,[/em\s+([^,.;]+)$/i,/para\s+([^,.;]+)$/i,/no\s+([^,.;]+)$/i,/na\s+([^,.;]+)$/i]);}
-function _agentParseDescription(text){const t=String(text||'').trim();const q=t.match(/["""](.+?)["""]/);if(q?.[1])return q[1].trim();const d=t.match(/de\s+([^,.;]+)/i);if(d?.[1]&&!/r\$/i.test(d[1]))return d[1].trim();const p=_agentExtractPayee(t);if(p)return p;return'Lançamento via Agent';}
+function _agentExtractAfter(text,regexes){for(const rx of regexes){const m=String(text||'').match(rx);if(m?.[1])return _agentCleanEntityText(m[1]);}return'';}
+function _agentNormalizeLooseText(text){return String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
+function _agentCleanEntityText(text){return String(text||'').replace(/[“”"']/g,' ').replace(/\s+/g,' ').replace(/^[,.;:\-\s]+|[,.;:\-\s]+$/g,'').trim();}
+function _agentEscapeRegex(text){return String(text||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function _agentTrimConnectorTail(text){return _agentCleanEntityText(String(text||'').replace(/\s+(?:para|pro|pra|no|na|em|de|categoria)\b.*$/i,' '));}
+function _agentRemoveFirst(text,pattern){return String(text||'').replace(pattern,' ');}
+function _agentBuildEntitySearchSpace(text){
+  let work=' '+String(text||'')+' ';
+  work=_agentRemoveFirst(work,/[“"][^”"]+[”"]/g);
+  work=_agentRemoveFirst(work,/(?:r\$\s*)?-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})|(?:r\$\s*)?-?\d+(?:[.,]\d{1,2})?/i);
+  work=_agentRemoveFirst(work,/\b(reais?|real|d[oó]lares?|euros?)\b/gi);
+  work=_agentRemoveFirst(work,/\b(crie|criar|adicione|adicionar|registre|registrar|lance|lan[cç]ar|uma|um|novo|nova|despesa|receita|transa[cç][aã]o|programad[ao]s?|mensal|semanal|anual|di[aá]rio)\b/gi);
+  return work.replace(/\s+/g,' ').trim();
+}
+function _agentFindKnownEntityName(list,text){
+  const hay=' '+_agentNormalizeLooseText(text)+' ';
+  if(!hay.trim()) return '';
+  let best='';
+  for(const item of (list||[])){
+    const name=String(item?.name||'').trim();
+    const needle=_agentNormalizeLooseText(name);
+    if(!needle||needle.length<2) continue;
+    if(hay.includes(' '+needle+' ')||hay.includes(' '+needle)||hay.includes(needle+' ')){
+      if(name.length>best.length) best=name;
+    }
+  }
+  return best;
+}
+function _agentExtractTransactionEntities(text,opts={}){
+  const original=String(text||'').trim();
+  const info={account_name:'',category_name:'',payee_name:'',description:''};
+  let work=_agentBuildEntitySearchSpace(original);
+  const quoted=original.match(/[“\"](.+?)[”\"]/);
+  if(quoted?.[1]) info.description=_agentCleanEntityText(quoted[1]);
 
+  const accountPatterns=[/(?:na|da)\s+conta\s+(.+?)(?=\s+(?:de|em|para|pro|pra|no|na|categoria)\b|[,.;]|$)/i,/\bconta\s+(.+?)(?=\s+(?:de|em|para|pro|pra|no|na|categoria)\b|[,.;]|$)/i];
+  for(const rx of accountPatterns){const m=original.match(rx);if(m?.[1]){info.account_name=_agentCleanEntityText(m[1]);break;}}
+  if(!info.account_name) info.account_name=_agentFindKnownEntityName(state.accounts||[],work);
+  if(info.account_name){
+    const accRx=new RegExp('\\b(?:na|da)?\\s*conta\\s+'+_agentEscapeRegex(info.account_name)+'\\b','i');
+    work=_agentRemoveFirst(work,accRx).replace(/\s+/g,' ').trim();
+  }
+
+  const explicitCat=[/\b(?:na\s+categoria|categoria)\s+(.+?)(?=\s+(?:para|pro|pra|no|na)\b|[,.;]|$)/i];
+  for(const rx of explicitCat){const m=original.match(rx);if(m?.[1]){info.category_name=_agentCleanEntityText(m[1]);break;}}
+  if(!info.category_name){
+    const afterAccount=original.match(/\b(?:na|da)\s+conta\s+.+?\s+(?:de|em)\s+(.+?)(?=\s+(?:para|pro|pra|no|na)\b|[,.;]|$)/i);
+    if(afterAccount?.[1]) info.category_name=_agentCleanEntityText(afterAccount[1]);
+  }
+  if(!info.category_name){
+    const knownCategory=_agentFindKnownEntityName(state.categories||[],work);
+    if(knownCategory) info.category_name=knownCategory;
+  }
+  if(info.category_name){
+    const catRx=new RegExp('\\b(?:na\\s+categoria|categoria|de|em)?\\s*'+_agentEscapeRegex(info.category_name)+'\\b','i');
+    work=_agentRemoveFirst(work,catRx).replace(/\s+/g,' ').trim();
+  }
+
+  const payeePatterns=[/\b(?:para|pro|pra)\s+(.+?)(?=[,.;]|$)/i,/\b(?:no|na)\s+(.+?)(?=[,.;]|$)/i,/\bem\s+(.+?)(?=[,.;]|$)/i];
+  for(const rx of payeePatterns){
+    const m=original.match(rx);
+    if(!m?.[1]) continue;
+    const candidate=_agentTrimConnectorTail(m[1]);
+    if(!candidate) continue;
+    const candidateNorm=_agentNormalizeLooseText(candidate);
+    const catNorm=_agentNormalizeLooseText(info.category_name);
+    const accNorm=_agentNormalizeLooseText(info.account_name);
+    if(!candidateNorm||/^conta/.test(candidateNorm)||/^categoria/.test(candidateNorm)) continue;
+    if(candidateNorm && candidateNorm!==catNorm && candidateNorm!==accNorm && !candidateNorm.includes(accNorm||'__never__')){info.payee_name=candidate;break;}
+  }
+  if(!info.payee_name){
+    const knownPayee=_agentFindKnownEntityName(state.payees||[],work);
+    if(knownPayee && _agentNormalizeLooseText(knownPayee)!==_agentNormalizeLooseText(info.category_name)) info.payee_name=knownPayee;
+  }
+
+  if(!info.description){
+    if(info.payee_name) info.description=info.payee_name;
+    else if(info.category_name) info.description=`${opts.isIncome?'Receita':'Despesa'} em ${info.category_name}`;
+    else info.description='Lançamento via Agent';
+  }
+  info.account_name=_agentCleanEntityText(info.account_name);
+  info.category_name=_agentCleanEntityText(info.category_name);
+  info.payee_name=_agentCleanEntityText(info.payee_name);
+  info.description=_agentCleanEntityText(info.description)||'Lançamento via Agent';
+  return info;
+}
+function _agentExtractPayee(text){return _agentExtractTransactionEntities(text,{}).payee_name||'';}
+function _agentParseDescription(text,opts={}){const parts=_agentExtractTransactionEntities(text,opts);return parts.description||'Lançamento via Agent';}
 async function _agentRefreshAfterPlan(plan){
   try{
     if(plan.intent==='create_transaction'){if(typeof DB!=='undefined'&&DB.accounts?.bust)DB.accounts.bust();if(typeof loadTransactions==='function')await loadTransactions();if(typeof loadDashboard==='function')await loadDashboard();}
