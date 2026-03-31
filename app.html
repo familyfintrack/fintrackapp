@@ -587,9 +587,9 @@
           onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,.35)'">
           🤖
         </button>
-        <button id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar feedback">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span id="feedbackBadge" style="display:none;min-width:16px;height:16px;background:#dc2626;border-radius:999px;font-size:.6rem;font-weight:700;color:#fff;padding:0 4px;line-height:16px;text-align:center"></span>
+        <button id="feedbackTopbarBtn" class="feedback-topbar-bubble" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar feedback">
+          <svg class="feedback-topbar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="feedbackBadge" class="feedback-topbar-badge" style="display:none"></span>
         </button>
         <!-- Sair -->
         <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
