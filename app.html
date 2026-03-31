@@ -503,11 +503,6 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".8"/></svg>
         </span><span data-i18n="nav.ai_insights">AI Insights
       </button>
-      <button class="nav-item" id="dreamsNav" data-nav="dreams" data-feature-controlled="1" onclick="navigate('dreams')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </span><span data-i18n="nav.dreams">Sonhos
-      </button>
     </div><!-- /modules section end -->
 
     <!-- Help always visible -->
@@ -3402,18 +3397,6 @@
       </div>
 
     </div><!-- /page-ai_insights -->
-
-
-    <!-- ══ DREAMS PAGE ══════════════════════════════════════════════════════ -->
-    <div class="page" id="page-dreams" style="display:none">
-      <div id="dreams-list-container" style="padding:0 0 100px">
-        <!-- Rendered by dreams.js renderDreamsPage() -->
-        <div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
-          <div style="font-size:2.5rem;margin-bottom:12px">🌟</div>
-          <div style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:6px">Carregando sonhos…</div>
-        </div>
-      </div>
-    </div><!-- /page-dreams -->
 
 
     <!-- ══ HELP PAGE ════════════════════════════════════════════════════════ -->
@@ -7446,13 +7429,6 @@ Se você não solicitou isso, ignore este e-mail.`,
                   <div id="profModAi" style="font-size:.65rem;color:var(--muted)">verificando…</div>
                 </div>
               </div>
-              <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:6px">
-                <span style="font-size:.9rem">🌟</span>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:.72rem;font-weight:600;color:var(--text)">Sonhos</div>
-                  <div id="profModDreams" style="font-size:.65rem;color:var(--muted)">verificando…</div>
-                </div>
-              </div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="restartWizardFromProfile()" style="width:100%;justify-content:center;gap:8px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
@@ -9093,7 +9069,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
-  <script src="js/dreams.js"></script>
   <script src="js/agent.js"></script>
 
 <script>
@@ -9263,7 +9238,6 @@ async function _loadProfWizModulesStatus() {
     { id: 'profModInvestments', key: 'module_investments_enabled',   label: 'Investimentos' },
     { id: 'profModDebts',       key: 'module_debts_enabled',         label: 'Dívidas' },
     { id: 'profModAi',          key: 'module_aiInsights_enabled',    label: 'AI Insights' },
-    { id: 'profModDreams',      key: 'module_dreams_enabled',        label: 'Sonhos' },
   ];
   for (const c of checks) {
     const el = document.getElementById(c.id);
@@ -9455,15 +9429,18 @@ window.openMyProfile = function(...args) {
   <!-- Input bar -->
   <div style="padding:10px 12px;border-top:1px solid var(--border);
     display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:var(--surface)">
-    <textarea id="agentInput" rows="1" onkeydown="agentKeydown(event)"
-      placeholder="Ex: Crie uma despesa de R$50 na Padaria…"
-      style="flex:1;padding:9px 12px;font-family:var(--font-sans);font-size:.84rem;
-             border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);
-             color:var(--text);resize:none;outline:none;line-height:1.4;
-             max-height:100px;overflow-y:auto;transition:border-color .15s"
-      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
-      onfocus="this.style.borderColor='var(--accent)'"
-      onblur="this.style.borderColor='var(--border)'"></textarea>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
+      <textarea id="agentInput" rows="1" onkeydown="agentKeydown(event)"
+        placeholder="Ex: Crie uma despesa de R$50 na Padaria…"
+        style="flex:1;padding:9px 12px;font-family:var(--font-sans);font-size:.84rem;
+               border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);
+               color:var(--text);resize:none;outline:none;line-height:1.4;
+               max-height:100px;overflow-y:auto;transition:border-color .15s"
+        oninput="agentInputChanged()"
+        onfocus="this.style.borderColor='var(--accent)';agentInputChanged()"
+        onblur="this.style.borderColor='var(--border)'"></textarea>
+      <div id="agentComposerSuggestions" style="display:none;flex-wrap:wrap;gap:6px"></div>
+    </div>
     <button id="agentSendBtn" onclick="agentSend()"
       style="background:linear-gradient(135deg,#1d4ed8,#7c3aed);border:none;color:#fff;
              width:38px;height:38px;border-radius:10px;cursor:pointer;flex-shrink:0;
