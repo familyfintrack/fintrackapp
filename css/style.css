@@ -1306,14 +1306,14 @@ canvas { cursor: default; }
 .report-filter-bar select,
 .report-filter-bar input { width:100%; font-size:.82rem; }
 .report-kpi-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px;
 }
 .report-kpi {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r); padding: 14px 16px; box-shadow: var(--shadow-sm);
 }
 .report-kpi-label { font-size:.72rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
-.report-kpi-value { font-family:var(--font-serif); font-size:1.25rem; font-weight:600; }
+.report-kpi-value { font-family:var(--font-serif); font-size:1.25rem; font-weight:600; white-space:nowrap; }
 .report-section-title {
   font-size:.72rem; font-weight:700; text-transform:uppercase;
   letter-spacing:.08em; color:var(--muted); margin: 18px 0 8px; padding-left:2px;
@@ -6185,6 +6185,10 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   min-width: 24px;
   max-width: 24px;
 }
+@media (min-width: 768px) {
+  .forecast-date-cell { width: 90px !important; min-width: 90px; padding: 4px 8px; }
+  .forecast-head-date { width: 90px; min-width: 90px; max-width: 90px; }
+}
 .forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
 /* Forecast category icon in date column */
@@ -6565,11 +6569,14 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 .sc-cal-day--today .sc-cal-day-num {
   background: var(--accent);
-  color: #fff !important;   /* branco sempre — contraste com círculo verde */
+  color: #fff !important;
   border-radius: 50%;
-  width: 24px; height: 24px;
+  width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 800;
+  font-size: .88rem;
+  box-shadow: 0 2px 6px rgba(42,96,73,.45);
+  margin: -2px auto 2px;
 }
 /* Quando hoje também está selecionado: mantém círculo verde + número branco */
 .sc-cal-day--today.sc-cal-day--selected .sc-cal-day-num {
@@ -7257,10 +7264,25 @@ tr.tx-row-new td:first-child {
   padding: 4px 0 12px;
 }
 
+/* Each type group's grid fills full width */
+.dash-fav-type-group .dash-favs-grid {
+  max-width: 100%;
+}
+
 .dash-favs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;        /* always one line on desktop */
   gap: 12px;
+  align-items: stretch;
+}
+
+/* Each card: shrink equally when needed, never below 120px, cap at 240px */
+.dash-favs-grid .dash-fav-card {
+  flex: 1 1 0;
+  min-width: 0;             /* allow shrinking below content width */
+  max-width: 240px;
+  box-sizing: border-box;
 }
 
 .dash-fav-card {
@@ -7375,13 +7397,16 @@ tr.tx-row-new td:first-child {
 }
 
 .dash-fav-card__balance {
-  font-size: 1.35rem;
+  font-size: clamp(.92rem, 1.6vw, 1.35rem);
   font-weight: 700;
   font-family: var(--font-serif, monospace);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
   line-height: 1.15;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dash-fav-card__balance.neg {
@@ -7423,10 +7448,14 @@ tr.tx-row-new td:first-child {
 /* Mobile: 2-col on small screens, 1-col on very small */
 @media (max-width: 480px) {
   .dash-favs-grid {
-    grid-template-columns: repeat(2, 1fr);
+    flex-wrap: wrap;         /* allow wrapping on mobile */
     gap: 10px;
   }
-  .dash-fav-card {
+  /* On mobile: 2 cards per row */
+  .dash-favs-grid .dash-fav-card {
+    flex: 1 1 calc(50% - 6px);
+    max-width: none;
+    min-width: calc(50% - 6px);
     padding: 13px 14px 15px;
   }
   .dash-fav-card__balance { font-size: 1.1rem; }
@@ -8335,6 +8364,7 @@ tr.tx-row-new td:first-child {
   padding: 14px 16px 12px;
   overflow: hidden;
   transition: box-shadow .15s;
+  min-width: 180px;
 }
 
 .rpt-kpi::before {
@@ -8362,12 +8392,13 @@ tr.tx-row-new td:first-child {
 }
 
 .rpt-kpi-value {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
   font-family: var(--font-serif);
   font-variant-numeric: tabular-nums;
   color: var(--text);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .rpt-kpi--inc .rpt-kpi-value { color: var(--green); }
@@ -8376,9 +8407,9 @@ tr.tx-row-new td:first-child {
 .rpt-kpi--bal.neg .rpt-kpi-value { color: var(--red); }
 
 /* Reuse grid from existing report-kpi-grid */
-#reportKpis {
+#reportKpis, #reportTxKpis {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -14953,7 +14984,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Hero header: total portfolio value ── */
 .inv-hero {
-  background: linear-gradient(135deg, #0d2318 0%, #1a3d2a 60%, #2a6049 100%);
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 60%, #0e3520 100%);
   border-radius: 16px;
   padding: 22px 22px 18px;
   margin-bottom: 18px;
@@ -21526,191 +21557,51 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   }
 }
 
+/* Payee alternating row background */
+#payeeGroups .table-wrap table tbody tr:nth-child(even) { background: var(--surface2); }
+#payeeGroups .table-wrap table tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent) !important; }
 
-/* ══════════════════════════════════════════════════════════════
-   AI INSIGHTS — Collapsible blocks + redesigned results
-══════════════════════════════════════════════════════════════ */
+/* Dashboard: larger font for non-fav accounts and group titles */
+#dashAccounts .dash-group-title,
+#dashAccounts [style*="text-transform:uppercase"][style*="letter-spacing"] span:last-child {
+  font-size: .8rem !important;
+}
+#dashAccounts [style*="font-size:.92rem"] span { font-size: 1rem !important; }
 
-/* Params toggle button */
-.ai2-params-toggle {
+/* ── Dashboard: favorites grouped by account type ── */
+.dash-fav-type-group { margin-bottom: 8px; }
+.dash-fav-type-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-family: var(--font-sans);
-  font-size: .78rem;
-  font-weight: 700;
-  color: var(--text2);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  margin-bottom: 12px;
-  width: 100%;
-  text-align: left;
-  transition: background .15s, border-color .15s;
+  justify-content: space-between;
+  padding: 4px 2px 6px;
+  margin-bottom: 4px;
 }
-.ai2-params-toggle:hover { background: var(--bg2); border-color: var(--accent); }
-.ai2-params-body {
-  animation: paramFadeIn .18s ease both;
-}
-@keyframes paramFadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-
-/* Collapsible result blocks */
-.air-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 12px;
-  overflow: hidden;
-  transition: box-shadow .15s;
-}
-.air-block:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-.air-block--warn { border-color: rgba(234,88,12,.25); }
-.air-block--warn .air-block-hdr { background: rgba(234,88,12,.04); }
-
-.air-block-hdr {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 16px;
-  cursor: pointer;
-  user-select: none;
-  transition: background .12s;
-  border-bottom: 1px solid var(--border);
-}
-.air-block-hdr:hover { background: var(--surface2); }
-.air-block-hdr--collapsed { border-bottom-color: transparent; }
-
-.air-block-icon { font-size: 1.1rem; line-height: 1; flex-shrink: 0; }
-.air-block-title {
-  flex: 1;
-  font-size: .88rem;
-  font-weight: 700;
-  color: var(--text);
-}
-.air-block-chev {
-  color: var(--muted);
-  transition: transform .2s ease;
-  flex-shrink: 0;
-}
-.air-block-chev--collapsed { transform: rotate(-90deg); }
-
-.air-block-body {
-  padding: 12px 16px;
-  animation: blockFadeIn .18s ease both;
-}
-@keyframes blockFadeIn { from { opacity:0; } to { opacity:1; } }
-
-/* Remove double padding from sections inside blocks */
-.air-block-body .air-section {
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  margin-bottom: 0;
-  background: none;
-}
-.air-block-body .air-section + .air-section {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-  margin-top: 14px;
-}
-.air-block-body .air-section-title {
-  font-size: .75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--muted);
-  margin-bottom: 10px;
-}
-.air-block-body .air-voice-card {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-.air-block-body .air-voice-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
-.air-block-body .air-voice-label {
+.dash-fav-type-label {
   font-size: .68rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: .07em;
   color: var(--muted);
-  margin-bottom: 4px;
 }
-.air-block-body .air-voice-text {
-  font-size: .84rem;
-  line-height: 1.65;
-  color: var(--text);
-  margin: 0;
+.dash-fav-type-total {
+  font-size: .76rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
 }
-
-/* Drill tx rows — shared between reports and dashboard */
-.drill-tx-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background .12s;
-  margin-bottom: 3px;
-}
-.drill-tx-row:hover { background: var(--surface2); }
-.drill-tx-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 5px;
-}
-.drill-tx-body { flex: 1; min-width: 0; }
-.drill-tx-desc { font-size: .82rem; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.drill-tx-meta { font-size: .7rem; color: var(--muted); margin-top: 2px; }
-.drill-tx-amt { font-size: .84rem; font-weight: 700; font-family: var(--font-serif); flex-shrink: 0; }
-.drill-tx-amt.pos { color: var(--green, #16a34a); }
-.drill-tx-amt.neg { color: var(--red, #dc2626); }
-
-/* Accounts fav star always show (previously only showed when is_favorite) */
-.account-card-wrap { position: relative; }
-
-/* ══════════════════════════════════════════════════════════════
-   SCHEDULED — Upcoming panel desktop improvements
-══════════════════════════════════════════════════════════════ */
-.sup-group-hdr {
-  cursor: pointer;
-  user-select: none;
-}
-.sup-rows {
-  transition: none;
+.dash-fav-type-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0 10px;
+  opacity: .6;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FEEDBACK TOPBAR — orange CTA
-══════════════════════════════════════════════════════════════ */
-#feedbackTopbarBtn {
-  display: none; /* controlled by JS */
-}
-
-/* ══════════════════════════════════════════════════════════════
-   PATRIMÔNIO MODAL — bar chart row hover
-══════════════════════════════════════════════════════════════ */
-#patrimonioModal .modal { animation: slideUpFadeIn .22s ease both; }
-
-/* ══════════════════════════════════════════════════════════════
-   FORECAST DRILL MODAL
-══════════════════════════════════════════════════════════════ */
-#forecastDrillModal .modal,
-#rptDrillModal .modal {
-  animation: slideUpFadeIn .22s ease both;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   AI PARAMS — responsive collapse auto on mobile
-══════════════════════════════════════════════════════════════ */
-@media (max-width: 640px) {
-  .ai2-params-toggle { font-size: .75rem; padding: 7px 12px; }
+/* ── Dashboard fav cards: intermediate screen padding ── */
+@media (min-width: 481px) and (max-width: 900px) {
+  .dash-favs-grid .dash-fav-card {
+    padding: 13px 12px 14px;
+  }
+  .dash-fav-card__balance {
+    font-size: clamp(.82rem, 1.4vw, 1.15rem);
+  }
 }
