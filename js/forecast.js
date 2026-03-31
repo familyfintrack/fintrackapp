@@ -383,6 +383,9 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
   }
   if (!dates.length) return;
 
+  // Build set of dates that have transactions (for point rendering)
+  const datesWithTx = new Set(allItems.map(t => t.date));
+
   const step = dates.length > 90 ? 7 : 1;
   const sampledDates = dates.filter((_,i) => i%step===0);
   if (!sampledDates.includes(toStr)) sampledDates.push(toStr);
@@ -395,6 +398,9 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
     const baseBal     = (parseFloat(a.balance)||0) - realSum;
     const color       = (a.color && a.color!=='var(--accent)') ? a.color : COLORS[idx%COLORS.length];
 
+    // Per-date tx set for this account
+    const accDatesWithTx = new Set(txsForAcc.map(t => t.date));
+
     return {
       label: a.name,
       data: sampledDates.map(d => {
@@ -403,7 +409,15 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
       }),
       borderColor: color, backgroundColor: color+'18',
       fill:false, tension:0.3, borderWidth:2,
-      pointRadius: sampledDates.length>60 ? 0 : 2,
+      // Show point only on dates with transactions; size depends on range
+      pointRadius: sampledDates.map(d => {
+        if (!accDatesWithTx.has(d)) return 0;
+        return sampledDates.length > 60 ? 3 : 5;
+      }),
+      pointHoverRadius: sampledDates.map(d => accDatesWithTx.has(d) ? 7 : 3),
+      pointBackgroundColor: color,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
     };
   });
 
@@ -412,10 +426,42 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
     data:{ datasets },
     options:{
       responsive:true, maintainAspectRatio:false,
-      interaction:{ mode:'index', intersect:false },
+      interaction:{ mode:'nearest', intersect:true },
       plugins:{
         legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11} } },
-        tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${_fcFmt(ctx.parsed.y)}` } },
+        tooltip:{
+          callbacks:{
+            title: ctx => {
+              const d = ctx[0]?.label || '';
+              const txsOnDay = allItems.filter(t => t.date === d);
+              return txsOnDay.length
+                ? `${d}  ·  ${txsOnDay.length} transação${txsOnDay.length>1?'ões':''}`
+                : d;
+            },
+            label: ctx=>`${ctx.dataset.label}: ${_fcFmt(ctx.parsed.y)}`,
+          }
+        },
+      },
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        const idx  = elements[0].index;
+        const date = sampledDates[idx];
+        if (!date) return;
+        const txsOnDay = allItems.filter(t => t.date === date);
+        if (!txsOnDay.length) return;
+        const dp = typeof _forecastDateParts === 'function'
+          ? _forecastDateParts(date) : { short: date };
+        const label = dp.weekday ? `${dp.weekday}, ${dp.short}` : date;
+        if (typeof _forecastDrillRow === 'function') {
+          _forecastDrillRow(date, label);
+        }
+      },
+      onHover(evt, elements) {
+        const hasTx = elements.some(el => {
+          const d = sampledDates[el.index];
+          return d && allItems.some(t => t.date === d);
+        });
+        evt.native.target.style.cursor = (hasTx || elements.length) ? 'pointer' : 'default';
       },
       scales:{
         x:{ type:'category', ticks:{ maxTicksLimit:10, color:'#8c8278', font:{size:10} }, grid:{color:'#e8e4de33'} },

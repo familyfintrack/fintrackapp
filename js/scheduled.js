@@ -861,7 +861,10 @@ function openScheduledModal(id='') {
   }, 50);
 
   // Dates
-  document.getElementById('scStartDate').value = sc?.start_date || localDateStr();
+  const _startDate = sc?.start_date || localDateStr();
+  document.getElementById('scStartDate').value = _startDate;
+  const _sdp = document.getElementById('scStartDatePrincipal');
+  if (_sdp) _sdp.value = _startDate;
 
   // Frequency
   const freq = sc?.frequency||'once';
@@ -1231,7 +1234,7 @@ async function saveScheduled() {
     memo: document.getElementById('scMemo').value,
     tags: tags.length ? tags : null,
     status: document.getElementById('scStatus').value,
-    start_date: document.getElementById('scStartDate').value,
+    start_date: document.getElementById('scStartDate').value || document.getElementById('scStartDatePrincipal')?.value || '',
     frequency: freq,
     custom_interval: freq==='custom' ? parseInt(document.getElementById('scCustomInterval').value)||1 : null,
     custom_unit: freq==='custom' ? document.getElementById('scCustomUnit').value : null,

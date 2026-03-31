@@ -1457,11 +1457,19 @@ async function _renderDashForecast() {
   if (!sampled.includes(toStr)) sampled.push(toStr);
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
+
+  // Build set of dates with transactions per account (for point markers)
+  const datesWithTxByAcc = {};
+  accounts.forEach(a => {
+    datesWithTxByAcc[a.id] = new Set(allItems.filter(t => t.account_id===a.id).map(t => t.date));
+  });
+
   const datasets = accounts.slice(0,6).map((a,idx)=>{
     const txAcc = allItems.filter(t=>t.account_id===a.id);
     const realSum = txAcc.filter(t=>!t.isScheduled).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
     const baseBal = (parseFloat(a.balance)||0) - realSum;
     const color = a.color || COLORS[idx%COLORS.length];
+    const accTxDates = datesWithTxByAcc[a.id];
     return {
       label: a.name,
       data: sampled.map(d=>({
@@ -1473,8 +1481,11 @@ async function _renderDashForecast() {
       fill: false,
       tension: 0.35,
       borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 4,
+      pointRadius: sampled.map(d => accTxDates.has(d) ? 4 : 0),
+      pointHoverRadius: sampled.map(d => accTxDates.has(d) ? 7 : 3),
+      pointBackgroundColor: color,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
     };
   });
 
@@ -1530,7 +1541,8 @@ async function _renderDashForecast() {
         if (label) _dashForecastDrill(label, txs);
       },
       onHover(evt, elements) {
-        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        const hasTx = elements.some(el => (_fcTxByLabel[_fcLabels[el.index]] || []).length > 0);
+        evt.native.target.style.cursor = (hasTx || elements.length) ? 'pointer' : 'default';
       },
     },
   });

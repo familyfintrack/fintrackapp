@@ -15,24 +15,39 @@ function _drillOpen(opts) {
   const isMobile = window.innerWidth < 768;
 
   if (isMobile) {
-    // Mobile: show as centered modal popup
     _drillOpenModal(opts);
     return;
   }
 
-  // Desktop: inline panel with auto-scroll
   const panel = document.getElementById('rptDrillPanel');
   if (!panel) { _drillOpenModal(opts); return; }
 
   const { title='', subtitle='', txs=[], color='var(--accent)', onBack=null } = opts || {};
-  const rptPage = document.getElementById('page-reports') || document.querySelector('.content');
-  if (rptPage) rptPage.scrollTop = 0;
+
+  // Bootstrap panel HTML on first use
+  if (!panel.querySelector('.rpt-drill-inner')) {
+    panel.innerHTML = `
+      <div class="rpt-drill-inner" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+        <div id="rptDrillAccent" style="height:3px;flex-shrink:0"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;flex-shrink:0;border-bottom:1px solid var(--border)">
+          <div style="min-width:0">
+            <div id="rptDrillTitle" style="font-size:.92rem;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            <div id="rptDrillSubtitle" style="font-size:.7rem;color:var(--muted);margin-top:2px"></div>
+          </div>
+          <button onclick="_drillClose()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;cursor:pointer;color:var(--muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;margin-left:10px">✕</button>
+        </div>
+        <div id="rptDrillList" style="flex:1;overflow-y:auto;padding:8px 0"></div>
+      </div>`;
+  }
 
   panel.style.display = 'flex';
   requestAnimationFrame(() => {
     panel.style.transform = 'translateX(0)';
     panel.style.opacity   = '1';
   });
+  // Show backdrop
+  const backdrop = document.getElementById('rptDrillBackdrop');
+  if (backdrop) backdrop.style.display = '';
 
   const title2El   = document.getElementById('rptDrillTitle');
   const subtEl     = document.getElementById('rptDrillSubtitle');
@@ -47,26 +62,21 @@ function _drillOpen(opts) {
 
   if (!listEl) return;
   if (!txs.length) {
-    listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Nenhuma transação.</div>';
+    listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Nenhuma transação encontrada para este filtro.</div>';
     return;
   }
   listEl.innerHTML = txs.map(t => {
     const isNeg = (parseFloat(t.amount)||0) < 0;
     const catColor = t.categories?.color || (isNeg ? 'var(--red)' : 'var(--green)');
-    return `<div class="drill-tx-row" onclick="if(typeof editTransaction==='function')editTransaction('${t.id||''}')">
-      <div class="drill-tx-dot" style="background:${catColor}"></div>
-      <div class="drill-tx-body">
-        <div class="drill-tx-desc">${esc2(t.description||'—')}</div>
-        <div class="drill-tx-meta">${t.date||''}${t.categories?.name?' · '+esc2(t.categories.name):''}${t.payees?.name?' · '+esc2(t.payees.name):''}</div>
+    return `<div class="drill-tx-row" style="display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s" onclick="if(typeof editTransaction==='function')editTransaction('${t.id||''}')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="width:8px;height:8px;border-radius:50%;background:${catColor};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc2(t.description||'—')}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:1px">${t.date||''}${t.categories?.name?' · '+esc2(t.categories.name):''}${t.payees?.name?' · '+esc2(t.payees.name):''}</div>
       </div>
-      <div class="drill-tx-amt ${isNeg?'neg':'pos'}">${isNeg?'−':'+'}${fmt2(Math.abs(parseFloat(t.amount)||0))}</div>
+      <div style="font-size:.82rem;font-weight:700;color:${isNeg?'var(--red)':'var(--green)'};flex-shrink:0">${isNeg?'−':'+'}${fmt2(Math.abs(parseFloat(t.amount)||0))}</div>
     </div>`;
   }).join('');
-
-  // Auto scroll to drill panel
-  setTimeout(() => {
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 120);
 }
 
 function _drillOpenModal(opts) {
@@ -128,6 +138,8 @@ function _drillClose() {
   if (!panel) return;
   panel.style.transform = 'translateX(100%)';
   panel.style.opacity   = '0';
+  const backdrop = document.getElementById('rptDrillBackdrop');
+  if (backdrop) backdrop.style.display = 'none';
   setTimeout(() => { panel.style.display = 'none'; }, 260);
   if (_drillChart) { try { _drillChart.destroy(); } catch(_) {} _drillChart = null; }
 }
