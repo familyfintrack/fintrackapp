@@ -7347,20 +7347,40 @@ tr.tx-row-new td:first-child {
   box-shadow: none !important;
 }
 
-/* Account type badge */
-.dash-fav-card__type {
-  font-size: .62rem;
+/* Favorite card metadata */
+.dash-fav-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  max-width: 132px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.15);
+  overflow: hidden;
+}
+.dash-fav-card__meta-part {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 3px 8px;
+  font-size: .6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .07em;
-  opacity: .75;
-  background: rgba(255,255,255,.15);
-  padding: 2px 7px;
-  border-radius: 20px;
+  color: rgba(255,255,255,.92);
   white-space: nowrap;
-  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.dash-fav-card__meta-part.has-sep::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: rgba(255,255,255,.22);
 }
 
 .dash-fav-card__name {
@@ -21692,7 +21712,75 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
    FEEDBACK TOPBAR — orange CTA
 ══════════════════════════════════════════════════════════════ */
 #feedbackTopbarBtn {
-  display: none; /* controlled by JS */
+  display: none;
+}
+.topbar-feedback-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(249,115,22,.34);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(234,88,12,.18), rgba(249,115,22,.26));
+  color: #ffedd5;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px rgba(249,115,22,.18), inset 0 1px 0 rgba(255,255,255,.14);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.topbar-feedback-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251,146,60,.6);
+  background: linear-gradient(135deg, rgba(234,88,12,.28), rgba(249,115,22,.38));
+  box-shadow: 0 10px 24px rgba(249,115,22,.26), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.topbar-feedback-btn:active {
+  transform: translateY(0) scale(.98);
+}
+.topbar-feedback-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: #fff7ed;
+}
+.topbar-feedback-btn__label {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.topbar-feedback-btn__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(220,38,38,.32);
+}
+@media (max-width: 720px) {
+  .topbar-feedback-btn {
+    width: 34px;
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+  }
+  .topbar-feedback-btn__label {
+    display: none;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
