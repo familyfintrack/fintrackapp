@@ -51,20 +51,90 @@ function _destroyForecastChart() {
     try { forecastChartInstance.destroy(); } catch(_) {}
     forecastChartInstance = null;
   }
-  if (typeof state !== 'undefined' && state?.chartInstances?.forecastChart) {
-    delete state.chartInstances.forecastChart;
+}
+
+
+
+function _fcGetSupabase() {
+  try {
+    if (typeof sb !== 'undefined' && sb) return sb;
+  } catch(_) {}
+  try {
+    if (window.sb) return window.sb;
+  } catch(_) {}
+  try {
+    if (typeof ensureSupabaseClient === 'function') {
+      const client = ensureSupabaseClient();
+      if (client) return client;
+    }
+  } catch(_) {}
+  try {
+    if (typeof window.ensureSupabaseClient === 'function') {
+      const client = window.ensureSupabaseClient();
+      if (client) return client;
+    }
+  } catch(_) {}
+  return null;
+}
+
+function _fcGetCurrentUser() {
+  try {
+    if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
+  } catch(_) {}
+  try {
+    if (window.currentUser) return window.currentUser;
+  } catch(_) {}
+  try {
+    if (state && state.user) return state.user;
+  } catch(_) {}
+  return null;
+}
+
+async function _fcHydrateAuthContext() {
+  let client = _fcGetSupabase();
+  let user = _fcGetCurrentUser();
+
+  if (!client) {
+    try { client = typeof ensureSupabaseClient === 'function' ? ensureSupabaseClient() : client; } catch(_) {}
+    try { client = client || (typeof window.ensureSupabaseClient === 'function' ? window.ensureSupabaseClient() : null); } catch(_) {}
   }
+  if (client && !window.sb) {
+    try { window.sb = client; } catch(_) {}
+  }
+
+  if (!user && client?.auth?.getSession) {
+    try {
+      const { data } = await client.auth.getSession();
+      const authUser = data?.session?.user || null;
+      if (authUser) {
+        user = _fcGetCurrentUser() || {
+          id: authUser.id,
+          email: authUser.email || '',
+          name: authUser.user_metadata?.name || authUser.email || 'Usuário',
+          family_id: null,
+        };
+      }
+    } catch(_) {}
+  }
+
+  if (user && !window.currentUser) {
+    try { window.currentUser = user; } catch(_) {}
+  }
+
+  return { client, user };
 }
 
 // ── Garante que state.accounts e state.scheduled estão carregados ────────────
-async function _fcEnsureState() {
+async function _fcEnsureState(client) {
+  const sbClient = client || _fcGetSupabase();
+
   if (!state.accounts || !state.accounts.length) {
     try {
       if (typeof DB !== 'undefined' && DB.accounts && typeof DB.accounts.load === 'function') {
         await DB.accounts.load();
-      } else {
+      } else if (sbClient) {
         const { data } = await famQ(
-          sb.from('accounts')
+          sbClient.from('accounts')
             .select('id,name,color,currency,icon,type,balance,confirmed_balance,active,is_favorite')
             .eq('active', true)
         ).order('name');
@@ -80,70 +150,37 @@ async function _fcEnsureState() {
   }
 }
 
-function _fcGetCurrentUser() {
-  try {
-    if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
-  } catch(_) {}
-  return window.currentUser || state?.user || null;
-}
-
-function _fcGetFamilyId() {
-  const user = _fcGetCurrentUser();
-  return user?.family_id || state?.familyId || null;
-}
-
-async function _fcHydrateAuthContext() {
-  const user = _fcGetCurrentUser();
-  if (user?.id || user?.family_id) return user;
-  if (!window.sb?.auth?.getSession) return user || null;
-  try {
-    const { data } = await window.sb.auth.getSession();
-    if (data?.session?.user) {
-      const authUser = data.session.user;
-      if (!window.currentUser) {
-        window.currentUser = Object.assign({}, window.currentUser || {}, {
-          id: authUser.id,
-          email: authUser.email || window.currentUser?.email || null,
-        });
-      }
-      return _fcGetCurrentUser() || authUser;
-    }
-  } catch(e) {
-    console.warn('[forecast] auth hydrate:', e?.message || e);
-  }
-  return _fcGetCurrentUser();
-}
-
-function _fcRenderMessage(html) {
-  const container = document.getElementById('forecastAccountsContainer');
-  if (container) container.innerHTML = html;
-}
-
 // ── loadForecast — função principal ──────────────────────────────────────────
 async function loadForecast() {
-  if (!window.sb) {
-    _fcRenderMessage(`
-      <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
-        <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
-        <p>Supabase não está disponível para carregar a previsão.</p>
-      </div>`);
-    return;
-  }
-
-  await _fcHydrateAuthContext();
+  const { client: sbClient, user } = await _fcHydrateAuthContext();
 
   const fromStr = document.getElementById('forecastFrom')?.value || '';
   const toStr   = document.getElementById('forecastTo')?.value   || '';
   if (!fromStr || !toStr) return;
 
-  const user = _fcGetCurrentUser();
-  const familyId = _fcGetFamilyId();
-  if (!user && !familyId) {
-    _fcRenderMessage(`
+  const container = document.getElementById('forecastAccountsContainer');
+  if (!sbClient) {
+    console.warn('[forecast] Supabase não disponível para carregar a previsão');
+    if (container) {
+      container.innerHTML = `
       <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
-        <div style="font-size:2rem;margin-bottom:12px">🔐</div>
+        <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+        <p>Supabase não está disponível para carregar a previsão.</p>
+      </div>`;
+    }
+    _destroyForecastChart();
+    return;
+  }
+
+  if (!user) {
+    console.warn('[forecast] contexto do usuário ausente para previsão');
+    if (container) {
+      container.innerHTML = `
+      <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
         <p>Não foi possível identificar a sessão do usuário para carregar a previsão.</p>
-      </div>`);
+      </div>`;
+    }
     _destroyForecastChart();
     return;
   }
@@ -161,7 +198,6 @@ async function loadForecast() {
   } catch(_) {}
 
   // Loading
-  const container = document.getElementById('forecastAccountsContainer');
   if (container) {
     container.innerHTML = `
       <div style="text-align:center;padding:48px 24px;color:var(--muted)">
@@ -171,13 +207,13 @@ async function loadForecast() {
   }
 
   // Garante estado
-  await _fcEnsureState();
+  await _fcEnsureState(sbClient);
 
   // ── 1. Transações reais do período ──────────────────────────────────────
   let txData = [];
   try {
     let q = famQ(
-      sb.from('transactions')
+      sbClient.from('transactions')
         .select([
           'id','date','description','amount','currency','brl_amount',
           'account_id','is_transfer',
@@ -389,11 +425,6 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
       },
     },
   });
-
-  if (typeof state !== 'undefined') {
-    state.chartInstances = state.chartInstances || {};
-    state.chartInstances['forecastChart'] = forecastChartInstance;
-  }
 }
 
 // ── Tabelas por conta ─────────────────────────────────────────────────────────
