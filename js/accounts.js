@@ -236,7 +236,12 @@ function renderAccountsSummary(){
 }
 
 function accountCardHTML(a){
-  const favStar = a.is_favorite ? '<span title="Favorita" style="position:absolute;top:6px;left:8px;font-size:.9rem">⭐</span>' : '';
+  const favStar = `<span
+    onclick="event.stopPropagation();toggleAccountFavorite('${a.id}',${!!a.is_favorite})"
+    title="${a.is_favorite?'Remover dos favoritos':'Adicionar aos favoritos'}"
+    style="position:absolute;top:6px;left:8px;font-size:.9rem;cursor:pointer;transition:transform .15s;z-index:2;user-select:none"
+    onmouseover="this.style.transform='scale(1.25)'" onmouseout="this.style.transform=''"
+    id="favStar-${a.id}">${a.is_favorite ? '⭐' : '<span style="opacity:.3;font-size:.8rem">☆</span>'}</span>`;
   const dueLine = (a.type==='cartao_credito' && a.due_day)
     ? `<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Vence dia ${a.due_day}</div>` : '';
   return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
@@ -745,3 +750,48 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Optimistic UI: toggle favorite ────────────────────────────────────────
+async function toggleAccountFavorite(accId, currentIsFav) {
+  const newVal = !currentIsFav;
+  const acc = (state.accounts || []).find(a => a.id === accId);
+  if (!acc) return;
+
+  // 1. Optimistic update in state
+  acc.is_favorite = newVal;
+
+  // 2. Update star icon immediately
+  const starEl = document.getElementById('favStar-' + accId);
+  if (starEl) {
+    starEl.innerHTML = newVal ? '⭐' : '<span style="opacity:.3;font-size:.8rem">☆</span>';
+    starEl.title = newVal ? 'Remover dos favoritos' : 'Adicionar aos favoritos';
+    starEl.style.transform = 'scale(1.3)';
+    setTimeout(() => { if (starEl) starEl.style.transform = ''; }, 200);
+  }
+
+  // 3. Re-render dashboard accounts section immediately
+  if (typeof _renderDashAccounts === 'function') {
+    try { _renderDashAccounts(); } catch(_) {}
+  } else if (typeof loadDashboard === 'function' && state.currentPage === 'dashboard') {
+    loadDashboard().catch(() => {});
+  }
+
+  // 4. Async DB sync with rollback on error
+  try {
+    const { error } = await sb.from('accounts').update({ is_favorite: newVal }).eq('id', accId);
+    if (error) throw error;
+    DB.accounts.bust();
+    toast(newVal ? '⭐ Conta adicionada aos favoritos' : 'Removida dos favoritos', 'success');
+  } catch(e) {
+    // Rollback
+    acc.is_favorite = currentIsFav;
+    if (starEl) {
+      starEl.innerHTML = currentIsFav ? '⭐' : '<span style="opacity:.3;font-size:.8rem">☆</span>';
+    }
+    if (typeof _renderDashAccounts === 'function') {
+      try { _renderDashAccounts(); } catch(_) {}
+    }
+    toast('Erro ao atualizar: ' + e.message, 'error');
+  }
+}
+window.toggleAccountFavorite = toggleAccountFavorite;
