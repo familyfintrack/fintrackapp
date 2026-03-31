@@ -603,29 +603,71 @@ window.payeeAiSuggestLogo = async function() {
 
   try {
     const apiKey = await getAppSetting('gemini_api_key', '');
-    if (!apiKey) { content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>'; return; }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const prompt = `Sugira 3 emojis/ícones que representem visualmente o estabelecimento ou empresa chamado "${name}". Responda APENAS com JSON: {"suggestions":[{"emoji":"🛒","label":"Supermercado","reason":"..."},{"emoji":"...","label":"...","reason":"..."},{"emoji":"...","label":"...","reason":"..."}]}`;
-    const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:300,temperature:0.3} }) });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
+    if (!apiKey) {
+      content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>';
+      return;
+    }
+
+    const prompt = `Sugira exatamente 3 emojis/ícones que representem visualmente o estabelecimento ou empresa chamado "${name}". Responda APENAS com JSON válido neste formato: {"suggestions":[{"emoji":"🛒","label":"Supermercado","reason":"Combina com compras"},{"emoji":"☕","label":"Cafeteria","reason":"Remete a bebidas e café"},{"emoji":"🏥","label":"Saúde","reason":"Remete a clínica ou farmácia"}]}`;
+    const payload = {
+      contents:[{parts:[{text:prompt}]}],
+      generationConfig:{ maxOutputTokens:300, temperature:0.3, responseMimeType:'application/json' }
+    };
+
+    const models = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastError = null;
+    let data = null;
+
+    for (const model of models) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      try {
+        const resp = await fetch(url, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          if (resp.status === 404) {
+            lastError = new Error(`Modelo ${model} indisponível (HTTP 404)`);
+            continue;
+          }
+          throw new Error(`HTTP ${resp.status}${errText ? ' - ' + errText.slice(0, 180) : ''}`);
+        }
+
+        data = await resp.json();
+        if (data) break;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (!data) throw (lastError || new Error('Falha ao consultar o Gemini'));
+
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = text.replace(/```json|```/g,'').trim();
+    const clean = String(text).replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(clean);
-    const sugs = parsed.suggestions || [];
-    if (!sugs.length) throw new Error('Sem sugestões');
-    content.innerHTML = sugs.map(s => `
-      <div onclick="payeeSelectAiLogo('${s.emoji}')"
+    const sugs = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+    if (!sugs.length) throw new Error('Sem sugestões retornadas pelo Gemini');
+
+    content.innerHTML = sugs.slice(0,3).map(s => {
+      const emoji = String(s?.emoji || '🏢').replace(/'/g, '&#39;');
+      const label = esc(s?.label || 'Sugestão');
+      const reason = esc(s?.reason || '');
+      return `
+      <div onclick="payeeSelectAiLogo('${emoji}')"
         style="flex:1;min-width:80px;text-align:center;padding:10px 8px;border:1.5px solid var(--border);
                border-radius:10px;cursor:pointer;transition:all .15s;background:var(--surface)"
         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-lt)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
-        <div style="font-size:2rem;line-height:1;margin-bottom:4px">${s.emoji}</div>
-        <div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:2px">${esc(s.label)}</div>
-        <div style="font-size:.65rem;color:var(--muted);line-height:1.3">${esc(s.reason||'')}</div>
-      </div>`).join('');
+        <div style="font-size:2rem;line-height:1;margin-bottom:4px">${emoji}</div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:2px">${label}</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.3">${reason}</div>
+      </div>`;
+    }).join('');
   } catch(e) {
-    content.innerHTML = `<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Erro: ${esc(e.message)}</div>`;
+    content.innerHTML = `<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Erro ao consultar o Gemini: ${esc(e.message || 'Falha desconhecida')}</div>`;
   }
 };
 
