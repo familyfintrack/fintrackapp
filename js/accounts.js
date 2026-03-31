@@ -795,3 +795,192 @@ async function toggleAccountFavorite(accId, currentIsFav) {
   }
 }
 window.toggleAccountFavorite = toggleAccountFavorite;
+
+// ── AI icon suggestion for accounts ──────────────────────────────────────
+
+// Map of known bank/institution names → icon picker data-icon values
+const _BANK_ICON_MAP = {
+  'itau': 'itau', 'itaú': 'itau',
+  'inter': 'inter', 'banco inter': 'inter',
+  'bradesco': 'bradesco',
+  'nubank': 'nubank', 'nu': 'nubank',
+  'bb': 'bb', 'banco do brasil': 'bb',
+  'caixa': 'caixa', 'cef': 'caixa', 'caixa econômica': 'caixa',
+  'santander': 'santander',
+  'xp': 'xp', 'xp investimentos': 'xp',
+  'c6': 'c6', 'c6 bank': 'c6',
+  'neon': 'neon',
+  'next': 'next',
+  'picpay': 'picpay',
+  'mercado pago': 'mercadopago', 'mercadopago': 'mercadopago',
+  'sicoob': 'sicoob',
+  'rico': 'rico',
+  'will': 'will', 'will bank': 'will',
+  'boursobank': 'boursobank', 'bourso': 'boursobank',
+  'bnp': 'bnp', 'bnp paribas': 'bnp',
+  'sg': 'sg', 'societe generale': 'sg', 'société générale': 'sg',
+  'credit agricole': 'ca', 'crédit agricole': 'ca',
+  'lcl': 'lcl',
+  'la poste': 'laposte', 'banque postale': 'laposte',
+  'cic': 'cic',
+  'bred': 'bred',
+  'revolut': 'revolut',
+  'n26': 'n26',
+  'wise': 'wise', 'transferwise': 'wise',
+  'paypal': 'paypal',
+  'visa': 'visa',
+  'mastercard': 'mastercard', 'master': 'mastercard',
+  'amex': 'amex', 'american express': 'amex',
+  'elo': 'elo',
+  'hipercard': 'hipercard',
+  'diners': 'dinersclub', 'diners club': 'dinersclub',
+  'sams': 'sams', "sam's club": 'sams',
+  'porto': 'porto', 'porto seguro': 'porto',
+};
+
+window.accountAiSuggestIcon = async function() {
+  const name     = (document.getElementById('accountName')?.value || '').trim();
+  const type     = document.getElementById('accountType')?.value || '';
+  const currency = document.getElementById('accountCurrency')?.value || 'BRL';
+  if (!name) { toast('Informe o nome da conta primeiro', 'warning'); return; }
+
+  const panel   = document.getElementById('accountAiSuggestPanel');
+  const content = document.getElementById('accountAiSuggestContent');
+  if (!panel || !content) return;
+  panel.style.display = '';
+  content.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:12px;width:100%">⏳ Buscando sugestões…</div>';
+
+  // ── Step 1: try to match against known banks first ──────────────────
+  const lname = name.toLowerCase();
+  const matchedIconKey = Object.entries(_BANK_ICON_MAP).find(([k]) => lname.includes(k))?.[1];
+
+  // Build bank-match chip if found
+  let bankChipHtml = '';
+  if (matchedIconKey) {
+    const iconEl = document.querySelector(`.icon-option[data-icon="${matchedIconKey}"]`);
+    if (iconEl) {
+      const iconLabel = iconEl.querySelector('.icon-label')?.textContent || matchedIconKey;
+      const iconColor = iconEl.dataset.color || '#2a6049';
+      const iconInner = iconEl.querySelector('.bank-logo')?.outerHTML || iconEl.querySelector('span')?.outerHTML || '🏦';
+      bankChipHtml = `
+        <div onclick="accountSelectAiIcon('${matchedIconKey}','${iconColor}')"
+          style="flex:1;min-width:88px;text-align:center;padding:10px 8px;border:2px solid var(--accent);
+                 border-radius:10px;cursor:pointer;background:var(--accent-lt);transition:all .15s;position:relative"
+          onmouseover="this.style.background='var(--accent)';this.querySelectorAll('div').forEach(d=>d.style.color='#fff')"
+          onmouseout="this.style.background='var(--accent-lt)';this.querySelectorAll('div').forEach(d=>d.style.color='')">
+          <div style="font-size:1.5rem;line-height:1.3;margin-bottom:4px">${iconInner}</div>
+          <div style="font-size:.7rem;font-weight:800;color:var(--accent);margin-bottom:2px">${esc(iconLabel)}</div>
+          <div style="font-size:.62rem;color:var(--muted)">Logotipo reconhecido ✓</div>
+          <span style="position:absolute;top:-8px;right:6px;font-size:.58rem;font-weight:800;background:var(--accent);color:#fff;padding:1px 6px;border-radius:20px">MELHOR</span>
+        </div>`;
+    }
+  }
+
+  // ── Step 2: AI emoji suggestions ────────────────────────────────────
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '');
+    if (!apiKey) {
+      content.innerHTML = bankChipHtml ||
+        '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>';
+      return;
+    }
+
+    const typeLabels = { corrente:'Conta Corrente', poupanca:'Poupança', cartao_credito:'Cartão de Crédito', investimento:'Investimentos', dinheiro:'Dinheiro', outros:'Outros' };
+    const context = [
+      `Nome da conta: ${name}`,
+      `Tipo de conta: ${typeLabels[type] || type}`,
+      currency !== 'BRL' ? `Moeda: ${currency}` : '',
+    ].filter(Boolean).join('\n');
+
+    const prompt = [
+      'Você é um assistente de branding para um app financeiro.',
+      'Com base nos dados de uma conta bancária, sugira 3 ícones/emoji para representá-la visualmente.',
+      'Priorize o nome do banco como pista: se reconhecer o banco, sugira ícones que remetam à identidade visual (cor, inicial, símbolo) da instituição.',
+      'Considere o tipo de conta (corrente, poupança, cartão) como contexto secundário.',
+      'Responda APENAS com JSON válido: {"suggestions":[{"emoji":"💳","label":"Cartão","reason":"..."},{"emoji":"...","label":"...","reason":"..."},{"emoji":"...","label":"...","reason":"..."}]}',
+      '',
+      context
+    ].join('\n');
+
+    const models = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let parsed = null;
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 400, temperature: 0.3, responseMimeType: 'application/json' }
+          })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json|```/g,'').trim();
+        parsed = JSON.parse(text);
+        if (parsed?.suggestions?.length) break;
+      } catch(_) {}
+    }
+
+    const sugs = parsed?.suggestions || [];
+    const aiChips = sugs.map(s => {
+      const emoji = String(s.emoji || '🏦').replace(/'/g, '&#39;');
+      return `
+        <div onclick="accountSelectAiIcon('emoji-${emoji}','')"
+          style="flex:1;min-width:80px;text-align:center;padding:10px 8px;border:1.5px solid var(--border);
+                 border-radius:10px;cursor:pointer;transition:all .15s;background:var(--surface)"
+          onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-lt)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
+          <div style="font-size:2rem;line-height:1;margin-bottom:4px">${esc(s.emoji || '🏦')}</div>
+          <div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:2px">${esc(s.label||'')}</div>
+          <div style="font-size:.63rem;color:var(--muted);line-height:1.2">${esc(s.reason||'')}</div>
+        </div>`;
+    }).join('');
+
+    content.innerHTML = (bankChipHtml + aiChips) ||
+      '<div style="color:var(--muted);font-size:.8rem;padding:8px">Sem sugestões.</div>';
+
+  } catch(e) {
+    content.innerHTML = bankChipHtml ||
+      `<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Erro: ${esc(e.message)}</div>`;
+  }
+};
+
+window.accountSelectAiIcon = function(iconKeyOrEmoji, color) {
+  // iconKeyOrEmoji: 'itau' | 'nubank' | 'emoji-💳'
+  const panel = document.getElementById('accountAiSuggestPanel');
+
+  if (iconKeyOrEmoji.startsWith('emoji-')) {
+    // Emoji suggestion: set icon value as 'emoji-X' and preview
+    const emoji = iconKeyOrEmoji.slice(6);
+    const iconInput   = document.getElementById('accountIcon');
+    const iconPreview = document.getElementById('accountIconPreview');
+    if (iconInput)   iconInput.value = `emoji-${emoji}`;
+    if (iconPreview) iconPreview.innerHTML = `<span style="font-size:1.4rem">${emoji}</span>`;
+    // Also call syncIconPickerToValue if available
+    if (typeof syncIconPickerToValue === 'function') {
+      syncIconPickerToValue(`emoji-${emoji}`, color || document.getElementById('accountColor')?.value || '#2a6049');
+    }
+    toast('Ícone selecionado!', 'success');
+  } else {
+    // Bank icon: trigger the existing icon picker selection
+    const iconEl = document.querySelector(`.icon-option[data-icon="${iconKeyOrEmoji}"]`);
+    if (iconEl) {
+      // Show its tab group first
+      const gridEl = iconEl.closest('.icon-grid');
+      if (gridEl) {
+        document.querySelectorAll('.icon-grid').forEach(g => g.style.display = 'none');
+        gridEl.style.display = '';
+        // Activate the tab button
+        const tabBtns = document.querySelectorAll('#accountIconPicker .icon-tab');
+        tabBtns.forEach(b => {
+          b.classList.toggle('active', b.getAttribute('onclick')?.includes(gridEl.id));
+        });
+      }
+      if (typeof selectAccountIcon === 'function') selectAccountIcon(iconEl);
+    }
+    toast('Ícone do banco selecionado!', 'success');
+  }
+  if (panel) panel.style.display = 'none';
+};

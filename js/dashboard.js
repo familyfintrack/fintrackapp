@@ -349,14 +349,18 @@ async function loadDashboard(){
       const favCheck   = favs.filter(a => a.type === 'corrente' || a.type === 'poupanca');
       const favOthers  = favs.filter(a => !['cartao_credito','corrente','poupanca'].includes(a.type));
 
-      const _favTypeSep = (items, label, totalSign) => {
+      const _favTypeSep = (items, label) => {
         if (!items.length) return '';
         const total = items.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-        const totalColor = total < 0 ? 'var(--red)' : label === 'Cartão de Crédito' ? 'rgba(192,57,43,.75)' : 'var(--accent)';
+        const isCC = label === 'Cartão de Crédito';
+        // Use fmt() for consistency with rest of app (shows centavos, respects privacy mode)
+        const totalFmt = fmt(Math.abs(total), 'BRL');
+        const totalColor = total < 0 ? 'var(--red)' : isCC ? 'var(--red)' : 'var(--accent)';
+        const icon = isCC ? '💳' : label.includes('Corrente') ? '🏦' : '📦';
         return `<div class="dash-fav-type-group">
           <div class="dash-fav-type-header">
-            <span class="dash-fav-type-label">${label}</span>
-            <span class="dash-fav-type-total" style="color:${totalColor}">${dashFmt(Math.abs(total),'BRL')}</span>
+            <span class="dash-fav-type-label">${icon} ${label}</span>
+            <span class="dash-fav-type-total" style="color:${totalColor};font-family:var(--font-serif,monospace)">${isCC && total < 0 ? '−' : ''}${totalFmt}</span>
           </div>
           <div class="dash-favs-grid">${items.map(rowHtml).join('')}</div>
         </div>`;
@@ -1375,7 +1379,7 @@ async function _renderDashForecast() {
 
   // Fetch real transactions in period
   let q = famQ(sb.from('transactions')
-    .select('id,date,amount,currency,brl_amount,account_id,is_transfer')
+    .select('id,date,description,amount,currency,brl_amount,account_id,is_transfer,categories(name,color,icon),payees(name),accounts!transactions_account_id_fkey(id,name,color,currency,icon,type,balance)')
     .gte('date', fromStr).lte('date', toStr).order('date'));
   if (accIds.length === 1) q = q.eq('account_id', accIds[0]);
   else if (accIds.length > 1) q = q.in('account_id', accIds);
@@ -1397,10 +1401,34 @@ async function _renderDashForecast() {
         const baseAmt = Math.abs(parseFloat(sc.amount) || 0);
         if (!accIds.length || accIds.includes(sc.account_id)) {
           const originAmount = sc.type === 'income' ? baseAmt : -baseAmt;
-          if (originAmount !== 0) scheduledItems.push({ date, amount: originAmount, account_id: sc.account_id, isScheduled: true });
+          if (originAmount !== 0) {
+            const accMeta = (state.accounts || []).find(a => a.id === sc.account_id);
+            scheduledItems.push({
+              date,
+              description: sc.description || '',
+              amount: originAmount,
+              account_id: sc.account_id,
+              currency: sc.currency || accMeta?.currency || 'BRL',
+              categories: sc.categories || null,
+              payees: sc.payees || null,
+              accounts: accMeta || null,
+              isScheduled: true
+            });
+          }
         }
         if (isTransfer && sc.transfer_to_account_id && (!accIds.length || accIds.includes(sc.transfer_to_account_id))) {
-          scheduledItems.push({ date, amount: Math.abs(parseFloat(sc.amount)||0), account_id: sc.transfer_to_account_id, isScheduled: true });
+          const accMeta = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
+          scheduledItems.push({
+            date,
+            description: sc.description || '',
+            amount: Math.abs(parseFloat(sc.amount)||0),
+            account_id: sc.transfer_to_account_id,
+            currency: accMeta?.currency || 'BRL',
+            categories: sc.categories || null,
+            payees: null,
+            accounts: accMeta || null,
+            isScheduled: true
+          });
         }
       });
     });
@@ -1419,14 +1447,14 @@ async function _renderDashForecast() {
     return;
   }
 
-  // Build daily dates for the full 90-day period so the user can hover/click any day
+  // Build daily dates (sampled weekly for display clarity)
   const dates = [];
   let cur = new Date(fromStr+'T12:00');
   const end = new Date(toStr+'T12:00');
-  while (cur <= end) {
-    dates.push(cur.toISOString().slice(0,10));
-    cur.setDate(cur.getDate()+1);
-  }
+  while (cur <= end) { dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  const step = 7; // weekly samples for 90d
+  const sampled = dates.filter((_,i)=>i%step===0);
+  if (!sampled.includes(toStr)) sampled.push(toStr);
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
   const datasets = accounts.slice(0,6).map((a,idx)=>{
@@ -1436,7 +1464,7 @@ async function _renderDashForecast() {
     const color = a.color || COLORS[idx%COLORS.length];
     return {
       label: a.name,
-      data: dates.map(d=>({
+      data: sampled.map(d=>({
         x: d,
         y: +(baseBal + txAcc.filter(t=>t.date<=d).reduce((s,t)=>s+(parseFloat(t.amount)||0),0)).toFixed(2)
       })),
@@ -1466,14 +1494,17 @@ async function _renderDashForecast() {
   if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minVal, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
   if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxVal, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
 
-  // Build tx-by-label map for drill-down directly from dashboard data
-  const _fcTxByLabel = {};
-  allItems.forEach(item => {
-    const label = item.date;
-    if (!_fcTxByLabel[label]) _fcTxByLabel[label] = [];
-    _fcTxByLabel[label].push(item);
-  });
-  const _fcLabels = dates.slice();
+  // Build tx-by-label map for drill-down using the actual dashboard dataset
+  const _fcLabels = datasets[0]?.data?.map(d => d.x) || [];
+  const _fcTxByLabel = _fcLabels.reduce((acc, label) => {
+    acc[label] = allItems
+      .filter(item => item.date === label)
+      .map(item => ({
+        ...item,
+        accounts: item.accounts || (state.accounts || []).find(a => a.id === item.account_id) || null,
+      }));
+    return acc;
+  }, {});
 
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
@@ -1481,48 +1512,25 @@ async function _renderDashForecast() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { mode:'index', intersect:false, axis:'x' },
+      interaction: { mode:'index', intersect:false },
       plugins: {
         legend: { position:'bottom', labels:{ boxWidth:10, font:{ size:10 } } },
-        tooltip: {
-          callbacks: {
-            title: items => {
-              const raw = items?.[0]?.label || items?.[0]?.parsed?.x || '';
-              return raw ? fmtDate(raw) : '';
-            },
-            label: ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
-          }
-        },
+        tooltip: { callbacks: { label: ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
         annotation: { annotations },
       },
       scales: {
-        x: {
-          type:'category',
-          ticks:{
-            autoSkip: true,
-            maxTicksLimit: 8,
-            color:'#8c8278',
-            font:{size:10},
-            callback(value, index) {
-              const raw = this.getLabelForValue ? this.getLabelForValue(value) : (dates[index] || value);
-              return raw ? fmtDate(raw) : '';
-            }
-          },
-          grid:{ color:'#e8e4de33' }
-        },
+        x: { type:'category', ticks:{ maxTicksLimit:8, color:'#8c8278', font:{size:10} }, grid:{ color:'#e8e4de33' } },
         y: { ticks:{ callback:v=>fmt(v), color:'#8c8278', font:{size:10} }, grid:{ color: ctx=>ctx.tick.value===0?'rgba(220,38,38,0.2)':'#e8e4de33' } },
       },
-      onClick(evt, elements, chart) {
-        const hits = elements?.length ? elements : chart.getElementsAtEventForMode(evt, 'index', { intersect:false, axis:'x' }, false);
-        if (!hits.length) return;
-        const idx   = hits[0].index;
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        const idx   = elements[0].index;
         const label = _fcLabels[idx] || '';
         const txs   = _fcTxByLabel[label] || [];
         if (label) _dashForecastDrill(label, txs);
       },
-      onHover(evt, elements, chart) {
-        const hits = elements?.length ? elements : chart.getElementsAtEventForMode(evt, 'index', { intersect:false, axis:'x' }, false);
-        evt.native.target.style.cursor = hits.length ? 'pointer' : 'default';
+      onHover(evt, elements) {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
       },
     },
   });
@@ -1748,18 +1756,19 @@ function _showForecastDrillModal(label, txs) {
       </button>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
-      ${txs.map(t => {
-        const isNeg = t.amount < 0;
+      ${txs.length ? txs.map(t => {
+        const isNeg = Number(t.amount) < 0;
+        const meta = [t.date || '', t.accounts?.name ? esc(t.accounts.name) : '', t.isScheduled ? 'Programado' : 'Lançado'].filter(Boolean).join(' · ');
         return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px">
           <div style="flex:1;min-width:0">
-            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${t.date||''}${t.accounts?.name?' · '+esc(t.accounts.name):''}</div>
+            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${t.isScheduled ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>' : ''}</div>
+            <div style="font-size:.68rem;color:var(--muted)">${meta}</div>
           </div>
           <span style="font-size:.82rem;font-weight:700;color:${isNeg?'var(--red,#c0392b)':'var(--green,#2a7a4a)'}">
-            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0))}
+            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0), t.currency || t.accounts?.currency || 'BRL')}
           </span>
         </div>`;
-      }).join('')}
+      }).join('') : `<div style="padding:18px 10px;text-align:center;color:var(--muted)">Nenhuma transação ou programado encontrado para este dia.</div>`}
     </div>`;
   // Inject into modal
   let modal = document.getElementById('forecastDrillModal');

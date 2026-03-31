@@ -557,14 +557,16 @@ async function _fetchAccessRequestSettingAnon() {
       return; // localStorage is authoritative — skip DB fetch
     }
 
+    // No localStorage → keep hidden while we fetch (avoids flash)
+    _applyAccessRequestVisibility(false);
+
     // ── Step 2: No localStorage → fetch from DB (first-ever load or cleared) ──
     let attempts = 0;
     while (!window.sb && attempts++ < 30) {
       await new Promise(r => setTimeout(r, 100));
     }
     if (!window.sb) {
-      // No Supabase and no localStorage → show by default
-      _applyAccessRequestVisibility(true);
+      // No Supabase and no localStorage → keep hidden (safe default)
       return;
     }
 
@@ -597,22 +599,22 @@ async function _fetchAccessRequestSettingAnon() {
     if (found) {
       let val = raw;
       if (typeof val === 'string') { try { val = JSON.parse(val); } catch(_) {} }
-      const enabled = val === null || val === true || val === 'true' || val === 1 || val === '1';
+      const enabled = val === true || val === 'true' || val === 1 || val === '1';
       // Cache in localStorage for next visit
       try { localStorage.setItem('ft_show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
       _applyAccessRequestVisibility(enabled);
     } else {
-      // Not in DB and no localStorage → default: show (backwards compatible)
-      _applyAccessRequestVisibility(true);
-      try { localStorage.setItem('ft_show_access_request', 'true'); } catch(_) {}
+      // Not in DB and no localStorage → default: hidden (admin must explicitly enable)
+      _applyAccessRequestVisibility(false);
+      try { localStorage.setItem('ft_show_access_request', 'false'); } catch(_) {}
     }
   } catch(_) {
-    _applyAccessRequestVisibility(true);
+    // On any error, keep hidden — safer than showing registration to wrong users
+    _applyAccessRequestVisibility(false);
   }
 }
 
 
-// ── Access request visibility — reads from DB only, never from localStorage ──
 function _applyAccessRequestVisibility(enabled) {
   try {
     const wrap = document.getElementById('loginRequestAccessWrap');
@@ -1221,6 +1223,7 @@ function openMyProfile() {
 
   // --- Notification defaults ---
   if (typeof loadFormModeIntoProfile === 'function') loadFormModeIntoProfile();
+  if (typeof loadAlertPrefsIntoProfile === 'function') loadAlertPrefsIntoProfile();
   const waEl = document.getElementById('myProfileWhatsappNumber');
   const tgEl = document.getElementById('myProfileTelegramChatId');
   if (waEl) waEl.value = currentUser?.whatsapp_number || '';
@@ -1575,6 +1578,7 @@ async function saveMyProfile() {
 
     toast(t('profile.updated'), 'success');
     if (typeof _saveFormModeFromProfile === 'function') _saveFormModeFromProfile();
+    if (typeof saveAlertPrefsFromProfile === 'function') saveAlertPrefsFromProfile();
     closeModal('myProfileModal');
   } catch(e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
