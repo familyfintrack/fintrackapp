@@ -587,24 +587,12 @@
           onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,.35)'">
           🤖
         </button>
-        <button id="feedbackTopbarBtn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria"
-          style="display:none;background:linear-gradient(135deg,#ea580c,#f97316);border:none;
-                 border-radius:50%;width:34px;height:34px;cursor:pointer;flex-shrink:0;
-                 align-items:center;justify-content:center;font-size:1rem;
-                 box-shadow:0 0 0 0 rgba(249,115,22,.4);
-                 animation:fbPulse 2.5s ease-in-out infinite;
-                 transition:transform .15s,box-shadow .15s"
-          onmouseover="this.style.transform='scale(1.12)';this.style.boxShadow='0 4px 16px rgba(249,115,22,.5)'"
-          onmouseout="this.style.transform='';this.style.boxShadow=''"
-          style="position:relative;display:flex;align-items:center;gap:5px;padding:5px 10px;
-                 border-radius:20px;border:1.5px solid rgba(99,102,241,.4);
-                 background:rgba(99,102,241,.08);cursor:pointer;
-                 transition:all .2s;color:#818cf8;flex-shrink:0"
-          onmouseover="this.style.background='rgba(99,102,241,.18)';this.style.borderColor='rgba(99,102,241,.7)'"
-          onmouseout="this.style.background='rgba(99,102,241,.08)';this.style.borderColor='rgba(99,102,241,.4)'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span style="font-size:.72rem;font-weight:700;letter-spacing:.01em;white-space:nowrap" class="fb-btn-label">Feedback</span>
-          <span id="feedbackBadge" style="display:none;min-width:16px;height:16px;background:#dc2626;border-radius:999px;font-size:.6rem;font-weight:700;color:#fff;padding:0 4px;line-height:16px;text-align:center"></span>
+        <button id="feedbackTopbarBtn" class="topbar-feedback-btn" onclick="openFeedbackModal()" title="Reportar erro, bug ou melhoria" aria-label="Reportar erro, bug ou melhoria">
+          <span class="topbar-feedback-btn__icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+          </span>
+          <span class="topbar-feedback-btn__label">Feedback</span>
+          <span id="feedbackBadge" class="topbar-feedback-btn__badge" style="display:none"></span>
         </button>
         <!-- Sair -->
         <button class="topbar-icon-btn" id="logoutTopbarBtn" onclick="doLogout()" title="Sair">
