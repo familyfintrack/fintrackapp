@@ -596,15 +596,12 @@ window.payeeAiSuggestLogo = async function() {
   const content = document.getElementById('payeeAiSuggestContent');
   if (!panel || !content) return;
   panel.style.display = '';
-  content.style.display = 'flex';
-  content.style.gap = '8px';
-  content.style.flexWrap = 'wrap';
-  content.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:12px;width:100%">⏳ Buscando sugestões…</div>';
+  content.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:12px">⏳ Buscando sugestões…</div>';
 
   try {
     const apiKey = await getAppSetting('gemini_api_key', '');
     if (!apiKey) { content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>'; return; }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const prompt = `Sugira 3 emojis/ícones que representem visualmente o estabelecimento ou empresa chamado "${name}". Responda APENAS com JSON: {"suggestions":[{"emoji":"🛒","label":"Supermercado","reason":"..."},{"emoji":"...","label":"...","reason":"..."},{"emoji":"...","label":"...","reason":"..."}]}`;
     const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:300,temperature:0.3} }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);

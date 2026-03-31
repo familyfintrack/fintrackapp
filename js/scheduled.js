@@ -716,7 +716,6 @@ function renderUpcoming() {
       ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
       : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
 
-    const _startOpen = isToday || isTomorrow;
     return `<div class="sup-group">
       <div class="sup-group-hdr" onclick="toggleUpcomingGroup('${gid}')">
         <div class="sup-group-left">
@@ -726,11 +725,10 @@ function renderUpcoming() {
         <div class="sup-group-meta">
           <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
           <span class="sup-day-count">${items.length}</span>
-          <svg class="sc-upcoming-day-arrow" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-            style="transform:rotate(${_startOpen?'180':'0'}deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg class="sc-upcoming-day-arrow" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
-      <div class="sup-rows" id="${gid}" style="${_startOpen?'':'display:none'}">${rows}</div>
+      <div class="sup-rows" id="${gid}" style="display:none">${rows}</div>
     </div>`;
   }).join('');
 
@@ -756,14 +754,6 @@ function toggleUpcomingCard() {
 }
 
 function toggleUpcomingGroup(gid) {
-  const rows  = document.getElementById(gid);
-  const arrow = document.getElementById(gid + '_arr');
-  if (!rows) return;
-  const isOpen = rows.style.display !== 'none';
-  rows.style.display = isOpen ? 'none' : '';
-  if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-}
-function _toggleUpcomingGroupOLD(gid) {
   const rows = document.getElementById(gid);
   const arrow = document.getElementById(gid + '_arr');
   if (!rows) return;

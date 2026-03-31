@@ -231,12 +231,6 @@ async function loadDashboard(){
   if (statTotalEl){
     statTotalEl.textContent = dashFmt(total,'BRL');
     statTotalEl.className = 'stat-value ' + (total >= 0 ? 'amount-pos' : 'amount-neg');
-    const _tc = statTotalEl.closest('.stat-card');
-    if (_tc) {
-      _tc.style.cursor = 'pointer';
-      _tc.title = 'Ver composição do patrimônio';
-      _tc.onclick = () => _openPatrimonioModal();
-    }
   }
   if (statIncomeEl){
     statIncomeEl.textContent=dashFmt(income,'BRL');
@@ -1709,11 +1703,8 @@ function attachForecastNavigation(chartInstance, labelsArr, txByLabel) {
 }
 
 function _dashForecastDrill(label, txs) {
-  // Use modal popup instead of inline panel
-  _showForecastDrillModal(label, txs);
-}
-
-function _showForecastDrillModal(label, txs) {
+  const el = document.getElementById('dashForecastDrillPanel');
+  if (!el) return;
   const isExp = txs.some(t => t.amount < 0);
   const total = txs.reduce((s,t) => s + Math.abs(Number(t.amount)||0), 0);
   el.innerHTML = `
@@ -1741,21 +1732,10 @@ function _showForecastDrillModal(label, txs) {
         </div>`;
       }).join('')}
     </div>`;
-  // Inject into modal
-  let modal = document.getElementById('forecastDrillModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'forecastDrillModal';
-    modal.className = 'modal-overlay';
-    modal.onclick = e => { if (e.target === modal) closeModal('forecastDrillModal'); };
-    modal.innerHTML = '<div class="modal" style="max-width:520px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:16px 18px"></div></div>';
-    document.body.appendChild(modal);
-  }
-  document.getElementById('forecastDrillModalBody').innerHTML = content;
-  openModal('forecastDrillModal');
+  document.getElementById('dashForecastChartWrap').style.display = 'none';
+  el.style.display = 'block';
 }
 window._dashForecastDrill = _dashForecastDrill;
-window._showForecastDrillModal = _showForecastDrillModal;
 
 function toggleSupGroup(date) {
   const body  = document.getElementById('supGroup-' + date);
@@ -1766,84 +1746,3 @@ function toggleSupGroup(date) {
   if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 window.toggleSupGroup = toggleSupGroup;
-
-// ── Modal: Composição do Patrimônio Total ─────────────────────────────────
-function _openPatrimonioModal() {
-  const accs = Array.isArray(state.accounts) ? state.accounts : [];
-  if (!accs.length) return;
-
-  // Group by currency
-  const byCurrency = {};
-  accs.forEach(a => {
-    const cur = a.currency || 'BRL';
-    if (!byCurrency[cur]) byCurrency[cur] = [];
-    byCurrency[cur].push(a);
-  });
-
-  const totalBRL = accs.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-
-  let content = `
-    <div style="padding:20px 22px 24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Total</div>
-          <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-        </div>
-        <button onclick="closeModal('patrimonioModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
-      </div>`;
-
-  Object.entries(byCurrency).forEach(([cur, group]) => {
-    const groupTotal = group.reduce((s,a) => s + (parseFloat(a.balance)||0), 0);
-    const groupTotalBRL = group.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, cur), 0);
-    content += `
-      <div style="margin-bottom:16px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">${cur}</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    group.sort((a,b)=>(Math.abs(b.balance||0)-Math.abs(a.balance||0))).forEach(a => {
-      const bal = parseFloat(a.balance)||0;
-      const pct = groupTotalBRL !== 0 ? Math.abs(toBRL(bal,cur)/totalBRL*100) : 0;
-      const isNeg = bal < 0;
-      content += `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--surface2);cursor:pointer;transition:background .12s"
-          onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
-          onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'">
-          <div style="width:30px;height:30px;border-radius:8px;background:${a.color||'var(--accent)'}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,16)}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${accountTypeLabel?.(a.type)||a.type||''}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${isNeg?'var(--red)':'var(--text)'}">${fmt(bal,cur)}</div>
-            ${cur!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">${dashFmt(toBRL(bal,cur),'BRL')}</div>`:''}
-            <div style="font-size:.65rem;color:var(--muted)">${pct.toFixed(1)}% do total</div>
-          </div>
-        </div>
-        <div style="height:3px;border-radius:2px;background:var(--border);margin:0 10px;overflow:hidden">
-          <div style="height:100%;width:${Math.min(pct,100)}%;background:${a.color||'var(--accent)'};border-radius:2px;transition:width .4s ease"></div>
-        </div>`;
-    });
-    content += `
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:6px 10px 0;font-size:.75rem;color:var(--muted)">
-          <span>${group.length} conta${group.length!==1?'s':''}</span>
-          <span style="font-weight:700;color:var(--text)">${fmt(groupTotal,cur)}${cur!=='BRL'?` (${dashFmt(groupTotalBRL,'BRL')})`:''}</span>
-        </div>
-      </div>`;
-  });
-
-  content += '</div>';
-
-  // Inject into modal
-  let modal = document.getElementById('patrimonioModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'patrimonioModal';
-    modal.className = 'modal-overlay';
-    modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
-    document.body.appendChild(modal);
-  }
-  document.getElementById('patrimonioModalBody').innerHTML = content;
-  openModal('patrimonioModal');
-}
-window._openPatrimonioModal = _openPatrimonioModal;

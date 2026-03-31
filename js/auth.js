@@ -309,7 +309,6 @@ async function _loadCurrentUserContext(authCtx = null) {
     notify_tx_tg:         !!appUserRow?.notify_tx_tg,
     ...caps
   };
-  window.currentUser = currentUser;
 
   // Apply user language preference from DB (preferred_language column)
   // DB is authoritative — it was saved by saveMyProfile() / quickSetLang()
@@ -549,17 +548,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function _fetchAccessRequestSettingAnon() {
-  // Prioridade: valor do banco. Fallback: cache local. Default seguro: oculto.
+  // Always reads from Supabase DB — NEVER from localStorage or device storage
   try {
     let attempts = 0;
     while (!window.sb && attempts++ < 30) {
       await new Promise(r => setTimeout(r, 100));
     }
-
-    if (!window.sb) {
-      _applyAccessRequestVisibilityFromLocalStorage();
-      return;
-    }
+    if (!window.sb) { _applyAccessRequestVisibility(true); return; }
 
     let raw = null;
     let found = false;
@@ -590,34 +585,28 @@ async function _fetchAccessRequestSettingAnon() {
     if (found) {
       let val = raw;
       if (typeof val === 'string') { try { val = JSON.parse(val); } catch(_) {} }
-      const enabled = val === true || val === 'true' || val === 1 || val === '1';
-      try { localStorage.setItem('ft_show_access_request', enabled ? 'true' : 'false'); } catch(_) {}
+      const enabled = val === null || val === true || val === 'true' || val === 1 || val === '1';
       _applyAccessRequestVisibility(enabled);
     } else {
-      _applyAccessRequestVisibilityFromLocalStorage();
+      // Not in DB → default visible
+      _applyAccessRequestVisibility(true);
     }
   } catch(_) {
-    _applyAccessRequestVisibilityFromLocalStorage();
+    _applyAccessRequestVisibility(true);
   }
 }
 
 
-// ── Access request visibility — lê cache local imediatamente e confirma no banco ──
+// ── Access request visibility — reads from DB only, never from localStorage ──
 function _applyAccessRequestVisibility(enabled) {
   try {
     const wrap = document.getElementById('loginRequestAccessWrap');
     if (wrap) wrap.style.display = enabled ? '' : 'none';
   } catch(_) {}
 }
+// Alias kept for legacy callers — delegates to DB fetch
 function _applyAccessRequestVisibilityFromLocalStorage() {
-  try {
-    const lsVal = localStorage.getItem('ft_show_access_request');
-    if (lsVal === 'true') _applyAccessRequestVisibility(true);
-    else if (lsVal === 'false') _applyAccessRequestVisibility(false);
-    else _applyAccessRequestVisibility(false); // default seguro: só mostra quando explicitamente ativado
-  } catch(_) {
-    _applyAccessRequestVisibility(false);
-  }
+  _fetchAccessRequestSettingAnon();
 }
 
 
@@ -1576,7 +1565,6 @@ async function doLogout() {
   localStorage.removeItem('ft_session_token');
   localStorage.removeItem('ft_user_id');
   currentUser = null;
-  window.currentUser = null;
   // Reset charts
   Object.values(state.chartInstances||{}).forEach(c => c?.destroy?.());
   state.chartInstances = {};
