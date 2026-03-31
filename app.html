@@ -503,6 +503,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".8"/></svg>
         </span><span data-i18n="nav.ai_insights">AI Insights
       </button>
+      <button class="nav-item" id="dreamsNav" data-nav="dreams" data-feature-controlled="1" onclick="navigate('dreams')" style="display:none">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </span><span data-i18n="nav.dreams">Sonhos
+      </button>
     </div><!-- /modules section end -->
 
     <!-- Help always visible -->
@@ -3397,6 +3402,11 @@
       </div>
 
     </div><!-- /page-ai_insights -->
+
+    <!-- DREAMS -->
+    <div class="page" id="page-dreams" style="display:none">
+      <div id="dreams-list-container"></div>
+    </div><!-- /page-dreams -->
 
 
     <!-- ══ HELP PAGE ════════════════════════════════════════════════════════ -->
@@ -9070,6 +9080,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
   <script src="js/debts.js"></script>
   <script src="js/agent.js"></script>
+  <script src="js/dreams.js"></script>
 
 <script>
 window.toggleScheduledSection = window.toggleScheduledSection || function(section){
