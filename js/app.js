@@ -612,7 +612,6 @@ async function bootApp(){
   if (typeof applyInvestmentsFeature === 'function') applyInvestmentsFeature().catch(() => {});
   if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
   if (typeof applyDebtsFeature === 'function') applyDebtsFeature().catch(() => {});
-  if (typeof applyDreamsFeature === 'function') applyDreamsFeature().catch(() => {});
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
 }
@@ -621,7 +620,6 @@ const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Co
   grocery:'Lista de Mercado',
   ai_insights:'AI Insights',
   debts:'Dívidas',
-  dreams:'Meus Sonhos',
   help:'Ajuda',
   audit:'Auditoria de Programadas',
   telemetry:'Telemetria',
@@ -646,7 +644,6 @@ const _pageIconsSVG = {
   audit:        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
   telemetry:    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><polyline points="22 20 2 20"/></svg>',
   privacy:      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-  dreams:       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
 };
 async function togglePrivacy(){
   state.privacyMode=!state.privacyMode;
@@ -918,9 +915,34 @@ function navigate(page){
   (function _injectPageHeader(pg) {
     const pageEl = document.getElementById('page-' + pg);
     if (!pageEl) return;
+
+    // Algumas páginas já possuem cabeçalho próprio. Injetar a barra padrão nelas
+    // cria uma faixa extra no topo e empurra o conteúdo, como acontecia em Relatórios.
+    const pagesWithCustomHeader = new Set(['reports']);
+
     // Remove header anterior se existir
-    const old = pageEl.querySelector('.page-header-bar');
+    const old = pageEl.querySelector(':scope > .page-header-bar');
     if (old) old.remove();
+
+    // Sempre manter a FX bar no topo da página ativa, mesmo quando a barra padrão
+    // não deve ser exibida.
+    let fxBar = document.getElementById('fxRatesBadge');
+    if (!fxBar && typeof _renderFxBadge === 'function') {
+      try { _renderFxBadge(); } catch (_) {}
+      fxBar = document.getElementById('fxRatesBadge');
+    }
+
+    if (pagesWithCustomHeader.has(pg)) {
+      if (fxBar) {
+        pageEl.insertBefore(fxBar, pageEl.firstChild);
+        fxBar.style.display = '';
+        if (typeof _renderFxBadge === 'function') {
+          try { _renderFxBadge(); } catch (_) {}
+        }
+      }
+      return;
+    }
+
     const icon = _pageIconsSVG[pg] || _pageIconsSVG['dashboard'];
     const title = pageTitles[pg] || pg;
     // Ações opcionais por página
@@ -943,7 +965,6 @@ function navigate(page){
       prices:       '',
       grocery:      '',
       ai_insights:  '',
-      dreams:       `<button class="page-header-action" onclick="openDreamWizard()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo Sonho</button>`,
       help:         '',
     };
     const bar = document.createElement('div');
@@ -951,12 +972,6 @@ function navigate(page){
     bar.innerHTML = `<div class="page-header-bar-left"><div class="page-header-bar-icon">${icon}</div><span class="page-header-bar-title">${title}</span></div><div class="page-header-bar-right">${actions[pg]||''}</div>`;
     pageEl.insertBefore(bar, pageEl.firstChild);
 
-    // Keep FX bar directly below the page title bar
-    let fxBar = document.getElementById('fxRatesBadge');
-    if (!fxBar && typeof _renderFxBadge === 'function') {
-      try { _renderFxBadge(); } catch (_) {}
-      fxBar = document.getElementById('fxRatesBadge');
-    }
     if (fxBar) {
       pageEl.insertBefore(fxBar, bar.nextSibling);
       fxBar.style.display = '';
@@ -1003,7 +1018,6 @@ function navigate(page){
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
-  else if(page==='dreams')initDreamsPage?.();
   else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
   else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
 
