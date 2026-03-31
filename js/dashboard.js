@@ -305,10 +305,6 @@ async function loadDashboard(){
         // Fintech-style card for favorites
         const _cardColor  = a.color || '#2a6049';
         const _typeLabel  = accountTypeLabel(a.type) || a.type || '';
-        const _currencyLabel = (a.currency || 'BRL').toUpperCase();
-        const _metaParts  = [_typeLabel, _currencyLabel].filter(Boolean);
-        const _metaHtml   = _metaParts.map((part, idx) => `
-              <span class="dash-fav-card__meta-part${idx < (_metaParts.length - 1) ? ' has-sep' : ''}">${esc(part)}</span>`).join('');
         const _isNeg      = a.balance < 0;
         const _brlLine    = (a.currency !== 'BRL')
           ? `<div class="dash-fav-brl">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>`
@@ -327,7 +323,7 @@ async function loadDashboard(){
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
             <div class="dash-fav-card__icon">${_dashRenderIcon(a.icon,a.color,20)}</div>
-            <div class="dash-fav-card__meta">${_metaHtml}</div>
+            <span class="dash-fav-card__type">${esc(_typeLabel)}</span>
           </div>
           <div class="dash-fav-card__name">${esc(a.name)}</div>
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
@@ -1718,17 +1714,16 @@ function _dashForecastDrill(label, txs) {
 }
 
 function _showForecastDrillModal(label, txs) {
-  const isExp = txs.some(t => t.amount < 0);
   const total = txs.reduce((s,t) => s + Math.abs(Number(t.amount)||0), 0);
-  el.innerHTML = `
+  const content = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div>
         <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(label)}</div>
         <div style="font-size:.72rem;color:var(--muted)">${txs.length} transação${txs.length!==1?'ões':''} · ${fmt(total)}</div>
       </div>
-      <button onclick="document.getElementById('dashForecastDrillPanel').style.display='none';document.getElementById('dashForecastChartWrap').style.display=''"
+      <button onclick="closeModal('forecastDrillModal')"
         style="background:none;border:1px solid var(--border);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;color:var(--muted)">
-        ← Gráfico
+        Fechar
       </button>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
@@ -1745,7 +1740,7 @@ function _showForecastDrillModal(label, txs) {
         </div>`;
       }).join('')}
     </div>`;
-  // Inject into modal
+  
   let modal = document.getElementById('forecastDrillModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -1755,6 +1750,7 @@ function _showForecastDrillModal(label, txs) {
     modal.innerHTML = '<div class="modal" style="max-width:520px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:16px 18px"></div></div>';
     document.body.appendChild(modal);
   }
+
   document.getElementById('forecastDrillModalBody').innerHTML = content;
   openModal('forecastDrillModal');
 }
