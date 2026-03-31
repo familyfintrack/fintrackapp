@@ -2511,6 +2511,7 @@ async function loadFamiliesList() {
     const _pricesOn      = !!(_fc['prices_enabled_'      + fid]);
     const _investmentsOn = !!(_fc['investments_enabled_' + fid]);
     const _aiInsightsOn  = !!(_fc['ai_insights_enabled_' + fid]);
+    const _dreamsOn      = !!(_fc['dreams_enabled_'      + fid]);
     const isOwner    = isGlobalAdmin || members.some(m => m.user_id === currentUser?.id && m.member_role === 'owner');
 
     const membersHtml = members.length
@@ -2575,6 +2576,11 @@ async function loadFamiliesList() {
             class="fam-mod-chip${_aiInsightsOn?' active':''}"
             onclick="_famToggleModule('${fid}','ai_insights_enabled_','famAiInsightsBtn-${fid}','applyAiInsightsFeature')">
             🤖 AI Insights <span class="fam-mod-dot">${_aiInsightsOn?'●':'○'}</span>
+          </button>
+          <button id="famDreamsBtn-${fid}"
+            class="fam-mod-chip${_dreamsOn?' active':''}"
+            onclick="_famToggleModule('${fid}','dreams_enabled_','famDreamsBtn-${fid}','applyDreamsFeature')">
+            🌟 Sonhos <span class="fam-mod-dot">${_dreamsOn?'●':'○'}</span>
           </button>
         </div>
       </div>`;
@@ -4219,6 +4225,7 @@ async function switchFamily(familyId) {
   try { if (typeof applyGroceryFeature === 'function')     await applyGroceryFeature();     } catch(e) {}
   try { if (typeof applyInvestmentsFeature === 'function') await applyInvestmentsFeature(); } catch(e) {}
   try { if (typeof applyAiInsightsFeature === 'function')  await applyAiInsightsFeature();  } catch(e) {}
+  try { if (typeof applyDreamsFeature === 'function')      await applyDreamsFeature();      } catch(e) {}
 
   // ── 8. Repopular todos os selects com dados da nova família ───────────────
   try { populateSelects(); } catch(e) {}
@@ -4643,6 +4650,7 @@ function _mfmRenderFeatures(famId) {
     { key: 'investments_enabled_' + famId, label: 'Investimentos',emoji: '📈', desc: 'Carteira de ativos',    applyFn: 'applyInvestmentsFeature' },
     { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',  emoji: '🤖', desc: 'Análise com IA',        applyFn: 'applyAiInsightsFeature' },
     { key: 'debts_enabled_'       + famId, label: 'Dívidas',      emoji: '💳', desc: 'Controle de dívidas',   applyFn: 'applyDebtsFeature' },
+    { key: 'dreams_enabled_'      + famId, label: 'Sonhos',       emoji: '🌟', desc: 'GPS financeiro com IA', applyFn: 'applyDreamsFeature' },
     { key: 'backup_enabled_'      + famId, label: 'Backup',       emoji: '☁️', desc: 'Backup automático',     applyFn: null },
     { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',     emoji: '📸', desc: 'Snapshots periódicos',  applyFn: null },
   ];

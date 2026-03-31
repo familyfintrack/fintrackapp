@@ -232,6 +232,7 @@ async function forceActivateModule(modKey, enabled, label) {
     investments:  'applyInvestmentsFeature',
     ai_insights:  'applyAiInsightsFeature',
     debts:        'applyDebtsFeature',
+    dreams:       'applyDreamsFeature',
   };
   const applyFn = applyMap[modKey];
   if (applyFn && typeof window[applyFn] === 'function') {
@@ -1150,6 +1151,7 @@ function initFamModulesStandalone() {
     { key: 'investments_enabled_' + famId, label: 'Investimentos',    emoji: '📈', applyFn: 'applyInvestmentsFeature',  desc: 'Carteira de investimentos (requer conta do tipo Investimentos)' },
     { key: 'ai_insights_enabled_' + famId, label: 'AI Insights',      emoji: '🤖', applyFn: 'applyAiInsightsFeature',   desc: 'Análise financeira e chat com IA Gemini (requer chave API)' },
     { key: 'debts_enabled_'       + famId, label: 'Dívidas',          emoji: '💳', applyFn: 'applyDebtsFeature',        desc: 'Controle e evolução de dívidas' },
+    { key: 'dreams_enabled_'      + famId, label: 'Sonhos',           emoji: '🌟', applyFn: 'applyDreamsFeature',       desc: 'GPS financeiro — transforme objetivos em metas com IA' },
     { key: 'backup_enabled_'      + famId, label: 'Backup',           emoji: '☁️', applyFn: null,                       desc: 'Backup automático de dados' },
     { key: 'snapshot_enabled_'    + famId, label: 'Snapshot',         emoji: '📸', applyFn: null,                       desc: 'Snapshots periódicos do estado financeiro' },
   ];
