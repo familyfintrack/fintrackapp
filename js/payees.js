@@ -592,6 +592,12 @@ window.payeeRemoveLogo = function() {
 window.payeeAiSuggestLogo = async function() {
   const name = document.getElementById('payeeName')?.value?.trim();
   if (!name) { toast('Informe o nome do beneficiário primeiro', 'warning'); return; }
+  const payeeType = document.getElementById('payeeType')?.value?.trim() || '';
+  const website = document.getElementById('payeeWebsite')?.value?.trim() || '';
+  const city = document.getElementById('payeeCity')?.value?.trim() || '';
+  const stateUf = document.getElementById('payeeStateUf')?.value?.trim() || '';
+  const notes = document.getElementById('payeeNotes')?.value?.trim() || '';
+  const cnpjCpf = document.getElementById('payeeCnpj')?.value?.trim() || '';
   const panel   = document.getElementById('payeeAiSuggestPanel');
   const content = document.getElementById('payeeAiSuggestContent');
   if (!panel || !content) return;
@@ -603,71 +609,92 @@ window.payeeAiSuggestLogo = async function() {
 
   try {
     const apiKey = await getAppSetting('gemini_api_key', '');
-    if (!apiKey) {
-      content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>';
-      return;
-    }
+    if (!apiKey) { content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>'; return; }
 
-    const prompt = `Sugira exatamente 3 emojis/ícones que representem visualmente o estabelecimento ou empresa chamado "${name}". Responda APENAS com JSON válido neste formato: {"suggestions":[{"emoji":"🛒","label":"Supermercado","reason":"Combina com compras"},{"emoji":"☕","label":"Cafeteria","reason":"Remete a bebidas e café"},{"emoji":"🏥","label":"Saúde","reason":"Remete a clínica ou farmácia"}]}`;
-    const payload = {
-      contents:[{parts:[{text:prompt}]}],
-      generationConfig:{ maxOutputTokens:300, temperature:0.3, responseMimeType:'application/json' }
-    };
+    const domain = (() => {
+      if (!website) return '';
+      try {
+        const normalized = /^https?:\/\//i.test(website) ? website : `https://${website}`;
+        return new URL(normalized).hostname.replace(/^www\./i, '');
+      } catch (_) {
+        return website.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].trim();
+      }
+    })();
+
+    const context = [
+      `Nome da empresa/beneficiário: ${name}`,
+      payeeType ? `Tipo cadastrado: ${payeeType}` : '',
+      website ? `Website informado: ${website}` : '',
+      domain ? `Domínio provável da empresa: ${domain}` : '',
+      city || stateUf ? `Localização: ${[city, stateUf].filter(Boolean).join(' - ')}` : '',
+      cnpjCpf ? `Documento informado: ${cnpjCpf}` : '',
+      notes ? `Notas/contexto: ${notes}` : ''
+    ].filter(Boolean).join('\n');
+
+    const prompt = [
+      'Você é um assistente de branding minimalista para um app financeiro.',
+      'Com base no contexto abaixo, sugira 3 ícones/emoji para representar visualmente o beneficiário.',
+      'Use o NOME DA EMPRESA/BENEFICIÁRIO como principal pista para reconhecer a marca.',
+      'Se o nome parecer corresponder a uma empresa conhecida, tente inferir elementos do logotipo, símbolo, cor ou forma mais reconhecível da marca e converta isso em um ícone simples para avatar.',
+      'Não copie logotipos oficiais nem descreva marcas registradas em detalhe. Faça apenas uma interpretação visual segura e genérica.',
+      'Priorize sugestões que remetam à empresa específica antes de recorrer a ícones genéricos do setor.',
+      'Responda APENAS com JSON válido no formato: {"suggestions":[{"emoji":"🛒","label":"Supermercado","reason":"...","brand_hint":"..."},{"emoji":"...","label":"...","reason":"...","brand_hint":"..."},{"emoji":"...","label":"...","reason":"...","brand_hint":"..."}]}',
+      '',
+      context
+    ].join('\n');
 
     const models = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-    let lastError = null;
-    let data = null;
+    let lastErr = null;
+    let parsed = null;
 
     for (const model of models) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const resp = await fetch(url, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            contents:[{parts:[{text:prompt}]}],
+            generationConfig:{maxOutputTokens:500,temperature:0.35,responseMimeType:'application/json'}
+          })
         });
-
         if (!resp.ok) {
-          const errText = await resp.text().catch(() => '');
-          if (resp.status === 404) {
-            lastError = new Error(`Modelo ${model} indisponível (HTTP 404)`);
-            continue;
-          }
-          throw new Error(`HTTP ${resp.status}${errText ? ' - ' + errText.slice(0, 180) : ''}`);
+          const errText = await resp.text().catch(()=>'');
+          throw new Error(`HTTP ${resp.status}${errText ? ' - ' + errText : ''}`);
         }
-
-        data = await resp.json();
-        if (data) break;
+        const data = await resp.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const clean = text.replace(/```json|```/g,'').trim();
+        parsed = JSON.parse(clean);
+        if (parsed?.suggestions?.length) break;
+        throw new Error('Sem sugestões');
       } catch (err) {
-        lastError = err;
+        lastErr = err;
       }
     }
 
-    if (!data) throw (lastError || new Error('Falha ao consultar o Gemini'));
+    const sugs = parsed?.suggestions || [];
+    if (!sugs.length) throw (lastErr || new Error('Sem sugestões'));
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = String(text).replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
-    const sugs = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
-    if (!sugs.length) throw new Error('Sem sugestões retornadas pelo Gemini');
-
-    content.innerHTML = sugs.slice(0,3).map(s => {
-      const emoji = String(s?.emoji || '🏢').replace(/'/g, '&#39;');
-      const label = esc(s?.label || 'Sugestão');
-      const reason = esc(s?.reason || '');
+    content.innerHTML = sugs.map(s => {
+      const title = esc(s.label || 'Sugestão');
+      const reason = esc(s.reason || '');
+      const hint = esc(s.brand_hint || '');
+      const details = [reason, hint].filter(Boolean).join(' · ');
+      const emoji = String(s.emoji || '🏢').replace(/'/g, '&#39;');
       return `
       <div onclick="payeeSelectAiLogo('${emoji}')"
-        style="flex:1;min-width:80px;text-align:center;padding:10px 8px;border:1.5px solid var(--border);
+        style="flex:1;min-width:88px;text-align:center;padding:10px 8px;border:1.5px solid var(--border);
                border-radius:10px;cursor:pointer;transition:all .15s;background:var(--surface)"
         onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-lt)'"
         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
-        <div style="font-size:2rem;line-height:1;margin-bottom:4px">${emoji}</div>
-        <div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:2px">${label}</div>
-        <div style="font-size:.65rem;color:var(--muted);line-height:1.3">${reason}</div>
+        <div style="font-size:2rem;line-height:1;margin-bottom:4px">${esc(s.emoji || '🏢')}</div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:2px">${title}</div>
+        <div style="font-size:.65rem;color:var(--muted);line-height:1.3">${details}</div>
       </div>`;
     }).join('');
   } catch(e) {
-    content.innerHTML = `<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Erro ao consultar o Gemini: ${esc(e.message || 'Falha desconhecida')}</div>`;
+    content.innerHTML = `<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Erro: ${esc(e.message)}</div>`;
   }
 };
 
