@@ -79,7 +79,12 @@ async function _fcEnsureState() {
 
 // ── loadForecast — função principal ──────────────────────────────────────────
 async function loadForecast() {
-  if (!window.sb || !window.currentUser) return;
+  const hasSb = !!window.sb;
+  const hasUser = !!(window.currentUser || (typeof currentUser !== 'undefined' && currentUser));
+  if (!hasSb || !hasUser) {
+    console.warn('[forecast] skipped load: missing supabase or current user context');
+    return;
+  }
 
   const fromStr = document.getElementById('forecastFrom')?.value || '';
   const toStr   = document.getElementById('forecastTo')?.value   || '';
