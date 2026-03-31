@@ -120,7 +120,7 @@ async function loadForecast() {
           'account_id','is_transfer',
           'categories(name,color,icon)',
           'payees(name)',
-          'accounts!transactions_account_id_fkey(id,name,color,currency,icon,type,balance)',
+          'accounts!transactions_account_id_fkey(id,name,color,currency,icon,type)',
         ].join(', '))
         .gte('date', fromStr)
         .lte('date', toStr)
@@ -229,7 +229,7 @@ async function loadForecast() {
           currency: tx.accounts.currency || tx.currency || 'BRL',
           icon:     tx.accounts.icon     || '',
           type:     tx.accounts.type     || 'corrente',
-          balance:  parseFloat(tx.accounts.balance)||0,
+          balance:  0, // balance is computed client-side, not a DB column
         };
       }
     });
