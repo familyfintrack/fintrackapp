@@ -51,6 +51,9 @@ function _destroyForecastChart() {
     try { forecastChartInstance.destroy(); } catch(_) {}
     forecastChartInstance = null;
   }
+  if (typeof state !== 'undefined' && state?.chartInstances?.forecastChart) {
+    delete state.chartInstances.forecastChart;
+  }
 }
 
 // ── Garante que state.accounts e state.scheduled estão carregados ────────────
@@ -77,26 +80,73 @@ async function _fcEnsureState() {
   }
 }
 
+function _fcGetCurrentUser() {
+  try {
+    if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
+  } catch(_) {}
+  return window.currentUser || state?.user || null;
+}
+
+function _fcGetFamilyId() {
+  const user = _fcGetCurrentUser();
+  return user?.family_id || state?.familyId || null;
+}
+
+async function _fcHydrateAuthContext() {
+  const user = _fcGetCurrentUser();
+  if (user?.id || user?.family_id) return user;
+  if (!window.sb?.auth?.getSession) return user || null;
+  try {
+    const { data } = await window.sb.auth.getSession();
+    if (data?.session?.user) {
+      const authUser = data.session.user;
+      if (!window.currentUser) {
+        window.currentUser = Object.assign({}, window.currentUser || {}, {
+          id: authUser.id,
+          email: authUser.email || window.currentUser?.email || null,
+        });
+      }
+      return _fcGetCurrentUser() || authUser;
+    }
+  } catch(e) {
+    console.warn('[forecast] auth hydrate:', e?.message || e);
+  }
+  return _fcGetCurrentUser();
+}
+
+function _fcRenderMessage(html) {
+  const container = document.getElementById('forecastAccountsContainer');
+  if (container) container.innerHTML = html;
+}
+
 // ── loadForecast — função principal ──────────────────────────────────────────
 async function loadForecast() {
-  const authUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null) || null;
-  if (!window.sb || !authUser) {
-    console.warn('[forecast] aborted: missing Supabase client or authenticated user context');
-    const container = document.getElementById('forecastAccountsContainer');
-    if (container) {
-      container.innerHTML = `
-        <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
-          <div style="font-size:2rem;margin-bottom:12px">🔒</div>
-          <p>Não foi possível identificar a sessão do usuário para carregar a previsão.</p>
-        </div>`;
-    }
-    _destroyForecastChart();
+  if (!window.sb) {
+    _fcRenderMessage(`
+      <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+        <p>Supabase não está disponível para carregar a previsão.</p>
+      </div>`);
     return;
   }
+
+  await _fcHydrateAuthContext();
 
   const fromStr = document.getElementById('forecastFrom')?.value || '';
   const toStr   = document.getElementById('forecastTo')?.value   || '';
   if (!fromStr || !toStr) return;
+
+  const user = _fcGetCurrentUser();
+  const familyId = _fcGetFamilyId();
+  if (!user && !familyId) {
+    _fcRenderMessage(`
+      <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:12px">🔐</div>
+        <p>Não foi possível identificar a sessão do usuário para carregar a previsão.</p>
+      </div>`);
+    _destroyForecastChart();
+    return;
+  }
 
   const accIds = typeof _fcPickerGetSelected === 'function'
     ? _fcPickerGetSelected('forecastAcctPicker')
@@ -212,18 +262,6 @@ async function loadForecast() {
   // ── 3. Merge ─────────────────────────────────────────────────────────────
   const allItems = [...txData, ...scheduledItems]
     .sort((a,b) => (a.date||'').localeCompare(b.date||''));
-
-  try {
-    window._forecastTxCache = allItems.slice();
-    window._forecastTxAll = allItems.reduce((acc, item) => {
-      const key = item?.date || '';
-      if (!key) return acc;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    }, {});
-    window._fcDateToLabel = function(dateStr) { return dateStr || ''; };
-  } catch(_) {}
 
   if (!allItems.length) {
     if (container) container.innerHTML = `
@@ -351,12 +389,11 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
       },
     },
   });
-  try {
-    if (typeof state !== 'undefined') {
-      state.chartInstances = state.chartInstances || {};
-      state.chartInstances['forecastChart'] = forecastChartInstance;
-    }
-  } catch(_) {}
+
+  if (typeof state !== 'undefined') {
+    state.chartInstances = state.chartInstances || {};
+    state.chartInstances['forecastChart'] = forecastChartInstance;
+  }
 }
 
 // ── Tabelas por conta ─────────────────────────────────────────────────────────

@@ -598,13 +598,8 @@ window._updateFeedbackBadge     = _updateFeedbackBadge;
 window._updateFeedbackBtnVisibility = function() {
   const btn = document.getElementById('feedbackTopbarBtn');
   if (!btn) return;
-
-  const role = String(window.currentUser?.role || currentUser?.role || '').toLowerCase();
-  const appRole = String(window.currentUser?.app_role || currentUser?.app_role || '').toLowerCase();
-  const canAdmin = !!(window.currentUser?.can_admin || currentUser?.can_admin);
-  const isAdmin = role === 'admin' || appRole === 'admin' || canAdmin;
-
+  const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : window.currentUser;
+  const role = String(user?.role || '').toLowerCase();
+  const isAdmin = role === 'admin';
   btn.style.display = isAdmin ? 'none' : 'inline-flex';
-  btn.style.visibility = isAdmin ? 'hidden' : 'visible';
-  btn.disabled = isAdmin;
 };
