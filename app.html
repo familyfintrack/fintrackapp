@@ -9394,7 +9394,7 @@ window.openMyProfile = function(...args) {
     <span style="font-size:1.2rem">🤖</span>
     <div style="flex:1;min-width:0">
       <div style="font-size:.88rem;font-weight:800;color:#fff">FinTrack Agent</div>
-      <div style="font-size:.68rem;color:rgba(255,255,255,.7)">Assistente IA — digite seu pedido</div>
+      <div style="font-size:.68rem;color:rgba(255,255,255,.7)">Finanças · Ajuda · Ações — pergunte qualquer coisa</div>
     </div>
     <button onclick="toggleAgent()"
       style="background:rgba(255,255,255,.18);border:none;color:#fff;width:26px;height:26px;
@@ -9405,16 +9405,18 @@ window.openMyProfile = function(...args) {
   <!-- Quick suggestions -->
   <div style="padding:8px 12px;border-bottom:1px solid var(--border);
     display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
-    <button onclick="agentSuggest('Qual meu saldo total?')"
-      class="agent-chip">💰 Saldo total</button>
+    <button onclick="agentSuggest('Quanto gastei este mês?')"
+      class="agent-chip">📊 Gastos do mês</button>
+    <button onclick="agentSuggest('Quais contas estão no vermelho?')"
+      class="agent-chip">💰 Saldo contas</button>
+    <button onclick="agentSuggest('Como adicionar uma conta?')"
+      class="agent-chip">❓ Como usar</button>
     <button onclick="agentSuggest('Crie uma despesa de R$')"
       class="agent-chip">➕ Nova despesa</button>
     <button onclick="agentSuggest('Crie transação programada mensal de R$')"
       class="agent-chip">📅 Programada</button>
-    <button onclick="agentSuggest('Crie o beneficiário ')"
-      class="agent-chip">🏪 Beneficiário</button>
-    <button onclick="agentSuggest('Crie a categoria ')"
-      class="agent-chip">🏷️ Categoria</button>
+    <button onclick="agentSuggest('Resumo financeiro do mês')"
+      class="agent-chip">📈 Resumo</button>
   </div>
 
   <!-- Feed -->
