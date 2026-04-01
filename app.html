@@ -726,6 +726,15 @@
         <div id="dashFavCategories"></div>
       </div>
 
+      <!-- Snapshot de Orçamentos -->
+      <div id="dashBudgetSnapshot" class="card mb-4" style="display:none">
+        <div class="card-header">
+          <span class="card-title">🎯 Orçamentos do Mês</span>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver todos</button>
+        </div>
+        <div class="dash-budget-snap-inner"></div>
+      </div>
+
       <!-- Próximas transações programadas -->
       <div id="dashCardUpcoming" class="card mb-4">
         <div class="card-header" style="gap:8px;flex-wrap:wrap">
@@ -1441,37 +1450,43 @@
     <!-- BUDGETS -->
 <div class="page" id="page-budgets">
 
-  <!-- Header: tabs + period picker + new button -->
+  <!-- Controles de período -->
   <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div class="tab-bar" style="margin-bottom:0">
-        <button class="tab active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">📅 Mensal</button>
-        <button class="tab" id="budgetTabAnnual"  onclick="setBudgetView('annual')">📆 Anual</button>
+        <button class="tab active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">Mensal</button>
+        <button class="tab"        id="budgetTabAnnual"  onclick="setBudgetView('annual')">Anual</button>
       </div>
       <div id="budgetMonthPicker">
         <input type="month" id="budgetMonth" onchange="loadBudgets()" style="font-size:.85rem">
       </div>
       <div id="budgetYearPicker" style="display:none">
-        <select id="budgetYear" onchange="loadBudgets()" style="font-size:.85rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)"></select>
+        <select id="budgetYear" onchange="loadBudgets()"
+          style="font-size:.85rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)"></select>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo orçamento</button>
+    <button class="btn btn-primary" onclick="openBudgetModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Novo orçamento
+    </button>
   </div>
 
-  <!-- Budget cards grid -->
-  <div style="height:16px;"></div>
+  <!-- Grid de cards -->
+  <div style="height:14px"></div>
   <div class="budget-grid" id="budgetGrid"></div>
 
-  <!-- History panel -->
-  <div style="margin-top:32px">
+  <!-- Painel de histórico -->
+  <div style="margin-top:36px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-      <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">📊 Histórico por categoria</span>
-      <select id="budgetHistCat" onchange="loadBudgetHistory()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:240px">
+      <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Histórico por categoria</span>
+      <select id="budgetHistCat" onchange="loadBudgetHistory()"
+        style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:260px">
         <option value="">— Selecionar categoria —</option>
       </select>
     </div>
-    <div id="budgetHistContainer" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;min-height:48px">
-      <div style="color:var(--muted);font-size:.83rem;padding:16px 12px">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
+    <div id="budgetHistContainer"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;min-height:52px">
+      <div class="bgt-hist-placeholder">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
     </div>
   </div>
 
@@ -6755,23 +6770,42 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-<!-- Budget Drilldown Modal -->
+<!-- Budget Drilldown Modal v3 -->
 <div class="modal-overlay" id="budgetDrilldownModal">
-  <div class="modal" style="max-width:680px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title" id="budgetDrillTitle">Transações do Orçamento</span>
-      <button class="modal-close" onclick="closeModal('budgetDrilldownModal')">✕</button>
-    </div>
-    <div class="modal-body" style="padding:0">
-      <div style="padding:10px 16px 8px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="budgetDrillTotal"></div>
-      <div class="table-wrap" style="margin:0;max-height:60vh;overflow-y:auto">
-        <table>
-          <thead><tr><th style="width:72px">Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead>
-          <tbody id="budgetDrillBody"></tbody>
-        </table>
+  <div class="modal" style="max-width:700px;padding:0"><div class="modal-handle" style="margin:10px auto 0"></div>
+    <!-- Header dinâmico: hero + KPIs + barra -->
+    <div id="budgetDrillHeader"></div>
+
+    <!-- Título da tabela + botão fechar -->
+    <div class="modal-header" style="padding:10px 16px 8px;border-bottom:none">
+      <span class="modal-title" id="budgetDrillTitle" style="font-size:.85rem;font-weight:600;color:var(--muted)">Transações</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="budgetDrillTotal" style="font-size:.72rem;color:var(--muted)"></span>
+        <button class="modal-close" onclick="closeModal('budgetDrilldownModal')">✕</button>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('budgetDrilldownModal')">Fechar</button></div>
+
+    <div class="modal-body" style="padding:0;max-height:75vh;overflow-y:auto">
+      <!-- Subcategorias com barras -->
+      <div id="budgetDrillSubs"></div>
+
+      <!-- Tabela de transações -->
+      <div style="padding:0 0 8px">
+        <div class="table-wrap" style="margin:0">
+          <table>
+            <thead><tr>
+              <th style="width:72px">Data</th>
+              <th>Descrição</th>
+              <th style="text-align:right;white-space:nowrap">Valor</th>
+            </tr></thead>
+            <tbody id="budgetDrillBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('budgetDrilldownModal')">Fechar</button>
+    </div>
   </div>
 </div>
 
