@@ -86,6 +86,16 @@ async function loadAppSettings() {
     try { localStorage.setItem(LOGIN_THEME_SETTING, _loginTheme); } catch(_) {}
     if (typeof applyLoginTheme === 'function') applyLoginTheme(_loginTheme);
 
+    // Sincroniza canais de notificação do DB → localStorage
+    const _notifKeys = ['notif_channel_email_enabled','notif_channel_wa_enabled','notif_channel_tg_enabled'];
+    _notifKeys.forEach(k => {
+      if (k in _appSettingsCache) {
+        try { localStorage.setItem(k, String(_appSettingsCache[k] === true || _appSettingsCache[k] === 'true')); } catch(_) {}
+      }
+    });
+    // Aplica visibilidade assim que o cache está disponível
+    if (typeof applyNotifChannelVisibility === 'function') applyNotifChannelVisibility();
+
     // Apply menu visibility (if configured)
     try { applyMenuVisibility(_getMenuVisibilityFromCache()); } catch {}
     // Apply settings visibility for non-admin users (runs after currentUser is set)
@@ -152,13 +162,117 @@ async function saveAppSetting(key, value) {
 const LOGIN_THEME_SETTING = 'login_theme';
 
 function _saveLoginThemeBtn() {
-  // Read the currently selected radio and save
+  // Mantido por compatibilidade — o tema agora é salvo via onchange direto
   const sel = document.querySelector('input[name="loginTheme"]:checked');
   const theme = sel ? sel.value : null;
   if (!theme) return;
   saveLoginTheme(theme);
 }
 window._saveLoginThemeBtn = _saveLoginThemeBtn;
+
+// ── Chaves de configuração dos canais de notificação ──────────────────────────
+const NOTIF_CHANNEL_KEYS = {
+  email:    'notif_channel_email_enabled',
+  whatsapp: 'notif_channel_wa_enabled',
+  telegram: 'notif_channel_tg_enabled',
+};
+
+/**
+ * Salva o estado ativo/inativo de um canal de notificação.
+ * Persiste em localStorage (instantâneo) + banco (assíncrono).
+ * Após salvar aplica a visibilidade em toda a UI.
+ */
+async function saveNotifChannelSetting(channel, enabled) {
+  const key = NOTIF_CHANNEL_KEYS[channel];
+  if (!key) return;
+  try { localStorage.setItem(key, String(enabled)); } catch(_) {}
+  try { await saveAppSetting(key, enabled); } catch(_) {}
+  applyNotifChannelVisibility();
+  const label = { email:'E-mail', whatsapp:'WhatsApp', telegram:'Telegram' }[channel] || channel;
+  toast(label + (enabled ? ' ativado' : ' desativado'), 'success');
+}
+window.saveNotifChannelSetting = saveNotifChannelSetting;
+
+/**
+ * Lê o estado salvo de um canal. Default: email=true, wa/tg=false.
+ */
+function getNotifChannelEnabled(channel) {
+  const key = NOTIF_CHANNEL_KEYS[channel];
+  if (!key) return true;
+  // Lê do cache em memória primeiro (mais rápido)
+  if (window._appSettingsCache && key in window._appSettingsCache) {
+    const v = window._appSettingsCache[key];
+    return v === true || v === 'true';
+  }
+  // Fallback localStorage
+  try {
+    const v = localStorage.getItem(key);
+    if (v !== null) return v === 'true';
+  } catch(_) {}
+  // Default: email sim, WhatsApp/Telegram não (evita aparecer sem configuração)
+  return channel === 'email';
+}
+window.getNotifChannelEnabled = getNotifChannelEnabled;
+
+/**
+ * Aplica a visibilidade dos canais em todos os pontos da UI:
+ *  - Toggles no painel Configurações (checkboxes)
+ *  - Campos de WhatsApp e Telegram no modal de Perfil
+ *  - Cards de WhatsApp e Telegram no modal de Programados
+ */
+function applyNotifChannelVisibility() {
+  const waOn = getNotifChannelEnabled('whatsapp');
+  const tgOn = getNotifChannelEnabled('telegram');
+
+  // ── Painel de Configurações: sincronizar checkboxes ──────────────────────
+  const cfgWa = document.getElementById('cfgChannelWaEnabled');
+  const cfgTg = document.getElementById('cfgChannelTgEnabled');
+  if (cfgWa) cfgWa.checked = waOn;
+  if (cfgTg) cfgTg.checked = tgOn;
+
+  // ── Modal de Perfil: campos WhatsApp e Telegram ──────────────────────────
+  const profWaWrap  = document.getElementById('profWaChannelWrap');
+  const profTgWrap  = document.getElementById('profTgChannelWrap');
+  const profTxWaRow = document.getElementById('profTxNotifWaRow');
+  const profTxTgRow = document.getElementById('profTxNotifTgRow');
+  if (profWaWrap)  profWaWrap.style.display  = waOn ? '' : 'none';
+  if (profTgWrap)  profTgWrap.style.display  = tgOn ? '' : 'none';
+  if (profTxWaRow) profTxWaRow.style.display = waOn ? '' : 'none';
+  if (profTxTgRow) profTxTgRow.style.display = tgOn ? '' : 'none';
+
+  // ── Modal de Programados: cards dos canais ───────────────────────────────
+  const scWaCard = document.getElementById('scWaChannelCard');
+  const scTgCard = document.getElementById('scTgChannelCard');
+  if (scWaCard) scWaCard.style.display = waOn ? '' : 'none';
+  if (scTgCard) scTgCard.style.display = tgOn ? '' : 'none';
+}
+window.applyNotifChannelVisibility = applyNotifChannelVisibility;
+
+/**
+ * Carrega os estados dos canais do banco/localStorage e atualiza a UI.
+ * Chamado em loadSettings() e logo após o login.
+ */
+async function loadNotifChannelSettings() {
+  // Tenta ler do cache (já populado por loadAppSettings)
+  // Se cache ainda não está pronto, lê do localStorage
+  const cfgEmail = document.getElementById('cfgChannelEmailEnabled');
+  if (cfgEmail) cfgEmail.checked = getNotifChannelEnabled('email');
+  applyNotifChannelVisibility();
+
+  // Sincroniza com o banco em background (sem bloquear a UI)
+  if (sb) {
+    try {
+      const keys = Object.values(NOTIF_CHANNEL_KEYS);
+      const { data } = await sb.from('app_settings').select('key,value').in('key', keys);
+      (data || []).forEach(row => {
+        try { localStorage.setItem(row.key, String(row.value === true || row.value === 'true')); } catch(_) {}
+        if (window._appSettingsCache) window._appSettingsCache[row.key] = (row.value === true || row.value === 'true');
+      });
+      applyNotifChannelVisibility();
+    } catch(_) {}
+  }
+}
+window.loadNotifChannelSettings = loadNotifChannelSettings;
 
 async function saveLoginTheme(theme) {
   // FIX: Persiste no localStorage ANTES do DB para que DOMContentLoaded e
@@ -711,6 +825,9 @@ function loadSettings() {
 
   // Telegram bot token
   if (typeof loadTelegramBotTokenUI === 'function') loadTelegramBotTokenUI();
+
+  // Canais de notificação (WhatsApp / Telegram on/off)
+  if (typeof loadNotifChannelSettings === 'function') loadNotifChannelSettings();
 
 
 

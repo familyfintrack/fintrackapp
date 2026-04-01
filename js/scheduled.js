@@ -991,6 +991,8 @@ function openScheduledModal(id='') {
   openModal('scheduledModal');
   if (typeof initScFormMode === "function") initScFormMode();
   if (typeof initScFormMode === 'function') initScFormMode();
+  // Aplica visibilidade de canais (WA/Telegram on/off)
+  if (typeof applyNotifChannelVisibility === 'function') applyNotifChannelVisibility();
   // Scroll modal body to top on every open
   requestAnimationFrame(() => {
     const body = document.querySelector('#scheduledModal .modal-body');

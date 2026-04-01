@@ -1076,6 +1076,9 @@ function updateUserUI() {
   // Show feedback button only for regular users (hidden for admin/owner)
   if (typeof _updateFeedbackBtnVisibility === 'function') _updateFeedbackBtnVisibility();
 
+  // Aplica visibilidade dos canais de notificação (WA/Telegram on/off globalmente)
+  if (typeof applyNotifChannelVisibility === 'function') applyNotifChannelVisibility();
+
   // Apply permission restrictions
   applyPermissions();
 
@@ -1315,6 +1318,12 @@ function openMyProfile() {
 
   openModal('myProfileModal');
   setTimeout(() => document.getElementById('myProfilePwd1')?.focus(), 200);
+  // Pré-renderiza o link getUpdates se o bot token já estiver configurado
+  if (typeof _initTgGetUpdatesHintOnProfileOpen === 'function') {
+    _initTgGetUpdatesHintOnProfileOpen().catch(() => {});
+  }
+  // Reaplicar visibilidade de canais (WA/Telegram) ao abrir o perfil
+  if (typeof applyNotifChannelVisibility === 'function') applyNotifChannelVisibility();
 }
 
 function previewMyProfileAvatar(input) {
