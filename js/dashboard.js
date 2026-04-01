@@ -1473,6 +1473,7 @@ async function renderDashboardUpcoming(memberIds = null) {
 // Navigate to transactions page with category + month pre-filtered
 // ── Dashboard Forecast 90d ─────────────────────────────────────────────────
 let _dashForecastChart = null;
+let _dashForecastRendering = false; // lock para evitar chamadas concorrentes
 let _dashForecastTimer = null;
 
 function _initDashForecastAccountSelect() {
@@ -1486,6 +1487,21 @@ function _initDashForecastAccountSelect() {
 }
 
 async function _renderDashForecast() {
+  // ── Lock de concorrência: evitar "Canvas is already in use" ──────────────
+  // Se uma renderização já está em progresso, aguardar até 1.5s e tentar de novo
+  if (_dashForecastRendering) {
+    await new Promise(r => setTimeout(r, 80));
+    if (_dashForecastRendering) return; // ainda ocupado — desistir
+  }
+  _dashForecastRendering = true;
+  try {
+    await _renderDashForecastInner();
+  } finally {
+    _dashForecastRendering = false;
+  }
+}
+
+async function _renderDashForecastInner() {
   const card = document.getElementById('dashCardForecast90');
   if (!card || card.style.display === 'none') return;
 
@@ -1498,8 +1514,17 @@ async function _renderDashForecast() {
   const canvas = document.getElementById('dashForecastChart');
   if (!canvas) return;
 
-  // Destroy previous chart
-  if (_dashForecastChart) { try { _dashForecastChart.destroy(); } catch(_) {} _dashForecastChart = null; }
+  // Destroy previous chart — usar Chart.getChart para garantir limpeza total do canvas
+  // independente de _dashForecastChart ter sido perdido por navegação ou erro anterior
+  const existingChart = (typeof Chart !== 'undefined' && Chart.getChart)
+    ? Chart.getChart(canvas) : null;
+  if (existingChart) {
+    try { existingChart.destroy(); } catch(_) {}
+  }
+  if (_dashForecastChart && _dashForecastChart !== existingChart) {
+    try { _dashForecastChart.destroy(); } catch(_) {}
+  }
+  _dashForecastChart = null;
 
   // Date range: today → today + 90 days
   const fromDate = new Date();

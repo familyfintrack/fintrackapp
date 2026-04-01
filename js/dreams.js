@@ -28,8 +28,21 @@ function _esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function _dreamTypeEmoji(t) { return { viagem:'✈️', automovel:'🚗', imovel:'🏠' }[t] || '🌟'; }
-function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 Automóvel', imovel:'🏠 Imóvel' }[t] || '🌟 Sonho'; }
+
+// ── SQL de migração: adicionar tipo 'outro' ao CHECK constraint ────────────
+// Execute no Supabase SQL Editor se a coluna ainda não aceitar 'outro':
+const DREAMS_MIGRATION_SQL = `-- Adicionar tipo 'outro' ao dreams_dream_type_check
+-- Execute no Supabase SQL Editor:
+ALTER TABLE dreams DROP CONSTRAINT IF EXISTS dreams_dream_type_check;
+ALTER TABLE dreams ADD CONSTRAINT dreams_dream_type_check
+  CHECK (dream_type IN ('viagem', 'automovel', 'imovel', 'outro'));
+-- Converter registros com tipo inválido para 'outro':
+UPDATE dreams SET dream_type = 'outro'
+  WHERE dream_type NOT IN ('viagem', 'automovel', 'imovel', 'outro');`;
+window.DREAMS_MIGRATION_SQL = DREAMS_MIGRATION_SQL;
+
+function _dreamTypeEmoji(t) { return { viagem:'✈️', automovel:'🚗', imovel:'🏠', outro:'🌟' }[t] || '🌟'; }
+function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 Automóvel', imovel:'🏠 Imóvel', outro:'🌟 Outro' }[t] || '🌟 Outro'; }
 function _dreamStatusLabel(s) { return { active:'Ativo', paused:'Pausado', achieved:'🏆 Conquistado', cancelled:'Cancelado' }[s] || s; }
 function _dreamStatusColor(s) { return { active:'var(--accent)', paused:'var(--warning, #f39c12)', achieved:'#27ae60', cancelled:'var(--muted)' }[s] || 'var(--muted)'; }
 
@@ -909,9 +922,10 @@ window.closeDreamWizard = closeDreamWizard;
 
 function _wizStep1() {
   const types=[
-    {key:'viagem',emoji:'✈️',label:'Viagem',desc:'Destinos, passeios, hospedagem'},
-    {key:'automovel',emoji:'🚗',label:'Automóvel',desc:'Compra à vista ou financiada'},
-    {key:'imovel',emoji:'🏠',label:'Imóvel',desc:'Apartamento, casa, praia ou campo'},
+    {key:'viagem',   emoji:'✈️', label:'Viagem',    desc:'Destinos, passeios, hospedagem'},
+    {key:'automovel',emoji:'🚗', label:'Automóvel', desc:'Compra à vista ou financiada'},
+    {key:'imovel',   emoji:'🏠', label:'Imóvel',    desc:'Apartamento, casa, praia ou campo'},
+    {key:'outro',    emoji:'🌟', label:'Outro',     desc:'Saúde, educação, tecnologia…'},
   ];
   return `<div class="drm-wiz-step1">
     <div class="drm-wiz-headline">Que tipo de sonho você quer realizar?</div>
@@ -947,7 +961,7 @@ async function wizardAiInterpret() {
   if(!apiKey||!apiKey.startsWith('AIza')){toast('Configure Gemini para usar IA','warning');return;}
   const btn=document.getElementById('wizAiBtn');
   if(btn){btn.disabled=true;btn.textContent='Interpretando…';}
-  const prompt=`Interprete este objetivo financeiro, retorne SOMENTE JSON.\nObjetivo: "${input}"\n{"tipo":"viagem|automovel|imovel","titulo":"título conciso","descricao":"1 frase","valor_estimado":15000,"prazo_meses_sugerido":18}`;
+  const prompt=`Interprete este objetivo financeiro, retorne SOMENTE JSON sem markdown.\nObjetivo: "${input}"\n{"tipo":"viagem|automovel|imovel|outro","titulo":"título conciso","descricao":"1 frase","valor_estimado":15000,"prazo_meses_sugerido":18}\nTipo DEVE ser exatamente um de: viagem, automovel, imovel, outro`;
   try {
     const url=`https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
     const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.3,maxOutputTokens:300}})});
@@ -974,7 +988,7 @@ function _wizStep2() {
   if(type==='viagem') sf=_wizFieldsViagem(d);
   else if(type==='automovel') sf=_wizFieldsAutomovel(d);
   else if(type==='imovel') sf=_wizFieldsImovel(d);
-  return `<div class="drm-wiz-step2">
+  const html = `<div class="drm-wiz-step2">
     <div class="drm-wiz-headline">${_dreamTypeEmoji(type)} Detalhes do sonho</div>
     <p class="drm-wiz-subhead">Quanto mais detalhes, mais precisas serão as recomendações.</p>
     <div class="drm-wiz-form">
@@ -990,8 +1004,20 @@ function _wizStep2() {
         <option value="3" ${(d.priority||1)==3?'selected':''}>Baixa</option>
       </select></div>
       ${sf}
+      <div style="margin-top:10px">
+        <label class="form-label" style="margin-bottom:6px;display:block">👥 Membros deste sonho</label>
+        <div id="wizFamilyMemberPicker" class="fmc-picker-container"><div style="font-size:.78rem;color:var(--muted);padding:4px 0">Carregando…</div></div>
+      </div>
     </div>
   </div>`;
+  // Inicializar picker de membros após o HTML ser injetado no DOM
+  requestAnimationFrame(() => {
+    if (typeof renderFmcMultiPicker === 'function') {
+      const curSel = _drm.wizard?.data?.family_member_ids || [];
+      renderFmcMultiPicker('wizFamilyMemberPicker', { selected: curSel, showAll: true });
+    }
+  });
+  return html;
 }
 
 function _wizFieldsViagem(d) {
@@ -1269,7 +1295,14 @@ async function saveDream() {
   const btn=document.getElementById('wizSaveBtn');
   if(btn){btn.disabled=true;btn.textContent='Salvando…';}
   const fid=famId();
-  const payload={family_id:fid,created_by:currentUser?.id,title:w.data.title,description:w.data.description||null,dream_type:w.type,target_amount:w.data.target_amount,currency:'BRL',target_date:w.data.target_date||null,priority:w.data.priority||1,status:w.data.status||'active',ai_generated_fields_json:w.data.ai_generated_fields_json?JSON.stringify(w.data.ai_generated_fields_json):null,updated_at:new Date().toISOString()};
+  // Validar dream_type — o banco aceita apenas: viagem, automovel, imovel, outro
+  const VALID_TYPES = ['viagem','automovel','imovel','outro'];
+  const safeType = VALID_TYPES.includes(w.type) ? w.type : 'outro';
+  // Também salvar family_member_ids do picker de membros
+  const memberIds = typeof getFmcMultiPickerSelected === 'function'
+    ? getFmcMultiPickerSelected('wizFamilyMemberPicker')
+    : [];
+  const payload={family_id:fid,created_by:currentUser?.id,title:w.data.title,description:w.data.description||null,dream_type:safeType,family_member_ids:memberIds.length?memberIds:null,target_amount:w.data.target_amount,currency:'BRL',target_date:w.data.target_date||null,priority:w.data.priority||1,status:w.data.status||'active',ai_generated_fields_json:w.data.ai_generated_fields_json?JSON.stringify(w.data.ai_generated_fields_json):null,updated_at:new Date().toISOString()};
   try {
     let dreamId;
     if(w.editing&&w.dreamId){

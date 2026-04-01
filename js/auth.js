@@ -935,7 +935,7 @@ async function onLoginSuccess() {
   if (typeof _checkNewFeedbackOnLogin === 'function') _checkNewFeedbackOnLogin().catch(()=>{});
 
   // Apply access request visibility based on admin setting
-  if (typeof initAccessRequestVisibility === 'function') initAccessRequestVisibility().catch(()=>{});
+  if (typeof initAccessRequestVisibility === 'function') Promise.resolve(initAccessRequestVisibility()).catch(()=>{});
 
   // If the user has no family_id and is not a global admin/owner,
   // launch the wizard so they can create their own family as Owner.
@@ -1148,9 +1148,9 @@ if (!p.can_admin) {
 }
 
   // Módulos por família: visibilidade depende de feature flag
-  if (typeof applyPricesFeature === 'function') applyPricesFeature().catch(() => {});
-  if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
-  if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
+  if (typeof applyPricesFeature === 'function') Promise.resolve(applyPricesFeature()).catch(() => {}); // safe: undefined ou Promise
+  if (typeof applyGroceryFeature === 'function') Promise.resolve(applyGroceryFeature()).catch(() => {}); // safe: undefined ou Promise
+  if (typeof applyAiInsightsFeature === 'function') Promise.resolve(applyAiInsightsFeature()).catch(() => {}); // safe: undefined ou Promise
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5085,7 +5085,7 @@ async function _mfmToggleFeature(key, famId, label, applyFn) {
 
   // Aplica feature imediatamente (UI responsiva, sem aguardar DB)
   if (applyFn && typeof window[applyFn] === 'function') {
-    window[applyFn]().catch(() => {});
+    Promise.resolve(window[applyFn]()).catch(() => {}); // safe: undefined ou Promise
   }
   toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
   _mfmRenderFeatures(famId);
