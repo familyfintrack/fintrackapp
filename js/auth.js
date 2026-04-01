@@ -472,6 +472,16 @@ function showLoginScreen() {
   const ls = document.getElementById('loginScreen');
   if (ls) {
     ls.style.display = 'flex';
+    // FIX: Re-aplicar tema sempre que a tela for exibida (cobre logout, sessão expirada,
+    // e qualquer re-exibição posterior ao boot). Lê do cache em memória se disponível,
+    // senão do localStorage (sempre disponível, sem network).
+    try {
+      const _themeToApply =
+        (typeof _appSettingsCache !== 'undefined' && _appSettingsCache && _appSettingsCache['login_theme']) ||
+        localStorage.getItem('login_theme') ||
+        'split';
+      if (typeof applyLoginTheme === 'function') applyLoginTheme(_themeToApply);
+    } catch(_) {}
     // Re-apply access request visibility every time login screen is shown
     _applyAccessRequestVisibilityFromLocalStorage();
     // Fix logo: use same LOGO_URL used throughout the app
@@ -545,6 +555,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Also fetch from Supabase anon (for mobile users who never set it locally)
   //    Uses a short timeout so it doesn't block anything
   _fetchAccessRequestSettingAnon();
+  // 3. FIX: Aplicar tema de login imediatamente do localStorage — sem network,
+  //    sem depender do boot. Garante que o usuário veja o tema correto desde o
+  //    primeiro frame, mesmo antes de qualquer sessão ser restaurada.
+  try {
+    const _savedTheme = localStorage.getItem('login_theme') || 'split';
+    if (typeof applyLoginTheme === 'function') {
+      applyLoginTheme(_savedTheme);
+    }
+  } catch(_) {}
 });
 
 async function _fetchAccessRequestSettingAnon() {

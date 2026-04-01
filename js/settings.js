@@ -81,6 +81,9 @@ async function loadAppSettings() {
     if (typeof setAppLogo === 'function') setAppLogo(logo);
     // Apply login theme on boot
     const _loginTheme = _appSettingsCache[LOGIN_THEME_SETTING] || 'split';
+    // FIX: Sincroniza DB → localStorage para garantir que próximo DOMContentLoaded
+    // já tenha o valor correto (elimina dependência de estar logado para ver o tema).
+    try { localStorage.setItem(LOGIN_THEME_SETTING, _loginTheme); } catch(_) {}
     if (typeof applyLoginTheme === 'function') applyLoginTheme(_loginTheme);
 
     // Apply menu visibility (if configured)
@@ -158,6 +161,10 @@ function _saveLoginThemeBtn() {
 window._saveLoginThemeBtn = _saveLoginThemeBtn;
 
 async function saveLoginTheme(theme) {
+  // FIX: Persiste no localStorage ANTES do DB para que DOMContentLoaded e
+  // showLoginScreen() possam aplicar o tema mesmo antes do boot estar completo.
+  // Esta é a fonte de verdade para renderização imediata (sem network).
+  try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
   await saveAppSetting(LOGIN_THEME_SETTING, theme);
   applyLoginTheme(theme);
   // Update radio + visual selection
@@ -176,19 +183,40 @@ function applyLoginTheme(theme) {
   if (!ls) return;
   // Remove all existing theme classes
   ['ls-theme-centered','ls-theme-split','ls-theme-asymmetric','ls-theme-immersive','ls-theme-minimal'].forEach(c => ls.classList.remove(c));
-  if (theme && theme !== 'split') {
-    ls.classList.add('ls-theme-' + theme);
-  }
+  // FIX: 'split' é o default visual mas também recebe sua classe para consistência.
+  // Todos os temas recebem a classe — o CSS os diferencia por seletor.
+  const t = (theme && typeof theme === 'string') ? theme.trim() : 'split';
+  ls.classList.add('ls-theme-' + (t || 'split'));
 }
 
 function loadLoginThemeSelector() {
-  getAppSetting(LOGIN_THEME_SETTING, 'split').then(theme => {
-    const t = theme || 'split';
-    applyLoginTheme(t);
-    // Mark the right radio
+  // FIX: Lê localStorage primeiro (disponível imediatamente, sem network).
+  // Fallback para getAppSetting (DB) apenas se não houver valor local.
+  const localTheme = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_) { return null; } })();
+  const applyAndMark = (t) => {
+    const theme = t || 'split';
+    applyLoginTheme(theme);
     document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
-      r.checked = (r.value === t);
+      r.checked = (r.value === theme);
     });
+    // Highlight selected card
+    document.querySelectorAll('.login-theme-option').forEach(card => {
+      const isActive = card.dataset.theme === theme;
+      card.style.outline = isActive ? '2px solid var(--accent)' : '';
+      card.style.background = isActive ? 'var(--accent-lt,#e8f2ee)' : '';
+    });
+  };
+  if (localTheme) {
+    applyAndMark(localTheme);
+  }
+  // Sempre sincroniza com o DB para garantir consistência entre dispositivos
+  getAppSetting(LOGIN_THEME_SETTING, 'split').then(dbTheme => {
+    const t = dbTheme || 'split';
+    // Se DB difere do localStorage, localStorage recebe o valor do DB (fonte de verdade)
+    if (t !== localTheme) {
+      try { localStorage.setItem(LOGIN_THEME_SETTING, t); } catch(_) {}
+    }
+    applyAndMark(t);
   });
 }
 
