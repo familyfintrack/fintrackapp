@@ -626,15 +626,17 @@ function _catColor(color, idx, usedSet) {
 
 async function renderCategoryChart(){
   const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
-  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
+  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,is_transfer,is_card_payment,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
   const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
 
-  // Build expense query (amount < 0)
+  // Build expense query (amount < 0) — exclui transferências e pagamentos de fatura
   const qExp = famQ(sb.from('transactions').select(_txSelect))
-    .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null);
-  // Build income query (amount > 0)
+    .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null)
+    .eq('is_transfer', false).eq('is_card_payment', false);
+  // Build income query (amount > 0) — exclui transferências
   const qInc = famQ(sb.from('transactions').select(_txSelect))
-    .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null);
+    .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null)
+    .eq('is_transfer', false).eq('is_card_payment', false);
 
   const [{data}, {data: dataInc}] = await Promise.all([qExp, qInc]);
 
@@ -701,6 +703,8 @@ async function renderCategoryChart(){
   if(!_catChartEntries.length){
     const el=document.getElementById('categoryChart');
     if(el){const ctx=el.getContext('2d');ctx.clearRect(0,0,el.width,el.height);ctx.fillStyle='#8c8278';ctx.textAlign='center';ctx.font='13px Outfit';ctx.fillText(t('dash.empty_tx'),el.width/2,el.height/2);}
+    closeCatDetail();
+    return; // FIX: não continuar para _renderCatChartBar/Doughnut com dados vazios
   }
 
   closeCatDetail(); // reset any open detail
@@ -1723,7 +1727,7 @@ function _setCatChartType(type) {
 
 function _renderCatChartDoughnut() {
   const canvas = document.getElementById('categoryChart');
-  if (!canvas) return;
+  if (!canvas || !_catChartEntries.length) return; // FIX: guarda contra dados vazios
   // Reset wrapper so doughnut uses its natural aspect ratio
   const wrap = document.getElementById('catChartWrap');
   if (wrap) { wrap.style.height = ''; }
