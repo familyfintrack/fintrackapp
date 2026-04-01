@@ -1,0 +1,71 @@
+/* ════════════════════════════════════════════════════
+   18_dashboard.css
+   Dashboard fav type headers
+   Source: style.css L22650–22713 (64 lines)
+   Braces: 12 open / 12 close ✓
+════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD — fav type group headers (uniform with app fmt)
+══════════════════════════════════════════════════════════════ */
+.dash-fav-type-group { margin-bottom: 4px; }
+.dash-fav-type-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px 10px;
+}
+.dash-fav-type-label {
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.dash-fav-type-total {
+  font-size: .88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.dash-fav-type-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0 14px;
+}
+
+/* Desktop: wider grid for fav cards */
+@media (min-width: 1024px) {
+  .dash-favs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 14px;
+  }
+  .dash-fav-card {
+    padding: 18px 20px 20px;
+  }
+  .dash-fav-card__balance {
+    font-size: 1.45rem;
+  }
+  .dash-fav-card__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+  }
+}
+
+/* Mobile: always 2 columns */
+@media (max-width: 480px) {
+  .dash-favs-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MÓDULO SONHOS — Dreams Module CSS (redesign 2026)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Hero summary ────────────────────────────────────────────────── */
