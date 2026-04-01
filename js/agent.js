@@ -1,15 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   AGENT.JS — FinTrack Agent v2
-   Três capacidades:
-     1) AÇÕES    — criar transações, programados, beneficiários, categorias, dívidas
-     2) AJUDA    — responder dúvidas sobre o app (busca semântica em help.js)
-     3) FINANÇAS — responder sobre as finanças do usuário (saldos, gastos, orçamentos)
+   AGENT.JS — FinTrack Copiloto Financeiro v3
+   Motor profissional com pipeline de 6 estágios, entity resolver, sistema
+   de confiança, memória de sessão e UI interativa.
 
-   Fluxo: userMessage → _agentClassifyIntent() → dispatcher
-     HELP    → _agentAnswerHelp()     (busca semântica no help.js + Gemini)
-     FINANCE → _agentAnswerFinance()  (consulta state + Supabase + Gemini)
-     ACTION  → _agentBuildPlan() → _agentExecute()
-     UNKNOWN → tenta Gemini, fallback amigável
+   Depende de: agent_engine.js (carregado antes)
+
+   Pipeline: userMessage
+     → AgentEngine.runPipeline()          (interpret + resolve + gaps)
+     → _agentDispatch()                   (roteador principal)
+       HELP    → _agentAnswerHelp()        (busca semântica + Gemini)
+       FINANCE → _agentAnswerFinance()     (state + Supabase + Gemini)
+       ACTION  → _agentBuildPlan()         (heurística + Gemini fallback)
+               → _agentExecute()           (executor com validação)
+       GUIDED  → _agentShowGuided()        (UI interativa para campos faltantes)
+     → _agentRefreshAfterPlan()           (atualiza estado do app)
 ═══════════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -20,16 +24,39 @@ const _agent = {
   loading: false,
   pendingPlan: null,
   inlineReady: false,
+  // v3: session memory completa (sincronizada com AgentSession)
   session: {
-    lastIntent: null,
-    draftPlan: null,
-    draftUpdatedAt: 0,
+    lastIntent:       null,
+    draftPlan:        null,
+    draftUpdatedAt:   0,
+    awaitingField:    null,
+    lastEntities:     {},
+    turnCount:        0,
   },
+  _engineReady: false,
 };
 
+// Inicializa o engine e sincroniza sessão
+function _agentInitEngine() {
+  if (typeof AgentEngine === 'undefined') return;
+  _agent._engineReady = true;
+  // Ativa debug via URL param: ?agentDebug=1
+  const debugMode = new URLSearchParams(window.location.search).get('agentDebug') === '1';
+  AgentEngine.setDebug(debugMode);
+  AgentEngine.Logger.info('[agent] v3 engine ready, debug='+debugMode);
+}
+
+// Chamado quando agent abre pela primeira vez
+document.addEventListener('DOMContentLoaded', () => {
+  // Pequeno delay para garantir que agent_engine.js já executou
+  setTimeout(_agentInitEngine, 100);
+});
+
 const AGENT_ALLOWED_INTENTS = new Set([
-  'create_transaction','create_scheduled','create_payee','create_category','create_family_member',
-  'create_debt','query_balance','navigate','confirm','help','finance_query','not_understood',
+  'create_transaction','create_scheduled','create_payee','create_category',
+  'create_family_member','create_debt','create_account','create_dream',
+  'edit_entity','delete_entity','pay_debt',
+  'query_balance','navigate','confirm','cancel','help','finance_query','not_understood',
 ]);
 
 // ── Public API ────────────────────────────────────────────────────────────
@@ -42,7 +69,25 @@ window.toggleAgent = function() {
     document.getElementById('agentInput')?.focus();
     _agentEnsureInlineUi();
     if (!_agent.history.length) _agentWelcome();
+    _agentRefreshQuickReplies(); // v3: atualiza chips contextuais
+    _agentInitEngine();          // v3: garante engine pronto
   }
+};
+
+// v3: confirma ação pendente via botão visual
+window.agentSend_confirm = function() {
+  const input = document.getElementById('agentInput');
+  if (input) input.value = 'ok';
+  agentSend();
+  _agentHideConfirmBar();
+};
+
+// v3: cancela ação pendente
+window.agentSend_cancel = function() {
+  _agent.pendingPlan = null;
+  if (typeof AgentEngine !== 'undefined') AgentEngine.Session.reset();
+  _agentHideConfirmBar();
+  _agentAppend('assistant', '↩️ Ação cancelada.');
 };
 
 window.agentSend = async function() {
@@ -52,6 +97,7 @@ window.agentSend = async function() {
   input.value = '';
   input.style.height = 'auto';
   _agentRenderInlineSuggestions('');
+  _agentHideConfirmBar();
   _agentAppend('user', text);
   _agentSetLoading(true);
   try { await _agentDispatch(text); }
@@ -82,52 +128,95 @@ window.agentChooseSlot = function(field, value, sendNow=false) {
 
 // ── Welcome ───────────────────────────────────────────────────────────────
 function _agentWelcome() {
-  _agentAppend('assistant', [
-    '👋 Olá! Sou o **FinTrack Agent**.',
-    '',
-    'Posso ajudar com três tipos de tarefa:',
-    '',
-    '**📊 Suas finanças**',
-    '› *"Quanto gastei este mês?"*',
-    '› *"Qual categoria mais pesou no orçamento?"*',
-    '› *"Quais contas estão no vermelho?"*',
-    '',
-    '**❓ Dúvidas sobre o app**',
-    '› *"Como adicionar uma conta?"*',
-    '› *"O que é uma transação programada?"*',
-    '› *"Como convidar um familiar?"*',
-    '',
-    '**⚡ Ações rápidas**',
-    '› *"Crie despesa de R$80 no Supermercado"*',
-    '› *"Adicione programado mensal de R$500"*',
-  ].join('\n'));
+  const page = window.state?.currentPage || 'dashboard';
+  const quickRepliesHtml = typeof AgentEngine !== 'undefined'
+    ? AgentEngine.QuickReplies.render(page)
+    : '';
+
+  const welcomeHtml = `
+<div style="display:flex;flex-direction:column;gap:10px">
+  <div>
+    👋 Olá! Sou o <strong>FinTrack Copiloto</strong>.<br>
+    <span style="font-size:.8rem;color:var(--muted)">Posso criar transações, responder sobre suas finanças e ajudar com o app.</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)">
+    <div>💸 <em>"Crie despesa de R$80 no Supermercado"</em></div>
+    <div>📊 <em>"Quanto gastei este mês?"</em></div>
+    <div>❓ <em>"Como adicionar uma conta?"</em></div>
+  </div>
+  ${quickRepliesHtml}
+</div>`.trim();
+
+  _agentAppendStructured('assistant', welcomeHtml, 'Olá! Sou o FinTrack Copiloto.');
 }
 
-// ── Main dispatcher ───────────────────────────────────────────────────────
+// ── Main dispatcher — v3 com engine pipeline ──────────────────────────────
 async function _agentDispatch(text) {
+  // ── Slot payload (chip clicado) ──
   if (_agentIsSlotPayload(text) && _agent.pendingPlan) {
     const merged = _agentApplySlotPayload(_agent.pendingPlan, text);
     _agent.pendingPlan = null;
+    _agentHideConfirmBar();
     await _agentExecute(merged, text);
     return;
   }
 
+  // ── Preenchimento de campo no fluxo multi-turn ──
   if (_agent.pendingPlan && !_agentIsConfirmation(text)) {
     const merged = _agentMergeIntoPendingPlan(_agent.pendingPlan, text);
     if (merged) {
       _agent.pendingPlan = null;
+      _agentHideConfirmBar();
       await _agentExecute(merged, text);
       return;
     }
   }
 
+  // ── Confirmação explícita ──
   if (_agentIsConfirmation(text) && _agent.pendingPlan) {
     const plan = _agent.pendingPlan;
     _agent.pendingPlan = null;
+    _agentHideConfirmBar();
     await _agentExecute(plan, text);
     return;
   }
 
+  // ── v3: Tenta usar o engine pipeline primeiro ──
+  if (_agent._engineReady && typeof AgentEngine !== 'undefined') {
+    try {
+      const engineResult = await AgentEngine.runPipeline(text, _agent, window.state || {});
+
+      // Intent resolvível localmente com boa confiança → passa para o fluxo clássico
+      if (engineResult.intent !== 'not_understood' && engineResult.confidence >= 0.55) {
+        // Registra entidades resolvidas para uso futuro
+        AgentEngine.Session.rememberEntities(engineResult.resolved || {});
+
+        // Repassa para intents de query/help/navigate (sem mudar comportamento)
+        if (engineResult.intent === 'help') { await _agentAnswerHelp(text); return; }
+        if (engineResult.intent === 'finance_query') { await _agentAnswerFinance(text); return; }
+        if (engineResult.intent === 'navigate') {
+          const page = _agentExtractNavPage(text);
+          if (page && typeof navigate === 'function') {
+            navigate(page);
+            _agentAppend('assistant', `✅ Abrindo **${page}**.`);
+            return;
+          }
+        }
+
+        // Para intents de ação: usa engine para guided UI e resolução de entidades
+        if (_agentIsActionIntent(engineResult.intent)) {
+          const plan = await _agentBuildPlanFromEngine(text, engineResult);
+          await _agentExecute(plan, text);
+          return;
+        }
+      }
+    } catch(e) {
+      console.warn('[agent] engine pipeline error, falling back:', e?.message || e);
+      // Fallback gracioso para o fluxo clássico abaixo
+    }
+  }
+
+  // ── Fluxo clássico (fallback) ──
   const intent = _agentClassifyIntent(text);
 
   if (intent === 'help') { await _agentAnswerHelp(text); return; }
@@ -144,6 +233,99 @@ async function _agentDispatch(text) {
 
   const plan = await _agentBuildPlan(text);
   await _agentExecute(plan, text);
+}
+
+// ── v3 Engine helpers ─────────────────────────────────────────────────────
+
+// Verifica se o intent é de ação (não query/help/navigate)
+function _agentIsActionIntent(intent) {
+  return ['create_transaction','create_scheduled','create_payee','create_category',
+          'create_family_member','create_account','create_debt','create_dream',
+          'pay_debt','edit_entity','delete_entity'].includes(intent);
+}
+
+// Constrói um plano compatível com _agentExecute() a partir do resultado do engine
+async function _agentBuildPlanFromEngine(userMessage, engineResult) {
+  // Inicia com o resultado local do engine
+  const data = engineResult.data || {};
+  const missingFields = engineResult.missingFields || [];
+
+  // Se confiança baixa e há chave Gemini, reforça com Gemini
+  if (engineResult.confidence < 0.75) {
+    const key = await _agentGetKey();
+    if (key) {
+      try {
+        const geminiResult = await AgentEngine.runWithGemini(
+          userMessage, _agent, window.state || {}, key
+        );
+        // Gemini tem prioridade para campos que o local não resolveu
+        Object.assign(data, geminiResult.data);
+        // Atualiza missing fields com a visão do Gemini
+        if (geminiResult.missingFields.length < missingFields.length) {
+          missingFields.length = 0;
+          missingFields.push(...geminiResult.missingFields);
+        }
+      } catch (e) {
+        console.warn('[agent] Gemini reforço falhou:', e?.message);
+      }
+    }
+  }
+
+  // Monta plano no formato esperado por _agentExecute()
+  const plan = {
+    intent: engineResult.intent,
+    summary: _agentBuildSummary(engineResult.intent, data),
+    requires_confirmation: false,
+    missing_fields: missingFields,
+    guided: missingFields.length > 0,
+    actions: [{
+      type: engineResult.intent,
+      data: {
+        ...data,
+        date: data.date || new Date().toISOString().slice(0, 10),
+      },
+    }],
+    // v3: HTML rico gerado pelo engine
+    _guidedHtml: engineResult.guidedHtml || null,
+    _ambiguities: engineResult.ambiguities || [],
+  };
+
+  return plan;
+}
+
+// Gera summary amigável para o plano
+function _agentBuildSummary(intent, data) {
+  const labels = {
+    create_transaction: 'Criar transação',
+    create_scheduled:  'Criar programado',
+    create_payee:      'Criar beneficiário',
+    create_category:   'Criar categoria',
+    create_family_member: 'Criar membro da família',
+    create_account:    'Criar conta',
+    create_debt:       'Registrar dívida',
+    create_dream:      'Criar sonho',
+    pay_debt:          'Pagar dívida',
+  };
+  return labels[intent] || 'Executando ação';
+}
+
+// Mostra/esconde barra de confirmação visual
+function _agentShowConfirmBar() {
+  const bar = document.getElementById('agentConfirmBar');
+  if (bar) bar.classList.add('active');
+}
+function _agentHideConfirmBar() {
+  const bar = document.getElementById('agentConfirmBar');
+  if (bar) bar.classList.remove('active');
+}
+
+// Atualiza quick replies baseado na página atual
+function _agentRefreshQuickReplies() {
+  if (typeof AgentEngine === 'undefined') return;
+  const page = window.state?.currentPage || 'dashboard';
+  const bar = document.getElementById('agentQuickBar');
+  if (!bar) return;
+  bar.innerHTML = AgentEngine.QuickReplies.render(page);
 }
 
 // ── Intent classifier ─────────────────────────────────────────────────────
@@ -495,11 +677,82 @@ async function _agentBuildPlan(userMessage) {
   const key = await _agentGetKey();
   if (!key) return { ...direct, _noKey: true };
   _agent.apiKey = key;
+
+  // v3: usa o contrato Gemini do engine se disponível
+  if (_agent._engineReady && typeof AgentEngine !== 'undefined') {
+    try {
+      const result = await AgentEngine.runWithGemini(userMessage, _agent, window.state || {}, key);
+      return _agentNormalizeEngineResult(result, userMessage);
+    } catch(e) {
+      console.warn('[agent] engine Gemini failed, falling back to classic:', e?.message);
+    }
+  }
+
+  // Fallback clássico
   const aiPlan = await _agentPlanWithGemini(userMessage);
   return _agentNormalizePlan(aiPlan, userMessage);
 }
 
+// Converte resultado do engine para formato de plano clássico
+function _agentNormalizeEngineResult(engineResult, originalText) {
+  const intent = engineResult.intent || 'not_understood';
+  if (!AGENT_ALLOWED_INTENTS.has(intent) && intent !== 'not_understood') {
+    // Intents novos do v3 que não estão no set clássico — tenta mapear
+    const mapped = {
+      create_account: 'not_understood', // ainda não implementado, seguro
+      create_dream:   'not_understood',
+      pay_debt:       'not_understood',
+      edit_entity:    'not_understood',
+      delete_entity:  'not_understood',
+    };
+    if (mapped[intent]) {
+      _agentAppend('assistant', `ℹ️ A ação **${_agentBuildSummary(intent, {})}** ainda está em desenvolvimento. Em breve!`);
+    }
+  }
+
+  const data = engineResult.data || {};
+  return {
+    intent,
+    summary: _agentBuildSummary(intent, data),
+    requires_confirmation: false,
+    missing_fields: engineResult.missingFields || [],
+    guided: (engineResult.missingFields || []).length > 0,
+    actions: [{ type: intent, data }],
+    _guidedHtml: engineResult.guidedHtml || null,
+    _ambiguities: engineResult.ambiguities || [],
+  };
+}
+
 async function _agentPlanWithGemini(userMessage) {
+  // v3: usa o prompt do contrato Gemini se engine disponível
+  if (_agent._engineReady && typeof AgentEngine !== 'undefined') {
+    const ctx = _agentBuildContext();
+    const prompt = AgentEngine.GeminiContract.buildInterpretPrompt(userMessage, {
+      ...ctx,
+      currentPage: window.state?.currentPage || 'dashboard',
+      pendingIntent: null,
+    });
+    for (const model of ['gemini-2.0-flash','gemini-2.5-flash','gemini-2.5-flash-lite']) {
+      try {
+        const text = await _agentCallGemini(prompt, _agent.apiKey, 800, model);
+        const parsed = AgentEngine.GeminiContract.parseResponse(text);
+        // Converte para formato de plano clássico
+        return {
+          intent: parsed.intent,
+          summary: _agentBuildSummary(parsed.intent, parsed.extracted_fields),
+          requires_confirmation: parsed.confidence < 0.85,
+          actions: [{ type: parsed.intent, data: parsed.extracted_fields || {} }],
+          missing_fields: parsed.missing_fields || [],
+          ambiguous_fields: (parsed.ambiguities || []).map(a => a.field),
+          guided: (parsed.missing_fields || []).length > 0,
+        };
+      } catch (e) {
+        if (!/404/.test(e.message||'')) throw e;
+      }
+    }
+  }
+
+  // Fallback: prompt clássico
   const ctx = _agentBuildContext();
   const prompt = `Você é o FinTrack Agent. Converta o pedido em JSON para execução no app.
 Retorne APENAS JSON válido, sem markdown.
@@ -623,6 +876,30 @@ function _agentParseStructured(text) {
   if (/d[ií]vida/.test(msg)&&amount!==null)
     return {intent:'create_debt',summary:'Criando dívida',requires_confirmation:false,actions:[{type:'create_debt',data:{description:_agentParseDescription(raw),creditor:_agentExtractPayee(raw),original_amount:Math.abs(amount),start_date:date}}],missing_fields:[]};
 
+  // v3: Criar conta
+  if (/(cri[ea]r?|adicionar?|adicione|cadastr[ae]r?)\s.*(conta|bank)/.test(msg)&&!/(transa|despesa|receita)/.test(msg)) {
+    const name=_agentExtractAfter(raw,[/conta\s+(?:chamada?\s+)?([^,.;]+?)(?=\s+(?:tipo|de|no|na)\b|[,.;]|$)/i,/(?:de\s+nome\s+|chamada?\s+)([^,.;]+?)(?=[,.;]|$)/i]);
+    const accType=_agentParseAccountType(msg);
+    const currency=/(dolar|dollar|usd|\$\s*\d)/.test(msg)?'USD':/(euro|eur)/.test(msg)?'EUR':'BRL';
+    return _agentFinalizeGuidedPlan({intent:'create_account',summary:'Criando conta',requires_confirmation:false,
+      actions:[{type:'create_account',data:{name,type:accType,currency,balance:amount||0}}]});
+  }
+
+  // v3: Criar sonho / meta
+  if (/(sonho|meta|objetivo|poupar?\s+para|guardar?\s+para)/.test(msg)&&/(cri[ea]r?|adicionar?|adicione|quero)/.test(msg)) {
+    const name=_agentExtractAfter(raw,[/sonho\s+(?:de\s+)?([^,.;]+?)(?=\s+(?:de|com|no)\b|[,.;]|$)/i,/meta\s+(?:de\s+)?([^,.;]+?)(?=\s+(?:de|com|no)\b|[,.;]|$)/i,/objetivo\s+(?:de\s+)?([^,.;]+?)(?=[,.;]|$)/i]);
+    const targetDate=_agentParseTargetDate(raw);
+    return _agentFinalizeGuidedPlan({intent:'create_dream',summary:'Criando sonho',requires_confirmation:false,
+      actions:[{type:'create_dream',data:{name,target_amount:amount?Math.abs(amount):null,target_date:targetDate}}]});
+  }
+
+  // v3: Pagar dívida
+  if (/(pagar?|quitar|abater|registrar?\s+pagamento)/.test(msg)&&/(d[ií]vida|parcela|credor)/.test(msg)) {
+    const creditor=_agentExtractPayee(raw);
+    return _agentFinalizeGuidedPlan({intent:'pay_debt',summary:'Pagando dívida',requires_confirmation:true,
+      actions:[{type:'pay_debt',data:{name:creditor,amount:amount?Math.abs(amount):null}}]});
+  }
+
   return {intent:'not_understood',summary:'',requires_confirmation:false,actions:[],missing_fields:[]};
 }
 
@@ -644,10 +921,19 @@ async function _agentExecute(plan, originalText) {
   const normalized=_agentNormalizePlan(plan,originalText);
 
   if (normalized.intent==='not_understood') {
-    _agentAppend('assistant', normalized._noKey
-      ? '🤔 Pedido não reconhecido.\n\nPara pedidos complexos, configure a **chave Gemini** em Configurações → IA.\n\nOu tente: *"Quanto gastei este mês?"* ou *"Como criar uma conta?"*'
-      : '🤔 Não consegui mapear esse pedido.\n\nTente:\n• *"Crie despesa de R$50 em Alimentação"*\n• *"Quanto gastei este mês?"*\n• *"Como criar uma conta?"*'
-    );
+    // v3: usa resposta rica do engine
+    if (typeof AgentEngine !== 'undefined') {
+      const key = await _agentGetKey();
+      _agentAppendStructured('assistant',
+        AgentEngine.ResponseBuilder.notUnderstood(!!key).html,
+        'Não entendido'
+      );
+    } else {
+      _agentAppend('assistant', normalized._noKey
+        ? '🤔 Pedido não reconhecido.\n\nPara pedidos complexos, configure a **chave Gemini** em Configurações → IA.\n\nOu tente: *"Quanto gastei este mês?"* ou *"Como criar uma conta?"*'
+        : '🤔 Não consegui mapear esse pedido.\n\nTente:\n• *"Crie despesa de R$50 em Alimentação"*\n• *"Quanto gastei este mês?"*\n• *"Como criar uma conta?"*'
+      );
+    }
     return;
   }
 
@@ -655,16 +941,21 @@ async function _agentExecute(plan, originalText) {
     _agent.pendingPlan = normalized;
     _agent.session.draftPlan = normalized;
     _agent.session.draftUpdatedAt = Date.now();
-    _agentAppendStructured('assistant', _agentBuildGuidedHtml(normalized), normalized.summary || 'Preencha os campos faltantes.');
+    // v3: usa HTML rico do engine se disponível, senão HTML clássico
+    const html = normalized._guidedHtml || _agentBuildGuidedHtml(normalized);
+    _agentAppendStructured('assistant', html, normalized.summary || 'Preencha os campos faltantes.');
     return;
   }
 
   if (normalized.intent==='confirm') {
     if (!_agent.pendingPlan) { _agentAppend('assistant','Não há ação pendente.'); return; }
     plan=_agent.pendingPlan; _agent.pendingPlan=null;
+    _agentHideConfirmBar();
   } else if (normalized.requires_confirmation) {
     _agent.pendingPlan=normalized;
-    _agentAppend('assistant',`🧾 ${normalized.summary||'Ação a executar.'}\n\nDigite **ok** para confirmar.`);
+    // v3: mostra barra de confirm visual + mensagem
+    _agentShowConfirmBar();
+    _agentAppend('assistant',`🧾 ${normalized.summary||'Ação a executar.'}\n\nConfirme abaixo ou digite **ok**.`);
     return;
   } else {
     plan=normalized;
@@ -686,11 +977,29 @@ async function _agentExecute(plan, originalText) {
     catch (e) { results.push({ok:false,msg:`Erro em ${action.type}: ${e.message}`}); }
   }
   const allOk=results.length&&results.every(r=>r.ok);
-  _agentAppend('assistant',results.map(r=>r.ok?`✅ ${r.msg}`:`❌ ${r.msg}`).join('\n')+(allOk?'\n\n*Tudo pronto!*':''));
+
+  // v3: usa resposta rica para sucesso/erro
+  if (typeof AgentEngine !== 'undefined') {
+    const msg = results.map(r=>r.msg).join('\n');
+    if (allOk) {
+      _agentAppendStructured('assistant', AgentEngine.ResponseBuilder.success(msg).html, msg);
+    } else {
+      const errMsg = results.filter(r=>!r.ok).map(r=>r.msg).join('\n');
+      const suggestions = ['Tente novamente', 'Ver contas', 'Ajuda'];
+      _agentAppendStructured('assistant', AgentEngine.ResponseBuilder.error(errMsg, suggestions).html, errMsg);
+    }
+  } else {
+    _agentAppend('assistant',results.map(r=>r.ok?`✅ ${r.msg}`:`❌ ${r.msg}`).join('\n')+(allOk?'\n\n*Tudo pronto!*':''));
+  }
+
   if (allOk) {
     _agent.pendingPlan = null;
     _agent.session.draftPlan = null;
+    if (typeof AgentEngine !== 'undefined') AgentEngine.Session.reset();
+    _agentHideConfirmBar();
     await _agentRefreshAfterPlan(plan);
+    // v3: atualiza quick replies após ação
+    setTimeout(_agentRefreshQuickReplies, 300);
   }
 }
 
@@ -705,6 +1014,9 @@ async function _agentRunAction(action,ctx) {
     case 'create_category':    return _agentEnsureCategory(d.name||'',d.type||'expense',d.color,ctx,true);
     case 'create_family_member': return _agentCreateFamilyMember(d);
     case 'create_debt':        return _agentCreateDebt(d);
+    case 'create_account':     return _agentCreateAccount(d);
+    case 'create_dream':       return _agentCreateDream(d);
+    case 'pay_debt':           return _agentPayDebt(d);
     case 'navigate':
       if(d.page&&typeof navigate==='function'){navigate(d.page);return{ok:true,msg:`Página **${d.page}** aberta`};}
       throw new Error('Página não informada.');
@@ -804,6 +1116,156 @@ async function _agentCreateFamilyMember(d){
   return {ok:true,msg:`Membro **${name}** criado${record.birth_date?` (${record.birth_date})`:''}`};
 }
 
+// ── v3: Criar conta bancária via agente ───────────────────────────────────
+async function _agentCreateAccount(d) {
+  const name = String(d.name || '').trim();
+  if (!name) throw new Error('Nome da conta não informado.');
+  const family_id = _agentGetFamilyId();
+  if (!family_id) throw new Error('Família não identificada.');
+
+  // Verifica se já existe conta com esse nome
+  const existing = _agentFindByName(state.accounts || [], name);
+  if (existing) return { ok: true, msg: `Conta **${existing.name}** já existe` };
+
+  // Mapeia tipo da conta
+  const typeMap = {
+    checking: 'checking', corrente: 'checking', conta_corrente: 'checking',
+    savings: 'savings', poupanca: 'savings', poupança: 'savings',
+    credit: 'credit', credito: 'credit', crédito: 'credit', cartao: 'credit',
+    investment: 'investment', investimento: 'investment',
+    cash: 'cash', dinheiro: 'cash',
+  };
+  const rawType = String(d.type || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const accountType = typeMap[rawType] || 'checking';
+
+  const balance = Number(d.balance || d.initial_balance || 0);
+  const currency = String(d.currency || 'BRL').toUpperCase();
+
+  const payload = {
+    name,
+    type: accountType,
+    balance,
+    currency,
+    family_id,
+    is_active: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await sb.from('accounts').insert(payload).select('id,name,type,balance').single();
+  if (error) throw new Error(error.message);
+
+  // Atualiza state local
+  state.accounts = [...(state.accounts || []), data];
+  if (typeof DB !== 'undefined' && DB.accounts?.bust) DB.accounts.bust();
+
+  const fmtBal = typeof fmt === 'function' ? fmt(balance, currency) : `${currency} ${balance.toFixed(2)}`;
+  return { ok: true, msg: `Conta **${name}** (${accountType}) criada com saldo ${fmtBal}` };
+}
+
+// ── v3: Criar sonho / meta financeira via agente ──────────────────────────
+async function _agentCreateDream(d) {
+  const name = String(d.name || d.description || '').trim();
+  if (!name) throw new Error('Nome do sonho não informado.');
+
+  const targetAmount = Math.abs(Number(d.target_amount || d.amount || 0));
+  if (!targetAmount) throw new Error('Valor alvo não informado.');
+
+  const family_id = _agentGetFamilyId();
+  if (!family_id) throw new Error('Família não identificada.');
+
+  const payload = {
+    name,
+    description: d.description || name,
+    target_amount: targetAmount,
+    current_amount: Number(d.current_amount || 0),
+    target_date: d.target_date || null,
+    status: 'active',
+    family_id,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await sb.from('dreams').insert(payload);
+  if (error) throw new Error(error.message);
+
+  // Refresca lista de dreams se na página
+  if (state.currentPage === 'dreams' && typeof loadDreams === 'function') {
+    try { await loadDreams(); } catch(_) {}
+  }
+
+  const fmtAmt = typeof fmt === 'function' ? fmt(targetAmount, 'BRL') : `R$ ${targetAmount.toFixed(2)}`;
+  const dateStr = d.target_date ? ` para ${d.target_date}` : '';
+  return { ok: true, msg: `Sonho **${name}** criado — meta ${fmtAmt}${dateStr}` };
+}
+
+// ── v3: Registrar pagamento de dívida ────────────────────────────────────
+async function _agentPayDebt(d) {
+  const family_id = _agentGetFamilyId();
+  if (!family_id) throw new Error('Família não identificada.');
+
+  // Resolve qual dívida
+  const debtName = String(d.name || d.description || d.creditor || '').trim();
+  let debt = null;
+
+  if (debtName) {
+    // Busca dívidas ativas
+    const { data: debts } = await sb
+      .from('debts')
+      .select('id,description,creditor,current_balance,original_amount,currency')
+      .eq('family_id', family_id)
+      .eq('status', 'active');
+
+    // Fuzzy match no nome da dívida
+    const combined = (debts || []).map(db => ({
+      ...db,
+      name: db.description || db.creditor || 'Dívida',
+    }));
+    debt = _agentFindByName(combined, debtName);
+  }
+
+  if (!debt) {
+    // Se não achou, pede seleção
+    const { data: debts } = await sb
+      .from('debts')
+      .select('id,description,creditor,current_balance,currency')
+      .eq('family_id', family_id)
+      .eq('status', 'active')
+      .limit(5);
+
+    if (!debts?.length) throw new Error('Nenhuma dívida ativa encontrada.');
+
+    // Retorna lista para o usuário escolher
+    const list = debts.map(db =>
+      `• **${db.description || db.creditor}**: ${typeof fmt === 'function' ? fmt(db.current_balance, db.currency||'BRL') : db.current_balance}`
+    ).join('\n');
+    _agentAppend('assistant', `💳 Qual dívida deseja pagar?\n\n${list}\n\nDigite o nome da dívida.`);
+    return { ok: false, msg: 'Seleção de dívida necessária' };
+  }
+
+  const payAmount = Math.abs(Number(d.amount || d.pay_amount || debt.current_balance || 0));
+  if (!payAmount) throw new Error('Valor do pagamento não informado.');
+
+  // Calcula novo saldo
+  const newBalance = Math.max(0, debt.current_balance - payAmount);
+  const newStatus = newBalance <= 0 ? 'paid' : 'active';
+
+  const { error } = await sb
+    .from('debts')
+    .update({ current_balance: newBalance, status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', debt.id);
+
+  if (error) throw new Error(error.message);
+
+  // Refresca debts
+  if (state.currentPage === 'debts' && typeof loadDebts === 'function') {
+    try { await loadDebts(); } catch(_) {}
+  }
+
+  const debtLabel = debt.description || debt.creditor || 'Dívida';
+  const fmtPaid = typeof fmt === 'function' ? fmt(payAmount, debt.currency || 'BRL') : payAmount.toFixed(2);
+  const statusMsg = newStatus === 'paid' ? ' 🎉 **Dívida quitada!**' : ` Saldo restante: ${typeof fmt === 'function' ? fmt(newBalance, debt.currency || 'BRL') : newBalance.toFixed(2)}`;
+  return { ok: true, msg: `Pagamento de ${fmtPaid} registrado em **${debtLabel}**.${statusMsg}` };
+}
+
 function _agentParseBirthDate(text){
   const raw=String(text||'');
   const abs=raw.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
@@ -830,13 +1292,14 @@ function _agentFinalizeGuidedPlan(plan){
 function _agentComputeMissingFields(intent,data){
   const missing=[];
   const isBlank=v=>v===null||v===undefined||String(v).trim()==='';
+  const noAmt=d=>d.amount===null||d.amount===undefined||!Number.isFinite(Number(d.amount))||Number(d.amount)===0;
   if(intent==='create_transaction'){
-    if(data.amount===null||data.amount===undefined||!Number.isFinite(Number(data.amount))||Number(data.amount)===0) missing.push('amount');
+    if(noAmt(data)) missing.push('amount');
     if(isBlank(data.account_name)&&!data.account_id) missing.push('account_name');
     if(isBlank(data.category_name)&&!data.category_id) missing.push('category_name');
   }
   if(intent==='create_scheduled'){
-    if(data.amount===null||data.amount===undefined||!Number.isFinite(Number(data.amount))||Number(data.amount)===0) missing.push('amount');
+    if(noAmt(data)) missing.push('amount');
     if(isBlank(data.account_name)&&!data.account_id) missing.push('account_name');
     if(isBlank(data.category_name)&&!data.category_id) missing.push('category_name');
     if(isBlank(data.frequency)) missing.push('frequency');
@@ -844,13 +1307,31 @@ function _agentComputeMissingFields(intent,data){
   }
   if(intent==='create_payee' && isBlank(data.name)) missing.push('name');
   if(intent==='create_category' && isBlank(data.name)) missing.push('name');
-  if(intent==='create_family_member'){
+  if(intent==='create_family_member' && isBlank(data.name)) missing.push('name');
+  // v3: novos intents
+  if(intent==='create_account' && isBlank(data.name)) missing.push('name');
+  if(intent==='create_debt'){
+    if(isBlank(data.description)&&isBlank(data.creditor)) missing.push('description');
+    if(noAmt({amount:data.original_amount||data.amount})) missing.push('original_amount');
+  }
+  if(intent==='create_dream'){
     if(isBlank(data.name)) missing.push('name');
-    if(isBlank(data.birth_date)) missing.push('birth_date');
+    if(noAmt({amount:data.target_amount||data.amount})) missing.push('target_amount');
+  }
+  if(intent==='pay_debt'){
+    if(noAmt({amount:data.amount||data.pay_amount})) missing.push('amount');
   }
   return missing;
 }
-function _agentFieldLabel(field){return ({amount:'Valor',account_name:'Conta',category_name:'Categoria',payee_name:'Beneficiário',frequency:'Recorrência',start_date:'Data inicial',name:'Nome',birth_date:'Data de nascimento'})[field]||field;}
+function _agentFieldLabel(field){
+  return ({
+    amount:'Valor', account_name:'Conta', category_name:'Categoria',
+    payee_name:'Beneficiário', frequency:'Recorrência', start_date:'Data inicial',
+    name:'Nome', birth_date:'Data de nascimento', description:'Descrição',
+    original_amount:'Valor da dívida', target_amount:'Valor alvo',
+    target_date:'Data alvo', creditor:'Credor', type:'Tipo', currency:'Moeda',
+  })[field]||field;
+}
 function _agentFormatFieldValue(field,value){
   if(value===null||value===undefined||value==='') return '<span style="color:var(--muted)">[selecionar]</span>';
   if(field==='amount'){ const n=Math.abs(Number(value)||0); return typeof fmt==='function'?fmt(n,'BRL'):`R$ ${n.toFixed(2)}`; }
@@ -859,6 +1340,17 @@ function _agentFormatFieldValue(field,value){
   return String(value);
 }
 function _agentBuildGuidedHtml(plan){
+  // v3: usa o engine GuidedUI se disponível (HTML mais rico)
+  if (typeof AgentEngine !== 'undefined') {
+    const data = plan.actions?.[0]?.data || {};
+    return AgentEngine.GuidedUI.build(
+      plan.intent,
+      data,
+      plan.missing_fields || [],
+      {} // resolved entities (sem info de confiança neste ponto)
+    );
+  }
+  // Fallback clássico
   const data=plan.actions?.[0]?.data||{};
   const title={create_transaction:'Criar transação',create_scheduled:'Criar transação programada',create_payee:'Criar beneficiário',create_category:'Criar categoria',create_family_member:'Criar membro da família'}[plan.intent]||'Completar ação';
   const fieldsByIntent={
@@ -884,15 +1376,34 @@ function _agentBuildFieldChips(field,currentValue,plan){
 }
 function _agentSuggestFieldOptions(field, query='', plan=null){
   const q=_agentNormalizeName(query);
+  // Filtra categorias por tipo (receita/despesa)
+  const txType = plan?.actions?.[0]?.data?.type || 'expense';
+  const cats = (state.categories||[])
+    .filter(c => !c.type || c.type === txType || c.type === 'both')
+    .map(c=>({value:c.name,label:c.name}));
+
   const map={
-    account_name:(state.accounts||[]).map(a=>({value:a.name,label:a.name})),
-    category_name:(state.categories||[]).map(c=>({value:c.name,label:c.name})),
-    payee_name:(state.payees||[]).map(p=>({value:p.name,label:p.name})),
-    frequency:[{value:'monthly',label:'Mensal'},{value:'weekly',label:'Semanal'},{value:'daily',label:'Diária'},{value:'yearly',label:'Anual'}],
-    start_date:[{value:new Date().toISOString().slice(0,10),label:'Hoje'},{value:_agentDateOffset(1),label:'Amanhã'}],
-    date:[{value:new Date().toISOString().slice(0,10),label:'Hoje'},{value:_agentDateOffset(-1),label:'Ontem'}],
+    account_name:  (state.accounts||[]).map(a=>({value:a.name,label:a.name})),
+    category_name: cats,
+    payee_name:    (state.payees||[]).map(p=>({value:p.name,label:p.name})),
+    frequency:     [{value:'monthly',label:'Mensal'},{value:'weekly',label:'Semanal'},{value:'daily',label:'Diária'},{value:'yearly',label:'Anual'}],
+    start_date:    [{value:new Date().toISOString().slice(0,10),label:'Hoje'},{value:_agentDateOffset(1),label:'Amanhã'}],
+    date:          [{value:new Date().toISOString().slice(0,10),label:'Hoje'},{value:_agentDateOffset(-1),label:'Ontem'}],
+    // v3: novos campos
+    type:          [{value:'expense',label:'Despesa'},{value:'income',label:'Receita'}],
+    currency:      [{value:'BRL',label:'BRL (R$)'},{value:'USD',label:'USD ($)'},{value:'EUR',label:'EUR (€)'}],
+    // account type chips (para create_account)
+    account_type:  [
+      {value:'checking',label:'Conta corrente'},
+      {value:'savings',label:'Poupança'},
+      {value:'credit',label:'Cartão de crédito'},
+      {value:'investment',label:'Investimento'},
+      {value:'cash',label:'Dinheiro'},
+    ],
     birth_date:[],
     amount:[],
+    original_amount:[],
+    target_amount:[],
   };
   let opts=map[field]||[];
   if(q) opts=opts.filter(o=>_agentNormalizeName(o.label).includes(q)||_agentNormalizeName(o.value).includes(q));
@@ -905,7 +1416,11 @@ function _agentApplySlotPayload(plan, payload){
   const field=m[1], value=m[2];
   const cloned=JSON.parse(JSON.stringify(plan));
   const data=cloned.actions?.[0]?.data||{};
-  data[field]=field==='amount'?Number(String(value).replace(',','.')):value;
+  // v3: trata campos numéricos corretamente
+  const numericFields=['amount','original_amount','target_amount','balance','pay_amount'];
+  data[field] = numericFields.includes(field)
+    ? Number(String(value).replace(',','.'))
+    : value;
   cloned.actions[0].data=data;
   return _agentFinalizeGuidedPlan(cloned);
 }
@@ -913,37 +1428,79 @@ function _agentMergeIntoPendingPlan(plan,text){
   const cloned=JSON.parse(JSON.stringify(plan));
   const data=cloned.actions?.[0]?.data||{};
   const raw=String(text||'').trim();
-  const firstMissing=(cloned.missing_fields||[])[0];
+  const missing=cloned.missing_fields||[];
+  const firstMissing=missing[0];
+
+  // Transação e programado
   if(cloned.intent==='create_transaction' || cloned.intent==='create_scheduled'){
-    const amt=_agentParseAmount(raw); if((cloned.missing_fields||[]).includes('amount') && amt!==null) data.amount=(data.type==='income'?Math.abs(amt):-Math.abs(amt));
+    const amt=_agentParseAmount(raw);
+    if(missing.includes('amount') && amt!==null)
+      data.amount=(data.type==='income'?Math.abs(amt):-Math.abs(amt));
     const entities=_agentExtractTransactionEntities(raw,{kind:cloned.intent==='create_scheduled'?'scheduled':'transaction',isIncome:data.type==='income'});
-    if((cloned.missing_fields||[]).includes('account_name') && entities.account_name) data.account_name=entities.account_name;
-    if((cloned.missing_fields||[]).includes('category_name') && entities.category_name) data.category_name=entities.category_name;
-    if((cloned.missing_fields||[]).includes('payee_name') && entities.payee_name) data.payee_name=entities.payee_name;
+    if(missing.includes('account_name') && entities.account_name) data.account_name=entities.account_name;
+    if(missing.includes('category_name') && entities.category_name) data.category_name=entities.category_name;
+    if(missing.includes('payee_name') && entities.payee_name) data.payee_name=entities.payee_name;
     if(cloned.intent==='create_scheduled'){
-      const freq=_agentParseFrequency(raw); if((cloned.missing_fields||[]).includes('frequency') && freq) data.frequency=freq;
-      if((cloned.missing_fields||[]).includes('start_date')) data.start_date=_agentParseDate(raw);
-    } else if((cloned.missing_fields||[]).includes('date') && raw) data.date=_agentParseDate(raw);
+      const freq=_agentParseFrequency(raw);
+      if(missing.includes('frequency') && freq) data.frequency=freq;
+      if(missing.includes('start_date')) data.start_date=_agentParseDate(raw);
+    } else if(missing.includes('date') && raw) data.date=_agentParseDate(raw);
   }
-  if(cloned.intent==='create_payee' && (cloned.missing_fields||[]).includes('name')) data.name=raw;
-  if(cloned.intent==='create_category' && (cloned.missing_fields||[]).includes('name')) data.name=raw;
+
+  // Simples: nome é o texto digitado
+  if(cloned.intent==='create_payee' && missing.includes('name')) data.name=raw;
+  if(cloned.intent==='create_category' && missing.includes('name')) data.name=raw;
+
+  // Membro da família
   if(cloned.intent==='create_family_member'){
-    if((cloned.missing_fields||[]).includes('name') && !_agentParseBirthDate(raw)) data.name=raw;
-    if((cloned.missing_fields||[]).includes('birth_date')) data.birth_date=_agentParseBirthDate(raw) || data.birth_date;
+    if(missing.includes('name') && !_agentParseBirthDate(raw)) data.name=raw;
+    if(missing.includes('birth_date')) data.birth_date=_agentParseBirthDate(raw)||data.birth_date;
   }
+
+  // v3: Conta
+  if(cloned.intent==='create_account'){
+    if(missing.includes('name')) data.name=raw;
+    if(missing.includes('type')) data.type=_agentParseAccountType(raw.toLowerCase());
+    const amt=_agentParseAmount(raw);
+    if(missing.includes('balance') && amt!==null) data.balance=amt;
+  }
+
+  // v3: Sonho / meta
+  if(cloned.intent==='create_dream'){
+    const amt=_agentParseAmount(raw);
+    if(missing.includes('name') && amt===null) data.name=raw;
+    if(missing.includes('target_amount') && amt!==null) data.target_amount=Math.abs(amt);
+    if(missing.includes('target_date')) data.target_date=_agentParseTargetDate(raw)||_agentParseDate(raw);
+  }
+
+  // v3: Pagamento de dívida
+  if(cloned.intent==='pay_debt'){
+    const amt=_agentParseAmount(raw);
+    if(missing.includes('amount') && amt!==null) data.amount=Math.abs(amt);
+    if(missing.includes('name') && amt===null) data.name=raw;
+  }
+
+  // v3: Dívida
+  if(cloned.intent==='create_debt'){
+    const amt=_agentParseAmount(raw);
+    if(missing.includes('description') && amt===null) data.description=raw;
+    if(missing.includes('original_amount') && amt!==null) data.original_amount=Math.abs(amt);
+  }
+
+  // Fallback genérico: texto livre preenche o primeiro campo faltante de texto
   if(firstMissing && !data[firstMissing]){
-    if(firstMissing==='account_name' || firstMissing==='category_name' || firstMissing==='payee_name' || firstMissing==='name') data[firstMissing]=raw;
+    const textFields=['account_name','category_name','payee_name','name','description','creditor'];
+    if(textFields.includes(firstMissing)) data[firstMissing]=raw;
   }
+
   cloned.actions[0].data=data;
-  const finalized=_agentFinalizeGuidedPlan(cloned);
-  return finalized;
+  return _agentFinalizeGuidedPlan(cloned);
 }
 function _agentAppendStructured(role, html, fallbackText=''){ _agent.history.push({role,text:fallbackText||'[structured]'}); _agentRenderMessage(role,{html,fallbackText}); }
 function _agentEnsureInlineUi(){
   if(_agent.inlineReady) return;
   const input=document.getElementById('agentInput'); if(!input) return;
-  let box=document.getElementById('agentInlineHints');
-  if(!box){ box=document.createElement('div'); box.id='agentInlineHints'; box.style.cssText='display:none;flex-wrap:wrap;gap:6px;margin-top:8px'; input.parentElement?.appendChild(box); }
+  // v3: o agentInlineHints já existe no HTML, não precisamos criar dinamicamente
   input.addEventListener('input', e=>_agentRenderInlineSuggestions(e.target.value));
   _agent.inlineReady=true;
 }
@@ -951,13 +1508,31 @@ function _agentRenderInlineSuggestions(text){
   const box=document.getElementById('agentInlineHints'); if(!box) return;
   const plan=_agent.pendingPlan||_agent.session.draftPlan;
   let field=''; let query=String(text||'').trim();
-  if(plan?.missing_fields?.length){ field=plan.missing_fields[0]; if(_agentIsSlotPayload(query)) query=''; }
-  else {
+
+  if(plan?.missing_fields?.length){
+    field=plan.missing_fields[0];
+    if(_agentIsSlotPayload(query)) query='';
+  } else {
     const norm=_agentNormalizeName(query);
-    if(/conta\s*$/.test(norm)) field='account_name';
-    else if(/categoria\s*$/.test(norm)) field='category_name';
-    else if(/beneficiario\s*$/.test(norm)) field='payee_name';
+    // v3: padrões mais ricos para autocomplete contextual
+    if(/conta\s*$/.test(norm))                              field='account_name';
+    else if(/categoria\s*$/.test(norm))                     field='category_name';
+    else if(/(beneficiar|favorecid|para\s+o|para\s+a)\s*$/.test(norm)) field='payee_name';
+    else if(/(recorrencia|frequencia|todo[s]?\s+os)\s*$/.test(norm))   field='frequency';
+    else if(/(moeda|em\s+)\s*$/.test(norm))                 field='currency';
+    // Sugestões de ação rápida ao iniciar uma frase de ação
+    else if(!query && plan===null) {
+      // Mostra quick replies quando campo vazio
+      const page = window.state?.currentPage || 'dashboard';
+      if(typeof AgentEngine !== 'undefined') {
+        const replies = AgentEngine.QuickReplies.getForPage(page);
+        box.innerHTML=replies.map(r=>`<button class="agent-quick-chip" onclick="agentSuggest('${r.text.replace(/'/g,"&#39;")}')">${r.label}</button>`).join('');
+        box.style.display='flex';
+      } else { box.style.display='none'; box.innerHTML=''; }
+      return;
+    }
   }
+
   if(!field){ box.style.display='none'; box.innerHTML=''; return; }
   const opts=_agentSuggestFieldOptions(field, query, plan).slice(0,6);
   if(!opts.length){ box.style.display='none'; box.innerHTML=''; return; }
@@ -971,6 +1546,13 @@ function _agentResolvePayee(name){return name?_agentFindByName(state.payees||[],
 function _agentNormalizeName(value){return String(value||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
 function _agentLevenshtein(a,b){a=_agentNormalizeName(a);b=_agentNormalizeName(b);const m=a.length,n=b.length;if(!m)return n;if(!n)return m;const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)dp[i][0]=i;for(let j=0;j<=n;j++)dp[0][j]=j;for(let i=1;i<=m;i++){for(let j=1;j<=n;j++){const cost=a[i-1]===b[j-1]?0:1;dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+cost);}}return dp[m][n];}
 function _agentFindByName(list,name){
+  // v3: usa o EntityResolver do engine se disponível (melhor fuzzy matching)
+  if (typeof AgentEngine !== 'undefined') {
+    const result = AgentEngine.EntityResolver.resolve(list, name, '');
+    if (result.match && result.confidence >= 0.62) return result.match;
+    return null;
+  }
+  // Fallback clássico
   const n=_agentNormalizeName(name);
   if(!n) return null;
   let best=null,bestScore=-1;
@@ -1013,6 +1595,44 @@ function _agentParseDate(text){const msg=String(text||'').toLowerCase();const dt
 function _agentParseFrequency(msg){if(/seman/.test(msg))return'weekly';if(/anual|ano/.test(msg))return'yearly';if(/di[aá]ri/.test(msg))return'daily';if(/mensa|m[eê]s/.test(msg))return'monthly';return null;}
 function _agentParseInstallments(msg){const m=String(msg||'').match(/(\d+)\s*parcelas?/i);if(!m)return null;const n=Number(m[1]);return Number.isFinite(n)?n:null;}
 function _agentParseColor(msg){const map={azul:'#2563eb',verde:'#16a34a',vermelho:'#dc2626',laranja:'#f97316',roxo:'#7c3aed',amarelo:'#f59e0b',rosa:'#ec4899',cinza:'#6b7280'};return map[Object.keys(map).find(c=>msg.includes(c))||'']||'#2a6049';}
+
+// v3: Detecta tipo de conta a partir do texto
+function _agentParseAccountType(msg) {
+  if (/(poupan[cç]|savings)/.test(msg)) return 'savings';
+  if (/(cart[aã]o|credit|cr[eé]dito)/.test(msg)) return 'credit';
+  if (/(investiment|ações|renda)/.test(msg)) return 'investment';
+  if (/(dinheiro|carteira|espécie|especie|cash)/.test(msg)) return 'cash';
+  return 'checking'; // corrente é o default
+}
+
+// v3: Extrai data alvo de expressões como "em 2 anos", "para dezembro de 2026"
+function _agentParseTargetDate(text) {
+  const now = new Date();
+  const msg = String(text || '').toLowerCase();
+  // "em X anos"
+  const yearsMatch = msg.match(/em\s+(\d+)\s+anos?/);
+  if (yearsMatch) {
+    const d = new Date(now);
+    d.setFullYear(d.getFullYear() + Number(yearsMatch[1]));
+    return d.toISOString().slice(0, 10);
+  }
+  // "em X meses"
+  const monthsMatch = msg.match(/em\s+(\d+)\s+m[eê]ses?/);
+  if (monthsMatch) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + Number(monthsMatch[1]));
+    return d.toISOString().slice(0, 10);
+  }
+  // Data explícita DD/MM/YYYY
+  const abs = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
+  if (abs) {
+    let yy = abs[3] ? Number(abs[3]) : now.getFullYear() + 1;
+    if (yy < 100) yy += 2000;
+    const d = new Date(yy, Number(abs[2])-1, Number(abs[1]), 12, 0, 0);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
 function _agentExtractAfter(text,regexes){for(const rx of regexes){const m=String(text||'').match(rx);if(m?.[1])return _agentCleanEntityText(m[1]);}return'';}
 function _agentNormalizeLooseText(text){return String(text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
 function _agentCleanEntityText(text){return String(text||'').replace(/[“”"']/g,' ').replace(/\s+/g,' ').replace(/^[,.;:\-\s]+|[,.;:\-\s]+$/g,'').trim();}
@@ -1112,12 +1732,26 @@ function _agentExtractPayee(text){return _agentExtractTransactionEntities(text,{
 function _agentParseDescription(text,opts={}){const parts=_agentExtractTransactionEntities(text,opts);return parts.description||'Lançamento via Agent';}
 async function _agentRefreshAfterPlan(plan){
   try{
-    if(plan.intent==='create_transaction'){if(typeof DB!=='undefined'&&DB.accounts?.bust)DB.accounts.bust();if(typeof loadTransactions==='function')await loadTransactions();if(typeof loadDashboard==='function')await loadDashboard();}
+    if(plan.intent==='create_transaction'){
+      if(typeof DB!=='undefined'&&DB.accounts?.bust)DB.accounts.bust();
+      if(typeof loadTransactions==='function')await loadTransactions();
+      if(typeof loadDashboard==='function')await loadDashboard();
+    }
     if(plan.intent==='create_scheduled'&&typeof loadScheduled==='function')await loadScheduled();
     if(plan.intent==='create_payee'&&typeof loadPayees==='function')await loadPayees(true);
     if(plan.intent==='create_category'&&typeof loadCategories==='function')await loadCategories();
-    if(plan.intent==='create_debt'&&state.currentPage==='debts'&&typeof loadDebts==='function')await loadDebts();
-    if(plan.intent==='create_family_member'&&typeof loadFamilyComposition==='function'){await loadFamilyComposition(true); if(typeof refreshAllFamilyMemberSelects==='function') refreshAllFamilyMemberSelects();}
+    if(plan.intent==='create_debt'&&typeof loadDebts==='function')await loadDebts();
+    if(plan.intent==='pay_debt'&&typeof loadDebts==='function')await loadDebts();
+    if(plan.intent==='create_account'){
+      if(typeof DB!=='undefined'&&DB.accounts?.bust)DB.accounts.bust();
+      if(typeof loadAccounts==='function')await loadAccounts();
+      if(typeof loadDashboard==='function')await loadDashboard();
+    }
+    if(plan.intent==='create_dream'&&typeof loadDreams==='function')await loadDreams();
+    if(plan.intent==='create_family_member'&&typeof loadFamilyComposition==='function'){
+      await loadFamilyComposition(true);
+      if(typeof refreshAllFamilyMemberSelects==='function') refreshAllFamilyMemberSelects();
+    }
   }catch(e){console.warn('[agent refresh]',e?.message||e);}
 }
 
