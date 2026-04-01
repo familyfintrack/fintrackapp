@@ -782,6 +782,17 @@ function toggleScCard(id) {
   if(body) body.classList.toggle('open');
 }
 
+// ── Sync date entre os dois campos de data (Principal ↔ Recorrência) ──
+// Ambos os campos chamam esta função via oninput/onchange.
+// Ela mantém os dois sincronizados e dispara o preview.
+window._scSyncDate = function(value) {
+  const p = document.getElementById('scStartDatePrincipal');
+  const r = document.getElementById('scStartDate');
+  if (p && p.value !== value) p.value = value;
+  if (r && r.value !== value) r.value = value;
+  if (typeof updateScPreview === 'function') updateScPreview();
+};
+
 // ── Modal open/save/delete ─────────────────────────────
 function openScheduledModal(id='') {
   const sc = id ? state.scheduled.find(s=>s.id===id) : null;
@@ -860,11 +871,9 @@ function openScheduledModal(id='') {
     }
   }, 50);
 
-  // Dates
+  // Dates — usa _scSyncDate para manter os dois campos sincronizados
   const _startDate = sc?.start_date || localDateStr();
-  document.getElementById('scStartDate').value = _startDate;
-  const _sdp = document.getElementById('scStartDatePrincipal');
-  if (_sdp) _sdp.value = _startDate;
+  _scSyncDate(_startDate);
 
   // Frequency
   const freq = sc?.frequency||'once';
@@ -885,9 +894,15 @@ function openScheduledModal(id='') {
   // Attach event listeners for dynamic preview (replace to avoid dupes)
   document.querySelectorAll('input[name=scFreq]').forEach(r => { r.onchange = onScFreqChange; });
   document.querySelectorAll('input[name=scEnd]').forEach(r => { r.onchange = onScEndChange; });
-  ['scStartDate','scEndCount','scEndDate','scCustomInterval','scCustomUnit'].forEach(id => {
+  // Campos de data: usa _scSyncDate (que mantém os dois sincronizados E chama updateScPreview)
+  ['scStartDate','scStartDatePrincipal'].forEach(id => {
     const el = document.getElementById(id);
-    if(el) el.oninput = updateScPreview;
+    if (el) el.oninput = el.onchange = () => _scSyncDate(el.value);
+  });
+  // Demais campos: apenas atualiza o preview
+  ['scEndCount','scEndDate','scCustomInterval','scCustomUnit'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.oninput = updateScPreview;
   });
 
   document.getElementById('scheduledModalTitle').textContent = id ? 'Editar Programação' : 'Programar Transação';
@@ -1137,7 +1152,10 @@ function updateScPreview() {
   const preview = document.getElementById('scPreview');
   if(!preview) return;
   const freq = document.querySelector('input[name=scFreq]:checked')?.value || 'once';
-  const start = document.getElementById('scStartDate').value;
+  // Lê a data de ambos os campos — Principal tem prioridade por ser o visível
+  const start = document.getElementById('scStartDatePrincipal')?.value?.trim()
+             || document.getElementById('scStartDate')?.value?.trim()
+             || '';
   const end = document.querySelector('input[name=scEnd]:checked')?.value || 'forever';
   const count = parseInt(document.getElementById('scEndCount').value) || null;
   const endDate = document.getElementById('scEndDate').value;
@@ -1234,7 +1252,17 @@ async function saveScheduled() {
     memo: document.getElementById('scMemo').value,
     tags: tags.length ? tags : null,
     status: document.getElementById('scStatus').value,
-    start_date: document.getElementById('scStartDate').value || document.getElementById('scStartDatePrincipal')?.value || '',
+    start_date: (() => {
+      // _scSyncDate() garante que ambos os campos estão sempre iguais.
+      // Lemos o campo da aba Principal como fonte primária;
+      // o campo da aba Recorrência como fallback caso o Principal esteja oculto.
+      const principal   = document.getElementById('scStartDatePrincipal')?.value?.trim() || '';
+      const recorrencia = document.getElementById('scStartDate')?.value?.trim() || '';
+      // Usa o que tiver valor; se ambos tiverem (caso normal), são iguais por design.
+      return principal || recorrencia || '';
+    })(),
+      return principal || recorrencia || '';
+    })(),
     frequency: freq,
     custom_interval: freq==='custom' ? parseInt(document.getElementById('scCustomInterval').value)||1 : null,
     custom_unit: freq==='custom' ? document.getElementById('scCustomUnit').value : null,
