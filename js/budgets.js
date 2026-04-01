@@ -817,7 +817,10 @@ function openBudgetModal(id = '') {
   document.getElementById('budgetId').value = id;
   document.getElementById('budgetModalTitle').textContent = id ? 'Editar Orçamento' : 'Novo Orçamento';
 
-  const btype = existing?.budget_type || _budgetView;
+  // Detect recurring: budget_type='monthly' AND auto_reset=true stored as 'recurring' in UI
+  const rawBtype = existing?.budget_type || _budgetView;
+  const btype = (rawBtype === 'monthly' && existing?.auto_reset === true && existing?.id)
+    ? 'recurring' : rawBtype;
   _setBudgetModalType(btype);
 
   const period = _getSelectedPeriod();
@@ -876,16 +879,48 @@ function _updateBudgetCatHint() {
 function setBudgetModalType(type) { _setBudgetModalType(type); }
 
 function _setBudgetModalType(type) {
+  // Sync type card active states (new v2 modal)
+  ['monthly','recurring','annual'].forEach(t => {
+    const btn = document.getElementById('budgetModalType' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (btn) btn.classList.toggle('bgt-type-card--active', t === type);
+  });
+  // Legacy tab compat (old modals still present in some builds)
   document.getElementById('budgetModalTypeMonthly')?.classList.toggle('active', type === 'monthly');
   document.getElementById('budgetModalTypeAnnual')?.classList.toggle('active',  type === 'annual');
+
   const mg = document.getElementById('budgetModalMonthGroup');
   const yg = document.getElementById('budgetModalYearGroup');
-  const rg = document.getElementById('budgetAutoResetGroup');
   const tt = document.getElementById('budgetModalTypeCurrent');
+
+  // Month picker: visible only for 'monthly'
   if (mg) mg.style.display = type === 'monthly' ? '' : 'none';
+  // Year picker: visible only for 'annual'
   if (yg) yg.style.display = type === 'annual'  ? '' : 'none';
-  if (rg) rg.style.display = type === 'monthly' ? '' : 'none';
+  // Store type
   if (tt) tt.setAttribute('data-type', type);
+
+  // autoReset hidden input: true for recurring & monthly, false for annual
+  const arHidden = document.getElementById('budgetAutoReset');
+  if (arHidden && arHidden.type === 'hidden') {
+    arHidden.value = (type === 'recurring' || type === 'monthly') ? 'true' : 'false';
+  }
+
+  // Contextual hint text + icon
+  const hintEl   = document.getElementById('budgetTypeHint');
+  const hintText = document.getElementById('budgetTypeHintText');
+  const modalIcon = document.getElementById('budgetModalIcon');
+  const modalSub  = document.getElementById('budgetModalSub');
+
+  const hints = {
+    monthly:   { text: 'Selecione o mês para este orçamento',                          icon: '📅', sub: 'Defina um limite para um mês específico' },
+    recurring: { text: 'Sem picker de mês — este orçamento se repete todo mês sempre', icon: '🔄', sub: 'Repete automaticamente em todos os meses' },
+    annual:    { text: 'Selecione o ano para este orçamento',                           icon: '📆', sub: 'Defina um limite total para o ano inteiro'  },
+  };
+  const h = hints[type] || hints.monthly;
+  if (hintText) hintText.textContent = h.text;
+  if (hintEl)   hintEl.style.display = '';
+  if (modalIcon) modalIcon.textContent = h.icon;
+  if (modalSub)  modalSub.textContent  = h.sub;
 }
 
 // ── Salvar / Excluir ────────────────────────────────────────────────────────
@@ -895,7 +930,12 @@ async function saveBudget() {
   const btype    = document.getElementById('budgetModalTypeCurrent')?.getAttribute('data-type') || _budgetView;
   const catId    = document.getElementById('budgetCategory').value;
   const amount   = Math.abs(getAmtField('budgetAmount'));
-  const autoReset= document.getElementById('budgetAutoReset')?.checked ?? true;
+  // budgetAutoReset is a hidden input in the new modal (value='true'/'false')
+  // or a checkbox in legacy builds — support both
+  const _arEl = document.getElementById('budgetAutoReset');
+  const autoReset = _arEl
+    ? (_arEl.type === 'hidden' ? _arEl.value !== 'false' : (_arEl.checked ?? true))
+    : true;
   const notes    = document.getElementById('budgetNotes')?.value.trim() || null;
 
   if (!catId)  { toast('Selecione uma categoria', 'error'); return; }
@@ -908,6 +948,13 @@ async function saveBudget() {
     const [y, m] = mv.split('-');
     month = `${y}-${m}-01`;
     year  = parseInt(y);
+  } else if (btype === 'recurring') {
+    // Recorrente: não requer mês fixo — usa o mês atual como âncora,
+    // a propagação automática cuidará dos meses seguintes.
+    const now = new Date();
+    const y   = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2,'0');
+    month = `${y}-${m}-01`;
+    year  = y;
   } else {
     year = parseInt(document.getElementById('budgetModalYear')?.value);
     if (!year) { toast('Selecione o ano', 'error'); return; }
@@ -920,9 +967,17 @@ async function saveBudget() {
 
   const data = { category_id: catId, amount, month, family_id: famId() };
 
+  // Determine effective budget_type stored in DB:
+  // 'recurring' is stored as budget_type='monthly' + auto_reset=true
+  // (avoids a DB migration while reusing existing propagation logic)
+  const dbBtype = (btype === 'recurring') ? 'monthly' : btype;
+
   if (hasNewSchema) {
-    data.budget_type = btype;
-    data.auto_reset  = btype === 'monthly' ? autoReset : false;
+    data.budget_type = dbBtype;
+    // recurring → always auto_reset=true; monthly → respect checkbox (hidden=true); annual → false
+    data.auto_reset  = (btype === 'recurring') ? true
+                     : (btype === 'monthly')   ? (autoReset !== false)
+                     : false;
     data.year        = year;
     data.notes       = notes;
   }
@@ -935,10 +990,15 @@ async function saveBudget() {
   if (id) {
     ({ error: err } = await sb.from('budgets').update(data).eq('id', id));
   } else if (hasNewSchema) {
-    const conflict = btype === 'monthly'
-      ? 'family_id,category_id,month,budget_type'
-      : 'family_id,category_id,year,budget_type';
-    ({ error: err } = await sb.from('budgets').upsert(data, { onConflict: conflict }));
+    // Use plain INSERT for recurring (no fixed month/constraint dependency)
+    if (btype === 'recurring') {
+      ({ error: err } = await sb.from('budgets').insert(data));
+    } else {
+      const conflict = dbBtype === 'monthly'
+        ? 'family_id,category_id,month,budget_type'
+        : 'family_id,category_id,year,budget_type';
+      ({ error: err } = await sb.from('budgets').upsert(data, { onConflict: conflict }));
+    }
   } else {
     ({ error: err } = await sb.from('budgets').upsert(data, { onConflict: 'category_id,month' }));
   }

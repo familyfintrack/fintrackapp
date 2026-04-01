@@ -79,6 +79,9 @@ async function loadAppSettings() {
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
+    // Apply login theme on boot
+    const _loginTheme = _appSettingsCache[LOGIN_THEME_SETTING] || 'split';
+    if (typeof applyLoginTheme === 'function') applyLoginTheme(_loginTheme);
 
     // Apply menu visibility (if configured)
     try { applyMenuVisibility(_getMenuVisibilityFromCache()); } catch {}
@@ -140,6 +143,47 @@ async function saveAppSetting(key, value) {
     console.warn('saveAppSetting DB error (saved locally):', e.message);
   }
 }
+
+
+// ── Login theme selector ──────────────────────────────────────────────────
+const LOGIN_THEME_SETTING = 'login_theme';
+
+async function saveLoginTheme(theme) {
+  await saveAppSetting(LOGIN_THEME_SETTING, theme);
+  applyLoginTheme(theme);
+  // Update radio + visual selection
+  document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
+    r.checked = (r.value === theme);
+  });
+  const status = document.getElementById('loginThemeSaveStatus');
+  if (status) {
+    status.textContent = '✓ Tema salvo';
+    status.style.color = 'var(--green)';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  }
+}
+
+function applyLoginTheme(theme) {
+  const ls = document.getElementById('loginScreen');
+  if (!ls) return;
+  // Remove all existing theme classes
+  ['ls-theme-centered','ls-theme-split','ls-theme-asymmetric','ls-theme-immersive','ls-theme-minimal'].forEach(c => ls.classList.remove(c));
+  if (theme && theme !== 'split') {
+    ls.classList.add('ls-theme-' + theme);
+  }
+}
+
+function loadLoginThemeSelector() {
+  getAppSetting(LOGIN_THEME_SETTING, 'split').then(theme => {
+    const t = theme || 'split';
+    applyLoginTheme(t);
+    // Mark the right radio
+    document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
+      r.checked = (r.value === t);
+    });
+  });
+}
+
 
 async function getAppSetting(key, defaultValue = null) {
   if (_appSettingsCache && key in _appSettingsCache) return _appSettingsCache[key];
@@ -650,6 +694,8 @@ function loadSettings() {
     // Admin: inicializar formulários das novas seções
     initSettingsVisibilityForm();
     initServiceRoleKeySection();
+    // Login theme selector
+    if (typeof loadLoginThemeSelector === 'function') loadLoginThemeSelector();
     try { _loadNormalizeNamesInfo().catch(()=>{}); } catch {}
     // Translations admin (admin only)
     if (typeof initTranslationsAdmin === 'function') {
