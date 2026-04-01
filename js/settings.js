@@ -79,12 +79,10 @@ async function loadAppSettings() {
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
-    // Apply login theme on boot
-    const _loginTheme = _appSettingsCache[LOGIN_THEME_SETTING] || 'split';
-    // FIX: Sincroniza DB → localStorage para garantir que próximo DOMContentLoaded
-    // já tenha o valor correto (elimina dependência de estar logado para ver o tema).
-    try { localStorage.setItem(LOGIN_THEME_SETTING, _loginTheme); } catch(_) {}
-    if (typeof applyLoginTheme === 'function') applyLoginTheme(_loginTheme);
+    // Tema de login: NÃO lê do DB aqui — preferência é 100% local (localStorage).
+    // A sincronização acontece em onLoginSuccess via _syncLoginThemeOnLogin().
+    // Aqui só aplica o que já está no localStorage (já feito no anti-flash e DOMContentLoaded).
+    // (login_theme removido do ciclo DB→localStorage para evitar sobrescrever preferência local)
 
     // Sincroniza canais de notificação do DB → localStorage
     const _notifKeys = ['notif_channel_email_enabled','notif_channel_wa_enabled','notif_channel_tg_enabled'];
@@ -275,11 +273,12 @@ async function loadNotifChannelSettings() {
 window.loadNotifChannelSettings = loadNotifChannelSettings;
 
 async function saveLoginTheme(theme) {
-  // FIX: Persiste no localStorage ANTES do DB para que DOMContentLoaded e
-  // showLoginScreen() possam aplicar o tema mesmo antes do boot estar completo.
-  // Esta é a fonte de verdade para renderização imediata (sem network).
+  // Tema de login persiste APENAS no localStorage deste dispositivo.
+  // Não vai ao DB — cada dispositivo/PWA tem sua preferência independente.
+  // O tema é re-sincronizado do _appSettingsCache a cada login bem-sucedido
+  // (ver _syncLoginThemeOnLogin em auth.js), garantindo que a escolha do admin
+  // se propague sem sobrescrever prefs locais de outros membros.
   try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
-  await saveAppSetting(LOGIN_THEME_SETTING, theme);
   applyLoginTheme(theme);
   // Update radio + visual selection
   document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
@@ -304,8 +303,8 @@ function applyLoginTheme(theme) {
 }
 
 function loadLoginThemeSelector() {
-  // FIX: Lê localStorage primeiro (disponível imediatamente, sem network).
-  // Fallback para getAppSetting (DB) apenas se não houver valor local.
+  // Lê APENAS do localStorage — tema de login é preferência local do dispositivo.
+  // Não consulta DB: rápido, sem rede, sem flash.
   const localTheme = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_) { return null; } })();
   const applyAndMark = (t) => {
     const theme = t || 'split';
@@ -313,25 +312,13 @@ function loadLoginThemeSelector() {
     document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
       r.checked = (r.value === theme);
     });
-    // Highlight selected card
     document.querySelectorAll('.login-theme-option').forEach(card => {
       const isActive = card.dataset.theme === theme;
       card.style.outline = isActive ? '2px solid var(--accent)' : '';
       card.style.background = isActive ? 'var(--accent-lt,#e8f2ee)' : '';
     });
   };
-  if (localTheme) {
-    applyAndMark(localTheme);
-  }
-  // Sempre sincroniza com o DB para garantir consistência entre dispositivos
-  getAppSetting(LOGIN_THEME_SETTING, 'split').then(dbTheme => {
-    const t = dbTheme || 'split';
-    // Se DB difere do localStorage, localStorage recebe o valor do DB (fonte de verdade)
-    if (t !== localTheme) {
-      try { localStorage.setItem(LOGIN_THEME_SETTING, t); } catch(_) {}
-    }
-    applyAndMark(t);
-  });
+  applyAndMark(localTheme);
 }
 
 

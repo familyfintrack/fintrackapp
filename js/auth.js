@@ -702,6 +702,40 @@ async function _fetchLoginThemeAnon() {
   } catch(_) {} // silencia qualquer erro — nunca bloqueia
 }
 
+// ── Sincroniza tema de login do DB → localStorage no momento do login ──────
+// Chamado em onLoginSuccess() — neste ponto _appSettingsCache já está populado
+// (loadAppSettings rodou durante o boot antes do login ser concluído).
+// Regra: localStorage tem prioridade. Só escreve se localStorage estiver vazio
+// (primeira vez no dispositivo / PWA freshly installed).
+// Isso garante que a preferência configurada pelo admin se propague para novos
+// dispositivos sem sobrescrever escolhas feitas localmente pelo usuário.
+function _syncLoginThemeOnLogin() {
+  try {
+    const LOCAL_KEY = 'login_theme';
+    const localVal  = localStorage.getItem(LOCAL_KEY);
+
+    // localStorage já tem valor → preferência local vence, não sobrescreve
+    if (localVal) return;
+
+    // Sem valor local → tenta pegar do cache em memória (DB já carregado no boot)
+    const dbVal = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
+      ? _appSettingsCache[LOCAL_KEY]
+      : null;
+
+    if (!dbVal) return; // DB também não tem → mantém o default do anti-flash
+
+    const validThemes = ['split','centered','asymmetric','immersive','minimal'];
+    let theme = dbVal;
+    if (typeof theme === 'string') { try { theme = JSON.parse(theme); } catch(_) {} }
+    if (typeof theme !== 'string' || !validThemes.includes(theme)) return;
+
+    // Grava no localStorage e aplica visualmente
+    try { localStorage.setItem(LOCAL_KEY, theme); } catch(_) {}
+    try { document.documentElement.setAttribute('data-login-theme', theme); } catch(_) {}
+    if (typeof applyLoginTheme === 'function') applyLoginTheme(theme);
+  } catch(_) {} // nunca bloqueia o login
+}
+
 
 
 function _applyAccessRequestVisibility(enabled) {
@@ -986,6 +1020,10 @@ async function doChangeMyPwd() {
 // ── On login success ──
 async function onLoginSuccess() {
   updateUserUI();
+  // Sincroniza tema de login: DB → localStorage (apenas se localStorage vazio).
+  // Garante que PWA recém-instalado receba o tema configurado pelo admin
+  // sem nunca sobrescrever a preferência local escolhida pelo usuário.
+  _syncLoginThemeOnLogin();
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
   }
