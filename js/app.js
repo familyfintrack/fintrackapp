@@ -503,10 +503,13 @@ function setAppLogo(url){
   const clean = (typeof url === 'string') ? url.trim() : '';
   APP_LOGO_URL = clean || DEFAULT_LOGO_URL;
 
-  ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','loginLogoImg','authLogoImg'].forEach(id=>{
+  ['sidebarLogoImg','settingsLogoImg','topbarLogoImg','authLogoImg'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.src = APP_LOGO_URL;
   });
+  // loginLogoImg usa SEMPRE logo_glow_soft.png — nunca logo.jpg (fundo branco)
+  const _loginLogo = document.getElementById('loginLogoImg');
+  if (_loginLogo) _loginLogo.src = 'logo_glow_soft.png';
   // Wizard usa logo_wizard.png (versão para fundo escuro/verde)
   const wzEl = document.getElementById('wzLogoImg');
   if(wzEl) wzEl.src = 'logo_wizard.png';
