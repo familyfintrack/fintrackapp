@@ -132,48 +132,57 @@
 #myProfileWhatsappTestBtn,#myProfileTelegramTestBtn{ white-space:nowrap; }
 
 /* ── Form Mode (tabs / wizard) shared styles ──────────────────────────── */
-.tx-ctx-tab{
-  padding:9px 14px;
-  font-size:.82rem;
-  font-weight:500;
-  border:none;
-  background:transparent;
-  color:var(--muted);
-  cursor:pointer;
-  border-bottom:2px solid transparent;
-  margin-bottom:-1px;
-  font-family:var(--font-sans);
-  transition:color .15s,border-color .15s;
-  white-space:nowrap;
+/* ── Context tabs do modal de transações/programados v2 ─────────── */
+.tx-ctx-tab {
+  padding: 8px 16px;
+  font-size: .80rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1px;
+  font-family: var(--font-sans);
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+  letter-spacing: .01em;
 }
-.tx-ctx-tab:hover{ color:var(--text2); }
-.tx-ctx-tab.active{
-  color:var(--accent);
-  border-bottom-color:var(--accent);
+.tx-ctx-tab:hover { color: var(--text2); background: var(--surface2); }
+.tx-ctx-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
 }
-.tx-ctx-pane{ animation:fadeInPane .18s ease; }
-@keyframes fadeInPane{ from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+.tx-ctx-pane { animation: fadeInPane .16s ease; }
+@keyframes fadeInPane { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
 
-/* Amount hero */
-.tx-amount-hero{
-  background:var(--surface2);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  padding:14px 16px;
+/* ── Amount hero — box de valor premium ─────────────────────────── */
+.tx-amount-hero {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 7%, var(--surface2)) 0%,
+    var(--surface2) 100%
+  );
+  border: 1.5px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 12px;
+  padding: 16px 16px 14px;
 }
-.tx-amount-row{ display:flex;align-items:center;gap:8px; }
-.tx-currency-sel{
-  flex-shrink:0;
-  padding:6px 8px;
-  border-radius:var(--r-sm);
-  background:var(--surface2);
-  border:1px solid var(--border);
-  font-size:.8rem;
-  font-weight:700;
-  color:var(--accent);
-  cursor:pointer;
-  max-width:80px;
+.tx-amount-row { display: flex; align-items: center; gap: 8px; }
+.tx-currency-sel {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+  max-width: 80px;
+  transition: border-color .15s;
 }
+.tx-currency-sel:hover { border-color: var(--accent); }
 
 /* Required / optional labels */
 .req-star{ color:#e24b4a;font-size:.75rem; }

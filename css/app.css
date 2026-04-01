@@ -498,22 +498,26 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 
 /* ─── CAT PICKER SEARCH ─── */
 .cat-search-wrap {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 10px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 2;
   background: var(--surface);
 }
-.cat-search-icon { font-size: .85rem; color: var(--muted); flex-shrink: 0; line-height: 1; }
+.cat-search-icon, .cat-search-svg { font-size: .85rem; color: var(--muted); flex-shrink: 0; line-height: 0; display: flex; align-items: center; }
 .cat-search-input {
   flex: 1; min-width: 0;
-  border: 1px solid var(--border2); border-radius: 6px;
-  padding: 5px 8px; font-size: .82rem;
-  background: var(--bg2); color: var(--text);
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 5px 10px; font-size: .82rem;
+  background: var(--surface2); color: var(--text);
   font-family: var(--font-sans);
-  outline: none; transition: border-color .15s;
+  outline: none; transition: border-color .15s, background .15s;
 }
-.cat-search-input:focus { border-color: var(--accent); background: var(--surface); }
+.cat-search-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent-lt);
+}
 .cat-search-input::placeholder { color: var(--muted); }
 .cat-search-clear {
   display: none; /* shown via JS when input has value */

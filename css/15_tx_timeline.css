@@ -147,27 +147,34 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 
 /* ══ TX Entry Mode toggle ════════════════════════════════════════════════ */
 
+/* ── Botões de modo de entrada (Manual / IA) ─────────────────── */
 .tx-entry-mode-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  border-radius: 100px;
-  font-size: .78rem;
-  font-weight: 500;
+  border-radius: 20px;
+  font-size: .77rem;
+  font-weight: 600;
   border: 1.5px solid var(--border);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
   font-family: var(--font-sans);
   transition: all .15s;
+  letter-spacing: .01em;
 }
-.tx-entry-mode-btn:hover { border-color: var(--border2); color: var(--text2); }
+.tx-entry-mode-btn:hover {
+  border-color: var(--accent);
+  color: var(--text2);
+  background: var(--surface2);
+}
 .tx-entry-mode-btn--active {
   background: var(--accent-lt, #e8f2ee);
   border-color: var(--accent);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(42,96,73,.15);
 }
 
 /* AI entry pane */
