@@ -253,29 +253,38 @@
   text-transform: uppercase;
 }
 /* ═══════════════════════════════════════════════════════════════════
-   CAMPOS DE TEXTO DO LOGIN — ícones perfeitamente centrados
-   Técnica: wrapper flex + ícone absolute com top:0/bottom:0 + flex
-   Funciona em Chrome, Firefox, Safari iOS/macOS, Edge sem exceção.
+   CAMPOS DE TEXTO DO LOGIN — ícones alinhados via flex nativo
+   Técnica definitiva: wrapper flex-row, ícone como flex-item fixo,
+   input como flex:1. Funciona em Chrome, Firefox, Safari iOS/macOS,
+   Edge, WebKit — sem position:absolute, sem top/bottom tricks.
    ═══════════════════════════════════════════════════════════════════ */
 .ls-input-wrap {
   position: relative;
   display: flex;
-  align-items: stretch; /* stretch: wrapper cresce com o input */
+  flex-direction: row;
+  align-items: center;          /* centraliza ícone e input na mesma linha */
   width: 100%;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  transition: border-color .18s, background .18s, box-shadow .18s;
+}
+/* Foco no wrapper (não no input) — acompanha o estado do input */
+.ls-input-wrap:focus-within {
+  border-color: #2a6049;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(42,96,73,.10);
 }
 .ls-input-icon {
-  /* top:0/bottom:0 + display:flex → centraliza no meio exato do wrapper */
-  position: absolute;
-  left: 13px;
-  top: 0;
-  bottom: 0;
-  width: 16px;
+  /* Flex item fixo — NÃO absolute */
+  flex-shrink: 0;
   display: flex;
-  align-items: center;   /* centro vertical */
+  align-items: center;
   justify-content: center;
+  width: 42px;                  /* área de toque confortável */
+  height: 48px;                 /* mesma altura do input */
   color: #9ca3af;
   pointer-events: none;
-  z-index: 2;
   line-height: 0;
 }
 .ls-input-icon svg {
@@ -285,53 +294,49 @@
   flex-shrink: 0;
 }
 .ls-input {
-  width: 100%;
-  padding: 0 44px 0 42px !important;
+  /* Flex item que ocupa o restante */
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px 0 0 !important;  /* sem padding-left: o ícone já faz espaço */
   height: 48px;
   line-height: 48px;
-  background: #f9fafb;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
+  background: transparent !important; /* herda do wrapper */
+  border: none !important;            /* borda está no wrapper */
+  border-radius: 0 10px 10px 0;
   font-size: .9rem;
   color: #111827;
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
-  transition: border-color .18s, background .18s, box-shadow .18s;
   -webkit-appearance: none;
   appearance: none;
   display: block;
 }
+/* Campo sem ícone: padding-left normal */
 .ls-input.ls-no-icon {
   padding-left: 14px !important;
+  border-radius: 10px;
 }
 .ls-input::placeholder {
   color: #c4c9d4;
   line-height: normal;
 }
-.ls-input:focus {
-  border-color: #2a6049;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(42,96,73,.10);
-}
-/* Botão olho — mesmo padrão: top:0/bottom:0 + flex */
+/* Botão olho — flex item à direita */
 .ls-eye-btn {
-  position: absolute;
-  right: 10px;
-  top: 0;
-  bottom: 0;
-  width: 28px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 38px;
+  height: 48px;
   background: none;
   border: none;
   cursor: pointer;
   color: #9ca3af;
   padding: 0;
-  z-index: 2;
   transition: color .15s;
   line-height: 0;
+  border-radius: 0 9px 9px 0;   /* arredonda só o canto direito */
 }
 .ls-eye-btn svg { display: block; width: 16px; height: 16px; }
 .ls-eye-btn:hover { color: #374151; }
@@ -693,10 +698,13 @@
 }
 
 /* ── Compatibilidade Windows (inputs claros) ─────────────────────── */
-html.platform-windows .ls-input,
-body.platform-windows .ls-input {
+html.platform-windows .ls-input-wrap,
+body.platform-windows .ls-input-wrap {
   background: #f9fafb;
   border-color: #e5e7eb;
+}
+html.platform-windows .ls-input,
+body.platform-windows .ls-input {
   color: #111827;
 }
 
@@ -807,7 +815,8 @@ body.platform-windows .ls-input {
 }
 :root[data-login-theme="immersive"] #loginScreen .ls-card-title { color: #ffffff !important; }
 :root[data-login-theme="immersive"] #loginScreen .ls-label      { color: rgba(255,255,255,.80) !important; }
-:root[data-login-theme="immersive"] #loginScreen .ls-input      { background: rgba(255,255,255,.08) !important; color: #ffffff !important; border-color: rgba(255,255,255,.18) !important; }
+:root[data-login-theme="immersive"] #loginScreen .ls-input-wrap { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.18) !important; }
+:root[data-login-theme="immersive"] #loginScreen .ls-input            { color: #ffffff !important; }
 
 :root[data-login-theme="minimal"] #loginScreen .ls-hero  { display: none; }
 :root[data-login-theme="minimal"] #loginScreen .ls-layout { background: #000; }
@@ -934,7 +943,8 @@ body.platform-windows .ls-input {
 #loginScreen.ls-theme-centered .ls-label      { color: #374151 !important; }
 #loginScreen.ls-theme-centered .ls-muted      { color: #9ca3af !important; }
 #loginScreen.ls-theme-centered .ls-remember span:last-child { color: #6b7280 !important; }
-#loginScreen.ls-theme-centered .ls-input { background: #f9fafb; color: #111827; border-color: #e5e7eb; }
+#loginScreen.ls-theme-centered .ls-input-wrap { background: #f9fafb; border-color: #e5e7eb; }
+#loginScreen.ls-theme-centered .ls-input { color: #111827; }
 #loginScreen.ls-theme-centered .ls-card-sub   { text-align: center; }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -1001,12 +1011,14 @@ body.platform-windows .ls-input {
   border-color: rgba(255,255,255,.28);
 }
 /* Inputs translúcidos com texto branco */
-#loginScreen.ls-theme-immersive .ls-input {
+#loginScreen.ls-theme-immersive .ls-input-wrap {
   background: rgba(255,255,255,.08) !important;
   border-color: rgba(255,255,255,.18) !important;
+}
+#loginScreen.ls-theme-immersive .ls-input {
   color: #ffffff !important;
 }
-#loginScreen.ls-theme-immersive .ls-input:focus {
+#loginScreen.ls-theme-immersive .ls-input-wrap:focus-within {
   background: rgba(255,255,255,.14) !important;
   border-color: rgba(93,219,160,.55) !important;
   box-shadow: 0 0 0 3px rgba(93,219,160,.15) !important;
@@ -1081,7 +1093,8 @@ body.platform-windows .ls-input {
 #loginScreen.ls-theme-minimal .ls-label      { color: #374151 !important; }
 #loginScreen.ls-theme-minimal .ls-muted      { color: #9ca3af !important; }
 #loginScreen.ls-theme-minimal .ls-remember span:last-child { color: #6b7280 !important; }
-#loginScreen.ls-theme-minimal .ls-input { background: #f9fafb; color: #111827; border-color: #e5e7eb; }
+#loginScreen.ls-theme-minimal .ls-input-wrap { background: #f9fafb; border-color: #e5e7eb; }
+#loginScreen.ls-theme-minimal .ls-input { color: #111827; }
 #loginScreen.ls-theme-minimal .ls-card-sub     { text-align: center; }
 #loginScreen.ls-theme-minimal .ls-input {
   background: #f7f8fa !important;
