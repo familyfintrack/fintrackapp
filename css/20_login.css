@@ -256,23 +256,41 @@
   position: relative;
   display: flex;
   align-items: center;
+  /* Altura fixa igual ao input — garante que top:50% no ícone
+     seja calculado a partir do centro real do campo */
+  height: 44px;
 }
 .ls-input-icon {
   position: absolute;
   left: 13px;
+  /* Centralização vertical via flexbox do wrapper — NÃO usar top/transform
+     pois o ícone SVG tem bounding box próprio que pode desalinhar */
   top: 50%;
   transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #9ca3af;
   flex-shrink: 0;
   pointer-events: none;
-  z-index: 2; /* fica acima do ícone de autopreenchimento do browser */
+  z-index: 2;
+  /* Garante que o SVG interno preencha exatamente 16×16 */
+  line-height: 0;
+}
+.ls-input-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 .ls-input {
   width: 100%;
-  /* Padding simétrico vertical garante o texto centralizado */
-  padding: 0 14px 0 42px !important;
-  height: 44px;              /* altura fixa — alinhamento vertical perfeito */
-  line-height: 44px;         /* força o texto ao centro vertical */
+  /* Padding esquerdo reserva espaço para o ícone (13px margem + 16px ícone + 10px gap = 39px → arredondar 42px) */
+  padding: 0 42px 0 42px !important;
+  height: 44px;
+  line-height: 44px;
   background: #f9fafb;
   border: 1.5px solid #e5e7eb;
   border-radius: 10px;
@@ -281,42 +299,45 @@
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  vertical-align: middle;
   transition: border-color .18s, background .18s, box-shadow .18s;
   -webkit-appearance: none;
   appearance: none;
+  /* Centralização vertical do texto digitado */
+  vertical-align: middle;
 }
-/* Campos sem ícone (ex: selects de idioma, país) */
+/* Campos sem ícone à esquerda */
 .ls-input.ls-no-icon {
   padding-left: 14px !important;
 }
 .ls-input::placeholder {
   color: #c4c9d4;
-  line-height: normal; /* evita desalinhamento do placeholder em alguns browsers */
 }
 .ls-input:focus {
   border-color: #2a6049;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(42,96,73,.10);
 }
-/* Botão de mostrar/ocultar senha — centralizado verticalmente */
+/* Botão olho (mostrar/ocultar senha) — mesmo padrão do ícone */
 .ls-eye-btn {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   cursor: pointer;
   color: #9ca3af;
-  padding: 4px;
-  display: flex;
-  align-items: center;
+  padding: 0;
   z-index: 2;
   transition: color .15s;
+  line-height: 0;
 }
+.ls-eye-btn svg { display: block; width: 16px; height: 16px; }
 .ls-eye-btn:hover { color: #374151; }
 .ls-select { cursor: pointer; }
 .ls-select option { background: #fff; color: #111; }
@@ -705,13 +726,13 @@ body.platform-windows .ls-input {
    sem esperar que o JS adicione a classe no loginScreen. ══════════════════════════ */
 
 :root[data-login-theme="split"] #loginScreen .ls-form-logo   { display: none; }
-:root[data-login-theme="split"] #loginScreen .ls-hero-logo   { height: 144px; }
+:root[data-login-theme="split"] #loginScreen .ls-hero-logo   { height: 187px; }
 
 :root[data-login-theme="asymmetric"] #loginScreen .ls-form-panel { flex: 0 0 40%; padding: 40px 36px; }
 :root[data-login-theme="asymmetric"] #loginScreen .ls-hero       { flex: 0 0 60%; }
 :root[data-login-theme="asymmetric"] #loginScreen .ls-card       { max-width: 340px; }
 :root[data-login-theme="asymmetric"] #loginScreen .ls-form-logo  { display: none; }
-:root[data-login-theme="asymmetric"] #loginScreen .ls-hero-logo  { height: 144px; }
+:root[data-login-theme="asymmetric"] #loginScreen .ls-hero-logo  { height: 187px; }
 
 :root[data-login-theme="centered"] #loginScreen .ls-hero { display: none; }
 :root[data-login-theme="centered"] #loginScreen .ls-layout { background: #000; }
@@ -781,7 +802,7 @@ body.platform-windows .ls-input {
   box-shadow: 8px 0 40px rgba(0,0,0,.18);
 }
 #loginScreen.ls-theme-split .ls-card-title    { font-size: 1.6rem; }
-#loginScreen.ls-theme-split .ls-hero-logo     { height: 120px; margin-bottom: 32px; }
+#loginScreen.ls-theme-split .ls-hero-logo     { height: 156px; margin-bottom: 32px; }
 #loginScreen.ls-theme-split .ls-hero-inner    { align-items: center; text-align: center; }
 #loginScreen.ls-theme-split .ls-hero-features { align-items: flex-start; text-align: left; }
 
@@ -798,7 +819,7 @@ body.platform-windows .ls-input {
 #loginScreen.ls-theme-asymmetric .ls-hero       { flex: 0 0 60%; }
 #loginScreen.ls-theme-asymmetric .ls-card       { max-width: 360px; }
 #loginScreen.ls-theme-asymmetric .ls-form-logo  { display: none; }
-#loginScreen.ls-theme-asymmetric .ls-hero-logo  { height: 128px; margin-bottom: 32px; }
+#loginScreen.ls-theme-asymmetric .ls-hero-logo  { height: 166px; margin-bottom: 32px; }
 #loginScreen.ls-theme-asymmetric .ls-hero-inner { align-items: center; text-align: center; }
 #loginScreen.ls-theme-asymmetric .ls-hero-features { align-items: flex-start; text-align: left; }
 #loginScreen.ls-theme-asymmetric .ls-hero-tagline  { font-size: 1.4rem; font-weight: 700; }
