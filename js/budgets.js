@@ -112,64 +112,86 @@ function _getSelectedPeriod() {
 // ── AUTO-RESET: propagar orçamentos permanentes para o mês atual ────────────
 
 async function _propagateAutoResetBudgets(period) {
-  try {
+  // Copia orçamentos auto_reset=true do mês mais recente para o mês target,
+  // se ele ainda não tiver esses orçamentos.
+  // Funciona mesmo sem migration v2/v3 (adaptado ao schema disponível).
   if (_budgetView !== 'monthly') return;
-  const hasSchema = await _checkBudgetSchema();
-  const hasPaused = await _checkBudgetPausedColumn();
-  if (!hasSchema) return;
+  try {
+    const hasSchema = await _checkBudgetSchema();
+    const hasPaused = await _checkBudgetPausedColumn();
 
-  const targetMs = `${period.year}-${String(period.month).padStart(2, '0')}-01`;
+    const targetMs = `${period.year}-${String(period.month).padStart(2, '0')}-01`;
 
-  // Buscar todos os orçamentos auto_reset e não pausados
-  let bq = famQ(sb.from('budgets').select('*'))
-    .eq('budget_type', 'monthly')
-    .eq('auto_reset', true);
-  if (hasPaused) bq = bq.neq('paused', true);
-  const { data: allAutoReset } = await bq;
-  if (!allAutoReset?.length) return;
+    // ── 1. Buscar orçamentos auto_reset do mês target ──────────────────────
+    // Se já existem, encerrar (já foram propagados anteriormente).
+    let existQ = famQ(sb.from('budgets').select('category_id'));
+    if (hasSchema) existQ = existQ.eq('budget_type', 'monthly');
+    existQ = existQ.eq('month', targetMs);
+    const { data: targetBudgets } = await existQ;
+    const existingCatIds = new Set((targetBudgets || []).map(b => b.category_id));
 
-  // Verificar quais já existem no mês target
-  const { data: existing } = await famQ(
-    sb.from('budgets').select('category_id')
-  ).eq('budget_type', 'monthly').eq('month', targetMs);
-  const existingCatIds = new Set((existing || []).map(b => b.category_id));
+    // ── 2. Buscar TODOS os orçamentos auto_reset (qualquer mês) ───────────
+    let srcQ = famQ(sb.from('budgets').select(
+      hasPaused
+        ? 'id,category_id,amount,month,budget_type,auto_reset,paused,notes,family_member_id,family_id'
+        : 'id,category_id,amount,month,budget_type,auto_reset,notes,family_member_id,family_id'
+    ));
+    if (hasSchema) srcQ = srcQ.eq('budget_type', 'monthly');
+    // Não filtramos por auto_reset aqui para capturar também registros onde
+    // a coluna pode ter valor NULL por diferença de schema.
+    const { data: allMonthly } = await srcQ;
+    if (!allMonthly?.length) return;
 
-  // Para cada categoria, pegar o registro mais recente
-  const latestByCat = {};
-  allAutoReset.forEach(b => {
-    if (existingCatIds.has(b.category_id)) return;
-    const cur = latestByCat[b.category_id];
-    if (!cur || b.month > cur.month) latestByCat[b.category_id] = b;
-  });
+    // Filtrar apenas auto_reset=true (ou null, tratado como true para compatibilidade)
+    const autoResetSrc = allMonthly.filter(b => {
+      if (hasPaused && b.paused === true) return false; // pausados nunca propagam
+      return b.auto_reset !== false; // true ou null → propagar
+    });
+    if (!autoResetSrc.length) return;
 
-  const toInsert = Object.values(latestByCat);
-  if (!toInsert.length) return;
+    // ── 3. Para cada categoria, pegar o registro do mês mais recente ───────
+    // que seja ANTERIOR ao targetMs (não propagar do futuro para o passado).
+    const latestByCat = {};
+    autoResetSrc.forEach(b => {
+      if (!b.month) return;
+      if (b.month >= targetMs) return; // só propagar de meses anteriores
+      if (existingCatIds.has(b.category_id)) return; // já existe no target
+      const cur = latestByCat[b.category_id];
+      if (!cur || b.month > cur.month) latestByCat[b.category_id] = b;
+    });
 
-  const inserts = toInsert.map(b => ({
-    category_id:      b.category_id,
-    amount:           b.amount,
-    month:            targetMs,
-    family_id:        famId(),
-    budget_type:      'monthly',
-    auto_reset:       true,
-    ...(hasPaused ? { paused: false } : {}),
-    year:             period.year,
-    notes:            b.notes,
-    family_member_id: b.family_member_id,
-  }));
+    const toInsert = Object.values(latestByCat);
+    if (!toInsert.length) return;
 
-  // Plain INSERT (não upsert) — já verificamos existingCatIds acima,
-  // portanto não há risco de duplicata. Evita dependência de constraint
-  // única que só existe após migration_budgets_v2.sql.
-  const { error: insertErr } = await sb.from('budgets').insert(inserts);
-  if (insertErr) {
-    // Duplicata de corrida (dois loads simultâneos) — ignorar silenciosamente.
-    // Qualquer outro erro — logar para diagnóstico.
-    if (!insertErr.message?.includes('duplicate') && !insertErr.code?.includes('23505')) {
-      console.warn('[budgets] propagate insert:', insertErr.message);
+    // ── 4. Inserir no mês target ───────────────────────────────────────────
+    const [y] = targetMs.split('-');
+    const inserts = toInsert.map(b => {
+      const row = {
+        category_id:      b.category_id,
+        amount:           b.amount,
+        month:            targetMs,
+        family_id:        famId(),
+        year:             parseInt(y),
+        notes:            b.notes || null,
+        family_member_id: b.family_member_id || null,
+      };
+      if (hasSchema) { row.budget_type = 'monthly'; row.auto_reset = true; }
+      if (hasPaused) row.paused = false;
+      return row;
+    });
+
+    // Inserir em lote; ignorar erros de duplicata (23505)
+    const { error: insertErr } = await sb.from('budgets').insert(inserts);
+    if (insertErr) {
+      if (insertErr.code !== '23505' && !insertErr.message?.includes('duplicate')) {
+        console.warn('[budgets] propagate error:', insertErr.message, insertErr.code);
+      }
+    } else {
+      console.log(`[budgets] propagated ${inserts.length} budget(s) to ${targetMs}`);
     }
+  } catch(e) {
+    console.warn('[budgets] propagate exception:', e?.message);
   }
-  } catch(e) { console.warn('[budgets] propagate:', e?.message); }
 }
 
 // ── Pausar / Retomar ────────────────────────────────────────────────────────
@@ -227,7 +249,11 @@ async function loadBudgets() {
   // Two-step: fetch budgets with scalar fields only (sem JOIN de categorias),
   // depois enriquecer via state.categories já carregado em memória.
   // Evita PostgREST schema-cache issues que causam data:null silencioso.
-  let bq = famQ(sb.from('budgets').select('id,category_id,amount,month,year,budget_type,auto_reset,paused,notes,family_member_id,family_id,created_at'));
+  // Colunas escalares — 'paused' incluído apenas se a coluna existir no banco
+  const _cols = hasPaused
+    ? 'id,category_id,amount,month,year,budget_type,auto_reset,paused,notes,family_member_id,family_id,created_at'
+    : 'id,category_id,amount,month,year,budget_type,auto_reset,notes,family_member_id,family_id,created_at';
+  let bq = famQ(sb.from('budgets').select(_cols));
 
   if (hasNewSchema) {
     bq = bq.eq('budget_type', _budgetView);
