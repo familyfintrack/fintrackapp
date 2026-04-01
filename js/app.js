@@ -984,6 +984,11 @@ function navigate(page){
     if (_txTypeEl && _tf.type) _txTypeEl.value = _tf.type;
     const _txCatEl = document.getElementById('txCategoryFilter');
     if (_txCatEl && _tf.categoryId) _txCatEl.value = _tf.categoryId;
+    // Aplicar is-active em todos os chips — marca visualmente os filtros ativos
+    ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','txReconcileFilter'].forEach(id => {
+      const _el = document.getElementById(id);
+      if (_el) _el.classList.toggle('is-active', !!_el.value);
+    });
     // Se há filtro de conta/mês/tipo ativo, abrir o painel de filtros e atualizar badge
     if (_tf.account || _tf.month || _tf.type || _tf.categoryId) {
       const _panel = document.getElementById('tx-filters-panel');

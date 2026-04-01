@@ -319,16 +319,16 @@ async function loadDashboard(){
         const _brlLine    = (a.currency !== 'BRL')
           ? `<div class="dash-fav-brl">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>`
           : '';
-        // Confirmed-only balance line (hidden when equal to total balance)
-        const _confBal = a.confirmed_balance;
+        // Confirmed-only balance line — sempre renderizada para manter altura uniforme.
+        // visibility:hidden quando não há pendentes (reserva o espaço sem mostrar nada).
+        const _confBal    = a.confirmed_balance;
         const _hasPending = (_confBal !== undefined) && (Math.abs(_confBal - a.balance) > 0.001);
-        const _confIsNeg   = _confBal < 0;
-        const _confLine    = _hasPending
-          ? `<div class="dash-fav-card__confirmed ${_confIsNeg ? 'neg' : ''}">
-               <span class="dash-fav-card__confirmed-label">confirmado</span>
-               ${fmt(_confBal, a.currency)}
-             </div>`
-          : '';
+        const _confIsNeg  = _confBal < 0;
+        const _confLine   = `<div class="dash-fav-card__confirmed ${_confIsNeg ? 'neg' : ''}"
+          style="${_hasPending ? '' : 'visibility:hidden'}">
+            <span class="dash-fav-card__confirmed-label">confirmado</span>
+            ${_hasPending ? fmt(_confBal, a.currency) : '—'}
+          </div>`;
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
