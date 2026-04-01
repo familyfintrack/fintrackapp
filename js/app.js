@@ -969,7 +969,31 @@ function navigate(page){
   if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document.getElementById('page-'+page));
   _scrollActivePageToTop(page);
   if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){if(state.reconcileMode && typeof exitReconcileMode==='function')exitReconcileMode(false);populateTxMonthFilter();if(typeof populateSelects==='function')populateSelects();loadTransactions();}
+  else if(page==='transactions'){
+    if(state.reconcileMode && typeof exitReconcileMode==='function') exitReconcileMode(false);
+    populateTxMonthFilter();
+    if(typeof populateSelects==='function') populateSelects();
+    // FIX: populateSelects reconstrói o innerHTML dos selects e apaga qualquer .value
+    // definido antes da navegação (ex: goToAccountTransactions). Restaurar do state.
+    const _tf = state.txFilter || {};
+    const _txAccEl = document.getElementById('txAccount');
+    if (_txAccEl && _tf.account) _txAccEl.value = _tf.account;
+    const _txMonthEl = document.getElementById('txMonth');
+    if (_txMonthEl && _tf.month) _txMonthEl.value = _tf.month;
+    const _txTypeEl = document.getElementById('txType');
+    if (_txTypeEl && _tf.type) _txTypeEl.value = _tf.type;
+    const _txCatEl = document.getElementById('txCategoryFilter');
+    if (_txCatEl && _tf.categoryId) _txCatEl.value = _tf.categoryId;
+    // Se há filtro de conta/mês/tipo ativo, abrir o painel de filtros e atualizar badge
+    if (_tf.account || _tf.month || _tf.type || _tf.categoryId) {
+      const _panel = document.getElementById('tx-filters-panel');
+      const _btn   = document.getElementById('txFilterToggle');
+      if (_panel) _panel.classList.add('open');
+      if (_btn)   _btn.classList.add('active');
+      if (typeof _txUpdateFilterBadge === 'function') _txUpdateFilterBadge();
+    }
+    loadTransactions();
+  }
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
   else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
