@@ -8,7 +8,7 @@ function cfgShowPane(paneId) {
   const tab = paneId.replace('pane-', '');
   const btn = document.getElementById('cfgNavBtn-' + tab);
   if (btn) btn.classList.add('active');
-  if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
+  if ((paneId === 'pane-avancado' || paneId === 'pane-traducoes') && typeof initTranslationsAdmin === 'function') {
     initTranslationsAdmin();
   }
   if (paneId === 'pane-feedbacks' && typeof loadFeedbackReports === 'function') {
@@ -22,7 +22,7 @@ window.cfgShowPane = cfgShowPane;
 function _cfgApplyAdminNav() {
   const role = (typeof currentUser !== 'undefined') ? currentUser?.role : null;
   const isAdmin = role === 'admin' || role === 'owner';
-  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
+  ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-traducoes','cfgNavBtn-feedbacks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
   });
@@ -148,6 +148,15 @@ async function saveAppSetting(key, value) {
 // ── Login theme selector ──────────────────────────────────────────────────
 const LOGIN_THEME_SETTING = 'login_theme';
 
+function _saveLoginThemeBtn() {
+  // Read the currently selected radio and save
+  const sel = document.querySelector('input[name="loginTheme"]:checked');
+  const theme = sel ? sel.value : null;
+  if (!theme) return;
+  saveLoginTheme(theme);
+}
+window._saveLoginThemeBtn = _saveLoginThemeBtn;
+
 async function saveLoginTheme(theme) {
   await saveAppSetting(LOGIN_THEME_SETTING, theme);
   applyLoginTheme(theme);
@@ -157,9 +166,8 @@ async function saveLoginTheme(theme) {
   });
   const status = document.getElementById('loginThemeSaveStatus');
   if (status) {
-    status.textContent = '✓ Tema salvo';
-    status.style.color = 'var(--green)';
-    setTimeout(() => { status.textContent = ''; }, 2500);
+    status.innerHTML = '<span>✓</span> Tema salvo com sucesso';
+    setTimeout(() => { status.innerHTML = ''; }, 3000);
   }
 }
 
