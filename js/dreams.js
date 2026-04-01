@@ -777,7 +777,7 @@ function _renderWizardModal() {
   else if (w.step === 4) bodyHtml = _wizStep4();
 
   const html = `
-  <div id="dreamWizardModal" class="modal-overlay active" onclick="if(event.target===this)closeDreamWizard()">
+  <div id="dreamWizardModal" class="modal-overlay open" onclick="if(event.target===this)closeDreamWizard()">
     <div class="modal drm-wizard-modal" onclick="event.stopPropagation()">
       <div class="modal-header drm-wizard-header">
         <div>
