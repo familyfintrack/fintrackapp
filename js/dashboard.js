@@ -626,17 +626,37 @@ function _catColor(color, idx, usedSet) {
 
 async function renderCategoryChart(){
   const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
-  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
-  const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
+  // Two-step query: scalar fields only (sem JOINs) para evitar PostgREST schema-cache issues.
+  // Contas e payees são enriquecidos via state.accounts / state.payees já carregados.
+  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,payee_id,category_id,is_transfer,is_card_payment';
+  const _dateGte = `${y}-${m}-01`;
+  // Último dia real do mês — evita comparação com data inválida (ex: 2026-02-31)
+  const _lastDay = new Date(y, now.getMonth()+1, 0).getDate();
+  const _dateLte = `${y}-${m}-${String(_lastDay).padStart(2,'0')}`;
 
-  // Build expense query (amount < 0)
+  // Build expense query (amount < 0) — exclui transferências e pagamentos de fatura
   const qExp = famQ(sb.from('transactions').select(_txSelect))
-    .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null);
-  // Build income query (amount > 0)
+    .gte('date',_dateGte).lte('date',_dateLte)
+    .lt('amount',0).not('category_id','is',null)
+    .eq('is_transfer',false).eq('is_card_payment',false);
+  // Build income query (amount > 0) — exclui transferências
   const qInc = famQ(sb.from('transactions').select(_txSelect))
-    .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null);
+    .gte('date',_dateGte).lte('date',_dateLte)
+    .gt('amount',0).not('category_id','is',null)
+    .eq('is_transfer',false).eq('is_card_payment',false);
 
-  const [{data}, {data: dataInc}] = await Promise.all([qExp, qInc]);
+  const [resExp, resInc] = await Promise.all([qExp, qInc]);
+  const data    = resExp.data;
+  const dataInc = resInc.data;
+
+  // Enriquecer com account name e payee name a partir do estado (já carregado, sem query extra)
+  const _accById  = Object.fromEntries((state.accounts||[]).map(a=>[a.id,a]));
+  const _payById  = Object.fromEntries((state.payees ||[]).map(p=>[p.id,p]));
+  const _enrich = t => ({
+    ...t,
+    accounts: _accById[t.account_id] ? { name: _accById[t.account_id].name } : null,
+    payees:   _payById[t.payee_id]   ? { name: _payById[t.payee_id].name   } : null,
+  });
 
   // Build parent lookup from state.categories (already loaded, has parent_id)
   const allCats = state.categories || [];
@@ -657,7 +677,7 @@ async function renderCategoryChart(){
   }
 
   const catMap={};
-  (data||[]).forEach(t=>{
+  (data||[]).map(_enrich).forEach(t=>{
     const root = _getRootCat(t);
     const n = root.name;
     const rawColor = root.color;
@@ -681,7 +701,7 @@ async function renderCategoryChart(){
 
   // Build income category entries (same logic, positive amounts)
   const incMap = {};
-  (dataInc||[]).forEach(t => {
+  (dataInc||[]).map(_enrich).forEach(t => {
     const root = _getRootCat(t);
     const n = root.name, rawColor = root.color;
     if (!incMap[n]) incMap[n] = {rawColor, txs:[], total:0, rootId:root.id};
@@ -701,6 +721,8 @@ async function renderCategoryChart(){
   if(!_catChartEntries.length){
     const el=document.getElementById('categoryChart');
     if(el){const ctx=el.getContext('2d');ctx.clearRect(0,0,el.width,el.height);ctx.fillStyle='#8c8278';ctx.textAlign='center';ctx.font='13px Outfit';ctx.fillText(t('dash.empty_tx'),el.width/2,el.height/2);}
+    closeCatDetail();
+    return; // FIX: não continuar para render com dados vazios
   }
 
   closeCatDetail(); // reset any open detail
@@ -839,13 +861,12 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'accounts',    label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                  el: 'dashCardAccounts'    },
-  { id: 'charts',      label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',     el: 'dashCardCharts'      },
-  { id: 'favcats',     label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',           el: 'dashCardFavCats'     },
-  { id: 'budgetSnap',  label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Resumo dos orçamentos ativos',               el: 'dashBudgetSnapshot'  },
-  { id: 'upcoming',    label: 'Próximas Transações',        icon: '📆', sub: 'Programadas para os próximos 10 dias',       el: 'dashCardUpcoming'    },
-  { id: 'forecast90',  label: 'Previsão 90 dias',           icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias', el: 'dashCardForecast90'  },
-  { id: 'recent',      label: 'Últimas Transações',         icon: '🧾', sub: 'Histórico recente de lançamentos',           el: 'dashCardRecent'      },
+  { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
+  { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
+  { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
+  { id: 'upcoming',   label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
+  { id: 'forecast90', label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
+  { id: 'recent',     label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
 ];
 
 function _dashGetPrefs() {
@@ -1724,7 +1745,7 @@ function _setCatChartType(type) {
 
 function _renderCatChartDoughnut() {
   const canvas = document.getElementById('categoryChart');
-  if (!canvas) return;
+  if (!canvas || !_catChartEntries.length) return; // FIX: guarda contra dados vazios
   // Reset wrapper so doughnut uses its natural aspect ratio
   const wrap = document.getElementById('catChartWrap');
   if (wrap) { wrap.style.height = ''; }
@@ -1928,138 +1949,235 @@ async function _openPatrimonioModal() {
   const accs = Array.isArray(state.accounts) ? state.accounts : [];
   if (!accs.length) return;
 
-  // ── Match KPI calculation exactly ────────────────────────────────────────
-  // Account total: investment accounts use _totalPortfolioBalance if available
-  const accountTotal = accs.reduce((s, a) => {
-    const bal = (a.type === 'investimento' && a._totalPortfolioBalance != null)
-      ? a._totalPortfolioBalance
-      : (parseFloat(a.balance) || 0);
-    return s + toBRL(bal, a.currency || 'BRL');
-  }, 0);
-
-  // Debts: same query as KPI
-  let debtTotal = 0;
-  let debts = [];
-  try {
-    const { data: debtsData } = await famQ(
-      sb.from('debts').select('id,description,current_balance,original_amount,currency,status').eq('status', 'active')
-    );
-    debts = debtsData || [];
-    debtTotal = debts.reduce((s,d) =>
-      s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
-  } catch(_) {}
-
-  const totalBRL = accountTotal - debtTotal;
-
-  // Group accounts by currency
-  const byCurrency = {};
-  accs.forEach(a => {
-    const cur = a.currency || 'BRL';
-    if (!byCurrency[cur]) byCurrency[cur] = [];
-    byCurrency[cur].push(a);
-  });
-
-  let content = `
-    <div style="padding:20px 22px 24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Total</div>
-          <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-        </div>
-        <button onclick="closeModal('patrimonioModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
-      </div>`;
-
-  Object.entries(byCurrency).forEach(([cur, group]) => {
-    const groupTotal = group.reduce((s,a) => s + (parseFloat(a.balance)||0), 0);
-    const groupTotalBRL = group.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, cur), 0);
-    content += `
-      <div style="margin-bottom:16px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">${cur}</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    group.sort((a,b)=>(Math.abs(b.balance||0)-Math.abs(a.balance||0))).forEach(a => {
-      const bal = parseFloat(a.balance)||0;
-      const pct = groupTotalBRL !== 0 ? Math.abs(toBRL(bal,cur)/totalBRL*100) : 0;
-      const isNeg = bal < 0;
-      content += `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--surface2);cursor:pointer;transition:background .12s"
-          onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
-          onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'">
-          <div style="width:30px;height:30px;border-radius:8px;background:${a.color||'var(--accent)'}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,16)}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${accountTypeLabel?.(a.type)||a.type||''}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${isNeg?'var(--red)':'var(--text)'}">${fmt(bal,cur)}</div>
-            ${cur!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">${dashFmt(toBRL(bal,cur),'BRL')}</div>`:''}
-            <div style="font-size:.65rem;color:var(--muted)">${pct.toFixed(1)}% do total</div>
-          </div>
-        </div>
-        <div style="height:3px;border-radius:2px;background:var(--border);margin:0 10px;overflow:hidden">
-          <div style="height:100%;width:${Math.min(pct,100)}%;background:${a.color||'var(--accent)'};border-radius:2px;transition:width .4s ease"></div>
-        </div>`;
-    });
-    content += `
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:6px 10px 0;font-size:.75rem;color:var(--muted)">
-          <span>${group.length} conta${group.length!==1?'s':''}</span>
-          <span style="font-weight:700;color:var(--text)">${fmt(groupTotal,cur)}${cur!=='BRL'?` (${dashFmt(groupTotalBRL,'BRL')})`:''}</span>
-        </div>
-      </div>`;
-  });
-
-  // ── Debts section ──────────────────────────────────────────────────────
-  if (debts.length) {
-    content += `
-      <div style="margin-bottom:16px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">Dívidas Ativas (deduzidas)</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    debts.forEach(d => {
-      const bal = parseFloat(d.current_balance ?? d.original_amount) || 0;
-      const balBRL = toBRL(bal, d.currency || 'BRL');
-      content += `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
-          <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💳</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
-            <div style="font-size:.68rem;color:var(--muted)">Dívida ativa</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
-            ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
-          </div>
-        </div>`;
-    });
-    content += `
-        </div>
-        <div style="display:flex;justify-content:flex-end;padding:6px 10px 0;font-size:.75rem">
-          <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(debtTotal,'BRL')}</span>
-        </div>
-      </div>`;
-  }
-
-  // ── Net total line ──────────────────────────────────────────────────────
-  if (debts.length) {
-    content += `
-      <div style="border-top:2px solid var(--border);margin-top:8px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:.8rem;font-weight:700;color:var(--text)">Patrimônio Líquido</div>
-        <div style="font-size:1.1rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-      </div>`;
-  }
-
-  content += '</div>';
-
-  // Inject into modal
+  // ── Mostrar modal imediatamente com loading ───────────────────────────────
   let modal = document.getElementById('patrimonioModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
+    modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:84dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
     document.body.appendChild(modal);
   }
-  document.getElementById('patrimonioModalBody').innerHTML = content;
+  document.getElementById('patrimonioModalBody').innerHTML =
+    `<div style="padding:32px;text-align:center;color:var(--muted);font-size:.85rem">Carregando composição…</div>`;
   openModal('patrimonioModal');
+
+  // ── Separar contas por tipo ───────────────────────────────────────────────
+  const invAccs = accs.filter(a => a.type === 'investimento');
+  const regAccs = accs.filter(a => a.type !== 'investimento');
+
+  // Contas regulares
+  const regularTotal = regAccs.reduce((s, a) =>
+    s + toBRL(parseFloat(a.balance) || 0, a.currency || 'BRL'), 0);
+
+  // Contas de investimento: usa _totalPortfolioBalance se disponível (valor de mercado)
+  const investTotal = invAccs.reduce((s, a) => {
+    const bal = (a._totalPortfolioBalance != null)
+      ? a._totalPortfolioBalance
+      : (parseFloat(a.balance) || 0);
+    return s + toBRL(bal, a.currency || 'BRL');
+  }, 0);
+
+  const accountTotal = regularTotal + investTotal;
+
+  // ── Dívidas ───────────────────────────────────────────────────────────────
+  let debtTotal = 0, debts = [];
+  try {
+    const { data: debtsData } = await famQ(
+      sb.from('debts')
+        .select('id,name,current_balance,original_amount,currency,status,adjustment_type')
+        .eq('status', 'active')
+    );
+    debts = debtsData || [];
+    debtTotal = debts.reduce((s, d) =>
+      s + toBRL(parseFloat(d.current_balance ?? d.original_amount) || 0, d.currency || 'BRL'), 0);
+  } catch(_) {}
+
+  // ── Patrimônio líquido — bate com statTotal ───────────────────────────────
+  const totalBRL = accountTotal - debtTotal;
+
+  // ── Helper: linha de conta ────────────────────────────────────────────────
+  const _accRow = (a, isInv) => {
+    const bal = isInv
+      ? ((a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance) || 0))
+      : (parseFloat(a.balance) || 0);
+    const cur    = a.currency || 'BRL';
+    const balBRL = toBRL(bal, cur);
+    const pct    = Math.abs(totalBRL) > 0 ? Math.abs(balBRL / totalBRL * 100) : 0;
+    const isNeg  = bal < 0;
+    const onclick = isInv
+      ? `navigate('investments');closeModal('patrimonioModal')`
+      : `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+                  background:var(--surface2);cursor:pointer;transition:background .12s"
+        onclick="${onclick}"
+        onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'">
+        <div style="width:30px;height:30px;border-radius:8px;background:${a.color||'var(--accent)'}22;
+                    display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${_dashRenderIcon(a.icon, a.color, 16)}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
+          <div style="font-size:.67rem;color:var(--muted)">${accountTypeLabel?.(a.type)||a.type||''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${isNeg?'var(--red)':'var(--text)'}">
+            ${fmt(bal, cur)}${isInv && a._totalPortfolioBalance != null ? ' <span style="font-size:.6rem;color:#7c3aed;font-weight:600">MKT</span>' : ''}
+          </div>
+          ${cur !== 'BRL' ? `<div style="font-size:.67rem;color:var(--muted)">${dashFmt(balBRL,'BRL')}</div>` : ''}
+          <div style="font-size:.63rem;color:var(--muted)">${pct.toFixed(1)}%</div>
+        </div>
+      </div>
+      <div style="height:3px;border-radius:2px;background:var(--border);margin:0 10px 2px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pct,100)}%;background:${isInv?'#7c3aed':(a.color||'var(--accent)')};border-radius:2px;transition:width .4s ease"></div>
+      </div>`;
+  };
+
+  // ── Helper: cabeçalho de seção ────────────────────────────────────────────
+  const _secHead = (label, total, color) => `
+    <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
+                color:${color||'var(--muted)'};padding:4px 0 8px;border-bottom:1px solid var(--border);
+                margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <span>${label}</span>
+      <span style="font-family:var(--font-serif);font-size:.82rem;color:var(--text)">${dashFmt(total,'BRL')}</span>
+    </div>`;
+
+  // ── Construir HTML ────────────────────────────────────────────────────────
+  let content = `<div style="padding:20px 22px 28px">`;
+
+  // Header com total + breakdown rápido
+  content += `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Líquido</div>
+        <div style="font-size:1.9rem;font-weight:800;font-family:var(--font-serif);
+                    color:${totalBRL>=0?'var(--accent)':'var(--red)'};line-height:1.05">${dashFmt(totalBRL,'BRL')}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:7px;display:flex;gap:14px;flex-wrap:wrap">
+          <span>Contas: <strong style="color:var(--text)">${dashFmt(regularTotal,'BRL')}</strong></span>
+          ${investTotal ? `<span>Investimentos: <strong style="color:#7c3aed">${dashFmt(investTotal,'BRL')}</strong></span>` : ''}
+          ${debtTotal   ? `<span style="color:var(--red)">Dívidas: <strong>−${dashFmt(debtTotal,'BRL')}</strong></span>` : ''}
+        </div>
+      </div>
+      <button onclick="closeModal('patrimonioModal')"
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;
+               width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);
+               display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>`;
+
+  // Barra de composição visual
+  const grand = accountTotal + debtTotal;
+  if (grand > 0) {
+    const pReg = grand > 0 ? (regularTotal / grand * 100) : 0;
+    const pInv = grand > 0 ? (investTotal  / grand * 100) : 0;
+    const pDbt = grand > 0 ? (debtTotal    / grand * 100) : 0;
+    content += `
+      <div style="margin-bottom:18px">
+        <div style="display:flex;height:8px;border-radius:99px;overflow:hidden;gap:2px;margin-bottom:7px">
+          ${regularTotal > 0 ? `<div style="flex:${pReg.toFixed(1)};background:var(--accent);min-width:4px;border-radius:99px"></div>` : ''}
+          ${investTotal  > 0 ? `<div style="flex:${pInv.toFixed(1)};background:#7c3aed;min-width:4px;border-radius:99px"></div>` : ''}
+          ${debtTotal    > 0 ? `<div style="flex:${pDbt.toFixed(1)};background:var(--red);min-width:4px;border-radius:99px"></div>` : ''}
+        </div>
+        <div style="display:flex;gap:16px;font-size:.68rem;color:var(--muted);flex-wrap:wrap">
+          ${regularTotal > 0 ? `<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:3px;vertical-align:middle"></i>Contas ${pReg.toFixed(0)}%</span>` : ''}
+          ${investTotal  > 0 ? `<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7c3aed;margin-right:3px;vertical-align:middle"></i>Investimentos ${pInv.toFixed(0)}%</span>` : ''}
+          ${debtTotal    > 0 ? `<span><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:3px;vertical-align:middle"></i>Dívidas ${pDbt.toFixed(0)}%</span>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // ── Contas regulares agrupadas por moeda ──────────────────────────────────
+  if (regAccs.length) {
+    const byCur = {};
+    regAccs.forEach(a => {
+      const c = a.currency || 'BRL';
+      (byCur[c] = byCur[c] || []).push(a);
+    });
+    Object.entries(byCur).forEach(([cur, group]) => {
+      const grpBRL = group.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, cur), 0);
+      content += `<div style="margin-bottom:14px">`;
+      content += _secHead(`Contas${Object.keys(byCur).length > 1 ? ' — '+cur : ''}`, grpBRL);
+      content += `<div style="display:flex;flex-direction:column;gap:2px">`;
+      group.sort((a,b) => Math.abs(parseFloat(b.balance)||0) - Math.abs(parseFloat(a.balance)||0))
+           .forEach(a => { content += _accRow(a, false); });
+      content += `</div></div>`;
+    });
+  }
+
+  // ── Investimentos ─────────────────────────────────────────────────────────
+  if (invAccs.length) {
+    content += `<div style="margin-bottom:14px">`;
+    content += _secHead('Carteira de Investimentos', investTotal, '#7c3aed');
+    content += `<div style="display:flex;flex-direction:column;gap:2px">`;
+    invAccs.sort((a,b) => {
+      const ba = a._totalPortfolioBalance ?? parseFloat(a.balance) ?? 0;
+      const bb = b._totalPortfolioBalance ?? parseFloat(b.balance) ?? 0;
+      return Math.abs(bb) - Math.abs(ba);
+    }).forEach(a => { content += _accRow(a, true); });
+    content += `</div>`;
+    if (invAccs.some(a => a._totalPortfolioBalance != null)) {
+      content += `<div style="font-size:.66rem;color:var(--muted);padding:5px 10px 0;font-style:italic">MKT = valor de mercado calculado das posições em carteira</div>`;
+    }
+    content += `</div>`;
+  }
+
+  // ── Dívidas ───────────────────────────────────────────────────────────────
+  if (debts.length) {
+    content += `<div style="margin-bottom:14px">`;
+    content += _secHead('Dívidas Ativas (deduzidas)', debtTotal, 'var(--red)');
+    content += `<div style="display:flex;flex-direction:column;gap:4px">`;
+    debts.forEach(d => {
+      const bal    = parseFloat(d.current_balance ?? d.original_amount) || 0;
+      const cur    = d.currency || 'BRL';
+      const balBRL = toBRL(bal, cur);
+      const pct    = Math.abs(totalBRL) > 0 ? Math.abs(balBRL / totalBRL * 100) : 0;
+      content += `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+                    background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
+          <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.1);
+                      display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💳</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
+            <div style="font-size:.67rem;color:var(--muted)">${d.adjustment_type||'Dívida ativa'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red)">−${fmt(bal, cur)}</div>
+            ${cur !== 'BRL' ? `<div style="font-size:.67rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>` : ''}
+            <div style="font-size:.63rem;color:var(--muted)">${pct.toFixed(1)}%</div>
+          </div>
+        </div>`;
+    });
+    content += `</div>`;
+    content += `<div style="display:flex;justify-content:flex-end;padding:5px 10px 0;font-size:.74rem">
+      <span style="font-weight:700;color:var(--red)">Total: −${dashFmt(debtTotal,'BRL')}</span>
+    </div>`;
+    content += `</div>`;
+  }
+
+  // ── Linha de reconciliação (bate com o KPI) ───────────────────────────────
+  content += `
+    <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:.78rem;color:var(--muted)">Contas + Investimentos</span>
+        <span style="font-size:.85rem;font-weight:700;font-family:var(--font-serif)">${dashFmt(accountTotal,'BRL')}</span>
+      </div>
+      ${debtTotal ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:.78rem;color:var(--muted)">− Dívidas ativas</span>
+        <span style="font-size:.85rem;font-weight:700;font-family:var(--font-serif);color:var(--red)">−${dashFmt(debtTotal,'BRL')}</span>
+      </div>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  background:${totalBRL>=0?'var(--accent-lt)':'var(--red-lt)'};
+                  border-radius:10px;padding:10px 14px">
+        <span style="font-size:.82rem;font-weight:700;color:var(--text)">= Patrimônio Líquido</span>
+        <span style="font-size:1.05rem;font-weight:800;font-family:var(--font-serif);
+                     color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</span>
+      </div>
+    </div>`;
+
+  content += '</div>';
+  document.getElementById('patrimonioModalBody').innerHTML = content;
 }
 window._openPatrimonioModal = _openPatrimonioModal;
+
