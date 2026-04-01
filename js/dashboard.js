@@ -876,6 +876,7 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
+  { id: 'kpis',       label: 'Patrimônio, Receita, Despesa e Saldo', icon: '💰', sub: 'Cards de resumo financeiro do mês', el: 'dashCardKpis'       },
   { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
   { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
   { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
@@ -924,24 +925,48 @@ async function _syncDashPrefsFromServer() {
 function _dashApplyPrefs(prefs) {
   const order = _getDashCardOrder(prefs);
 
-  // 1. Visibilidade
+  // ── 1. Visibilidade ────────────────────────────────────────────────────────
   order.forEach(c => {
     const el = document.getElementById(c.el);
     if (!el) return;
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
 
-  // 2. Reordenação robusta no DOM
+  // ── 2. Reordenação robusta no DOM ──────────────────────────────────────────
+  // Elementos fixos que NUNCA devem ser movidos (sempre no topo):
+  //   .page-header-bar  — barra de título injetada pelo navigate()
+  //   #dashFilterBadge  — badge de filtro de membro/grupo
+  //   #fxRatesBadge     — barra de câmbio
   try {
     const els = order.map(c => document.getElementById(c.el)).filter(Boolean);
     if (!els.length) return;
     const parent = els[0].parentElement;
     if (!parent) return;
+
+    // Filtra apenas os cards que são filhos diretos deste pai
     const direct = els.filter(el => el.parentElement === parent);
     if (!direct.length) return;
+
+    // IDs/classes que são elementos fixos — não devem ser tocados
+    const _isFixed = el =>
+      el.classList.contains('page-header-bar') ||
+      el.id === 'dashFilterBadge' ||
+      el.id === 'fxRatesBadge';
+
+    // Encontrar o índice do primeiro filho NÃO-fixo (ponto de inserção inicial)
+    const allChildren = Array.from(parent.children);
+    let insertionBase = allChildren.findIndex(ch => !_isFixed(ch));
+    if (insertionBase < 0) insertionBase = allChildren.length;
+
+    // Reordenar: inserir cada card na sequência correta, após os elementos fixos
     direct.forEach((el, i) => {
-      const refEl = parent.children[i];
-      if (refEl && refEl !== el) parent.insertBefore(el, refEl);
+      const refIndex = insertionBase + i;
+      const refEl = parent.children[refIndex];
+      if (refEl && refEl !== el) {
+        parent.insertBefore(el, refEl);
+      } else if (!refEl) {
+        parent.appendChild(el);
+      }
     });
   } catch(_) {}
 }
