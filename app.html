@@ -671,7 +671,7 @@
         <button onclick="document.getElementById('dashMemberFilter').value='';document.getElementById('dashRelGroup').value='';loadDashboard()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.85rem;padding:0;line-height:1" title="Limpar filtro">✕</button>
       </div>
       <!-- family badge moved to FX bar; dashboard customize moved to page title bar -->
-      <div class="grid-4 mb-4">
+      <div class="grid-4 mb-4" id="dashCardKpis">
         <div class="stat-card"><div class="stat-accent"></div><div class="stat-label">Patrimônio Total</div><div class="stat-value text-accent" id="statTotal">—</div><div class="stat-sub">Todas as contas</div></div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--green)"></div><div class="stat-label">Receitas do Mês</div><div class="stat-value text-green" id="statIncome">—</div><div class="stat-sub">Mês atual</div></div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--red)"></div><div class="stat-label">Despesas do Mês</div><div class="stat-value text-red" id="statExpenses">—</div><div class="stat-sub">Mês atual</div></div>
@@ -5139,13 +5139,13 @@ Se você não solicitou isso, ignore este e-mail.`,
       <div class="ls-form-panel">
         <div class="ls-card">
 
-          <!-- Logo para fundo branco -->
-          <img class="ls-form-logo" src="logo.jpg" alt="Family FinTrack" id="loginLogoImg"
-            onerror="this.src='logo_transparent2.png'">
+          <!-- Logo adaptado ao tema — usa sempre logo_glow_soft.png -->
+          <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
+            onerror="this.src='logo.jpg'">
 
           <!-- Mobile-only logo -->
           <div class="ls-mobile-logo">
-            <img src="logo.jpg" alt="Family FinTrack" onerror="this.style.display='none'">
+            <img src="logo_glow_soft.png" alt="Family FinTrack" onerror="this.src='logo.jpg';this.onerror=null">
           </div>
 
           <div class="ls-card-title">Bem-vindo de volta</div>
