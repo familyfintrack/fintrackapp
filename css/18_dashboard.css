@@ -75,33 +75,31 @@
     border-right: none;
     padding-right: 0;
   }
-  /* Cards na col-stack: largura total da coluna, tamanho fixo */
+  /* Cards dentro da coluna: largura total da coluna */
   .dash-favs-col-stack {
-    gap: 8px;
-  }
-  .dash-favs-col-stack .dash-fav-card {
-    padding: 12px 14px 13px;
-    min-height: 110px;
-  }
-  .dash-favs-col-stack .dash-fav-card__balance {
-    font-size: 1.15rem;
-  }
-  /* Grid legacy (quando não há grupos) */
-  .dash-favs-grid {
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 10px;
   }
+  .dash-favs-col-stack .dash-fav-card {
+    padding: 16px 18px 18px;
+  }
+  .dash-favs-col-stack .dash-fav-card__balance {
+    font-size: 1.35rem;
+  }
+  /* Grid legacy (quando não há grupos) — mantém comportamento original */
+  .dash-favs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 14px;
+  }
   .dash-fav-card {
-    padding: 12px 14px 13px;
-    min-height: 110px;
+    padding: 18px 20px 20px;
   }
   .dash-fav-card__balance {
-    font-size: 1.15rem;
+    font-size: 1.45rem;
   }
   .dash-fav-card__icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
   }
 }
 
@@ -109,7 +107,7 @@
 @media (max-width: 480px) {
   .dash-favs-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px;
+    gap: 10px;
   }
   /* Mobile: coluna stack volta para grid 2x */
   .dash-favs-col-stack {

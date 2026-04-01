@@ -383,16 +383,169 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .account-group-body.collapsed{display:none;}
 /* Category icon picker (mirrors account icon picker) */
 #categoryIconPicker .icon-grid{max-height:148px;overflow-y:auto;}
-.account-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);}
-.account-card-stripe{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0;}
-.account-card:hover{border-color:var(--border2);box-shadow:var(--shadow);transform:translateY(-1px);}
-.account-icon{font-size:1.5rem;margin-bottom:8px;}
-.account-name{font-weight:500;font-size:.9rem;margin-bottom:2px;color:var(--text);}
-.account-type{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
-.account-balance{font-family:var(--font-serif);font-size:1.35rem;font-weight:500;letter-spacing:-.02em;}
-.account-currency{font-size:.7rem;color:var(--muted);margin-top:2px;}
-.account-actions{position:absolute;top:10px;right:10px;display:none;gap:4px;}
-.account-card:hover .account-actions{display:flex;}
+/* ── Account card v1 (legado, mantido para compatibilidade) ─────── */
+.account-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px; cursor:pointer; transition:all .18s; position:relative; overflow:hidden; box-shadow:var(--shadow-sm); }
+.account-card-stripe { position:absolute; top:0; left:0; right:0; height:3px; border-radius:var(--r) var(--r) 0 0; }
+.account-card:hover { border-color:var(--border2); box-shadow:var(--shadow); transform:translateY(-1px); }
+.account-icon { font-size:1.5rem; margin-bottom:8px; }
+.account-name { font-weight:500; font-size:.9rem; margin-bottom:2px; color:var(--text); }
+.account-type { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px; }
+.account-balance { font-family:var(--font-serif); font-size:1.35rem; font-weight:500; letter-spacing:-.02em; }
+.account-currency { font-size:.7rem; color:var(--muted); margin-top:2px; }
+.account-actions { position:absolute; top:10px; right:10px; display:none; gap:4px; }
+.account-card:hover .account-actions { display:flex; }
+
+/* ── Account card v2 — design moderno ───────────────────────────── */
+.acc-card-v2 {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 14px 12px 18px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: box-shadow .18s, transform .18s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 148px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05), 0 2px 8px rgba(0,0,0,.04);
+}
+.acc-card-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+  border-color: var(--border2);
+}
+
+/* Faixa lateral de cor */
+.acc-card-bar {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 14px 0 0 14px;
+}
+
+/* Topo: ícone + estrela + ações */
+.acc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.acc-card-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Estrela de favorito */
+.acc-card-fav {
+  position: absolute;
+  top: 10px;
+  right: 42px;
+  width: 24px; height: 24px;
+  border: none; background: none; cursor: pointer;
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity .15s, color .15s, transform .12s;
+  padding: 0;
+  z-index: 2;
+}
+.acc-card-fav.active { color: #f59e0b; opacity: 1; }
+.acc-card-v2:hover .acc-card-fav { opacity: 1; }
+.acc-card-fav:hover { color: #f59e0b; transform: scale(1.2); }
+
+/* Ações (aparecem no hover) */
+.acc-card-actions {
+  position: absolute;
+  top: 8px; right: 8px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.acc-card-v2:hover .acc-card-actions { opacity: 1; }
+.acc-action-btn {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s;
+  line-height: 0; padding: 0;
+}
+.acc-action-btn:hover {
+  background: var(--accent-lt);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.acc-action-btn--danger:hover {
+  background: var(--red-lt, #fee2e2);
+  color: var(--red, #dc2626);
+  border-color: var(--red, #dc2626);
+}
+
+/* Nome, tipo e saldo */
+.acc-card-name {
+  font-weight: 700;
+  font-size: .88rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: auto;
+}
+.acc-card-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .66rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 4px;
+}
+.acc-card-balance {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--accent);
+  line-height: 1.2;
+}
+.acc-card-balance.neg { color: var(--red, #dc2626); }
+.acc-card-currency {
+  font-size: .66rem;
+  color: var(--muted);
+  font-weight: 500;
+  margin-top: 1px;
+}
+.acc-card-due {
+  font-size: .68rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Grid: 3 col desktop, 2 col tablet, 1 col mobile */
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .account-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .acc-card-v2 { min-height: 130px; padding: 12px 12px 10px 16px; }
+  .acc-card-balance { font-size: 1.05rem; }
+}
 
 /* TABLE */
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}

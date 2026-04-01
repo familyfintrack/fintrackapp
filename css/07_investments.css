@@ -1198,3 +1198,37 @@
 ══════════════════════════════════════════════════════════════════════ */
 
 /* ── Page header ── */
+
+/* ── Botão discreto de consolidar saldo no card favorito ───────── */
+.dash-fav-card__consolidate-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.60);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .18s, background .15s, color .15s, transform .12s;
+  z-index: 3;
+  line-height: 0;
+  padding: 0;
+}
+.dash-fav-card:hover .dash-fav-card__consolidate-btn {
+  opacity: 1;
+}
+.dash-fav-card__consolidate-btn:hover {
+  background: rgba(255,255,255,.25);
+  color: #fff;
+  border-color: rgba(255,255,255,.50);
+  transform: scale(1.15);
+}
+.dash-fav-card__consolidate-btn:active {
+  transform: scale(.92);
+}
