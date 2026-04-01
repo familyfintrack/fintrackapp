@@ -158,10 +158,17 @@ async function _propagateAutoResetBudgets(period) {
     family_member_id: b.family_member_id,
   }));
 
-  await sb.from('budgets').upsert(inserts, {
-    onConflict: 'family_id,category_id,month,budget_type',
-    ignoreDuplicates: true,
-  }).catch(() => {});
+  // Plain INSERT (não upsert) — já verificamos existingCatIds acima,
+  // portanto não há risco de duplicata. Evita dependência de constraint
+  // única que só existe após migration_budgets_v2.sql.
+  const { error: insertErr } = await sb.from('budgets').insert(inserts);
+  if (insertErr) {
+    // Duplicata de corrida (dois loads simultâneos) — ignorar silenciosamente.
+    // Qualquer outro erro — logar para diagnóstico.
+    if (!insertErr.message?.includes('duplicate') && !insertErr.code?.includes('23505')) {
+      console.warn('[budgets] propagate insert:', insertErr.message);
+    }
+  }
   } catch(e) { console.warn('[budgets] propagate:', e?.message); }
 }
 
