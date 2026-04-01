@@ -682,148 +682,132 @@ body.platform-windows .ls-input {
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════════
-   TEMA: split — 50% branco (form) | 50% verde (hero)  [PADRÃO]
-   REGRAS: logo SOMENTE no hero (direita), maior. Esquerda: sem logo.
+   TEMAS DE LOGIN v3
+   LOGO: sempre logo_glow_soft.png em todos os temas.
+   Fundo global: #000 via .ls-shell { background:#000 }
    ══════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-split .ls-form-logo { display: none; }
-#loginScreen.ls-theme-split .ls-hero-logo {
-  height: 144px; /* dobro do padrão (72px) */
+
+/* ── Base: logo padrão sempre usa glow_soft (definida via src no HTML) ───── */
+.ls-form-logo,
+.ls-hero-logo {
+  /* O src=logo_glow_soft.png já está no HTML.
+     Aqui garantimos apenas dimensões e comportamento. */
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   TEMA: asymmetric — 40% form | 60% hero
-   REGRAS: logo somente na direita (hero), dobro do tamanho.
+   TEMA: split — 50/50 | logo SOMENTE no hero (direita), sem logo esquerdo
    ══════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-asymmetric .ls-form-panel {
-  flex: 0 0 40%;
-  padding: 40px 36px;
-}
-#loginScreen.ls-theme-asymmetric .ls-hero {
-  flex: 0 0 60%;
-}
-#loginScreen.ls-theme-asymmetric .ls-card {
-  max-width: 340px;
-}
-#loginScreen.ls-theme-asymmetric .ls-form-logo { display: none; }
-#loginScreen.ls-theme-asymmetric .ls-hero-logo {
-  height: 144px; /* dobro */
-}
+#loginScreen.ls-theme-split .ls-form-logo   { display: none; }
+#loginScreen.ls-theme-split .ls-hero-logo   { height: 144px; } /* 2× padrão */
 
 /* ══════════════════════════════════════════════════════════════════
-   TEMA: centered — formulário flutuante sobre fundo preto
-   REGRAS: sem hero, card branco sobre fundo preto do shell.
+   TEMA: asymmetric — 40/60 | logo SOMENTE no hero (direita)
    ══════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-centered .ls-hero { display: none; }
-#loginScreen.ls-theme-centered .ls-layout {
-  background: #000; /* redundante mas garante consistência */
-}
+#loginScreen.ls-theme-asymmetric .ls-form-panel { flex: 0 0 40%; padding: 40px 36px; }
+#loginScreen.ls-theme-asymmetric .ls-hero       { flex: 0 0 60%; }
+#loginScreen.ls-theme-asymmetric .ls-card       { max-width: 340px; }
+#loginScreen.ls-theme-asymmetric .ls-form-logo  { display: none; }
+#loginScreen.ls-theme-asymmetric .ls-hero-logo  { height: 144px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   TEMA: centered — card flutuante sobre fundo preto
+   Logo: logo_glow_soft.png, 30% maior que padrão (48px → 62px),
+         centralizado horizontalmente dentro do card.
+   ══════════════════════════════════════════════════════════════════ */
+#loginScreen.ls-theme-centered .ls-hero           { display: none; }
+#loginScreen.ls-theme-centered .ls-layout         { background: #000; }
 #loginScreen.ls-theme-centered .ls-form-panel {
-  flex: 1;
-  background: transparent;
-  padding: 48px 24px;
-  align-items: center;
-  justify-content: center;
-  box-shadow: none;
+  flex: 1; background: transparent; padding: 48px 24px;
+  align-items: center; justify-content: center; box-shadow: none;
 }
 #loginScreen.ls-theme-centered .ls-card {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 40px 36px;
+  background: #ffffff; border-radius: 24px; padding: 40px 36px;
   max-width: 420px;
   box-shadow: 0 24px 80px rgba(0,0,0,.60), 0 6px 24px rgba(0,0,0,.40);
 }
 #loginScreen.ls-theme-centered .ls-form-logo {
   display: block;
-  height: 56px;
-  margin-bottom: 28px;
+  height: 62px;       /* 30% maior: 48 × 1.3 ≈ 62px */
+  width: auto;
+  object-fit: contain;
+  margin: 0 auto 28px; /* centralizado */
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   TEMA: immersive — hero ocupa 100% do fundo, card flutuante
-   REGRAS: hero é fundo absoluto. Card opaco, texto escuro. Logo no card.
+   TEMA: immersive — hero cobre 100% do fundo, card branco flutuante
+   Design definitivo:
+     • .ls-hero fica em position:absolute, preenche o shell inteiro
+     • .ls-form-panel fica sobre o hero (z-index:2), centralizado
+     • Card: fundo branco opaco + backdrop-filter
+     • Logo: logo_glow_soft.png no card (usa filtro invert para fundo claro),
+             30% maior, centralizado
+     • Texto: sempre escuro (#111827) — nunca branco sobre branco
+     • Logo do hero: oculto (o card tem o logo)
    ══════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-immersive .ls-layout {
-  position: relative;
-}
+#loginScreen.ls-theme-immersive .ls-layout        { position: relative; }
 #loginScreen.ls-theme-immersive .ls-hero {
-  position: absolute;
-  inset: 0;
-  flex: unset;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  display: flex; /* sempre visível neste tema */
+  position: absolute; inset: 0;
+  flex: unset; width: 100%; height: 100%;
+  z-index: 0; display: flex; /* sempre visível — é o fundo */
 }
 #loginScreen.ls-theme-immersive .ls-form-panel {
-  position: relative;
-  z-index: 2;
-  flex: 1;
-  background: transparent;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative; z-index: 2; flex: 1;
+  background: transparent; box-shadow: none;
+  display: flex; align-items: center; justify-content: center;
   padding: 32px 24px;
 }
-/* Card: fundo branco opaco, texto sempre legível */
 #loginScreen.ls-theme-immersive .ls-card {
   background: rgba(255,255,255,0.97);
-  border-radius: 24px;
-  padding: 40px 36px;
-  max-width: 420px;
+  border-radius: 24px; padding: 40px 36px; max-width: 420px;
   box-shadow: 0 32px 96px rgba(0,0,0,.55), 0 8px 32px rgba(0,0,0,.35);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
-/* Logo visível no card (não no hero — hero está atrás) */
+/* Logo no card: glow_soft com filtro para legibilidade sobre fundo branco */
 #loginScreen.ls-theme-immersive .ls-form-logo {
   display: block;
-  height: 56px;
-  margin-bottom: 24px;
+  height: 62px;       /* 30% maior: 48 × 1.3 ≈ 62px */
+  width: auto;
+  object-fit: contain;
+  margin: 0 auto 24px; /* centralizado */
+  /* Inverte as cores para que o logo branco/glow apareça sobre fundo claro */
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(497%) hue-rotate(107deg) brightness(93%) contrast(93%);
 }
-/* Esconder logo do hero — o card já tem o logo */
-#loginScreen.ls-theme-immersive .ls-hero-logo { display: none; }
-/* Garantir que todo texto do card seja escuro (nunca branco sobre branco) */
-#loginScreen.ls-theme-immersive .ls-card,
-#loginScreen.ls-theme-immersive .ls-card-title,
-#loginScreen.ls-theme-immersive .ls-label {
-  color: #111827;
-}
+/* Logo do hero: oculto — o card já exibe o logo */
+#loginScreen.ls-theme-immersive .ls-hero-logo    { display: none; }
+/* Texto sempre escuro dentro do card */
+#loginScreen.ls-theme-immersive .ls-card         { color: #111827; }
+#loginScreen.ls-theme-immersive .ls-card-title   { color: #111827; }
+#loginScreen.ls-theme-immersive .ls-label        { color: #374151; }
 #loginScreen.ls-theme-immersive .ls-input {
-  background: #f9fafb;
-  color: #111827;
-  border-color: #e5e7eb;
+  background: #f9fafb; color: #111827; border-color: #e5e7eb;
 }
+#loginScreen.ls-theme-immersive .ls-card-sub     { color: #6b7280; }
+#loginScreen.ls-theme-immersive .ls-muted        { color: #6b7280; }
 
 /* ══════════════════════════════════════════════════════════════════
-   TEMA: minimal — formulário limpo, sem hero, fundo preto
-   REGRAS: logo centralizado, dobro do tamanho, card sutil.
+   TEMA: minimal — card limpo sobre fundo preto
+   Logo: logo_glow_soft.png, 30% maior, centralizado.
    ══════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-minimal .ls-hero { display: none; }
-#loginScreen.ls-theme-minimal .ls-layout {
-  background: #000;
-}
+#loginScreen.ls-theme-minimal .ls-hero           { display: none; }
+#loginScreen.ls-theme-minimal .ls-layout         { background: #000; }
 #loginScreen.ls-theme-minimal .ls-form-panel {
-  flex: 1;
-  background: transparent;
-  box-shadow: none;
-  padding: 48px 24px;
-  align-items: center;
+  flex: 1; background: transparent; box-shadow: none;
+  padding: 48px 24px; align-items: center;
 }
 #loginScreen.ls-theme-minimal .ls-card {
-  max-width: 420px;
-  background: #ffffff;
-  border-radius: 20px;
+  max-width: 420px; background: #ffffff; border-radius: 20px;
   padding: 40px 36px;
   box-shadow: 0 4px 32px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.2);
 }
-/* Logo centralizado e maior */
 #loginScreen.ls-theme-minimal .ls-form-logo {
   display: block;
-  height: 96px; /* dobro do padrão 48px */
+  height: 62px;       /* 30% maior: 48 × 1.3 ≈ 62px */
   width: auto;
   object-fit: contain;
-  margin: 0 auto 32px;
-  text-align: center;
+  margin: 0 auto 32px; /* centralizado */
+  /* Mesmo filtro do immersive para logo glow sobre fundo branco */
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(497%) hue-rotate(107deg) brightness(93%) contrast(93%);
 }
 #loginScreen.ls-theme-minimal .ls-btn-primary {
   background: linear-gradient(135deg, #1e5c42 0%, #2a6049 100%);
