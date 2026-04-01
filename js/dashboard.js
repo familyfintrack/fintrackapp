@@ -319,16 +319,16 @@ async function loadDashboard(){
         const _brlLine    = (a.currency !== 'BRL')
           ? `<div class="dash-fav-brl">${dashFmt(toBRL(a.balance,a.currency),'BRL')}</div>`
           : '';
-        // Confirmed-only balance line (hidden when equal to total balance)
-        const _confBal = a.confirmed_balance;
+        // Confirmed-only balance line — sempre renderizada para manter altura uniforme.
+        // visibility:hidden quando não há pendentes (reserva o espaço sem mostrar nada).
+        const _confBal    = a.confirmed_balance;
         const _hasPending = (_confBal !== undefined) && (Math.abs(_confBal - a.balance) > 0.001);
-        const _confIsNeg   = _confBal < 0;
-        const _confLine    = _hasPending
-          ? `<div class="dash-fav-card__confirmed ${_confIsNeg ? 'neg' : ''}">
-               <span class="dash-fav-card__confirmed-label">confirmado</span>
-               ${fmt(_confBal, a.currency)}
-             </div>`
-          : '';
+        const _confIsNeg  = _confBal < 0;
+        const _confLine   = `<div class="dash-fav-card__confirmed ${_confIsNeg ? 'neg' : ''}"
+          style="${_hasPending ? '' : 'visibility:hidden'}">
+            <span class="dash-fav-card__confirmed-label">confirmado</span>
+            ${_hasPending ? fmt(_confBal, a.currency) : '—'}
+          </div>`;
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
@@ -339,6 +339,10 @@ async function loadDashboard(){
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
           ${_confLine}
           ${_brlLine}
+          <button class="dash-fav-card__consolidate-btn" title="Ajustar / Consolidar saldo"
+            onclick="event.stopPropagation();openConsolidateModal('${a.id}')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </button>
           <div class="dash-fav-card__shine"></div>
         </div>`;
       }
@@ -1598,6 +1602,8 @@ async function _renderDashForecast() {
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
   const visibleAccounts = accounts.slice(0,6);
 
+  // ── Calcular KPI: saldo inicial e final totais ──────────────────────────
+
   const txByDate = dates.reduce((acc, date) => { acc[date] = []; return acc; }, {});
   allItems.forEach(item => {
     if (txByDate[item.date]) txByDate[item.date].push(item);
@@ -1646,39 +1652,76 @@ async function _renderDashForecast() {
       label: a.name,
       data: dailySeries,
       borderColor: color,
-      backgroundColor: color+'18',
-      fill: false,
-      tension: 0.35,
-      borderWidth: 2,
-      pointRadius: dates.map(date => accTxDates.has(date) ? 3.5 : 0),
-      pointHitRadius: dates.map(() => 12),
-      pointHoverRadius: dates.map(date => accTxDates.has(date) ? 6 : 3),
+      backgroundColor: color + '14',
+      fill: 'origin',
+      tension: 0.4,
+      borderWidth: 2.5,
+      pointRadius: dates.map(date => accTxDates.has(date) ? 3 : 0),
+      pointHitRadius: dates.map(() => 14),
+      pointHoverRadius: dates.map(date => accTxDates.has(date) ? 6 : 4),
       pointBackgroundColor: color,
       pointBorderColor: '#fff',
       pointBorderWidth: 1.5,
       spanGaps: false,
+      _baseBal: baseBal,
     };
   });
 
-  // Find global min/max for annotations
-  let minPt = null;
-  let maxPt = null;
+  // ── KPIs: saldo inicial total, projetado, min e max ────────────────────
+  const totalInicial = visibleAccounts.reduce((s,a) => s + (parseFloat(a.balance)||0), 0);
+  let globalMin = Infinity, globalMax = -Infinity, totalFinal = 0;
   datasets.forEach(ds => {
-    ds.data.forEach((value, idx) => {
-      if (!minPt || value < minPt.y) minPt = { x: dates[idx], y: value };
-      if (!maxPt || value > maxPt.y) maxPt = { x: dates[idx], y: value };
+    ds.data.forEach(v => {
+      if (v < globalMin) globalMin = v;
+      if (v > globalMax) globalMax = v;
     });
+    totalFinal += ds.data[ds.data.length - 1] ?? 0;
   });
+  if (globalMin === Infinity)  globalMin = 0;
+  if (globalMax === -Infinity) globalMax = 0;
 
+  const _fcp = id => document.getElementById(id);
+  const _fcpFmt = (v, color) => {
+    const el = _fcp(color);
+    if (!el) return;
+    el.textContent = fmt(v);
+    el.style.color = v < 0 ? 'var(--red,#dc2626)' : '';
+  };
+  _fcpFmt(totalInicial, 'fcp-kpi-inicial');
+  if (_fcp('fcp-kpi-final')) {
+    _fcp('fcp-kpi-final').textContent = fmt(totalFinal);
+    _fcp('fcp-kpi-final').style.color = totalFinal < 0 ? 'var(--red,#dc2626)'
+      : totalFinal > totalInicial ? 'var(--green,#16a34a)' : 'var(--accent)';
+  }
+  if (_fcp('fcp-kpi-min')) _fcp('fcp-kpi-min').textContent = fmt(globalMin);
+  if (_fcp('fcp-kpi-max')) _fcp('fcp-kpi-max').textContent = fmt(globalMax);
+
+  // ── Anotações: linha zero + ponto min + ponto máximo ──────────────────
+  let minPtDate = null, maxPtDate = null;
+  let minPtVal = Infinity, maxPtVal = -Infinity;
+  // Usar apenas o primeiro dataset para anotações de ponto (mais legível)
+  if (datasets.length > 0) {
+    datasets[0].data.forEach((v, i) => {
+      if (v < minPtVal) { minPtVal = v; minPtDate = dates[i]; }
+      if (v > maxPtVal) { maxPtVal = v; maxPtDate = dates[i]; }
+    });
+  }
   const annotations = {
     zeroLine: {
       type: 'line', yMin: 0, yMax: 0,
-      borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [4,3],
+      borderColor: 'rgba(220,38,38,.40)', borderWidth: 1.5, borderDash: [5,4],
     },
   };
-  if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minPt.y, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
-  if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxPt.y, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
+  if (minPtDate) annotations.minPt = {
+    type:'point', xValue:minPtDate, yValue:minPtVal,
+    radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2,
+  };
+  if (maxPtDate) annotations.maxPt = {
+    type:'point', xValue:maxPtDate, yValue:maxPtVal,
+    radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2,
+  };
 
+  // ── Gráfico ────────────────────────────────────────────────────────────
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
     data: { labels: dates, datasets },
@@ -1687,44 +1730,75 @@ async function _renderDashForecast() {
       maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
       plugins: {
-        legend: { position:'bottom', labels:{ boxWidth:10, font:{ size:10 } } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 10, boxHeight: 10,
+            borderRadius: 5,
+            usePointStyle: true, pointStyle: 'circle',
+            font: { size: 10, weight: '600' },
+            color: 'var(--text2)',
+            padding: 12,
+          },
+        },
         tooltip: {
+          backgroundColor: 'var(--surface)',
+          titleColor: 'var(--text)',
+          bodyColor: 'var(--text2)',
+          borderColor: 'var(--border)',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 10,
+          boxPadding: 4,
           callbacks: {
             title(items) {
               const label = items?.[0]?.label || '';
               return typeof fmtDate === 'function' ? fmtDate(label) : label;
             },
             label(ctx) {
-              return `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
+              const isNeg = ctx.parsed.y < 0;
+              return ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
             },
             afterBody(items) {
               const label = items?.[0]?.label || '';
               const groups = txByDateGrouped[label] || [];
-              if (!groups.length) return 'Sem movimentações neste dia';
-              return groups.map(group => `${group.account_name}: ${group.items.length} item(ns)`).join('\n');
+              if (!groups.length) return [];
+              return ['', ...groups.map(g => `  ${g.account_name}: ${g.items.length} lançamento(s)`)];
             },
-          }
+          },
         },
         annotation: { annotations },
       },
       scales: {
         x: {
-          type:'category',
-          ticks:{
+          type: 'category',
+          ticks: {
             autoSkip: true,
-            maxTicksLimit: 8,
-            color:'#8c8278',
-            font:{size:10},
+            maxTicksLimit: 7,
+            color: 'var(--muted)',
+            font: { size: 10 },
             callback(value, index) {
               const label = this.getLabelForValue ? this.getLabelForValue(value) : dates[index];
               if (!label) return '';
               const parts = label.split('-');
               return parts.length === 3 ? `${parts[2]}/${parts[1]}` : label;
-            }
+            },
           },
-          grid:{ color:'#e8e4de33' }
+          grid: { color: 'rgba(0,0,0,.04)' },
+          border: { display: false },
         },
-        y: { ticks:{ callback:v=>fmt(v), color:'#8c8278', font:{size:10} }, grid:{ color: ctx=>ctx.tick.value===0?'rgba(220,38,38,0.2)':'#e8e4de33' } },
+        y: {
+          ticks: {
+            callback: v => fmt(v),
+            color: 'var(--muted)',
+            font: { size: 10 },
+            maxTicksLimit: 5,
+          },
+          grid: {
+            color: ctx => ctx.tick.value === 0 ? 'rgba(220,38,38,.15)' : 'rgba(0,0,0,.04)',
+          },
+          border: { display: false },
+        },
       },
       onClick(evt) {
         const points = _dashForecastChart?.getElementsAtEventForMode(evt, 'index', { intersect:false }, false) || [];
@@ -1735,31 +1809,30 @@ async function _renderDashForecast() {
       },
       onHover(evt) {
         const points = _dashForecastChart?.getElementsAtEventForMode(evt, 'index', { intersect:false }, false) || [];
-        const idx = points?.[0]?.index;
-        const label = typeof idx === 'number' ? dates[idx] : '';
-        const hasDate = Boolean(label);
-        evt.native.target.style.cursor = hasDate ? 'pointer' : 'default';
+        const hasDate = Boolean(points?.length);
+        if (evt.native?.target) evt.native.target.style.cursor = hasDate ? 'pointer' : 'default';
       },
     },
   });
 
-  // Summary row: final balance per account
+  // ── Summary: chips por conta com saldo final ──────────────────────────
   const summary = document.getElementById('dashForecastSummary');
   if (summary) {
-    summary.innerHTML = visibleAccounts.map((a,idx)=>{
-      const ds = datasets[idx];
-      const finalPoint = ds?.data?.[ds.data.length - 1];
-      const finalY = typeof finalPoint === 'number'
-        ? finalPoint
-        : (finalPoint?.y ?? 0);
-      const isNeg = finalY < 0;
-      const color = a.color || COLORS[idx%COLORS.length];
-      return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
-        <span style="color:var(--text2)">${esc(a.name)}:</span>
-        <strong style="color:${isNeg?'var(--red)':'var(--accent)'}">${fmt(finalY,a.currency)}</strong>
-      </span>`;
-    }).join('');
+    if (!visibleAccounts.length) {
+      summary.innerHTML = '<span style="color:var(--muted);font-size:.78rem">Sem dados para o período.</span>';
+    } else {
+      summary.innerHTML = visibleAccounts.map((a, idx) => {
+        const ds = datasets[idx];
+        const finalY = ds?.data?.[ds.data.length - 1] ?? 0;
+        const isNeg  = finalY < 0;
+        const color  = a.color || COLORS[idx % COLORS.length];
+        return `<div class="fcp-acct-chip">
+          <span class="fcp-acct-dot" style="background:${color}"></span>
+          <span class="fcp-acct-name">${esc(a.name)}</span>
+          <span class="fcp-acct-val ${isNeg ? 'fcp-acct-val--neg' : 'fcp-acct-val--pos'}">${fmt(finalY, a.currency)}</span>
+        </div>`;
+      }).join('');
+    }
   }
 }
 
@@ -2009,17 +2082,25 @@ function _showForecastDrillModal(label, groups) {
       }).join('')
     : `<div style="padding:18px 10px;text-align:center;color:var(--muted)">Nenhuma transação ou programado encontrado para este dia.</div>`;
 
-  const subtitle = `${allTxs.length} item(ns) · giro ${fmt(totalAbs)} · líquido ${totalNet < 0 ? '−' : '+'}${fmt(Math.abs(totalNet))}`;
+  const subtitle = `${allTxs.length} lançamento${allTxs.length!==1?'s':''} · líquido ${totalNet < 0 ? '−' : '+'}${fmt(Math.abs(totalNet))}`;
   const title = typeof fmtDate === 'function' ? fmtDate(label) : label;
+  const netColor = totalNet < 0 ? 'var(--red,#dc2626)' : 'var(--green,#16a34a)';
   const content = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
       <div>
-        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(title)}</div>
-        <div style="font-size:.72rem;color:var(--muted)">${subtitle}</div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--text);letter-spacing:-.01em">${esc(title)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px;flex-wrap:wrap">
+          <span style="font-size:.72rem;color:var(--muted)">${allTxs.length} lançamento${allTxs.length!==1?'s':''}</span>
+          <span style="font-size:.72rem;font-weight:700;color:${netColor}">
+            ${totalNet < 0 ? '−' : '+'}${fmt(Math.abs(totalNet))}
+          </span>
+          ${totalAbs > Math.abs(totalNet) ? `<span style="font-size:.68rem;color:var(--muted)">giro ${fmt(totalAbs)}</span>` : ''}
+        </div>
       </div>
       <button onclick="closeModal('forecastDrillModal')"
-        style="background:none;border:1px solid var(--border);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;color:var(--muted)">
-        Fechar
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;cursor:pointer;font-size:.72rem;font-weight:600;color:var(--text2);white-space:nowrap;flex-shrink:0;transition:background .15s"
+        onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--surface2)'">
+        Fechar ✕
       </button>
     </div>
     <div style="display:flex;flex-direction:column;gap:0;max-height:60dvh;overflow-y:auto">${rows}</div>`;

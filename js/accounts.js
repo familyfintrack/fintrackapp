@@ -235,24 +235,76 @@ function renderAccountsSummary(){
   el.innerHTML=`<span class="summary-label">${t('acct.total')}</span><span class="summary-value ${total<0?'text-red':'text-accent'}">${fmt(total)}</span>${pos?`<span class="summary-sep">·</span><span class="summary-pos">+${fmt(pos)}</span>`:''}${neg?`<span class="summary-sep">·</span><span class="summary-neg">${fmt(neg)}</span>`:''}`;
 }
 
-function accountCardHTML(a){
-  const favStar = `<span
+function accountCardHTML(a) {
+  const isNeg   = a.balance < 0;
+  const color   = a.color || 'var(--accent)';
+  const typeLabel = accountTypeLabel(a.type);
+
+  // Badge de tipo com ícone
+  const typeBadge = {
+    corrente:        { icon: '🏦', label: 'Corrente' },
+    poupanca:        { icon: '🐷', label: 'Poupança' },
+    cartao_credito:  { icon: '💳', label: 'Cartão' },
+    investimento:    { icon: '📈', label: 'Investimento' },
+    dinheiro:        { icon: '💵', label: 'Dinheiro' },
+    outros:          { icon: '📁', label: 'Outros' },
+  }[a.type] || { icon: '💰', label: a.type };
+
+  // Linha de vencimento para cartão
+  const dueLine = (a.type === 'cartao_credito' && a.due_day)
+    ? `<div class="acc-card-due">Vence dia <strong>${a.due_day}</strong></div>` : '';
+
+  // Linha de moeda para contas estrangeiras
+  const currLine = a.currency !== 'BRL'
+    ? `<div class="acc-card-currency">${a.currency}</div>` : '';
+
+  // Estrela de favorito
+  const favBtn = `<button class="acc-card-fav ${a.is_favorite ? 'active' : ''}"
     onclick="event.stopPropagation();toggleAccountFavorite('${a.id}',${!!a.is_favorite})"
-    title="${a.is_favorite?'Remover dos favoritos':'Adicionar aos favoritos'}"
-    style="position:absolute;top:6px;left:8px;font-size:.9rem;cursor:pointer;transition:transform .15s;z-index:2;user-select:none"
-    onmouseover="this.style.transform='scale(1.25)'" onmouseout="this.style.transform=''"
-    id="favStar-${a.id}">${a.is_favorite ? '⭐' : '<span style="opacity:.3;font-size:.8rem">☆</span>'}</span>`;
-  const dueLine = (a.type==='cartao_credito' && a.due_day)
-    ? `<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Vence dia ${a.due_day}</div>` : '';
-  return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
-    ${favStar}
-    <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
-    <div class="account-actions"><button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button><button class="btn-icon" onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button><button class="btn-icon" onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button></div>
-    <div class="account-icon" style="font-size:1.6rem;margin-bottom:8px">${renderIconEl(a.icon,a.color,36)}</div>
-    <div class="account-name">${esc(a.name)}</div>
-    <div class="account-type">${accountTypeLabel(a.type)}</div>
-    <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
-    <div class="account-currency">${a.currency}</div>
+    title="${a.is_favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
+    id="favStar-${a.id}">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="${a.is_favorite ? 'currentColor' : 'none'}"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  </button>`;
+
+  return `<div class="account-card acc-card-v2" onclick="goToAccountTransactions('${a.id}')" data-type="${a.type}">
+    <!-- Faixa de cor lateral -->
+    <div class="acc-card-bar" style="background:${color}"></div>
+
+    <!-- Topo: ícone + estrela + ações -->
+    <div class="acc-card-top">
+      <div class="acc-card-icon-wrap" style="background:color-mix(in srgb,${color} 14%,transparent)">
+        ${renderIconEl(a.icon, a.color, 22)}
+      </div>
+      ${favBtn}
+      <div class="acc-card-actions">
+        <button class="acc-action-btn" title="Consolidar saldo"
+          onclick="event.stopPropagation();openConsolidateModal('${a.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </button>
+        <button class="acc-action-btn" title="Editar"
+          onclick="event.stopPropagation();openAccountModal('${a.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="acc-action-btn acc-action-btn--danger" title="Excluir"
+          onclick="event.stopPropagation();deleteAccount('${a.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Corpo: nome + tipo -->
+    <div class="acc-card-name">${esc(a.name)}</div>
+    <div class="acc-card-type-badge">
+      <span>${typeBadge.icon}</span>
+      <span>${typeBadge.label}</span>
+    </div>
+
+    <!-- Saldo -->
+    <div class="acc-card-balance ${isNeg ? 'neg' : ''}">${fmt(a.balance, a.currency)}</div>
+    ${currLine}
     ${dueLine}
   </div>`;
 }
