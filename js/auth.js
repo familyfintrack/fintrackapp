@@ -5259,39 +5259,70 @@ async function mfmInvite() {
   _mfmMsg('', '');
 
   try {
-    // Check if user already exists
-    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
+    // ── Verificar se usuário já existe ────────────────────────────────────
+    const { data: existing } = await sb.from('app_users')
+      .select('id,name,approved,active').eq('email', email).maybeSingle();
 
     if (existing) {
-      // Already registered — add directly to family
+      // Já cadastrado — adicionar diretamente à família
       const { error } = await sb.from('family_members').upsert(
         { user_id: existing.id, family_id: famId, role },
         { onConflict: 'user_id,family_id' }
       );
       if (error) throw new Error(error.message);
-      _mfmMsg(`✓ ${email} já estava cadastrado e foi adicionado à família.`, 'success');
-    } else {
-      // New user — create pending record
-      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
-        email,
-        name:            email.split('@')[0],
-        role:            'user',
-        approved:        false,
-        active:          false,
-        family_id:       famId,
-        must_change_pwd: true,
-      }).select().single();
-      if (insErr) throw new Error(insErr.message);
-
-      try { await sb.from('family_members').insert({ user_id: newUser.id, family_id: famId, role }); } catch (_) {}
-      await _sendInviteEmail(email, fam.name, currentUser.name || currentUser.email);
-      _mfmMsg(`✓ Convite enviado para ${email}. O acesso será liberado após aprovação.`, 'success');
+      await sb.from('app_users').update({ family_id: famId }).eq('id', existing.id);
+      _mfmMsg(`✓ ${existing.name || email} já estava cadastrado e foi adicionado à família.`, 'success');
+      await _mfmRenderMembros(famId);
+      return;
     }
 
+    // ── Usuário novo: criar token de convite ──────────────────────────────
+    // NÃO fazer INSERT direto em app_users — password_hash é NOT NULL
+    // Usar tabela family_invites com token temporário
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => b.toString(16).padStart(2,'0')).join('');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const { error: invErr } = await sb.from('family_invites').insert({
+      token,
+      email,
+      family_id:  famId,
+      role,
+      invited_by: currentUser?.app_user_id || currentUser?.id || null,
+      expires_at: expiresAt.toISOString(),
+      used:       false,
+    });
+
+    if (invErr) {
+      // Tabela não existe ainda — mostrar SQL de criação
+      if (invErr.message?.includes('does not exist') || invErr.code === '42P01') {
+        if (typeof _showInviteSetupRequired === 'function') {
+          _showInviteSetupRequired();
+        } else {
+          _mfmMsg('Tabela family_invites não existe. Execute o SQL de configuração no Supabase.', 'error');
+        }
+        return;
+      }
+      throw new Error(invErr.message);
+    }
+
+    // Construir URL de convite
+    const appUrl = typeof getAppBaseUrl === 'function'
+      ? getAppBaseUrl()
+      : (window.location.origin + window.location.pathname);
+    const inviteUrl = `${appUrl}?invite=${token}`;
+
+    // Enviar e-mail com o link
+    await _sendInviteEmail(email, fam.name, currentUser?.name || currentUser?.email, inviteUrl);
+
+    _mfmMsg(`✅ Convite enviado para ${email}. Link válido por 7 dias.`, 'success');
     if (emailEl) emailEl.value = '';
-    await _mfmRenderMembros(_mfmActiveFamilyId);
+    await _mfmRenderMembros(famId);
+
   } catch(e) {
-    _mfmMsg('Erro: ' + e.message, 'error');
+    _mfmMsg('Erro: ' + (e.message || e), 'error');
+    console.error('[mfmInvite]', e);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
   }

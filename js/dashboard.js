@@ -1583,9 +1583,16 @@ async function _renderDashForecast() {
     });
 
   const accountIds = [...new Set(allItems.map(t=>t.account_id))].filter(Boolean);
+
+  // Quando sem picker selecionado:
+  //   - Prioridade 1: contas que têm tx no período (accountIds)
+  //   - Fallback: todas as contas ativas (garante KPIs mesmo sem tx nos 90 dias)
+  const allActiveAccounts = (state.accounts||[]).filter(a => a.active !== false);
   const accounts = accIds.length
     ? (state.accounts||[]).filter(a=>accIds.includes(a.id))
-    : (state.accounts||[]).filter(a=>accountIds.includes(a.id));
+    : accountIds.length
+      ? (state.accounts||[]).filter(a=>accountIds.includes(a.id))
+      : allActiveAccounts;
 
   if (!accounts.length) {
     const summary = document.getElementById('dashForecastSummary');
@@ -1668,6 +1675,7 @@ async function _renderDashForecast() {
   });
 
   // ── KPIs: saldo inicial total, projetado, min e max ────────────────────
+  // totalInicial = saldo atual real das contas visíveis (não filtradas por período)
   const totalInicial = visibleAccounts.reduce((s,a) => s + (parseFloat(a.balance)||0), 0);
   let globalMin = Infinity, globalMax = -Infinity, totalFinal = 0;
   datasets.forEach(ds => {
