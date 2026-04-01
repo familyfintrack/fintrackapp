@@ -1412,7 +1412,9 @@ async function _renderDashForecast() {
               categories: sc.categories || null,
               payees: sc.payees || null,
               accounts: accMeta || null,
-              isScheduled: true
+              isScheduled: true,
+              scheduled_id: sc.id,
+              scheduled_type: sc.type || ''
             });
           }
         }
@@ -1427,14 +1429,27 @@ async function _renderDashForecast() {
             categories: sc.categories || null,
             payees: null,
             accounts: accMeta || null,
-            isScheduled: true
+            isScheduled: true,
+            scheduled_id: sc.id,
+            scheduled_type: sc.type || ''
           });
         }
       });
     });
   }
 
-  const allItems = [...(txData||[]), ...scheduledItems].sort((a,b)=>a.date.localeCompare(b.date));
+  const allItems = [...(txData||[]), ...scheduledItems]
+    .map(item => ({
+      ...item,
+      accounts: item.accounts || (state.accounts || []).find(a => a.id === item.account_id) || null,
+    }))
+    .sort((a,b)=> {
+      const dateCmp = String(a.date||'').localeCompare(String(b.date||''));
+      if (dateCmp !== 0) return dateCmp;
+      const accCmp = String(a.account_id||'').localeCompare(String(b.account_id||''));
+      if (accCmp !== 0) return accCmp;
+      return (parseFloat(a.amount)||0) - (parseFloat(b.amount)||0);
+    });
 
   const accountIds = [...new Set(allItems.map(t=>t.account_id))].filter(Boolean);
   const accounts = accIds.length
@@ -1447,54 +1462,86 @@ async function _renderDashForecast() {
     return;
   }
 
-  // Build daily dates (sampled weekly for display clarity)
+  // Build daily dates for the full 90-day horizon
   const dates = [];
   let cur = new Date(fromStr+'T12:00');
   const end = new Date(toStr+'T12:00');
   while (cur <= end) { dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
-  const step = 7; // weekly samples for 90d
-  const sampled = dates.filter((_,i)=>i%step===0);
-  if (!sampled.includes(toStr)) sampled.push(toStr);
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
+  const visibleAccounts = accounts.slice(0,6);
 
-  // Build set of dates with transactions per account (for point markers)
-  const datesWithTxByAcc = {};
-  accounts.forEach(a => {
-    datesWithTxByAcc[a.id] = new Set(allItems.filter(t => t.account_id===a.id).map(t => t.date));
+  const txByDate = dates.reduce((acc, date) => { acc[date] = []; return acc; }, {});
+  allItems.forEach(item => {
+    if (txByDate[item.date]) txByDate[item.date].push(item);
   });
 
-  const datasets = accounts.slice(0,6).map((a,idx)=>{
+  const txByDateGrouped = Object.keys(txByDate).reduce((acc, date) => {
+    const groupedMap = new Map();
+    (txByDate[date] || []).forEach(item => {
+      const accKey = item.account_id || '__no_account__';
+      if (!groupedMap.has(accKey)) {
+        groupedMap.set(accKey, {
+          account_id: item.account_id || '',
+          account_name: item.accounts?.name || 'Sem conta',
+          account_color: item.accounts?.color || 'var(--border)',
+          account_currency: item.accounts?.currency || item.currency || 'BRL',
+          items: [],
+        });
+      }
+      groupedMap.get(accKey).items.push(item);
+    });
+    acc[date] = Array.from(groupedMap.values())
+      .map(group => ({
+        ...group,
+        total: group.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0),
+      }))
+      .sort((a,b) => a.account_name.localeCompare(b.account_name, 'pt-BR'));
+    return acc;
+  }, {});
+
+  const datasets = visibleAccounts.map((a,idx)=>{
     const txAcc = allItems.filter(t=>t.account_id===a.id);
+    const txAccByDate = txAcc.reduce((acc, item) => {
+      acc[item.date] = (acc[item.date] || 0) + (parseFloat(item.amount) || 0);
+      return acc;
+    }, {});
     const realSum = txAcc.filter(t=>!t.isScheduled).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
     const baseBal = (parseFloat(a.balance)||0) - realSum;
     const color = a.color || COLORS[idx%COLORS.length];
-    const accTxDates = datesWithTxByAcc[a.id];
+    const accTxDates = new Set(Object.keys(txAccByDate));
+    let runningBalance = baseBal;
+    const dailySeries = dates.map(date => {
+      runningBalance += txAccByDate[date] || 0;
+      return +runningBalance.toFixed(2);
+    });
     return {
       label: a.name,
-      data: sampled.map(d=>({
-        x: d,
-        y: +(baseBal + txAcc.filter(t=>t.date<=d).reduce((s,t)=>s+(parseFloat(t.amount)||0),0)).toFixed(2)
-      })),
+      data: dailySeries,
       borderColor: color,
       backgroundColor: color+'18',
       fill: false,
       tension: 0.35,
       borderWidth: 2,
-      pointRadius: sampled.map(d => accTxDates.has(d) ? 4 : 0),
-      pointHoverRadius: sampled.map(d => accTxDates.has(d) ? 7 : 3),
+      pointRadius: dates.map(date => accTxDates.has(date) ? 3.5 : 0),
+      pointHitRadius: dates.map(() => 12),
+      pointHoverRadius: dates.map(date => accTxDates.has(date) ? 6 : 3),
       pointBackgroundColor: color,
       pointBorderColor: '#fff',
       pointBorderWidth: 1.5,
+      spanGaps: false,
     };
   });
 
   // Find global min/max for annotations
-  const allVals = datasets.flatMap(ds=>ds.data.map(p=>p.y));
-  const minVal = allVals.length ? Math.min(...allVals) : 0;
-  const maxVal = allVals.length ? Math.max(...allVals) : 0;
-  const minPt  = datasets[0]?.data.find(p=>p.y===minVal);
-  const maxPt  = datasets[0]?.data.find(p=>p.y===maxVal);
+  let minPt = null;
+  let maxPt = null;
+  datasets.forEach(ds => {
+    ds.data.forEach((value, idx) => {
+      if (!minPt || value < minPt.y) minPt = { x: dates[idx], y: value };
+      if (!maxPt || value > maxPt.y) maxPt = { x: dates[idx], y: value };
+    });
+  });
 
   const annotations = {
     zeroLine: {
@@ -1502,47 +1549,69 @@ async function _renderDashForecast() {
       borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [4,3],
     },
   };
-  if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minVal, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
-  if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxVal, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
-
-  // Build tx-by-label map for drill-down using the actual dashboard dataset
-  const _fcLabels = datasets[0]?.data?.map(d => d.x) || [];
-  const _fcTxByLabel = _fcLabels.reduce((acc, label) => {
-    acc[label] = allItems
-      .filter(item => item.date === label)
-      .map(item => ({
-        ...item,
-        accounts: item.accounts || (state.accounts || []).find(a => a.id === item.account_id) || null,
-      }));
-    return acc;
-  }, {});
+  if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minPt.y, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
+  if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxPt.y, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
 
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
-    data: { datasets },
+    data: { labels: dates, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
       plugins: {
         legend: { position:'bottom', labels:{ boxWidth:10, font:{ size:10 } } },
-        tooltip: { callbacks: { label: ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+        tooltip: {
+          callbacks: {
+            title(items) {
+              const label = items?.[0]?.label || '';
+              return typeof fmtDate === 'function' ? fmtDate(label) : label;
+            },
+            label(ctx) {
+              return `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
+            },
+            afterBody(items) {
+              const label = items?.[0]?.label || '';
+              const groups = txByDateGrouped[label] || [];
+              if (!groups.length) return 'Sem movimentações neste dia';
+              return groups.map(group => `${group.account_name}: ${group.items.length} item(ns)`).join('\n');
+            },
+          }
+        },
         annotation: { annotations },
       },
       scales: {
-        x: { type:'category', ticks:{ maxTicksLimit:8, color:'#8c8278', font:{size:10} }, grid:{ color:'#e8e4de33' } },
+        x: {
+          type:'category',
+          ticks:{
+            autoSkip: true,
+            maxTicksLimit: 8,
+            color:'#8c8278',
+            font:{size:10},
+            callback(value, index) {
+              const label = this.getLabelForValue ? this.getLabelForValue(value) : dates[index];
+              if (!label) return '';
+              const parts = label.split('-');
+              return parts.length === 3 ? `${parts[2]}/${parts[1]}` : label;
+            }
+          },
+          grid:{ color:'#e8e4de33' }
+        },
         y: { ticks:{ callback:v=>fmt(v), color:'#8c8278', font:{size:10} }, grid:{ color: ctx=>ctx.tick.value===0?'rgba(220,38,38,0.2)':'#e8e4de33' } },
       },
-      onClick(evt, elements) {
-        if (!elements.length) return;
-        const idx   = elements[0].index;
-        const label = _fcLabels[idx] || '';
-        const txs   = _fcTxByLabel[label] || [];
-        if (label) _dashForecastDrill(label, txs);
+      onClick(evt) {
+        const points = _dashForecastChart?.getElementsAtEventForMode(evt, 'index', { intersect:false }, false) || [];
+        if (!points.length) return;
+        const idx = points[0].index;
+        const label = dates[idx] || '';
+        if (label) _dashForecastDrill(label, txByDateGrouped[label] || []);
       },
-      onHover(evt, elements) {
-        const hasTx = elements.some(el => (_fcTxByLabel[_fcLabels[el.index]] || []).length > 0);
-        evt.native.target.style.cursor = (hasTx || elements.length) ? 'pointer' : 'default';
+      onHover(evt) {
+        const points = _dashForecastChart?.getElementsAtEventForMode(evt, 'index', { intersect:false }, false) || [];
+        const idx = points?.[0]?.index;
+        const label = typeof idx === 'number' ? dates[idx] : '';
+        const hasDate = Boolean(label);
+        evt.native.target.style.cursor = hasDate ? 'pointer' : 'default';
       },
     },
   });
@@ -1550,8 +1619,7 @@ async function _renderDashForecast() {
   // Summary row: final balance per account
   const summary = document.getElementById('dashForecastSummary');
   if (summary) {
-    const today = new Date().toISOString().slice(0,10);
-    summary.innerHTML = accounts.slice(0,6).map((a,idx)=>{
+    summary.innerHTML = visibleAccounts.map((a,idx)=>{
       const ds = datasets[idx];
       const finalY = ds?.data[ds.data.length-1]?.y ?? 0;
       const isNeg = finalY < 0;
@@ -1749,47 +1817,90 @@ function attachForecastNavigation(chartInstance, labelsArr, txByLabel) {
   chartInstance.update();
 }
 
-function _dashForecastDrill(label, txs) {
-  // Use modal popup instead of inline panel
-  _showForecastDrillModal(label, txs);
+function _dashForecastOpenItem(kind, id) {
+  closeModal('forecastDrillModal');
+  if (kind === 'scheduled') {
+    if (typeof openScheduledModal === 'function') openScheduledModal(id || '');
+    return;
+  }
+  if (typeof editTransaction === 'function') editTransaction(id || '');
+}
+window._dashForecastOpenItem = _dashForecastOpenItem;
+
+function _dashForecastDrill(label, groups) {
+  _showForecastDrillModal(label, groups);
 }
 
-function _showForecastDrillModal(label, txs) {
-  const total = txs.reduce((s,t) => s + Math.abs(Number(t.amount)||0), 0);
+function _showForecastDrillModal(label, groups) {
+  const normalizedGroups = Array.isArray(groups) ? groups : [];
+  const allTxs = normalizedGroups.flatMap(group => Array.isArray(group.items) ? group.items : []);
+  const totalAbs = allTxs.reduce((sum, item) => sum + Math.abs(Number(item.amount) || 0), 0);
+  const totalNet = allTxs.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const rows = normalizedGroups.length
+    ? normalizedGroups.map(group => {
+        const accountTone = group.account_color || 'var(--border)';
+        const accountCurrency = group.account_currency || 'BRL';
+        const itemsHtml = (group.items || []).map(item => {
+          const isNeg = Number(item.amount) < 0;
+          const catColor = item.categories?.color || (isNeg ? 'var(--red)' : 'var(--green)');
+          const meta = [
+            item.isScheduled ? 'Programado' : 'Lançado',
+            item.categories?.name ? esc(item.categories.name) : '',
+            item.payees?.name ? esc(item.payees.name) : ''
+          ].filter(Boolean).join(' · ');
+          const openKind = item.isScheduled ? 'scheduled' : 'transaction';
+          const openId = item.isScheduled ? (item.scheduled_id || '') : (item.id || '');
+          const badge = item.isScheduled
+            ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>'
+            : '';
+          return `<button type="button" onclick="_dashForecastOpenItem('${openKind}','${openId}')" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer">
+            <span style="width:8px;height:8px;border-radius:50%;background:${catColor};flex-shrink:0"></span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.description || '—')}${badge}</span>
+              <span style="display:block;font-size:.68rem;color:var(--muted);margin-top:2px">${meta || 'Sem detalhes adicionais'}</span>
+            </span>
+            <span style="font-size:.82rem;font-weight:700;color:${isNeg ? 'var(--red,#c0392b)' : 'var(--green,#2a7a4a)'};flex-shrink:0">${isNeg ? '−' : '+'}${fmt(Math.abs(Number(item.amount) || 0), item.currency || accountCurrency)}</span>
+          </button>`;
+        }).join('');
+
+        return `<div style="display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span style="width:9px;height:9px;border-radius:50%;background:${accountTone};flex-shrink:0"></span>
+              <div style="min-width:0">
+                <div style="font-size:.8rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(group.account_name || 'Sem conta')}</div>
+                <div style="font-size:.68rem;color:var(--muted)">${group.items.length} item(ns)</div>
+              </div>
+            </div>
+            <div style="font-size:.8rem;font-weight:700;color:${group.total < 0 ? 'var(--red,#c0392b)' : 'var(--green,#2a7a4a)'};flex-shrink:0">${group.total < 0 ? '−' : '+'}${fmt(Math.abs(group.total || 0), accountCurrency)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">${itemsHtml}</div>
+        </div>`;
+      }).join('')
+    : `<div style="padding:18px 10px;text-align:center;color:var(--muted)">Nenhuma transação ou programado encontrado para este dia.</div>`;
+
+  const subtitle = `${allTxs.length} item(ns) · giro ${fmt(totalAbs)} · líquido ${totalNet < 0 ? '−' : '+'}${fmt(Math.abs(totalNet))}`;
+  const title = typeof fmtDate === 'function' ? fmtDate(label) : label;
   const content = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div>
-        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(label)}</div>
-        <div style="font-size:.72rem;color:var(--muted)">${txs.length} transação${txs.length!==1?'ões':''} · ${fmt(total)}</div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(title)}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${subtitle}</div>
       </div>
       <button onclick="closeModal('forecastDrillModal')"
         style="background:none;border:1px solid var(--border);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;color:var(--muted)">
         Fechar
       </button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
-      ${txs.length ? txs.map(t => {
-        const isNeg = Number(t.amount) < 0;
-        const meta = [t.date || '', t.accounts?.name ? esc(t.accounts.name) : '', t.isScheduled ? 'Programado' : 'Lançado'].filter(Boolean).join(' · ');
-        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${t.isScheduled ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>' : ''}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${meta}</div>
-          </div>
-          <span style="font-size:.82rem;font-weight:700;color:${isNeg?'var(--red,#c0392b)':'var(--green,#2a7a4a)'}">
-            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0), t.currency || t.accounts?.currency || 'BRL')}
-          </span>
-        </div>`;
-      }).join('') : `<div style="padding:18px 10px;text-align:center;color:var(--muted)">Nenhuma transação ou programado encontrado para este dia.</div>`}
-    </div>`;
-  // Inject into modal
+    <div style="display:flex;flex-direction:column;gap:0;max-height:60dvh;overflow-y:auto">${rows}</div>`;
+
   let modal = document.getElementById('forecastDrillModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'forecastDrillModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('forecastDrillModal'); };
-    modal.innerHTML = '<div class="modal" style="max-width:520px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:16px 18px"></div></div>';
+    modal.innerHTML = '<div class="modal" style="max-width:560px;max-height:82dvh;overflow:hidden;padding:0;display:flex;flex-direction:column"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:16px 18px;overflow-y:auto"></div></div>';
     document.body.appendChild(modal);
   }
   document.getElementById('forecastDrillModalBody').innerHTML = content;
