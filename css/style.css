@@ -7695,9 +7695,9 @@ tr.tx-row-new td:first-child {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 44px;
   min-width: 44px;
-  padding: 5px 0 4px;
+  width: auto;            /* deixa crescer quando necessário */
+  padding: 5px 8px 4px;
   border-radius: 11px;
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   border: 1.5px solid color-mix(in srgb, var(--accent) 22%, var(--border));
@@ -7708,13 +7708,25 @@ tr.tx-row-new td:first-child {
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 40%, transparent);
+  padding: 6px 12px;      /* mais padding horizontal para "Hoje" */
 }
-.sup-day-pill--today span { color: #fff !important; }
+.sup-day-pill--today span {
+  color: #fff !important;
+  font-size: .78rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
 .sup-day-pill--tmrw {
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  padding: 6px 10px;      /* espaço para "Amanhã" sem estourar */
 }
-.sup-day-pill--tmrw span { color: var(--accent) !important; }
+.sup-day-pill--tmrw span {
+  color: var(--accent) !important;
+  font-size: .74rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
 
 .sup-day-num {
   font-size: 1.05rem;
@@ -23048,4 +23060,115 @@ tr.payee-row[onclick] { cursor: pointer; }
 #txCtxPrincipal .form-group input[type="date"] {
   border-color: var(--accent) !important;
   border-width: 1.5px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PROGRAMADOS — Próximos 10 dias: fixes de overflow + contorno (2026)
+═══════════════════════════════════════════════════════════════════ */
+
+/* Label "Hoje" / "Amanhã" com subtítulo de data */
+.sup-group-dow-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.sup-group-dow--special {
+  font-size: .92rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.2;
+}
+.sup-group-date-sub {
+  font-size: .68rem;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Pill "Hoje" destacado com ícone de pulso */
+.sup-day-pill--today {
+  animation: supTodayPulse 2.5s ease-in-out infinite;
+}
+@keyframes supTodayPulse {
+  0%, 100% { box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 40%, transparent); }
+  50%       { box-shadow: 0 2px 18px color-mix(in srgb, var(--accent) 60%, transparent); }
+}
+
+/* Garantir que pill nunca extrapole o grupo-hdr */
+.sup-group-left {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.sup-group-hdr {
+  flex-wrap: nowrap; /* evita quebra de linha */
+}
+
+/* Painel flutuante — contorno e sombra premium */
+#scUpcomingPanel {
+  border: 1.5px solid color-mix(in srgb, var(--accent) 32%, var(--border)) !important;
+  border-radius: 16px !important;
+  box-shadow:
+    0 4px 6px -1px rgba(0,0,0,.06),
+    0 8px 24px -4px color-mix(in srgb, var(--accent) 14%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.6) !important;
+  overflow: hidden !important;
+}
+
+/* Header do painel — gradiente sutil verde */
+#scUpcomingPanel .sc-panel__header {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 10%, var(--surface2)) 0%,
+    color-mix(in srgb, var(--accent)  4%, var(--surface2)) 100%
+  ) !important;
+  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 20%, var(--border)) !important;
+  padding: 12px 16px 10px !important;
+}
+
+/* Barra lateral esquerda colorida no header */
+#scUpcomingPanel .sc-panel__header::before {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+#scUpcomingPanel .sc-panel__header { position: relative; }
+
+/* Badge de total — mais destacado */
+#scUpcomingPanel .sc-panel__badge {
+  background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
+  color: var(--accent) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent) !important;
+  font-weight: 700 !important;
+  border-radius: 20px !important;
+  padding: 3px 10px !important;
+}
+
+/* Grupo "Hoje" — header mais destacado */
+.sup-group:has(.sup-item--today) .sup-group-hdr {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 12%, var(--surface2)) 0%,
+    color-mix(in srgb, var(--accent)  5%, var(--surface2)) 100%
+  );
+  border-left: 3px solid var(--accent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+}
+
+/* Mobile: pill "Amanhã" mais compacto */
+@media (max-width: 480px) {
+  .sup-day-pill--today,
+  .sup-day-pill--tmrw { padding: 5px 8px; }
+  .sup-day-pill--today span,
+  .sup-day-pill--tmrw span { font-size: .7rem !important; }
+  .sup-group-date-sub { display: none; } /* muito pouco espaço no mobile */
+  .sup-group-dow--special { font-size: .85rem; }
 }
