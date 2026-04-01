@@ -51,10 +51,19 @@
 <script>
 (function(){
   try {
-    var theme = localStorage.getItem('login_theme') || 'split';
-    // Marcador lido pelo CSS antes do DOMContentLoaded
+    // Default mobile-aware: mobile sem localStorage usa 'centered' (card flutuante,
+    // sem painel hero lateral que não faz sentido em 1 coluna).
+    // Desktop sem localStorage usa 'split' (layout clássico 50/50).
+    var ua = navigator.userAgent || '';
+    var isMobile = /android|iphone|ipad|ipod/i.test(ua) ||
+                   (/mac/i.test(navigator.platform || '') && navigator.maxTouchPoints > 1);
+    var mobileDefault = isMobile ? 'centered' : 'split';
+    var theme = localStorage.getItem('login_theme') || mobileDefault;
+    var validThemes = ['split','centered','asymmetric','immersive','minimal'];
+    if (validThemes.indexOf(theme) === -1) theme = mobileDefault;
+    // Marcador lido pelo CSS antes do DOMContentLoaded (anti-flash)
     document.documentElement.setAttribute('data-login-theme', theme);
-    // Também adiciona a classe assim que o DOM existir
+    // Adiciona a classe assim que o DOM existir
     document.addEventListener('DOMContentLoaded', function() {
       var ls = document.getElementById('loginScreen');
       if (!ls) return;
