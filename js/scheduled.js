@@ -139,12 +139,51 @@ async function _finalizeScheduledOccurrence(scId, scheduledDate, executionToken,
 
 async function processScheduledOccurrence(sc, opts = {}) {
   const scheduledDate = opts.scheduledDate;
-  const actualDate = opts.actualDate || scheduledDate;
-  const memo = opts.memo ?? sc.memo ?? null;
-  const amountInput = Number(opts.amount ?? sc.amount ?? 0);
-  const isScTransfer = sc.type === 'transfer' || sc.type === 'card_payment';
-  const finalAmount = opts.finalAmount ?? ((sc.type === 'expense' || isScTransfer) ? -Math.abs(amountInput) : Math.abs(amountInput));
-  const txStatus = (sc.auto_confirm ?? true) ? 'confirmed' : 'pending';
+  const actualDate    = opts.actualDate || scheduledDate;
+  const memo          = opts.memo ?? sc.memo ?? null;
+  const amountInput   = Number(opts.amount ?? sc.amount ?? 0);
+  const isScTransfer  = sc.type === 'transfer' || sc.type === 'card_payment';
+  const finalAmount   = opts.finalAmount ?? ((sc.type === 'expense' || isScTransfer) ? -Math.abs(amountInput) : Math.abs(amountInput));
+  const txStatus      = (sc.auto_confirm ?? true) ? 'confirmed' : 'pending';
+
+  // ── Resolução de moeda estrangeira ────────────────────────────────────────
+  // Se o programado está em moeda diferente de BRL, calcula brl_amount.
+  const scCurrency = (sc.currency || 'BRL').toUpperCase();
+  let brlAmount = null;
+  let usedFxRate = null;
+
+  if (scCurrency !== 'BRL') {
+    const fxMode = sc.fx_mode || 'fixed';
+    if (fxMode === 'fixed' && sc.fx_rate && Number(sc.fx_rate) > 0) {
+      // Taxa fixa cadastrada pelo usuário
+      usedFxRate = Number(sc.fx_rate);
+      brlAmount  = Math.abs(finalAmount) * usedFxRate;
+    } else if (fxMode === 'api') {
+      // Buscar taxa da API Frankfurter no momento do registro
+      try {
+        const dateKey   = actualDate || new Date().toISOString().slice(0,10);
+        const apiUrl    = `https://api.frankfurter.dev/v1/${dateKey}?base=${scCurrency}&to=BRL`;
+        const resp      = await fetch(apiUrl);
+        const json      = await resp.json();
+        const rate      = json?.rates?.BRL;
+        if (rate && Number(rate) > 0) {
+          usedFxRate = Number(rate);
+          brlAmount  = Math.abs(finalAmount) * usedFxRate;
+          console.info(`[scheduled-fx] ${scCurrency}→BRL @ ${usedFxRate} em ${dateKey} (API)`);
+        } else {
+          console.warn('[scheduled-fx] API não retornou taxa BRL:', json);
+        }
+      } catch (fxErr) {
+        console.warn('[scheduled-fx] Erro ao buscar taxa da API:', fxErr?.message || fxErr);
+        // Continua sem brl_amount — não bloqueia o registro
+      }
+    }
+    if (brlAmount !== null) {
+      // Preservar sinal
+      brlAmount = finalAmount < 0 ? -Math.abs(brlAmount) : Math.abs(brlAmount);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const reservation = await _reserveScheduledOccurrence(sc, scheduledDate, actualDate, finalAmount, memo);
   if (reservation.status === 'already_executed' || reservation.status === 'locked_by_other') {
@@ -160,7 +199,10 @@ async function processScheduledOccurrence(sc, opts = {}) {
     family_id: famId(),
     date: actualDate,
     description: sc.description,
-    amount: finalAmount,
+    amount:   finalAmount,
+    currency: scCurrency,
+    ...(brlAmount !== null ? { brl_amount: brlAmount } : {}),
+    ...(usedFxRate  !== null ? { currency_rate: usedFxRate } : {}),
     account_id: sc.account_id,
     payee_id: isScTransfer ? null : (sc.payee_id || null),
     category_id: sc.category_id || null,
@@ -1452,7 +1494,23 @@ function openRegisterOcc(scId, date) {
   document.getElementById('occDate').value = date;
   setAmtField('occAmount', sc.amount);
   document.getElementById('occMemo').value = '';
-  document.getElementById('registerOccDesc').textContent = `Registrar "${sc.description}" em ${fmtDate(date)} — isso criará uma transação real na conta ${sc.accounts?.name||''}.`;
+
+  const scCurrency = (sc.currency || 'BRL').toUpperCase();
+  let extraInfo = '';
+  if (scCurrency !== 'BRL') {
+    const fxMode = sc.fx_mode || 'fixed';
+    if (fxMode === 'fixed' && sc.fx_rate) {
+      const estimated = Math.abs(sc.amount) * Number(sc.fx_rate);
+      extraInfo = `
+💱 Câmbio: 1 ${scCurrency} = R$ ${Number(sc.fx_rate).toFixed(4)} (fixo) · BRL estimado: ${fmt(estimated)}`;
+    } else {
+      extraInfo = `
+📡 Taxa de câmbio ${scCurrency}→BRL será buscada automaticamente na API no momento do registro.`;
+    }
+  }
+
+  document.getElementById('registerOccDesc').textContent =
+    `Registrar "${sc.description}" em ${fmtDate(date)} — isso criará uma transação real na conta ${sc.accounts?.name||''}.${extraInfo}`;
   openModal('registerOccModal');
 }
 
