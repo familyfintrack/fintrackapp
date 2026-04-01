@@ -688,10 +688,10 @@
   /* ls-form-logo: visível no mobile — substituiu ls-mobile-logo */
   .ls-form-logo {
     display: block !important;
-    height: 220px !important;
+    height: 110px !important;
     width: auto !important;
     object-fit: contain !important;
-    margin: 0 auto 20px !important;
+    margin: 0 auto 16px !important;
     filter: drop-shadow(0 2px 16px rgba(93,219,160,.40)) !important;
   }
 
@@ -1140,12 +1140,12 @@ body.platform-windows .ls-input {
     padding-right: 14px !important;
   }
   .ls-card-title { font-size: 1.25rem; }
-  .ls-form-logo { height: 180px !important; margin-bottom: 14px !important; }
+  .ls-form-logo { height: 90px !important; margin-bottom: 10px !important; }
   #loginScreen.ls-theme-centered .ls-form-logo,
   #loginScreen.ls-theme-minimal .ls-form-logo,
   #loginScreen.ls-theme-immersive .ls-form-logo {
-    height: 220px !important;
-    margin-bottom: 16px !important;
+    height: 110px !important;
+    margin-bottom: 12px !important;
   }
   .ls-field-group { margin-bottom: 14px; }
   .ls-remember { margin-bottom: 16px; }
@@ -1208,10 +1208,10 @@ body.platform-windows .ls-input {
   /* Imagem do logo: tamanho generoso em todos os temas */
   #loginScreen .ls-form-logo {
     display: block !important;
-    height: 200px !important;
+    height: 100px !important;
     width: auto !important;
     object-fit: contain !important;
-    margin: 0 auto 24px !important;
+    margin: 0 auto 16px !important;
   }
 
   /* Centered/minimal/immersive: logo que estava display:none volta a aparecer */
@@ -1219,7 +1219,7 @@ body.platform-windows .ls-input {
   #loginScreen.ls-theme-minimal .ls-form-logo,
   #loginScreen.ls-theme-immersive .ls-form-logo {
     display: block !important;
-    height: 200px !important;
+    height: 100px !important;
   }
 }
 
@@ -1724,8 +1724,8 @@ body.platform-windows .ls-input {
 /* ── Extra-pequeno ≤390px (iPhone SE / mini) — tudo mais compacto ────────── */
 @media (max-width: 390px) {
   #loginScreen .ls-form-logo {
-    height: 160px !important;
-    margin-bottom: 18px !important;
+    height: 80px !important;
+    margin-bottom: 12px !important;
   }
   #loginScreen .ls-card-title { font-size: 1.2rem !important; }
   #loginScreen .ls-card-sub   { margin-bottom: 18px !important; }
