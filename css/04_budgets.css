@@ -580,74 +580,123 @@
 }
 #dashBudgetSnapshot .card-header { display: none; } /* header moved inside inner */
 
-/* ── Header ────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════
+   DASHBOARD BUDGET SNAPSHOT — Design v2 (2026)
+   Card premium com header escuro, KPIs no topo e grid de categoria cards
+   com indicadores visuais de progresso modernos.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Container do snapshot ────────────────────────────────────────── */
+#dashBudgetSnapshot {
+  border-radius: 16px !important;
+  overflow: hidden;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.06),
+    0 4px 16px rgba(0,0,0,.06) !important;
+}
+.dash-budget-snap-inner { display: flex; flex-direction: column; }
+
+/* ── Header escuro premium ─────────────────────────────────────────── */
 .dbs-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  padding: 16px 18px 12px;
-  gap: 10px;
+  padding: 16px 20px 14px;
+  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%);
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
 }
+/* Orb decorativo no header */
+.dbs-header::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(93,219,160,.22) 0%, transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+.dbs-header-left { display: flex; flex-direction: column; gap: 2px; position: relative; z-index: 1; }
 .dbs-title {
   font-size: .92rem;
-  font-weight: 700;
-  color: var(--text);
+  font-weight: 800;
+  color: #fff;
   line-height: 1.2;
+  letter-spacing: -.01em;
 }
 .dbs-subtitle {
   font-size: .72rem;
-  color: var(--muted);
-  margin-top: 3px;
+  color: rgba(255,255,255,.55);
+  margin-top: 2px;
 }
-.dbs-link { white-space: nowrap; flex-shrink: 0; }
+.dbs-link {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: .74rem !important;
+  color: rgba(93,219,160,.9) !important;
+  border-color: rgba(93,219,160,.35) !important;
+  background: rgba(93,219,160,.08) !important;
+  position: relative; z-index: 1;
+  border-radius: 20px !important;
+}
+.dbs-link:hover {
+  background: rgba(93,219,160,.18) !important;
+  color: #5ddb9e !important;
+}
 
-/* ── KPI summary strip ─────────────────────────────────── */
+/* ── KPI summary strip ─────────────────────────────────────────────── */
 .dbs-summary-strip {
   display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 10px 18px;
+  align-items: stretch;
   background: var(--surface2);
-  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
 .dbs-kpi {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  padding: 12px 16px;
+  position: relative;
+}
+.dbs-kpi + .dbs-kpi {
+  border-left: 1px solid var(--border);
 }
 .dbs-kpi-lbl {
-  font-size: .62rem;
+  font-size: .61rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: .07em;
   color: var(--muted);
+  white-space: nowrap;
 }
 .dbs-kpi-val {
-  font-size: .88rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   font-family: var(--font-serif);
   color: var(--text);
+  letter-spacing: -.02em;
+  line-height: 1.15;
 }
-.dbs-kpi-divider {
-  width: 1px;
-  height: 28px;
-  background: var(--border);
-  margin: 0 14px;
-  flex-shrink: 0;
-}
+/* Ocultar o divider antigo — substituído por border-left no kpi */
+.dbs-kpi-divider { display: none; }
 
-/* ── Global progress bar ───────────────────────────────── */
+/* ── Barra de progresso global ─────────────────────────────────────── */
 .dbs-global-bar-wrap {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 18px 8px;
+  padding: 10px 20px 12px;
+  background: var(--surface2);
+  border-bottom: 1.5px solid var(--border);
 }
 .dbs-global-bar-track {
   flex: 1;
-  height: 7px;
+  height: 8px;
   background: var(--bg2);
   border-radius: 99px;
   overflow: hidden;
@@ -655,39 +704,44 @@
 .dbs-global-bar-fill {
   height: 100%;
   border-radius: 99px;
-  transition: width .7s cubic-bezier(.4,0,.2,1);
-  min-width: 2px;
+  transition: width .8s cubic-bezier(.4,0,.2,1);
+  min-width: 4px;
+  box-shadow: 0 0 6px currentColor;
 }
 .dbs-global-bar-pct {
-  font-size: .72rem;
-  font-weight: 700;
-  min-width: 34px;
+  font-size: .76rem;
+  font-weight: 800;
+  min-width: 38px;
   text-align: right;
   font-family: var(--font-serif);
+  letter-spacing: -.01em;
 }
 
-/* ── Budget cards grid ─────────────────────────────────── */
+/* ── Budget cards grid ─────────────────────────────────────────────── */
 .dbs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border-top: 1px solid var(--border);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0;
+  background: var(--surface);
 }
-
+/* Bordas entre os cards via box-shadow */
 .dbs-card {
   background: var(--surface);
-  padding: 13px 14px 11px;
+  padding: 14px 16px 12px;
   cursor: pointer;
-  transition: background .13s;
+  transition: background .13s, transform .13s;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
   position: relative;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
-.dbs-card:hover { background: var(--surface2); }
-
-/* Status stripe on left edge */
+.dbs-card:hover {
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  transform: none;
+}
+/* Status stripe lateral */
 .dbs-card::before {
   content: '';
   position: absolute;
@@ -698,68 +752,91 @@
   opacity: 0;
   transition: opacity .15s;
 }
-.dbs-card:hover::before { opacity: .4; }
-.dbs-card--over::before { background: var(--red);   opacity: 1; }
-.dbs-card--near::before { background: var(--amber); opacity: 1; }
-.dbs-card--ok::before   { background: var(--accent); opacity: .5; }
+.dbs-card:hover::before      { opacity: .5; }
+.dbs-card--over::before      { background: var(--red);   opacity: 1; }
+.dbs-card--near::before      { background: var(--amber); opacity: 1; }
+.dbs-card--ok::before        { background: var(--accent); opacity: .6; }
 
-/* Top row: icon + name + badge */
+/* Fundo de alerta suave para excedidos */
+.dbs-card--over {
+  background: color-mix(in srgb, var(--red) 4%, var(--surface));
+}
+.dbs-card--near {
+  background: color-mix(in srgb, var(--amber) 3%, var(--surface));
+}
+
+/* Top row: ícone + info + badge */
 .dbs-card-top {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   min-width: 0;
 }
 .dbs-icon-wrap {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: .9rem;
+  font-size: .95rem;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 .dbs-card-info {
   flex: 1;
   min-width: 0;
 }
 .dbs-cat-name {
-  font-size: .8rem;
+  font-size: .82rem;
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .dbs-remaining {
-  font-size: .67rem;
+  font-size: .69rem;
   color: var(--muted);
-  margin-top: 1px;
+  margin-top: 2px;
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
 }
-.dbs-remaining--over { color: var(--red); font-weight: 600; }
+.dbs-remaining--over {
+  color: var(--red);
+  font-weight: 700;
+}
 
 /* Status badge */
 .dbs-badge {
-  font-size: .6rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: .59rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 20px;
   white-space: nowrap;
   flex-shrink: 0;
-  letter-spacing: .03em;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-top: 2px;
 }
-.dbs-badge--over { background: var(--red-lt);   color: var(--red);   }
-.dbs-badge--near { background: var(--amber-lt); color: var(--amber); }
+.dbs-badge--over {
+  background: var(--red-lt, #fef2f2);
+  color: var(--red, #dc2626);
+  border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
+}
+.dbs-badge--near {
+  background: var(--amber-lt, #fffbeb);
+  color: var(--amber, #b45309);
+  border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent);
+}
 
-/* Progress bar */
+/* Barra de progresso do card */
 .dbs-bar-track {
-  height: 5px;
+  height: 6px;
   background: var(--bg2);
   border-radius: 99px;
   overflow: hidden;
@@ -768,40 +845,46 @@
   height: 100%;
   border-radius: 99px;
   transition: width .6s cubic-bezier(.4,0,.2,1);
-  min-width: 2px;
+  min-width: 3px;
 }
 
-/* Bottom row: spent / limit / pct */
+/* Bottom row: gasto / limite / % */
 .dbs-card-bottom {
   display: flex;
   align-items: baseline;
-  gap: 3px;
+  gap: 4px;
 }
 .dbs-spent {
-  font-size: .78rem;
-  font-weight: 700;
+  font-size: .8rem;
+  font-weight: 800;
   font-family: var(--font-serif);
+  letter-spacing: -.01em;
 }
 .dbs-limit {
-  font-size: .72rem;
+  font-size: .7rem;
   color: var(--muted);
   flex: 1;
+  font-weight: 500;
 }
 .dbs-pct {
   font-size: .72rem;
-  font-weight: 700;
+  font-weight: 800;
   font-family: var(--font-serif);
+  letter-spacing: -.01em;
 }
 
-/* ── Mobile: 1 column, tighten grid ───────────────────── */
+/* ── Mobile: grid 2 col, ajustes de espaçamento ─────────── */
 @media (max-width: 600px) {
   .dbs-grid { grid-template-columns: 1fr 1fr; }
   .dbs-kpi-divider--hide-sm { display: none; }
   .dbs-kpi--hide-sm { display: none; }
-  .dbs-summary-strip { padding: 8px 14px; }
-  .dbs-header { padding: 13px 14px 10px; }
-  .dbs-global-bar-wrap { padding: 8px 14px 6px; }
+  .dbs-kpi { padding: 10px 12px; }
+  .dbs-kpi-val { font-size: .88rem; }
+  .dbs-summary-strip { overflow-x: auto; scrollbar-width: none; }
+  .dbs-header { padding: 13px 16px 11px; }
+  .dbs-global-bar-wrap { padding: 8px 16px 10px; }
   .dbs-card { padding: 10px 12px 9px; }
+  .dbs-icon-wrap { width: 28px; height: 28px; font-size: .82rem; }
 }
 @media (max-width: 380px) {
   .dbs-grid { grid-template-columns: 1fr; }
