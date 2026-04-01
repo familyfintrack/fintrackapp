@@ -459,6 +459,10 @@ async function tryAutoConnect(){
       await bootApp();
     } else {
       showLoginScreen();
+      // Verificar token de convite após mostrar a tela de login
+      if (typeof _checkInviteToken === 'function') {
+        _checkInviteToken().catch(e => console.warn('[invite-boot]', e.message));
+      }
     }
   } else {
     const setup=document.getElementById('setupScreen');
