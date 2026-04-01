@@ -780,10 +780,14 @@ async function loadBudgetHistory() {
 
   if (!catId) {
     container.innerHTML = '<div class="bgt-hist-placeholder">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>';
+    const eb = document.getElementById('budgetHistExportBar');
+    if (eb) eb.style.display = 'none';
     return;
   }
 
   container.innerHTML = '<div class="bgt-hist-placeholder">⏳ Carregando...</div>';
+  const exportBar = document.getElementById('budgetHistExportBar');
+  if (exportBar) exportBar.style.display = 'none';
 
   const now    = new Date();
   const months = [];
@@ -796,8 +800,10 @@ async function loadBudgetHistory() {
   const lastDay    = _lastDayOf(now.getFullYear(), now.getMonth() + 1);
   const lastDate   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
+  // Busca TODOS os orçamentos da categoria (sem filtrar por mês) para capturar o recorrente
   const [{ data: histBudgets }, { data: txAll }] = await Promise.all([
-    famQ(sb.from('budgets').select('month,amount')).eq('category_id', catId).in('month', months),
+    famQ(sb.from('budgets').select('month,amount,auto_reset,budget_type,created_at'))
+      .eq('category_id', catId),
     (async () => {
       const family = _categoryFamily(catId);
       return famQ(sb.from('transactions')
@@ -807,8 +813,17 @@ async function loadBudgetHistory() {
     })(),
   ]);
 
+  // Mapa mês → valor específico
   const budgetMap = {};
-  (histBudgets || []).forEach(b => { budgetMap[b.month] = b.amount; });
+  (histBudgets || []).forEach(b => { if (b.month) budgetMap[b.month] = b.amount; });
+
+  // Orçamento recorrente: auto_reset=true mais antigo → valor base para fallback
+  const recurring    = (histBudgets || [])
+    .filter(b => b.auto_reset !== false)
+    .sort((a, b_) => (a.month || a.created_at || '') < (b_.month || b_.created_at || '') ? -1 : 1);
+  const recurBase    = recurring[0] || null;
+  const recurAmount  = recurBase?.amount  || 0;
+  const recurStart   = recurBase?.month   || null;
 
   let totalSpent = 0, totalBudget = 0, overCount = 0;
 
@@ -819,7 +834,12 @@ async function loadBudgetHistory() {
     const spent  = (txAll || [])
       .filter(t => !t.is_transfer && !t.is_card_payment && t.date >= ms && t.date <= me)
       .reduce((s, t) => s + Math.abs(t.amount), 0);
-    const budget = budgetMap[ms] || 0;
+
+    // Valor: específico do mês > recorrente base (a partir do mês de criação) > 0
+    let budget = budgetMap[ms] || 0;
+    const isRecurring = !budget && recurAmount > 0 && recurStart && ms >= recurStart;
+    if (isRecurring) budget = recurAmount;
+
     const pct    = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
     const over   = budget > 0 && spent > budget;
     const label  = new Date(ms + 'T12:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
@@ -828,9 +848,13 @@ async function loadBudgetHistory() {
     if (budget > 0) { totalBudget += budget; totalSpent += spent; }
     if (over) overCount++;
 
+    const recurBadge = isRecurring
+      ? ' <span title="Valor da recorrência" style="font-size:.6rem;color:var(--muted);vertical-align:middle">↻</span>'
+      : '';
+
     return `<tr${isCur ? ' class="bgt-hist-row--current"' : ''}>
       <td class="bgt-hist-month">${label}${isCur ? ' <span class="bgt-hist-now">agora</span>' : ''}</td>
-      <td>${budget > 0 ? fmt(budget) : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${budget > 0 ? fmt(budget) + recurBadge : '<span style="color:var(--muted)">—</span>'}</td>
       <td class="${over ? 'amount-neg' : ''}" style="font-weight:600">
         ${spent > 0 ? fmt(spent) : '<span style="color:var(--muted)">—</span>'}
       </td>
@@ -847,28 +871,30 @@ async function loadBudgetHistory() {
     </tr>`;
   }).join('');
 
-  const withBudget = months.filter(ms => budgetMap[ms]).length;
-  const avgPct     = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(0) : null;
+  const withBudget = months.filter(ms =>
+    budgetMap[ms] || (recurAmount > 0 && recurStart && ms >= recurStart)
+  ).length;
+  const avgPct = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(0) : null;
 
   container.innerHTML = `
     <div class="bgt-hist-summary">
       <span>📅 <strong>${withBudget}</strong> meses com orçamento</span>
+      ${recurAmount > 0 ? `<span style="font-size:.74rem;color:var(--muted)">↻ Recorrente: ${fmt(recurAmount)}</span>` : ''}
       ${avgPct !== null ? `<span>📊 Média: <strong>${avgPct}%</strong> utilizado</span>` : ''}
       ${overCount > 0
         ? `<span class="bgt-hist-summary--over">⚠️ <strong>${overCount}</strong> ${overCount===1?'mês estourado':'meses estourados'}</span>`
         : withBudget > 0 ? '<span class="bgt-hist-summary--ok">✅ Nunca estourou</span>' : ''}
     </div>
     <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Mês</th><th>Orçamento</th><th>Gasto</th><th>Progresso</th><th>Saldo</th>
-        </tr></thead>
+      <table id="budgetHistTable">
+        <thead><tr><th>Mês</th><th>Orçamento</th><th>Gasto</th><th>Progresso</th><th>Saldo</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+
+  if (exportBar) exportBar.style.display = 'flex';
 }
 
-// ── Modal ────────────────────────────────────────────────────────────────────
 
 function openBudgetModal(id = '') {
   const existing = id ? _budgetCache.find(x => x.id === id) : null;
