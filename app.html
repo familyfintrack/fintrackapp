@@ -43,28 +43,6 @@
   } catch(e) {}
 })();
 </script>
-<!-- ══ Anti-flash: aplica tema de login ANTES do primeiro frame ══════════════
-     Este script inline roda antes de qualquer CSS externo ser aplicado.
-     Lê o tema do localStorage e adiciona a classe no loginScreen via dataset
-     temporário; o CSS usa [data-login-theme] para aplicar o layout sem depender
-     do JS de auth.js que roda depois. ══════════════════════════════════════ -->
-<script>
-(function(){
-  try {
-    var theme = localStorage.getItem('login_theme') || 'split';
-    // Marcador lido pelo CSS antes do DOMContentLoaded
-    document.documentElement.setAttribute('data-login-theme', theme);
-    // Também adiciona a classe assim que o DOM existir
-    document.addEventListener('DOMContentLoaded', function() {
-      var ls = document.getElementById('loginScreen');
-      if (!ls) return;
-      ['ls-theme-split','ls-theme-centered','ls-theme-asymmetric',
-       'ls-theme-immersive','ls-theme-minimal'].forEach(function(c){ ls.classList.remove(c); });
-      ls.classList.add('ls-theme-' + theme);
-    }, { once: true });
-  } catch(e) {}
-})();
-</script>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 <link rel="stylesheet" href="css/01_base.css">
 <link rel="stylesheet" href="css/02_layout.css">
@@ -1046,11 +1024,6 @@
         <button class="tx-fb-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         </button>
-        <div class="tx-fb-sep"></div>
-        <!-- Export -->
-        <button class="tx-fb-btn" onclick="showExportMenu(this,'txMainTable','transacoes')" title="Exportar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
       </div>
 
       <!-- ── Collapsible filters panel (hidden by default) ── -->
@@ -1379,11 +1352,6 @@
           <div class="card-header">
             <span class="card-title">Transações</span>
             <span id="reportTxCount" class="badge badge-muted"></span>
-            <button class="btn btn-ghost btn-sm" style="font-size:.74rem;margin-left:auto"
-              onclick="showExportMenu(this,'reportTxTable','relatorio_transacoes')">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar
-            </button>
           </div>
           <div class="table-wrap">
             <table id="reportTxTable" class="resizable-table rpt-tx-table">
@@ -1522,14 +1490,7 @@
     </div>
     <div id="budgetHistContainer"
       style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;min-height:52px">
-      <div id="budgetHistExportBar" style="display:none;justify-content:flex-end;padding:0 0 8px">
-      <button class="btn btn-ghost btn-sm" style="font-size:.74rem"
-        onclick="showExportMenu(this,'budgetHistTable','orcamento_historico')">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Exportar
-      </button>
-    </div>
-    <div class="bgt-hist-placeholder">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
+      <div class="bgt-hist-placeholder">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
     </div>
   </div>
 
@@ -4520,11 +4481,6 @@ Se você não solicitou isso, ignore este e-mail.`,
           <option value="">Todos os meses</option>
         </select>
         <span id="auditCount" class="aud-count"></span>
-        <button class="btn btn-ghost btn-sm" style="font-size:.74rem;margin-left:auto"
-          onclick="showExportMenu(this,'auditTableDesktop','auditoria')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar
-        </button>
       </div>
 
       <!-- Tabela desktop (≥ 600px) -->
@@ -9649,8 +9605,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
-  <script src="js/dreams_kb.js"></script>
-<script src="js/dreams.js"></script>
+  <script src="js/dreams.js"></script>
   <script src="js/agent_engine.js"></script>
 <script src="js/agent.js"></script>
 
@@ -10210,7 +10165,6 @@ window.openMyProfile = function(...args) {
 #agentConfirmBar.active { display:flex !important; }
 </style>
 
-  <script src="js/export_grid.js"></script>
 </body>
 </html>
 
