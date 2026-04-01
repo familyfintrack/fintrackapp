@@ -2,7 +2,7 @@
 // Refactor completo: auto_reset propagation, pause/resume, UX imersiva,
 // deep-dive por categoria, dashboard snapshot card.
 
-'use strict';
+
 
 // ── Estado do módulo ────────────────────────────────────────────────────────
 let _budgetView   = 'monthly';
@@ -112,6 +112,7 @@ function _getSelectedPeriod() {
 // ── AUTO-RESET: propagar orçamentos permanentes para o mês atual ────────────
 
 async function _propagateAutoResetBudgets(period) {
+  try {
   if (_budgetView !== 'monthly') return;
   const hasSchema = await _checkBudgetSchema();
   const hasPaused = await _checkBudgetPausedColumn();
@@ -161,6 +162,7 @@ async function _propagateAutoResetBudgets(period) {
     onConflict: 'family_id,category_id,month,budget_type',
     ignoreDuplicates: true,
   }).catch(() => {});
+  } catch(e) { console.warn('[budgets] propagate:', e?.message); }
 }
 
 // ── Pausar / Retomar ────────────────────────────────────────────────────────
@@ -215,7 +217,10 @@ async function loadBudgets() {
     await _propagateAutoResetBudgets(period);
   }
 
-  let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)'));
+  // Two-step: fetch budgets with scalar fields only (sem JOIN de categorias),
+  // depois enriquecer via state.categories já carregado em memória.
+  // Evita PostgREST schema-cache issues que causam data:null silencioso.
+  let bq = famQ(sb.from('budgets').select('id,category_id,amount,month,year,budget_type,auto_reset,paused,notes,family_member_id,family_id,created_at'));
 
   if (hasNewSchema) {
     bq = bq.eq('budget_type', _budgetView);
@@ -247,7 +252,12 @@ async function loadBudgets() {
     </div>`;
     return;
   }
-  _budgetCache = budgets || [];
+  // Enriquecer cada budget com sua categoria a partir do state (já carregado)
+  const _catById = Object.fromEntries((state.categories || []).map(c => [c.id, c]));
+  _budgetCache = (budgets || []).map(b => ({
+    ...b,
+    categories: _catById[b.category_id] || null,
+  }));
 
   let txQ = famQ(sb.from('transactions')
     .select('category_id,amount,is_transfer,is_card_payment')).lt('amount', 0);
