@@ -2567,7 +2567,7 @@
             <div class="cfg-tab-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
-            Família
+            Usuários
           </button>
 
           <button class="cfg-tab" onclick="cfgShowPane('pane-dados')" id="cfgNavBtn-dados">
@@ -2589,6 +2589,13 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </div>
             Avançado
+          </button>
+
+          <button class="cfg-tab" onclick="cfgShowPane('pane-traducoes')" id="cfgNavBtn-traducoes" style="display:none">
+            <div class="cfg-tab-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+            </div>
+            Traduções
           </button>
 
           <button class="cfg-tab" onclick="cfgShowPane('pane-feedbacks')" id="cfgNavBtn-feedbacks" style="display:none;position:relative">
@@ -2884,7 +2891,7 @@
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div class="cfg-pane-header-text">
-              <div class="cfg-pane-header-title">Família &amp; Usuários</div>
+              <div class="cfg-pane-header-title">Usuários &amp; Família</div>
               <div class="cfg-pane-header-sub">Controle de acesso e permissões</div>
             </div>
           </div>
@@ -3011,8 +3018,13 @@
                       </div>
                     </div>
                   </div>
-                  <div style="margin-top:7px;font-size:.75rem;font-weight:600;color:var(--text)">Card centrado</div>
-                  <div style="font-size:.67rem;color:var(--muted)">Fundo verde, card branco</div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Card centrado</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Fundo verde, card branco</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
                 </label>
 
                 <!-- Opção 2: Split 50/50 -->
@@ -3034,8 +3046,13 @@
                       </div>
                     </div>
                   </div>
-                  <div style="margin-top:7px;font-size:.75rem;font-weight:600;color:var(--text)">Split 50/50</div>
-                  <div style="font-size:.67rem;color:var(--muted)">Form branco | Hero verde</div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Split 50/50</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Form branco | Hero verde</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
                 </label>
 
                 <!-- Opção 3: Split assimétrico 40/60 -->
@@ -3057,8 +3074,13 @@
                       </div>
                     </div>
                   </div>
-                  <div style="margin-top:7px;font-size:.75rem;font-weight:600;color:var(--text)">Assimétrico 40/60</div>
-                  <div style="font-size:.67rem;color:var(--muted)">Form compacto | Logo grande</div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Assimétrico 40/60</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Form compacto | Logo grande</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
                 </label>
 
                 <!-- Opção 4: Tela cheia verde, form dark integrado -->
@@ -3078,8 +3100,13 @@
                       <div style="height:7px;background:linear-gradient(135deg,rgba(42,122,82,.8),rgba(30,92,66,.9));border-radius:3px;margin-top:3px;border:1px solid rgba(93,219,160,.25)"></div>
                     </div>
                   </div>
-                  <div style="margin-top:7px;font-size:.75rem;font-weight:600;color:var(--text)">Imersivo</div>
-                  <div style="font-size:.67rem;color:var(--muted)">Tela cheia verde + form dark</div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Imersivo</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Tela cheia verde + form dark</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
                 </label>
 
                 <!-- Opção 5: Minimalista branco total -->
@@ -3095,12 +3122,23 @@
                       </div>
                     </div>
                   </div>
-                  <div style="margin-top:7px;font-size:.75rem;font-weight:600;color:var(--text)">Minimalista</div>
-                  <div style="font-size:.67rem;color:var(--muted)">Fundo claro, sem hero</div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Minimalista</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Fundo claro, sem hero</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
                 </label>
 
               </div>
-              <div id="loginThemeSaveStatus" style="font-size:.75rem;color:var(--muted);margin-top:12px;min-height:18px"></div>
+              <div class="lts-save-row">
+                <div id="loginThemeSaveStatus" class="lts-save-status"></div>
+                <button class="btn btn-primary btn-sm" onclick="_saveLoginThemeBtn()" id="loginThemeSaveBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Salvar tema
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3151,10 +3189,22 @@
               <div id="attachScanResults" style="margin-top:12px"></div>
             </div>
           </div>
-          <div class="cfg-section-label">Traduções</div>
-          <div class="cfg-card" id="translationsSection2">
+        </div>
+
+        <!-- ══ PANE: TRADUÇÕES (admin) ══════════════════════════════════════ -->
+        <div class="cfg-pane" id="pane-traducoes">
+          <div class="cfg-pane-header">
+            <div class="cfg-pane-header-icon" style="background:#f0fdf4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>
+            </div>
+            <div class="cfg-pane-header-text">
+              <div class="cfg-pane-header-title">Traduções</div>
+              <div class="cfg-pane-header-sub">Gestão de strings de interface por idioma</div>
+            </div>
+          </div>
+          <div id="translationsSection2" style="margin:-4px 0 0">
             <div id="translationsAdminWrap" style="padding:4px 0 8px">
-              <div style="padding:24px;text-align:center;color:var(--muted);font-size:.83rem">Carregando…</div>
+              <div style="padding:24px;text-align:center;color:var(--muted);font-size:.83rem">Selecione esta aba para carregar as traduções.</div>
             </div>
           </div>
         </div>
