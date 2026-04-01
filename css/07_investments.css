@@ -181,8 +181,11 @@
 .dash-fav-card {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
-  padding: 16px 18px 18px;
+  border-radius: 12px;
+  /* Tamanho fixo: menor e uniforme */
+  padding: 12px 14px 13px;
+  /* Altura mínima fixa — garante uniformidade independente do conteúdo */
+  min-height: 110px;
   cursor: pointer;
   background:
     linear-gradient(
@@ -191,10 +194,14 @@
       color-mix(in srgb, var(--card-clr, #2a6049) 72%, #000) 100%
     );
   color: #fff;
+  /* Flex column para distribuir espaço de forma consistente */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   transition: transform .18s ease, box-shadow .18s ease;
   box-shadow:
-    0 4px 16px color-mix(in srgb, var(--card-clr, #2a6049) 35%, transparent),
-    0 1px 3px rgba(0,0,0,.18);
+    0 3px 12px color-mix(in srgb, var(--card-clr, #2a6049) 30%, transparent),
+    0 1px 3px rgba(0,0,0,.16);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
@@ -202,8 +209,8 @@
 .dash-fav-card:hover {
   transform: translateY(-2px) scale(1.01);
   box-shadow:
-    0 8px 28px color-mix(in srgb, var(--card-clr, #2a6049) 45%, transparent),
-    0 2px 6px rgba(0,0,0,.22);
+    0 6px 22px color-mix(in srgb, var(--card-clr, #2a6049) 40%, transparent),
+    0 2px 6px rgba(0,0,0,.20);
 }
 
 .dash-fav-card:active {
@@ -240,17 +247,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  /* Sem margin-bottom — o flex justify-content:space-between cuida do espaçamento */
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
-/* Icon pill */
+/* Icon pill — menor */
 .dash-fav-card__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: rgba(255,255,255,.18);
   flex-shrink: 0;
 }
@@ -279,24 +288,26 @@
 }
 
 .dash-fav-card__name {
-  font-size: .8rem;
+  font-size: .74rem;
   font-weight: 600;
-  opacity: .85;
+  opacity: .82;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   letter-spacing: .01em;
+  flex-shrink: 0;
 }
 
 .dash-fav-card__balance {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 700;
   font-family: var(--font-serif, monospace);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
   line-height: 1.15;
   color: #fff;
+  flex-shrink: 0;
 }
 
 .dash-fav-card__balance.neg {
@@ -310,25 +321,27 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Confirmed-only balance line on fav cards */
+/* Confirmed-only balance line on fav cards —
+   Sempre renderizada (visibility:hidden quando sem pendentes) para manter altura uniforme */
 .dash-fav-card__confirmed {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: .72rem;
+  font-size: .66rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: rgba(255,255,255,.7);
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.65);
+  padding-top: 3px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  flex-shrink: 0;
+  min-height: 16px; /* garante espaço fixo mesmo com visibility:hidden */
 }
 .dash-fav-card__confirmed.neg {
-  color: rgba(252,165,165,.8);
+  color: rgba(252,165,165,.75);
 }
 .dash-fav-card__confirmed-label {
-  font-size: .6rem;
-  font-weight: 600;
+  font-size: .57rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .06em;
   opacity: .65;
@@ -339,13 +352,14 @@
 @media (max-width: 480px) {
   .dash-favs-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 8px;
   }
   .dash-fav-card {
-    padding: 13px 14px 15px;
+    padding: 10px 12px 11px;
+    min-height: 96px;
   }
-  .dash-fav-card__balance { font-size: 1.1rem; }
-  .dash-fav-card__icon { width: 30px; height: 30px; border-radius: 8px; }
+  .dash-fav-card__balance { font-size: 1rem; }
+  .dash-fav-card__icon { width: 24px; height: 24px; border-radius: 7px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

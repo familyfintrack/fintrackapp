@@ -75,31 +75,33 @@
     border-right: none;
     padding-right: 0;
   }
-  /* Cards dentro da coluna: largura total da coluna */
+  /* Cards na col-stack: largura total da coluna, tamanho fixo */
   .dash-favs-col-stack {
-    gap: 10px;
+    gap: 8px;
   }
   .dash-favs-col-stack .dash-fav-card {
-    padding: 16px 18px 18px;
+    padding: 12px 14px 13px;
+    min-height: 110px;
   }
   .dash-favs-col-stack .dash-fav-card__balance {
-    font-size: 1.35rem;
+    font-size: 1.15rem;
   }
-  /* Grid legacy (quando não há grupos) — mantém comportamento original */
+  /* Grid legacy (quando não há grupos) */
   .dash-favs-grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
   }
   .dash-fav-card {
-    padding: 18px 20px 20px;
+    padding: 12px 14px 13px;
+    min-height: 110px;
   }
   .dash-fav-card__balance {
-    font-size: 1.45rem;
+    font-size: 1.15rem;
   }
   .dash-fav-card__icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 11px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
   }
 }
 
@@ -107,7 +109,7 @@
 @media (max-width: 480px) {
   .dash-favs-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px;
+    gap: 8px;
   }
   /* Mobile: coluna stack volta para grid 2x */
   .dash-favs-col-stack {
