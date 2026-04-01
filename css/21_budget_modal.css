@@ -196,16 +196,83 @@
    LOGIN THEME SELECTOR — settings appearance pane
    ═══════════════════════════════════════════════════════════════════ */
 
-.login-theme-option { display: flex; flex-direction: column; }
-
-.login-theme-preview {
+.login-theme-option {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  background: var(--surface);
   transition: border-color .18s, box-shadow .18s;
+  cursor: pointer;
+}
+.login-theme-option:hover {
+  border-color: var(--accent2);
+  box-shadow: 0 2px 12px rgba(42,96,73,.10);
+}
+.login-theme-preview {
+  transition: none;
+  border-radius: 0 !important;
+  border: none !important;
 }
 
-/* When radio is checked, style the sibling preview */
-.login-theme-option input[type=radio]:checked + .login-theme-preview {
+/* Card totalmente destacado quando selecionado */
+.login-theme-option:has(input[type=radio]:checked) {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 3px rgba(42,96,73,.15);
+  background: var(--accent-lt);
+}
+
+/* Footer row: nome + desc + badge "Ativo" */
+.lts-option-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 10px;
+  gap: 6px;
+}
+
+/* Badge "Ativo" — oculto até selecionar */
+.lts-active-badge {
+  display: none;
+  font-size: .62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  background: var(--accent);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.login-theme-option:has(input[type=radio]:checked) .lts-active-badge {
+  display: inline-block;
+}
+.login-theme-option:has(input[type=radio]:checked) .lts-option-footer > div > div:first-child {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Save row */
+.lts-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+.lts-save-status {
+  font-size: .78rem;
+  color: var(--green);
+  font-weight: 600;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
