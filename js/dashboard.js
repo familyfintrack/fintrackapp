@@ -626,17 +626,15 @@ function _catColor(color, idx, usedSet) {
 
 async function renderCategoryChart(){
   const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
-  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,is_transfer,is_card_payment,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
+  const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
   const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
 
-  // Build expense query (amount < 0) — exclui transferências e pagamentos de fatura
+  // Build expense query (amount < 0)
   const qExp = famQ(sb.from('transactions').select(_txSelect))
-    .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null)
-    .eq('is_transfer', false).eq('is_card_payment', false);
-  // Build income query (amount > 0) — exclui transferências
+    .gte('date',_dateGte).lte('date',_dateLte).lt('amount',0).not('category_id','is',null);
+  // Build income query (amount > 0)
   const qInc = famQ(sb.from('transactions').select(_txSelect))
-    .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null)
-    .eq('is_transfer', false).eq('is_card_payment', false);
+    .gte('date',_dateGte).lte('date',_dateLte).gt('amount',0).not('category_id','is',null);
 
   const [{data}, {data: dataInc}] = await Promise.all([qExp, qInc]);
 
@@ -703,8 +701,6 @@ async function renderCategoryChart(){
   if(!_catChartEntries.length){
     const el=document.getElementById('categoryChart');
     if(el){const ctx=el.getContext('2d');ctx.clearRect(0,0,el.width,el.height);ctx.fillStyle='#8c8278';ctx.textAlign='center';ctx.font='13px Outfit';ctx.fillText(t('dash.empty_tx'),el.width/2,el.height/2);}
-    closeCatDetail();
-    return; // FIX: não continuar para _renderCatChartBar/Doughnut com dados vazios
   }
 
   closeCatDetail(); // reset any open detail
@@ -843,12 +839,13 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
-  { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
-  { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
-  { id: 'upcoming',   label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
-  { id: 'forecast90', label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
-  { id: 'recent',     label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
+  { id: 'accounts',    label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                  el: 'dashCardAccounts'    },
+  { id: 'charts',      label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',     el: 'dashCardCharts'      },
+  { id: 'favcats',     label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',           el: 'dashCardFavCats'     },
+  { id: 'budgetSnap',  label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Resumo dos orçamentos ativos',               el: 'dashBudgetSnapshot'  },
+  { id: 'upcoming',    label: 'Próximas Transações',        icon: '📆', sub: 'Programadas para os próximos 10 dias',       el: 'dashCardUpcoming'    },
+  { id: 'forecast90',  label: 'Previsão 90 dias',           icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias', el: 'dashCardForecast90'  },
+  { id: 'recent',      label: 'Últimas Transações',         icon: '🧾', sub: 'Histórico recente de lançamentos',           el: 'dashCardRecent'      },
 ];
 
 function _dashGetPrefs() {
@@ -1727,7 +1724,7 @@ function _setCatChartType(type) {
 
 function _renderCatChartDoughnut() {
   const canvas = document.getElementById('categoryChart');
-  if (!canvas || !_catChartEntries.length) return; // FIX: guarda contra dados vazios
+  if (!canvas) return;
   // Reset wrapper so doughnut uses its natural aspect ratio
   const wrap = document.getElementById('catChartWrap');
   if (wrap) { wrap.style.height = ''; }
