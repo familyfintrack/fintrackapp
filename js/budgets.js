@@ -642,8 +642,9 @@ function _renderDashBudgetSnapshot() {
   const prefs = typeof _dashGetPrefs === 'function' ? _dashGetPrefs() : {};
   if (prefs.budgetSnap === false) { el.style.display = 'none'; return; }
 
-  const now   = new Date();
-  const mStr  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const now  = new Date();
+  const mStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
   const active = _budgetCache.filter(b => {
     if (b.paused) return false;
     if (b.budget_type && b.budget_type !== 'monthly') return false;
@@ -654,61 +655,119 @@ function _renderDashBudgetSnapshot() {
   if (!active.length) { el.style.display = 'none'; return; }
   el.style.display = '';
 
-  const totalBudget = active.reduce((s, b) => s + b.amount, 0);
+  // ── Totais globais ─────────────────────────────────────────────────────────
+  const totalBudget = active.reduce((s, b) => s + (b.amount || 0), 0);
   const totalSpent  = active.reduce((s, b) => s + (_budgetSpent[b.id] || 0), 0);
+  const totalPct    = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
   const overCount   = active.filter(b => (_budgetSpent[b.id] || 0) > b.amount).length;
   const nearCount   = active.filter(b => {
     const p = b.amount > 0 ? (_budgetSpent[b.id] || 0) / b.amount : 0;
     return p >= 0.8 && p < 1;
   }).length;
-  const totalPct    = totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
-  const snapColor   = overCount > 0 ? 'var(--red)' : nearCount > 0 ? 'var(--amber)' : 'var(--accent)';
+  const remaining   = Math.max(0, totalBudget - totalSpent);
+  const globalColor = overCount > 0 ? 'var(--red)' : nearCount > 0 ? 'var(--amber)' : 'var(--accent)';
 
-  const top3 = [...active]
-    .sort((a, b) =>
-      ((_budgetSpent[b.id] || 0) / (b.amount || 1)) -
-      ((_budgetSpent[a.id] || 0) / (a.amount || 1))
-    ).slice(0, 3);
+  // ── Ordenação: excedidos primeiro, depois por % decrescente ───────────────
+  const sorted = [...active].sort((a, b) => {
+    const pa = (_budgetSpent[a.id] || 0) / (a.amount || 1);
+    const pb = (_budgetSpent[b.id] || 0) / (b.amount || 1);
+    return pb - pa;
+  });
+
+  // ── Render de cada card ───────────────────────────────────────────────────
+  const cards = sorted.map(b => {
+    const cat   = b.categories || {};
+    const spent = _budgetSpent[b.id] || 0;
+    const pct   = b.amount > 0 ? Math.min(100, (spent / b.amount) * 100) : 0;
+    const over  = spent > b.amount;
+    const near  = !over && pct >= 80;
+    const color = over  ? 'var(--red)'
+                : near  ? 'var(--amber)'
+                :          (cat.color || 'var(--accent)');
+    const statusClass = over ? 'dbs-card--over' : near ? 'dbs-card--near' : 'dbs-card--ok';
+    const badge = over
+      ? `<span class="dbs-badge dbs-badge--over">Excedido</span>`
+      : near
+      ? `<span class="dbs-badge dbs-badge--near">Atenção</span>`
+      : '';
+    const leftover = b.amount - spent;
+    const leftoverFmt = leftover >= 0
+      ? `<span class="dbs-remaining">Restam ${fmt(leftover)}</span>`
+      : `<span class="dbs-remaining dbs-remaining--over">Excesso ${fmt(Math.abs(leftover))}</span>`;
+
+    return `<div class="dbs-card ${statusClass}" onclick="navigate('budgets')" title="${esc(cat.name||'—')}">
+      <div class="dbs-card-top">
+        <div class="dbs-icon-wrap" style="background:${color}18;color:${color}">
+          ${cat.icon || '📦'}
+        </div>
+        <div class="dbs-card-info">
+          <div class="dbs-cat-name">${esc(cat.name || '—')}</div>
+          ${leftoverFmt}
+        </div>
+        ${badge}
+      </div>
+      <div class="dbs-bar-track">
+        <div class="dbs-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="dbs-card-bottom">
+        <span class="dbs-spent" style="color:${color}">${fmt(spent)}</span>
+        <span class="dbs-limit">/ ${fmt(b.amount)}</span>
+        <span class="dbs-pct" style="color:${color}">${pct.toFixed(0)}%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Barra de progresso global ──────────────────────────────────────────────
+  const monthName = now.toLocaleDateString('pt-BR', { month: 'long' });
 
   const inner = el.querySelector('.dash-budget-snap-inner');
   if (!inner) return;
 
   inner.innerHTML = `
-    <div class="dash-budget-snap-header">
-      <div>
-        <div class="dash-budget-snap-title">Orçamentos</div>
-        <div class="dash-budget-snap-sub">${now.toLocaleDateString('pt-BR',{month:'long'})} · ${active.length} ativo${active.length !== 1 ? 's' : ''}</div>
+    <div class="dbs-header">
+      <div class="dbs-header-left">
+        <div class="dbs-title">Orçamentos — ${monthName}</div>
+        <div class="dbs-subtitle">${active.length} ativo${active.length !== 1 ? 's' : ''}
+          ${overCount  ? `· <span style="color:var(--red);font-weight:700">${overCount} excedido${overCount!==1?'s':''}</span>` : ''}
+          ${nearCount && !overCount ? `· <span style="color:var(--amber);font-weight:700">${nearCount} perto do limite</span>` : ''}
+        </div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver todos</button>
+      <button class="btn btn-ghost btn-sm dbs-link" onclick="event.stopPropagation();navigate('budgets')">
+        Ver todos →
+      </button>
     </div>
-    <div class="dash-budget-snap-totals">
-      <div><div class="dash-budget-snap-lbl">Gasto</div><div class="dash-budget-snap-val" style="color:${snapColor}">${fmt(totalSpent)}</div></div>
-      <div><div class="dash-budget-snap-lbl">Orçado</div><div class="dash-budget-snap-val">${fmt(totalBudget)}</div></div>
-      <div><div class="dash-budget-snap-lbl">Uso</div><div class="dash-budget-snap-val" style="color:${snapColor}">${totalPct.toFixed(0)}%</div></div>
+
+    <div class="dbs-summary-strip">
+      <div class="dbs-kpi">
+        <div class="dbs-kpi-lbl">Total gasto</div>
+        <div class="dbs-kpi-val" style="color:${globalColor}">${fmt(totalSpent)}</div>
+      </div>
+      <div class="dbs-kpi-divider"></div>
+      <div class="dbs-kpi">
+        <div class="dbs-kpi-lbl">Orçado</div>
+        <div class="dbs-kpi-val">${fmt(totalBudget)}</div>
+      </div>
+      <div class="dbs-kpi-divider"></div>
+      <div class="dbs-kpi">
+        <div class="dbs-kpi-lbl">Disponível</div>
+        <div class="dbs-kpi-val" style="color:${remaining > 0 ? 'var(--green)' : 'var(--red)'}">${fmt(remaining)}</div>
+      </div>
+      <div class="dbs-kpi-divider dbs-kpi-divider--hide-sm"></div>
+      <div class="dbs-kpi dbs-kpi--hide-sm">
+        <div class="dbs-kpi-lbl">Uso geral</div>
+        <div class="dbs-kpi-val" style="color:${globalColor}">${totalPct.toFixed(0)}%</div>
+      </div>
     </div>
-    <div class="dash-budget-snap-bar-track">
-      <div class="dash-budget-snap-bar-fill" style="width:${totalPct}%;background:${snapColor}"></div>
+
+    <div class="dbs-global-bar-wrap">
+      <div class="dbs-global-bar-track">
+        <div class="dbs-global-bar-fill" style="width:${totalPct}%;background:${globalColor}"></div>
+      </div>
+      <span class="dbs-global-bar-pct" style="color:${globalColor}">${totalPct.toFixed(0)}%</span>
     </div>
-    ${overCount > 0 ? `<div class="dash-budget-snap-alert">⚠ ${overCount} orçamento${overCount!==1?'s':''} excedido${overCount!==1?'s':''}</div>` : ''}
-    <div class="dash-budget-snap-list">
-      ${top3.map(b => {
-        const cat = b.categories || {};
-        const s   = _budgetSpent[b.id] || 0;
-        const p   = b.amount > 0 ? Math.min(100, (s / b.amount) * 100) : 0;
-        const ov  = s > b.amount;
-        const c   = ov ? 'var(--red)' : p >= 80 ? 'var(--amber)' : (cat.color || 'var(--accent)');
-        return `
-          <div class="dash-budget-snap-item" onclick="navigate('budgets')">
-            <span class="dash-budget-snap-item-icon" style="color:${c}">${cat.icon || '📦'}</span>
-            <div class="dash-budget-snap-item-info">
-              <div class="dash-budget-snap-item-name">${esc(cat.name || '—')}</div>
-              <div class="dash-budget-snap-item-bar-track">
-                <div class="dash-budget-snap-item-bar-fill" style="width:${p}%;background:${c}"></div>
-              </div>
-            </div>
-            <span class="dash-budget-snap-item-pct" style="color:${c}">${p.toFixed(0)}%</span>
-          </div>`;
-      }).join('')}
+
+    <div class="dbs-grid">
+      ${cards}
     </div>`;
 }
 
