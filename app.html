@@ -43,28 +43,6 @@
   } catch(e) {}
 })();
 </script>
-<!-- ══ Anti-flash: aplica tema de login ANTES do primeiro frame ══════════════
-     Este script inline roda antes de qualquer CSS externo ser aplicado.
-     Lê o tema do localStorage e adiciona a classe no loginScreen via dataset
-     temporário; o CSS usa [data-login-theme] para aplicar o layout sem depender
-     do JS de auth.js que roda depois. ══════════════════════════════════════ -->
-<script>
-(function(){
-  try {
-    var theme = localStorage.getItem('login_theme') || 'split';
-    // Marcador lido pelo CSS antes do DOMContentLoaded
-    document.documentElement.setAttribute('data-login-theme', theme);
-    // Também adiciona a classe assim que o DOM existir
-    document.addEventListener('DOMContentLoaded', function() {
-      var ls = document.getElementById('loginScreen');
-      if (!ls) return;
-      ['ls-theme-split','ls-theme-centered','ls-theme-asymmetric',
-       'ls-theme-immersive','ls-theme-minimal'].forEach(function(c){ ls.classList.remove(c); });
-      ls.classList.add('ls-theme-' + theme);
-    }, { once: true });
-  } catch(e) {}
-})();
-</script>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 <link rel="stylesheet" href="css/01_base.css">
 <link rel="stylesheet" href="css/02_layout.css">
@@ -295,10 +273,6 @@
 #telemetryNavTopbar.admin-visible,
 #settingsNavTopbar.admin-visible {
   display: flex !important;
-}
-/* Elementos genéricos com admin-visible: ocultos por padrão, exibidos para admins */
-.admin-visible:not(#telemetryNavTopbar):not(#settingsNavTopbar) {
-  display: none !important;
 }
 </style>
 </head>
@@ -780,74 +754,30 @@
       </div>
 
       <!-- Previsão de Caixa 90 dias -->
-      <!-- ── Previsão de Caixa 90 dias ── -->
-      <div id="dashCardForecast90" class="fcp-card mb-4">
-
-        <!-- Header escuro premium -->
-        <div class="fcp-header">
-          <div class="fcp-header-left">
-            <div class="fcp-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-              Previsão de Caixa
-            </div>
-            <div class="fcp-subtitle">próximos 90 dias</div>
-          </div>
-          <div class="fcp-controls">
-            <!-- Picker de conta -->
-            <div class="fcp-acct-picker" id="dashForecastAcctPicker">
-              <button type="button" class="fcp-acct-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                <span id="dashForecastAcctLabel">Todas as contas</span>
-                <svg class="fcp-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <div id="dashCardForecast90" class="card mb-4">
+        <div class="card-header fc-forecast-header">
+          <span class="card-title">📈 Previsão de Caixa (90 dias)</span>
+          <div class="fc-forecast-controls">
+            <div class="fc-acct-picker" id="dashForecastAcctPicker">
+              <button type="button" class="fc-acct-btn fc-acct-btn--sm"
+                onclick="_fcPickerToggle('dashForecastAcctPicker')">
+                <span id="dashForecastAcctLabel">Todas</span>
+                <span class="fc-acct-caret">▼</span>
               </button>
               <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
             </div>
-            <!-- Toggle programados -->
-            <label class="fcp-toggle-wrap">
-              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" class="fcp-toggle-input">
-              <span class="fcp-toggle-track">
-                <span class="fcp-toggle-thumb"></span>
-              </span>
-              <span class="fcp-toggle-label">Programados</span>
+            <label class="fc-forecast-check">
+              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()"
+                style="width:13px;height:13px;accent-color:var(--accent)">
+              Incluir programados
             </label>
           </div>
         </div>
-
-        <!-- KPI strip: saldo inicial → projetado + min/max -->
-        <div class="fcp-kpi-strip" id="dashForecastKpis">
-          <div class="fcp-kpi">
-            <div class="fcp-kpi-lbl">Saldo atual</div>
-            <div class="fcp-kpi-val" id="fcp-kpi-inicial">—</div>
-          </div>
-          <div class="fcp-kpi-arrow">→</div>
-          <div class="fcp-kpi fcp-kpi--accent">
-            <div class="fcp-kpi-lbl">Projetado em 90d</div>
-            <div class="fcp-kpi-val" id="fcp-kpi-final">—</div>
-          </div>
-          <div class="fcp-kpi-sep"></div>
-          <div class="fcp-kpi">
-            <div class="fcp-kpi-lbl">Mínimo esperado</div>
-            <div class="fcp-kpi-val fcp-kpi-val--min" id="fcp-kpi-min">—</div>
-          </div>
-          <div class="fcp-kpi">
-            <div class="fcp-kpi-lbl">Máximo esperado</div>
-            <div class="fcp-kpi-val fcp-kpi-val--max" id="fcp-kpi-max">—</div>
-          </div>
-        </div>
-
-        <!-- Gráfico -->
-        <div class="fcp-chart-wrap">
+        <div style="position:relative;height:180px;margin-top:4px">
           <canvas id="dashForecastChart"></canvas>
+      <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
         </div>
-
-        <!-- Summary: saldo final por conta -->
-        <div class="fcp-summary" id="dashForecastSummary"></div>
-
-        <!-- Hint de clique -->
-        <div class="fcp-hint">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Clique em qualquer ponto do gráfico para ver os lançamentos do dia
-        </div>
+        <div id="dashForecastSummary" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 0 2px 0;font-size:.78rem"></div>
       </div>
 
       <!-- Últimas transações -->
@@ -1372,7 +1302,7 @@
             E-mail
           </button>
         </div>
-        <button class="btn btn-ghost btn-sm admin-visible" onclick="showEmailConfig()" title="Configurar EmailJS" style="font-size:.72rem;opacity:.7">⚙️</button>
+        <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()" title="Configurar EmailJS" style="font-size:.72rem;opacity:.7">⚙️</button>
         <span id="reportDataInfo" style="font-size:.72rem;color:var(--muted);margin-left:auto"></span>
       </div>
 
@@ -5233,11 +5163,11 @@ Se você não solicitou isso, ignore este e-mail.`,
 
           <!-- Logo adaptado ao tema — usa sempre logo_glow_soft.png -->
           <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
-            onerror="this.onerror=null">
+            onerror="this.src='logo.jpg'">
 
           <!-- Mobile-only logo -->
           <div class="ls-mobile-logo">
-            <img src="logo_glow_soft.png" alt="Family FinTrack" onerror="this.onerror=null">
+            <img src="logo_glow_soft.png" alt="Family FinTrack" onerror="this.src='logo.jpg';this.onerror=null">
           </div>
 
           <div class="ls-card-title">Bem-vindo de volta</div>
@@ -5397,47 +5327,6 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div class="ls-card-title">Aguardando aprovação</div>
             <div class="ls-card-sub" style="margin-bottom:24px">Um administrador irá aprovar seu acesso em breve.</div>
             <button onclick="showLoginFormArea()" class="ls-btn-ghost">Voltar ao login</button>
-          </div>
-
-          <!-- ── INVITE ACCEPTED — registro via convite ── -->
-          <div id="inviteRegisterArea" style="display:none">
-            <div class="ls-icon-badge">🎉</div>
-            <div class="ls-card-title" style="font-size:1.1rem;text-align:center">Você foi convidado!</div>
-            <div class="ls-card-sub" id="inviteWelcomeMsg" style="text-align:center;margin-bottom:20px">Complete seu cadastro para entrar na família</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nome completo</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" id="inviteRegName" class="ls-input" placeholder="Seu nome completo">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail (confirmação)</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="inviteRegEmail" class="ls-input" placeholder="seu@email.com" readonly style="background:var(--surface2,#f3f4f6);color:var(--muted,#6b7280)">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="inviteRegPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="inviteRegPassword2" class="ls-input" placeholder="Repita a senha"
-                  onkeydown="if(event.key==='Enter')doInviteRegister()">
-              </div>
-            </div>
-            <input type="hidden" id="inviteToken">
-            <button onclick="doInviteRegister()" id="inviteRegBtn" class="ls-btn-primary">
-              Criar conta e entrar na família
-            </button>
-            <div id="inviteRegError" class="ls-error" style="display:none"></div>
           </div>
 
           <!-- ── CHANGE PASSWORD (first login) ── -->
@@ -9738,8 +9627,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
-  <script src="js/dreams_kb.js"></script>
-<script src="js/dreams.js"></script>
+  <script src="js/dreams.js"></script>
   <script src="js/agent_engine.js"></script>
 <script src="js/agent.js"></script>
 
