@@ -1097,27 +1097,83 @@ window._refreshItemsTotal = _refreshItemsTotal;
 
 async function wizardAiSuggestItems() {
   const w=_drm.wizard; if(!w) return;
-  const apiKey=await getAppSetting(RECEIPT_AI_KEY_SETTING,'');
-  if(!apiKey||!apiKey.startsWith('AIza')){toast('Configure Gemini','warning');return;}
   const loading=document.getElementById('wizAiItemsLoading'); if(loading) loading.style.display='';
-  const title=document.getElementById('wizTitle')?.value||w.data?.title||'';
-  const amount=document.getElementById('wizAmount')?.value||w.data?.target_amount||0;
-  const type=w.type;
-  const extra={};
-  if(type==='viagem'){extra.destino=document.getElementById('wizDestino')?.value||'';extra.pessoas=document.getElementById('wizPessoas')?.value||2;}
-  else if(type==='automovel'){extra.modelo=document.getElementById('wizModelo')?.value||'';extra.tipo_compra=document.getElementById('wizTipoCompra')?.value||'avista';}
-  else if(type==='imovel'){extra.subtipo=document.getElementById('wizSubtipo')?.value||'';extra.cidade=document.getElementById('wizCidade')?.value||'';extra.tipo_compra=document.getElementById('wizTipoCompra')?.value||'avista';}
-  const prompt=`Planejador financeiro: sugira custos para o sonho.\nTipo: ${type}\nTítulo: ${title}\nTotal: R$ ${amount}\nContexto: ${JSON.stringify(extra)}\n\nRetorne SOMENTE JSON:\n{"componentes":[{"nome":"item","valor_estimado":1000}]}\n\nRegras: 6-12 itens, soma ≈ R$ ${amount}, BRL Brasil 2025.`;
+  const title   = document.getElementById('wizTitle')?.value  || w.data?.title || '';
+  const amount  = parseFloat(document.getElementById('wizAmount')?.value || w.data?.target_amount || 0);
+  const type    = w.type;
+  const extra   = {};
+  if(type==='viagem')    { extra.destino=document.getElementById('wizDestino')?.value||''; extra.pessoas=parseInt(document.getElementById('wizPessoas')?.value||2); }
+  else if(type==='automovel') { extra.modelo=document.getElementById('wizModelo')?.value||''; extra.tipo_compra=document.getElementById('wizTipoCompra')?.value||'avista'; }
+  else if(type==='imovel')    { extra.subtipo=document.getElementById('wizSubtipo')?.value||''; extra.cidade=document.getElementById('wizCidade')?.value||''; extra.tipo_compra=document.getElementById('wizTipoCompra')?.value||'avista'; }
+
+  // ── 1. Tentar KB local primeiro (sem API, sem latência) ───────────────────
+  let kbItems = [];
   try {
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-    const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.4,maxOutputTokens:800}})});
-    const body=await resp.json();
-    const result=JSON.parse((body?.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/```json|```/g,'').trim());
-    const newItems=(result.componentes||[]).map(c=>({name:c.nome,estimated_amount:c.valor_estimado||0,is_ai_suggested:true}));
-    w.items=[...(w.items||[]).filter(it=>!it.is_ai_suggested),...newItems];
-    _refreshWizItemsList(); toast(`✨ IA sugeriu ${newItems.length} componentes`,'success');
-  } catch(e){toast('Erro ao sugerir.','warning');}
-  finally{if(loading) loading.style.display='none';}
+    if (type === 'viagem' && typeof drmKbGerarComponentesViagem === 'function') {
+      kbItems = drmKbGerarComponentesViagem({
+        destino: extra.destino, pessoas: extra.pessoas || 2,
+        dias: 7, orcamento_total: amount,
+      }).map(c => ({ name: c.nome, estimated_amount: c.valor_estimado, is_ai_suggested: true, _source: 'kb' }));
+    } else if (type === 'automovel' && typeof drmKbGerarComponentesAutomovel === 'function') {
+      kbItems = drmKbGerarComponentesAutomovel({
+        valor_veiculo: amount || 120000,
+        tipo_compra: extra.tipo_compra || 'avista',
+      }).map(c => ({ name: c.nome, estimated_amount: c.valor_estimado, is_ai_suggested: true, _source: 'kb' }));
+    } else if (type === 'imovel' && typeof drmKbGerarComponentesImovel === 'function') {
+      kbItems = drmKbGerarComponentesImovel({
+        valor_imovel: amount || 400000,
+        tipo_compra: extra.tipo_compra || 'avista',
+        incluir_reforma: true,
+      }).map(c => ({ name: c.nome, estimated_amount: c.valor_estimado, is_ai_suggested: true, _source: 'kb' }));
+    }
+  } catch(e) { console.warn('[dreams-kb]', e); }
+
+  if (kbItems.length >= 4) {
+    // KB tem dados suficientes — usar diretamente, sem precisar da IA
+    w.items = [...(w.items||[]).filter(it=>!it.is_ai_suggested), ...kbItems];
+    _refreshWizItemsList();
+    toast(`📚 ${kbItems.length} componentes sugeridos da base de referências`, 'success');
+    if (loading) loading.style.display = 'none';
+
+    // Tentar enriquecer com IA em background se disponível (não bloqueante)
+    getAppSetting(RECEIPT_AI_KEY_SETTING,'').then(apiKey => {
+      if (!apiKey || !apiKey.startsWith('AIza')) return;
+      const prompt = `Você é um planejador financeiro. Complemente ou refine esta lista de custos para o sonho abaixo, mantendo os itens essenciais e adicionando apenas o que está faltando.\nTipo: ${type}\nTítulo: ${title}\nTotal: R$ ${amount}\nContexto: ${JSON.stringify(extra)}\nItens já sugeridos: ${JSON.stringify(kbItems.map(i=>i.name))}\n\nRetorne SOMENTE JSON com itens adicionais ou corrigidos:\n{"componentes":[{"nome":"item","valor_estimado":1000}]}\n\nRegras: máximo 4 itens novos, BRL Brasil 2025, não repetir os existentes.`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
+      fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.3,maxOutputTokens:400}})})
+        .then(r=>r.json())
+        .then(body => {
+          const result = JSON.parse((body?.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/```json|```/g,'').trim());
+          const extras = (result.componentes||[]).map(c=>({name:c.nome,estimated_amount:c.valor_estimado||0,is_ai_suggested:true,_source:'ai'}));
+          if (extras.length) {
+            w.items = [...(w.items||[]).filter(it=>!it._source||it._source!=='ai'), ...extras];
+            _refreshWizItemsList();
+            toast(`✨ IA adicionou ${extras.length} itens extras`, 'info');
+          }
+        }).catch(()=>{});
+    }).catch(()=>{});
+    return;
+  }
+
+  // ── 2. Fallback: IA pura se KB não tem dados suficientes ─────────────────
+  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING,'');
+  if (!apiKey || !apiKey.startsWith('AIza')) {
+    toast('Sem dados suficientes na base local. Configure Gemini para sugestões por IA.', 'warning');
+    if (loading) loading.style.display = 'none';
+    return;
+  }
+  const prompt = `Planejador financeiro: sugira custos para o sonho.\nTipo: ${type}\nTítulo: ${title}\nTotal: R$ ${amount}\nContexto: ${JSON.stringify(extra)}\n\nRetorne SOMENTE JSON:\n{"componentes":[{"nome":"item","valor_estimado":1000}]}\n\nRegras: 6-12 itens, soma ≈ R$ ${amount}, BRL Brasil 2025.`;
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
+    const resp = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.4,maxOutputTokens:800}})});
+    const body = await resp.json();
+    const result = JSON.parse((body?.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/```json|```/g,'').trim());
+    const newItems = (result.componentes||[]).map(c=>({name:c.nome,estimated_amount:c.valor_estimado||0,is_ai_suggested:true,_source:'ai'}));
+    w.items = [...(w.items||[]).filter(it=>!it.is_ai_suggested), ...newItems];
+    _refreshWizItemsList();
+    toast(`✨ IA sugeriu ${newItems.length} componentes`, 'success');
+  } catch(e) { toast('Erro ao sugerir.','warning'); }
+  finally { if (loading) loading.style.display = 'none'; }
 }
 window.wizardAiSuggestItems = wizardAiSuggestItems;
 
