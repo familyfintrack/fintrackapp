@@ -671,3 +671,133 @@ body.platform-windows .ls-input {
   .help-article-wrap { max-width: 1120px; padding: 36px 56px 80px; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   TEMAS DE LOGIN — aplicados via .ls-theme-* no #loginScreen
+   Cada tema redefine o layout visual da tela de login.
+   FIX: Classes eram aplicadas pelo JS mas não tinham CSS correspondente.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Tema: split (padrão — dois painéis 50/50) ─────────────────────
+   Este é o layout base já definido nos seletores raiz (.ls-layout,
+   .ls-form-panel, .ls-hero). A classe é adicionada para consistência
+   mas não precisa sobrescrever nada. */
+#loginScreen.ls-theme-split .ls-layout {
+  /* padrão — sem alterações */
+}
+
+/* ── Tema: centered (formulário centralizado, sem painel hero) ────── */
+#loginScreen.ls-theme-centered .ls-hero {
+  display: none;
+}
+#loginScreen.ls-theme-centered .ls-form-panel {
+  flex: 1;
+  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 50%, #0e3520 100%);
+  padding: 48px 24px;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+}
+#loginScreen.ls-theme-centered .ls-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px 36px;
+  max-width: 420px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.40), 0 6px 24px rgba(0,0,0,.25);
+}
+
+/* ── Tema: asymmetric (formulário 38%, hero 62%) ──────────────────── */
+#loginScreen.ls-theme-asymmetric .ls-form-panel {
+  flex: 0 0 38%;
+  padding: 40px 36px;
+}
+#loginScreen.ls-theme-asymmetric .ls-hero {
+  flex: 0 0 62%;
+}
+#loginScreen.ls-theme-asymmetric .ls-card {
+  max-width: 340px;
+}
+
+/* ── Tema: immersive (hero como fundo completo, card flutuante) ────── */
+#loginScreen.ls-theme-immersive .ls-layout {
+  position: relative;
+}
+#loginScreen.ls-theme-immersive .ls-hero {
+  position: absolute;
+  inset: 0;
+  flex: unset;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+#loginScreen.ls-theme-immersive .ls-form-panel {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+#loginScreen.ls-theme-immersive .ls-card {
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 24px;
+  padding: 40px 36px;
+  max-width: 420px;
+  box-shadow: 0 32px 96px rgba(0,0,0,.50), 0 8px 32px rgba(0,0,0,.30);
+  backdrop-filter: blur(12px);
+}
+#loginScreen.ls-theme-immersive .ls-form-logo {
+  display: none; /* hero já tem o logo */
+}
+
+/* ── Tema: minimal (sem hero, fundo branco limpo, sem sombras pesadas) */
+#loginScreen.ls-theme-minimal .ls-hero {
+  display: none;
+}
+#loginScreen.ls-theme-minimal .ls-form-panel {
+  flex: 1;
+  background: #f9fafb;
+  box-shadow: none;
+  padding: 48px 24px;
+}
+#loginScreen.ls-theme-minimal .ls-card {
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 36px 32px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.06);
+}
+#loginScreen.ls-theme-minimal .ls-btn-primary {
+  background: #1e5c42;
+}
+
+/* ── Responsividade: temas colapsam para mobile (≤759px) ──────────── */
+@media (max-width: 759px) {
+  /* Em mobile todos os temas se comportam igual (formulário sobre fundo escuro) */
+  #loginScreen.ls-theme-centered .ls-form-panel,
+  #loginScreen.ls-theme-immersive .ls-form-panel,
+  #loginScreen.ls-theme-minimal .ls-form-panel {
+    background: transparent;
+    box-shadow: none;
+    padding: 24px 20px;
+  }
+  #loginScreen.ls-theme-centered .ls-card,
+  #loginScreen.ls-theme-immersive .ls-card,
+  #loginScreen.ls-theme-minimal .ls-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.2);
+  }
+  /* Hero imersivo em mobile: fica como fundo da shell */
+  #loginScreen.ls-theme-immersive .ls-hero {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
