@@ -556,7 +556,7 @@ async function fetchRptTransactions() {
   const relGroupV = document.getElementById('rptRelGroup')?.value  || '';
 
   let q = famQ(sb.from('transactions')
-    .select('*, accounts!transactions_account_id_fkey(name,color,currency), categories(name,color,type), payees(name)'))
+    .select('*, accounts!transactions_account_id_fkey(name,color,currency), categories(name,color,icon,type), payees(name)'))
     .gte('date',from).lte('date',to)
     .order('date',{ascending:false});
   if(accId) q = q.eq('account_id', accId);
@@ -886,19 +886,91 @@ function rptSortTx(field) {
 function renderReportTxTable(txs) {
   const total=txs.reduce((s,t)=>s+(typeof txToBRL==="function"?txToBRL(t):parseFloat(t.brl_amount??t.amount)??0),0);
   const countEl=document.getElementById('reportTxCount');
-  if(countEl) countEl.textContent=txs.length+' registros';
+  if(countEl) countEl.textContent=txs.length+' registro'+(txs.length!==1?'s':'');
   const totEl=document.getElementById('reportTxTotal');
   if(totEl){totEl.textContent=fmt(total);totEl.className=total>=0?'amount-pos':'amount-neg';}
-  document.getElementById('reportTxBody').innerHTML=txs.length
-    ? txs.map(t=>`<tr>
-        <td class="rpt-td-date">${fmtDate(t.date)}</td>
-        <td class="rpt-td-desc"><div class="rpt-desc-cell">${esc(t.description||'—')}</div></td>
-        <td class="rpt-td-acct">${esc(t.accounts?.name||'—')}</td>
-        <td class="rpt-td-cat">${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}30;font-size:.68rem;white-space:nowrap">${esc(t.categories.name)}</span>`:'—'}</td>
-        <td class="rpt-td-pay">${esc(t.payees?.name||'—')}</td>
-        <td class="rpt-td-amt ${t.amount>=0?'amount-pos':'amount-neg'}">${fmt(t.amount)}</td>
-      </tr>`).join('')
-    : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">${t('tx.empty')}</td></tr>`;
+
+  if(!txs.length){
+    document.getElementById('reportTxBody').innerHTML=
+      `<tr><td colspan="6" class="rpt-empty-state">
+        <div class="rpt-empty-icon">🔍</div>
+        <div class="rpt-empty-title">Nenhuma transação encontrada</div>
+        <div class="rpt-empty-sub">Ajuste os filtros ou o período para ver resultados</div>
+      </td></tr>`;
+    return;
+  }
+
+  document.getElementById('reportTxBody').innerHTML = txs.map(tx => {
+    const isInc    = tx.amount >= 0;
+    const isCard   = !!tx.is_card_payment;
+    const isPend   = tx.status === 'pending';
+    const hasNotes = !!(tx.notes && tx.notes.trim());
+    const hasTags  = !!(tx.tags && tx.tags.length);
+    const catColor = tx.categories?.color || 'var(--muted)';
+    const catIcon  = tx.categories?.icon  || (isInc ? '📈' : '📉');
+    const catName  = tx.categories?.name  || '—';
+    const accColor = tx.accounts?.color   || 'var(--accent)';
+    const safeId   = (tx.id || '').replace(/'/g,"&#39;");
+
+    // Status dot
+    const statusDot = isPend
+      ? `<span class="rpt-row-pending" title="Pendente"></span>`
+      : '';
+
+    // Type chip (card payment or transfer)
+    const typeChip = isCard
+      ? `<span class="rpt-type-chip rpt-type-chip--card">💳</span>`
+      : '';
+
+    // Account dot
+    const accDot = `<span class="rpt-acct-dot" style="background:${accColor}"></span>`;
+
+    // Tags
+    const tagsHtml = hasTags
+      ? tx.tags.slice(0,2).map(tg=>`<span class="rpt-tag">${esc(tg)}</span>`).join('')
+      : '';
+
+    // Notes indicator
+    const notesIco = hasNotes
+      ? `<span class="rpt-notes-ico" title="${esc(tx.notes)}">📝</span>`
+      : '';
+
+    return `<tr class="rpt-tx-row" onclick="openTxDetail('${safeId}')" title="Clique para ver detalhes">
+      <td class="rpt-td-date">
+        <div class="rpt-date-main">${fmtDate(tx.date)}</div>
+        ${statusDot}
+      </td>
+      <td class="rpt-td-desc">
+        <div class="rpt-desc-top">
+          ${typeChip}
+          <span class="rpt-desc-text">${esc(tx.description||'—')}</span>
+          ${notesIco}
+        </div>
+        ${tagsHtml ? `<div class="rpt-desc-tags">${tagsHtml}</div>` : ''}
+      </td>
+      <td class="rpt-td-acct">
+        <div class="rpt-acct-cell">
+          ${accDot}
+          <span>${esc(tx.accounts?.name||'—')}</span>
+        </div>
+      </td>
+      <td class="rpt-td-cat">
+        ${tx.categories
+          ? `<span class="rpt-cat-badge" style="--cat-color:${catColor}">
+               <span class="rpt-cat-icon">${catIcon}</span>
+               <span class="rpt-cat-name">${esc(catName)}</span>
+             </span>`
+          : '<span class="rpt-td-muted">—</span>'}
+      </td>
+      <td class="rpt-td-pay">
+        <span class="rpt-pay-name">${esc(tx.payees?.name||'—')}</span>
+      </td>
+      <td class="rpt-td-amt ${isInc?'amount-pos':'amount-neg'}">
+        ${fmt(tx.amount)}
+        <span class="rpt-row-arrow">›</span>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 /* ═══ VIEW TOGGLE ═══ */
