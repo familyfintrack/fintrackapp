@@ -1903,7 +1903,7 @@
       <div id="scheduledSummaryBar" class="sc-summary-bar" style="display:none"></div>
 
       <!-- Desktop split layout / Mobile timeline -->
-      <div id="scListView" class="sc-list-view">
+      <div id="scListView" class="sc-list-view" style="display:none">
 
         <!-- LEFT panel: Próximos 10 dias -->
         <div class="sc-panel sc-panel--upcoming" id="scUpcomingPanel">
@@ -5365,328 +5365,524 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
   <!-- ══ ADMIN USER MANAGEMENT MODAL — Modern tabs ═══════════════════════ -->
   <div class="modal-overlay" id="userAdminModal">
-    <div class="modal ua-modal"><div class="modal-handle"></div>
+    <div class="modal uam-modal"><div class="modal-handle"></div>
 
-      <!-- Header -->
-      <div class="ua-header">
-        <div class="ua-header-info">
-          <div class="ua-header-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Gerenciamento
+      <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
+      <div class="uam-header">
+        <div class="uam-header-left">
+          <div class="uam-header-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
-          <div class="ua-header-sub">Usuários, famílias e lista de espera</div>
+          <div>
+            <div class="uam-header-title">Administração</div>
+            <div class="uam-header-sub">Usuários · Famílias · Lista de Espera</div>
+          </div>
         </div>
-        <button class="modal-close" onclick="closeModal('userAdminModal')">✕</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <!-- KPIs rápidas no header -->
+          <div class="uam-kpi-pills" id="uamHeaderKpis">
+            <div class="uam-kpi-pill uam-kpi-users">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+              <span id="uamKpiUsers">—</span>
+            </div>
+            <div class="uam-kpi-pill uam-kpi-families">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span id="uamKpiFamilies">—</span>
+            </div>
+            <div class="uam-kpi-pill uam-kpi-pending" id="uamKpiPendingPill" style="display:none">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="uamKpiPending">0</span> pendentes
+            </div>
+          </div>
+          <button class="modal-close" onclick="closeModal('userAdminModal')">✕</button>
+        </div>
       </div>
 
-      <!-- Tab bar -->
-      <div class="ua-tab-bar">
-        <button class="ua-tab" id="uaTabPending" onclick="switchUATab('pending')">
+      <!-- ══ TAB BAR ══════════════════════════════════════════════════════ -->
+      <div class="uam-tabs">
+        <button class="uam-tab" id="uaTabPending" onclick="switchUATab('pending')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Pendentes
-          <span id="uaPendingBadge" style="display:none;min-width:17px;height:17px;border-radius:999px;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:0 4px;line-height:17px;text-align:center;margin-left:2px"></span>
+          <span id="uaPendingBadge" class="uam-badge uam-badge-red" style="display:none"></span>
         </button>
-        <button class="ua-tab active" id="uaTabUsers" onclick="switchUATab('users')">
+        <button class="uam-tab active" id="uaTabUsers" onclick="switchUATab('users')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
           Usuários
         </button>
-        <button class="ua-tab" id="uaTabFamilies" onclick="switchUATab('families')">
+        <button class="uam-tab" id="uaTabFamilies" onclick="switchUATab('families')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
           Famílias
         </button>
-        <button class="ua-tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')">
+        <button class="uam-tab" id="uaTabWaitlist" onclick="switchUATab('waitlist')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           Lista de Espera
-          <span id="uaWaitlistBadge" style="display:none;min-width:17px;height:17px;border-radius:999px;background:#2a6049;color:#fff;font-size:.6rem;font-weight:700;padding:0 4px;line-height:17px;text-align:center;margin-left:2px"></span>
+          <span id="uaWaitlistBadge" class="uam-badge uam-badge-green" style="display:none"></span>
         </button>
       </div>
 
-      <!-- Pane body -->
-      <div class="ua-body">
+      <!-- ══ BODY ══════════════════════════════════════════════════════════ -->
+      <div class="uam-body">
 
-        <!-- ── PENDING TAB ── -->
-        <div id="uaPending" class="ua-pane" style="display:none">
-          <div id="uaPendingContent">
-            <div class="ua-loading">⏳ Carregando…</div>
+        <!-- ─── PENDING ───────────────────────────────────────────────── -->
+        <div id="uaPending" class="uam-pane" style="display:none">
+          <div class="uam-pane-bar">
+            <span class="uam-pane-title">⏳ Aprovações Pendentes</span>
+            <button class="uam-refresh-btn" onclick="_renderPendingTab()" title="Recarregar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+          </div>
+          <div id="uaPendingContent" class="uam-scroll">
+            <div class="uam-empty-state">⏳ Carregando…</div>
           </div>
         </div>
 
-        <!-- ── WAITLIST TAB ── -->
-        <div id="uaWaitlist" class="ua-pane" style="display:none">
-          <div class="ua-pane-toolbar">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="ua-pane-title">Lista de Espera</span>
-              <span id="uaWaitlistCount" class="ua-count-badge"></span>
+        <!-- ─── USERS ──────────────────────────────────────────────────── -->
+        <div id="uaUsers" class="uam-pane" style="display:flex;flex-direction:column">
+          <!-- Toolbar com busca -->
+          <div class="uam-pane-bar">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+              <span class="uam-pane-title">Usuários</span>
+              <span id="userAdminCount" class="uam-count"></span>
             </div>
             <div style="display:flex;gap:6px;align-items:center">
-              <select id="uaWlFilter" onchange="loadWaitlist()" class="ua-select">
-                <option value="pending">⏳ Aguardando</option>
-                <option value="invited">✉️ Convidados</option>
-                <option value="all">Todos</option>
-              </select>
-              <button class="ua-icon-btn" onclick="loadWaitlist()" title="Recarregar">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              <div class="uam-search-wrap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="uamUserSearch" placeholder="Buscar…"
+                  oninput="uamFilterUsers(this.value)" class="uam-search-input">
+              </div>
+              <button class="uam-btn-primary" onclick="showNewUserForm()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Novo
               </button>
             </div>
           </div>
-          <div id="uaWaitlistContent" class="ua-scroll-area">
-            <div class="ua-loading">Carregando…</div>
-          </div>
-        </div>
 
-        <!-- ── USERS TAB ── -->
-        <div id="uaUsers" class="ua-pane" style="display:flex;flex-direction:column">
-          <div class="ua-pane-toolbar">
-            <span id="userAdminCount" class="ua-count-badge"></span>
-            <button class="ua-action-btn" onclick="showNewUserForm()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Novo usuário
-            </button>
-          </div>
-
-          <!-- User form — card style -->
-          <div id="userFormArea" style="display:none" class="ua-form-card">
-            <div class="ua-form-title" id="userFormTitle">Novo Usuário</div>
+          <!-- Formulário de usuário (card expansível) -->
+          <div id="userFormArea" style="display:none" class="uam-form-wrap">
+            <div class="uam-form-header">
+              <span class="uam-form-title" id="userFormTitle">Novo Usuário</span>
+              <button class="uam-form-close" onclick="document.getElementById('userFormArea').style.display='none'">✕</button>
+            </div>
             <input type="hidden" id="editUserId">
-
-            <div class="ua-form-grid">
-              <div class="ua-field">
-                <label>Nome completo</label>
-                <input type="text" id="uName" placeholder="Nome completo" class="ua-input">
-              </div>
-              <div class="ua-field">
-                <label>E-mail</label>
-                <input type="email" id="uEmail" placeholder="email@dominio.com" class="ua-input">
-              </div>
-              <div class="ua-field">
-                <label>Senha <span style="font-size:.7rem;color:var(--muted)" id="pwdHint">(mín. 8 caracteres)</span></label>
-                <input type="password" id="uPassword" placeholder="Deixe em branco para manter" class="ua-input">
-              </div>
-              <div class="ua-field">
-                <label>Perfil de acesso</label>
-                <select id="uRole" class="ua-select-full">
-                  <option value="viewer">👁 Visualizador</option>
-                  <option value="user" selected>👤 Usuário</option>
-                  <option value="admin">🔧 Administrador</option>
-                </select>
-              </div>
-              <div class="ua-field" style="grid-column:1/-1">
-                <label>Família inicial <span style="font-size:.7rem;color:var(--muted)">(opcional)</span></label>
-                <div style="display:grid;grid-template-columns:1fr 160px;gap:8px">
-                  <select id="uInitFamilyId" class="ua-select-full">
-                    <option value="">— Nenhuma (admin global) —</option>
-                  </select>
-                  <select id="uInitFamilyRole" class="ua-select-full">
-                    <option value="user">👤 Usuário</option>
-                    <option value="admin">🔧 Admin</option>
+            <div class="uam-form-body">
+              <!-- Col 1: dados básicos -->
+              <div class="uam-form-col">
+                <div class="uam-field">
+                  <label>Nome completo</label>
+                  <input type="text" id="uName" placeholder="Nome completo" class="uam-input">
+                </div>
+                <div class="uam-field">
+                  <label>E-mail</label>
+                  <input type="email" id="uEmail" placeholder="email@dominio.com" class="uam-input">
+                </div>
+                <div class="uam-field">
+                  <label>Senha <span class="uam-hint" id="pwdHint">(mín. 8 caracteres)</span></label>
+                  <input type="password" id="uPassword" placeholder="Deixe em branco para manter" class="uam-input">
+                </div>
+                <div class="uam-field">
+                  <label>Perfil de acesso</label>
+                  <select id="uRole" class="uam-input">
                     <option value="viewer">👁 Visualizador</option>
-                    <option value="owner">👑 Owner</option>
+                    <option value="user" selected>👤 Usuário</option>
+                    <option value="admin">🔧 Administrador</option>
                   </select>
+                </div>
+                <div class="uam-field">
+                  <label>Família inicial <span class="uam-hint">(opcional)</span></label>
+                  <div style="display:grid;grid-template-columns:1fr 130px;gap:6px">
+                    <select id="uInitFamilyId" class="uam-input"><option value="">— Nenhuma —</option></select>
+                    <select id="uInitFamilyRole" class="uam-input">
+                      <option value="user">👤 Usuário</option>
+                      <option value="admin">🔧 Admin</option>
+                      <option value="viewer">👁 Visualizador</option>
+                      <option value="owner">👑 Owner</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <!-- Col 2: permissões + avatar -->
+              <div class="uam-form-col">
+                <div class="uam-field">
+                  <label>Permissões</label>
+                  <div class="uam-perms-grid">
+                    <label class="uam-perm"><input type="checkbox" id="pView" checked><span>👁 Ver</span></label>
+                    <label class="uam-perm"><input type="checkbox" id="pCreate" checked><span>➕ Criar</span></label>
+                    <label class="uam-perm"><input type="checkbox" id="pEdit" checked><span>✏️ Editar</span></label>
+                    <label class="uam-perm"><input type="checkbox" id="pDelete"><span>🗑 Excluir</span></label>
+                    <label class="uam-perm"><input type="checkbox" id="pExport" checked><span>📤 Exportar</span></label>
+                    <label class="uam-perm"><input type="checkbox" id="pImport"><span>📥 Importar</span></label>
+                  </div>
+                </div>
+                <div class="uam-field">
+                  <label>Foto de perfil</label>
+                  <div class="uam-avatar-row">
+                    <div id="uAvatarPreview" class="uam-avatar-preview"></div>
+                    <div style="flex:1">
+                      <input type="file" id="uAvatarFile" accept="image/*" style="font-size:.72rem;max-width:100%" onchange="previewUserAvatar(this)">
+                      <button class="uam-btn-ghost" id="uAvatarRemoveBtn" onclick="removeUserAvatar()" style="margin-top:6px;display:none;font-size:.7rem;color:var(--danger)">✕ Remover foto</button>
+                    </div>
+                  </div>
+                  <input type="hidden" id="uAvatarRemoveFlag" value="">
                 </div>
               </div>
             </div>
-
-            <div class="ua-perms-title">Permissões</div>
-            <div class="ua-perms-row">
-              <label class="ua-perm-toggle"><input type="checkbox" id="pView" checked><span>Visualizar</span></label>
-              <label class="ua-perm-toggle"><input type="checkbox" id="pCreate" checked><span>Criar</span></label>
-              <label class="ua-perm-toggle"><input type="checkbox" id="pEdit" checked><span>Editar</span></label>
-              <label class="ua-perm-toggle"><input type="checkbox" id="pDelete"><span>Excluir</span></label>
-              <label class="ua-perm-toggle"><input type="checkbox" id="pExport" checked><span>Exportar</span></label>
-              <label class="ua-perm-toggle"><input type="checkbox" id="pImport"><span>Importar</span></label>
-            </div>
-
-            <!-- Avatar -->
-            <div class="ua-avatar-row">
-              <div id="uAvatarPreview" class="ua-avatar-preview"></div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px">Foto de perfil</div>
-                <input type="file" id="uAvatarFile" accept="image/*" style="font-size:.74rem;max-width:200px" onchange="previewUserAvatar(this)">
-                <button class="btn btn-ghost btn-sm" id="uAvatarRemoveBtn" onclick="removeUserAvatar()" style="font-size:.72rem;color:var(--muted);margin-top:4px;display:none">✕ Remover</button>
-              </div>
-            </div>
-            <input type="hidden" id="uAvatarRemoveFlag" value="">
-
-            <div class="ua-form-footer">
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('userFormArea').style.display='none'">Cancelar</button>
-              <button class="btn btn-primary btn-sm" onclick="saveUser()">💾 Salvar</button>
+            <div class="uam-form-footer">
+              <button class="uam-btn-ghost" onclick="document.getElementById('userFormArea').style.display='none'">Cancelar</button>
+              <button class="uam-btn-primary" onclick="saveUser()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Salvar usuário
+              </button>
             </div>
           </div>
 
-          <!-- Users list -->
-          <div id="usersList"></div>
+          <!-- Lista de usuários -->
+          <div id="usersList" class="uam-scroll uam-users-list"></div>
         </div>
 
-        <!-- ── FAMILIES TAB ── -->
-        <div id="uaFamilies" class="ua-pane" style="display:none">
-          <!-- Wizard row -->
-          <div id="uaWizardRow" style="display:none" class="ua-wizard-banner">
+        <!-- ─── FAMILIES ───────────────────────────────────────────────── -->
+        <div id="uaFamilies" class="uam-pane" style="display:none">
+          <!-- Wizard banner -->
+          <div id="uaWizardRow" style="display:none" class="uam-wizard-banner">
             <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:1.4rem">🧭</span>
+              <span style="font-size:1.5rem">🧭</span>
               <div>
                 <div style="font-size:.86rem;font-weight:700;color:var(--accent)">Assistente de Configuração</div>
-                <div style="font-size:.75rem;color:var(--muted)" id="wizardSettingsSub">Configurar nome, membros e categorias da família</div>
+                <div style="font-size:.75rem;color:var(--muted)" id="wizardSettingsSub">Configurar nome, membros e categorias</div>
               </div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openWizardManual()" style="flex-shrink:0">▶ Iniciar</button>
+            <button class="uam-btn-primary" onclick="openWizardManual()" style="flex-shrink:0">▶ Iniciar</button>
           </div>
 
-          <div class="ua-pane-toolbar">
-            <span style="font-size:.8rem;color:var(--muted)">Gerencie as famílias e seus membros</span>
-            <button class="ua-action-btn" onclick="showFamilyForm()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <div class="uam-pane-bar">
+            <span class="uam-pane-title">Famílias</span>
+            <button class="uam-btn-primary" onclick="showFamilyForm()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nova família
             </button>
           </div>
 
-          <!-- Family form -->
-          <div id="familyFormArea" style="display:none" class="ua-form-card">
-            <div class="ua-form-title" id="familyFormTitle">Nova Família</div>
+          <!-- Formulário de família -->
+          <div id="familyFormArea" style="display:none" class="uam-form-wrap uam-form-wrap--slim">
+            <div class="uam-form-header">
+              <span class="uam-form-title" id="familyFormTitle">Nova Família</span>
+              <button class="uam-form-close" onclick="document.getElementById('familyFormArea').style.display='none'">✕</button>
+            </div>
             <input type="hidden" id="editFamilyId">
-            <div class="ua-form-grid">
-              <div class="ua-field">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 18px">
+              <div class="uam-field">
                 <label>Nome da família *</label>
-                <input type="text" id="fName" placeholder="Ex: Família Silva" class="ua-input">
+                <input type="text" id="fName" placeholder="Ex: Família Silva" class="uam-input">
               </div>
-              <div class="ua-field">
-                <label>Descrição</label>
-                <input type="text" id="fDesc" placeholder="Opcional" class="ua-input">
+              <div class="uam-field">
+                <label>Descrição <span class="uam-hint">(opcional)</span></label>
+                <input type="text" id="fDesc" placeholder="Breve descrição" class="uam-input">
               </div>
             </div>
-            <div class="ua-form-footer">
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('familyFormArea').style.display='none'">Cancelar</button>
-              <button class="btn btn-primary btn-sm" onclick="saveFamily()">💾 Salvar</button>
+            <div class="uam-form-footer">
+              <button class="uam-btn-ghost" onclick="document.getElementById('familyFormArea').style.display='none'">Cancelar</button>
+              <button class="uam-btn-primary" onclick="saveFamily()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Salvar
+              </button>
             </div>
           </div>
 
-          <div id="familiesList"></div>
+          <div id="familiesList" class="uam-scroll"></div>
         </div>
 
-      </div><!-- /ua-body -->
+        <!-- ─── WAITLIST ───────────────────────────────────────────────── -->
+        <div id="uaWaitlist" class="uam-pane" style="display:none">
+          <div class="uam-pane-bar">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="uam-pane-title">Lista de Espera</span>
+              <span id="uaWaitlistCount" class="uam-count"></span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="uaWlFilter" onchange="loadWaitlist()" class="uam-select">
+                <option value="pending">⏳ Aguardando</option>
+                <option value="invited">✉️ Convidados</option>
+                <option value="all">Todos</option>
+              </select>
+              <button class="uam-refresh-btn" onclick="loadWaitlist()" title="Recarregar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="uaWaitlistContent" class="uam-scroll"></div>
+        </div>
 
-      <!-- Scoped styles -->
+      </div><!-- /uam-body -->
+
+      <!-- ══ SCOPED STYLES ══════════════════════════════════════════════════ -->
       <style>
-        .ua-modal { max-width: 780px; display: flex; flex-direction: column; max-height: 88dvh; padding: 0; overflow: hidden; }
-        .ua-header {
+        /* ── Modal shell ───────────────────────────────────────────────── */
+        .uam-modal {
+          max-width: 860px; width: 100%;
+          display: flex; flex-direction: column;
+          max-height: 90dvh; padding: 0; overflow: hidden;
+          border-radius: 18px;
+        }
+
+        /* ── Header ────────────────────────────────────────────────────── */
+        .uam-header {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 18px 22px 14px;
-          border-bottom: 1px solid var(--border);
-          background: var(--surface);
+          padding: 16px 20px 14px;
+          background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%);
           flex-shrink: 0;
+          gap: 12px;
         }
-        .ua-header-title {
-          display: flex; align-items: center; gap: 8px;
-          font-size: .95rem; font-weight: 800; color: var(--text); margin-bottom: 2px;
-        }
-        .ua-header-sub { font-size: .75rem; color: var(--muted); }
-        .ua-tab-bar {
-          display: flex;
-          border-bottom: 1px solid var(--border);
-          background: var(--surface2);
-          overflow-x: auto;
-          scrollbar-width: none;
-          flex-shrink: 0;
-        }
-        .ua-tab-bar::-webkit-scrollbar { display: none; }
-        .ua-tab {
-          display: flex; align-items: center; gap: 6px;
-          padding: 12px 16px;
-          font-family: var(--font-sans); font-size: .78rem; font-weight: 600;
-          color: var(--muted);
-          border: none; background: none; cursor: pointer;
-          border-bottom: 2.5px solid transparent;
-          margin-bottom: -1px;
-          white-space: nowrap;
-          transition: color .15s, border-color .15s;
-          flex-shrink: 0;
-        }
-        .ua-tab:hover { color: var(--text); }
-        .ua-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--surface); }
-        .ua-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-        .ua-pane { display: flex; flex-direction: column; gap: 0; height: 100%; overflow: hidden; }
-        .ua-scroll-area { flex: 1; overflow-y: auto; padding: 14px 20px; }
-        .ua-pane-toolbar {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 20px; border-bottom: 1px solid var(--border);
-          background: var(--surface2); flex-shrink: 0;
-        }
-        .ua-pane-title { font-size: .84rem; font-weight: 700; color: var(--text); }
-        .ua-count-badge {
-          display: inline-flex; align-items: center;
-          font-size: .72rem; color: var(--muted);
-        }
-        .ua-action-btn {
-          display: flex; align-items: center; gap: 6px;
-          padding: 7px 13px;
-          font-family: var(--font-sans); font-size: .78rem; font-weight: 700;
-          color: #fff; background: var(--accent);
-          border: none; border-radius: 20px; cursor: pointer;
-          white-space: nowrap; transition: opacity .15s;
-        }
-        .ua-action-btn:hover { opacity: .88; }
-        .ua-icon-btn {
+        .uam-header-left { display: flex; align-items: center; gap: 12px; }
+        .uam-header-icon {
+          width: 40px; height: 40px; border-radius: 11px;
+          background: rgba(255,255,255,.14);
           display: flex; align-items: center; justify-content: center;
-          width: 30px; height: 30px;
-          border: 1.5px solid var(--border); border-radius: 8px;
-          background: var(--surface); color: var(--muted); cursor: pointer;
+          color: rgba(255,255,255,.9); flex-shrink: 0;
+        }
+        .uam-header-title { font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 1px; }
+        .uam-header-sub { font-size: .72rem; color: rgba(255,255,255,.55); }
+        .uam-kpi-pills { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .uam-kpi-pill {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 3px 9px; border-radius: 20px;
+          font-size: .68rem; font-weight: 700;
+        }
+        .uam-kpi-users    { background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); }
+        .uam-kpi-families { background: rgba(255,255,255,.10); color: rgba(255,255,255,.75); }
+        .uam-kpi-pending  { background: rgba(220,38,38,.25); color: #fca5a5; }
+
+        /* ── Tabs ──────────────────────────────────────────────────────── */
+        .uam-tabs {
+          display: flex; border-bottom: 1px solid var(--border);
+          background: var(--surface2); overflow-x: auto;
+          scrollbar-width: none; flex-shrink: 0;
+        }
+        .uam-tabs::-webkit-scrollbar { display: none; }
+        .uam-tab {
+          display: flex; align-items: center; gap: 6px;
+          padding: 11px 16px;
+          font-family: var(--font-sans); font-size: .78rem; font-weight: 600;
+          color: var(--muted); border: none; background: none; cursor: pointer;
+          border-bottom: 2.5px solid transparent; margin-bottom: -1px;
+          white-space: nowrap; transition: color .15s, border-color .15s;
+          flex-shrink: 0;
+        }
+        .uam-tab:hover { color: var(--text); }
+        .uam-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--surface); }
+
+        /* ── Body / Panes ──────────────────────────────────────────────── */
+        .uam-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+        .uam-pane { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        .uam-scroll { flex: 1; overflow-y: auto; padding: 12px 18px; }
+
+        /* ── Pane toolbar ──────────────────────────────────────────────── */
+        .uam-pane-bar {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 18px; border-bottom: 1px solid var(--border);
+          background: var(--surface2); flex-shrink: 0; gap: 10px;
+        }
+        .uam-pane-title { font-size: .86rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+        .uam-count {
+          font-size: .7rem; color: var(--muted);
+          background: var(--bg2); border-radius: 20px;
+          padding: 1px 8px; border: 1px solid var(--border);
+        }
+
+        /* ── Search ────────────────────────────────────────────────────── */
+        .uam-search-wrap {
+          display: flex; align-items: center; gap: 6px;
+          background: var(--surface); border: 1.5px solid var(--border);
+          border-radius: 20px; padding: 5px 11px;
+          transition: border-color .15s;
+        }
+        .uam-search-wrap:focus-within { border-color: var(--accent); }
+        .uam-search-wrap svg { color: var(--muted); flex-shrink: 0; }
+        .uam-search-input {
+          border: none; background: transparent; outline: none;
+          font-family: var(--font-sans); font-size: .78rem; color: var(--text);
+          width: 130px;
+        }
+
+        /* ── Buttons ───────────────────────────────────────────────────── */
+        .uam-btn-primary {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 7px 14px; border: none; border-radius: 20px;
+          background: var(--accent); color: #fff;
+          font-family: var(--font-sans); font-size: .76rem; font-weight: 700;
+          cursor: pointer; white-space: nowrap; transition: opacity .15s, transform .12s;
+        }
+        .uam-btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+        .uam-btn-ghost {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 20px;
+          background: transparent; color: var(--text2);
+          font-family: var(--font-sans); font-size: .76rem; font-weight: 600;
+          cursor: pointer; transition: all .15s;
+        }
+        .uam-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+        .uam-refresh-btn {
+          width: 32px; height: 32px; border-radius: 8px;
+          border: 1.5px solid var(--border); background: var(--surface);
+          color: var(--muted); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
           transition: all .15s;
         }
-        .ua-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .ua-select {
-          font-family: var(--font-sans); font-size: .78rem; padding: 6px 8px;
-          border: 1px solid var(--border); border-radius: 7px;
+        .uam-refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .uam-select {
+          font-family: var(--font-sans); font-size: .76rem;
+          padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 8px;
           background: var(--surface); color: var(--text);
         }
-        .ua-form-card {
-          margin: 14px 20px;
-          background: var(--surface2); border: 1px solid var(--border);
-          border-radius: 12px; padding: 16px 18px;
+
+        /* ── Badges ────────────────────────────────────────────────────── */
+        .uam-badge {
+          display: inline-flex; align-items: center; justify-content: center;
+          min-width: 18px; height: 18px; border-radius: 20px;
+          font-size: .62rem; font-weight: 700; padding: 0 5px; margin-left: 3px;
         }
-        .ua-form-title { font-size: .88rem; font-weight: 700; color: var(--text); margin-bottom: 14px; }
-        .ua-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-        @media (max-width: 560px) { .ua-form-grid { grid-template-columns: 1fr; } }
-        .ua-field label { font-size: .72rem; font-weight: 700; color: var(--text2); display: block; margin-bottom: 5px; }
-        .ua-input, .ua-select-full {
-          width: 100%; padding: 8px 10px;
+        .uam-badge-red   { background: #dc2626; color: #fff; }
+        .uam-badge-green { background: var(--accent); color: #fff; }
+
+        /* ── Form wrap ─────────────────────────────────────────────────── */
+        .uam-form-wrap {
+          background: linear-gradient(135deg,
+            color-mix(in srgb, var(--accent) 6%, var(--surface2)) 0%,
+            var(--surface2) 100%);
+          border-bottom: 1px solid var(--border);
+          flex-shrink: 0;
+        }
+        .uam-form-wrap--slim { /* used for family form */ }
+        .uam-form-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 12px 18px 0;
+        }
+        .uam-form-title { font-size: .9rem; font-weight: 800; color: var(--text); }
+        .uam-form-close {
+          background: none; border: none; cursor: pointer; color: var(--muted);
+          font-size: 1rem; padding: 2px 6px; border-radius: 6px;
+          transition: color .15s;
+        }
+        .uam-form-close:hover { color: var(--danger, #dc2626); }
+        .uam-form-body {
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 0 24px; padding: 14px 18px;
+        }
+        @media (max-width: 600px) { .uam-form-body { grid-template-columns: 1fr; } }
+        .uam-form-col { display: flex; flex-direction: column; gap: 10px; }
+        .uam-form-footer {
+          display: flex; gap: 8px; justify-content: flex-end;
+          padding: 12px 18px; border-top: 1px solid var(--border);
+          background: var(--surface);
+        }
+        .uam-field { display: flex; flex-direction: column; gap: 4px; }
+        .uam-field label { font-size: .71rem; font-weight: 700; color: var(--text2); }
+        .uam-hint { font-size: .68rem; font-weight: 400; color: var(--muted); }
+        .uam-input {
+          width: 100%; padding: 8px 10px; box-sizing: border-box;
           font-family: var(--font-sans); font-size: .82rem;
-          border: 1.5px solid var(--border); border-radius: 8px;
+          border: 1.5px solid var(--border); border-radius: 9px;
           background: var(--surface); color: var(--text);
-          outline: none; box-sizing: border-box; transition: border-color .15s;
+          outline: none; transition: border-color .15s;
         }
-        .ua-input:focus, .ua-select-full:focus { border-color: var(--accent); }
-        .ua-perms-title { font-size: .75rem; font-weight: 700; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
-        .ua-perms-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-        .ua-perm-toggle {
+        .uam-input:focus { border-color: var(--accent); }
+
+        /* ── Permissions grid ──────────────────────────────────────────── */
+        .uam-perms-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+        .uam-perm {
           display: flex; align-items: center; gap: 5px;
-          padding: 5px 10px;
-          background: var(--surface); border: 1.5px solid var(--border);
-          border-radius: 20px; cursor: pointer; font-size: .75rem; font-weight: 600;
+          padding: 5px 8px; background: var(--surface);
+          border: 1.5px solid var(--border); border-radius: 8px;
+          cursor: pointer; font-size: .72rem; font-weight: 600;
           color: var(--text2); transition: all .15s; user-select: none;
         }
-        .ua-perm-toggle:has(input:checked) { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
-        .ua-avatar-row {
-          display: flex; align-items: center; gap: 14px;
-          padding: 10px 12px; background: var(--surface);
-          border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px;
+        .uam-perm:has(input:checked) {
+          border-color: var(--accent);
+          background: var(--accent-lt, #e8f2ee);
+          color: var(--accent);
         }
-        .ua-avatar-preview { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid var(--border); }
-        .ua-form-footer { display: flex; gap: 8px; justify-content: flex-end; }
-        .ua-loading { text-align: center; padding: 32px; color: var(--muted); font-size: .85rem; }
-        .ua-wizard-banner {
+        .uam-perm input { display: none; }
+
+        /* ── Avatar ────────────────────────────────────────────────────── */
+        .uam-avatar-row { display: flex; align-items: center; gap: 10px; }
+        .uam-avatar-preview {
+          width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
+          flex-shrink: 0; border: 2px solid var(--border);
+          background: var(--surface2);
+        }
+
+        /* ── Users list ────────────────────────────────────────────────── */
+        .uam-users-list { padding: 10px 18px !important; }
+        .uam-user-row {
+          display: flex; align-items: center; gap: 12px;
+          padding: 10px 14px; margin-bottom: 4px;
+          background: var(--surface2); border: 1px solid var(--border);
+          border-radius: 12px; cursor: pointer;
+          transition: all .15s;
+        }
+        .uam-user-row:hover {
+          border-color: var(--accent);
+          background: color-mix(in srgb, var(--accent) 5%, var(--surface2));
+          transform: translateY(-1px);
+          box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        }
+        .uam-user-info { flex: 1; min-width: 0; }
+        .uam-user-name { font-size: .85rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .uam-user-email { font-size: .71rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .uam-user-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+        .uam-user-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .uam-user-action-btn {
+          width: 28px; height: 28px; border-radius: 7px;
+          border: 1px solid var(--border); background: var(--surface);
+          color: var(--muted); cursor: pointer; display: flex;
+          align-items: center; justify-content: center;
+          font-size: .75rem; transition: all .15s;
+        }
+        .uam-user-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .uam-user-action-btn.danger:hover { border-color: var(--danger,#dc2626); color: var(--danger,#dc2626); }
+        .uam-role-badge {
+          display: inline-flex; align-items: center; gap: 3px;
+          font-size: .65rem; font-weight: 700;
+          padding: 2px 8px; border-radius: 20px;
+          border: 1px solid;
+        }
+        .uam-status-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          flex-shrink: 0; display: inline-block;
+        }
+        .uam-family-tag {
+          display: inline-flex; align-items: center; gap: 3px;
+          font-size: .63rem; padding: 1px 7px; border-radius: 20px;
+          background: var(--accent-lt,#e8f2ee); color: var(--accent);
+          border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+          font-weight: 600; white-space: nowrap;
+          max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ── Empty / loading states ────────────────────────────────────── */
+        .uam-empty-state {
+          text-align: center; padding: 48px 20px;
+          color: var(--muted); font-size: .85rem;
+        }
+        .uam-empty-icon { font-size: 2.4rem; margin-bottom: 10px; }
+
+        /* ── Pending section header ────────────────────────────────────── */
+        .uam-pending-banner {
+          background: linear-gradient(135deg, #fef3c7, #fef9e8);
+          border: 1.5px solid #f59e0b; border-radius: 12px;
+          padding: 14px 16px; margin-bottom: 14px;
+          display: flex; align-items: flex-start; gap: 12px;
+        }
+
+        /* ── Wizard banner ─────────────────────────────────────────────── */
+        .uam-wizard-banner {
           display: flex; align-items: center; justify-content: space-between; gap: 12px;
-          flex-wrap: wrap; margin: 14px 20px 0;
-          background: var(--accent-lt); border: 1px solid var(--accent);
+          flex-wrap: wrap; margin: 12px 18px 0;
+          background: var(--accent-lt, #e8f2ee); border: 1px solid var(--accent);
           border-radius: 10px; padding: 12px 16px;
         }
-        /* Users list — card rows */
-        #usersList { padding: 10px 20px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
-        #familiesList { padding: 10px 20px; overflow-y: auto; flex: 1; }
-        #uaPendingContent { padding: 16px 20px; overflow-y: auto; flex: 1; }
       </style>
 
     </div>
   </div>
-
 
 <!-- ── Modal: Configurar IA (Google Gemini API Key) ──────────────────────── -->
 <div class="modal-overlay" id="aiConfigModal">
