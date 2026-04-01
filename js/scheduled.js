@@ -716,12 +716,25 @@ function renderUpcoming() {
       ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
       : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
 
+    // Para Hoje/Amanhã: subtítulo com data por extenso; demais: só dow + data
+    const dowLabel = isToday
+      ? `<div class="sup-group-dow-wrap">
+           <span class="sup-group-dow sup-group-dow--special">Hoje</span>
+           <span class="sup-group-date-sub">${dow} · ${dayNum} de ${dayMon}</span>
+         </div>`
+      : isTomorrow
+      ? `<div class="sup-group-dow-wrap">
+           <span class="sup-group-dow sup-group-dow--special">Amanhã</span>
+           <span class="sup-group-date-sub">${dow} · ${dayNum} de ${dayMon}</span>
+         </div>`
+      : `<span class="sup-group-dow">${dow}, ${fmtDate(date)}</span>`;
+
     const _startOpen = isToday || isTomorrow;
     return `<div class="sup-group">
       <div class="sup-group-hdr" onclick="toggleUpcomingGroup('${gid}')">
         <div class="sup-group-left">
           ${dayPill}
-          <span class="sup-group-dow">${dow}</span>
+          ${dowLabel}
         </div>
         <div class="sup-group-meta">
           <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
@@ -1259,8 +1272,6 @@ async function saveScheduled() {
       const principal   = document.getElementById('scStartDatePrincipal')?.value?.trim() || '';
       const recorrencia = document.getElementById('scStartDate')?.value?.trim() || '';
       // Usa o que tiver valor; se ambos tiverem (caso normal), são iguais por design.
-      return principal || recorrencia || '';
-    })(),
       return principal || recorrencia || '';
     })(),
     frequency: freq,
