@@ -150,10 +150,13 @@ window._drillOpen  = _drillOpen;
 window._forecastDrillRow = function(dateStr, label) {
   const txSlice = (rptState.txData || []).filter(t => t.date === dateStr);
   if (!txSlice.length) {
-    // Try from forecast state
     const allTx = window._forecastTxCache || [];
     const fSlice = allTx.filter(t => t.date === dateStr);
     if (fSlice.length) {
+      if (typeof window._forecastOpenDayDrill === 'function') {
+        window._forecastOpenDayDrill(dateStr, label);
+        return;
+      }
       _drillOpen({ title: label || dateStr, subtitle: 'Transações previstas', txs: fSlice, color: 'var(--accent)' });
       return;
     }
@@ -161,6 +164,146 @@ window._forecastDrillRow = function(dateStr, label) {
     return;
   }
   _drillOpen({ title: label || dateStr, subtitle: 'Transações · ' + dateStr, txs: txSlice, color: 'var(--accent)' });
+};
+
+function _forecastEsc(s) {
+  return typeof esc === 'function'
+    ? esc(s)
+    : String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _forecastFmt(v, cur='BRL') {
+  return typeof fmt === 'function' ? fmt(v, cur) : String(Number(v||0).toFixed(2));
+}
+
+function _forecastOpenSharedModal(title, subtitle, bodyHtml, accent='var(--accent)') {
+  let modal = document.getElementById('forecastRichDetailModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'forecastRichDetailModal';
+    modal.className = 'modal-overlay';
+    modal.onclick = e => { if (e.target === modal) closeModal('forecastRichDetailModal'); };
+    modal.innerHTML = `<div class="modal" style="max-width:640px;max-height:84dvh;overflow:hidden;display:flex;flex-direction:column;padding:0">
+      <div class="modal-handle"></div>
+      <div id="forecastRichDetailAccent" style="height:3px;border-radius:2px 2px 0 0"></div>
+      <div style="padding:16px 18px 0;flex-shrink:0">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <div id="forecastRichDetailTitle" style="font-size:.95rem;font-weight:800;color:var(--text)"></div>
+            <div id="forecastRichDetailSub" style="font-size:.72rem;color:var(--muted);margin-top:2px"></div>
+          </div>
+          <button onclick="closeModal('forecastRichDetailModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;cursor:pointer;color:var(--muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem">✕</button>
+        </div>
+      </div>
+      <div id="forecastRichDetailBody" style="overflow-y:auto;flex:1;padding:14px 18px 18px"></div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+  const accentEl = document.getElementById('forecastRichDetailAccent');
+  if (accentEl) accentEl.style.background = accent;
+  const titleEl = document.getElementById('forecastRichDetailTitle');
+  if (titleEl) titleEl.textContent = title || 'Detalhes';
+  const subEl = document.getElementById('forecastRichDetailSub');
+  if (subEl) subEl.textContent = subtitle || '';
+  const bodyEl = document.getElementById('forecastRichDetailBody');
+  if (bodyEl) bodyEl.innerHTML = bodyHtml || '';
+  openModal('forecastRichDetailModal');
+}
+
+window._forecastOpenDayDrill = function(dateStr, label) {
+  const allTx = (window._forecastTxCache || []).filter(t => t.date === dateStr);
+  if (!allTx.length) {
+    toast('Sem transações nesta data', 'warning');
+    return;
+  }
+
+  const accountMap = new Map();
+  allTx.forEach(tx => {
+    const accountId = tx.account_id || 'na';
+    const stateAcc = (state.accounts || []).find(a => a.id === tx.account_id);
+    const accountName = tx.accounts?.name || stateAcc?.name || 'Conta';
+    const accountColor = tx.accounts?.color || stateAcc?.color || '#2a6049';
+    const accountCurrency = tx.accounts?.currency || tx.currency || stateAcc?.currency || 'BRL';
+    if (!accountMap.has(accountId)) {
+      accountMap.set(accountId, { id: accountId, name: accountName, color: accountColor, currency: accountCurrency, txs: [] });
+    }
+    accountMap.get(accountId).txs.push(tx);
+  });
+
+  const body = [...accountMap.values()].sort((a,b) => a.name.localeCompare(b.name,'pt-BR')).map(acc => {
+    const total = acc.txs.reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0);
+    const rows = acc.txs.map(tx => {
+      const uid = String(tx.__forecast_uid || '').replace(/'/g, "\'");
+      const amount = parseFloat(tx.amount) || 0;
+      const cat = tx.categories?.name ? ` · ${_forecastEsc(tx.categories.name)}` : '';
+      const payee = tx.payees?.name ? ` · ${_forecastEsc(tx.payees.name)}` : '';
+      return `<button type="button" onclick="if(typeof _forecastOpenItemDetail==='function')_forecastOpenItemDetail('${uid}')" style="width:100%;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-top:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${tx.isScheduled ? '#1e5ba8' : (amount < 0 ? 'var(--red)' : 'var(--green)')};margin-top:7px;flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.83rem;font-weight:700;color:var(--text)">${_forecastEsc(tx.description || 'Transação')}</div>
+          <div style="font-size:.71rem;color:var(--muted);margin-top:2px">${tx.isScheduled ? 'Programada' : 'Lançada'}${cat}${payee}</div>
+        </div>
+        <div style="font-size:.83rem;font-weight:700;color:${amount < 0 ? 'var(--red)' : 'var(--green)'};white-space:nowrap">${amount < 0 ? '−' : '+'}${_forecastFmt(Math.abs(amount), acc.currency)}</div>
+      </button>`;
+    }).join('');
+
+    return `<section style="border:1px solid var(--border);border-radius:14px;padding:12px 12px 10px;margin-bottom:12px;background:var(--surface2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <div style="font-size:.84rem;font-weight:800;color:var(--text)">${_forecastEsc(acc.name)}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${acc.txs.length} item${acc.txs.length > 1 ? 's' : ''} nesta conta</div>
+        </div>
+        <div style="font-size:.82rem;font-weight:800;color:${total < 0 ? 'var(--red)' : 'var(--green)'};white-space:nowrap">${total < 0 ? '−' : '+'}${_forecastFmt(Math.abs(total), acc.currency)}</div>
+      </div>
+      <div style="height:2px;background:${acc.color || '#2a6049'}22;border-radius:999px;margin:10px 0 2px"></div>
+      ${rows}
+    </section>`;
+  }).join('');
+
+  _forecastOpenSharedModal(label || dateStr, 'Transações do dia separadas por conta', body, 'var(--accent)');
+};
+
+window._forecastOpenItemDetail = function(uid) {
+  const tx = (window._forecastTxCache || []).find(item => String(item.__forecast_uid) === String(uid));
+  if (!tx) {
+    toast('Detalhe da transação não encontrado', 'warning');
+    return;
+  }
+
+  const stateAcc = (state.accounts || []).find(a => a.id === tx.account_id);
+  const accountName = tx.accounts?.name || stateAcc?.name || 'Conta';
+  const currency = tx.accounts?.currency || tx.currency || stateAcc?.currency || 'BRL';
+  const amount = parseFloat(tx.amount) || 0;
+  const accent = tx.isScheduled ? '#1e5ba8' : 'var(--accent)';
+  const badge = tx.isScheduled
+    ? '<span style="display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:rgba(30,91,168,.12);color:#1e5ba8;font-size:.68rem;font-weight:700">Programada</span>'
+    : '<span style="display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:rgba(42,122,74,.12);color:var(--accent);font-size:.68rem;font-weight:700">Transação</span>';
+  const lines = [
+    ['Data', tx.date || '—'],
+    ['Conta', accountName],
+    ['Categoria', tx.categories?.name || '—'],
+    ['Beneficiário', tx.payees?.name || '—'],
+    ['Tipo', tx.type || (amount < 0 ? 'expense' : 'income')],
+  ];
+  if (tx.source_scheduled_id) lines.push(['Agendamento', tx.source_scheduled_id]);
+
+  const body = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <div style="min-width:0">
+        <div style="font-size:.92rem;font-weight:800;color:var(--text)">${_forecastEsc(tx.description || 'Transação')}</div>
+        <div style="margin-top:8px">${badge}</div>
+      </div>
+      <div style="font-size:1rem;font-weight:800;color:${amount < 0 ? 'var(--red)' : 'var(--green)'};white-space:nowrap">${amount < 0 ? '−' : '+'}${_forecastFmt(Math.abs(amount), currency)}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(110px,140px) 1fr;gap:8px 12px;font-size:.8rem">
+      ${lines.map(([k,v]) => `<div style="color:var(--muted);font-weight:600">${_forecastEsc(k)}</div><div style="color:var(--text)">${_forecastEsc(v)}</div>`).join('')}
+    </div>
+    ${tx.memo ? `<div style="margin-top:14px;padding:12px;border-radius:12px;background:var(--surface2);border:1px solid var(--border)"><div style="font-size:.72rem;color:var(--muted);font-weight:700;margin-bottom:6px">Observação</div><div style="font-size:.8rem;color:var(--text)">${_forecastEsc(tx.memo)}</div></div>` : ''}
+    ${tx.isScheduled && tx.source_scheduled_id ? `<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" onclick="closeModal('forecastRichDetailModal'); if (typeof openScheduledModal === 'function') openScheduledModal('${_forecastEsc(tx.source_scheduled_id)}');" style="border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:9px 12px;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--text)">Abrir programação</button></div>` : ''}
+    ${!tx.isScheduled && tx.id ? `<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" onclick="closeModal('forecastRichDetailModal'); if (typeof editTransaction === 'function') editTransaction('${_forecastEsc(tx.id)}');" style="border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:9px 12px;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--text)">Abrir transação</button></div>` : ''}
+  `;
+
+  _forecastOpenSharedModal('Detalhes da transação', tx.date || '', body, accent);
 };
 
 
