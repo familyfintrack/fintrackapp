@@ -798,3 +798,445 @@
   color: var(--muted);
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   DREAMS v2 — Goal Engine, Linked Resources, Wizard Stepper
+   Added: 2026-04 (patch_v2)
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Goal Engine panel ───────────────────────────────────────────── */
+.drm-goal-engine {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.drm-ge-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.drm-ge-row:last-child { border-bottom: none; }
+.drm-ge-row--highlight { background: rgba(22,163,74,.05); }
+.drm-ge-icon {
+  font-size: 1.1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.drm-ge-content { flex: 1; min-width: 0; }
+.drm-ge-label {
+  font-size: .68rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 1px;
+}
+.drm-ge-value {
+  font-size: .92rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.01em;
+}
+.drm-ge-period {
+  font-size: .72rem;
+  color: var(--muted);
+  font-weight: 500;
+  margin-top: 1px;
+}
+.drm-ge-sub {
+  font-size: .72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.drm-ge-sub--warn {
+  color: #f97316;
+  font-weight: 600;
+}
+
+/* ── Progress ring hero ──────────────────────────────────────────── */
+.drm-hero-ring-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+.drm-hero-ring-wrap svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+.drm-ring-pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -.03em;
+}
+.drm-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.drm-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.drm-hero-stat {
+  text-align: center;
+  padding: 8px 6px;
+  background: var(--surface);
+  border-radius: 9px;
+  border: 1px solid var(--border);
+}
+.drm-hero-stat-label {
+  font-size: .62rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 3px;
+}
+.drm-hero-stat-val {
+  font-size: .86rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* ── Linked resource cards ───────────────────────────────────────── */
+.drm-linked-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.drm-linked-icon {
+  font-size: 1.3rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.drm-linked-info { flex: 1; min-width: 0; }
+.drm-linked-name {
+  font-size: .84rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drm-linked-sub {
+  font-size: .71rem;
+  color: var(--muted);
+}
+.drm-linked-action {
+  font-size: .73rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(22,163,74,.08);
+  border: 1px solid rgba(22,163,74,.18);
+  border-radius: 7px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: all .14s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.drm-linked-action:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.drm-linked-empty {
+  font-size: .79rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 10px 0 6px;
+  line-height: 1.45;
+}
+.drm-linked-ctas {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.drm-linked-hint {
+  font-size: .73rem;
+  color: var(--muted);
+  line-height: 1.4;
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+}
+
+/* ── Acceleration suggestions ────────────────────────────────────── */
+.drm-accel-hint {
+  font-size: .76rem;
+  color: var(--muted);
+  margin-bottom: 10px;
+  line-height: 1.45;
+}
+.drm-accel-list { display: flex; flex-direction: column; gap: 6px; }
+.drm-accel-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  transition: border-color .13s, box-shadow .13s;
+}
+.drm-accel-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(22,163,74,.08); }
+.drm-accel-icon {
+  font-size: 1.15rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.drm-accel-info { flex: 1; min-width: 0; }
+.drm-accel-cat {
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.drm-accel-desc {
+  font-size: .72rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ── Budget modal extras ─────────────────────────────────────────── */
+.drm-budget-explain {
+  font-size: .79rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+.drm-budget-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .8rem;
+  color: var(--accent);
+  background: rgba(22,163,74,.07);
+  border: 1px solid rgba(22,163,74,.16);
+  border-radius: 9px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+/* ── Contribute modal extras ─────────────────────────────────────── */
+.drm-contrib-dream-label {
+  font-size: .73rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.drm-contrib-acc-hint {
+  font-size: .72rem;
+  color: var(--accent);
+  margin-top: 4px;
+  font-weight: 500;
+}
+.drm-contrib-note {
+  font-size: .73rem;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* ── Meta chip variants ──────────────────────────────────────────── */
+.drm-meta-chip--linked {
+  background: rgba(59,130,246,.08);
+  color: #3b82f6;
+  border-color: rgba(59,130,246,.2);
+}
+.drm-meta-chip--budget {
+  background: rgba(249,115,22,.08);
+  color: #f97316;
+  border-color: rgba(249,115,22,.2);
+}
+
+/* ── Modal hint ──────────────────────────────────────────────────── */
+.drm-modal-hint {
+  font-size: .76rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px 12px;
+  margin-top: 8px;
+  line-height: 1.45;
+}
+
+/* ── Review step — alert / ok states ────────────────────────────── */
+.drm-review-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(249,115,22,.07);
+  border: 1px solid rgba(249,115,22,.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: .77rem;
+  color: #c2410c;
+  line-height: 1.45;
+}
+.drm-review-ok {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(22,163,74,.06);
+  border: 1px solid rgba(22,163,74,.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: .77rem;
+  color: var(--accent);
+  line-height: 1.45;
+}
+
+/* ── Loading skeleton ────────────────────────────────────────────── */
+.drm-loading-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+.drm-skel-bar {
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s ease infinite;
+}
+.drm-skel-bar--tall { height: 20px; }
+.drm-skel-bar--short { width: 55%; }
+@keyframes skelShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Wizard header redesign ──────────────────────────────────────── */
+.drm-wizard-header-wrap {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.drm-wizard-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 12px;
+}
+.drm-wizard-title {
+  font-size: .98rem;
+  font-weight: 800;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Stepper ─────────────────────────────────────────────────────── */
+.drm-wizard-stepper {
+  display: flex;
+  align-items: center;
+  padding: 0 20px 14px;
+  gap: 0;
+}
+.drm-stepper-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+.drm-stepper-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--muted);
+  z-index: 1;
+  transition: all .2s;
+}
+.drm-stepper-item.active .drm-stepper-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(22,163,74,.15);
+}
+.drm-stepper-item.done .drm-stepper-dot {
+  background: rgba(22,163,74,.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.drm-stepper-label {
+  font-size: .62rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+.drm-stepper-item.active .drm-stepper-label { color: var(--accent); font-weight: 700; }
+.drm-stepper-item.done  .drm-stepper-label { color: var(--text2); }
+.drm-stepper-line {
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.drm-stepper-line.done { background: var(--accent); }
+
+/* ── Responsive additions ────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .drm-hero-stats { grid-template-columns: repeat(3, 1fr); }
+  .drm-linked-ctas { flex-direction: column; }
+  .drm-stepper-label { display: none; }
+  .drm-hero-top { flex-direction: column; align-items: center; text-align: center; }
+  .drm-hero-ring-wrap { width: 80px; height: 80px; }
+  .drm-ring-pct { font-size: 1rem; }
+  .drm-ge-row { gap: 8px; }
+}
