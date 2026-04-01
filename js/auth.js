@@ -476,10 +476,12 @@ function showLoginScreen() {
     // e qualquer re-exibição posterior ao boot). Lê do cache em memória se disponível,
     // senão do localStorage (sempre disponível, sem network).
     try {
+      const _info = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : { isMobile: false };
+      const _mobileDefault = _info.isMobile ? 'centered' : 'split';
       const _themeToApply =
         (typeof _appSettingsCache !== 'undefined' && _appSettingsCache && _appSettingsCache['login_theme']) ||
         localStorage.getItem('login_theme') ||
-        'split';
+        _mobileDefault;
       if (typeof applyLoginTheme === 'function') applyLoginTheme(_themeToApply);
     } catch(_) {}
     // Re-apply access request visibility every time login screen is shown
@@ -555,15 +557,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Also fetch from Supabase anon (for mobile users who never set it locally)
   //    Uses a short timeout so it doesn't block anything
   _fetchAccessRequestSettingAnon();
-  // 3. FIX: Aplicar tema de login imediatamente do localStorage — sem network,
-  //    sem depender do boot. Garante que o usuário veja o tema correto desde o
-  //    primeiro frame, mesmo antes de qualquer sessão ser restaurada.
+  // 3. Aplicar tema de login do localStorage — sem network.
+  //    Se localStorage vazio (primeiro acesso PWA), usa default mobile-aware.
   try {
-    const _savedTheme = localStorage.getItem('login_theme') || 'split';
-    if (typeof applyLoginTheme === 'function') {
-      applyLoginTheme(_savedTheme);
-    }
+    const _info = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : { isMobile: false };
+    const _mobileDefault = _info.isMobile ? 'centered' : 'split';
+    const _savedTheme = localStorage.getItem('login_theme') || _mobileDefault;
+    if (typeof applyLoginTheme === 'function') applyLoginTheme(_savedTheme);
   } catch(_) {}
+  // 4. Busca tema do DB de forma anônima — garante sincronização cross-device
+  //    mesmo antes do usuário logar (cobre PWA freshly installed).
+  _fetchLoginThemeAnon();
 });
 
 async function _fetchAccessRequestSettingAnon() {
@@ -632,6 +636,72 @@ async function _fetchAccessRequestSettingAnon() {
     _applyAccessRequestVisibility(false);
   }
 }
+
+
+// ── Login theme: fetch anonimamente do DB (sem sessão, cobre PWA fresh install) ──
+// Espelha o padrão de _fetchAccessRequestSettingAnon.
+// Fluxo: localStorage (instantâneo) → DB anon select → RPC SECURITY DEFINER
+// Aplica o tema assim que encontrar, sem bloquear nada.
+async function _fetchLoginThemeAnon() {
+  try {
+    // ── Step 1: localStorage já aplicado antes desta chamada.
+    // Se existe, DB pode ter valor diferente (admin mudou em outro device).
+    // Continua para sincronizar, mas não bloqueia renderização.
+    const lsVal = localStorage.getItem('login_theme');
+
+    // ── Step 2: aguarda sb estar disponível (max 3s) ──
+    let attempts = 0;
+    while (!window.sb && attempts++ < 30) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (!window.sb) return; // Supabase não disponível — mantém o que já está
+
+    let raw = null;
+    let found = false;
+
+    // Try 1: select direto (funciona se app_settings tem política anon SELECT)
+    try {
+      const { data, error } = await window.sb
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'login_theme')
+        .limit(1)
+        .maybeSingle();
+      if (!error && data !== null && data !== undefined) {
+        raw = data?.value; found = true;
+      }
+    } catch(_) {}
+
+    // Try 2: RPC get_public_app_setting (SECURITY DEFINER — bypassa RLS)
+    if (!found) {
+      try {
+        const { data, error } = await window.sb.rpc('get_public_app_setting', { p_key: 'login_theme' });
+        if (!error && data !== null && data !== undefined) {
+          raw = data; found = true;
+        }
+      } catch(_) {}
+    }
+
+    if (!found) return; // DB não tem o setting — mantém o que já está aplicado
+
+    // Normaliza valor (pode vir como JSON string ou string pura)
+    let theme = raw;
+    if (typeof theme === 'string') {
+      try { theme = JSON.parse(theme); } catch(_) {}
+    }
+    const validThemes = ['split','centered','asymmetric','immersive','minimal'];
+    if (typeof theme !== 'string' || !validThemes.includes(theme)) return;
+
+    // Só re-aplica se diferente do que está no localStorage (evita flash desnecessário)
+    if (theme !== lsVal) {
+      try { localStorage.setItem('login_theme', theme); } catch(_) {}
+      // Atualiza data-login-theme no <html> (usado pelo CSS anti-flash)
+      try { document.documentElement.setAttribute('data-login-theme', theme); } catch(_) {}
+      if (typeof applyLoginTheme === 'function') applyLoginTheme(theme);
+    }
+  } catch(_) {} // silencia qualquer erro — nunca bloqueia
+}
+
 
 
 function _applyAccessRequestVisibility(enabled) {
