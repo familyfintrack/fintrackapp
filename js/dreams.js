@@ -1295,9 +1295,22 @@ async function saveDream() {
   const btn=document.getElementById('wizSaveBtn');
   if(btn){btn.disabled=true;btn.textContent='Salvando…';}
   const fid=famId();
-  // Validar dream_type — o banco aceita apenas: viagem, automovel, imovel, outro
-  const VALID_TYPES = ['viagem','automovel','imovel','outro'];
-  const safeType = VALID_TYPES.includes(w.type) ? w.type : 'outro';
+  // Validar dream_type — o banco aceita apenas: viagem, automovel, imovel
+  // (e 'outro' após executar DREAMS_MIGRATION_SQL no Supabase)
+  // Mapeamento de tipos que a IA pode retornar para os aceitos pelo banco
+  const TYPE_MAP = {
+    viagem: 'viagem', travel: 'viagem', turismo: 'viagem',
+    automovel: 'automovel', carro: 'automovel', veiculo: 'automovel', auto: 'automovel',
+    imovel: 'imovel', casa: 'imovel', apartamento: 'imovel', imóvel: 'imovel',
+    outro: 'outro', other: 'outro', saude: 'outro', educacao: 'outro',
+    tecnologia: 'outro', lazer: 'outro', sonho: 'outro',
+  };
+  const DB_VALID = ['viagem', 'automovel', 'imovel', 'outro'];
+  const rawType  = (w.type || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  let   safeType = TYPE_MAP[rawType] || (DB_VALID.includes(w.type) ? w.type : null);
+  // Se ainda inválido, tentar salvar como 'outro' — se o banco rejeitar, fallback para 'viagem'
+  if (!safeType) safeType = 'outro';
+
   // Também salvar family_member_ids do picker de membros
   const memberIds = typeof getFmcMultiPickerSelected === 'function'
     ? getFmcMultiPickerSelected('wizFamilyMemberPicker')
@@ -1310,8 +1323,14 @@ async function saveDream() {
       dreamId=w.dreamId;
       const idx=_drm.dreams.findIndex(d=>d.id===dreamId); if(idx!==-1) Object.assign(_drm.dreams[idx],payload);
     } else {
-      const{data,error}=await sb.from('dreams').insert({...payload,created_at:new Date().toISOString()}).select().single();
-      if(error) throw error; dreamId=data.id; data._contributions=[]; _drm.dreams.unshift(data);
+      let res = await sb.from('dreams').insert({...payload,created_at:new Date().toISOString()}).select().single();
+      // Se banco rejeitou 'outro' (constraint antigo sem esse tipo), retentar com 'viagem'
+      if (res.error && res.error.message?.includes('dreams_dream_type_check') && payload.dream_type === 'outro') {
+        payload.dream_type = 'viagem';
+        res = await sb.from('dreams').insert({...payload,created_at:new Date().toISOString()}).select().single();
+      }
+      if(res.error) throw res.error;
+      dreamId=res.data.id; res.data._contributions=[]; _drm.dreams.unshift(res.data);
     }
     if(w.items.length){
       if(w.editing) await sb.from('dream_items').delete().eq('dream_id',dreamId).eq('is_ai_suggested',true);

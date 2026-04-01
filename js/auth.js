@@ -935,7 +935,7 @@ async function onLoginSuccess() {
   if (typeof _checkNewFeedbackOnLogin === 'function') _checkNewFeedbackOnLogin().catch(()=>{});
 
   // Apply access request visibility based on admin setting
-  if (typeof initAccessRequestVisibility === 'function') Promise.resolve(initAccessRequestVisibility()).catch(()=>{});
+  if (typeof initAccessRequestVisibility === 'function') initAccessRequestVisibility().catch(()=>{});
 
   // If the user has no family_id and is not a global admin/owner,
   // launch the wizard so they can create their own family as Owner.
@@ -1068,12 +1068,6 @@ function updateUserUI() {
       }
     });
   });
-  // Elementos genéricos admin-visible (ex: botões em relatórios)
-  document.querySelectorAll('.admin-visible').forEach(el => {
-    if (!el.id || (!el.id.includes('Topbar') && !el.id.includes('Nav'))) {
-      el.style.display = isAdmin ? '' : 'none';
-    }
-  });
   // Audit: sempre visível — apenas garante que não esteja escondido
   document.querySelectorAll('[data-nav="audit"]').forEach(el => {
     el.style.display = '';
@@ -1148,9 +1142,9 @@ if (!p.can_admin) {
 }
 
   // Módulos por família: visibilidade depende de feature flag
-  if (typeof applyPricesFeature === 'function') Promise.resolve(applyPricesFeature()).catch(() => {}); // safe: undefined ou Promise
-  if (typeof applyGroceryFeature === 'function') Promise.resolve(applyGroceryFeature()).catch(() => {}); // safe: undefined ou Promise
-  if (typeof applyAiInsightsFeature === 'function') Promise.resolve(applyAiInsightsFeature()).catch(() => {}); // safe: undefined ou Promise
+  if (typeof applyPricesFeature === 'function') applyPricesFeature().catch(() => {});
+  if (typeof applyGroceryFeature === 'function') applyGroceryFeature().catch(() => {});
+  if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1817,94 +1811,25 @@ async function doRegister() {
     // Capture preferred language from register form (if present)
     const regLang = document.getElementById('regLanguage')?.value || 'pt';
 
-    // Verificar se há um convite pendente para este e-mail
-    const pendingInvite = window._pendingInvite;
-    const hasValidInvite = pendingInvite && pendingInvite.email === email.toLowerCase();
+    // Insert pending record via SECURITY DEFINER RPC — bypasses RLS for anon users.
+    // The direct sb.from('app_users').insert() fails with RLS when the user is not
+    // authenticated yet. The RPC runs with definer privileges so anon can call it.
+    const { error: insErr } = await sb.rpc('register_pending_user', {
+      p_name:          name,
+      p_email:         email,
+      p_password_hash: pwdHash,
+      p_lang:          regLang,
+    });
+    if (insErr) throw insErr;
 
-    if (hasValidInvite) {
-      // ── Fluxo de convite: registrar já aprovado e vincular à família ──────
-      const { data: newUser, error: insErr } = await sb.rpc('register_pending_user', {
-        p_name:          name,
-        p_email:         email,
-        p_password_hash: pwdHash,
-        p_lang:          regLang,
-      });
-      if (insErr) throw insErr;
+    // Notificar admin por e-mail via EmailJS (best-effort)
+    await _notifyAdminNewRegistration(name, email).catch(e =>
+      console.warn('[register] email admin falhou:', e.message)
+    );
 
-      // Buscar o ID do usuário recém-criado
-      let userId = null;
-      for (let attempt = 0; attempt < 8; attempt++) {
-        await new Promise(r => setTimeout(r, 300));
-        const { data: u } = await sb.from('app_users').select('id').eq('email', email).maybeSingle();
-        if (u?.id) { userId = u.id; break; }
-      }
-
-      if (userId) {
-        // Aprovar diretamente (usar RPC se disponível, senão update direto)
-        try {
-          await sb.rpc('approve_user', {
-            p_user_id:  userId,
-            p_family_id: pendingInvite.familyId,
-          });
-        } catch(rpcErr) {
-          // Fallback: update direto
-          await sb.from('app_users').update({
-            approved: true,
-            active:   true,
-            must_change_pwd: false,
-            family_id: pendingInvite.familyId,
-          }).eq('id', userId);
-          await sb.from('family_members').upsert(
-            { user_id: userId, family_id: pendingInvite.familyId, role: pendingInvite.role },
-            { onConflict: 'user_id,family_id' }
-          );
-        }
-
-        // Marcar o convite como usado
-        try {
-          await sb.from('family_invites').update({
-            used:    true,
-            used_at: new Date().toISOString(),
-          }).eq('token', pendingInvite.token);
-        } catch(e) { console.warn('[invite] marcar usado:', e.message); }
-
-        window._pendingInvite = null;
-      }
-
-      // Fazer login automático
-      btn.textContent = '✅ Conta criada! Entrando...';
-      await new Promise(r => setTimeout(r, 800));
-
-      // Tentar login com as credenciais recém-criadas
-      const emailEl2 = document.getElementById('loginEmail');
-      const passEl2  = document.getElementById('loginPassword');
-      if (emailEl2) emailEl2.value = email;
-      if (passEl2)  passEl2.value  = pwd;
-      await doLogin();
-      return;
-
-    } else {
-      // ── Fluxo normal: registro pendente de aprovação ──────────────────────
-      // Insert pending record via SECURITY DEFINER RPC — bypasses RLS for anon users.
-      // The direct sb.from('app_users').insert() fails with RLS when the user is not
-      // authenticated yet. The RPC runs with definer privileges so anon can call it.
-      const { error: insErr } = await sb.rpc('register_pending_user', {
-        p_name:          name,
-        p_email:         email,
-        p_password_hash: pwdHash,
-        p_lang:          regLang,
-      });
-      if (insErr) throw insErr;
-
-      // Notificar admin por e-mail via EmailJS (best-effort)
-      await _notifyAdminNewRegistration(name, email).catch(e =>
-        console.warn('[register] email admin falhou:', e.message)
-      );
-
-      // Show pending screen
-      document.getElementById('registerFormArea').style.display = 'none';
-      document.getElementById('pendingApprovalArea').style.display = '';
-    }
+    // Show pending screen
+    document.getElementById('registerFormArea').style.display = 'none';
+    document.getElementById('pendingApprovalArea').style.display = '';
 
   } catch(e) {
     errEl.textContent = 'Erro: ' + (e?.message || e);
@@ -3027,13 +2952,6 @@ async function wipeFamilyData(id, name) {
   }
 }
 
-// ── Sistema de convite com token ──────────────────────────────────────────
-// Fluxo:
-// 1. Owner clica "Convidar" → cria token na tabela family_invites + envia e-mail
-// 2. Convidado clica no link (?invite=TOKEN) → tela de registro pré-preenchida
-// 3. Convidado se cadastra → é automaticamente aprovado e vinculado à família
-// ──────────────────────────────────────────────────────────────────────────
-
 async function inviteToFamily(familyId, familyName) {
   const emailEl = document.getElementById(`inviteEmail-${familyId}`);
   const roleEl  = document.getElementById(`inviteRole-${familyId}`);
@@ -3052,266 +2970,63 @@ async function inviteToFamily(familyId, familyName) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
 
   try {
-    // ── Verificar se já é usuário cadastrado ──────────────────────────────
-    const { data: existing } = await sb.from('app_users')
-      .select('id,name,approved,active').eq('email', email).maybeSingle();
+    // Verificar se já é usuário cadastrado
+    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
 
     if (existing) {
-      // Usuário já existe: adicionar diretamente à família (sem token)
+      // Usuário já existe: adicionar diretamente à família
       const { error } = await sb.from('family_members').upsert(
         { user_id: existing.id, family_id: familyId, role },
         { onConflict: 'user_id,family_id' }
       );
       if (error) throw new Error(error.message);
-      // Sincronizar family_id legacy
-      await sb.from('app_users').update({ family_id: familyId }).eq('id', existing.id);
-      toast(`✓ ${existing.name || email} adicionado à família como ${role}`, 'success');
-      if (emailEl) emailEl.value = '';
-      await loadFamiliesList();
-      return;
+      toast(`✓ ${email} adicionado à família como ${role}`, 'success');
+    } else {
+      // Usuário novo: criar registro pendente com vínculo à família
+      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
+        email,
+        name:       email.split('@')[0],
+        role:       'user',
+        approved:   false,
+        active:     false,
+        family_id:  familyId,
+        must_change_pwd: true,
+      }).select().single();
+      if (insErr) throw new Error(insErr.message);
+
+      // Adicionar em family_members com role escolhido
+      await sb.from('family_members').insert({ user_id: newUser.id, family_id: familyId, role });
+
+      // Enviar e-mail de convite via EmailJS
+      await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email);
+      toast(`✓ Convite enviado para ${email}`, 'success');
     }
 
-    // ── Usuário novo: criar token de convite ──────────────────────────────
-    // Gerar token único
-    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-      .map(b => b.toString(16).padStart(2,'0')).join('');
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // expira em 7 dias
-
-    // Salvar o convite na tabela family_invites
-    // A tabela precisa existir — ver SQL abaixo (INVITE_SETUP_SQL)
-    const { error: invErr } = await sb.from('family_invites').insert({
-      token,
-      email,
-      family_id:  familyId,
-      role,
-      invited_by: currentUser?.app_user_id || currentUser?.id || null,
-      expires_at: expiresAt.toISOString(),
-      used:       false,
-    });
-
-    if (invErr) {
-      // Tabela não existe ainda — mostrar instruções para o admin criar
-      if (invErr.message?.includes('does not exist') || invErr.code === '42P01') {
-        _showInviteSetupRequired();
-        return;
-      }
-      throw new Error(invErr.message);
-    }
-
-    // Construir URL de convite
-    const appUrl = typeof getAppBaseUrl === 'function'
-      ? getAppBaseUrl()
-      : (window.location.origin + window.location.pathname);
-    const inviteUrl = `${appUrl}?invite=${token}`;
-
-    // Enviar e-mail com o link
-    await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl);
-
-    toast(`✅ Convite enviado para ${email}. O link expira em 7 dias.`, 'success');
     if (emailEl) emailEl.value = '';
     await loadFamiliesList();
-
   } catch(e) {
-    toast('Erro ao convidar: ' + (e.message || e), 'error');
-    console.error('[inviteToFamily]', e);
+    toast('Erro ao convidar: ' + e.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
   }
 }
 
-/** Mostra modal com o SQL necessário para criar a tabela family_invites */
-function _showInviteSetupRequired() {
-  const sql = INVITE_SETUP_SQL;
-  let m = document.getElementById('_inviteSetupModal');
-  if (!m) {
-    m = document.createElement('div');
-    m.id = '_inviteSetupModal';
-    m.className = 'modal-overlay';
-    m.onclick = e => { if (e.target === m) m.remove(); };
-    document.body.appendChild(m);
-  }
-  m.innerHTML = `<div class="modal" style="max-width:560px">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title">⚙️ Configuração necessária</span>
-      <button class="modal-close" onclick="document.getElementById('_inviteSetupModal').remove()">✕</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:.85rem;margin-bottom:12px">Para ativar o sistema de convites, execute o SQL abaixo no <strong>Supabase SQL Editor</strong>:</p>
-      <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:.74rem;overflow-x:auto;white-space:pre-wrap">${esc(sql)}</pre>
-      <button class="btn btn-primary" style="margin-top:12px;width:100%" onclick="navigator.clipboard.writeText(${JSON.stringify(sql)}).then(()=>toast('SQL copiado!','success'))">
-        📋 Copiar SQL
-      </button>
-    </div>
-  </div>`;
-  m.classList.add('open');
-}
-
-/** Verifica se a URL contém um token de convite e processa */
-async function _checkInviteToken() {
-  const params = new URLSearchParams(window.location.search);
-  const token  = params.get('invite');
-  if (!token) return false;
-
-  // Limpar da URL imediatamente
-  history.replaceState(null, '', window.location.pathname);
-
-  try {
-    // Buscar o convite (pode usar anon pois a política permite SELECT em family_invites)
-    const { data: invite, error } = await sb.from('family_invites')
-      .select('id,email,family_id,role,expires_at,used,families(name)')
-      .eq('token', token)
-      .maybeSingle();
-
-    if (error || !invite) {
-      _showInviteError('Link de convite inválido ou expirado.');
-      return true;
-    }
-    if (invite.used) {
-      _showInviteError('Este convite já foi utilizado.');
-      return true;
-    }
-    if (new Date(invite.expires_at) < new Date()) {
-      _showInviteError('Este convite expirou. Peça ao owner da família um novo convite.');
-      return true;
-    }
-
-    // Guardar dados do convite para usar no registro
-    window._pendingInvite = {
-      token,
-      email:      invite.email,
-      familyId:   invite.family_id,
-      familyName: invite.families?.name || 'sua família',
-      role:       invite.role,
-      inviteId:   invite.id,
-    };
-
-    // Mostrar tela de registro pré-preenchida
-    _showInviteRegisterForm(window._pendingInvite);
-    return true;
-
-  } catch(e) {
-    console.warn('[invite]', e.message);
-    return false;
-  }
-}
-window._checkInviteToken = _checkInviteToken;
-
-/** Mostra tela de registro pré-preenchida com dados do convite */
-function _showInviteRegisterForm(invite) {
-  // Garantir que a tela de login está visível
-  const ls = document.getElementById('loginScreen');
-  if (ls) ls.style.display = 'flex';
-
-  // Ir para a área de registro
-  showRegisterArea?.();
-
-  setTimeout(() => {
-    // Pré-preencher e bloquear e-mail
-    const emailEl = document.getElementById('regEmail');
-    if (emailEl) {
-      emailEl.value    = invite.email;
-      emailEl.readOnly = true;
-      emailEl.style.background = 'var(--surface2)';
-      emailEl.style.color      = 'var(--muted)';
-    }
-
-    // Adicionar banner de boas-vindas acima do formulário
-    const formArea = document.getElementById('registerFormArea');
-    if (formArea && !document.getElementById('_inviteBanner')) {
-      const banner = document.createElement('div');
-      banner.id = '_inviteBanner';
-      banner.style.cssText = `
-        background: var(--accent-lt);
-        border: 1.5px solid var(--accent);
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-bottom: 20px;
-        font-size: .82rem;
-        color: var(--text);
-        line-height: 1.5;
-      `;
-      banner.innerHTML = `
-        <div style="font-weight:700;margin-bottom:4px;color:var(--accent)">
-          🎉 Você foi convidado!
-        </div>
-        <div>Crie sua senha para entrar na família <strong>${esc(invite.familyName)}</strong>. Seu e-mail já está pré-preenchido.</div>
-      `;
-      formArea.insertBefore(banner, formArea.firstChild);
-
-      // Alterar texto do botão
-      const regBtn = document.getElementById('regBtn');
-      if (regBtn) regBtn.querySelector('span').textContent = 'Criar conta e entrar';
-    }
-
-    // Focar no campo nome
-    document.getElementById('regName')?.focus();
-  }, 100);
-}
-
-/** Mostra erro de convite na tela de login */
-function _showInviteError(msg) {
-  const ls = document.getElementById('loginScreen');
-  if (ls) ls.style.display = 'flex';
-
-  const errBanner = document.createElement('div');
-  errBanner.style.cssText = `
-    position:fixed; top:24px; left:50%; transform:translateX(-50%);
-    background:#fef2f2; border:1.5px solid #fecaca; border-radius:12px;
-    padding:14px 20px; font-size:.85rem; color:#dc2626; z-index:99999;
-    box-shadow:0 8px 32px rgba(220,38,38,.15); max-width:420px; width:90%;
-    text-align:center;
-  `;
-  errBanner.innerHTML = `⚠️ <strong>Convite inválido</strong><br><span style="font-size:.78rem">${esc(msg)}</span>`;
-  document.body.appendChild(errBanner);
-  setTimeout(() => errBanner.remove(), 6000);
-}
-
-/** SQL para criar a tabela family_invites */
-const INVITE_SETUP_SQL = `-- Tabela de convites de família
-CREATE TABLE IF NOT EXISTS family_invites (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  token       TEXT NOT NULL UNIQUE,
-  email       TEXT NOT NULL,
-  family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
-  role        TEXT NOT NULL DEFAULT 'user',
-  invited_by  UUID REFERENCES app_users(id),
-  expires_at  TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
-  used        BOOLEAN NOT NULL DEFAULT false,
-  used_at     TIMESTAMPTZ,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Política RLS: owner pode criar e ler convites da sua família
-ALTER TABLE family_invites ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow select on own token" ON family_invites
-  FOR SELECT USING (true);
-CREATE POLICY "Allow insert for authenticated" ON family_invites
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Allow update for token owner" ON family_invites
-  FOR UPDATE USING (true);`;
-
-async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl) {
+async function _sendInviteEmail(toEmail, familyName, inviterName) {
   try {
     const { autoCheckConfig } = await _getAutoCheckConfig();
     const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
     const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
     const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
-
-    const linkText = inviteUrl
-      ? `\n\nClique no link abaixo para criar sua conta e entrar diretamente na família:\n${inviteUrl}\n\nO link expira em 7 dias.`
-      : '';
+    const appUrl     = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
 
     await emailjs.send(serviceId, templateId, {
       to_email:       toEmail,
       report_subject: `[Family FinTrack] Convite para a família "${familyName}"`,
       subject:        `[Family FinTrack] Convite para a família "${familyName}"`,
-      message:        `Olá!\n\nVocê foi convidado(a) por ${inviterName} para participar da família "${familyName}" no Family FinTrack.${linkText}\n\nSe tiver dúvidas, entre em contato com ${inviterName}.`,
+      message:        `Você foi convidado por ${inviterName} para participar da família "${familyName}" no FinTrack.\n\nAcesse ${appUrl} e solicite acesso com este e-mail (${toEmail}).\n\nSeu acesso será aprovado automaticamente após o login.`,
       family_name:    familyName,
       inviter:        inviterName,
-      app_url:        inviteUrl || '',
+      app_url:        appUrl,
     }, publicKey);
   } catch(e) {
     console.warn('[InviteEmail]', e.message);
@@ -5085,7 +4800,7 @@ async function _mfmToggleFeature(key, famId, label, applyFn) {
 
   // Aplica feature imediatamente (UI responsiva, sem aguardar DB)
   if (applyFn && typeof window[applyFn] === 'function') {
-    Promise.resolve(window[applyFn]()).catch(() => {}); // safe: undefined ou Promise
+    window[applyFn]().catch(() => {});
   }
   toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
   _mfmRenderFeatures(famId);
@@ -5259,70 +4974,39 @@ async function mfmInvite() {
   _mfmMsg('', '');
 
   try {
-    // ── Verificar se usuário já existe ────────────────────────────────────
-    const { data: existing } = await sb.from('app_users')
-      .select('id,name,approved,active').eq('email', email).maybeSingle();
+    // Check if user already exists
+    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
 
     if (existing) {
-      // Já cadastrado — adicionar diretamente à família
+      // Already registered — add directly to family
       const { error } = await sb.from('family_members').upsert(
         { user_id: existing.id, family_id: famId, role },
         { onConflict: 'user_id,family_id' }
       );
       if (error) throw new Error(error.message);
-      await sb.from('app_users').update({ family_id: famId }).eq('id', existing.id);
-      _mfmMsg(`✓ ${existing.name || email} já estava cadastrado e foi adicionado à família.`, 'success');
-      await _mfmRenderMembros(famId);
-      return;
+      _mfmMsg(`✓ ${email} já estava cadastrado e foi adicionado à família.`, 'success');
+    } else {
+      // New user — create pending record
+      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
+        email,
+        name:            email.split('@')[0],
+        role:            'user',
+        approved:        false,
+        active:          false,
+        family_id:       famId,
+        must_change_pwd: true,
+      }).select().single();
+      if (insErr) throw new Error(insErr.message);
+
+      try { await sb.from('family_members').insert({ user_id: newUser.id, family_id: famId, role }); } catch (_) {}
+      await _sendInviteEmail(email, fam.name, currentUser.name || currentUser.email);
+      _mfmMsg(`✓ Convite enviado para ${email}. O acesso será liberado após aprovação.`, 'success');
     }
 
-    // ── Usuário novo: criar token de convite ──────────────────────────────
-    // NÃO fazer INSERT direto em app_users — password_hash é NOT NULL
-    // Usar tabela family_invites com token temporário
-    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
-      .map(b => b.toString(16).padStart(2,'0')).join('');
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    const { error: invErr } = await sb.from('family_invites').insert({
-      token,
-      email,
-      family_id:  famId,
-      role,
-      invited_by: currentUser?.app_user_id || currentUser?.id || null,
-      expires_at: expiresAt.toISOString(),
-      used:       false,
-    });
-
-    if (invErr) {
-      // Tabela não existe ainda — mostrar SQL de criação
-      if (invErr.message?.includes('does not exist') || invErr.code === '42P01') {
-        if (typeof _showInviteSetupRequired === 'function') {
-          _showInviteSetupRequired();
-        } else {
-          _mfmMsg('Tabela family_invites não existe. Execute o SQL de configuração no Supabase.', 'error');
-        }
-        return;
-      }
-      throw new Error(invErr.message);
-    }
-
-    // Construir URL de convite
-    const appUrl = typeof getAppBaseUrl === 'function'
-      ? getAppBaseUrl()
-      : (window.location.origin + window.location.pathname);
-    const inviteUrl = `${appUrl}?invite=${token}`;
-
-    // Enviar e-mail com o link
-    await _sendInviteEmail(email, fam.name, currentUser?.name || currentUser?.email, inviteUrl);
-
-    _mfmMsg(`✅ Convite enviado para ${email}. Link válido por 7 dias.`, 'success');
     if (emailEl) emailEl.value = '';
-    await _mfmRenderMembros(famId);
-
+    await _mfmRenderMembros(_mfmActiveFamilyId);
   } catch(e) {
-    _mfmMsg('Erro: ' + (e.message || e), 'error');
-    console.error('[mfmInvite]', e);
+    _mfmMsg('Erro: ' + e.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
   }
