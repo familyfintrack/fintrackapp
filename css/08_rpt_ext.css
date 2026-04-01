@@ -1132,7 +1132,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   justify-content: space-between;
   gap: 12px;
   padding: 16px 20px 14px;
-  background: linear-gradient(135deg, #081c0f 0%, #0e3520 55%, #163d27 100%);
+  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%); /* alinhado com dbs-header */
   position: relative;
   overflow: hidden;
   flex-wrap: wrap;
@@ -1144,7 +1144,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   top: -40px; right: -40px;
   width: 140px; height: 140px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(93,219,160,.20) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(93,219,160,.22) 0%, transparent 70%);
   filter: blur(24px);
   pointer-events: none;
 }

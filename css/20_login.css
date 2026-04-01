@@ -252,31 +252,30 @@
   letter-spacing: .05em;
   text-transform: uppercase;
 }
+/* ═══════════════════════════════════════════════════════════════════
+   CAMPOS DE TEXTO DO LOGIN — ícones perfeitamente centrados
+   Técnica: wrapper flex + ícone absolute com top:0/bottom:0 + flex
+   Funciona em Chrome, Firefox, Safari iOS/macOS, Edge sem exceção.
+   ═══════════════════════════════════════════════════════════════════ */
 .ls-input-wrap {
   position: relative;
   display: flex;
-  align-items: center;
-  /* Altura fixa igual ao input — garante que top:50% no ícone
-     seja calculado a partir do centro real do campo */
-  height: 44px;
+  align-items: stretch; /* stretch: wrapper cresce com o input */
+  width: 100%;
 }
 .ls-input-icon {
+  /* top:0/bottom:0 + display:flex → centraliza no meio exato do wrapper */
   position: absolute;
   left: 13px;
-  /* Centralização vertical via flexbox do wrapper — NÃO usar top/transform
-     pois o ícone SVG tem bounding box próprio que pode desalinhar */
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
   width: 16px;
-  height: 16px;
   display: flex;
-  align-items: center;
+  align-items: center;   /* centro vertical */
   justify-content: center;
   color: #9ca3af;
-  flex-shrink: 0;
   pointer-events: none;
   z-index: 2;
-  /* Garante que o SVG interno preencha exatamente 16×16 */
   line-height: 0;
 }
 .ls-input-icon svg {
@@ -287,10 +286,9 @@
 }
 .ls-input {
   width: 100%;
-  /* Padding esquerdo reserva espaço para o ícone (13px margem + 16px ícone + 10px gap = 39px → arredondar 42px) */
-  padding: 0 42px 0 42px !important;
-  height: 44px;
-  line-height: 44px;
+  padding: 0 44px 0 42px !important;
+  height: 48px;
+  line-height: 48px;
   background: #f9fafb;
   border: 1.5px solid #e5e7eb;
   border-radius: 10px;
@@ -302,29 +300,27 @@
   transition: border-color .18s, background .18s, box-shadow .18s;
   -webkit-appearance: none;
   appearance: none;
-  /* Centralização vertical do texto digitado */
-  vertical-align: middle;
+  display: block;
 }
-/* Campos sem ícone à esquerda */
 .ls-input.ls-no-icon {
   padding-left: 14px !important;
 }
 .ls-input::placeholder {
   color: #c4c9d4;
+  line-height: normal;
 }
 .ls-input:focus {
   border-color: #2a6049;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(42,96,73,.10);
 }
-/* Botão olho (mostrar/ocultar senha) — mesmo padrão do ícone */
+/* Botão olho — mesmo padrão: top:0/bottom:0 + flex */
 .ls-eye-btn {
   position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
+  right: 10px;
+  top: 0;
+  bottom: 0;
+  width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
