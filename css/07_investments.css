@@ -721,14 +721,14 @@
 /* ── Item individual — v2 layout premium ───────────────────────── */
 .sup-item {
   display: grid;
-  grid-template-columns: 38px 1fr auto;
+  grid-template-columns: 34px 1fr auto;
   align-items: center;
-  gap: 0 12px;
-  padding: 11px 16px 11px 12px;
+  gap: 0 10px;
+  padding: 9px 14px 9px 10px;
   border-bottom: 1px solid var(--border);
   transition: background .1s;
   position: relative;
-  min-height: 60px;
+  min-height: 52px;
 }
 .sup-item:last-child { border-bottom: none; }
 .sup-item--today {
@@ -751,13 +751,13 @@
 
 /* Ícone — coluna 1 */
 .sup-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: .92rem;
+  font-size: .80rem;
   font-weight: 700;
   flex-shrink: 0;
   line-height: 1;
@@ -774,20 +774,20 @@
 }
 
 .sup-desc {
-  font-size: .84rem;
-  font-weight: 700;
+  font-size: .80rem;
+  font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   line-height: 1.3;
 }
 
 .sup-acct {
-  font-size: .70rem;
+  font-size: .67rem;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -838,7 +838,7 @@
 }
 
 .sup-amt {
-  font-size: .90rem;
+  font-size: .82rem;
   font-weight: 800;
   font-family: var(--font-serif);
   font-variant-numeric: tabular-nums;
@@ -858,7 +858,7 @@
 
 /* Botão ignorar */
 .sup-ignore-btn {
-  width: 26px; height: 26px;
+  width: 24px; height: 24px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: transparent;
@@ -877,20 +877,20 @@
 
 /* Botão registrar */
 .sup-register-btn {
-  height: 26px;
-  padding: 0 11px;
-  border-radius: 8px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 7px;
   border: none;
   background: var(--accent);
   color: #fff;
-  font-size: .71rem;
+  font-size: .68rem;
   font-weight: 700;
   letter-spacing: .01em;
   cursor: pointer;
   transition: filter .12s, transform .08s, box-shadow .12s;
   white-space: nowrap;
   display: flex; align-items: center; gap: 4px;
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: 0 1px 5px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .sup-register-btn:hover  { filter: brightness(1.08); box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 40%, transparent); }
 .sup-register-btn:active { transform: scale(.92); }
@@ -923,13 +923,14 @@
 
 /* ── Mobile tweaks ─────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .sup-group-hdr    { padding: 9px 12px; }
-  .sup-item         { padding: 9px 12px; }
-  .sup-desc         { font-size: .82rem; }
-  .sup-amt          { font-size: .85rem; }
-  .sup-icon         { width: 30px; height: 30px; font-size: .82rem; margin-right: 10px; }
-  .sup-day-pill     { width: 38px; min-width: 38px; }
-  .sup-day-num      { font-size: .95rem; }
+  .sup-group-hdr    { padding: 8px 10px; }
+  .sup-item         { padding: 8px 10px 8px 8px; gap: 0 8px; }
+  .sup-desc         { font-size: .76rem; }
+  .sup-amt          { font-size: .78rem; }
+  .sup-acct         { font-size: .62rem; }
+  .sup-icon         { width: 28px; height: 28px; border-radius: 8px; font-size: .74rem; }
+  .sup-day-pill     { width: 36px; min-width: 36px; }
+  .sup-day-num      { font-size: .92rem; }
 }
 
 /* ── Mobile: improved scheduled layout ────────────────────────────────── */
@@ -1231,4 +1232,20 @@
 }
 .dash-fav-card__consolidate-btn:active {
   transform: scale(.92);
+}
+
+/* ── Badge de moeda estrangeira nos itens do painel próximos 10 dias ── */
+.sup-fx-badge {
+  font-size: .55rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.4;
 }
