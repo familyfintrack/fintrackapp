@@ -269,7 +269,10 @@
 }
 .ls-input {
   width: 100%;
-  padding: 11px 14px 11px 42px !important; /* !important: evita autocomplete browser sobrescrever */
+  /* Padding simétrico vertical garante o texto centralizado */
+  padding: 0 14px 0 42px !important;
+  height: 44px;              /* altura fixa — alinhamento vertical perfeito */
+  line-height: 44px;         /* força o texto ao centro vertical */
   background: #f9fafb;
   border: 1.5px solid #e5e7eb;
   border-radius: 10px;
@@ -278,21 +281,32 @@
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  vertical-align: middle;
   transition: border-color .18s, background .18s, box-shadow .18s;
   -webkit-appearance: none;
   appearance: none;
 }
-.ls-input::placeholder { color: #c4c9d4; }
+/* Campos sem ícone (ex: selects de idioma, país) */
+.ls-input.ls-no-icon {
+  padding-left: 14px !important;
+}
+.ls-input::placeholder {
+  color: #c4c9d4;
+  line-height: normal; /* evita desalinhamento do placeholder em alguns browsers */
+}
 .ls-input:focus {
   border-color: #2a6049;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(42,96,73,.10);
 }
-.ls-select { cursor: pointer; }
-.ls-select option { background: #fff; color: #111; }
+/* Botão de mostrar/ocultar senha — centralizado verticalmente */
 .ls-eye-btn {
   position: absolute;
   right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
@@ -300,9 +314,12 @@
   padding: 4px;
   display: flex;
   align-items: center;
+  z-index: 2;
   transition: color .15s;
 }
 .ls-eye-btn:hover { color: #374151; }
+.ls-select { cursor: pointer; }
+.ls-select option { background: #fff; color: #111; }
 
 /* ── Remember me ─────────────────────────────────────────────────── */
 .ls-remember {
