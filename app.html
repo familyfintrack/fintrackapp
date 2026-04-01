@@ -74,6 +74,24 @@
   } catch(e) {}
 })();
 </script>
+<!-- ══ Anti-flash: aplica tema dark/light ANTES do primeiro frame ══════════
+     Lê localStorage (cache offline) e aplica data-theme="dark" imediatamente.
+     DB sobrescreve depois via bootApplyAppTheme() no boot autenticado. ══ -->
+<script>
+(function(){
+  try {
+    var t = localStorage.getItem('app_theme');
+    // Fallback: system preference
+    if (!t) {
+      t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark' : 'light';
+    }
+    if (t === 'dark') {
+      document.documentElement.setAttribute('data-theme','dark');
+    }
+  } catch(e) {}
+})();
+</script>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 <link rel="stylesheet" href="css/01_base.css">
 <link rel="stylesheet" href="css/02_layout.css">
@@ -9685,6 +9703,25 @@ Se você não solicitou isso, ignore este e-mail.`,
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
               onclick="closeUserMenu();setTimeout(openMyFamilyMgmt,80)">
         <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
+      </button>
+      <div style="height:1px;background:var(--border);margin:4px 0"></div>
+      <!-- Dark / Light mode toggle -->
+      <button class="user-menu-item" id="umThemeToggle" onclick="toggleAppTheme()" style="justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:10px">
+          <span id="umThemeIcon">🌙</span>
+          <span id="umThemeLabel">Modo Escuro</span>
+        </span>
+        <span id="umThemeSwitch" style="
+          display:inline-flex;align-items:center;
+          width:36px;height:20px;border-radius:10px;
+          background:var(--border2);padding:2px;
+          transition:background .2s;flex-shrink:0">
+          <span id="umThemePill" style="
+            width:16px;height:16px;border-radius:50%;
+            background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);
+            transform:translateX(0);transition:transform .2s;
+            display:block"></span>
+        </span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="user-menu-item" onclick="closeUserMenu();navigate('help')">
