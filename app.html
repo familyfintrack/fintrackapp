@@ -43,6 +43,28 @@
   } catch(e) {}
 })();
 </script>
+<!-- ══ Anti-flash: aplica tema de login ANTES do primeiro frame ══════════════
+     Este script inline roda antes de qualquer CSS externo ser aplicado.
+     Lê o tema do localStorage e adiciona a classe no loginScreen via dataset
+     temporário; o CSS usa [data-login-theme] para aplicar o layout sem depender
+     do JS de auth.js que roda depois. ══════════════════════════════════════ -->
+<script>
+(function(){
+  try {
+    var theme = localStorage.getItem('login_theme') || 'split';
+    // Marcador lido pelo CSS antes do DOMContentLoaded
+    document.documentElement.setAttribute('data-login-theme', theme);
+    // Também adiciona a classe assim que o DOM existir
+    document.addEventListener('DOMContentLoaded', function() {
+      var ls = document.getElementById('loginScreen');
+      if (!ls) return;
+      ['ls-theme-split','ls-theme-centered','ls-theme-asymmetric',
+       'ls-theme-immersive','ls-theme-minimal'].forEach(function(c){ ls.classList.remove(c); });
+      ls.classList.add('ls-theme-' + theme);
+    }, { once: true });
+  } catch(e) {}
+})();
+</script>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 <link rel="stylesheet" href="css/01_base.css">
 <link rel="stylesheet" href="css/02_layout.css">
