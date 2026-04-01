@@ -1621,7 +1621,10 @@ async function _renderDashForecast() {
   if (summary) {
     summary.innerHTML = visibleAccounts.map((a,idx)=>{
       const ds = datasets[idx];
-      const finalY = ds?.data[ds.data.length-1]?.y ?? 0;
+      const finalPoint = ds?.data?.[ds.data.length - 1];
+      const finalY = typeof finalPoint === 'number'
+        ? finalPoint
+        : (finalPoint?.y ?? 0);
       const isNeg = finalY < 0;
       const color = a.color || COLORS[idx%COLORS.length];
       return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
