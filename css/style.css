@@ -23512,9 +23512,9 @@ tr.payee-row[onclick] { cursor: pointer; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   LOGIN SCREEN v3 — "Forest Grid"
-   Fundo: quadriculado verde escuro com orbs gradiente
-   Layout: split desktop (hero|form), coluna única mobile
+   LOGIN SCREEN v4 — "Halved"
+   Desktop: split 50/50 — branco (form) | verde (hero)
+   Mobile:  fundo verde escuro, card branco centralizado
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Shell ───────────────────────────────────────────────────────── */
@@ -23524,205 +23524,76 @@ tr.payee-row[onclick] { cursor: pointer; }
   z-index: 9999;
   overflow: hidden;
   font-family: 'Outfit', system-ui, sans-serif;
+  display: flex;
 }
 
-/* ── Background: quadriculado + gradiente verde ──────────────────── */
-.ls-bg {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, #071a0e 0%, #0e3520 35%, #1a5235 65%, #0e3520 100%);
-  z-index: 0;
-}
-.ls-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(42,192,73,.10) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(42,192,73,.10) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 40%, transparent 100%);
-}
-
-/* ── Orbs (soft glow spots) ──────────────────────────────────────── */
-.ls-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: .35;
-  pointer-events: none;
-}
-.ls-orb1 {
-  width: 480px; height: 480px;
-  top: -120px; left: -80px;
-  background: radial-gradient(circle, #2a6049 0%, transparent 70%);
-}
-.ls-orb2 {
-  width: 360px; height: 360px;
-  bottom: -80px; right: 10%;
-  background: radial-gradient(circle, #1e5c42 0%, transparent 70%);
-  opacity: .28;
-}
-.ls-orb3 {
-  width: 260px; height: 260px;
-  top: 40%; left: 38%;
-  background: radial-gradient(circle, #3d7a5e 0%, transparent 70%);
-  opacity: .20;
-}
-
-/* ── Layout (split desktop) ──────────────────────────────────────── */
+/* ── Layout: dois painéis lado a lado ────────────────────────────── */
 .ls-layout {
-  position: relative;
-  z-index: 1;
   display: flex;
   width: 100%;
   height: 100%;
-  align-items: stretch;
 }
 
-/* ── Hero panel ──────────────────────────────────────────────────── */
-.ls-hero {
-  display: none;         /* hidden on mobile */
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 40px;
-  position: relative;
-}
-@media (min-width: 860px) {
-  .ls-hero { display: flex; }
-}
-.ls-hero-inner {
-  max-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.ls-hero-logo {
-  height: 68px;
-  width: auto;
-  object-fit: contain;
-  margin-bottom: 8px;
-  filter: brightness(1.1);
-}
-.ls-hero-tagline {
-  font-size: 2.1rem;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.15;
-  letter-spacing: -.02em;
-}
-.ls-hero-sub {
-  font-size: 1.05rem;
-  color: rgba(255,255,255,.6);
-  margin-top: -6px;
-  font-weight: 400;
-  letter-spacing: .01em;
-}
-.ls-hero-features {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 24px;
-}
-.ls-feat {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: rgba(255,255,255,.72);
-  font-size: .85rem;
-  font-weight: 500;
-}
-.ls-feat svg { color: #5ddba0; flex-shrink: 0; }
-
-/* ── Form panel ──────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   PAINEL ESQUERDO — branco, formulário
+   ═══════════════════════════════════════════════════════════════════ */
 .ls-form-panel {
-  flex: 0 0 auto;
-  width: 100%;
+  position: relative;
+  flex: 0 0 50%;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: 40px 48px;
   overflow-y: auto;
-}
-@media (min-width: 860px) {
-  .ls-form-panel {
-    width: 440px;
-    border-left: 1px solid rgba(255,255,255,.07);
-    background: rgba(0,0,0,.22);
-    backdrop-filter: blur(20px) saturate(1.2);
-    -webkit-backdrop-filter: blur(20px) saturate(1.2);
-    padding: 40px 36px;
-  }
+  z-index: 2;
+  /* Sombra sutil na borda direita para separar do painel verde */
+  box-shadow: 4px 0 32px rgba(0,0,0,.14);
 }
 
-/* ── Card ────────────────────────────────────────────────────────── */
+/* Card interno (sem borda, apenas padding, fundo branco) */
 .ls-card {
   width: 100%;
-  max-width: 400px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 20px;
-  padding: 32px 28px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 24px 64px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.08) inset;
-}
-@media (min-width: 860px) {
-  .ls-card {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    max-width: 100%;
-  }
+  max-width: 380px;
 }
 
-/* ── Mobile logo ─────────────────────────────────────────────────── */
-.ls-mobile-logo {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-.ls-mobile-logo img {
-  height: 44px;
+/* Logo no topo do form — usa logo.jpg (fundo branco) */
+.ls-form-logo {
+  display: block;
+  height: 48px;
   width: auto;
   object-fit: contain;
-}
-@media (min-width: 860px) {
-  .ls-mobile-logo { display: none; }
+  margin-bottom: 32px;
 }
 
-/* ── Headings ────────────────────────────────────────────────────── */
+/* Título e subtítulo */
 .ls-card-title {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: -.02em;
+  color: #111827;
+  letter-spacing: -.03em;
   margin-bottom: 4px;
+  line-height: 1.2;
 }
 .ls-card-sub {
   font-size: .82rem;
-  color: rgba(255,255,255,.5);
+  color: #9ca3af;
   margin-bottom: 28px;
   font-weight: 400;
 }
 
-/* ── Form fields ─────────────────────────────────────────────────── */
+/* ── Campos ──────────────────────────────────────────────────────── */
 .ls-field-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   margin-bottom: 16px;
 }
 .ls-label {
-  font-size: .76rem;
-  font-weight: 600;
-  color: rgba(255,255,255,.65);
-  letter-spacing: .04em;
+  font-size: .72rem;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: .05em;
   text-transform: uppercase;
 }
 .ls-input-wrap {
@@ -23733,18 +23604,18 @@ tr.payee-row[onclick] { cursor: pointer; }
 .ls-input-icon {
   position: absolute;
   left: 13px;
-  color: rgba(255,255,255,.35);
+  color: #9ca3af;
   flex-shrink: 0;
   pointer-events: none;
 }
 .ls-input {
   width: 100%;
-  padding: 12px 14px 12px 40px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 12px;
+  padding: 11px 14px 11px 40px;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
   font-size: .9rem;
-  color: #fff;
+  color: #111827;
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
@@ -23752,43 +23623,41 @@ tr.payee-row[onclick] { cursor: pointer; }
   -webkit-appearance: none;
   appearance: none;
 }
-.ls-input::placeholder { color: rgba(255,255,255,.28); }
+.ls-input::placeholder { color: #c4c9d4; }
 .ls-input:focus {
-  border-color: rgba(93,219,160,.55);
-  background: rgba(255,255,255,.10);
-  box-shadow: 0 0 0 3px rgba(42,192,73,.12);
+  border-color: #2a6049;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(42,96,73,.10);
 }
-.ls-select {
-  cursor: pointer;
-}
-.ls-select option { background: #1a4a30; color: #fff; }
+.ls-select { cursor: pointer; }
+.ls-select option { background: #fff; color: #111; }
 .ls-eye-btn {
   position: absolute;
   right: 12px;
   background: none;
   border: none;
   cursor: pointer;
-  color: rgba(255,255,255,.35);
+  color: #9ca3af;
   padding: 4px;
   display: flex;
   align-items: center;
   transition: color .15s;
 }
-.ls-eye-btn:hover { color: rgba(255,255,255,.7); }
+.ls-eye-btn:hover { color: #374151; }
 
 /* ── Remember me ─────────────────────────────────────────────────── */
 .ls-remember {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   cursor: pointer;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   user-select: none;
 }
 .ls-remember input[type=checkbox] { display: none; }
 .ls-check-box {
-  width: 18px; height: 18px;
-  border: 1.5px solid rgba(255,255,255,.25);
+  width: 17px; height: 17px;
+  border: 1.5px solid #d1d5db;
   border-radius: 5px;
   flex-shrink: 0;
   transition: background .18s, border-color .18s;
@@ -23796,32 +23665,33 @@ tr.payee-row[onclick] { cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #fff;
 }
 .ls-remember input:checked + .ls-check-box {
   background: #2a6049;
-  border-color: #5ddba0;
+  border-color: #2a6049;
 }
 .ls-remember input:checked + .ls-check-box::after {
   content: '';
-  width: 5px; height: 9px;
+  width: 4px; height: 8px;
   border-right: 2px solid #fff;
   border-bottom: 2px solid #fff;
   transform: rotate(45deg) translate(-1px,-1px);
 }
 .ls-remember span:last-child {
   font-size: .82rem;
-  color: rgba(255,255,255,.55);
+  color: #6b7280;
 }
 
-/* ── Primary button ──────────────────────────────────────────────── */
+/* ── Botão primário ──────────────────────────────────────────────── */
 .ls-btn-primary {
   width: 100%;
   padding: 13px 20px;
-  background: linear-gradient(135deg, #2a7a4a 0%, #1e5c42 50%, #2a6049 100%);
+  background: linear-gradient(135deg, #1e5c42 0%, #2a6049 100%);
   color: #fff;
-  border: 1px solid rgba(93,219,160,.25);
-  border-radius: 12px;
-  font-size: .95rem;
+  border: none;
+  border-radius: 10px;
+  font-size: .92rem;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -23833,65 +23703,65 @@ tr.payee-row[onclick] { cursor: pointer; }
   position: relative;
   overflow: hidden;
   transition: transform .18s, box-shadow .18s;
-  box-shadow: 0 4px 20px rgba(42,192,73,.2);
+  box-shadow: 0 2px 12px rgba(30,92,66,.22);
 }
 .ls-btn-primary::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.08) 50%, transparent 100%);
-  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.10) 50%, transparent 100%);
+  transform: translateX(-110%);
   transition: transform .5s ease;
 }
-.ls-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(42,192,73,.3); }
-.ls-btn-primary:hover::before { transform: translateX(100%); }
+.ls-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(30,92,66,.28); }
+.ls-btn-primary:hover::before { transform: translateX(110%); }
 .ls-btn-primary:active { transform: translateY(0); }
 
-/* ── Ghost button ────────────────────────────────────────────────── */
+/* ── Ghost ───────────────────────────────────────────────────────── */
 .ls-btn-ghost {
   padding: 10px 24px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.18);
+  background: transparent;
+  border: 1.5px solid #e5e7eb;
   border-radius: 10px;
-  color: rgba(255,255,255,.7);
+  color: #374151;
   font-size: .88rem;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: background .18s, color .18s;
+  transition: background .18s, border-color .18s;
 }
-.ls-btn-ghost:hover { background: rgba(255,255,255,.12); color: #fff; }
+.ls-btn-ghost:hover { background: #f3f4f6; border-color: #d1d5db; }
 
 /* ── Links ───────────────────────────────────────────────────────── */
 .ls-link {
   background: none;
   border: none;
-  color: #5ddba0;
+  color: #2a6049;
   font-size: .78rem;
   cursor: pointer;
   font-family: inherit;
-  text-decoration: none;
   padding: 0;
+  text-decoration: none;
   transition: color .15s;
 }
-.ls-link:hover { color: #8fecbf; }
+.ls-link:hover { color: #1e5c42; text-decoration: underline; text-underline-offset: 2px; }
 .ls-link--bold {
   font-size: .82rem;
   font-weight: 700;
   margin-left: 4px;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 2px;
 }
-.ls-muted { font-size: .82rem; color: rgba(255,255,255,.45); }
+.ls-muted { font-size: .82rem; color: #9ca3af; }
 
-/* ── Error ───────────────────────────────────────────────────────── */
+/* ── Erros ───────────────────────────────────────────────────────── */
 .ls-error {
   margin-top: 12px;
   padding: 10px 14px;
-  background: rgba(220,38,38,.18);
-  border: 1px solid rgba(220,38,38,.35);
-  border-radius: 10px;
-  color: #fca5a5;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
   font-size: .82rem;
   text-align: center;
   line-height: 1.5;
@@ -23899,31 +23769,31 @@ tr.payee-row[onclick] { cursor: pointer; }
 
 /* ── Info banner ─────────────────────────────────────────────────── */
 .ls-info-banner {
-  background: rgba(245,158,11,.12);
-  border: 1px solid rgba(245,158,11,.3);
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 11px 14px;
   font-size: .82rem;
-  color: #fcd34d;
+  color: #92400e;
   margin-bottom: 20px;
   line-height: 1.5;
 }
 
 /* ── Icon badge ──────────────────────────────────────────────────── */
 .ls-icon-badge {
-  font-size: 2.2rem;
+  font-size: 2rem;
   text-align: center;
   margin-bottom: 10px;
 }
 
-/* ── Back row ────────────────────────────────────────────────────── */
-.ls-back-row { margin-bottom: 16px; }
+/* ── Back ────────────────────────────────────────────────────────── */
+.ls-back-row { margin-bottom: 14px; }
 .ls-back-btn {
   background: none;
   border: none;
   cursor: pointer;
-  color: rgba(255,255,255,.5);
-  font-size: .82rem;
+  color: #9ca3af;
+  font-size: .8rem;
   font-family: inherit;
   display: inline-flex;
   align-items: center;
@@ -23931,30 +23801,182 @@ tr.payee-row[onclick] { cursor: pointer; }
   padding: 0;
   transition: color .15s;
 }
-.ls-back-btn:hover { color: rgba(255,255,255,.85); }
+.ls-back-btn:hover { color: #374151; }
 
-/* ── Auth change-pwd banner (compatibility) ──────────────────────── */
+/* ── Mobile logo (hidden on desktop) ─────────────────────────────── */
+.ls-mobile-logo { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAINEL DIREITO — verde escuro, hero branding
+   ═══════════════════════════════════════════════════════════════════ */
+.ls-hero {
+  flex: 0 0 50%;
+  position: relative;
+  background: #0e3520;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 48px 40px;
+}
+
+/* Grid quadriculado */
+.ls-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
+  background-size: 36px 36px;
+  pointer-events: none;
+}
+
+/* Gradiente radial sobre o grid (profundidade) */
+.ls-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%,
+    rgba(14,53,32,.0) 0%,
+    rgba(14,53,32,.65) 100%);
+  pointer-events: none;
+}
+
+/* Conteúdo interno (acima dos pseudo-elementos) */
+.ls-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+/* Logo — usa logo_glow_soft.png (fundo escuro) */
+.ls-hero-logo {
+  height: 72px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 28px;
+  filter: drop-shadow(0 0 24px rgba(93,219,160,.25));
+}
+
+/* Slogan discreto */
+.ls-hero-tagline {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.90);
+  letter-spacing: -.01em;
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+.ls-hero-sub {
+  font-size: .78rem;
+  color: rgba(255,255,255,.38);
+  font-weight: 400;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 40px;
+}
+
+/* Feature list */
+.ls-hero-features {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 28px;
+  width: 100%;
+}
+.ls-feat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255,255,255,.55);
+  font-size: .8rem;
+  font-weight: 400;
+}
+.ls-feat svg { color: rgba(93,219,160,.75); flex-shrink: 0; }
+
+/* Orb de glow sutil no canto superior direito */
+.ls-hero-orb {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(42,96,73,.55) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE — fundo verde escuro, card branco flutuante
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 759px) {
+  .ls-layout {
+    flex-direction: column;
+    background: #0e3520;
+    position: relative;
+  }
+  /* Grid no fundo mobile */
+  .ls-layout::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+  .ls-hero { display: none; }
+  .ls-form-panel {
+    flex: 1;
+    background: transparent;
+    box-shadow: none;
+    padding: 24px 20px;
+    align-items: center;
+  }
+  .ls-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.2);
+    max-width: 420px;
+  }
+  .ls-mobile-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 22px;
+  }
+  .ls-mobile-logo img {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+  }
+  .ls-form-logo { display: none; }
+}
+
+/* ── Compatibilidade Windows (inputs claros) ─────────────────────── */
+html.platform-windows .ls-input,
+body.platform-windows .ls-input {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+/* ── Auth change-pwd banner (legado) ─────────────────────────────── */
 .auth-change-pw {
-  background: rgba(245,158,11,.15);
-  border: 1px solid rgba(245,158,11,.35);
-  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
   padding: 10px 14px;
   font-size: .82rem;
-  color: #fcd34d;
+  color: #92400e;
   margin-bottom: 16px;
 }
-
-/* ── Windows platform fix ────────────────────────────────────────── */
-html.platform-windows .ls-input,
-html.ft-platform-windows .ls-input,
-body.platform-windows .ls-input,
-body.ft-platform-windows .ls-input {
-  background: rgba(20,50,35,.95);
-  border-color: rgba(93,219,160,.22);
-  color: #e5e7eb;
-}
-html.platform-windows .ls-input::placeholder,
-html.ft-platform-windows .ls-input::placeholder {
-  color: rgba(255,255,255,.3);
-}
-
