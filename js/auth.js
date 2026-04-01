@@ -1006,6 +1006,25 @@ function _registerMagicLinkGate() {
 }
 
 // ── Update UI with current user ──
+// ── Atualiza KPI pills no header do modal de administração ──────────────────
+function _uamUpdateHeaderKpis() {
+  try {
+    const uCount = document.querySelectorAll('#usersList .uam-user-row').length;
+    const fCount = (_families || []).length;
+    const pBadge = document.getElementById('uaPendingBadge');
+    const pCount = pBadge ? (parseInt(pBadge.textContent) || 0) : 0;
+    const uEl = document.getElementById('uamKpiUsers');
+    const fEl = document.getElementById('uamKpiFamilies');
+    const pPill = document.getElementById('uamKpiPendingPill');
+    const pEl  = document.getElementById('uamKpiPending');
+    if (uEl) uEl.textContent = uCount + ' usuário' + (uCount !== 1 ? 's' : '');
+    if (fEl) fEl.textContent = fCount + ' família' + (fCount !== 1 ? 's' : '');
+    if (pEl) pEl.textContent = pCount;
+    if (pPill) pPill.style.display = pCount > 0 ? '' : 'none';
+  } catch(_) {}
+}
+window._uamUpdateHeaderKpis = _uamUpdateHeaderKpis;
+
 function updateUserUI() {
   if (!currentUser) return;
   const nameEl  = document.getElementById('currentUserName');
@@ -1855,6 +1874,9 @@ async function openUserAdmin() {
 
   await loadFamiliesList();
   openModal('userAdminModal');
+
+  // Atualizar KPIs do header após dados carregados
+  if (typeof _uamUpdateHeaderKpis === 'function') setTimeout(_uamUpdateHeaderKpis, 300);
 
   // Abas Pendentes e Usuários: apenas admin global
   const tabPending = document.getElementById('uaTabPending');
@@ -3086,131 +3108,137 @@ async function updateMemberRole(selectEl) {
 // ── USERS ─────────────────────────────────────────────────────────
 
 async function loadUsersList() {
-  if (currentUser?.role !== 'admin') return; // apenas admin lista todos os usuários
-  // Usar RPC get_all_users() (SECURITY DEFINER) para evitar problemas de RLS.
-  // Fallback para select direto se a função ainda não foi criada.
-  let users, error;
+  if (currentUser?.role !== 'admin') return;
+  let users;
   const { data: rpcData, error: rpcErr } = await sb.rpc('get_all_users');
   if (rpcErr) {
-    console.warn('[loadUsersList] RPC get_all_users indisponível:', rpcErr.message);
-    // Fallback: select direto — funciona se RLS permitir ou não estiver ativa
-    ({ data: users, error } = await sb.from('app_users').select('*').order('created_at'));
-    if (error) {
+    const { data: direct, error: dirErr } = await sb.from('app_users').select('*').order('created_at');
+    if (dirErr) {
       const el = document.getElementById('usersList');
-      if (el) el.innerHTML = '<div style="padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:.82rem;color:#991b1b">'
-        + '<strong>⚠️ Não foi possível carregar a lista de usuários.</strong><br><br>'
-        + 'Execute <code>migration_approval_rls.sql</code> no Supabase para habilitar o gerenciamento completo.<br><br>'
-        + '<span style="color:#6b7280">Erro técnico: ' + error.message + '</span></div>';
+      if (el) el.innerHTML = '<div class="uam-empty-state"><div class="uam-empty-icon">⚠️</div>Não foi possível carregar usuários.<br><small>Execute migration_approval_rls.sql no Supabase.</small></div>';
       return;
     }
-    // Se o fallback retornou só 1 usuário (próprio admin por RLS), avisar
-    if (users && users.length <= 1) {
-      const el = document.getElementById('usersList');
-      if (el && users.length <= 1) {
-        const hint = document.createElement('div');
-        hint.style.cssText = 'padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:.78rem;color:#c2410c;margin-bottom:12px';
-        hint.innerHTML = '⚠️ Execute <code>migration_approval_rls.sql</code> no Supabase para exibir todos os usuários (RLS limitando visualização).';
-        el.prepend(hint);
-      }
-    }
+    users = direct;
   } else {
     users = rpcData;
   }
+
   const el = document.getElementById('usersList');
   const countEl = document.getElementById('userAdminCount');
-  if (countEl) countEl.textContent = `${users?.length||0} usuários cadastrados`;
-  if (!users?.length) { el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Nenhum usuário.</div>'; return; }
-  const pendingUsers = users.filter(u => !u.approved);
-  const activeUsers  = users.filter(u => u.approved);
+  if (!el) return;
 
-  // Build family name lookup
-  const famById = {};
-  _families.forEach(f => famById[f.id] = f.name);
+  if (!users?.length) {
+    el.innerHTML = '<div class="uam-empty-state"><div class="uam-empty-icon">👤</div>Nenhum usuário cadastrado.</div>';
+    if (countEl) countEl.textContent = '0 usuários';
+    return;
+  }
 
-  // Load family memberships for all users
+  if (countEl) countEl.textContent = users.length + ' usuário' + (users.length !== 1 ? 's' : '');
+
+  // Membros de famílias para mapear vínculos
   let allMembers = [];
-  try {
-    const { data: rpcData } = await sb.rpc('get_all_family_members');
-    allMembers = rpcData || [];
-  } catch(_) {}
+  try { const { data: md } = await sb.rpc('get_all_family_members'); allMembers = md || []; } catch(_) {}
+
+  const famById = {};
+  (_families || []).forEach(f => { famById[f.id] = f.name; });
+
+  const pending = users.filter(u => !u.approved);
+  const active  = users.filter(u =>  u.approved);
+
+  const roleStyles = {
+    owner:  { bg: '#fef3c7', color: '#92400e', border: '#f59e0b', icon: '👑' },
+    admin:  { bg: '#fef9c3', color: '#713f12', border: '#eab308', icon: '🔧' },
+    viewer: { bg: '#f0f9ff', color: '#0369a1', border: '#38bdf8', icon: '👁' },
+    user:   { bg: 'var(--accent-lt,#e8f2ee)', color: 'var(--accent)', border: 'var(--accent)', icon: '👤' },
+    member: { bg: 'var(--accent-lt,#e8f2ee)', color: 'var(--accent)', border: 'var(--accent)', icon: '👤' },
+  };
 
   let html = '';
 
-  if (pendingUsers.length) {
-    html += `<div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">
-      <div style="font-size:1.6rem;flex-shrink:0">⏳</div>
+  // ── Seção pendentes ──────────────────────────────────────────────────────
+  if (pending.length) {
+    html += `<div class="uam-pending-banner">
+      <div style="font-size:1.5rem;flex-shrink:0">⏳</div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:.92rem;color:#92400e;margin-bottom:2px">${pendingUsers.length} solicitação(ões) aguardando aprovação</div>
-        <div style="font-size:.78rem;color:#b45309">Novos usuários não têm acesso até você aprovar.</div>
+        <div style="font-weight:700;font-size:.88rem;color:#92400e">
+          ${pending.length} solicitação${pending.length > 1 ? 'ões' : ''} aguardando aprovação
+        </div>
+        <div style="font-size:.74rem;color:#b45309;margin-top:2px">
+          Novos usuários não têm acesso até você aprovar.
+        </div>
       </div>
     </div>`;
-    html += '<div class="table-wrap" style="margin-bottom:20px;border-radius:var(--r);overflow:hidden;border:1.5px solid #f59e0b"><table><thead><tr style="background:#fef3c7"><th>Solicitante</th><th>E-mail</th><th>Aguardando</th><th style="text-align:center">Ações</th></tr></thead><tbody>';
-    html += pendingUsers.map(u => {
-      const daysAgo = Math.floor((Date.now() - new Date(u.created_at)) / 86400000);
-      const ageLabel = daysAgo === 0 ? 'Hoje' : daysAgo === 1 ? '1 dia' : (daysAgo + ' dias');
-      const ageStyle = daysAgo >= 3 ? 'color:#dc2626;font-weight:600' : 'color:var(--muted)';
-      const initials = (u.name || u.email || '?').slice(0, 2).toUpperCase();
-      return '<tr style="background:#fffbeb">' +
-        '<td><div style="display:flex;align-items:center;gap:10px">' +
-        '<div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;border:2px solid #f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:#92400e;flex-shrink:0">' + initials + '</div>' +
-        '<strong>' + esc(u.name||'—') + '</strong></div></td>' +
-        '<td style="font-size:.82rem">' + esc(u.email) + '</td>' +
-        '<td><span style="' + ageStyle + '">' + ageLabel + '</span></td>' +
-        '<td style="text-align:center;white-space:nowrap">' +
-        '<button class="btn btn-primary btn-sm" onclick="approveUser(' + "'" + u.id + "','" + esc(u.name||u.email) + "')" + ' style="background:#16a34a;margin-right:4px">✅ Aprovar</button>' +
-        '<button class="btn btn-ghost btn-sm" onclick="rejectUser(' + "'" + u.id + "','" + esc(u.name||u.email) + "')" + ' style="color:#dc2626">✕ Rejeitar</button>' +
-        '</td></tr>';
-    }).join('');
-    html += '</tbody></table></div>';
-    html += '<div style="font-weight:600;font-size:.82rem;margin-bottom:10px;color:var(--muted)">Usuários ativos</div>';
+
+    pending.forEach(u => {
+      const daysAgo  = Math.floor((Date.now() - new Date(u.created_at)) / 86400000);
+      const ageLabel = daysAgo === 0 ? 'Hoje' : daysAgo + (daysAgo === 1 ? ' dia' : ' dias');
+      const ageColor = daysAgo >= 3 ? '#dc2626' : '#b45309';
+      html += `<div class="uam-user-row" style="border-color:#f59e0b;background:#fffbeb" onclick="approveUser('${u.id}','${esc(u.name||u.email)}')">
+        ${_userAvatarHtml(u, 36)}
+        <div class="uam-user-info">
+          <div class="uam-user-name">${esc(u.name || '—')}</div>
+          <div class="uam-user-email">${esc(u.email)}</div>
+          <div class="uam-user-meta">
+            <span style="font-size:.7rem;color:${ageColor};font-weight:600">${ageLabel}</span>
+            <span style="font-size:.68rem;color:var(--muted)">· aguardando</span>
+          </div>
+        </div>
+        <div class="uam-user-actions" onclick="event.stopPropagation()">
+          <button class="uam-user-action-btn" style="background:#16a34a;color:#fff;border-color:#16a34a"
+            onclick="approveUser('${u.id}','${esc(u.name||u.email)}')" title="Aprovar">✓</button>
+          <button class="uam-user-action-btn danger"
+            onclick="rejectUser('${u.id}','${esc(u.name||u.email)}')" title="Rejeitar">✕</button>
+        </div>
+      </div>`;
+    });
+
+    if (active.length) {
+      html += '<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:10px 0 6px;border-top:1px solid var(--border);margin-top:6px">Usuários ativos</div>';
+    }
   }
 
-  if (!activeUsers.length) {
-    html += '<div style="text-align:center;padding:20px;color:var(--muted)">Nenhum usuário ativo.</div>';
-  } else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Família</th><th>Status</th><th style="width:80px"></th></tr></thead><tbody>';
-    html += activeUsers.map(u => {
-      const avatarHtml = _userAvatarHtml(u, 34);
-      const roleBadge = u.role==='owner'
-        ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:.7rem">👑 Owner</span>'
-        : u.role==='admin'
-        ? '<span class="badge badge-amber" style="font-size:.7rem">🔧 Admin</span>'
-        : u.role==='viewer'
-        ? '<span class="badge badge-muted" style="font-size:.7rem">👁 Viewer</span>'
-        : '<span class="badge badge-blue" style="font-size:.7rem">👤 Usuário</span>';
-      return `<tr onclick="editUser('${u.id}')" style="cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <td>
-          <div style="display:flex;align-items:center;gap:10px">
-            ${avatarHtml}
-            <div>
-              <div style="font-weight:600;font-size:.875rem">${esc(u.name||'—')}</div>
-              <div style="font-size:.72rem;color:var(--muted)">${esc(u.email)}</div>
-            </div>
-          </div>
-        </td>
-        <td>${roleBadge}</td>
-        <td style="font-size:.78rem;color:var(--text2)">
-          ${(() => {
-            const userFams = (allMembers||[]).filter(m => m.user_id === u.id);
-            if (!userFams.length) return '<span style="color:var(--muted)">—</span>';
-            return userFams.map(m => {
-              const roleIcon = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role]||'👤';
-              const fName = m.family_name || famById[m.family_id] || m.family_id?.slice(0,8) || '—';
-              return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:.7rem;margin:1px">${roleIcon} ${esc(fName)}</span>`;
-            }).join('');
-          })()}
-        </td>
-        <td><span style="font-size:.75rem;color:${u.active?'var(--green)':'var(--red)'}">● ${u.active?'Ativo':'Inativo'}</span></td>
-        <td style="white-space:nowrap" onclick="event.stopPropagation()">
-          ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="toggleUserActive('${u.id}',${u.active})" style="padding:3px 8px;font-size:.73rem" title="${u.active?'Desativar':'Ativar'}">${u.active?'🚫':'✅'}</button>` : ''}
-          ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="resetUserPwd('${u.id}','${esc(u.name||u.email)}')" style="padding:3px 8px;font-size:.73rem" title="Redefinir senha">🔑</button>` : ''}
-        </td>
-      </tr>`;
+  // ── Seção ativos ─────────────────────────────────────────────────────────
+  active.forEach(u => {
+    const rs = roleStyles[u.role] || roleStyles.user;
+    const userFams = (allMembers || []).filter(m => m.user_id === u.id);
+    const famTags = userFams.slice(0, 3).map(m => {
+      const ri = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role] || '👤';
+      const fn = m.family_name || famById[m.family_id] || '—';
+      return `<span class="uam-family-tag">${ri} ${esc(fn)}</span>`;
     }).join('');
-    html += '</tbody></table></div>';
-  }
+
+    html += `<div class="uam-user-row" onclick="editUser('${u.id}')">
+      ${_userAvatarHtml(u, 36)}
+      <div class="uam-user-info">
+        <div class="uam-user-name">${esc(u.name || '—')}</div>
+        <div class="uam-user-email">${esc(u.email)}</div>
+        <div class="uam-user-meta">
+          <span class="uam-role-badge" style="background:${rs.bg};color:${rs.color};border-color:${rs.border}">
+            ${rs.icon} ${u.role || 'user'}
+          </span>
+          <span class="uam-status-dot" style="background:${u.active ? '#16a34a' : '#dc2626'}" title="${u.active ? 'Ativo' : 'Inativo'}"></span>
+          ${famTags || '<span style="font-size:.68rem;color:var(--muted)">Sem família</span>'}
+        </div>
+      </div>
+      <div class="uam-user-actions" onclick="event.stopPropagation()">
+        ${u.id !== currentUser?.id ? `
+          <button class="uam-user-action-btn ${u.active ? 'danger' : ''}"
+            onclick="toggleUserActive('${u.id}',${u.active})"
+            title="${u.active ? 'Desativar' : 'Ativar'}">${u.active ? '🚫' : '✅'}</button>
+          <button class="uam-user-action-btn"
+            onclick="resetUserPwd('${u.id}','${esc(u.name||u.email)}')"
+            title="Redefinir senha">🔑</button>
+        ` : '<span style="font-size:.68rem;color:var(--muted);padding:0 4px">você</span>'}
+      </div>
+    </div>`;
+  });
+
   el.innerHTML = html;
+
+  // Atualizar KPIs do header
+  if (typeof _uamUpdateHeaderKpis === 'function') setTimeout(_uamUpdateHeaderKpis, 50);
 }
+
 
 function showNewUserForm() {
   const formArea = document.getElementById('userFormArea');

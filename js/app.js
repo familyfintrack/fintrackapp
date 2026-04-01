@@ -983,13 +983,18 @@ function navigate(page){
     if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
     // Use the exposed setter so the module-scoped variable is actually set
     if (typeof window._setScCalSelDay === 'function') window._setScCalSelDay(_todayStr);
+
+    // FIX: Restaurar a view preferida ANTES do loadScheduled para evitar o flash
+    // list→calendar. A lista começa oculta (display:none no HTML) e a view correta
+    // é aplicada imediatamente antes de qualquer dado chegar.
+    const _savedView = currentUser?.preferred_sc_view ||
+                       localStorage.getItem('sc_view_pref') ||
+                       'calendar';
+    if (typeof setScView === 'function') setScView(_savedView);
+
     loadScheduled().then(() => {
-      if (typeof setScView === 'function') {
-        const savedView = currentUser?.preferred_sc_view ||
-                          localStorage.getItem('sc_view_pref') ||
-                          'calendar';
-        setScView(savedView);
-      }
+      // Após os dados carregarem, re-aplicar a view para re-renderizar o conteúdo
+      if (typeof setScView === 'function') setScView(_savedView);
       // Open upcoming panel if it has events, keep day groups collapsed per spec
       if (typeof _openUpcomingIfHasEvents === 'function') _openUpcomingIfHasEvents();
     });
