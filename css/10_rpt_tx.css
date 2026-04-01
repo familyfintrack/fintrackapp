@@ -7,7 +7,10 @@
 
 .rpt-tx-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
 
-.rpt-col-date { width: 100px; }
+/* Coluna de data: máximo 10% da largura total da tabela */
+.rpt-col-date { width: 10%; max-width: 90px; min-width: 62px; }
+.rpt-tx-table th:first-child,
+.rpt-tx-table td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rpt-col-desc { width: auto;  }
 .rpt-col-acct { width: 120px; }
 .rpt-col-cat  { width: 130px; }
