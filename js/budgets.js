@@ -685,36 +685,20 @@ function _renderDashBudgetSnapshot() {
                 : near  ? 'var(--amber)'
                 :          (cat.color || 'var(--accent)');
     const statusClass = over ? 'dbs-card--over' : near ? 'dbs-card--near' : 'dbs-card--ok';
-
-    // Badge apenas para alertas relevantes
     const badge = over
       ? `<span class="dbs-badge dbs-badge--over">Excedido</span>`
       : near
-      ? `<span class="dbs-badge dbs-badge--near">⚡ Atenção</span>`
+      ? `<span class="dbs-badge dbs-badge--near">Atenção</span>`
       : '';
-
     const leftover = b.amount - spent;
     const leftoverFmt = leftover >= 0
-      ? `<span class="dbs-remaining">💚 Restam ${fmt(leftover)}</span>`
-      : `<span class="dbs-remaining dbs-remaining--over">🔴 Excesso ${fmt(Math.abs(leftover))}</span>`;
-
-    // Mini-anel de progresso SVG (32×32)
-    const r = 12, circ = 2 * Math.PI * r;
-    const dash = ((pct / 100) * circ).toFixed(1);
-    const gap  = (circ - dash).toFixed(1);
-    const ring = `<svg width="32" height="32" viewBox="0 0 32 32" style="flex-shrink:0;transform:rotate(-90deg)">
-      <circle cx="16" cy="16" r="${r}" fill="none" stroke="${color}22" stroke-width="3.5"/>
-      <circle cx="16" cy="16" r="${r}" fill="none" stroke="${color}" stroke-width="3.5"
-        stroke-dasharray="${dash} ${gap}" stroke-linecap="round"/>
-    </svg>`;
+      ? `<span class="dbs-remaining">Restam ${fmt(leftover)}</span>`
+      : `<span class="dbs-remaining dbs-remaining--over">Excesso ${fmt(Math.abs(leftover))}</span>`;
 
     return `<div class="dbs-card ${statusClass}" onclick="navigate('budgets')" title="${esc(cat.name||'—')}">
       <div class="dbs-card-top">
-        <div style="position:relative;flex-shrink:0">
-          ${ring}
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.78rem">
-            ${cat.icon || '📦'}
-          </div>
+        <div class="dbs-icon-wrap" style="background:${color}18;color:${color}">
+          ${cat.icon || '📦'}
         </div>
         <div class="dbs-card-info">
           <div class="dbs-cat-name">${esc(cat.name || '—')}</div>
@@ -739,23 +723,16 @@ function _renderDashBudgetSnapshot() {
   const inner = el.querySelector('.dash-budget-snap-inner');
   if (!inner) return;
 
-  // Status geral para mensagem no header
-  const statusMsg = overCount > 0
-    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(220,38,38,.15);color:#fca5a5;border-radius:20px;padding:1px 8px;font-size:.64rem;font-weight:700;letter-spacing:.03em">⚠ ${overCount} excedido${overCount!==1?'s':''}</span>`
-    : nearCount > 0
-    ? `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(180,83,9,.15);color:#fcd34d;border-radius:20px;padding:1px 8px;font-size:.64rem;font-weight:700;letter-spacing:.03em">⚡ ${nearCount} no limite</span>`
-    : `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(93,219,160,.15);color:#6ee7a0;border-radius:20px;padding:1px 8px;font-size:.64rem;font-weight:700;letter-spacing:.03em">✓ Sob controle</span>`;
-
   inner.innerHTML = `
     <div class="dbs-header">
       <div class="dbs-header-left">
-        <div class="dbs-title">🎯 Orçamentos · ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}</div>
-        <div class="dbs-subtitle" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span>${active.length} categoria${active.length !== 1 ? 's' : ''} ativa${active.length !== 1 ? 's' : ''}</span>
-          ${statusMsg}
+        <div class="dbs-title">Orçamentos — ${monthName}</div>
+        <div class="dbs-subtitle">${active.length} ativo${active.length !== 1 ? 's' : ''}
+          ${overCount  ? `· <span style="color:var(--red);font-weight:700">${overCount} excedido${overCount!==1?'s':''}</span>` : ''}
+          ${nearCount && !overCount ? `· <span style="color:var(--amber);font-weight:700">${nearCount} perto do limite</span>` : ''}
         </div>
       </div>
-      <button class="btn dbs-link" onclick="event.stopPropagation();navigate('budgets')" style="padding:6px 14px">
+      <button class="btn btn-ghost btn-sm dbs-link" onclick="event.stopPropagation();navigate('budgets')">
         Ver todos →
       </button>
     </div>
@@ -765,14 +742,17 @@ function _renderDashBudgetSnapshot() {
         <div class="dbs-kpi-lbl">Total gasto</div>
         <div class="dbs-kpi-val" style="color:${globalColor}">${fmt(totalSpent)}</div>
       </div>
+      <div class="dbs-kpi-divider"></div>
       <div class="dbs-kpi">
         <div class="dbs-kpi-lbl">Orçado</div>
         <div class="dbs-kpi-val">${fmt(totalBudget)}</div>
       </div>
+      <div class="dbs-kpi-divider"></div>
       <div class="dbs-kpi">
         <div class="dbs-kpi-lbl">Disponível</div>
         <div class="dbs-kpi-val" style="color:${remaining > 0 ? 'var(--green)' : 'var(--red)'}">${fmt(remaining)}</div>
       </div>
+      <div class="dbs-kpi-divider dbs-kpi-divider--hide-sm"></div>
       <div class="dbs-kpi dbs-kpi--hide-sm">
         <div class="dbs-kpi-lbl">Uso geral</div>
         <div class="dbs-kpi-val" style="color:${globalColor}">${totalPct.toFixed(0)}%</div>
