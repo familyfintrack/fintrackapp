@@ -733,19 +733,14 @@ function renderUpcoming() {
         ? `<span class="sup-manual-badge">Manual</span>` : '';
       const pendingBadge = isPending
         ? `<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>` : '';
-      // ── Moeda correta: respeitar sc.currency (EUR, USD, etc.) ───────────
-      const scCur  = (sc.currency || 'BRL').toUpperCase();
-      const amtFmt = fmt(Math.abs(sc.amount), scCur);
-      const fxHint = scCur !== 'BRL'
-        ? `<span class="sup-fx-badge">${scCur}</span>` : '';
       return `<div class="sup-item${isToday?' sup-item--today':''}">
         <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
         <div class="sup-body">
-          <div class="sup-desc">${esc(sc.description)}${fxHint}${manualBadge}${pendingBadge}</div>
+          <div class="sup-desc">${esc(sc.description)}${manualBadge}${pendingBadge}</div>
           <div class="sup-acct">${esc(sc.accounts?.name||'—')}${dest?` <span class="sup-arrow">→</span> ${esc(dest.name)}`:''}</div>
         </div>
         <div class="sup-right">
-          <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${amtFmt}</span>
+          <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(sc.amount))}</span>
           <div class="sup-actions">
             <button class="sup-ignore-btn" title="Ignorar"
               onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
@@ -2636,32 +2631,19 @@ function _renderCalUpcoming() {
 
     const rows = items.map(({ sc, isPending }) => {
       const isExp    = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
-      const typeIcon = sc.type === 'card_payment' ? '💳' : sc.type === 'transfer' ? '↔' : isExp ? '↑' : '↓';
-      const dest     = (sc.type === 'transfer' || sc.type === 'card_payment')
-                       ? (state.accounts || []).find(a => a.id === sc.transfer_to_account_id) : null;
-      const catColor = sc.categories?.color || (isExp ? 'var(--red)' : 'var(--green)');
-      // ── Moeda correta: respeitar sc.currency (EUR, USD, etc.) ─────────
-      const scCur    = (sc.currency || 'BRL').toUpperCase();
-      const amtFmt   = typeof fmt === 'function' ? fmt(Math.abs(sc.amount), scCur) : Math.abs(sc.amount).toFixed(2);
-      const fxHint   = scCur !== 'BRL' ? `<span class="sup-fx-badge">${scCur}</span>` : '';
+      const isIncome = sc.type === 'income';
+      const typeIcon = sc.type === 'transfer' ? '🔄' : isExp ? '💸' : '💰';
+      const amtStr   = typeof fmt === 'function' ? fmt(Math.abs(sc.amount)) : Math.abs(sc.amount).toFixed(2);
       const pendingBadge = isPending
-        ? `<span class="sup-pending-badge" title="Pendente">⚠</span>` : '';
-      const manualBadge = !sc.auto_register
-        ? `<span class="sup-manual-badge">Manual</span>` : '';
+        ? `<span class="sc-occ-pending-dot" title="Pendente"></span>` : '';
       return `<div class="sup-item${isToday ? ' sup-item--today' : ''}">
-        <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
-        <div class="sup-body">
-          <div class="sup-desc">${esc(sc.description || '—')}${fxHint}${manualBadge}${pendingBadge}</div>
-          <div class="sup-acct">${esc((state.accounts || []).find(a => a.id === sc.account_id)?.name || '—')}${dest ? ` <span class="sup-arrow">→</span> ${esc(dest.name)}` : ''}</div>
+        <span class="sup-type-icon">${typeIcon}</span>
+        <div class="sup-item-mid">
+          <div class="sup-item-desc">${esc(sc.description || '—')}${pendingBadge}</div>
+          <div class="sup-item-meta">${esc((state.accounts || []).find(a => a.id === sc.account_id)?.name || '')}</div>
         </div>
-        <div class="sup-right">
-          <span class="sup-amt ${isExp ? 'neg' : 'pos'}">${isExp ? '−' : '+'}${amtFmt}</span>
-          <div class="sup-actions">
-            <button class="sup-ignore-btn" title="Ignorar"
-              onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
-            <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
-          </div>
-        </div>
+        <span class="sup-item-amt ${isExp ? 'neg' : 'pos'}">${isExp ? '−' : '+'}${amtStr}</span>
+        <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
       </div>`;
     }).join('');
 
