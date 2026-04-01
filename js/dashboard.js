@@ -289,6 +289,16 @@ async function loadDashboard(){
   _renderDashForecast().catch(()=>{});
   await loadDashboardAutoRunSummary();
 
+  // FIX: Carregar orçamentos para o snapshot do dashboard.
+  // loadBudgets popula _budgetCache e _budgetSpent, depois chama
+  // _renderDashBudgetSnapshot automaticamente. Sem isso o card fica vazio.
+  if (typeof loadBudgets === 'function') {
+    loadBudgets().catch(() => {}).finally(() => {
+      // Re-aplicar visibilidade após render para respeitar prefs do usuário
+      try { _dashApplyPrefs(_dashGetPrefs()); } catch(_e) {}
+    });
+  }
+
   // Render account balances grouped by account group
   (function renderAccountBalances() {
     const el = document.getElementById('accountBalancesList');
@@ -349,29 +359,34 @@ async function loadDashboard(){
       const favCheck   = favs.filter(a => a.type === 'corrente' || a.type === 'poupanca');
       const favOthers  = favs.filter(a => !['cartao_credito','corrente','poupanca'].includes(a.type));
 
-      const _favTypeSep = (items, label) => {
+      // Coluna de tipo: header + contas empilhadas verticalmente
+      const _favTypeCol = (items, label) => {
         if (!items.length) return '';
-        const total = items.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-        const isCC = label === 'Cartão de Crédito';
-        // Use fmt() for consistency with rest of app (shows centavos, respects privacy mode)
-        const totalFmt = fmt(Math.abs(total), 'BRL');
+        const total      = items.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+        const isCC       = label === 'Cartão de Crédito';
+        const totalFmt   = fmt(Math.abs(total), 'BRL');
         const totalColor = total < 0 ? 'var(--red)' : isCC ? 'var(--red)' : 'var(--accent)';
-        const icon = isCC ? '💳' : label.includes('Corrente') ? '🏦' : '📦';
-        return `<div class="dash-fav-type-group">
+        const icon       = isCC ? '💳' : label.includes('Corrente') ? '🏦' : '📦';
+        // No mobile: volta ao layout original (grid horizontal)
+        // No desktop: cada conta é empilhada verticalmente dentro da coluna
+        return `<div class="dash-fav-type-group dash-fav-type-col">
           <div class="dash-fav-type-header">
             <span class="dash-fav-type-label">${icon} ${label}</span>
             <span class="dash-fav-type-total" style="color:${totalColor};font-family:var(--font-serif,monospace)">${isCC && total < 0 ? '−' : ''}${totalFmt}</span>
           </div>
-          <div class="dash-favs-grid">${items.map(rowHtml).join('')}</div>
+          <div class="dash-favs-col-stack">${items.map(rowHtml).join('')}</div>
         </div>`;
       };
 
-      const favHtml = (favCC.length || favCheck.length || favOthers.length)
-        ? _favTypeSep(favCC, 'Cartão de Crédito') +
-          (favCC.length && (favCheck.length || favOthers.length) ? '<div class="dash-fav-type-divider"></div>' : '') +
-          _favTypeSep(favCheck, 'Contas Correntes / Poupança') +
-          (favOthers.length ? '<div class="dash-fav-type-divider"></div>' : '') +
-          _favTypeSep(favOthers, 'Outros')
+      // Desktop: grupos lado a lado. Mobile: empilhados (CSS cuida disso).
+      const activeGroups = [
+        favCC.length     ? _favTypeCol(favCC,    'Cartão de Crédito')          : '',
+        favCheck.length  ? _favTypeCol(favCheck,  'Contas Correntes / Poupança') : '',
+        favOthers.length ? _favTypeCol(favOthers, 'Outros')                     : '',
+      ].filter(Boolean);
+
+      const favHtml = activeGroups.length
+        ? `<div class="dash-fav-cols-layout">${activeGroups.join('')}</div>`
         : `<div class="dash-favs-grid">${favs.map(rowHtml).join('')}</div>`;
 
       html += `<div class="dash-favs-section">${favHtml}</div>`;
@@ -908,109 +923,173 @@ async function _syncDashPrefsFromServer() {
 
 function _dashApplyPrefs(prefs) {
   const order = _getDashCardOrder(prefs);
-  // Apply visibility
+
+  // 1. Visibilidade
   order.forEach(c => {
     const el = document.getElementById(c.el);
     if (!el) return;
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
-  // Apply order in DOM on all screen sizes
+
+  // 2. Reordenação robusta no DOM
   try {
-    const parent = document.getElementById(order[0]?.el)?.parentElement;
-    if (parent) {
-      order.forEach(c => {
-        const el = document.getElementById(c.el);
-        if (el && el.parentElement === parent) parent.appendChild(el);
-      });
-    }
+    const els = order.map(c => document.getElementById(c.el)).filter(Boolean);
+    if (!els.length) return;
+    const parent = els[0].parentElement;
+    if (!parent) return;
+    const direct = els.filter(el => el.parentElement === parent);
+    if (!direct.length) return;
+    direct.forEach((el, i) => {
+      const refEl = parent.children[i];
+      if (refEl && refEl !== el) parent.insertBefore(el, refEl);
+    });
   } catch(_) {}
 }
 
 function openDashCustomModal() {
   const prefs = _dashGetPrefs();
   const order = _getDashCardOrder(prefs);
-  const list  = document.getElementById('dashCustomList');
-  if (!list) return;
+  _dashCustomCurrentOrder = order.map(c => c.id);
   _renderDashCustomList(order, prefs);
   openModal('dashCustomModal');
+  requestAnimationFrame(() => _dashInitDnD());
 }
 
 function _getDashCardOrder(prefs) {
-  // Use saved order from prefs, fallback to _DASH_CARDS default order
   const savedOrder = prefs._order;
   if (savedOrder && Array.isArray(savedOrder)) {
     const ordered = savedOrder
       .map(id => _DASH_CARDS.find(c => c.id === id))
       .filter(Boolean);
-    // Append any new cards not in saved order
     _DASH_CARDS.forEach(c => { if (!ordered.find(x => x.id === c.id)) ordered.push(c); });
     return ordered;
   }
   return [..._DASH_CARDS];
 }
 
+let _dashCustomCurrentOrder = null;
+
 function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
   list.innerHTML = order.map((c, idx) => `
-    <div class="dash-custom-toggle" data-card-id="${c.id}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
-      <span class="dash-custom-toggle-icon">${c.icon}</span>
+    <div class="dash-custom-item" data-card-id="${c.id}" draggable="true"
+      style="display:flex;align-items:center;gap:10px;padding:11px 14px;
+        background:var(--surface2);border:1.5px solid var(--border);
+        border-radius:10px;cursor:grab;transition:all .15s;user-select:none"
+      onmouseenter="this.style.borderColor='var(--accent)'"
+      onmouseleave="this.style.borderColor='var(--border)'">
+      <span style="color:var(--muted);font-size:1rem;flex-shrink:0;cursor:grab" title="Arrastar">⠿</span>
+      <span style="font-size:1.1rem;flex-shrink:0">${c.icon}</span>
       <div style="flex:1;min-width:0">
-        <div class="dash-custom-toggle-label">${c.label}</div>
-        <div class="dash-custom-toggle-sub" style="font-size:.72rem;color:var(--muted)">${c.sub}</div>
+        <div style="font-size:.84rem;font-weight:600;color:var(--text)">${c.label}</div>
+        <div style="font-size:.71rem;color:var(--muted);margin-top:1px">${c.sub}</div>
       </div>
-      <div class="dash-reorder-btns">
-        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',-1)" title="Mover para cima" ${idx===0?'disabled style="opacity:.3"':''}>▲</button>
-        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',+1)" title="Mover para baixo" ${idx===order.length-1?'disabled style="opacity:.3"':''}>▼</button>
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+        <button
+          style="width:24px;height:20px;border-radius:5px;border:1px solid var(--border);
+            background:var(--surface);color:var(--text2);font-size:.65rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            ${idx===0 ? 'opacity:.3;pointer-events:none' : ''}"
+          onclick="event.stopPropagation();_dashMoveCard('${c.id}',-1)"
+          title="Mover para cima">▲</button>
+        <button
+          style="width:24px;height:20px;border-radius:5px;border:1px solid var(--border);
+            background:var(--surface);color:var(--text2);font-size:.65rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            ${idx===order.length-1 ? 'opacity:.3;pointer-events:none' : ''}"
+          onclick="event.stopPropagation();_dashMoveCard('${c.id}',+1)"
+          title="Mover para baixo">▼</button>
       </div>
       <button class="dash-toggle-switch ${prefs[c.id]!==false?'on':''}" data-card="${c.id}"
-        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-toggle'))"></button>
+        style="flex-shrink:0"
+        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-item'))">
+      </button>
     </div>`).join('');
+  requestAnimationFrame(() => _dashInitDnD());
 }
 
 function _dashMoveCard(id, dir) {
   const prefs = _dashGetPrefs();
-  const order = _getDashCardOrder(prefs);
+  const order = _getDashCardOrder({ ...prefs, _order: _dashCustomCurrentOrder || prefs._order });
   const idx   = order.findIndex(c => c.id === id);
   if (idx < 0) return;
   const newIdx = idx + dir;
   if (newIdx < 0 || newIdx >= order.length) return;
   [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
-  // Temporarily store new order and re-render the list
-  _dashCustomPendingOrder = order.map(c => c.id);
-  const updPrefs = {...prefs, _order: _dashCustomPendingOrder};
+  _dashCustomCurrentOrder = order.map(c => c.id);
+  const updPrefs = { ...prefs, _order: _dashCustomCurrentOrder };
   _renderDashCustomList(order, updPrefs);
+  _dashSavePrefs(updPrefs).catch(() => {});
+  _dashApplyPrefs(updPrefs);
 }
-let _dashCustomPendingOrder = null;
 
 function _dashToggleCard(id, row) {
-  const btn = row?.querySelector('.dash-toggle-switch');
+  const btn = row ? row.querySelector('.dash-toggle-switch') : null;
   if (!btn) return;
   const isOn = btn.classList.toggle('on');
-  btn.setAttribute('data-state', isOn ? 'on' : 'off');
+  const prefs = _dashGetPrefs();
+  const updPrefs = { ...prefs, [id]: isOn };
+  if (_dashCustomCurrentOrder) updPrefs._order = _dashCustomCurrentOrder;
+  _dashSavePrefs(updPrefs).catch(() => {});
+  _dashApplyPrefs(updPrefs);
+}
+
+// Drag-and-Drop nativo
+let _dndDragId = null;
+
+function _dashInitDnD() {
+  const list = document.getElementById('dashCustomList');
+  if (!list) return;
+  list.querySelectorAll('.dash-custom-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      _dndDragId = item.dataset.cardId;
+      item.style.opacity = '.45';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.style.opacity = '';
+      list.querySelectorAll('.dash-custom-item').forEach(i => {
+        i.style.background = ''; i.style.borderColor = 'var(--border)';
+      });
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (item.dataset.cardId !== _dndDragId) {
+        item.style.borderColor = 'var(--accent)';
+        item.style.background  = 'var(--accent-lt, #e8f2ee)';
+      }
+    });
+    item.addEventListener('dragleave', () => {
+      item.style.background = ''; item.style.borderColor = 'var(--border)';
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.style.background = ''; item.style.borderColor = 'var(--border)';
+      if (!_dndDragId || _dndDragId === item.dataset.cardId) return;
+      const prefs = _dashGetPrefs();
+      const order = _getDashCardOrder({ ...prefs, _order: _dashCustomCurrentOrder || prefs._order });
+      const fromIdx = order.findIndex(c => c.id === _dndDragId);
+      const toIdx   = order.findIndex(c => c.id === item.dataset.cardId);
+      if (fromIdx < 0 || toIdx < 0) { _dndDragId = null; return; }
+      const [moved] = order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, moved);
+      _dashCustomCurrentOrder = order.map(c => c.id);
+      const updPrefs = { ...prefs, _order: _dashCustomCurrentOrder };
+      _renderDashCustomList(order, updPrefs);
+      _dashSavePrefs(updPrefs).catch(() => {});
+      _dashApplyPrefs(updPrefs);
+      _dndDragId = null;
+    });
+  });
 }
 
 function _dashCustomSave() {
-  // Start from existing prefs so we don't lose catChartType, dashForecastAccounts, etc.
-  const existingPrefs = _dashGetPrefs();
-  const prefs = { ...existingPrefs };
-  _DASH_CARDS.forEach(c => {
-    const btn = document.querySelector(`.dash-toggle-switch[data-card="${c.id}"]`);
-    prefs[c.id] = btn ? btn.classList.contains('on') : true;
-  });
-  // Save card order if user reordered
-  if (_dashCustomPendingOrder) {
-    prefs._order = _dashCustomPendingOrder;
-    _dashCustomPendingOrder = null;
-  }
-  _dashSavePrefs(prefs);
-  _dashApplyPrefs(prefs);
-  if (prefs.favcats !== false) _renderDashFavCategories(_lastDashIncome, _lastDashExpense);
+  // Mudanças já são aplicadas em tempo real — apenas fecha o modal
   closeModal('dashCustomModal');
   toast('Preferências do dashboard salvas!', 'success');
 }
 
-// Guardar últimos valores de income/expense para re-render após customização
 let _lastDashIncome = 0, _lastDashExpense = 0;
 
 // ════════════════════════════════════════════════════════════════
