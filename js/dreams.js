@@ -626,7 +626,7 @@ async function openLinkBudgetModal(dreamId) {
         </div>
         <div class="form-group">
           <label class="form-label">Valor mensal *</label>
-          <input type="number" id="budgetDreamAmt" class="form-input" placeholder="0,00" value="${suggested||''}" min="1" step="0.01">
+          <input type="text" id="budgetDreamAmt" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" onfocus="_amtFieldFocus('budgetDreamAmt')" onkeydown="_amtFieldKeydown('budgetDreamAmt',event)" oninput="_amtFieldInput('budgetDreamAmt')" onblur="_drmAmtBlur('budgetDreamAmt')">
         </div>
         <div class="form-group">
           <label class="form-label">Categoria</label>
@@ -642,11 +642,16 @@ async function openLinkBudgetModal(dreamId) {
       </div>
     </div>
   </div>`);
+  // Formatar o campo de valor sugerido após renderização
+  requestAnimationFrame(() => {
+    const m = document.getElementById('linkBudgetModal');
+    if (m && typeof _drmInitAmtFields === 'function') _drmInitAmtFields(m);
+  });
 }
 window.openLinkBudgetModal = openLinkBudgetModal;
 
 async function saveDreamBudget(dreamId) {
-  const amount=parseFloat(document.getElementById('budgetDreamAmt')?.value||0);
+  const amount=_drmReadAmt('budgetDreamAmt')||0;
   const catId=document.getElementById('budgetDreamCat')?.value;
   if(!amount||amount<=0){toast('Informe o valor','warning');return;}
   if(!catId){toast('Selecione uma categoria','warning');return;}
@@ -741,7 +746,7 @@ function openContributeModal(dreamId) {
         ${acc?`<div class="drm-contrib-acc-hint">🏦 ${_esc(acc.name)} · Saldo: ${_fmtCurrency(acc.balance||0)}</div>`:''}
         <div class="form-group" style="margin-top:14px">
           <label class="form-label">Valor *</label>
-          <input type="number" id="contribAmount" class="form-input" placeholder="0,00" min="0.01" step="0.01" autofocus>
+          <input type="text" id="contribAmount" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" autofocus onfocus="_amtFieldFocus('contribAmount')" onkeydown="_amtFieldKeydown('contribAmount',event)" oninput="_amtFieldInput('contribAmount')" onblur="_drmAmtBlur('contribAmount')">
         </div>
         <div class="form-group">
           <label class="form-label">Data</label>
@@ -758,12 +763,16 @@ function openContributeModal(dreamId) {
       </div>
     </div>
   </div>`);
-  setTimeout(()=>document.getElementById('contribAmount')?.focus(),100);
+  setTimeout(()=>{
+    document.getElementById('contribAmount')?.focus();
+    const m = document.getElementById('contributeModal');
+    if (m && typeof _drmInitAmtFields === 'function') _drmInitAmtFields(m);
+  },100);
 }
 window.openContributeModal = openContributeModal;
 
 async function saveContribution(dreamId) {
-  const amount=parseFloat(document.getElementById('contribAmount')?.value);
+  const amount=_drmReadAmt('contribAmount');
   const date=document.getElementById('contribDate')?.value;
   if(!amount||amount<=0){toast('Informe um valor válido','warning');return;}
   if(!date){toast('Informe a data','warning');return;}
@@ -888,6 +897,11 @@ function _renderWizardModal() {
       </div>
     </div>
   </div>`);
+  // Inicializar campos de valor após renderização
+  requestAnimationFrame(() => {
+    const modal = document.getElementById('dreamWizardModal');
+    if (modal && typeof _drmInitAmtFields === 'function') _drmInitAmtFields(modal);
+  });
 }
 
 function closeDreamWizard() { document.getElementById('dreamWizardModal')?.remove(); _drm.wizard=null; }
@@ -942,6 +956,8 @@ async function wizardAiInterpret() {
     if(_drm.wizard){
       _drm.wizard.type=result.tipo;
       _drm.wizard.data={title:result.titulo,description:result.descricao,target_amount:result.valor_estimado};
+      // Formatar o campo de valor se já estiver no DOM
+      setTimeout(()=>_drmSetAmt('wizAmount',result.valor_estimado||0),50);
       if(result.prazo_meses_sugerido){const d=new Date();d.setMonth(d.getMonth()+result.prazo_meses_sugerido);_drm.wizard.data.target_date=d.toISOString().slice(0,10);}
     }
     const res=document.getElementById('wizAiInterpretResult');
@@ -965,7 +981,7 @@ function _wizStep2() {
       <div class="form-group"><label class="form-label">Nome do sonho *</label><input type="text" id="wizTitle" class="form-input" placeholder="Ex: Férias em Bali" value="${_esc(d.title||'')}"></div>
       <div class="form-group"><label class="form-label">Descrição</label><textarea id="wizDesc" class="form-input" rows="2" placeholder="Descreva seu sonho…">${_esc(d.description||'')}</textarea></div>
       <div class="drm-form-row">
-        <div class="form-group"><label class="form-label">Valor estimado *</label><input type="number" id="wizAmount" class="form-input" placeholder="0,00" min="1" step="0.01" value="${d.target_amount||''}"></div>
+        <div class="form-group"><label class="form-label">Valor estimado *</label><input type="text" id="wizAmount" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" onfocus="_amtFieldFocus('wizAmount')" onkeydown="_amtFieldKeydown('wizAmount',event)" oninput="_amtFieldInput('wizAmount')" onblur="_drmAmtBlur('wizAmount')"></div>
         <div class="form-group"><label class="form-label">Prazo desejado</label><input type="date" id="wizDate" class="form-input" value="${d.target_date||''}"></div>
       </div>
       <div class="form-group"><label class="form-label">Prioridade</label><select id="wizPriority" class="form-input">
@@ -1001,7 +1017,7 @@ function _wizFieldsAutomovel(d) {
   </div>
   <div id="wizFinancFields" style="${m.tipo_compra==='financiado'?'':'display:none'}">
     <div class="drm-form-row">
-      <div class="form-group"><label class="form-label">Entrada</label><input type="number" id="wizEntrada" class="form-input" placeholder="0,00" value="${m.entrada||''}"></div>
+      <div class="form-group"><label class="form-label">Entrada</label><input type="text" id="wizEntrada" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" onfocus="_amtFieldFocus('wizEntrada')" onkeydown="_amtFieldKeydown('wizEntrada',event)" oninput="_amtFieldInput('wizEntrada')" onblur="_drmAmtBlur('wizEntrada')"></div>
       <div class="form-group"><label class="form-label">Juros % a.m.</label><input type="number" id="wizJuros" class="form-input" step="0.01" placeholder="1,99" value="${m.taxa_juros||''}"></div>
     </div>
   </div>`;
@@ -1026,8 +1042,8 @@ function _wizFieldsImovel(d) {
   </div>
   <div id="wizFinancFields" style="${m.tipo_compra==='financiado'?'':'display:none'}">
     <div class="drm-form-row">
-      <div class="form-group"><label class="form-label">Entrada</label><input type="number" id="wizEntrada" class="form-input" placeholder="0,00" value="${m.entrada||''}"></div>
-      <div class="form-group"><label class="form-label">FGTS</label><input type="number" id="wizFgts" class="form-input" placeholder="0,00" value="${m.fgts||''}"></div>
+      <div class="form-group"><label class="form-label">Entrada</label><input type="text" id="wizEntrada" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" onfocus="_amtFieldFocus('wizEntrada')" onkeydown="_amtFieldKeydown('wizEntrada',event)" oninput="_amtFieldInput('wizEntrada')" onblur="_drmAmtBlur('wizEntrada')"></div>
+      <div class="form-group"><label class="form-label">FGTS</label><input type="text" id="wizFgts" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" onfocus="_amtFieldFocus('wizFgts')" onkeydown="_amtFieldKeydown('wizFgts',event)" oninput="_amtFieldInput('wizFgts')" onblur="_drmAmtBlur('wizFgts')"></div>
     </div>
     <div class="form-group"><label class="form-label">Juros % a.m.</label><input type="number" id="wizJuros" class="form-input" step="0.01" placeholder="0,75" value="${m.taxa_juros||''}"></div>
   </div>`;
@@ -1054,7 +1070,7 @@ function _wizStep3() {
     <div id="wizItemsList" class="drm-wizard-items">${items.map((it,i)=>_renderWizItem(it,i)).join('')}</div>
     <div class="drm-wiz-add-item">
       <input type="text" id="wizNewItemName" class="form-input" placeholder="Nome do componente" onkeydown="if(event.key==='Enter')addWizItem()">
-      <input type="number" id="wizNewItemAmt" class="form-input" placeholder="Valor" min="0" step="0.01" onkeydown="if(event.key==='Enter')addWizItem()">
+      <input type="text" id="wizNewItemAmt" class="form-input drm-amt-field" inputmode="decimal" placeholder="0,00" data-cents="0" onfocus="_amtFieldFocus('wizNewItemAmt')" onkeydown="_amtFieldKeydown('wizNewItemAmt',event);if(event.key==='Enter')addWizItem()" oninput="_amtFieldInput('wizNewItemAmt')" onblur="_drmAmtBlur('wizNewItemAmt')">
       <button class="btn btn-secondary btn-sm" onclick="addWizItem()">+ Add</button>
     </div>
     <div id="wizAiItemsLoading" style="display:none" class="drm-ai-loading"><div class="drm-ai-spinner"></div>Sugerindo…</div>
@@ -1065,13 +1081,13 @@ function _renderWizItem(it,i) {
   return `<div class="drm-wiz-item" id="wizItem-${i}">
     ${it.is_ai_suggested?'<span class="drm-ai-badge" title="IA">✨</span>':''}
     <input type="text" class="form-input drm-wiz-item-name" value="${_esc(it.name||'')}" oninput="_updateWizItem(${i},'name',this.value)">
-    <input type="number" class="form-input drm-wiz-item-amt" value="${it.estimated_amount||''}" step="0.01" min="0" oninput="_updateWizItem(${i},'estimated_amount',this.value);_refreshItemsTotal()">
+    <input type="text" class="form-input drm-amt-field drm-wiz-item-amt" inputmode="decimal" value="${it.estimated_amount ? it.estimated_amount.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''}" data-cents="${Math.round((it.estimated_amount||0)*100)}" onfocus="this.select()" onkeydown="_drmItemAmtKeydown(this,${i},event)" oninput="_drmItemAmtInput(this,${i})" onblur="_drmAmtBlur(null,this)">
     <button class="drm-item-del" onclick="_removeWizItem(${i})" title="Remover">✕</button>
   </div>`;
 }
 function addWizItem() {
   const name=document.getElementById('wizNewItemName')?.value?.trim();
-  const amt=parseFloat(document.getElementById('wizNewItemAmt')?.value||0);
+  const amt=_drmReadAmt('wizNewItemAmt')||0;
   if(!name){toast('Informe o nome','warning');return;}
   _drm.wizard.items.push({name,estimated_amount:amt||0,is_ai_suggested:false});
   _refreshWizItemsList();
@@ -1099,7 +1115,7 @@ async function wizardAiSuggestItems() {
   const w=_drm.wizard; if(!w) return;
   const loading=document.getElementById('wizAiItemsLoading'); if(loading) loading.style.display='';
   const title   = document.getElementById('wizTitle')?.value  || w.data?.title || '';
-  const amount  = parseFloat(document.getElementById('wizAmount')?.value || w.data?.target_amount || 0);
+  const amount  = _drmReadAmt('wizAmount') || w.data?.target_amount || 0;
   const type    = w.type;
   const extra   = {};
   if(type==='viagem')    { extra.destino=document.getElementById('wizDestino')?.value||''; extra.pessoas=parseInt(document.getElementById('wizPessoas')?.value||2); }
@@ -1180,7 +1196,7 @@ window.wizardAiSuggestItems = wizardAiSuggestItems;
 function _wizStep4() {
   const w=_drm.wizard;
   const title=document.getElementById('wizTitle')?.value||w.data?.title||'—';
-  const amount=parseFloat(document.getElementById('wizAmount')?.value||w.data?.target_amount||0);
+  const amount=_drmReadAmt('wizAmount')||w.data?.target_amount||0;
   const date=document.getElementById('wizDate')?.value||w.data?.target_date||'';
   const priority=parseInt(document.getElementById('wizPriority')?.value||w.data?.priority||1);
   const items=w.items||[];
@@ -1226,15 +1242,15 @@ function wizardNext() {
     w.step=2;
   } else if(w.step===2){
     const title=document.getElementById('wizTitle')?.value?.trim();
-    const amount=parseFloat(document.getElementById('wizAmount')?.value||0);
+    const amount=_drmReadAmt('wizAmount')||0;
     if(!title){toast('Informe o nome do sonho','warning');return;}
     if(!amount||amount<=0){toast('Informe o valor estimado','warning');return;}
     w.data.title=title; w.data.description=document.getElementById('wizDesc')?.value?.trim()||'';
     w.data.target_amount=amount; w.data.target_date=document.getElementById('wizDate')?.value||null;
     w.data.priority=parseInt(document.getElementById('wizPriority')?.value||1);
     if(w.type==='viagem') w.data.ai_generated_fields_json={destino:document.getElementById('wizDestino')?.value||'',pessoas:document.getElementById('wizPessoas')?.value||''};
-    else if(w.type==='automovel') w.data.ai_generated_fields_json={modelo:document.getElementById('wizModelo')?.value||'',ano:document.getElementById('wizAno')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:document.getElementById('wizEntrada')?.value||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
-    else if(w.type==='imovel') w.data.ai_generated_fields_json={subtipo:document.getElementById('wizSubtipo')?.value||'',cidade:document.getElementById('wizCidade')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:document.getElementById('wizEntrada')?.value||'',fgts:document.getElementById('wizFgts')?.value||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
+    else if(w.type==='automovel') w.data.ai_generated_fields_json={modelo:document.getElementById('wizModelo')?.value||'',ano:document.getElementById('wizAno')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:_drmReadAmt('wizEntrada')||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
+    else if(w.type==='imovel') w.data.ai_generated_fields_json={subtipo:document.getElementById('wizSubtipo')?.value||'',cidade:document.getElementById('wizCidade')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:_drmReadAmt('wizEntrada')||'',fgts:_drmReadAmt('wizFgts')||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
     w.step=3;
   } else if(w.step===3){
     const nameEls=document.querySelectorAll('.drm-wiz-item-name'), amtEls=document.querySelectorAll('.drm-wiz-item-amt');
@@ -1282,3 +1298,146 @@ window.saveDream = saveDream;
   if(document.readyState==='complete'||document.readyState==='interactive'){if(typeof famId==='function'&&famId())applyDreamsFeature().catch(()=>{});}
   else document.addEventListener('DOMContentLoaded',()=>{if(typeof famId==='function'&&famId())applyDreamsFeature().catch(()=>{});});
 })();
+
+// ════════════════════════════════════════════════════════════════════════════
+// HELPERS DE FORMATAÇÃO DE VALORES — Módulo Sonhos
+// Usa o sistema _amtField* do app (utils.js) para formatação consistente.
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Lê o valor numérico de um campo de moeda do módulo de sonhos.
+ * Aceita tanto o padrão novo (data-cents) quanto o antigo (type=number).
+ */
+function _drmReadAmt(fieldId, el) {
+  const elem = el || document.getElementById(fieldId);
+  if (!elem) return 0;
+  // Novo padrão: data-cents em centavos
+  if (elem.dataset && elem.dataset.cents !== undefined) {
+    return parseInt(elem.dataset.cents || '0', 10) / 100;
+  }
+  // Fallback: parse do value (aceita BR 1.500,00 e EN 1500.00)
+  const raw = (elem.value || '').trim();
+  if (!raw) return 0;
+  const clean = raw.replace(/\./g, '').replace(',', '.');
+  return Math.abs(parseFloat(clean) || 0);
+}
+window._drmReadAmt = _drmReadAmt;
+
+/**
+ * Define o valor de um campo de moeda do módulo de sonhos.
+ * Formata automaticamente com separador de milhar e 2 decimais.
+ */
+function _drmSetAmt(fieldId, value, el) {
+  const elem = el || document.getElementById(fieldId);
+  if (!elem) return;
+  const num   = Math.abs(parseFloat(value) || 0);
+  const cents = Math.round(num * 100);
+  elem.dataset.cents = String(cents);
+  if (cents === 0) {
+    elem.value = '';
+  } else {
+    elem.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}
+window._drmSetAmt = _drmSetAmt;
+
+/**
+ * onblur: formata o valor digitado como moeda BR.
+ * Lida com campos que usam o padrão novo (data-cents) e antigo.
+ */
+function _drmAmtBlur(fieldId, el) {
+  const elem = el || document.getElementById(fieldId);
+  if (!elem) return;
+  const raw = (elem.value || '').trim();
+  if (!raw) { elem.dataset.cents = '0'; return; }
+  // Parse lenientemente: 10500 / 10500,00 / 10.500,00 / 10500.00
+  const clean = raw.replace(/\./g, '').replace(',', '.');
+  const num   = Math.abs(parseFloat(clean) || 0);
+  if (num === 0) { elem.value = ''; elem.dataset.cents = '0'; return; }
+  const cents = Math.round(num * 100);
+  elem.dataset.cents = String(cents);
+  elem.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+window._drmAmtBlur = _drmAmtBlur;
+
+/**
+ * onkeydown para campos de item do step 3 (referenciados pelo elemento, não pelo ID).
+ */
+function _drmItemAmtKeydown(el, itemIdx, e) {
+  if (!el) return;
+  // Garante que dataset.cents existe
+  if (!el.dataset.cents) {
+    const raw = (el.value || '').replace(/\./g, '').replace(',', '');
+    el.dataset.cents = String(parseInt(raw.replace(/[^\d]/g, '') || '0', 10));
+  }
+
+  if (e.key === 'Backspace' || e.keyCode === 8) {
+    e.preventDefault();
+    const cents = Math.floor(parseInt(el.dataset.cents || '0', 10) / 10);
+    el.dataset.cents = String(cents);
+    _amtRender(el, cents);
+    _drmSyncItemAmt(el, itemIdx);
+    return;
+  }
+  if (e.key === 'Delete' || e.keyCode === 46) {
+    e.preventDefault();
+    el.dataset.cents = '0'; el.value = '';
+    _drmSyncItemAmt(el, itemIdx); return;
+  }
+  if (e.key.length > 1 || e.ctrlKey || e.metaKey) return;
+  if (!/[0-9]/.test(e.key)) { e.preventDefault(); return; }
+  e.preventDefault();
+  const prev  = el.dataset.cents || '0';
+  const next  = prev + e.key;
+  const cents = parseInt(next.slice(-13), 10);
+  el.dataset.cents = String(cents);
+  _amtRender(el, cents);
+  _drmSyncItemAmt(el, itemIdx);
+}
+window._drmItemAmtKeydown = _drmItemAmtKeydown;
+
+/**
+ * oninput para campos de item do step 3 (paste, autofill, mobile).
+ */
+function _drmItemAmtInput(el, itemIdx) {
+  if (!el) return;
+  const rawDigits = el.value.replace(/[^0-9]/g, '');
+  if (!rawDigits) { el.dataset.cents = '0'; el.value = ''; _drmSyncItemAmt(el, itemIdx); return; }
+  const cents = parseInt(rawDigits.slice(-13) || '0', 10);
+  el.dataset.cents = String(cents);
+  _amtRender(el, cents);
+  _drmSyncItemAmt(el, itemIdx);
+}
+window._drmItemAmtInput = _drmItemAmtInput;
+
+/**
+ * Sincroniza o valor do campo de item com o estado do wizard e atualiza o total.
+ */
+function _drmSyncItemAmt(el, itemIdx) {
+  if (!_drm.wizard?.items?.[itemIdx]) return;
+  const val = parseInt(el.dataset.cents || '0', 10) / 100;
+  _drm.wizard.items[itemIdx].estimated_amount = val;
+  _refreshItemsTotal();
+}
+
+/**
+ * Inicializa os campos de valor de um modal de sonhos após renderização.
+ * Formata os campos que já têm valor (ex: ao editar um sonho existente).
+ */
+function _drmInitAmtFields(containerEl) {
+  const container = containerEl || document;
+  container.querySelectorAll('.drm-amt-field').forEach(el => {
+    const raw = (el.value || '').trim();
+    if (!raw) return;
+    // Se já está formatado (tem vírgula), apenas sincroniza data-cents
+    if (raw.includes(',')) {
+      const clean = raw.replace(/\./g, '').replace(',', '.');
+      const num   = Math.abs(parseFloat(clean) || 0);
+      el.dataset.cents = String(Math.round(num * 100));
+    } else if (/^\d+(\.\d+)?$/.test(raw)) {
+      // Número puro (vindo do value= no HTML)
+      _drmSetAmt(null, parseFloat(raw) || 0, el);
+    }
+  });
+}
+window._drmInitAmtFields = _drmInitAmtFields;
