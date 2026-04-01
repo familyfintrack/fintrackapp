@@ -466,3 +466,28 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 .empty-state .es-icon{font-size:2.5rem;margin-bottom:12px;opacity:.5;}
 .empty-state p{font-size:.875rem;}
 
+
+/* ── Textos de ajuda inline — fontes aumentadas para melhor leitura ── */
+.form-hint,
+.field-hint,
+.input-hint,
+.form-note,
+.help-note,
+.cfg-row-sub,
+[style*="font-size:.7rem"],
+.sc-inline-note {
+  font-size: .8rem !important;
+  line-height: 1.5;
+}
+.uam-hint,
+.ua-field label .hint,
+.ls-card-sub,
+.ls-muted {
+  font-size: .78rem !important;
+}
+/* Textos de ajuda específicos nos modais */
+.modal-body .form-group > div:last-child:not(input):not(select):not(button),
+.sc-inline-note,
+.inv-field-note {
+  font-size: .78rem !important;
+}

@@ -234,12 +234,12 @@
 
 /* ── Article body content ──────────────────────────────────────── */
 .help-article-body {
-  font-size: .88rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.75;
   color: var(--text2);
 }
 .help-article-body h4 {
-  font-size: .88rem;
+  font-size: .95rem;
   font-weight: 700;
   color: var(--text);
   margin: 20px 0 8px;
@@ -481,7 +481,7 @@
 
 @media (max-width: 480px) {
   .help-section-grid { grid-template-columns: 1fr 1fr; }
-  .help-article-body { font-size: .9rem; }
+  .help-article-body { font-size: 1rem; }
   .help-article-wrap { padding: 14px 14px 80px; }
 }
 
