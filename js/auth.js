@@ -478,10 +478,15 @@ function showLoginScreen() {
     try {
       const _info = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : { isMobile: false };
       const _mobileDefault = _info.isMobile ? 'centered' : 'split';
-      const _themeToApply =
-        (typeof _appSettingsCache !== 'undefined' && _appSettingsCache && _appSettingsCache['login_theme']) ||
-        localStorage.getItem('login_theme') ||
-        _mobileDefault;
+      // Resolução: DB cache (fonte de verdade) → localStorage (cache offline) → mobile default
+      let _dbThemeRaw = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
+        ? (_appSettingsCache['login_theme'] || null) : null;
+      if (_dbThemeRaw && typeof _dbThemeRaw === 'string') {
+        try { _dbThemeRaw = JSON.parse(_dbThemeRaw); } catch(_) {}
+      }
+      const _validThemes = ['split','centered','asymmetric','immersive','minimal'];
+      const _dbTheme = (typeof _dbThemeRaw === 'string' && _validThemes.includes(_dbThemeRaw)) ? _dbThemeRaw : null;
+      const _themeToApply = _dbTheme || localStorage.getItem('login_theme') || _mobileDefault;
       if (typeof applyLoginTheme === 'function') applyLoginTheme(_themeToApply);
     } catch(_) {}
     // Re-apply access request visibility every time login screen is shown
@@ -557,16 +562,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Also fetch from Supabase anon (for mobile users who never set it locally)
   //    Uses a short timeout so it doesn't block anything
   _fetchAccessRequestSettingAnon();
-  // 3. Aplicar tema de login do localStorage — sem network.
-  //    Se localStorage vazio (primeiro acesso PWA), usa default mobile-aware.
+  // 3. Aplicar tema imediatamente do localStorage (cache offline, sem rede).
+  //    Se localStorage vazio usa default mobile-aware. O DB sobrescreve em seguida
+  //    via _fetchLoginThemeAnon (fonte de verdade cross-device).
   try {
     const _info = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : { isMobile: false };
     const _mobileDefault = _info.isMobile ? 'centered' : 'split';
-    const _savedTheme = localStorage.getItem('login_theme') || _mobileDefault;
-    if (typeof applyLoginTheme === 'function') applyLoginTheme(_savedTheme);
+    const _cachedTheme = localStorage.getItem('login_theme') || _mobileDefault;
+    if (typeof applyLoginTheme === 'function') applyLoginTheme(_cachedTheme);
   } catch(_) {}
-  // 4. Busca tema do DB de forma anônima — garante sincronização cross-device
-  //    mesmo antes do usuário logar (cobre PWA freshly installed).
+  // 4. Busca tema do DB (fonte de verdade) — sobrescreve localStorage se necessário.
+  //    Assíncrono: não bloqueia a renderização inicial.
   _fetchLoginThemeAnon();
 });
 
@@ -682,7 +688,7 @@ async function _fetchLoginThemeAnon() {
       } catch(_) {}
     }
 
-    if (!found) return; // DB não tem o setting — mantém o que já está aplicado
+    if (!found) return; // DB não tem o setting — mantém o que já está no localStorage
 
     // Normaliza valor (pode vir como JSON string ou string pura)
     let theme = raw;
@@ -692,13 +698,12 @@ async function _fetchLoginThemeAnon() {
     const validThemes = ['split','centered','asymmetric','immersive','minimal'];
     if (typeof theme !== 'string' || !validThemes.includes(theme)) return;
 
-    // Só re-aplica se diferente do que está no localStorage (evita flash desnecessário)
-    if (theme !== lsVal) {
-      try { localStorage.setItem('login_theme', theme); } catch(_) {}
-      // Atualiza data-login-theme no <html> (usado pelo CSS anti-flash)
-      try { document.documentElement.setAttribute('data-login-theme', theme); } catch(_) {}
-      if (typeof applyLoginTheme === 'function') applyLoginTheme(theme);
-    }
+    // DB é fonte de verdade: SEMPRE atualiza localStorage com valor do DB.
+    // Isso garante cross-device consistency: se o admin mudou o tema em outro
+    // dispositivo, este dispositivo reflete a mudança na próxima visita.
+    try { localStorage.setItem('login_theme', theme); } catch(_) {}
+    try { document.documentElement.setAttribute('data-login-theme', theme); } catch(_) {}
+    if (typeof applyLoginTheme === 'function') applyLoginTheme(theme);
   } catch(_) {} // silencia qualquer erro — nunca bloqueia
 }
 
@@ -710,26 +715,26 @@ async function _fetchLoginThemeAnon() {
 // Isso garante que a preferência configurada pelo admin se propague para novos
 // dispositivos sem sobrescrever escolhas feitas localmente pelo usuário.
 function _syncLoginThemeOnLogin() {
+  // Chamado em onLoginSuccess() — _appSettingsCache já está populado pelo boot.
+  // DB é fonte de verdade: SEMPRE sincroniza DB → localStorage em cada login.
+  // Isso garante que o tema do admin seja propagado para todos os dispositivos
+  // a cada autenticação bem-sucedida, sem depender de rede na próxima visita.
   try {
     const LOCAL_KEY = 'login_theme';
-    const localVal  = localStorage.getItem(LOCAL_KEY);
 
-    // localStorage já tem valor → preferência local vence, não sobrescreve
-    if (localVal) return;
-
-    // Sem valor local → tenta pegar do cache em memória (DB já carregado no boot)
+    // Lê do cache em memória (carregado do DB durante o boot)
     const dbVal = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
       ? _appSettingsCache[LOCAL_KEY]
       : null;
 
-    if (!dbVal) return; // DB também não tem → mantém o default do anti-flash
+    if (!dbVal) return; // DB não tem → mantém o que está no localStorage
 
     const validThemes = ['split','centered','asymmetric','immersive','minimal'];
     let theme = dbVal;
     if (typeof theme === 'string') { try { theme = JSON.parse(theme); } catch(_) {} }
     if (typeof theme !== 'string' || !validThemes.includes(theme)) return;
 
-    // Grava no localStorage e aplica visualmente
+    // DB vence sempre: atualiza localStorage como cache e aplica visualmente
     try { localStorage.setItem(LOCAL_KEY, theme); } catch(_) {}
     try { document.documentElement.setAttribute('data-login-theme', theme); } catch(_) {}
     if (typeof applyLoginTheme === 'function') applyLoginTheme(theme);

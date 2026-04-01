@@ -79,10 +79,19 @@ async function loadAppSettings() {
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
-    // Tema de login: NÃO lê do DB aqui — preferência é 100% local (localStorage).
-    // A sincronização acontece em onLoginSuccess via _syncLoginThemeOnLogin().
-    // Aqui só aplica o que já está no localStorage (já feito no anti-flash e DOMContentLoaded).
-    // (login_theme removido do ciclo DB→localStorage para evitar sobrescrever preferência local)
+    // Tema de login: DB é fonte de verdade. Sincroniza para localStorage como cache
+    // e aplica imediatamente. Isso garante que após qualquer login o tema correto
+    // seja exibido no próximo carregamento, mesmo offline.
+    const _loginTheme = _appSettingsCache[LOGIN_THEME_SETTING] || null;
+    if (_loginTheme) {
+      let _lt = _loginTheme;
+      if (typeof _lt === 'string') { try { _lt = JSON.parse(_lt); } catch(_) {} }
+      const _validThemes = ['split','centered','asymmetric','immersive','minimal'];
+      if (typeof _lt === 'string' && _validThemes.includes(_lt)) {
+        try { localStorage.setItem(LOGIN_THEME_SETTING, _lt); } catch(_) {}
+        if (typeof applyLoginTheme === 'function') applyLoginTheme(_lt);
+      }
+    }
 
     // Sincroniza canais de notificação do DB → localStorage
     const _notifKeys = ['notif_channel_email_enabled','notif_channel_wa_enabled','notif_channel_tg_enabled'];
@@ -273,13 +282,14 @@ async function loadNotifChannelSettings() {
 window.loadNotifChannelSettings = loadNotifChannelSettings;
 
 async function saveLoginTheme(theme) {
-  // Tema de login persiste APENAS no localStorage deste dispositivo.
-  // Não vai ao DB — cada dispositivo/PWA tem sua preferência independente.
-  // O tema é re-sincronizado do _appSettingsCache a cada login bem-sucedido
-  // (ver _syncLoginThemeOnLogin em auth.js), garantindo que a escolha do admin
-  // se propague sem sobrescrever prefs locais de outros membros.
-  try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
+  // Fonte de verdade: DB (app_settings). localStorage é apenas cache local
+  // para renderização imediata sem rede (anti-flash, PWA offline).
+  // Fluxo: aplica visualmente → persiste DB → atualiza localStorage como cache.
   applyLoginTheme(theme);
+  // Cache local imediato (para próximo carregamento sem rede)
+  try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
+  // Persiste no DB — fonte de verdade cross-device
+  try { await saveAppSetting(LOGIN_THEME_SETTING, theme); } catch(_) {}
   // Update radio + visual selection
   document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
     r.checked = (r.value === theme);
@@ -303,12 +313,30 @@ function applyLoginTheme(theme) {
 }
 
 function loadLoginThemeSelector() {
-  // Lê APENAS do localStorage — tema de login é preferência local do dispositivo.
-  // Não consulta DB: rápido, sem rede, sem flash.
-  const localTheme = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_) { return null; } })();
-  const applyAndMark = (t) => {
-    const theme = t || 'split';
+  // Fonte de verdade: DB (_appSettingsCache já carregado no boot).
+  // localStorage é fallback para quando o cache ainda não está disponível.
+  const _isMobile = (() => { try { const i = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : {isMobile:false}; return i.isMobile; } catch(_) { return false; } })();
+  const _mobileDefault = _isMobile ? 'centered' : 'split';
+
+  // Resolução: DB cache → localStorage → mobile-aware default
+  const dbTheme = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
+    ? (_appSettingsCache[LOGIN_THEME_SETTING] || null)
+    : null;
+  let resolvedTheme = null;
+  if (dbTheme) {
+    let t = dbTheme;
+    if (typeof t === 'string') { try { t = JSON.parse(t); } catch(_) {} }
+    if (typeof t === 'string' && ['split','centered','asymmetric','immersive','minimal'].includes(t)) resolvedTheme = t;
+  }
+  if (!resolvedTheme) {
+    const lsVal = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_) { return null; } })();
+    resolvedTheme = lsVal || _mobileDefault;
+  }
+
+  const applyAndMark = (theme) => {
     applyLoginTheme(theme);
+    // Mantém localStorage sincronizado com DB (cache)
+    try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
     document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
       r.checked = (r.value === theme);
     });
@@ -318,7 +346,14 @@ function loadLoginThemeSelector() {
       card.style.background = isActive ? 'var(--accent-lt,#e8f2ee)' : '';
     });
   };
-  applyAndMark(localTheme);
+  applyAndMark(resolvedTheme);
+
+  // Se o DB cache não estava disponível ainda, sincroniza assincronamente
+  if (!dbTheme) {
+    getAppSetting(LOGIN_THEME_SETTING, _mobileDefault).then(t => {
+      if (t && t !== resolvedTheme) applyAndMark(t);
+    }).catch(() => {});
+  }
 }
 
 
