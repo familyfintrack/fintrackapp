@@ -611,12 +611,22 @@
    MOBILE — fundo verde escuro, card branco flutuante
    ═══════════════════════════════════════════════════════════════════ */
 @media (max-width: 759px) {
+  /* ── Shell: permitir scroll quando conteúdo ultrapassa a viewport ── */
+  .ls-shell {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Layout: coluna única, fundo verde ─────────────────────────── */
   .ls-layout {
     flex-direction: column;
     background: #0e3520;
     position: relative;
+    min-height: 100%;        /* não height:100% — permite crescer */
+    height: auto;
   }
-  /* Grid no fundo mobile */
+
+  /* Grid decorativo no fundo */
   .ls-layout::before {
     content: '';
     position: absolute;
@@ -627,32 +637,59 @@
     background-size: 32px 32px;
     pointer-events: none;
   }
+
+  /* Hero: oculto no mobile base */
   .ls-hero { display: none; }
+
+  /* Painel do formulário: ocupa todo o espaço, scroll habilitado */
   .ls-form-panel {
     flex: 1;
+    width: 100%;
     background: transparent;
     box-shadow: none;
-    padding: 24px 20px;
+    padding: 28px 20px 40px;  /* extra padding-bottom para safe-area */
     align-items: center;
+    justify-content: flex-start; /* alinhar ao topo, não centro — evita corte */
+    overflow-y: visible;
+    min-height: auto;
   }
+
+  /* Card: branco, centralizado, responsivo */
   .ls-card {
     background: #ffffff;
-    border-radius: 20px;
-    padding: 28px 24px;
+    border-radius: 22px;
+    padding: 28px 22px 24px;
     box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.2);
-    max-width: 420px;
+    width: 100%;
+    max-width: 440px;
+    /* Margem automática horizontal para telas largas dentro do mobile */
+    margin-left: auto;
+    margin-right: auto;
   }
+
+  /* Logo mobile: visível e dobrado */
   .ls-mobile-logo {
     display: flex;
     justify-content: center;
-    margin-bottom: 22px;
+    margin-bottom: 20px;
   }
   .ls-mobile-logo img {
-    height: 50px;
+    height: 100px;          /* dobro de 50px */
     width: auto;
     object-fit: contain;
+    filter: drop-shadow(0 2px 16px rgba(93,219,160,.40));
   }
-  .ls-form-logo { display: none; }
+
+  /* ls-form-logo: oculto no mobile base (substituído por ls-mobile-logo) */
+  .ls-form-logo { display: none !important; }
+
+  /* Safe area para iPhone com notch/Dynamic Island */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .ls-form-panel {
+      padding-top: calc(28px + env(safe-area-inset-top));
+      padding-bottom: calc(40px + env(safe-area-inset-bottom));
+    }
+  }
 }
 
 /* ── Compatibilidade Windows (inputs claros) ─────────────────────── */
@@ -1061,62 +1098,124 @@ body.platform-windows .ls-input {
 /* ══════════════════════════════════════════════════════════════════
    RESPONSIVIDADE MOBILE (≤759px) — todos os temas colapsam
    ══════════════════════════════════════════════════════════════════ */
+
+/* ── Mobile extra-pequeno (iPhone SE, 375px) ────────────────────── */
+@media (max-width: 390px) {
+  .ls-card,
+  #loginScreen.ls-theme-split .ls-card,
+  #loginScreen.ls-theme-asymmetric .ls-card,
+  #loginScreen.ls-theme-centered .ls-card,
+  #loginScreen.ls-theme-minimal .ls-card,
+  #loginScreen.ls-theme-immersive .ls-card {
+    padding: 24px 18px 20px !important;
+    border-radius: 20px !important;
+  }
+  .ls-form-panel,
+  #loginScreen.ls-theme-split .ls-form-panel,
+  #loginScreen.ls-theme-asymmetric .ls-form-panel,
+  #loginScreen.ls-theme-centered .ls-form-panel,
+  #loginScreen.ls-theme-minimal .ls-form-panel,
+  #loginScreen.ls-theme-immersive .ls-form-panel {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .ls-card-title { font-size: 1.25rem; }
+  .ls-mobile-logo img { height: 88px !important; }
+  #loginScreen.ls-theme-centered .ls-form-logo,
+  #loginScreen.ls-theme-minimal .ls-form-logo,
+  #loginScreen.ls-theme-immersive .ls-form-logo {
+    height: 120px !important;
+    margin-bottom: 16px !important;
+  }
+  .ls-field-group { margin-bottom: 14px; }
+  .ls-remember { margin-bottom: 16px; }
+}
+
 @media (max-width: 759px) {
-  /* Todos os temas: painel transparente, card centralizado */
+  /* Todos os temas: painel transparente, card centralizado + scroll seguro */
   #loginScreen.ls-theme-split .ls-form-panel,
   #loginScreen.ls-theme-asymmetric .ls-form-panel,
   #loginScreen.ls-theme-centered .ls-form-panel,
   #loginScreen.ls-theme-immersive .ls-form-panel,
   #loginScreen.ls-theme-minimal .ls-form-panel {
     flex: 1 !important;
+    width: 100% !important;
     background: transparent !important;
     box-shadow: none !important;
-    padding: 24px 20px !important;
+    padding: 28px 20px 44px !important;
     align-items: center !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;  /* não center — evita corte em telas pequenas */
+    overflow-y: visible !important;
+    min-height: auto !important;
   }
   /* Layout: fundo verde escuro em todos (exceto immersive que usa o hero) */
   #loginScreen.ls-theme-split .ls-layout,
   #loginScreen.ls-theme-asymmetric .ls-layout {
     flex-direction: column;
     background: #0e3520;
+    height: auto;
+    min-height: 100%;
   }
   #loginScreen.ls-theme-minimal .ls-layout {
     background: #0e3520;
+    height: auto;
+    min-height: 100%;
+  }
+  #loginScreen.ls-theme-centered .ls-layout,
+  #loginScreen.ls-theme-immersive .ls-layout {
+    height: auto;
+    min-height: 100%;
   }
   /* Hero: ocultar em temas que usam hero lateral */
   #loginScreen.ls-theme-split .ls-hero,
   #loginScreen.ls-theme-asymmetric .ls-hero { display: none !important; }
 
-  /* Card mobile: branco sólido em todos */
+  /* Card mobile: branco sólido em todos, padding generoso */
   #loginScreen.ls-theme-split .ls-card,
   #loginScreen.ls-theme-asymmetric .ls-card,
   #loginScreen.ls-theme-centered .ls-card,
   #loginScreen.ls-theme-minimal .ls-card {
     background: #ffffff !important;
     border-radius: 24px !important;
-    padding: 32px 28px !important;
+    padding: 28px 22px 24px !important;
     box-shadow: 0 24px 64px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.25) !important;
     backdrop-filter: none !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
-  /* Immersive mobile: card glass mantido, hero como fundo fixo */
+  /* Immersive mobile: card glass escuro mantido, hero como fundo fixo */
   #loginScreen.ls-theme-immersive .ls-hero {
     position: fixed !important;
     inset: 0; width: 100%; height: 100%;
   }
   #loginScreen.ls-theme-immersive .ls-card {
-    padding: 32px 28px !important;
+    padding: 28px 22px !important;
+    width: 100% !important;
+    max-width: 440px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
-  /* Logo mobile: tamanho padrão */
+  /* ── Logo mobile: DOBRO do tamanho desktop ─────────────────────── */
+  /* split / asymmetric usam ls-mobile-logo (hero está oculto) */
   #loginScreen.ls-theme-split .ls-mobile-logo img,
   #loginScreen.ls-theme-asymmetric .ls-mobile-logo img {
-    height: 52px !important;
+    height: 104px !important;   /* dobro de 52px */
+    filter: drop-shadow(0 2px 16px rgba(93,219,160,.40)) !important;
   }
+  /* centered / minimal / immersive usam ls-form-logo dentro do card */
+  /* No mobile desses temas, ls-form-logo é reexibido (override do display:none) */
   #loginScreen.ls-theme-centered .ls-form-logo,
   #loginScreen.ls-theme-minimal .ls-form-logo,
   #loginScreen.ls-theme-immersive .ls-form-logo {
-    height: 73px !important;
-    margin-bottom: 22px !important;
+    display: block !important;
+    height: 146px !important;   /* dobro de 73px */
+    margin-bottom: 20px !important;
+  }
+  /* Immersive: logo com glow no mobile também */
+  #loginScreen.ls-theme-immersive .ls-form-logo {
+    filter: drop-shadow(0 0 28px rgba(93,219,160,.55)) !important;
   }
   /* Centered mobile: pseudo-elementos de orb sem conflito */
   #loginScreen.ls-theme-centered .ls-form-panel::before,
