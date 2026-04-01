@@ -37,8 +37,55 @@
   margin: 12px 0 14px;
 }
 
-/* Desktop: wider grid for fav cards */
+/* ── Layout de colunas paralelas (desktop only) ──────────────── */
+/* Mobile: colunas empilhadas verticalmente (padrão) */
+.dash-fav-cols-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.dash-fav-type-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Coluna: contas empilhadas verticalmente */
+.dash-favs-col-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Em mobile, o card mantém o estilo normal (horizontal stretch) */
+.dash-favs-col-stack .dash-fav-card {
+  width: 100%;
+}
+
+/* Desktop: colunas de tipos lado a lado */
 @media (min-width: 1024px) {
+  .dash-fav-cols-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .dash-fav-type-col {
+    border-right: 1px solid var(--border);
+    padding-right: 16px;
+  }
+  .dash-fav-type-col:last-child {
+    border-right: none;
+    padding-right: 0;
+  }
+  /* Cards dentro da coluna: largura total da coluna */
+  .dash-favs-col-stack {
+    gap: 10px;
+  }
+  .dash-favs-col-stack .dash-fav-card {
+    padding: 16px 18px 18px;
+  }
+  .dash-favs-col-stack .dash-fav-card__balance {
+    font-size: 1.35rem;
+  }
+  /* Grid legacy (quando não há grupos) — mantém comportamento original */
   .dash-favs-grid {
     grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
     gap: 14px;
@@ -56,11 +103,28 @@
   }
 }
 
-/* Mobile: always 2 columns */
+/* Mobile: sempre 2 colunas (grid legacy) */
 @media (max-width: 480px) {
   .dash-favs-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px;
+  }
+  /* Mobile: coluna stack volta para grid 2x */
+  .dash-favs-col-stack {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .dash-fav-type-col {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+  }
+  .dash-fav-type-col:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
   }
 }
 
