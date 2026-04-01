@@ -75,7 +75,24 @@ async function loadDreams(force = false) {
     const { data, error } = await famQ(
       sb.from('dreams').select('*')
     ).order('priority', { ascending: true }).order('created_at', { ascending: false });
-    if (error) throw error;
+
+    // Se a tabela não existe ainda (código 42P01), avisa no container
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        const container = document.getElementById('dreams-list-container');
+        if (container) {
+          container.innerHTML = `
+          <div class="drm-empty">
+            <div class="drm-empty-icon">⚠️</div>
+            <div class="drm-empty-title">Migração pendente</div>
+            <div class="drm-empty-desc">As tabelas do módulo Sonhos ainda não foram criadas no banco de dados.<br>Execute a migração SQL no painel Supabase e recarregue a página.</div>
+          </div>`;
+        }
+        return; // não marca como loaded — força nova tentativa
+      }
+      throw error;
+    }
+
     _drm.dreams = data || [];
 
     // Load items for all dreams
