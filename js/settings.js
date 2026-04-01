@@ -79,19 +79,24 @@ async function loadAppSettings() {
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
-    // Tema de login: DB é fonte de verdade. Sincroniza para localStorage como cache
-    // e aplica imediatamente. Isso garante que após qualquer login o tema correto
-    // seja exibido no próximo carregamento, mesmo offline.
-    const _loginTheme = _appSettingsCache[LOGIN_THEME_SETTING] || null;
-    if (_loginTheme) {
-      let _lt = _loginTheme;
-      if (typeof _lt === 'string') { try { _lt = JSON.parse(_lt); } catch(_) {} }
-      const _validThemes = ['split','centered','asymmetric','immersive','minimal'];
-      if (typeof _lt === 'string' && _validThemes.includes(_lt)) {
-        try { localStorage.setItem(LOGIN_THEME_SETTING, _lt); } catch(_) {}
-        if (typeof applyLoginTheme === 'function') applyLoginTheme(_lt);
+    // Tema de login: DB é fonte de verdade → cache no localStorage → aplica.
+    // localStorage serve só como fallback offline/antes do boot. Sempre sobrescrito
+    // pelo DB quando disponível.
+    {
+      const _lt_raw = _appSettingsCache[LOGIN_THEME_SETTING] || null;
+      const _lt_valid = ['split','centered','asymmetric','immersive','minimal'];
+      if (_lt_raw) {
+        let _lt = _lt_raw;
+        if (typeof _lt === 'string') { try { _lt = JSON.parse(_lt); } catch(_e) {} }
+        if (typeof _lt === 'string' && _lt_valid.includes(_lt)) {
+          try { localStorage.setItem(LOGIN_THEME_SETTING, _lt); } catch(_e) {}
+          if (typeof applyLoginTheme === 'function') applyLoginTheme(_lt);
+        }
       }
     }
+
+    // App theme (dark/light): DB é fonte de verdade → localStorage → aplica.
+    if (typeof bootApplyAppTheme === 'function') bootApplyAppTheme();
 
     // Sincroniza canais de notificação do DB → localStorage
     const _notifKeys = ['notif_channel_email_enabled','notif_channel_wa_enabled','notif_channel_tg_enabled'];
@@ -282,17 +287,34 @@ async function loadNotifChannelSettings() {
 window.loadNotifChannelSettings = loadNotifChannelSettings;
 
 async function saveLoginTheme(theme) {
-  // Fonte de verdade: DB (app_settings). localStorage é apenas cache local
-  // para renderização imediata sem rede (anti-flash, PWA offline).
-  // Fluxo: aplica visualmente → persiste DB → atualiza localStorage como cache.
+  // Fonte de verdade: DB (app_settings).
+  // localStorage = cache para renderização offline/próximo boot (fallback).
+  // Ordem: 1) aplica visualmente  2) LS cache imediato  3) persiste DB async
+  const validThemes = ['split','centered','asymmetric','immersive','minimal'];
+  if (!theme || !validThemes.includes(theme)) return;
+
+  // 1. Aplica visualmente sem esperar rede
   applyLoginTheme(theme);
-  // Cache local imediato (para próximo carregamento sem rede)
-  try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
-  // Persiste no DB — fonte de verdade cross-device
-  try { await saveAppSetting(LOGIN_THEME_SETTING, theme); } catch(_) {}
-  // Update radio + visual selection
+  // 2. Grava no LS como cache (fallback offline)
+  try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_e) {}
+  // 3. Persiste no DB (fonte de verdade) — atualiza o cache em memória também
+  try {
+    await saveAppSetting(LOGIN_THEME_SETTING, theme);
+    // Mantém _appSettingsCache sincronizado para loadLoginThemeSelector()
+    if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache) {
+      _appSettingsCache[LOGIN_THEME_SETTING] = theme;
+    }
+  } catch(_e) {
+    console.warn('[saveLoginTheme] DB save failed, LS cache kept:', _e?.message);
+  }
+  // Update radio + highlight
   document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
     r.checked = (r.value === theme);
+  });
+  document.querySelectorAll('.login-theme-option').forEach(card => {
+    const isActive = card.dataset.theme === theme;
+    card.style.outline = isActive ? '2px solid var(--accent)' : '';
+    card.style.background = isActive ? 'var(--accent-lt,#e8f2ee)' : '';
   });
   const status = document.getElementById('loginThemeSaveStatus');
   if (status) {
@@ -313,47 +335,54 @@ function applyLoginTheme(theme) {
 }
 
 function loadLoginThemeSelector() {
-  // Fonte de verdade: DB (_appSettingsCache já carregado no boot).
-  // localStorage é fallback para quando o cache ainda não está disponível.
-  const _isMobile = (() => { try { const i = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : {isMobile:false}; return i.isMobile; } catch(_) { return false; } })();
+  // Prioridade de leitura: 1) DB cache (_appSettingsCache) → 2) localStorage → 3) default
+  // DB é fonte de verdade. LS é cache offline. Nunca o contrário.
+  const validThemes = ['split','centered','asymmetric','immersive','minimal'];
+  const _isMobile = (() => {
+    try { const i = typeof detectLoginPlatform === 'function' ? detectLoginPlatform() : {isMobile:false}; return i.isMobile; }
+    catch(_e) { return false; }
+  })();
   const _mobileDefault = _isMobile ? 'centered' : 'split';
 
-  // Resolução: DB cache → localStorage → mobile-aware default
-  const dbTheme = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
-    ? (_appSettingsCache[LOGIN_THEME_SETTING] || null)
-    : null;
-  let resolvedTheme = null;
-  if (dbTheme) {
-    let t = dbTheme;
-    if (typeof t === 'string') { try { t = JSON.parse(t); } catch(_) {} }
-    if (typeof t === 'string' && ['split','centered','asymmetric','immersive','minimal'].includes(t)) resolvedTheme = t;
-  }
-  if (!resolvedTheme) {
-    const lsVal = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_) { return null; } })();
-    resolvedTheme = lsVal || _mobileDefault;
-  }
+  const _normalize = (raw) => {
+    if (!raw) return null;
+    let t = raw;
+    if (typeof t === 'string') { try { t = JSON.parse(t); } catch(_e) {} }
+    return (typeof t === 'string' && validThemes.includes(t)) ? t : null;
+  };
 
   const applyAndMark = (theme) => {
     applyLoginTheme(theme);
-    // Mantém localStorage sincronizado com DB (cache)
-    try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
-    document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
-      r.checked = (r.value === theme);
-    });
+    // Mantém LS sincronizado com DB (cache offline)
+    try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_e) {}
+    document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => { r.checked = (r.value === theme); });
     document.querySelectorAll('.login-theme-option').forEach(card => {
       const isActive = card.dataset.theme === theme;
       card.style.outline = isActive ? '2px solid var(--accent)' : '';
       card.style.background = isActive ? 'var(--accent-lt,#e8f2ee)' : '';
     });
   };
-  applyAndMark(resolvedTheme);
 
-  // Se o DB cache não estava disponível ainda, sincroniza assincronamente
-  if (!dbTheme) {
-    getAppSetting(LOGIN_THEME_SETTING, _mobileDefault).then(t => {
-      if (t && t !== resolvedTheme) applyAndMark(t);
-    }).catch(() => {});
+  // 1. DB cache (disponível se loadAppSettings() já rodou — normal após login)
+  const cacheRaw = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
+    ? (_appSettingsCache[LOGIN_THEME_SETTING] || null) : null;
+  const dbTheme = _normalize(cacheRaw);
+
+  if (dbTheme) {
+    applyAndMark(dbTheme);
+    return; // DB disponível → aplica e termina
   }
+
+  // 2. LS fallback (offline / antes do boot completar)
+  const lsRaw = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_e) { return null; } })();
+  const lsTheme = _normalize(lsRaw) || lsRaw;
+  applyAndMark(lsTheme || _mobileDefault);
+
+  // 3. Async: busca DB pra atualizar caso o cache ainda não estivesse pronto
+  getAppSetting(LOGIN_THEME_SETTING, _mobileDefault).then(t => {
+    const resolved = _normalize(t) || _mobileDefault;
+    if (resolved !== (lsTheme || _mobileDefault)) applyAndMark(resolved);
+  }).catch(() => {});
 }
 
 
@@ -3016,3 +3045,100 @@ async function _telRenderLandingContent(el, cachedRows) {
           </div>`}
     </div>`;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP THEME — Dark / Light mode
+   Fonte de verdade: DB (app_settings key='app_theme').
+   localStorage é cache offline. Aplicado via [data-theme="dark"] no <html>.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const APP_THEME_KEY = 'app_theme';
+const APP_THEME_VALID = ['dark', 'light'];
+
+/** Apply theme to <html> and update all UI indicators. No network calls. */
+function applyAppTheme(theme) {
+  const isDark = theme === 'dark';
+  const html = document.documentElement;
+
+  // Smooth transition
+  html.classList.add('theme-transitioning');
+  setTimeout(() => html.classList.remove('theme-transitioning'), 320);
+
+  if (isDark) {
+    html.setAttribute('data-theme', 'dark');
+  } else {
+    html.removeAttribute('data-theme');
+  }
+
+  // Update user menu toggle
+  _updateThemeToggleUI(isDark);
+}
+
+/** Update the toggle switch and icon/label inside the user menu. */
+function _updateThemeToggleUI(isDark) {
+  try {
+    const icon   = document.getElementById('umThemeIcon');
+    const label  = document.getElementById('umThemeLabel');
+    const sw     = document.getElementById('umThemeSwitch');
+    const pill   = document.getElementById('umThemePill');
+
+    if (icon)  icon.textContent  = isDark ? '☀️' : '🌙';
+    if (label) label.textContent = isDark ? 'Modo Tradicional' : 'Modo Escuro';
+    if (sw) {
+      sw.style.background = isDark ? 'var(--accent)' : 'var(--border2)';
+    }
+    if (pill) {
+      pill.style.transform = isDark ? 'translateX(16px)' : 'translateX(0)';
+    }
+  } catch(_) {}
+}
+
+/** Toggle between dark and light. Called by the user menu button. */
+async function toggleAppTheme() {
+  const current = document.documentElement.getAttribute('data-theme') === 'dark'
+    ? 'dark' : 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyAppTheme(next);
+  await saveAppTheme(next);
+}
+window.toggleAppTheme = toggleAppTheme;
+
+/** Persist theme: DB (source of truth) + localStorage (offline cache). */
+async function saveAppTheme(theme) {
+  if (!APP_THEME_VALID.includes(theme)) return;
+  // 1. localStorage — cache imediato, funciona offline
+  try { localStorage.setItem(APP_THEME_KEY, theme); } catch(_) {}
+  // 2. DB — fonte de verdade cross-device
+  try { await saveAppSetting(APP_THEME_KEY, theme); } catch(_) {}
+}
+
+/** Resolve theme: DB cache → localStorage → system preference. */
+function resolveAppTheme() {
+  // 1. DB cache (fonte de verdade, disponível após loadAppSettings)
+  if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache) {
+    const dbVal = _appSettingsCache[APP_THEME_KEY];
+    if (dbVal && APP_THEME_VALID.includes(dbVal)) return dbVal;
+  }
+  // 2. localStorage (cache offline)
+  try {
+    const lsVal = localStorage.getItem(APP_THEME_KEY);
+    if (lsVal && APP_THEME_VALID.includes(lsVal)) return lsVal;
+  } catch(_) {}
+  // 3. System preference (media query) — default respects OS
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
+
+/** Boot: apply theme as fast as possible. Called from loadAppSettings and DOMContentLoaded. */
+function bootApplyAppTheme() {
+  const theme = resolveAppTheme();
+  applyAppTheme(theme);
+  // Sync to localStorage from DB (keeps cache fresh)
+  if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache &&
+      _appSettingsCache[APP_THEME_KEY]) {
+    try { localStorage.setItem(APP_THEME_KEY, _appSettingsCache[APP_THEME_KEY]); } catch(_) {}
+  }
+}
+window.bootApplyAppTheme = bootApplyAppTheme;

@@ -741,7 +741,26 @@ function _syncLoginThemeOnLogin() {
   } catch(_) {} // nunca bloqueia o login
 }
 
-
+// ── Sincroniza tema dark/light do DB → localStorage e aplica a cada login ──
+// DB é fonte de verdade: sempre sobrescreve localStorage no login bem-sucedido.
+// Garante propagação cross-device (ex: admin mudou dark→light em outro device).
+function _syncAppThemeOnLogin() {
+  try {
+    const KEY   = 'app_theme';
+    const VALID = ['dark','light'];
+    const dbVal = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache)
+      ? _appSettingsCache[KEY] : null;
+    if (!dbVal || !VALID.includes(dbVal)) return;
+    // DB vence: atualiza localStorage e aplica visualmente
+    try { localStorage.setItem(KEY, dbVal); } catch(_) {}
+    if (typeof applyAppTheme === 'function') applyAppTheme(dbVal);
+    else {
+      // Fallback direto sem depender de settings.js ter carregado
+      if (dbVal === 'dark') document.documentElement.setAttribute('data-theme','dark');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+  } catch(_) {} // nunca bloqueia o login
+}
 
 function _applyAccessRequestVisibility(enabled) {
   try {
@@ -1026,9 +1045,9 @@ async function doChangeMyPwd() {
 async function onLoginSuccess() {
   updateUserUI();
   // Sincroniza tema de login: DB → localStorage (apenas se localStorage vazio).
-  // Garante que PWA recém-instalado receba o tema configurado pelo admin
-  // sem nunca sobrescrever a preferência local escolhida pelo usuário.
   _syncLoginThemeOnLogin();
+  // Sincroniza tema UI (dark/light): DB sempre vence no login.
+  _syncAppThemeOnLogin();
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
   }
@@ -1294,6 +1313,11 @@ function toggleUserMenu(e) {
 
   // ── Family switcher inside menu ──
   _renderUserMenuFamilies();
+
+  // ── Reflect current dark/light state in the toggle ──
+  if (typeof _updateThemeToggleUI === 'function') {
+    _updateThemeToggleUI(document.documentElement.getAttribute('data-theme') === 'dark');
+  }
 
   // ── Position dropdown relative to avatar button, safe for mobile ──
   const btn   = document.getElementById('topbarUserBtn');
