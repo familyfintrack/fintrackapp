@@ -258,12 +258,12 @@ function accountCardHTML(a) {
   const currLine = a.currency !== 'BRL'
     ? `<div class="acc-card-currency">${a.currency}</div>` : '';
 
-  // Estrela de favorito
+  // Estrela de favorito — posicionada no rodapé direito do card
   const favBtn = `<button class="acc-card-fav ${a.is_favorite ? 'active' : ''}"
     onclick="event.stopPropagation();toggleAccountFavorite('${a.id}',${!!a.is_favorite})"
     title="${a.is_favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
     id="favStar-${a.id}">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="${a.is_favorite ? 'currentColor' : 'none'}"
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="${a.is_favorite ? 'currentColor' : 'none'}"
       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
     </svg>
@@ -273,12 +273,15 @@ function accountCardHTML(a) {
     <!-- Faixa de cor lateral -->
     <div class="acc-card-bar" style="background:${color}"></div>
 
-    <!-- Topo: ícone + estrela + ações -->
+    <!-- Topo: ícone + ações (sem estrela) -->
     <div class="acc-card-top">
       <div class="acc-card-icon-wrap" style="background:color-mix(in srgb,${color} 14%,transparent)">
         ${renderIconEl(a.icon, a.color, 22)}
       </div>
-      ${favBtn}
+      <div class="acc-card-type-badge">
+        <span>${typeBadge.icon}</span>
+        <span>${typeBadge.label}</span>
+      </div>
       <div class="acc-card-actions">
         <button class="acc-action-btn" title="Consolidar saldo"
           onclick="event.stopPropagation();openConsolidateModal('${a.id}')">
@@ -295,17 +298,19 @@ function accountCardHTML(a) {
       </div>
     </div>
 
-    <!-- Corpo: nome + tipo -->
+    <!-- Nome da conta -->
     <div class="acc-card-name">${esc(a.name)}</div>
-    <div class="acc-card-type-badge">
-      <span>${typeBadge.icon}</span>
-      <span>${typeBadge.label}</span>
-    </div>
 
     <!-- Saldo -->
     <div class="acc-card-balance ${isNeg ? 'neg' : ''}">${fmt(a.balance, a.currency)}</div>
     ${currLine}
     ${dueLine}
+
+    <!-- Rodapé: favorito à direita -->
+    <div class="acc-card-footer">
+      <span></span>
+      ${favBtn}
+    </div>
   </div>`;
 }
 
@@ -366,8 +371,6 @@ async function openAccountModal(id=''){
   if(bpdEl) bpdEl.value=form.best_purchase_day||'';
   const ddEl=document.getElementById('accountDueDay');
   if(ddEl) ddEl.value=form.due_day||'';
-  // ── Vínculo com Sonho (poupança → sonho) ─────────────────────────────
-  await _populateAccountDreamLink(form.id, form.type, form.linked_dream_id);
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
   openModal('accountModal');
 }
@@ -383,8 +386,6 @@ async function saveAccount(){
   const favEl=document.getElementById('accountIsFavorite');
   const bpdEl=document.getElementById('accountBestPurchaseDay');
   const ddEl=document.getElementById('accountDueDay');
-  const dreamLinkSel = document.getElementById('accountDreamLink');
-  const linkedDreamId = dreamLinkSel?.value || null;
   const data={
     name:document.getElementById('accountName').value.trim(),
     type:document.getElementById('accountType').value,
@@ -400,10 +401,6 @@ async function saveAccount(){
     due_day: isCC&&ddEl&&ddEl.value ? (parseInt(ddEl.value)||null) : null,
     updated_at:new Date().toISOString()
   };
-  // Persist dream link on accounts table if column exists
-  if (linkedDreamId !== undefined) {
-    try { data.linked_dream_id = linkedDreamId || null; } catch(_) {}
-  }
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}
   if(!id) data.family_id=famId();
   let err;
@@ -1044,53 +1041,3 @@ window.accountSelectAiIcon = function(iconKeyOrEmoji, color) {
   }
   if (panel) panel.style.display = 'none';
 };
-
-// ════════════════════════════════════════════════════════════════
-// VÍNCULO CONTA → SONHO (poupança vinculada a um sonho)
-// Só aparece para contas do tipo poupança quando o módulo Sonhos
-// está ativo para a família.
-// ════════════════════════════════════════════════════════════════
-async function _populateAccountDreamLink(accountId, accountType, currentDreamId) {
-  const wrap = document.getElementById('accountDreamLinkWrap');
-  if (!wrap) return;
-
-  // Só exibir para contas poupança com módulo Sonhos ativo
-  const fid = typeof famId === 'function' ? famId() : null;
-  const fc  = window._familyFeaturesCache || {};
-  const dreamsOn = fid && !!fc['dreams_enabled_' + fid];
-
-  if (!dreamsOn) { wrap.style.display = 'none'; return; }
-
-  // Buscar sonhos ativos sem conta vinculada (ou com esta conta já vinculada)
-  try {
-    const { data: dreams } = await famQ(
-      sb.from('dreams')
-        .select('id,title,dream_type,target_amount,currency')
-        .eq('status', 'active')
-        .or(`linked_account_id.is.null,linked_account_id.eq.${accountId || '00000000-0000-0000-0000-000000000000'}`)
-        .order('priority')
-    );
-
-    const dreamList = dreams || [];
-    if (!dreamList.length) { wrap.style.display = 'none'; return; }
-
-    const typeEmoji = { viagem:'✈️', automovel:'🚗', imovel:'🏠', cirurgia_plastica:'💆', outro:'🌟' };
-    const sel = document.getElementById('accountDreamLink');
-    if (!sel) return;
-
-    sel.innerHTML = '<option value="">— Nenhum sonho vinculado —</option>' +
-      dreamList.map(d => {
-        const em = typeEmoji[d.dream_type] || '🌟';
-        const amt = typeof fmt === 'function' ? fmt(d.target_amount, d.currency || 'BRL') : d.target_amount;
-        return `<option value="${d.id}" ${currentDreamId === d.id ? 'selected' : ''}>${em} ${esc(d.title)} (meta: ${amt})</option>`;
-      }).join('');
-
-    sel.value = currentDreamId || '';
-    wrap.style.display = '';
-  } catch(e) {
-    console.warn('[accounts] _populateAccountDreamLink:', e.message);
-    wrap.style.display = 'none';
-  }
-}
-window._populateAccountDreamLink = _populateAccountDreamLink;
-
