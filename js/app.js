@@ -898,9 +898,10 @@ function clearFamilyScopedUI() {
 }
 
 function navigate(page){
-  // Guard: settings/telemetry exigem permissão administrativa.
-  // Aceita admin global ou perfis com can_admin, para não bloquear owners/family admins.
-  if ((page === 'settings' || page === 'telemetry') && !(currentUser?.role === 'admin' || currentUser?.can_admin)) {
+  // Guard: settings/audit/telemetry são admin-only
+  // Guard: settings/telemetry são admin-only; audit é acessível a todos
+  const _isAdminUser = !!(currentUser?.role === 'admin' || currentUser?.can_admin);
+  if((page==='settings'||page==='telemetry') && !_isAdminUser){
     toast(t('error.admin_only'),'warning');
     return;
   }
@@ -1037,16 +1038,28 @@ function navigate(page){
   }
   else if(page==='import')initImportPage();
   else if(page==='settings')loadSettings();
-  else if(page==='audit')loadAuditLogs();
-  else if(page==='telemetry')loadTelemetryDashboard?.();
+  else if(page==='audit'){
+    if (typeof loadAuditLogs === 'function') loadAuditLogs();
+    else setTimeout(() => window.loadAuditLogs?.(), 50);
+  }
+  else if(page==='telemetry'){
+    if (typeof loadTelemetryDashboard === 'function') loadTelemetryDashboard();
+    else setTimeout(() => window.loadTelemetryDashboard?.(), 50);
+  }
   else if(page==='investments')loadInvestmentsPage?.();
   else if(page==='debts')loadDebtsPage?.();
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
   else if(page==='dreams')initDreamsPage?.();
-  else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
-  else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
+  else if(page==='help'){
+    if(typeof initHelpPage==='function') initHelpPage();
+    else setTimeout(() => window.initHelpPage?.(), 50);
+  }
+  else if(page==='privacy'){
+    if(typeof _prvInitPage==='function') _prvInitPage();
+    else setTimeout(() => window._prvInitPage?.(), 50);
+  }
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);

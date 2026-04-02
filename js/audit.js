@@ -387,3 +387,6 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+window.loadAuditLogs = loadAuditLogs;
+window.filterAuditLogs = filterAuditLogs;

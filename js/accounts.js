@@ -284,7 +284,7 @@ function accountCardHTML(a) {
           onclick="event.stopPropagation();openConsolidateModal('${a.id}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </button>
-        <button class="acc-action-btn" title="Editar" data-account-edit-id="${a.id}"
+        <button class="acc-action-btn" title="Editar"
           onclick="event.stopPropagation();openAccountModal('${a.id}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -351,7 +351,15 @@ async function openAccountModal(id=''){
   setAmtField('accountBalance', form.initial_balance);
   document.getElementById('accountIcon').value=form.icon||'';
   document.getElementById('accountColor').value=form.color||'#2a6049';
-  document.getElementById('accountModalTitle').textContent=id?'Editar Conta':'Nova Conta';
+
+  const _modalTitle = document.getElementById('accountModalTitle');
+  if (_modalTitle) _modalTitle.textContent = id ? 'Editar Conta' : 'Nova Conta';
+
+  const _previewName = document.getElementById('amPreviewName');
+  if (_previewName) _previewName.textContent = form.name || (id ? 'Editar Conta' : 'Nova Conta');
+
+  const _previewType = document.getElementById('amPreviewType');
+  if (_previewType) _previewType.textContent = accountTypeLabel(form.type || 'corrente');
   if (typeof switchAccountTab === 'function') switchAccountTab('accountTabPrincipal');
   const gSel=document.getElementById('accountGroupId');
   if(gSel){
@@ -379,6 +387,7 @@ async function openAccountModal(id=''){
   if(bpdEl) bpdEl.value=form.best_purchase_day||'';
   const ddEl=document.getElementById('accountDueDay');
   if(ddEl) ddEl.value=form.due_day||'';
+  if (typeof onAccountTypeChange === 'function') onAccountTypeChange();
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
   // Bank details — load from account notes & sync visible fields
   _clearBankDetails();
