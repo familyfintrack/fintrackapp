@@ -1073,19 +1073,22 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 
 /* ── Forecast: fixed layout and always three lines ─────────────────── */
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
+/* Forecast mode: Date 10% · Description 70% · Amount 20% */
 .forecast-tx-row td { padding:7px 10px; vertical-align:middle; }
-.forecast-date-cell {
-  width: 15%;
-  min-width: 100px;
+.forecast-date-cell,
+.forecast-head-date  {
+  width: 10%;
+  min-width: 80px;
   padding: 4px 6px 4px 10px;
   color: var(--muted);
   vertical-align: middle;
   border-right: 1px solid var(--border);
 }
-.forecast-head-date {
-  width: 15%;
-  min-width: 100px;
-}
+/* Description column takes remaining 70% */
+.forecast-desc-cell  { width: 70%; min-width: 0; }
+/* Amount + balance split the 20% */
+.forecast-amount-cell,
+.forecast-balance-cell { width: 10%; min-width: 70px; }
 .forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
 /* Forecast category icon in date column */

@@ -1,1252 +1,544 @@
-/* ════════════════════════════════════════════════════
-   20_login.css
-   Login theme selector, login screen v4, help desktop
-   Source: style.css L23507–24172 (666 lines)
-   Braces: 106 open / 106 close ✓
-════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════
+   20_login.css — Login Screen v5 "Checkered Green"
+   Design: fundo quadriculado verde, card branco flutuante central
+   Responsivo: desktop · mobile · landscape
+   Braces balanced ✓
+════════════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════════════
-   TRANSAÇÕES — Entrada modo Abas modernizado (2026 update)
-═══════════════════════════════════════════════════════════════════ */
-
-/* Tx context tab bar */
-#txContextTabBar {
-  background: var(--surface2) !important;
-  border-bottom: none !important;
-  padding: 10px 16px !important;
-  gap: 4px !important;
-  margin-top: 10px !important;
-  flex-wrap: nowrap !important;
-  overflow-x: auto !important;
-  scrollbar-width: none !important;
-}
-#txContextTabBar .tx-ctx-tab {
-  border-radius: 8px !important;
-  border-bottom: none !important;
-  margin-bottom: 0 !important;
-  padding: 7px 13px !important;
-  font-size: .76rem !important;
-  font-weight: 600 !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  transition: all .15s !important;
-}
-#txContextTabBar .tx-ctx-tab.active {
-  background: var(--accent) !important;
-  color: #fff !important;
-  border-bottom: none !important;
-  box-shadow: 0 2px 8px rgba(22,163,74,.28) !important;
-}
-#txContextTabBar .tx-ctx-tab:hover:not(.active) {
-  background: var(--border) !important;
-  color: var(--text) !important;
-}
-
-/* Tx type tabs */
-#txTypeTabs .tab {
-  font-size: .77rem !important;
-  font-weight: 600 !important;
-  padding: 7px 14px !important;
-}
-
-/* Date field prominence in Principal tab */
-#txCtxPrincipal .form-group input[type="date"] {
-  border-color: var(--accent) !important;
-  border-width: 1.5px !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   PROGRAMADOS — Próximos 10 dias: fixes de overflow + contorno (2026)
-═══════════════════════════════════════════════════════════════════ */
-
-/* Label "Hoje" / "Amanhã" com subtítulo de data */
-.sup-group-dow-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.sup-group-dow--special {
-  font-size: .92rem;
-  font-weight: 800;
-  color: var(--accent);
-  line-height: 1.2;
-}
-.sup-group-date-sub {
-  font-size: .68rem;
-  font-weight: 500;
-  color: var(--muted);
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-/* Pill "Hoje" destacado com ícone de pulso */
-.sup-day-pill--today {
-  animation: supTodayPulse 2.5s ease-in-out infinite;
-}
-@keyframes supTodayPulse {
-  0%, 100% { box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 40%, transparent); }
-  50%       { box-shadow: 0 2px 18px color-mix(in srgb, var(--accent) 60%, transparent); }
-}
-
-/* Garantir que pill nunca extrapole o grupo-hdr */
-.sup-group-left {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-.sup-group-hdr {
-  flex-wrap: nowrap; /* evita quebra de linha */
-}
-
-/* Painel flutuante — contorno e sombra premium */
-#scUpcomingPanel {
-  border: 1.5px solid color-mix(in srgb, var(--accent) 32%, var(--border)) !important;
-  border-radius: 16px !important;
-  box-shadow:
-    0 4px 6px -1px rgba(0,0,0,.06),
-    0 8px 24px -4px color-mix(in srgb, var(--accent) 14%, transparent),
-    inset 0 1px 0 rgba(255,255,255,.6) !important;
-  overflow: hidden !important;
-}
-
-/* Header do painel — gradiente sutil verde */
-#scUpcomingPanel .sc-panel__header {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 10%, var(--surface2)) 0%,
-    color-mix(in srgb, var(--accent)  4%, var(--surface2)) 100%
-  ) !important;
-  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 20%, var(--border)) !important;
-  padding: 12px 16px 10px !important;
-}
-
-/* Barra lateral esquerda colorida no header */
-#scUpcomingPanel .sc-panel__header::before {
-  content: '';
-  display: block;
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
-}
-#scUpcomingPanel .sc-panel__header { position: relative; }
-
-/* Badge de total — mais destacado */
-#scUpcomingPanel .sc-panel__badge {
-  background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
-  color: var(--accent) !important;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent) !important;
-  font-weight: 700 !important;
-  border-radius: 20px !important;
-  padding: 3px 10px !important;
-}
-
-/* Grupo "Hoje" — header mais destacado */
-.sup-group:has(.sup-item--today) .sup-group-hdr {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 12%, var(--surface2)) 0%,
-    color-mix(in srgb, var(--accent)  5%, var(--surface2)) 100%
-  );
-  border-left: 3px solid var(--accent);
-  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 25%, var(--border));
-}
-
-/* Mobile: pill "Amanhã" mais compacto */
-@media (max-width: 480px) {
-  .sup-day-pill--today,
-  .sup-day-pill--tmrw { padding: 5px 8px; }
-  .sup-day-pill--today span,
-  .sup-day-pill--tmrw span { font-size: .7rem !important; }
-  .sup-group-date-sub { display: none; } /* muito pouco espaço no mobile */
-  .sup-group-dow--special { font-size: .85rem; }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   LOGIN SCREEN v4 — "Halved"
-   Desktop: split 50/50 — branco (form) | verde (hero)
-   Mobile:  fundo verde escuro, card branco centralizado
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* ── Shell ───────────────────────────────────────────────────────── */
+/* ── Shell ───────────────────────────────────────────────────── */
 .ls-shell {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  overflow: hidden;
-  font-family: 'Outfit', system-ui, sans-serif;
-  display: flex;
-  background: #000; /* fundo preto universal — aparece antes dos painéis carregarem */
-}
-
-/* ── Layout: dois painéis lado a lado ────────────────────────────── */
-.ls-layout {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   PAINEL ESQUERDO — branco, formulário
-   ═══════════════════════════════════════════════════════════════════ */
-.ls-form-panel {
-  position: relative;
-  flex: 0 0 50%;
-  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 48px;
-  overflow-y: auto;
-  z-index: 2;
-  /* Sombra sutil na borda direita para separar do painel verde */
-  box-shadow: 4px 0 32px rgba(0,0,0,.14);
+  overflow: hidden;
+  background: #0d2318;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Card interno (sem borda, apenas padding, fundo branco) */
-.ls-card {
+/* ── Checkered background ─────────────────────────────────────── */
+.ls-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(93,219,160,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93,219,160,.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: lsGridShift 60s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes lsGridShift {
+  from { background-position: 0 0; }
+  to   { background-position: 40px 40px; }
+}
+
+/* ── Decorative orbs ──────────────────────────────────────────── */
+.ls-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 55% at 15% 20%, rgba(42,96,73,.45) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 85% 80%, rgba(26,61,39,.38) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(93,219,160,.06) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+  animation: lsOrbPulse 14s ease-in-out infinite alternate;
+}
+@keyframes lsOrbPulse {
+  from { opacity: .8; }
+  to   { opacity: 1; transform: scale(1.04); }
+}
+
+/* ── Layout wrapper (keeps card centred) ─────────────────────── */
+.ls-layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  max-width: 380px;
+  height: 100%;
+  padding: 24px 16px;
 }
 
-/* Logo no topo do form — usa logo.jpg (fundo branco) */
+/* ── Card ─────────────────────────────────────────────────────── */
+.ls-form-panel {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 2;
+}
+
+.ls-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 40px 36px 36px;
+  box-shadow:
+    0 2px 0 rgba(0,0,0,.04),
+    0 8px 32px rgba(0,0,0,.14),
+    0 32px 80px rgba(0,0,0,.18),
+    0 0 0 1px rgba(255,255,255,.08);
+  position: relative;
+  overflow: hidden;
+  animation: lsCardIn .55s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes lsCardIn {
+  from { opacity: 0; transform: translateY(28px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Card accent stripe top */
+.ls-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2a6049, #5ddba0, #2a6049);
+  background-size: 200% 100%;
+  animation: lsStripeShift 4s ease-in-out infinite;
+}
+@keyframes lsStripeShift {
+  0%, 100% { background-position: 0% 0; }
+  50%       { background-position: 100% 0; }
+}
+
+/* ── Logo ──────────────────────────────────────────────────────── */
+.ls-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 28px;
+}
 .ls-form-logo {
-  display: block;
-  height: 48px;
+  height: 52px;
   width: auto;
-  object-fit: contain;
-  margin-bottom: 32px;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(42,96,73,.18));
 }
 
-/* Título e subtítulo */
+/* ── Headings ─────────────────────────────────────────────────── */
 .ls-card-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-  letter-spacing: -.03em;
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #0e2016;
+  letter-spacing: -.025em;
   margin-bottom: 4px;
   line-height: 1.2;
 }
 .ls-card-sub {
   font-size: .82rem;
-  color: #9ca3af;
+  color: #5a7a64;
   margin-bottom: 28px;
   font-weight: 400;
+  line-height: 1.4;
 }
 
-/* ── Campos ──────────────────────────────────────────────────────── */
-.ls-field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 16px;
+/* ── Form elements ────────────────────────────────────────────── */
+.ls-field {
+  margin-bottom: 14px;
 }
 .ls-label {
+  display: block;
   font-size: .72rem;
   font-weight: 700;
-  color: #374151;
-  letter-spacing: .05em;
+  color: #3a5a46;
   text-transform: uppercase;
-}
-/* ═══════════════════════════════════════════════════════════════════
-   CAMPOS DE TEXTO DO LOGIN — ícones alinhados via flex nativo
-   Técnica definitiva: wrapper flex-row, ícone como flex-item fixo,
-   input como flex:1. Funciona em Chrome, Firefox, Safari iOS/macOS,
-   Edge, WebKit — sem position:absolute, sem top/bottom tricks.
-   ═══════════════════════════════════════════════════════════════════ */
-.ls-input-wrap {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  align-items: center;          /* centraliza ícone e input na mesma linha */
-  width: 100%;
-  background: #f9fafb;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  transition: border-color .18s, background .18s, box-shadow .18s;
-}
-/* Foco no wrapper (não no input) — acompanha o estado do input */
-.ls-input-wrap:focus-within {
-  border-color: #2a6049;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(42,96,73,.10);
-}
-.ls-input-icon {
-  /* Flex item fixo — NÃO absolute */
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;                  /* área de toque confortável */
-  height: 48px;                 /* mesma altura do input */
-  color: #9ca3af;
-  pointer-events: none;
-  line-height: 0;
-}
-.ls-input-icon svg {
-  display: block;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
+  letter-spacing: .06em;
+  margin-bottom: 6px;
 }
 .ls-input {
-  /* Flex item que ocupa o restante */
-  flex: 1;
-  min-width: 0;
-  padding: 0 12px 0 0 !important;  /* sem padding-left: o ícone já faz espaço */
-  height: 48px;
-  line-height: 48px;
-  background: transparent !important; /* herda do wrapper */
-  border: none !important;            /* borda está no wrapper */
-  border-radius: 0 10px 10px 0;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid #d1e0d8;
+  border-radius: 12px;
   font-size: .9rem;
-  color: #111827;
-  font-family: inherit;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: #0e2016;
+  background: #f7fbf8;
   outline: none;
+  transition: border-color .18s, box-shadow .18s, background .18s;
   box-sizing: border-box;
-  -webkit-appearance: none;
-  appearance: none;
-  display: block;
 }
-/* Campo sem ícone: padding-left normal */
-.ls-input.ls-no-icon {
-  padding-left: 14px !important;
-  border-radius: 10px;
+.ls-input:focus {
+  border-color: #2a6049;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(42,96,73,.12);
 }
-.ls-input::placeholder {
-  color: #c4c9d4;
-  line-height: normal;
+.ls-input::placeholder { color: #a0b8aa; }
+
+/* Password wrapper */
+.ls-pw-wrap {
+  position: relative;
 }
-/* Botão olho — flex item à direita */
-.ls-eye-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 48px;
+.ls-pw-wrap .ls-input {
+  padding-right: 44px;
+}
+.ls-pw-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
-  padding: 0;
-  transition: color .15s;
+  color: #7a9888;
+  padding: 4px;
   line-height: 0;
-  border-radius: 0 9px 9px 0;   /* arredonda só o canto direito */
+  transition: color .15s;
 }
-.ls-eye-btn svg { display: block; width: 16px; height: 16px; }
-.ls-eye-btn:hover { color: #374151; }
-.ls-select { cursor: pointer; }
-.ls-select option { background: #fff; color: #111; }
+.ls-pw-toggle:hover { color: #2a6049; }
 
-/* ── Remember me ─────────────────────────────────────────────────── */
-.ls-remember {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  cursor: pointer;
-  margin-bottom: 22px;
-  user-select: none;
-}
-.ls-remember input[type=checkbox] { display: none; }
-.ls-check-box {
-  width: 17px; height: 17px;
-  border: 1.5px solid #d1d5db;
-  border-radius: 5px;
-  flex-shrink: 0;
-  transition: background .18s, border-color .18s;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-}
-.ls-remember input:checked + .ls-check-box {
-  background: #2a6049;
-  border-color: #2a6049;
-}
-.ls-remember input:checked + .ls-check-box::after {
-  content: '';
-  width: 4px; height: 8px;
-  border-right: 2px solid #fff;
-  border-bottom: 2px solid #fff;
-  transform: rotate(45deg) translate(-1px,-1px);
-}
-.ls-remember span:last-child {
-  font-size: .82rem;
-  color: #6b7280;
-}
-
-/* ── Botão primário ──────────────────────────────────────────────── */
+/* ── Primary button ───────────────────────────────────────────── */
 .ls-btn-primary {
   width: 100%;
-  padding: 13px 20px;
-  background: linear-gradient(135deg, #1e5c42 0%, #2a6049 100%);
+  padding: 13px;
+  background: linear-gradient(135deg, #2a6049 0%, #1e4a38 100%);
   color: #fff;
   border: none;
-  border-radius: 10px;
-  font-size: .92rem;
+  border-radius: 12px;
+  font-size: .9rem;
   font-weight: 700;
+  font-family: var(--font-sans, system-ui, sans-serif);
   cursor: pointer;
-  font-family: inherit;
+  letter-spacing: .01em;
+  transition: all .22s;
+  box-shadow: 0 2px 12px rgba(42,96,73,.25), 0 1px 0 rgba(255,255,255,.08) inset;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  letter-spacing: .01em;
-  position: relative;
-  overflow: hidden;
-  transition: transform .18s, box-shadow .18s;
-  box-shadow: 0 2px 12px rgba(30,92,66,.22);
+  margin-top: 20px;
 }
-.ls-btn-primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.10) 50%, transparent 100%);
-  transform: translateX(-110%);
-  transition: transform .5s ease;
+.ls-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #346b53 0%, #245542 100%);
+  box-shadow: 0 4px 20px rgba(42,96,73,.38);
+  transform: translateY(-1px);
 }
-.ls-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(30,92,66,.28); }
-.ls-btn-primary:hover::before { transform: translateX(110%); }
-.ls-btn-primary:active { transform: translateY(0); }
+.ls-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(42,96,73,.2);
+}
+.ls-btn-primary:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+}
+.ls-btn-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: lsSpin .7s linear infinite;
+}
+@keyframes lsSpin { to { transform: rotate(360deg); } }
 
-/* ── Ghost ───────────────────────────────────────────────────────── */
-.ls-btn-ghost {
-  padding: 10px 24px;
-  background: transparent;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  color: #374151;
-  font-size: .88rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background .18s, border-color .18s;
+/* ── Link buttons ─────────────────────────────────────────────── */
+.ls-links-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  gap: 4px;
 }
-.ls-btn-ghost:hover { background: #f3f4f6; border-color: #d1d5db; }
-
-/* ── Links ───────────────────────────────────────────────────────── */
 .ls-link {
+  font-size: .8rem;
+  color: #5a7a64;
   background: none;
   border: none;
-  color: #2a6049;
-  font-size: .78rem;
   cursor: pointer;
-  font-family: inherit;
-  padding: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  transition: color .15s, background .15s;
   text-decoration: none;
-  transition: color .15s;
 }
-.ls-link:hover { color: #1e5c42; text-decoration: underline; text-underline-offset: 2px; }
-.ls-link--bold {
-  font-size: .82rem;
-  font-weight: 700;
-  margin-left: 4px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.ls-muted { font-size: .82rem; color: #9ca3af; }
+.ls-link:hover { color: #2a6049; background: rgba(42,96,73,.07); }
+.ls-link--bold { font-weight: 700; color: #2a6049; }
+.ls-link--bold:hover { color: #1a4030; }
 
-/* ── Erros ───────────────────────────────────────────────────────── */
+/* ── Error / messages ─────────────────────────────────────────── */
 .ls-error {
-  margin-top: 12px;
-  padding: 10px 14px;
+  font-size: .8rem;
+  color: #dc2626;
   background: #fef2f2;
   border: 1px solid #fecaca;
   border-radius: 8px;
-  color: #dc2626;
-  font-size: .82rem;
-  text-align: center;
+  padding: 9px 12px;
+  margin-top: 12px;
   line-height: 1.5;
 }
-
-/* ── Info banner ─────────────────────────────────────────────────── */
-.ls-info-banner {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-  padding: 11px 14px;
-  font-size: .82rem;
-  color: #92400e;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-/* ── Icon badge ──────────────────────────────────────────────────── */
-.ls-icon-badge {
-  font-size: 2rem;
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-/* ── Back ────────────────────────────────────────────────────────── */
-.ls-back-row { margin-bottom: 14px; }
-.ls-back-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9ca3af;
+.ls-success {
   font-size: .8rem;
-  font-family: inherit;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.ls-info-msg {
+  font-size: .8rem;
+  color: #5a7a64;
+  background: #f0fdf4;
+  border: 1px solid #d1e0d8;
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-top: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ── Divider ──────────────────────────────────────────────────── */
+.ls-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: #c5d8ce;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.ls-divider::before,
+.ls-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e8f0ec;
+}
+
+/* ── 2FA code inputs ─────────────────────────────────────────── */
+.ls-2fa-inputs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 20px 0;
+}
+.ls-2fa-digit {
+  width: 44px;
+  height: 52px;
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  border: 1.5px solid #d1e0d8;
+  border-radius: 10px;
+  background: #f7fbf8;
+  color: #0e2016;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  font-family: var(--font-mono, monospace);
+}
+.ls-2fa-digit:focus {
+  border-color: #2a6049;
+  box-shadow: 0 0 0 3px rgba(42,96,73,.12);
+  background: #fff;
+}
+
+/* ── Register form extras ─────────────────────────────────────── */
+.ls-select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid #d1e0d8;
+  border-radius: 12px;
+  font-size: .9rem;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: #0e2016;
+  background: #f7fbf8;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235a7a64' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.ls-select:focus { border-color: #2a6049; }
+
+/* ── Pending approval box ─────────────────────────────────────── */
+.ls-pending-box {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.ls-pending-icon {
+  font-size: 2.4rem;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* ── Invite welcome ───────────────────────────────────────────── */
+.ls-invite-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0;
-  transition: color .15s;
-}
-.ls-back-btn:hover { color: #374151; }
-
-/* ── Mobile logo (hidden on desktop) ─────────────────────────────── */
-.ls-mobile-logo { display: none; }
-
-/* ═══════════════════════════════════════════════════════════════════
-   PAINEL DIREITO — verde escuro, hero branding
-   ═══════════════════════════════════════════════════════════════════ */
-.ls-hero {
-  flex: 0 0 50%;
-  position: relative;
-  background: #0e3520;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 48px 40px;
-}
-
-/* Grid quadriculado */
-.ls-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px);
-  background-size: 36px 36px;
-  pointer-events: none;
-}
-
-/* Gradiente radial sobre o grid (profundidade) */
-.ls-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 70% 60% at 50% 45%,
-    rgba(14,53,32,.0) 0%,
-    rgba(14,53,32,.65) 100%);
-  pointer-events: none;
-}
-
-/* Conteúdo interno (acima dos pseudo-elementos) */
-.ls-hero-inner {
-  position: relative;
-  z-index: 1;
-  max-width: 340px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
-
-/* Logo — usa logo_glow_soft.png (fundo escuro) */
-.ls-hero-logo {
-  height: 72px;
-  width: auto;
-  object-fit: contain;
-  margin-bottom: 28px;
-  filter: drop-shadow(0 0 24px rgba(93,219,160,.25));
-}
-
-/* Slogan discreto */
-.ls-hero-tagline {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: rgba(255,255,255,.90);
-  letter-spacing: -.01em;
-  line-height: 1.35;
-  margin-bottom: 6px;
-}
-.ls-hero-sub {
-  font-size: .78rem;
-  color: rgba(255,255,255,.38);
-  font-weight: 400;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  margin-bottom: 40px;
-}
-
-/* Feature list */
-.ls-hero-features {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border-top: 1px solid rgba(255,255,255,.08);
-  padding-top: 28px;
-  width: 100%;
-}
-.ls-feat {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: rgba(255,255,255,.55);
-  font-size: .8rem;
-  font-weight: 400;
-}
-.ls-feat svg { color: rgba(93,219,160,.75); flex-shrink: 0; }
-
-/* Orb de glow sutil no canto superior direito */
-.ls-hero-orb {
-  position: absolute;
-  top: -80px;
-  right: -80px;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(42,96,73,.55) 0%, transparent 70%);
-  filter: blur(60px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   MOBILE — fundo verde escuro, card branco flutuante
-   ═══════════════════════════════════════════════════════════════════ */
-@media (max-width: 759px) {
-  /* ── Shell: permitir scroll quando conteúdo ultrapassa a viewport ── */
-  .ls-shell {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ── Layout: coluna única, fundo verde ─────────────────────────── */
-  .ls-layout {
-    flex-direction: column;
-    background: #0e3520;
-    position: relative;
-    min-height: 100%;        /* não height:100% — permite crescer */
-    height: auto;
-  }
-
-  /* Grid decorativo no fundo */
-  .ls-layout::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
-    background-size: 32px 32px;
-    pointer-events: none;
-  }
-
-  /* Hero: oculto no mobile base */
-  .ls-hero { display: none; }
-
-  /* Painel do formulário: ocupa todo o espaço, scroll habilitado */
-  .ls-form-panel {
-    flex: 1;
-    width: 100%;
-    background: transparent;
-    box-shadow: none;
-    padding: 28px 20px 40px;  /* extra padding-bottom para safe-area */
-    align-items: center;
-    justify-content: flex-start; /* alinhar ao topo, não centro — evita corte */
-    overflow-y: visible;
-    min-height: auto;
-  }
-
-  /* Card: branco, centralizado, responsivo */
-  .ls-card {
-    background: #ffffff;
-    border-radius: 22px;
-    padding: 28px 22px 24px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.2);
-    width: 100%;
-    max-width: 440px;
-    /* Margem automática horizontal para telas largas dentro do mobile */
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  /* Logo mobile: visível e dobrado */
-  .ls-mobile-logo {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-  .ls-mobile-logo img {
-    height: 100px;          /* dobro de 50px */
-    width: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 2px 16px rgba(93,219,160,.40));
-  }
-
-  /* ls-form-logo: visível no mobile — substituiu ls-mobile-logo */
-  .ls-form-logo {
-    display: block !important;
-    height: 110px !important;
-    width: auto !important;
-    object-fit: contain !important;
-    margin: 0 auto 20px !important;
-    filter: drop-shadow(0 2px 16px rgba(93,219,160,.40)) !important;
-  }
-
-  /* Safe area para iPhone com notch/Dynamic Island */
-  @supports (padding-top: env(safe-area-inset-top)) {
-    .ls-form-panel {
-      padding-top: calc(28px + env(safe-area-inset-top));
-      padding-bottom: calc(40px + env(safe-area-inset-bottom));
-    }
-  }
-}
-
-/* ── Compatibilidade Windows (inputs claros) ─────────────────────── */
-html.platform-windows .ls-input-wrap,
-body.platform-windows .ls-input-wrap {
-  background: #f9fafb;
-  border-color: #e5e7eb;
-}
-html.platform-windows .ls-input,
-body.platform-windows .ls-input {
-  color: #111827;
-}
-
-/* ── Auth change-pwd banner (legado) ─────────────────────────────── */
-.auth-change-pw {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: .82rem;
-  color: #92400e;
+  gap: 6px;
+  font-size: .72rem;
+  font-weight: 700;
+  background: #f0fdf4;
+  color: #2a6049;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  padding: 4px 12px;
   margin-bottom: 16px;
 }
 
-/* ── Help module: desktop improvements (≥1024px) ─────────────────── */
-@media (min-width: 1024px) {
-  .help-shell {
-    height: calc(100vh - var(--topbar-h, 56px) - 48px);
-  }
-  .help-nav {
-    width: 300px;
-  }
-  .help-article-wrap {
-    padding: 32px 48px 72px;
-    max-width: 1040px;
-  }
-  .help-home {
-    padding: 32px 36px;
-  }
-  .help-section-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 14px;
-  }
-  .help-section-card {
-    padding: 20px 18px;
-  }
-  .help-section-card-icon { font-size: 1.8rem; }
-  .help-section-card-title { font-size: .88rem; }
-  .help-home-title { font-size: 1.5rem; }
-  .help-home-sub { font-size: .9rem; }
-  .help-article-title { font-size: 1.5rem !important; }
-  .help-article-body { font-size: .92rem; line-height: 1.75; }
-}
-
-@media (min-width: 1400px) {
-  .help-nav { width: 320px; }
-  .help-article-wrap { max-width: 1120px; padding: 36px 56px 80px; }
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   TEMAS DE LOGIN v2 — aplicados via .ls-theme-* no #loginScreen
-   Fundo geral: sempre preto (definido em .ls-shell via background:#000).
-   ═══════════════════════════════════════════════════════════════════ */
-
-
-/* ══ Anti-flash: regras por data-login-theme (aplicadas antes do DOMContentLoaded) ══
-   Espelham as regras de .ls-theme-* mas usando [data-login-theme=X] no :root.
-   Isso permite que o browser aplique o layout correto no primeiro frame,
-   sem esperar que o JS adicione a classe no loginScreen. ══════════════════════════ */
-
-:root[data-login-theme="split"] #loginScreen .ls-form-logo   { display: none; }
-:root[data-login-theme="split"] #loginScreen .ls-hero-logo   { height: 187px; }
-
-:root[data-login-theme="asymmetric"] #loginScreen .ls-form-panel { flex: 0 0 40%; padding: 40px 36px; }
-:root[data-login-theme="asymmetric"] #loginScreen .ls-hero       { flex: 0 0 60%; }
-:root[data-login-theme="asymmetric"] #loginScreen .ls-card       { max-width: 340px; }
-:root[data-login-theme="asymmetric"] #loginScreen .ls-form-logo  { display: none; }
-:root[data-login-theme="asymmetric"] #loginScreen .ls-hero-logo  { height: 187px; }
-
-:root[data-login-theme="centered"] #loginScreen .ls-hero { display: none; }
-:root[data-login-theme="centered"] #loginScreen .ls-layout { background: #000; }
-:root[data-login-theme="centered"] #loginScreen .ls-form-panel {
-  flex: 1; background: transparent; padding: 48px 24px;
-  align-items: center; justify-content: center; box-shadow: none;
-}
-:root[data-login-theme="centered"] #loginScreen .ls-card {
-  background: #ffffff; border-radius: 24px; padding: 40px 36px; max-width: 420px;
-  box-shadow: 0 24px 80px rgba(0,0,0,.60), 0 6px 24px rgba(0,0,0,.40);
-}
-:root[data-login-theme="centered"] #loginScreen .ls-form-logo {
-  display: block; height: 81px; width: auto; object-fit: contain; margin: 0 auto 28px;
-}
-
-:root[data-login-theme="immersive"] #loginScreen .ls-layout { position: relative; }
-:root[data-login-theme="immersive"] #loginScreen .ls-hero {
-  position: absolute; inset: 0; flex: unset; width: 100%; height: 100%; z-index: 0; display: flex;
-}
-:root[data-login-theme="immersive"] #loginScreen .ls-form-panel {
-  position: relative; z-index: 2; flex: 1; background: transparent; box-shadow: none;
-  display: flex; align-items: center; justify-content: center; padding: 32px 24px;
-}
-:root[data-login-theme="immersive"] #loginScreen .ls-card {
-  background: rgba(255,255,255,0.97); border-radius: 24px; padding: 40px 36px; max-width: 420px;
-  box-shadow: 0 32px 96px rgba(0,0,0,.55), 0 8px 32px rgba(0,0,0,.35);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-}
-:root[data-login-theme="immersive"] #loginScreen .ls-form-logo {
-  display: block; height: 81px; width: auto; object-fit: contain; margin: 0 auto 24px;
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(497%) hue-rotate(107deg) brightness(93%) contrast(93%);
-}
-:root[data-login-theme="immersive"] #loginScreen .ls-hero-logo  { display: none; }
-:root[data-login-theme="immersive"] #loginScreen .ls-card {
-  background: rgba(8,24,14,.72) !important;
-  backdrop-filter: blur(28px) !important;
-  -webkit-backdrop-filter: blur(28px) !important;
-  border-color: rgba(93,219,160,.18) !important;
-}
-:root[data-login-theme="immersive"] #loginScreen .ls-card-title { color: #ffffff !important; }
-:root[data-login-theme="immersive"] #loginScreen .ls-label      { color: rgba(255,255,255,.80) !important; }
-:root[data-login-theme="immersive"] #loginScreen .ls-input-wrap { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.18) !important; }
-:root[data-login-theme="immersive"] #loginScreen .ls-input            { color: #ffffff !important; }
-
-:root[data-login-theme="minimal"] #loginScreen .ls-hero  { display: none; }
-:root[data-login-theme="minimal"] #loginScreen .ls-layout { background: #000; }
-:root[data-login-theme="minimal"] #loginScreen .ls-form-panel {
-  flex: 1; background: transparent; box-shadow: none; padding: 48px 24px; align-items: center;
-}
-:root[data-login-theme="minimal"] #loginScreen .ls-card {
-  max-width: 420px; background: #ffffff; border-radius: 20px; padding: 40px 36px;
-  box-shadow: 0 4px 32px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.2);
-}
-:root[data-login-theme="minimal"] #loginScreen .ls-form-logo {
-  display: block; height: 81px; width: auto; object-fit: contain; margin: 0 auto 32px;
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(497%) hue-rotate(107deg) brightness(93%) contrast(93%);
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   TEMAS DE LOGIN v4 — UX reformulada
-   Logo: sempre logo_glow_soft.png
-   Fundo global: #000 via .ls-shell { background:#000 }
-   ══════════════════════════════════════════════════════════════════ */
-
-/* ════════════════════════════════════════════════════════════════════
-   TEMA SPLIT — 50% formulário branco | 50% hero verde
-   Logo grande no hero (direita). Esquerda: sem logo.
-   Layout premium, limpo, corporativo.
-   ════════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-split .ls-form-logo     { display: none; }
-#loginScreen.ls-theme-split .ls-form-panel    {
-  background: #fff;
-  box-shadow: 8px 0 40px rgba(0,0,0,.18);
-}
-#loginScreen.ls-theme-split .ls-card-title    { font-size: 1.6rem; }
-#loginScreen.ls-theme-split .ls-hero-logo     { height: 156px; margin-bottom: 32px; }
-#loginScreen.ls-theme-split .ls-hero-inner    { align-items: center; text-align: center; }
-#loginScreen.ls-theme-split .ls-hero-features { align-items: flex-start; text-align: left; }
-
-/* ════════════════════════════════════════════════════════════════════
-   TEMA ASYMMETRIC — 40% formulário | 60% hero
-   Mais espaço para o branding no hero.
-   ════════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-asymmetric .ls-form-panel {
-  flex: 0 0 40%;
-  padding: 48px 44px;
-  background: #fff;
-  box-shadow: 8px 0 40px rgba(0,0,0,.18);
-}
-#loginScreen.ls-theme-asymmetric .ls-hero       { flex: 0 0 60%; }
-#loginScreen.ls-theme-asymmetric .ls-card       { max-width: 360px; }
-#loginScreen.ls-theme-asymmetric .ls-form-logo  { display: none; }
-#loginScreen.ls-theme-asymmetric .ls-hero-logo  { height: 166px; margin-bottom: 32px; }
-#loginScreen.ls-theme-asymmetric .ls-hero-inner { align-items: center; text-align: center; }
-#loginScreen.ls-theme-asymmetric .ls-hero-features { align-items: flex-start; text-align: left; }
-#loginScreen.ls-theme-asymmetric .ls-hero-tagline  { font-size: 1.4rem; font-weight: 700; }
-
-/* ════════════════════════════════════════════════════════════════════
-   TEMA CENTERED — card flutuante sobre gradiente escuro
-   Elegante, foco total no formulário.
-   ════════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-centered .ls-hero         { display: none; }
-#loginScreen.ls-theme-centered .ls-layout {
-  background: linear-gradient(160deg, #071a0e 0%, #0e3520 40%, #0a2a1a 100%);
-  /* Grade quadriculada sutil */
-  background-image:
-    linear-gradient(160deg, #071a0e 0%, #0e3520 40%, #0a2a1a 100%),
-    linear-gradient(rgba(93,219,160,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(93,219,160,.06) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
-}
-#loginScreen.ls-theme-centered .ls-form-panel {
-  flex: 1;
-  background: transparent;
-  padding: 48px 24px;
-  align-items: center;
-  justify-content: center;
-  box-shadow: none;
-  /* Efeito de "orbs" no fundo via radial gradient */
-  position: relative;
-}
-#loginScreen.ls-theme-centered .ls-form-panel::before {
-  content: '';
-  position: absolute;
-  width: 500px; height: 500px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(42,96,73,.35) 0%, transparent 65%);
-  filter: blur(80px);
-  top: -120px; right: -120px;
-  pointer-events: none;
-}
-#loginScreen.ls-theme-centered .ls-form-panel::after {
-  content: '';
-  position: absolute;
-  width: 360px; height: 360px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(59,130,246,.18) 0%, transparent 65%);
-  filter: blur(60px);
-  bottom: -80px; left: -80px;
-  pointer-events: none;
-}
-#loginScreen.ls-theme-centered .ls-card {
-  background: rgba(255,255,255,.98);
-  border-radius: 28px;
-  padding: 44px 40px;
-  max-width: 440px;
-  width: 100%;
-  box-shadow:
-    0 32px 80px rgba(0,0,0,.50),
-    0 8px 32px rgba(0,0,0,.30),
-    inset 0 1px 0 rgba(255,255,255,.8);
-  position: relative;
-  z-index: 1;
-}
-#loginScreen.ls-theme-centered .ls-form-logo {
-  display: block;
-  height: 83px;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto 32px;
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(497%) hue-rotate(107deg) brightness(93%) contrast(93%);
-}
-#loginScreen.ls-theme-centered .ls-card-title { font-size: 1.5rem; text-align: center; }
-/* Cores explícitas para textos no card — evita herdar branco do shell escuro */
-#loginScreen.ls-theme-centered .ls-card-title { color: #111827 !important; }
-#loginScreen.ls-theme-centered .ls-card-sub   { color: #6b7280 !important; }
-#loginScreen.ls-theme-centered .ls-label      { color: #374151 !important; }
-#loginScreen.ls-theme-centered .ls-muted      { color: #9ca3af !important; }
-#loginScreen.ls-theme-centered .ls-remember span:last-child { color: #6b7280 !important; }
-#loginScreen.ls-theme-centered .ls-input-wrap { background: #f9fafb; border-color: #e5e7eb; }
-#loginScreen.ls-theme-centered .ls-input { color: #111827; }
-#loginScreen.ls-theme-centered .ls-card-sub   { text-align: center; }
-
-/* ════════════════════════════════════════════════════════════════════
-   TEMA IMMERSIVE — hero verde como fundo, card glassmorphism escuro
-   Design: fundo verde escuro + card translúcido escuro + textos brancos
-   É o único tema verdadeiramente imersivo — visual noturno premium.
-   ════════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-immersive .ls-layout     { position: relative; }
-#loginScreen.ls-theme-immersive .ls-hero {
+/* ── Ambient logo watermark behind card ─────────────────────────
+   Subtle large logo behind the card for visual depth            */
+.ls-bg-mark {
   position: absolute;
   inset: 0;
-  flex: unset;
-  width: 100%;
-  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
   z-index: 0;
-  display: flex;
-  padding: 0;
+  overflow: hidden;
 }
-/* Escurecer o hero para reforçar o ambiente escuro */
-#loginScreen.ls-theme-immersive .ls-hero::after {
-  background: radial-gradient(ellipse 90% 80% at 50% 50%,
-    rgba(8, 28, 15, 0.40) 0%,
-    rgba(4, 14, 8, 0.85) 100%);
+.ls-bg-mark img {
+  width: min(520px, 80vw);
+  opacity: .025;
+  filter: blur(1px) brightness(3);
+  transform: scale(1.1);
+  pointer-events: none;
+  user-select: none;
 }
-#loginScreen.ls-theme-immersive .ls-form-panel {
-  position: relative;
-  z-index: 2;
-  flex: 1;
-  background: transparent;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 24px;
-}
-/* Card glassmorphism ESCURO — hero verde visível através do vidro */
-#loginScreen.ls-theme-immersive .ls-card {
-  background: rgba(8, 24, 14, 0.72) !important;
-  backdrop-filter: blur(28px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
-  border-radius: 28px;
-  padding: 44px 40px;
-  max-width: 440px;
-  border: 1px solid rgba(93, 219, 160, 0.18) !important;
-  box-shadow:
-    0 40px 100px rgba(0,0,0,.70),
-    0 12px 40px rgba(0,0,0,.50),
-    inset 0 1px 0 rgba(93,219,160,.12);
-}
-/* Textos BRANCOS — card escuro */
-#loginScreen.ls-theme-immersive .ls-card-title {
-  color: #ffffff !important;
-  font-size: 1.5rem;
+
+/* ── Bottom tagline ───────────────────────────────────────────── */
+.ls-tagline-wrap {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
   text-align: center;
+  pointer-events: none;
+  z-index: 2;
+  animation: lsCardIn .7s .2s both;
 }
-#loginScreen.ls-theme-immersive .ls-card-sub   { color: rgba(255,255,255,.60) !important; text-align: center; }
-#loginScreen.ls-theme-immersive .ls-label      { color: rgba(255,255,255,.80) !important; }
-#loginScreen.ls-theme-immersive .ls-muted      { color: rgba(255,255,255,.50) !important; }
-#loginScreen.ls-theme-immersive .ls-link       { color: rgba(93,219,160,.90) !important; }
-#loginScreen.ls-theme-immersive .ls-link:hover { color: #5ddb9e !important; }
-#loginScreen.ls-theme-immersive .ls-remember span:last-child { color: rgba(255,255,255,.65) !important; }
-#loginScreen.ls-theme-immersive .ls-check-box  {
-  background: rgba(255,255,255,.10);
-  border-color: rgba(255,255,255,.28);
+.ls-tagline {
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.22);
 }
-/* Inputs translúcidos com texto branco */
-#loginScreen.ls-theme-immersive .ls-input-wrap {
-  background: rgba(255,255,255,.08) !important;
-  border-color: rgba(255,255,255,.18) !important;
-}
-#loginScreen.ls-theme-immersive .ls-input {
-  color: #ffffff !important;
-}
-#loginScreen.ls-theme-immersive .ls-input-wrap:focus-within {
-  background: rgba(255,255,255,.14) !important;
-  border-color: rgba(93,219,160,.55) !important;
-  box-shadow: 0 0 0 3px rgba(93,219,160,.15) !important;
-}
-#loginScreen.ls-theme-immersive .ls-input::placeholder { color: rgba(255,255,255,.38) !important; }
-#loginScreen.ls-theme-immersive .ls-input-icon  { color: rgba(255,255,255,.50) !important; }
-#loginScreen.ls-theme-immersive .ls-eye-btn     { color: rgba(255,255,255,.50) !important; }
-#loginScreen.ls-theme-immersive .ls-eye-btn:hover { color: rgba(255,255,255,.90) !important; }
-/* Botão primário com verde mais vivo para destacar no escuro */
-#loginScreen.ls-theme-immersive .ls-btn-primary {
-  background: linear-gradient(135deg, #16a34a 0%, #2a6049 100%) !important;
-  box-shadow: 0 4px 20px rgba(22,163,74,.40) !important;
-}
-/* Logo: versão glow sem filtro de inversão (fundo escuro, logo já é claro) */
-#loginScreen.ls-theme-immersive .ls-form-logo {
-  display: block;
-  height: 83px;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto 28px;
-  filter: drop-shadow(0 0 24px rgba(93,219,160,.50));
-}
-#loginScreen.ls-theme-immersive .ls-hero-logo  { display: none; }
-/* Erro com fundo escuro */
-#loginScreen.ls-theme-immersive .ls-error {
-  background: rgba(220,38,38,.20) !important;
-  border-color: rgba(220,38,38,.38) !important;
-  color: #fca5a5 !important;
+.ls-tagline strong {
+  color: rgba(93,219,160,.45);
+  font-weight: 700;
 }
 
-/* Também corrigir regras anti-flash data-login-theme */
+/* ── Legacy classes — kept for JS compatibility ──────────────── */
+/* These are referenced by auth.js; map to the new structure      */
+.ls-hero,
+.ls-hero-logo,
+.ls-hero-inner,
+.ls-hero-orb,
+.ls-hero-tagline,
+.ls-hero-sub,
+.ls-hero-features,
+.ls-feat { display: none !important; }
 
-/* ════════════════════════════════════════════════════════════════════
-   TEMA MINIMAL — card limpo e minimalista
-   Extremamente clean. Foco absoluto no formulário.
-   ════════════════════════════════════════════════════════════════════ */
-#loginScreen.ls-theme-minimal .ls-hero          { display: none; }
-#loginScreen.ls-theme-minimal .ls-layout {
-  background: #f0f2f5;
+/* Sidebar-legacy: ls-form-logo was only shown in non-split modes */
+/* Now it's always shown in the centered card                      */
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .ls-card {
+    padding: 32px 22px 28px;
+    border-radius: 20px;
+    margin: 0 4px;
+  }
+  .ls-form-logo { height: 44px; }
+  .ls-card-title { font-size: 1.05rem; }
+  .ls-btn-primary { font-size: .875rem; }
 }
-#loginScreen.ls-theme-minimal .ls-form-panel {
-  flex: 1;
-  background: transparent;
-  box-shadow: none;
-  padding: 48px 24px;
-  align-items: center;
-  justify-content: center;
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .ls-layout {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .ls-card {
+    padding: 22px 28px 22px;
+    margin: 8px auto;
+  }
+  .ls-logo-wrap { margin-bottom: 16px; }
+  .ls-form-logo { height: 38px; }
+  .ls-card-sub  { margin-bottom: 18px; }
+  .ls-field     { margin-bottom: 10px; }
+  .ls-btn-primary { margin-top: 14px; padding: 11px; }
+  .ls-tagline-wrap { display: none; }
 }
-#loginScreen.ls-theme-minimal .ls-card {
-  max-width: 420px;
-  width: 100%;
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 44px 40px;
+
+/* ── Dark mode adjustments ───────────────────────────────────── */
+[data-theme="dark"] .ls-card {
+  background: #1a2d22;
   box-shadow:
-    0 0 0 1px rgba(0,0,0,.06),
-    0 4px 16px rgba(0,0,0,.08),
-    0 16px 48px rgba(0,0,0,.06);
+    0 2px 0 rgba(0,0,0,.2),
+    0 8px 32px rgba(0,0,0,.4),
+    0 32px 80px rgba(0,0,0,.5),
+    0 0 0 1px rgba(93,219,160,.08);
 }
-#loginScreen.ls-theme-minimal .ls-form-logo {
-  display: block;
-  height: 83px;
-  width: auto;
-  object-fit: contain;
-  margin: 0 auto 32px;
-  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(497%) hue-rotate(107deg) brightness(93%) contrast(93%);
+[data-theme="dark"] .ls-card-title { color: #e8f4ec; }
+[data-theme="dark"] .ls-card-sub   { color: #7aaa8a; }
+[data-theme="dark"] .ls-input {
+  background: #0f1f16;
+  border-color: #2a4036;
+  color: #e8f4ec;
 }
-#loginScreen.ls-theme-minimal .ls-card-title   { font-size: 1.4rem; text-align: center; }
-/* Cores explícitas para textos no card — evita herdar branco do shell escuro */
-#loginScreen.ls-theme-minimal .ls-card-title { color: #111827 !important; }
-#loginScreen.ls-theme-minimal .ls-card-sub   { color: #6b7280 !important; }
-#loginScreen.ls-theme-minimal .ls-label      { color: #374151 !important; }
-#loginScreen.ls-theme-minimal .ls-muted      { color: #9ca3af !important; }
-#loginScreen.ls-theme-minimal .ls-remember span:last-child { color: #6b7280 !important; }
-#loginScreen.ls-theme-minimal .ls-input-wrap { background: #f9fafb; border-color: #e5e7eb; }
-#loginScreen.ls-theme-minimal .ls-input { color: #111827; }
-#loginScreen.ls-theme-minimal .ls-card-sub     { text-align: center; }
-#loginScreen.ls-theme-minimal .ls-input {
-  background: #f7f8fa !important;
-  border-color: #e2e5ea !important;
+[data-theme="dark"] .ls-input:focus {
+  border-color: #5ddba0;
+  background: #122018;
+  box-shadow: 0 0 0 3px rgba(93,219,160,.14);
 }
-#loginScreen.ls-theme-minimal .ls-input:focus {
-  background: #fff !important;
-  border-color: #2a6049 !important;
+[data-theme="dark"] .ls-input::placeholder { color: #3a5a46; }
+[data-theme="dark"] .ls-select {
+  background-color: #0f1f16;
+  border-color: #2a4036;
+  color: #e8f4ec;
 }
-#loginScreen.ls-theme-minimal .ls-btn-primary {
-  background: linear-gradient(135deg, #1e5c42 0%, #2a6049 100%);
+[data-theme="dark"] .ls-label  { color: #5ddba0; }
+[data-theme="dark"] .ls-link   { color: #7aaa8a; }
+[data-theme="dark"] .ls-link:hover { color: #5ddba0; background: rgba(93,219,160,.08); }
+[data-theme="dark"] .ls-link--bold { color: #5ddba0; }
+[data-theme="dark"] .ls-error  {
+  background: rgba(220,38,38,.12);
+  border-color: rgba(220,38,38,.3);
+  color: #fca5a5;
 }
-
-/* ══════════════════════════════════════════════════════════════════
-   RESPONSIVIDADE MOBILE (≤759px) — todos os temas colapsam
-   ══════════════════════════════════════════════════════════════════ */
-
-/* ── Mobile extra-pequeno (iPhone SE, 375px) ────────────────────── */
-@media (max-width: 390px) {
-  .ls-card,
-  #loginScreen.ls-theme-split .ls-card,
-  #loginScreen.ls-theme-asymmetric .ls-card,
-  #loginScreen.ls-theme-centered .ls-card,
-  #loginScreen.ls-theme-minimal .ls-card,
-  #loginScreen.ls-theme-immersive .ls-card {
-    padding: 24px 18px 20px !important;
-    border-radius: 20px !important;
-  }
-  .ls-form-panel,
-  #loginScreen.ls-theme-split .ls-form-panel,
-  #loginScreen.ls-theme-asymmetric .ls-form-panel,
-  #loginScreen.ls-theme-centered .ls-form-panel,
-  #loginScreen.ls-theme-minimal .ls-form-panel,
-  #loginScreen.ls-theme-immersive .ls-form-panel {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-  }
-  .ls-card-title { font-size: 1.25rem; }
-  .ls-form-logo { height: 90px !important; margin-bottom: 14px !important; }
-  #loginScreen.ls-theme-centered .ls-form-logo,
-  #loginScreen.ls-theme-minimal .ls-form-logo,
-  #loginScreen.ls-theme-immersive .ls-form-logo {
-    height: 110px !important;
-    margin-bottom: 16px !important;
-  }
-  .ls-field-group { margin-bottom: 14px; }
-  .ls-remember { margin-bottom: 16px; }
+[data-theme="dark"] .ls-divider,
+[data-theme="dark"] .ls-divider::before,
+[data-theme="dark"] .ls-divider::after { color: #2a4036; background: #2a4036; }
+[data-theme="dark"] .ls-2fa-digit {
+  background: #0f1f16;
+  border-color: #2a4036;
+  color: #e8f4ec;
 }
 
-@media (max-width: 759px) {
-  /* Todos os temas: painel transparente, card centralizado + scroll seguro */
-  #loginScreen.ls-theme-split .ls-form-panel,
-  #loginScreen.ls-theme-asymmetric .ls-form-panel,
-  #loginScreen.ls-theme-centered .ls-form-panel,
-  #loginScreen.ls-theme-immersive .ls-form-panel,
-  #loginScreen.ls-theme-minimal .ls-form-panel {
-    flex: 1 !important;
-    width: 100% !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 28px 20px 44px !important;
-    align-items: center !important;
-    justify-content: flex-start !important;  /* não center — evita corte em telas pequenas */
-    overflow-y: visible !important;
-    min-height: auto !important;
-  }
-  /* Layout: fundo verde escuro em todos (exceto immersive que usa o hero) */
-  #loginScreen.ls-theme-split .ls-layout,
-  #loginScreen.ls-theme-asymmetric .ls-layout {
-    flex-direction: column;
-    background: #0e3520;
-    height: auto;
-    min-height: 100%;
-  }
-  #loginScreen.ls-theme-minimal .ls-layout {
-    background: #0e3520;
-    height: auto;
-    min-height: 100%;
-  }
-  #loginScreen.ls-theme-centered .ls-layout,
-  #loginScreen.ls-theme-immersive .ls-layout {
-    height: auto;
-    min-height: 100%;
-  }
-  /* Hero: ocultar em temas que usam hero lateral */
-  #loginScreen.ls-theme-split .ls-hero,
-  #loginScreen.ls-theme-asymmetric .ls-hero { display: none !important; }
+/* ── Spin utility ────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Card mobile: branco sólido em todos, padding generoso */
-  #loginScreen.ls-theme-split .ls-card,
-  #loginScreen.ls-theme-asymmetric .ls-card,
-  #loginScreen.ls-theme-centered .ls-card,
-  #loginScreen.ls-theme-minimal .ls-card {
-    background: #ffffff !important;
-    border-radius: 24px !important;
-    padding: 28px 22px 24px !important;
-    box-shadow: 0 24px 64px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.25) !important;
-    backdrop-filter: none !important;
-    width: 100% !important;
-    max-width: 440px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
-  /* Immersive mobile: card glass escuro mantido, hero como fundo fixo */
-  #loginScreen.ls-theme-immersive .ls-hero {
-    position: fixed !important;
-    inset: 0; width: 100%; height: 100%;
-  }
-  #loginScreen.ls-theme-immersive .ls-card {
-    padding: 28px 22px !important;
-    width: 100% !important;
-    max-width: 440px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
-  /* ── Logo mobile: tamanho grande para todos os temas ───────────── */
-  /* split / asymmetric: ls-form-logo agora substitui ls-mobile-logo */
-  #loginScreen.ls-theme-split .ls-form-logo,
-  #loginScreen.ls-theme-asymmetric .ls-form-logo {
-    display: block !important;
-    height: 110px !important;
-    width: auto !important;
-    object-fit: contain !important;
-    margin: 0 auto 20px !important;
-    filter: drop-shadow(0 2px 16px rgba(93,219,160,.40)) !important;
-  }
-  /* centered / minimal / immersive usam ls-form-logo dentro do card */
-  /* No mobile desses temas, ls-form-logo é reexibido (override do display:none) */
-  #loginScreen.ls-theme-centered .ls-form-logo,
-  #loginScreen.ls-theme-minimal .ls-form-logo,
-  #loginScreen.ls-theme-immersive .ls-form-logo {
-    display: block !important;
-    height: 146px !important;   /* dobro de 73px */
-    margin-bottom: 20px !important;
-  }
-  /* Immersive: logo com glow no mobile também */
-  #loginScreen.ls-theme-immersive .ls-form-logo {
-    filter: drop-shadow(0 0 28px rgba(93,219,160,.55)) !important;
-  }
-  /* Centered mobile: pseudo-elementos de orb sem conflito */
-  #loginScreen.ls-theme-centered .ls-form-panel::before,
-  #loginScreen.ls-theme-centered .ls-form-panel::after { display: none; }
-  #loginScreen.ls-theme-centered .ls-layout {
-    background: #0e3520 !important;
-    background-image: none !important;
-  }
+/* ── Compatibility: old theme classes are now no-ops ──────────
+   Keep them so JS that adds/removes them doesn't cause errors   */
+.ls-theme-split .ls-hero,
+.ls-theme-centered .ls-hero,
+.ls-theme-asymmetric .ls-hero,
+.ls-theme-immersive .ls-hero,
+.ls-theme-minimal .ls-hero { display: none !important; }
+
+.ls-theme-split .ls-form-panel,
+.ls-theme-centered .ls-form-panel,
+.ls-theme-asymmetric .ls-form-panel,
+.ls-theme-immersive .ls-form-panel,
+.ls-theme-minimal .ls-form-panel {
+  max-width: 420px;
 }
-

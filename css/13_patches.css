@@ -1604,3 +1604,180 @@
 .account-tab-pane.active {
   display: block;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: AI Insights — Voice card redesign for readability
+   Replaces the near-black gradient (#0f172a→#1a1040) with a clean
+   light-tinted surface that reads well in both light and dark modes
+══════════════════════════════════════════════════════════════════ */
+
+/* Override the hardcoded dark gradient in 11_debts.css + style.css */
+.air-voice-card {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent, #2a6049) 8%, var(--surface, #fff)) 0%,
+    color-mix(in srgb, var(--accent, #2a6049) 4%, var(--surface, #fff)) 100%
+  ) !important;
+  border: 1.5px solid color-mix(in srgb, var(--accent, #2a6049) 22%, var(--border, #e0e0e0)) !important;
+  color: var(--text, #0e2016) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04) !important;
+}
+.air-voice-card::before {
+  background: radial-gradient(ellipse 60% 80% at 95% 5%,
+    color-mix(in srgb, var(--accent, #2a6049) 10%, transparent) 0%,
+    transparent 65%) !important;
+}
+
+/* Icon: use accent colour instead of purple */
+.air-voice-icon {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent, #2a6049) 40%, transparent)) !important;
+  animation: airPulseGreen 3.5s ease-in-out infinite !important;
+}
+@keyframes airPulseGreen {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.06); }
+}
+
+/* Label: use accent colour */
+.air-voice-label {
+  color: var(--accent, #2a6049) !important;
+  font-size: .65rem !important;
+}
+.air-voice-label::after {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent, #2a6049) 25%, transparent),
+    transparent) !important;
+}
+
+/* Text: full contrast, larger, better line-height */
+.air-voice-text {
+  font-size: .92rem !important;
+  color: var(--text, #0e2016) !important;
+  line-height: 1.8 !important;
+  margin: 0 0 16px !important;
+}
+
+/* Pills: keep but adjust colours for light surface */
+.air-pill-g { background: #dcfce7 !important; color: #166534 !important; border-color: #bbf7d0 !important; }
+.air-pill-r { background: #fee2e2 !important; color: #991b1b !important; border-color: #fecaca !important; }
+.air-pill-b { background: #dbeafe !important; color: #1e40af !important; border-color: #bfdbfe !important; }
+
+/* Dark mode: keep readable but slightly elevated */
+[data-theme="dark"] .air-voice-card {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent, #2a6049) 16%, #1a2820) 0%,
+    color-mix(in srgb, var(--accent, #2a6049) 8%, #111e16) 100%
+  ) !important;
+  border-color: color-mix(in srgb, var(--accent, #2a6049) 35%, transparent) !important;
+  color: rgba(255,255,255,.92) !important;
+}
+[data-theme="dark"] .air-voice-text { color: rgba(255,255,255,.88) !important; }
+[data-theme="dark"] .air-voice-label { color: #5ddba0 !important; }
+[data-theme="dark"] .air-pill-g { background: rgba(34,197,94,.14) !important; color: #4ade80 !important; border-color: rgba(34,197,94,.25) !important; }
+[data-theme="dark"] .air-pill-r { background: rgba(248,113,113,.14) !important; color: #fca5a5 !important; border-color: rgba(248,113,113,.25) !important; }
+[data-theme="dark"] .air-pill-b { background: rgba(96,165,250,.14) !important; color: #93c5fd !important; border-color: rgba(96,165,250,.25) !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: AI Insights — Report sections general readability
+══════════════════════════════════════════════════════════════════ */
+
+/* Section title: bigger, clearer */
+.air-section-title {
+  font-size: .7rem !important;
+  font-weight: 800 !important;
+  letter-spacing: .09em !important;
+}
+
+/* Block body text: slightly larger */
+.air-block-body {
+  font-size: .88rem;
+  line-height: 1.7;
+}
+
+/* Trend table text readable */
+.air-trend-table2,
+.air-proj-table {
+  font-size: .85rem !important;
+}
+.air-trend-table2 td,
+.air-trend-table2 th,
+.air-proj-table td,
+.air-proj-table th {
+  font-size: .82rem !important;
+  padding: 8px 10px !important;
+}
+
+/* Block headers: slightly taller */
+.air-block-hdr {
+  padding: 16px 18px !important;
+}
+.air-block-title {
+  font-size: .9rem !important;
+}
+
+/* Recommendation cards */
+.air-rec-card,
+.air-rec-item {
+  font-size: .88rem !important;
+  line-height: 1.7 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: AI Insights — Tab display fix
+   Ensures panels are visible correctly when tab is active.
+   _aiShowTab now uses 'block' but add CSS fallback for safety.
+══════════════════════════════════════════════════════════════════ */
+#aiPanel-analysis,
+#aiPanel-snapshots,
+#aiPanel-chat {
+  /* no default display here — controlled 100% by JS */
+}
+
+/* Active tab visual: stronger indicator */
+.ai2-tab.active {
+  font-weight: 700 !important;
+}
+
+/* Tab panel container: remove any overflow that could clip content */
+[id^="aiPanel-"] {
+  overflow: visible;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Report table — mobile responsive with % widths
+   On small screens revert to auto for usability
+══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .rpt-tx-table {
+    table-layout: auto !important;
+  }
+  .rpt-col-date,
+  .rpt-col-desc,
+  .rpt-col-acct,
+  .rpt-col-cat,
+  .rpt-col-pay,
+  .rpt-col-amt {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  .forecast-date-cell,
+  .forecast-head-date  { width: auto !important; }
+  .forecast-desc-cell  { width: auto !important; }
+  .forecast-amount-cell,
+  .forecast-balance-cell { width: auto !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Landing page — responsive screenshot placeholder
+   (visual mock since we don't have a real screenshot file)
+══════════════════════════════════════════════════════════════════ */
+.landing-screenshot-wrap {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,.3), 0 0 0 1px rgba(125,194,66,.1);
+}
+.landing-screenshot-wrap img {
+  width: 100%;
+  height: auto;
+  display: block;
+}

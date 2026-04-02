@@ -5,17 +5,26 @@
    Braces: 282 open / 282 close ✓
 ════════════════════════════════════════════════════ */
 
+/* ── Transactions mode: fixed % widths ─────────────────────────
+   Date 10% · Desc 40% · Acct 10% · Cat 10% · Pay 15% · Amt 10%
+   (remaining 5% absorbed by padding/scrollbar)
+────────────────────────────────────────────────────────────── */
 .rpt-tx-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
 
-/* Coluna de data: máximo 10% da largura total da tabela */
-.rpt-col-date { width: 10%; max-width: 90px; min-width: 62px; }
-.rpt-tx-table th:first-child,
-.rpt-tx-table td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rpt-col-desc { width: auto;  }
-.rpt-col-acct { width: 120px; }
-.rpt-col-cat  { width: 130px; }
-.rpt-col-pay  { width: 110px; }
-.rpt-col-amt  { width: 110px; }
+.rpt-col-date { width: 10%; min-width: 70px; }
+.rpt-col-desc { width: 40%; min-width: 120px; }
+.rpt-col-acct { width: 10%; min-width: 80px; }
+.rpt-col-cat  { width: 10%; min-width: 80px; }
+.rpt-col-pay  { width: 15%; min-width: 90px; }
+.rpt-col-amt  { width: 10%; min-width: 80px; }
+
+/* All cells clip gracefully */
+.rpt-tx-table th,
+.rpt-tx-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Clickable rows ───────────────────────────────────────────────── */
 .rpt-tx-row {
@@ -228,6 +237,9 @@
 /* ── Mobile: tabela de transações ocupa 100% sem scroll horizontal ── */
 @media (max-width: 640px) {
   .rpt-tx-table { table-layout: auto !important; width: 100% !important; }
+  .rpt-col-date, .rpt-col-desc, .rpt-col-acct, .rpt-col-cat, .rpt-col-pay, .rpt-col-amt {
+    width: auto !important; min-width: 0 !important;
+  }
   .rpt-col-acct, .rpt-col-pay          { display: none !important; }
   .rpt-td-acct,  .rpt-td-pay           { display: none !important; }
   thead .rpt-td-acct, thead .rpt-td-pay { display: none !important; }
