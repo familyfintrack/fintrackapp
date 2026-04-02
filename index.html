@@ -13,7 +13,7 @@
 })();
 </script>
 <title>Family FinTrack — Família Inteligente, Finanças sob Controle</title>
-<meta name="description" content="O app de gestão financeira familiar com Inteligência Artificial. Para famílias que querem prosperar juntas.">
+<meta name="description" content="App PWA de gestão financeira familiar com IA. Acesse pelo navegador ou instale no iPhone, Android ou tablet — sem loja de apps.">
 <meta name="theme-color" content="#0a1e12">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -560,18 +560,110 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   .prv-promise-text { font-size: .92rem; }
 }
 </style>
+<style>
+/* ══ PWA SECTION ══════════════════════════════════════════════════════════ */
+.pwa{position:relative;z-index:1;padding:100px 24px 110px;background:var(--g900);overflow:hidden}
+.pwa::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at 5% 30%,rgba(45,106,68,.2),transparent 55%),radial-gradient(ellipse 60% 80% at 95% 70%,rgba(125,194,66,.07),transparent 55%);pointer-events:none}
+.pwa-inner{position:relative;max-width:1100px;margin:0 auto}
+.pwa-hd{text-align:center;margin-bottom:72px}
+.pwa-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:.62rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--lime2);background:rgba(125,194,66,.08);border:1px solid rgba(125,194,66,.22);border-radius:100px;padding:7px 20px;margin-bottom:20px}
+
+/* Explain row */
+.pwa-explain{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-bottom:80px}
+@media(max-width:860px){.pwa-explain{grid-template-columns:1fr;gap:48px}}
+.pwa-big-label{font-family:var(--serif);font-size:clamp(1.9rem,4vw,3.2rem);font-weight:700;color:#fff;line-height:1.1;letter-spacing:-.02em;margin-bottom:20px}
+.pwa-big-label em{font-style:italic;background:linear-gradient(135deg,var(--lime3),var(--lime));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.pwa-explain-body{font-size:.95rem;color:var(--on-dark2);line-height:1.82;margin-bottom:20px}
+.pwa-explain-body strong{color:var(--on-dark);font-weight:600}
+.pwa-checkmarks{display:flex;flex-direction:column;gap:12px;margin-bottom:32px}
+.pwa-check{display:flex;align-items:flex-start;gap:12px;font-size:.87rem;color:var(--on-dark2);line-height:1.55}
+.pwa-check-ico{width:22px;height:22px;border-radius:6px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:.75rem}
+.pwa-check strong{color:#fff;display:block;font-size:.9rem;margin-bottom:2px}
+.pwa-action{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pwa-badge{display:flex;align-items:center;gap:10px;background:rgba(125,194,66,.1);border:1.5px solid rgba(125,194,66,.3);border-radius:14px;padding:12px 18px;transition:all .25s}
+.pwa-badge:hover{background:rgba(125,194,66,.16);border-color:rgba(125,194,66,.5)}
+.pwa-badge-title{font-size:.82rem;font-weight:800;color:var(--lime2);margin-bottom:2px}
+.pwa-badge-sub{font-size:.68rem;color:var(--on-dark3);font-weight:500}
+.pwa-open-btn{font-family:var(--sans);font-size:.88rem;font-weight:800;color:var(--g900);background:linear-gradient(135deg,var(--lime),var(--lime2));border:none;border-radius:12px;padding:13px 26px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s;box-shadow:0 4px 24px rgba(125,194,66,.3)}
+.pwa-open-btn:hover{transform:translateY(-2px);box-shadow:0 8px 36px rgba(125,194,66,.5)}
+
+/* Device cards */
+.pwa-devices{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:72px}
+@media(max-width:720px){.pwa-devices{grid-template-columns:1fr}}
+.pwa-device-card{border-radius:22px;border:1px solid rgba(125,194,66,.16);background:rgba(255,255,255,.04);padding:32px 28px;text-align:center;position:relative;overflow:hidden;transition:all .35s cubic-bezier(.25,.46,.45,.94)}
+.pwa-device-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(125,194,66,.08),transparent 65%);pointer-events:none}
+.pwa-device-card:hover{border-color:rgba(125,194,66,.35);background:rgba(125,194,66,.06);transform:translateY(-6px);box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.pwa-device-card.featured{border-color:rgba(125,194,66,.32);background:rgba(125,194,66,.07)}
+
+/* Mock screens */
+.pwa-device-screen{width:80px;height:130px;border-radius:16px;border:3px solid rgba(125,194,66,.4);background:linear-gradient(160deg,rgba(125,194,66,.12),rgba(10,30,18,.6));margin:0 auto 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4),0 0 0 1px rgba(125,194,66,.12) inset}
+.pwa-device-screen.tablet{width:130px;height:90px;border-radius:12px}
+.pwa-device-screen.desktop{width:130px;height:82px;border-radius:8px 8px 0 0}
+.pwa-desktop-stand{width:60px;height:7px;background:rgba(125,194,66,.2);border-radius:0 0 5px 5px;margin:0 auto}
+.pwa-desktop-base{width:88px;height:4px;background:rgba(125,194,66,.15);border-radius:3px;margin:0 auto 12px}
+.pwa-screen-row{width:60%;height:4px;background:rgba(125,194,66,.3);border-radius:2px}
+.pwa-screen-row.s{width:45%}
+.pwa-screen-row.xs{width:35%}
+.pwa-screen-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);opacity:.7;animation:spulse 2s ease-in-out infinite}
+.pwa-home-bar{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:28px;height:3px;background:rgba(255,255,255,.3);border-radius:2px}
+.pwa-camera{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:rgba(125,194,66,.4);border:1px solid rgba(125,194,66,.3)}
+.pwa-screen-app-rows{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:2px;width:90%}
+.pwa-screen-app-row{height:10px;background:rgba(125,194,66,.15);border-radius:3px}
+@keyframes spulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+
+.pwa-device-name{font-family:var(--serif);font-size:1.25rem;font-weight:700;color:#fff;margin-bottom:7px}
+.pwa-device-sub{font-size:.8rem;color:var(--on-dark2);line-height:1.6;margin-bottom:16px}
+.pwa-device-pills{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.pwa-device-pill{font-size:.6rem;font-weight:700;letter-spacing:.06em;border-radius:100px;padding:3px 10px;background:rgba(125,194,66,.1);color:var(--lime2);border:1px solid rgba(125,194,66,.2)}
+
+/* Install steps */
+.pwa-install{background:rgba(255,255,255,.04);border:1px solid var(--border-d2);border-radius:24px;padding:48px 40px;position:relative;overflow:hidden}
+.pwa-install::before{content:'';position:absolute;top:-1px;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,var(--lime),transparent)}
+.pwa-install-title{font-family:var(--serif);font-size:1.6rem;font-weight:700;color:#fff;margin-bottom:6px;text-align:center}
+.pwa-install-sub{font-size:.88rem;color:var(--on-dark2);text-align:center;line-height:1.6;margin-bottom:40px}
+.pwa-install-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media(max-width:720px){.pwa-install-grid{grid-template-columns:1fr;gap:24px}}
+.pwa-install-os{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:28px 24px}
+.pwa-install-os-head{display:flex;align-items:center;gap:12px;margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06)}
+.pwa-install-os-icon{font-size:2rem;line-height:1}
+.pwa-install-os-name{font-size:.95rem;font-weight:800;color:#fff}
+.pwa-install-os-desc{font-size:.74rem;color:var(--on-dark3);margin-top:2px}
+.pwa-steps{display:flex;flex-direction:column;gap:14px}
+.pwa-step{display:flex;align-items:flex-start;gap:12px}
+.pwa-step-num{width:26px;height:26px;border-radius:8px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.28);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--lime2);flex-shrink:0;margin-top:1px}
+.pwa-step-text{font-size:.84rem;color:var(--on-dark2);line-height:1.55}
+.pwa-step-text strong{color:var(--on-dark);font-weight:700}
+.pwa-no-install{text-align:center;margin-top:28px;padding-top:28px;border-top:1px dashed rgba(125,194,66,.18)}
+.pwa-no-install-text{font-size:.84rem;color:var(--on-dark2);line-height:1.6;margin-bottom:16px}
+.pwa-no-install-text strong{color:var(--lime2)}
+
+/* Hero PWA pill */
+.hpwa-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.28);border-radius:100px;padding:7px 16px;margin-bottom:32px;animation:fup .9s .35s ease both}
+.hpwa-pill span{font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lime2)}
+.hpwa-pill-dots{display:flex;align-items:center;gap:5px}
+
+/* Device strip in hero */
+.hdevices{display:flex;align-items:center;justify-content:center;gap:6px;animation:fup .9s .52s ease both;margin-bottom:52px;flex-wrap:wrap}
+.hdev{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:40px;padding:7px 15px;font-size:.72rem;font-weight:600;color:var(--on-dark2);transition:all .2s}
+.hdev:hover{background:rgba(125,194,66,.1);border-color:rgba(125,194,66,.3);color:var(--lime2)}
+.hdev-sep{width:4px;height:4px;border-radius:50%;background:var(--on-dark3);flex-shrink:0}
+
+@media(max-width:560px){
+  .pwa{padding:72px 20px 80px}
+  .pwa-install{padding:28px 20px}
+  .pwa-install-title{font-size:1.3rem}
+}
+</style>
 </head>
 <body>
-
 <canvas id="bgc"></canvas>
 
 <!-- NAV -->
 <nav id="nav">
-  <a href="#" class="nl">
-    <img src="logo_glow_soft.png" alt="Family FinTrack">
-  </a>
+  <a href="#" class="nl"><img src="logo_glow_soft.png" alt="Family FinTrack"></a>
   <div class="nc">
     <a href="#familia" class="nk">Para sua família</a>
+    <a href="#dispositivos" class="nk">Dispositivos</a>
     <a href="#recursos" class="nk">Recursos</a>
     <a href="#privacidade" class="nk">Privacidade</a>
     <a href="#acesso" class="nk">Acesso</a>
@@ -582,7 +674,7 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   </div>
 </nav>
 
-<!-- ══ HERO ══════════════════════════════════════ -->
+<!-- HERO -->
 <section class="hero">
   <div class="hbg"></div>
   <div class="hgrid"></div>
@@ -591,60 +683,52 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   <div class="o3 orb"></div>
 
   <div class="hc">
-    <div class="badge">
-      <div class="bdot"></div>
-      Família Inteligente · Finanças sob Controle
-      <div class="bdot"></div>
-    </div>
-
-    <div class="hlogo">
-      <img src="logo_glow_soft.png" alt="Family FinTrack" style="height:120px;width:auto">
-    </div>
-
+    <div class="badge"><div class="bdot"></div>Família Inteligente · Finanças sob Controle<div class="bdot"></div></div>
+    <div class="hlogo"><img src="logo_glow_soft.png" alt="Family FinTrack" style="height:120px;width:auto"></div>
     <p class="slogan">Família Inteligente, Finanças sob Controle.</p>
-
     <h1>Sua família<br>merece o melhor<br><em>futuro financeiro</em></h1>
-
     <p class="hsub">
       O único app de gestão financeira familiar com <strong>Inteligência Artificial embarcada</strong> — que aprende com os padrões da sua família, antecipa necessidades e transforma dados em decisões inteligentes.
     </p>
 
+    <div class="hpwa-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span>App PWA · Sem instalar pela loja de apps</span>
+      <div class="hpwa-pill-dots"><span>📱</span><span>💻</span><span>🖥️</span></div>
+    </div>
+
     <div class="hctas">
       <a href="#acesso" class="ctp">📋 Quero entrar na lista de espera</a>
-      <a href="#familia" class="ctg">Como funciona →</a>
+      <a href="#dispositivos" class="ctg">Ver dispositivos →</a>
+    </div>
+
+    <div class="hdevices">
+      <div class="hdev"><span>🌐</span><span>Navegador web</span></div>
+      <div class="hdev-sep"></div>
+      <div class="hdev"><span>📱</span><span>iPhone / iOS</span></div>
+      <div class="hdev-sep"></div>
+      <div class="hdev"><span>🤖</span><span>Android</span></div>
+      <div class="hdev-sep"></div>
+      <div class="hdev"><span>📟</span><span>Tablet</span></div>
+      <div class="hdev-sep"></div>
+      <div class="hdev"><span>🖥️</span><span>Desktop</span></div>
     </div>
 
     <div class="hstats">
-      <div class="hst">
-        <div class="hsn">IA<em>+</em></div>
-        <div class="hsl">Inteligência embarcada</div>
-      </div>
-      <div class="hst">
-        <div class="hsn">40<em>+</em></div>
-        <div class="hsl">Funcionalidades</div>
-      </div>
-      <div class="hst">
-        <div class="hsn">360<em>°</em></div>
-        <div class="hsl">Visão financeira familiar</div>
-      </div>
-      <div class="hst">
-        <div class="hsn">∞</div>
-        <div class="hsl">Possibilidades com IA</div>
-      </div>
+      <div class="hst"><div class="hsn">PWA</div><div class="hsl">Sem loja de apps</div></div>
+      <div class="hst"><div class="hsn">40<em>+</em></div><div class="hsl">Funcionalidades</div></div>
+      <div class="hst"><div class="hsn">IA<em>+</em></div><div class="hsl">Inteligência embarcada</div></div>
+      <div class="hst"><div class="hsn">360<em>°</em></div><div class="hsl">Visão financeira familiar</div></div>
     </div>
   </div>
-
-  
 </section>
 
-<!-- RIBBON -->
 <div class="ribbon">
   <div class="ri">
-    <span class="rp">BETA</span>
-    <span class="rt">App em <strong>fase de testes exclusivos</strong> — acesso por lista de espera. <strong>Cadastro gratuito. Garanta sua posição.</strong></span>
+    <span class="rp">PWA · BETA</span>
+    <span class="rt">Funciona no <strong>navegador</strong> ou instalado no <strong>celular e tablet</strong> — sem App Store ou Google Play. <strong>Cadastro gratuito.</strong></span>
   </div>
 </div>
-
 <!-- ══ FAMÍLIA ════════════════════════════════════ -->
 <section class="why" id="familia">
   <div class="why-hd">
@@ -692,15 +776,199 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   </div>
 </section>
 
-<!-- ══ QUOTE ═════════════════════════════════════ -->
+
+<!-- QUOTE -->
 <section class="qsec">
   <div class="qcard rv">
     <span class="qm">"</span>
-    <p class="qt">Este app nasceu de um sonho simples: que todas as famílias pudessem tomar decisões financeiras com a mesma inteligência e clareza que antes era privilégio de poucos. A Inteligência Artificial tornou isso possível — e acessível.</p>
+    <p class="qt">Este app nasceu de um sonho simples: que todas as famílias pudessem tomar decisões financeiras com a mesma inteligência e clareza que antes era privilégio de poucos. A Inteligência Artificial — e a tecnologia PWA — tornaram isso possível, acessível em qualquer dispositivo, sem barreiras.</p>
     <div class="qa">Décio Franchini · Criador · Family FinTrack</div>
   </div>
 </section>
 
+<!-- PWA & DISPOSITIVOS -->
+<section class="pwa" id="dispositivos">
+  <div class="pwa-inner">
+    <div class="pwa-hd rv">
+      <div class="pwa-eyebrow">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Progressive Web App · Tecnologia moderna
+      </div>
+      <h2 class="sec-t rv d1" style="color:#fff">Em qualquer tela,<br>a qualquer hora</h2>
+      <p class="sec-s rv d2" style="color:var(--on-dark2)">O Family FinTrack usa tecnologia PWA — o padrão mais moderno de aplicativos web. Acesse pelo navegador ou instale direto no seu dispositivo sem precisar de loja de aplicativos.</p>
+    </div>
+
+    <!-- Explain row -->
+    <div class="pwa-explain rv d1">
+      <div class="pwa-explain-text">
+        <div class="pwa-big-label">O app que mora<br>no seu <em>bolso</em><br>e na sua <em>tela</em></div>
+        <p class="pwa-explain-body">O Family FinTrack é um <strong>Progressive Web App (PWA)</strong> — uma categoria especial de aplicativo que combina o melhor da web com a experiência de um app nativo. Você não precisa passar pela App Store ou Google Play para usá-lo.</p>
+        <p class="pwa-explain-body">Basta acessar pelo <strong>navegador com conexão à internet</strong>. Ou, se preferir, instale com um clique na tela inicial — e ele se comportará como qualquer outro app: com ícone próprio, tela cheia e acesso rápido.</p>
+        <div class="pwa-checkmarks">
+          <div class="pwa-check">
+            <div class="pwa-check-ico">✓</div>
+            <div><strong>Acesso pelo navegador — zero instalação</strong>Abra no Chrome, Safari, Edge ou Firefox em qualquer dispositivo. Nada para baixar.</div>
+          </div>
+          <div class="pwa-check">
+            <div class="pwa-check-ico">✓</div>
+            <div><strong>Instale na tela inicial em segundos</strong>Adicione à tela inicial do iPhone ou Android. O app ganha ícone próprio e abre em tela cheia, sem barra de navegador.</div>
+          </div>
+          <div class="pwa-check">
+            <div class="pwa-check-ico">✓</div>
+            <div><strong>Sempre atualizado automaticamente</strong>Sem atualizar pela loja. A versão mais recente chega diretamente, de forma silenciosa.</div>
+          </div>
+          <div class="pwa-check">
+            <div class="pwa-check-ico">✓</div>
+            <div><strong>Mesma conta em todos os dispositivos</strong>Celular pela manhã, tablet à tarde, computador à noite. Tudo sincronizado em tempo real.</div>
+          </div>
+        </div>
+        <div class="pwa-action">
+          <div class="pwa-badge">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <div><div class="pwa-badge-title">Progressive Web App</div><div class="pwa-badge-sub">Tecnologia PWA certificada</div></div>
+          </div>
+          <a href="app.html" class="pwa-open-btn">🌐 Abrir no navegador agora →</a>
+        </div>
+      </div>
+
+      <!-- Device illustration -->
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;min-height:300px;padding:20px">
+        <div style="position:relative;z-index:3">
+          <div style="width:88px;height:172px;border-radius:22px;border:3px solid rgba(125,194,66,.55);background:linear-gradient(160deg,rgba(125,194,66,.16),rgba(10,30,18,.8));box-shadow:0 24px 64px rgba(0,0,0,.5),0 0 40px rgba(125,194,66,.12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;overflow:hidden;position:relative">
+            <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:rgba(125,194,66,.4)"></div>
+            <div style="width:62%;height:4px;background:rgba(125,194,66,.5);border-radius:2px"></div>
+            <div style="width:46%;height:4px;background:rgba(125,194,66,.3);border-radius:2px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:70%;margin:3px 0">
+              <div style="height:20px;background:rgba(125,194,66,.18);border-radius:5px"></div>
+              <div style="height:20px;background:rgba(125,194,66,.12);border-radius:5px"></div>
+              <div style="height:20px;background:rgba(125,194,66,.1);border-radius:5px"></div>
+              <div style="height:20px;background:rgba(125,194,66,.08);border-radius:5px"></div>
+            </div>
+            <div style="width:54%;height:4px;background:rgba(125,194,66,.2);border-radius:2px"></div>
+            <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:30px;height:3px;background:rgba(255,255,255,.25);border-radius:2px"></div>
+          </div>
+          <div style="text-align:center;margin-top:8px;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lime2)">Smartphone</div>
+        </div>
+        <div style="position:absolute;left:0px;top:24px;z-index:2;opacity:.72">
+          <div style="width:126px;height:90px;border-radius:10px;border:2.5px solid rgba(125,194,66,.32);background:linear-gradient(160deg,rgba(125,194,66,.08),rgba(10,30,18,.7));box-shadow:0 14px 36px rgba(0,0,0,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+            <div style="width:60%;height:3px;background:rgba(125,194,66,.35);border-radius:2px"></div>
+            <div style="width:45%;height:3px;background:rgba(125,194,66,.2);border-radius:2px"></div>
+            <div style="width:65%;height:12px;background:rgba(125,194,66,.12);border-radius:4px;margin:3px 0"></div>
+            <div style="width:40%;height:3px;background:rgba(125,194,66,.15);border-radius:2px"></div>
+          </div>
+          <div style="text-align:center;margin-top:6px;font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--on-dark3)">Tablet</div>
+        </div>
+        <div style="position:absolute;right:0px;top:14px;z-index:2;opacity:.65">
+          <div style="width:140px;height:86px;border-radius:7px 7px 0 0;border:2.5px solid rgba(125,194,66,.25);border-bottom:none;background:linear-gradient(160deg,rgba(125,194,66,.06),rgba(10,30,18,.72));box-shadow:0 14px 36px rgba(0,0,0,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+            <div style="width:55%;height:3px;background:rgba(125,194,66,.3);border-radius:2px"></div>
+            <div style="width:40%;height:3px;background:rgba(125,194,66,.18);border-radius:2px"></div>
+            <div style="width:60%;height:10px;background:rgba(125,194,66,.1);border-radius:3px;margin:3px 0"></div>
+            <div style="width:38%;height:3px;background:rgba(125,194,66,.12);border-radius:2px"></div>
+          </div>
+          <div style="width:46px;height:6px;background:rgba(125,194,66,.14);margin:0 auto"></div>
+          <div style="width:80px;height:3px;background:rgba(125,194,66,.11);border-radius:2px;margin:0 auto 6px"></div>
+          <div style="text-align:center;font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--on-dark3)">Desktop</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Device cards -->
+    <div class="pwa-devices rv d2">
+      <div class="pwa-device-card featured">
+        <div class="pwa-device-screen" style="margin:0 auto 14px">
+          <div class="pwa-camera"></div>
+          <div class="pwa-screen-row"></div>
+          <div class="pwa-screen-row s"></div>
+          <div style="width:44px;height:14px;background:rgba(125,194,66,.2);border-radius:5px;margin:3px 0"></div>
+          <div class="pwa-screen-dot"></div>
+          <div class="pwa-home-bar"></div>
+        </div>
+        <div class="pwa-device-name">Smartphone</div>
+        <div class="pwa-device-sub">iPhone, Android e qualquer celular moderno. Instale na tela inicial para acesso rápido — sem App Store, sem Google Play.</div>
+        <div class="pwa-device-pills">
+          <span class="pwa-device-pill">iOS Safari</span><span class="pwa-device-pill">Android Chrome</span><span class="pwa-device-pill">Instalável</span><span class="pwa-device-pill">Tela cheia</span>
+        </div>
+      </div>
+
+      <div class="pwa-device-card featured">
+        <div class="pwa-device-screen tablet" style="margin:0 auto 14px">
+          <div class="pwa-screen-row"></div>
+          <div class="pwa-screen-row s"></div>
+          <div style="width:80px;height:12px;background:rgba(125,194,66,.18);border-radius:4px;margin:2px 0"></div>
+          <div class="pwa-screen-row xs"></div>
+        </div>
+        <div class="pwa-device-name">Tablet</div>
+        <div class="pwa-device-sub">iPad, Samsung Galaxy Tab e outros tablets. Interface adaptada para telas maiores — ideal para visualizar relatórios e dashboards.</div>
+        <div class="pwa-device-pills">
+          <span class="pwa-device-pill">iPad</span><span class="pwa-device-pill">Android Tablet</span><span class="pwa-device-pill">Layout adaptado</span>
+        </div>
+      </div>
+
+      <div class="pwa-device-card">
+        <div style="text-align:center;margin-bottom:14px">
+          <div class="pwa-device-screen desktop" style="margin:0 auto">
+            <div class="pwa-screen-row"></div>
+            <div class="pwa-screen-row s"></div>
+            <div style="width:80px;height:10px;background:rgba(125,194,66,.15);border-radius:3px;margin:3px 0"></div>
+            <div class="pwa-screen-row xs"></div>
+          </div>
+          <div class="pwa-desktop-stand"></div>
+          <div class="pwa-desktop-base"></div>
+        </div>
+        <div class="pwa-device-name">Computador</div>
+        <div class="pwa-device-sub">Mac, Windows ou Linux. Acesse diretamente pelo navegador sem instalar nada — Chrome, Edge, Firefox ou Safari.</div>
+        <div class="pwa-device-pills">
+          <span class="pwa-device-pill">Chrome</span><span class="pwa-device-pill">Safari</span><span class="pwa-device-pill">Edge</span><span class="pwa-device-pill">Firefox</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Install guide -->
+    <div class="pwa-install rv d3">
+      <div class="pwa-install-title">Como instalar o app no seu dispositivo</div>
+      <div class="pwa-install-sub">É simples e completamente opcional — você também pode usar direto no navegador, sem instalar nada.</div>
+
+      <div class="pwa-install-grid">
+        <div class="pwa-install-os">
+          <div class="pwa-install-os-head">
+            <div class="pwa-install-os-icon">🍎</div>
+            <div>
+              <div class="pwa-install-os-name">iPhone &amp; iPad (iOS)</div>
+              <div class="pwa-install-os-desc">Safari · iOS 16.4 ou superior</div>
+            </div>
+          </div>
+          <div class="pwa-steps">
+            <div class="pwa-step"><div class="pwa-step-num">1</div><div class="pwa-step-text">Abra o app no <strong>Safari</strong> — obrigatório no iOS</div></div>
+            <div class="pwa-step"><div class="pwa-step-num">2</div><div class="pwa-step-text">Toque no ícone de <strong>compartilhar</strong> (quadrado com seta ↑) na barra inferior</div></div>
+            <div class="pwa-step"><div class="pwa-step-num">3</div><div class="pwa-step-text">Role e toque em <strong>"Adicionar à Tela de Início"</strong></div></div>
+            <div class="pwa-step"><div class="pwa-step-num">4</div><div class="pwa-step-text">Confirme. O ícone aparece na tela — abre em <strong>tela cheia</strong> como app nativo</div></div>
+          </div>
+        </div>
+
+        <div class="pwa-install-os">
+          <div class="pwa-install-os-head">
+            <div class="pwa-install-os-icon">🤖</div>
+            <div>
+              <div class="pwa-install-os-name">Android</div>
+              <div class="pwa-install-os-desc">Chrome · Android 8 ou superior</div>
+            </div>
+          </div>
+          <div class="pwa-steps">
+            <div class="pwa-step"><div class="pwa-step-num">1</div><div class="pwa-step-text">Abra o app no <strong>Google Chrome</strong> no Android</div></div>
+            <div class="pwa-step"><div class="pwa-step-num">2</div><div class="pwa-step-text">Toque nos <strong>três pontinhos ⋮</strong> no canto superior direito</div></div>
+            <div class="pwa-step"><div class="pwa-step-num">3</div><div class="pwa-step-text">Toque em <strong>"Adicionar à tela inicial"</strong> ou <strong>"Instalar app"</strong></div></div>
+            <div class="pwa-step"><div class="pwa-step-num">4</div><div class="pwa-step-text">Confirme. O app abre em <strong>modo tela cheia</strong> como qualquer outro app</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pwa-no-install">
+        <div class="pwa-no-install-text"><strong>Não quer instalar? Tudo bem.</strong> Abra o link no navegador em qualquer dispositivo com conexão à internet. O app funciona perfeitamente sem instalação.</div>
+        <a href="app.html" class="pwa-open-btn" style="display:inline-flex">🌐 Acessar agora pelo navegador</a>
+      </div>
+    </div>
+  </div>
+</section>
 <!-- ══ RECURSOS ═══════════════════════════════════ -->
 <section class="feat" id="recursos">
   <div class="feat-hd">
@@ -750,7 +1018,8 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   </div>
 </section>
 
-<!-- ══ HOW IT WORKS ═══════════════════════════════ -->
+
+<!-- HOW IT WORKS -->
 <section class="how">
   <div class="feat-hd" style="margin-bottom:56px">
     <div class="stag lm rv"><div class="stag-l"></div>Como funciona<div class="stag-l"></div></div>
@@ -765,17 +1034,15 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
     <div class="hc2 rv d1">
       <div class="hn">02</div>
       <div class="ht">Receba o acesso</div>
-      <div class="hd">Quando aprovado, você recebe um email com credenciais e um guia completo para começar em minutos.</div>
+      <div class="hd">Quando aprovado, você recebe um email com credenciais. Abra o link em qualquer navegador — no celular, tablet ou computador — e já pode usar.</div>
     </div>
     <div class="hc2 rv d2">
       <div class="hn">03</div>
-      <div class="ht">Transforme sua família</div>
-      <div class="hd">Instale como app no iPhone ou Android, convide sua família e comece a prosperar com a IA ao seu lado.</div>
+      <div class="ht">Instale e prospere</div>
+      <div class="hd">Opcionalmente instale como PWA no iPhone ou Android com um toque. Convide sua família e comece a prosperar com a IA — em qualquer dispositivo.</div>
     </div>
   </div>
 </section>
-
-
 <!-- ══ PRIVACY ════════════════════════════════════ -->
 <section class="prv" id="privacidade">
   <div class="prv-inner">
@@ -971,15 +1238,14 @@ footer{position:relative;z-index:1;padding:44px 40px;background:var(--g900);bord
   </div>
 </section>
 
-<!-- ══ FOOTER ════════════════════════════════════ -->
+
+<!-- FOOTER -->
 <footer>
   <div class="fi">
-    <a href="#" class="flogo">
-      <img src="logo_glow_soft.png" alt="Family FinTrack" style="height:34px;width:auto;opacity:.88">
-    </a>
+    <a href="#" class="flogo"><img src="logo_glow_soft.png" alt="Family FinTrack" style="height:34px;width:auto;opacity:.88"></a>
     <div class="fcp">
-      Potencializado por Inteligência Artificial &nbsp;·&nbsp; Beta Privado 2025<br>
-      <span style="opacity:.55">Desenvolvido com Vibe Coding e IA &nbsp;·&nbsp; Gemini &middot; Claude &middot; Supabase</span>
+      App PWA · Potencializado por Inteligência Artificial &nbsp;·&nbsp; Beta Privado 2025<br>
+      <span style="opacity:.55">Acesse pelo navegador ou instale no celular e tablet · Sem App Store · Sem Google Play &nbsp;·&nbsp; Gemini · Claude · Supabase</span>
     </div>
     <a href="app.html" class="fll">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
