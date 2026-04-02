@@ -587,42 +587,42 @@
    AI INSIGHTS — Premium visual polish (2026 update)
 ═══════════════════════════════════════════════════════════════════ */
 
-/* Tab bar — glass premium */
-.ai2-tabbar {
-  background: linear-gradient(135deg, #0f5132 0%, #166534 60%, #15803d 100%) !important;
-  border-bottom: none !important;
-  padding: 12px 18px 0 !important;
-  gap: 4px !important;
+/* Tab bar — glass premium (scoped to dreams page only) */
+#page-dreams .ai2-tabbar {
+  background: linear-gradient(135deg, #0f5132 0%, #166534 60%, #15803d 100%);
+  border-bottom: none;
+  padding: 12px 18px 0;
+  gap: 4px;
 }
-.ai2-tab {
-  color: rgba(240,253,244,.7) !important;
-  border-radius: 10px 10px 0 0 !important;
-  padding: 9px 18px 11px !important;
-  font-size: .79rem !important;
-  font-weight: 600 !important;
-  transition: all .18s !important;
+#page-dreams .ai2-tab {
+  color: rgba(240,253,244,.7);
+  border-radius: 10px 10px 0 0;
+  padding: 9px 18px 11px;
+  font-size: .79rem;
+  font-weight: 600;
+  transition: all .18s;
 }
-.ai2-tab svg { opacity: .7 !important; }
-.ai2-tab:hover:not(.active) {
-  background: rgba(255,255,255,.12) !important;
-  color: #f0fdf4 !important;
+#page-dreams .ai2-tab svg { opacity: .7; }
+#page-dreams .ai2-tab:hover:not(.active) {
+  background: rgba(255,255,255,.12);
+  color: #f0fdf4;
 }
-.ai2-tab.active {
-  background: var(--surface) !important;
-  color: var(--accent) !important;
-  box-shadow: 0 -2px 0 var(--accent) inset !important;
+#page-dreams .ai2-tab.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 -2px 0 var(--accent) inset;
 }
-.ai2-tab.active svg { opacity: 1 !important; }
+#page-dreams .ai2-tab.active svg { opacity: 1; }
 
-/* Filter panel */
-.ai2-filter-panel {
-  border-radius: 0 0 14px 14px !important;
-  border: 1px solid var(--border) !important;
+/* Filter panel (scoped to dreams page) */
+#page-dreams .ai2-filter-panel {
+  border-radius: 0 0 14px 14px;
+  border: 1px solid var(--border);
   border-top: none !important;
   background: var(--surface) !important;
   margin-bottom: 18px !important;
 }
-.ai2-params-toggle {
+#page-dreams .ai2-params-toggle {
   font-size: .77rem !important;
   font-weight: 600 !important;
   color: var(--text2) !important;
@@ -635,7 +635,7 @@
 }
 
 /* Analyze button — premium gradient */
-.ai2-btn-analyze {
+#page-dreams .ai2-btn-analyze {
   background: linear-gradient(135deg, #0f5132, #16a34a) !important;
   border: none !important;
   box-shadow: 0 4px 14px rgba(22,163,74,.30), inset 0 1px 0 rgba(255,255,255,.08) !important;
@@ -648,13 +648,13 @@
   transform: translateY(-2px) !important;
   box-shadow: 0 8px 24px rgba(22,163,74,.38) !important;
 }
-.ai2-btn-icon {
+#page-dreams .ai2-btn-icon {
   border-radius: 9px !important;
   font-size: .74rem !important;
 }
 
 /* Result wrapper */
-.ai2-result-wrap {
+#page-dreams .ai2-result-wrap {
   animation: aiResultFadeIn .3s ease both !important;
 }
 @keyframes aiResultFadeIn {
