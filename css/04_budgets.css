@@ -1285,3 +1285,16 @@
 }
 .audit-counter:hover { box-shadow: var(--shadow); }
 .audit-counter-total  { border-top-color: var(--accent); }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .bgt-card      { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .bgt-stripe    { opacity: .7; }
+[data-theme="dark"] .bgt-name      { color: var(--text); }
+[data-theme="dark"] .bgt-bar-bg    { background: var(--border); }
+[data-theme="dark"] .bgt-meta      { color: var(--muted); }
+[data-theme="dark"] .bgt-spent,
+[data-theme="dark"] .bgt-total     { color: var(--text2); }
+[data-theme="dark"] .bgt-modal-v2  { background: var(--surface); }
+[data-theme="dark"] .bgt-type-label { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .bgt-type-label:has(input:checked) { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+[data-theme="dark"] .bgt-paused-sep { color: var(--muted); }

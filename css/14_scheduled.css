@@ -407,3 +407,11 @@
 
 
 
+
+/* ── Dark mode ── */
+[data-theme="dark"] .sc-section-card { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .sc-section-toggle { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .sc-section-title { color: var(--text); }
+[data-theme="dark"] .sc-section-subtitle { color: var(--muted); }
+[data-theme="dark"] .sc-section-chip { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .sc-section-arrow { color: var(--muted); }

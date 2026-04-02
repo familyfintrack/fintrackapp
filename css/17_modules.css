@@ -1224,3 +1224,29 @@
 /* MFM members list gap */
 .mfm-members-list { display: flex; flex-direction: column; gap: 8px; }
 
+
+
+/* ── Feedback type options (extracted from inline) ── */
+
+.feedback-type-opt {
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  padding:7px 14px;border:1.5px solid var(--border);border-radius:100px;
+  font-size:.82rem;font-weight:600;transition:all .18s;user-select:none;
+}
+.feedback-type-opt:hover { border-color:var(--accent);background:var(--accent-lt); }
+.feedback-type-opt input { display:none; }
+.feedback-type-opt.selected { border-color:var(--accent);background:var(--accent-lt);color:var(--accent); }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .module-card            { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .module-card:hover      { border-color: var(--accent); }
+[data-theme="dark"] .module-card-icon       { background: rgba(255,255,255,.06) !important; }
+[data-theme="dark"] .module-card-title      { color: var(--text); }
+[data-theme="dark"] .module-card-desc       { color: var(--muted); }
+[data-theme="dark"] .module-toggle-wrap     { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .grocery-item           { background: var(--surface); border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .grocery-item:hover     { background: var(--surface2); }
+[data-theme="dark"] .grocery-item.checked   { opacity: .55; }
+[data-theme="dark"] .grocery-section-header { background: var(--bg); color: var(--muted); border-color: var(--border); }
+[data-theme="dark"] .feedback-type-opt      { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .feedback-type-opt.active { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }

@@ -2766,3 +2766,18 @@
     font-size: .8rem;
   }
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .dbt-kpi         { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .dbt-kpi-label   { color: var(--muted); }
+[data-theme="dark"] .dbt-kpi-value   { color: var(--text); }
+[data-theme="dark"] .dbt-card        { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .dbt-card-header { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .dbt-card-name   { color: var(--text); }
+[data-theme="dark"] .dbt-card-creditor { color: var(--muted); }
+[data-theme="dark"] .dbt-progress-bg { background: var(--border); }
+[data-theme="dark"] .dbt-ledger-row  { border-color: var(--border); }
+[data-theme="dark"] .dbt-ledger-row:hover { background: var(--surface2); }
+[data-theme="dark"] .dbt-ledger-date,
+[data-theme="dark"] .dbt-ledger-note { color: var(--muted); }
+[data-theme="dark"] .dbt-modal       { background: var(--surface); }

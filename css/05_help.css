@@ -2167,3 +2167,18 @@ tr.tx-pending { background: rgba(251,191,36,.06); }
   .tx-v2-brl    { font-size: .65rem !important; }
   .tx-v2-category { font-size: .7rem; }
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .hh-hero               { background: linear-gradient(145deg,#0a1810,#0f2216,#0a180e); }
+[data-theme="dark"] .hh-hero-title         { color: #fff; }
+[data-theme="dark"] .hh-hero-sub           { color: rgba(255,255,255,.6); }
+[data-theme="dark"] .help-card             { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .help-card:hover       { border-color: var(--accent); }
+[data-theme="dark"] .help-mini-card        { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .help-card-grid        { color: var(--text); }
+[data-theme="dark"] .help-section-title    { color: var(--text); }
+[data-theme="dark"] .help-section-body     { color: var(--text2); }
+[data-theme="dark"] .faq-item              { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .faq-question          { color: var(--text); }
+[data-theme="dark"] .faq-answer            { color: var(--text2); background: var(--surface2); }
+[data-theme="dark"] .help-card-grid .card  { background: var(--surface); }

@@ -268,3 +268,13 @@ body.sidebar-open .fab{
   .modal-handle{display:none;}
 }
 
+
+/* ── Dark mode ── */
+[data-theme="dark"] .modal-overlay { background: rgba(0,0,0,.72); }
+[data-theme="dark"] .modal         { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .modal-header  { background: var(--surface2); border-bottom: 1px solid var(--border); }
+[data-theme="dark"] .modal-title   { color: var(--text); }
+[data-theme="dark"] .modal-close   { color: var(--muted); }
+[data-theme="dark"] .modal-close:hover { color: var(--text); background: var(--surface2); }
+[data-theme="dark"] .modal-body    { background: var(--surface); color: var(--text); }
+[data-theme="dark"] .modal-footer  { background: var(--surface2); border-top: 1px solid var(--border); }

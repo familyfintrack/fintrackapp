@@ -1994,3 +1994,48 @@ tr.tx-row-new td:first-child {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+
+
+/* ── Extracted from inline <style> (app.html) ── */
+
+        #rptDrillPanel {
+          position: fixed;
+          top: var(--topbar-h, 58px); right: 0; bottom: 0;
+          width: min(440px, 100%);
+          background: var(--surface);
+          border-left: 1px solid var(--border);
+          box-shadow: -8px 0 32px rgba(0,0,0,.12);
+          z-index: 120;
+          display: none;
+          flex-direction: column;
+          transform: translateX(100%);
+          opacity: 0;
+          transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s ease;
+          border-radius: var(--r-lg, 12px) 0 0 var(--r-lg, 12px);
+        }
+        @media (max-width: 640px) {
+          #rptDrillPanel {
+            width: 100%;
+            border-radius: 0;
+            border-left: none;
+            border-top: 1px solid var(--border);
+            top: auto;
+            height: 75dvh;
+            bottom: 0;
+            transform: translateY(100%);
+            transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s ease;
+          }
+          #rptDrillPanel[style*="translateX(0)"] {
+            transform: translateY(0) !important;
+          }
+        }
+        /* Backdrop dimmer for the content behind the panel */
+        #rptDrillBackdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,.25);
+          z-index: 119;
+          display: none;
+          animation: _drillFadeIn .2s ease both;
+        }
+        @keyframes _drillFadeIn { from{opacity:0} to{opacity:1} }

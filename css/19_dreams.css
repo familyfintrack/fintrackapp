@@ -1338,3 +1338,18 @@
   font-weight: 600;
   flex-shrink: 0;
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .drm-summary-bar     { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .drm-summary-label   { color: var(--muted); }
+[data-theme="dark"] .drm-summary-value   { color: var(--text); }
+[data-theme="dark"] .drm-card            { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .drm-card:hover      { border-color: var(--accent); }
+[data-theme="dark"] .drm-card-title      { color: var(--text); }
+[data-theme="dark"] .drm-card-meta       { color: var(--muted); }
+[data-theme="dark"] .drm-card-progress-bg { background: var(--border); }
+[data-theme="dark"] .drm-detail-hero     { background: var(--surface2); }
+[data-theme="dark"] .drm-wizard-modal    { background: var(--surface); }
+[data-theme="dark"] .drm-wizard-step-label { color: var(--muted); }
+[data-theme="dark"] .drm-member-chip     { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .drm-member-chip.selected { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }

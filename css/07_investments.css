@@ -1249,3 +1249,18 @@
   flex-shrink: 0;
   line-height: 1.4;
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .inv-kpi-card  { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-kpi-label { color: var(--muted); }
+[data-theme="dark"] .inv-kpi-value { color: var(--text); }
+[data-theme="dark"] .inv-portfolio-card { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-positions-table th { background: var(--surface2); color: var(--text2); }
+[data-theme="dark"] .inv-positions-table td { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .inv-positions-table tr:hover td { background: var(--surface2); }
+[data-theme="dark"] .inv-pos-card  { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-pos-ticker { color: var(--text); }
+[data-theme="dark"] .inv-pos-name  { color: var(--muted); }
+[data-theme="dark"] .inv-type-chip { background: var(--surface2); color: var(--text2); }
+[data-theme="dark"] .inv-actions-bar { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .inv-empty     { color: var(--muted); }

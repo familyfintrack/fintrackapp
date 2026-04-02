@@ -2514,3 +2514,18 @@ tr.reconcile-checked td { opacity: 1 !important; }
 ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Shell ─────────────────────────────────────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rpt-page-header { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-view-tabs   { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .rpt-view-tab:not(.active) { color: var(--muted); }
+[data-theme="dark"] .rpt-filter-wrap { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-toolbar     { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-export-btn  { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .rpt-section-card { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .rpt-section-header { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .rpt-bar-bg      { background: var(--border); }
+[data-theme="dark"] .fcp-toggle-wrap { color: var(--text2); }
+[data-theme="dark"] .fcp-toggle-track { background: var(--border2); }
+[data-theme="dark"] .fcp-acct-chip   { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .fcp-acct-name   { color: var(--text2); }

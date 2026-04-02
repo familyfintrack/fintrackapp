@@ -21,7 +21,45 @@
   --font-serif:'Lora',Georgia,serif;
   --font-sans:'Outfit',system-ui,sans-serif;
   --sidebar-w:240px;--topbar-h:58px;--bottom-h:64px;
-  --brand-bg:#0e3520;   /* Option 2: richer mid-green — sidebar + page header bar */
+  --brand-bg:#0e3520;
+
+  /* ── Z-index scale ─────────────────────────────────────────────── */
+  --z-base:     1;
+  --z-dropdown: 200;
+  --z-sticky:   300;
+  --z-overlay:  1000;
+  --z-modal:    1100;
+  --z-toast:    2000;
+  --z-topbar:   3000;
+  --z-login:    9999;
+
+  /* ── Typography scale ──────────────────────────────────────────── */
+  --text-2xs:  .6rem;
+  --text-xs:   .72rem;
+  --text-sm:   .82rem;
+  --text-base: .9rem;
+  --text-md:   1rem;
+  --text-lg:   1.15rem;
+  --text-xl:   1.35rem;
+  --text-2xl:  1.6rem;
+  --text-3xl:  2rem;
+
+  /* ── Spacing scale ──────────────────────────────────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* ── Duration scale ─────────────────────────────────────────────── */
+  --dur-fast:   .12s;
+  --dur-base:   .18s;
+  --dur-slow:   .28s;
+  --dur-slower: .4s;
 }
 /* ══════════════════════════════════════════════════════════════════
    DARK MODE — full variable override
@@ -150,7 +188,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   background: #0e3520;
   display: flex;
   flex-direction: column;
-  z-index: 200;
+  z-index: var(--z-dropdown, 200);
   transition: transform .3s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
   position: relative;
@@ -406,7 +444,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 
 /* TOPBAR */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;}
-.topbar{height:var(--topbar-h);min-height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:linear-gradient(135deg,#0f5132 0%, #16803d 52%, #22a06b 100%);border-bottom:1px solid rgba(255,255,255,.10);gap:12px;position:sticky;top:0;z-index:110;box-shadow:0 8px 24px rgba(5,34,20,.18);}
+.topbar{height:var(--topbar-h);min-height:var(--topbar-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:linear-gradient(135deg,var(--brand-bg) 0%,color-mix(in srgb,var(--brand-bg) 70%,#22a06b) 100%);border-bottom:1px solid rgba(255,255,255,.10);gap:12px;position:sticky;top:0;z-index:var(--z-topbar,3000);box-shadow:0 8px 24px rgba(5,34,20,.18);}
 .topbar-left{display:flex;align-items:center;gap:12px;}
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:var(--r-sm);color:var(--muted);flex-shrink:0;}
 .hamburger:hover{background:var(--bg2);color:var(--text);}
@@ -756,4 +794,219 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 .sc-inline-note,
 .inv-field-note {
   font-size: .78rem !important;
+}
+
+
+/* ── Sidebar/topbar extras (extracted from inline block) ── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR — Tema escuro com identidade do logo Family FinTrack
+   Palette do logo:  #0d3d2b (verde escuro texto) · #2a6049 (shield médio)
+                     #3dba78 (verde vibrante/lima) · #7fc96e (claro)
+   ─────────────────────────────────────────────────────────────────────────
+   Conceito: sidebar escura profissional, fundo #122d20, texto branco forte,
+   ativa com realce verde lima, header branco puro com logo natural em tamanho pleno.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Variáveis ── */
+:root {
+  --sb-bg         : #16301f;
+  --sb-bg2        : #1c3d28;
+  --sb-text       : rgba(255,255,255,0.92);
+  --sb-muted      : rgba(255,255,255,0.45);
+  --sb-label      : rgba(255,255,255,0.35);
+  --sb-active-bg  : rgba(61,186,120,0.18);
+  --sb-active-fg  : #ffffff;
+  --sb-active-bar : #3dba78;
+  --sb-hover-bg   : rgba(255,255,255,0.07);
+  --sb-divider    : rgba(255,255,255,0.10);
+  --sb-avatar-bg  : linear-gradient(135deg,#2e7d52,#4caf78);
+  --sb-logout-clr : #f87171;
+}
+
+/* ── Sidebar base ── */
+.sidebar {
+  background: var(--sb-bg) !important;
+  border-right: none !important;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.35) !important;
+}
+
+/* ── Header: fundo BRANCO puro, logo em tamanho pleno ── */
+.sb-header {
+  background: #ffffff !important;
+  border-bottom: 2px solid #e8f0eb !important;
+  padding: 0 !important;
+  min-height: 80px !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  overflow: hidden !important;
+}
+
+/* Wrapper do logo: cresce para preencher tudo */
+.sb-logo-wrap {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 10px 6px 10px 14px !important;
+  overflow: hidden !important;
+}
+
+/* Logo preenche o wrapper inteiro */
+#sidebarLogoImg {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+  display: block !important;
+  filter: none !important;
+}
+
+.sb-close {
+  color: #5a7d6a !important;
+  background: transparent !important;
+  flex-shrink: 0 !important;
+  align-self: center !important;
+  margin-right: 8px !important;
+}
+.sb-close:hover {
+  color: #1e5c42 !important;
+  background: #e8f5ee !important;
+}
+
+/* ── User card ── */
+/* ── Labels de seção ── */
+.nav-label {
+  color: var(--sb-label) !important;
+  font-weight: 700 !important;
+  letter-spacing: .10em !important;
+  text-transform: uppercase !important;
+  font-size: .65rem !important;
+}
+
+/* ── Itens de nav ── */
+.nav-item {
+  color: var(--sb-text) !important;
+  background: transparent !important;
+  border-radius: 10px !important;
+  font-weight: 500 !important;
+}
+.nav-item:hover {
+  background: var(--sb-hover-bg) !important;
+  color: #fff !important;
+}
+
+/* ── Item ativo ── */
+.nav-item.active {
+  background: var(--sb-active-bg) !important;
+  color: var(--sb-active-fg) !important;
+  font-weight: 700 !important;
+  box-shadow: inset 3px 0 0 var(--sb-active-bar) !important;
+}
+
+/* ── Ícones ── */
+.ni-icon {
+  color: rgba(255,255,255,0.55) !important;
+  opacity: 1 !important;
+}
+.nav-item:hover .ni-icon {
+  color: rgba(255,255,255,0.85) !important;
+}
+.nav-item.active .ni-icon {
+  color: var(--sb-active-bar) !important;
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOPBAR — Ícones com contorno verde moderno
+═══════════════════════════════════════════════════════════════════════════ */
+.topbar-icon-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  background: rgba(255,255,255,0.12) !important;
+  backdrop-filter: blur(10px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+  cursor: pointer !important;
+  color: #f7fff9 !important;
+  text-decoration: none !important;
+  transition: background .18s, border-color .18s, box-shadow .18s, transform .18s !important;
+  font-size: 0 !important; /* esconde emoji fallback se tiver SVG */
+  position: relative !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.topbar-icon-btn:hover {
+  background: rgba(255,255,255,0.18) !important;
+  border-color: rgba(255,255,255,0.32) !important;
+  box-shadow: 0 10px 24px rgba(5,34,20,0.18), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+/* Botão sair na topbar mantém vermelho */
+/* Botão do Agente — verde elétrico com brilho */
+.topbar-agent-btn {
+  background: linear-gradient(135deg, #05df72, #00b359) !important;
+  border-color: rgba(5,223,114,0.55) !important;
+  box-shadow: 0 0 0 2px rgba(5,223,114,.22), 0 3px 12px rgba(5,223,114,.50), inset 0 1px 0 rgba(255,255,255,.20) !important;
+  color: #003d1f !important;
+}
+.topbar-agent-btn:hover {
+  background: linear-gradient(135deg, #00ff88, #05df72) !important;
+  border-color: rgba(5,223,114,.80) !important;
+  box-shadow: 0 0 0 3px rgba(5,223,114,.30), 0 5px 20px rgba(5,223,114,.65), inset 0 1px 0 rgba(255,255,255,.25) !important;
+  transform: translateY(-2px) scale(1.07) !important;
+  color: #002612 !important;
+}
+/* Botão de Feedback — vermelho vivo com pulso */
+.topbar-feedback-btn {
+  background: linear-gradient(135deg, #ff3b3b, #cc0000) !important;
+  border-color: rgba(255,80,80,.55) !important;
+  box-shadow: 0 0 0 2px rgba(255,59,59,.20), 0 3px 12px rgba(204,0,0,.50), inset 0 1px 0 rgba(255,255,255,.15) !important;
+  position: relative !important;
+  color: #fff !important;
+}
+.topbar-feedback-btn:hover {
+  background: linear-gradient(135deg, #ff5555, #ee0000) !important;
+  border-color: rgba(255,80,80,.80) !important;
+  box-shadow: 0 0 0 3px rgba(255,59,59,.28), 0 5px 20px rgba(220,0,0,.60), inset 0 1px 0 rgba(255,255,255,.20) !important;
+  transform: translateY(-2px) scale(1.07) !important;
+}
+.feedback-topbar-badge {
+  position: absolute !important;
+  top: -4px !important;
+  right: -4px !important;
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  border: 2px solid #cc0000 !important;
+  box-shadow: 0 0 4px rgba(255,255,255,.8) !important;
+}
+/* Botões admin-only: ocultos por padrão via !important de ID.
+   O JS (updateUserUI / applyPermissions) aplica display:'' ou display:'none' —
+   mas a regra .topbar-icon-btn { display:flex !important } sobrescrevia o inline style.
+   A solução: IDs têm especificidade maior que classes, então estas regras ganham
+   sem precisar de !important, e o JS pode sobrescrever com style inline normalmente.
+   Quando o JS definir el.style.display='' o browser remove o inline style e estas
+   regras voltam a valer — por isso usamos display:none !important aqui para garantir
+   que o estado "oculto" não seja revertido acidentalmente por outra regra de classe. */
+#telemetryNavTopbar,
+#settingsNavTopbar {
+  display: none !important;
+}
+/* Classe aplicada pelo JS quando o usuário É admin: .admin-visible */
+#telemetryNavTopbar.admin-visible,
+#settingsNavTopbar.admin-visible {
+  display: flex !important;
+}
+/* Elementos genéricos com admin-visible: ocultos por padrão, exibidos para admins */
+.admin-visible:not(#telemetryNavTopbar):not(#settingsNavTopbar) {
+  display: none !important;
 }

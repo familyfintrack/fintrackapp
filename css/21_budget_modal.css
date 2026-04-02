@@ -275,3 +275,12 @@
   gap: 5px;
 }
 
+
+/* ── Dark mode ── */
+[data-theme="dark"] .bgt-modal-v2        { background: var(--surface); }
+[data-theme="dark"] .bgt-modal-header    { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .bgt-modal-title     { color: var(--text); }
+[data-theme="dark"] .bgt-modal-sub       { color: var(--muted); }
+[data-theme="dark"] .bgt-modal-body      { background: var(--surface); }
+[data-theme="dark"] .bgt-type-label      { background: var(--surface2); border-color: var(--border); color: var(--text2); }
+[data-theme="dark"] .bgt-type-label:has(input:checked) { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }

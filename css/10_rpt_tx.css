@@ -1196,3 +1196,15 @@
 .dash-cat-back:hover { color: var(--text); border-color: var(--border2); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rpt-tx-wrap            { background: var(--surface); }
+[data-theme="dark"] .rpt-tx-table th        { background: var(--surface2); color: var(--text2); border-color: var(--border); }
+[data-theme="dark"] .rpt-tx-table td        { border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .rpt-tx-row:hover td    { background: var(--surface2); }
+[data-theme="dark"] .rpt-tx-desc            { color: var(--text); }
+[data-theme="dark"] .rpt-tx-cat             { color: var(--muted); }
+[data-theme="dark"] .rpt-tx-acct            { color: var(--muted); }
+[data-theme="dark"] .rpt-tx-date            { color: var(--muted); }
+[data-theme="dark"] .rpt-tx-total-row td    { background: var(--surface2); font-weight: 700; }
+[data-theme="dark"] .rpt-date-band td       { background: var(--bg); border-color: var(--border); }

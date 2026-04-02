@@ -2542,3 +2542,15 @@ section[data-page="transactions"] .content {
 }
 
 
+
+/* ── Dark mode ── */
+[data-theme="dark"] .sc-view-toggle  { background: var(--surface2); border-color: var(--border); }
+[data-theme="dark"] .sc-view-btn:not(.active) { color: var(--muted); }
+[data-theme="dark"] .sc-filter-bar   { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .cat-section-header { background: var(--bg); border-color: var(--border); }
+[data-theme="dark"] .cat-section-title { color: var(--text); }
+[data-theme="dark"] .cat-item        { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .cat-item:hover  { background: var(--surface2); }
+[data-theme="dark"] .cat-name        { color: var(--text); }
+[data-theme="dark"] .cat-sub-item    { border-color: var(--border); }
+[data-theme="dark"] .cat-modal       { background: var(--surface); }

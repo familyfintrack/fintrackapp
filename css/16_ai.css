@@ -1115,3 +1115,25 @@ tr.payee-row[onclick] { cursor: pointer; }
   #page-scheduled .sup-amt      { font-size: .78rem !important; }
   #page-scheduled .sup-register-btn { padding: 0 7px !important; font-size: .68rem !important; }
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .ai2-tabbar          { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .ai2-tab:not(.active) { color: var(--muted); }
+[data-theme="dark"] .ai2-tab:hover       { background: var(--surface2); }
+[data-theme="dark"] .ai2-filter-panel    { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .ai2-filter-label    { color: var(--muted); }
+[data-theme="dark"] .ai2-params-toggle   { color: var(--text2); }
+[data-theme="dark"] .ai2-context-input,
+[data-theme="dark"] .ai2-context-textarea { background: var(--surface2); border-color: var(--border); color: var(--text); }
+[data-theme="dark"] .ai2-snapshot-card   { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .ai2-snapshot-title  { color: var(--text); }
+[data-theme="dark"] .ai2-snapshot-meta   { color: var(--muted); }
+
+/* ── BEM modifier for title context field ── */
+.ai2-context-field--title .ai2-filter-label {
+  font-size: var(--text-sm, .82rem);
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: none;
+  letter-spacing: 0;
+}

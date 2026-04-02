@@ -515,3 +515,18 @@
 ═══════════════════════════════════════════════════════════════════ */
 
 /* Column widths via colgroup */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .help-shell      { background: var(--bg); }
+[data-theme="dark"] .help-nav        { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .help-nav-title  { color: var(--text); }
+[data-theme="dark"] .help-nav-section-btn { color: var(--text2); }
+[data-theme="dark"] .help-nav-section-btn:hover { background: var(--surface2); }
+[data-theme="dark"] .help-nav-item   { color: var(--muted); }
+[data-theme="dark"] .help-nav-item:hover,
+[data-theme="dark"] .help-nav-item.active { background: var(--surface2); color: var(--accent); }
+[data-theme="dark"] .help-content    { background: var(--bg); color: var(--text); }
+[data-theme="dark"] .help-article h1,
+[data-theme="dark"] .help-article h2,
+[data-theme="dark"] .help-article h3 { color: var(--text); }
+[data-theme="dark"] .help-article p  { color: var(--text2); }

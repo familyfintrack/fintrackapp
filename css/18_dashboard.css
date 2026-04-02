@@ -360,3 +360,19 @@
   }
   .dash-inv-right { width: 100%; }
 }
+
+/* ── Dark mode ── */
+[data-theme="dark"] .dash-inv-kpis          { background: var(--border); }
+[data-theme="dark"] .dash-inv-kpi           { background: var(--surface2); }
+[data-theme="dark"] .dash-inv-kpi-lbl       { color: var(--muted); }
+[data-theme="dark"] .dash-inv-kpi-val       { color: var(--text); }
+[data-theme="dark"] .dash-inv-body          { background: var(--surface); }
+[data-theme="dark"] .dash-inv-chart-total   { color: var(--text); }
+[data-theme="dark"] .dash-inv-chart-sub     { color: var(--muted); }
+[data-theme="dark"] .dash-inv-section-lbl   { color: var(--muted); }
+[data-theme="dark"] .dash-inv-legend-label  { color: var(--text2); }
+[data-theme="dark"] .dash-inv-legend-bar-wrap { background: var(--border); }
+[data-theme="dark"] .dash-inv-legend-pct    { color: var(--muted); }
+[data-theme="dark"] .dash-inv-pos-ticker    { color: var(--text); }
+[data-theme="dark"] .dash-inv-pos-bar-wrap  { background: var(--border); }
+[data-theme="dark"] .dash-inv-pos-val       { color: var(--text); }
