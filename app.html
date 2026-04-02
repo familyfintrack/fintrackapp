@@ -92,6 +92,17 @@
   } catch(e) {}
 })();
 </script>
+<!-- Anti-FOUC: ocultar mainApp/sidebar instantaneamente até auth resolver -->
+<style>
+#mainApp, #sidebar, #sidebarOverlay {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+#loginScreen {
+  display: flex !important;
+}
+</style>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 <link rel="stylesheet" href="css/01_base.css">
 <link rel="stylesheet" href="css/02_layout.css">
@@ -7114,6 +7125,17 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </div>
+        <!-- ── Vínculo com Sonho (módulo Sonhos ativo) ── -->
+        <div class="form-group full" id="accountDreamLinkWrap" style="display:none">
+          <label class="form-label" style="display:flex;align-items:center;gap:6px">
+            🌟 <span>Vincular a um Sonho</span>
+            <span style="font-size:.7rem;color:var(--muted);font-weight:400;margin-left:4px">— associa esta conta poupança a uma meta</span>
+          </label>
+          <select id="accountDreamLink" class="form-input" style="margin-top:4px">
+            <option value="">— Nenhum sonho vinculado —</option>
+          </select>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Vincula o saldo desta conta ao progresso do sonho selecionado.</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
@@ -7839,6 +7861,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/import.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/two_fa.js"></script>
   <script src="js/feedback.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/autocheck.js"></script>
@@ -8117,6 +8140,12 @@ Se você não solicitou isso, ignore este e-mail.`,
 
         <!-- ── Tab: Notificações ── -->
         <div class="prof-tab-pane" id="profTabNotif" style="display:none">
+
+          <!-- ── 2FA: Verificação em duas etapas ── -->
+          <div class="prof-section-label">🔐 Segurança · Autenticação</div>
+          <div id="myProfile2FAWrap" style="margin-bottom:20px">
+            <div style="color:var(--muted);font-size:.8rem;padding:12px 0">⏳ Carregando configurações de segurança…</div>
+          </div>
 
           <!-- Notificação por transação -->
           <div class="prof-section-label">📩 Notificação por transação</div>
