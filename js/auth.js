@@ -864,14 +864,8 @@ async function doLogin() {
           .catch(() => {}); // ignore error if column doesn't exist yet
       }
     } catch(_) {} // non-blocking — upgrade is best-effort
-
-    // ── 2FA check — intercept login if enabled for this user ─────────────
-    if (typeof check2FAAndProceed === 'function') {
-      const intercepted = await check2FAAndProceed(authData, appUser, email, password);
-      if (intercepted) return; // 2FA screen shown — halt normal flow
-    }
-
     await _loadCurrentUserContext(authData);
+
     await onLoginSuccess();
   } catch(e) {
     showLoginErr('Erro: ' + (e?.message || e));
@@ -1492,10 +1486,6 @@ function openMyProfile() {
   }
   // Reaplicar visibilidade de canais (WA/Telegram) ao abrir o perfil
   if (typeof applyNotifChannelVisibility === 'function') applyNotifChannelVisibility();
-  // Carregar configurações de 2FA
-  if (typeof load2FASettingsIntoProfile === 'function') {
-    load2FASettingsIntoProfile().catch(() => {});
-  }
 }
 
 function previewMyProfileAvatar(input) {
@@ -2823,6 +2813,7 @@ async function loadFamiliesList() {
           <button class="btn btn-primary fam-btn-full" id="inviteBtn-${fid}"
             onclick="inviteToFamily('${fid}','${fmcEscape(fname)}')">📨 Convidar</button>
         </div>
+        <div id="inviteStatus-${fid}" style="display:none;margin-top:10px"></div>
       </div>`;
 
     const modulesRow = `
@@ -3196,7 +3187,9 @@ async function inviteToFamily(familyId, familyName) {
   if (!isGlobalAdmin && !isFamOwner) { toast('Apenas o owner pode convidar','error'); return; }
 
   const btn = document.getElementById(`inviteBtn-${familyId}`);
+  const statusEl = document.getElementById(`inviteStatus-${familyId}`);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
 
   try {
     // ── Verificar se já é usuário cadastrado ──────────────────────────────
@@ -3254,14 +3247,44 @@ async function inviteToFamily(familyId, familyName) {
     const inviteUrl = `${appUrl}?invite=${token}`;
 
     // Enviar e-mail com o link
-    await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl);
+    let emailSent = false;
+    let emailError = null;
+    try {
+      await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl);
+      emailSent = true;
+    } catch(emailErr) {
+      emailError = emailErr.message || String(emailErr);
+      console.warn('[inviteToFamily] email error:', emailError);
+    }
 
-    toast(`✅ Convite enviado para ${email}. O link expira em 7 dias.`, 'success');
+    if (emailSent) {
+      toast(`✅ Convite enviado para ${email}. O link expira em 7 dias.`, 'success');
+    } else {
+      toast(`⚠️ Token criado mas e-mail falhou. Compartilhe o link: ${inviteUrl}`, 'warning');
+    }
     if (emailEl) emailEl.value = '';
+
+    // Show inline confirmation status
+    if (statusEl) {
+      statusEl.style.display = '';
+      if (emailSent) {
+        statusEl.style.cssText = 'display:block;margin-top:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#15803d;font-size:.82rem;line-height:1.55';
+        statusEl.innerHTML = `<strong>✅ Convite enviado!</strong><br>Um e-mail com o link de acesso foi enviado para <strong>${email}</strong>. O link expira em 7 dias.`;
+        setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 8000);
+      } else {
+        statusEl.style.cssText = 'display:block;margin-top:10px;padding:10px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;color:#92400e;font-size:.82rem;line-height:1.6';
+        statusEl.innerHTML = `<strong>⚠️ Token criado, mas o e-mail não foi enviado</strong><br>${emailError || 'Erro desconhecido.'}<br><br>Compartilhe este link diretamente com o convidado:<br><code style="font-size:.76rem;word-break:break-all;user-select:all;background:rgba(0,0,0,.06);padding:2px 5px;border-radius:4px">${inviteUrl}</code>`;
+      }
+    }
     await loadFamiliesList();
 
   } catch(e) {
     toast('Erro ao convidar: ' + (e.message || e), 'error');
+    if (statusEl) {
+      statusEl.style.display = '';
+      statusEl.style.cssText = 'display:block;margin-top:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;color:#dc2626;font-size:.82rem';
+      statusEl.textContent = '❌ Erro ao enviar convite: ' + (e.message || 'tente novamente');
+    }
     console.error('[inviteToFamily]', e);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
@@ -3441,16 +3464,22 @@ CREATE POLICY "Allow update for token owner" ON family_invites
   FOR UPDATE USING (true);`;
 
 async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl) {
+  const { autoCheckConfig } = await _getAutoCheckConfig().catch(() => ({ autoCheckConfig: null }));
+  const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
+  const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
+  const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
+
+  if (typeof emailjs === 'undefined') {
+    console.warn('[InviteEmail] EmailJS not loaded');
+    toast('E-mail não enviado: EmailJS não carregado. Compartilhe o link manualmente.', 'warning');
+    return;
+  }
+
+  const linkText = inviteUrl
+    ? `\n\nClique no link abaixo para criar sua conta e entrar diretamente na família:\n${inviteUrl}\n\nO link expira em 7 dias.`
+    : '';
+
   try {
-    const { autoCheckConfig } = await _getAutoCheckConfig();
-    const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
-    const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
-    const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
-
-    const linkText = inviteUrl
-      ? `\n\nClique no link abaixo para criar sua conta e entrar diretamente na família:\n${inviteUrl}\n\nO link expira em 7 dias.`
-      : '';
-
     await emailjs.send(serviceId, templateId, {
       to_email:       toEmail,
       report_subject: `[Family FinTrack] Convite para a família "${familyName}"`,
@@ -3460,9 +3489,11 @@ async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl) {
       inviter:        inviterName,
       app_url:        inviteUrl || '',
     }, publicKey);
+    console.info('[InviteEmail] sent to', toEmail);
   } catch(e) {
-    console.warn('[InviteEmail]', e.message);
-    // Não falhar o fluxo por erro de e-mail
+    console.warn('[InviteEmail] failed:', e.message || e);
+    // Surface to caller so UI can show a partial-success message
+    throw new Error('E-mail não pôde ser enviado: ' + (e.message || e) + '. O token de convite foi criado — compartilhe o link manualmente.');
   }
 }
 
