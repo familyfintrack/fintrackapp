@@ -6973,80 +6973,139 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div>
 
 <div class="modal-overlay" id="accountModal">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-header"><span class="modal-title" id="accountModalTitle">Nova Conta</span><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
-    <div class="modal-body">
+  <div class="modal" style="max-width:520px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="accountModalTitle">Nova Conta</span>
+      <button class="modal-close" onclick="closeModal('accountModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px">
       <input type="hidden" id="accountId">
-      <div class="form-grid">
-        <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
-        <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="onAccountTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
-        <div class="form-group"><label>Moeda</label><select id="accountCurrency"><option value="BRL">BRL — Real</option><option value="USD">USD — Dólar</option><option value="EUR">EUR — Euro</option><option value="AED">AED — Dirham</option></select></div>
-        <div class="form-group full"><label>Grupo</label><select id="accountGroupId"><option value="">— Sem grupo —</option></select></div>
-        <!-- Feature 7: conta favorita -->
-        <div class="form-group full">
-          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem;font-weight:500">
-            <input type="checkbox" id="accountIsFavorite" style="width:16px;height:16px;cursor:pointer">
-            ⭐ Conta favorita <span style="font-size:.75rem;color:var(--muted);font-weight:400">(aparece no topo da lista)</span>
-          </label>
+
+      <!-- ── Seção 1: Identidade da conta ─────────────────────────── -->
+      <div class="acc-modal-section">
+        <div class="acc-modal-section-label">Identidade</div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Nome da Conta *</label>
+          <input type="text" id="accountName" placeholder="Ex: Itaú Corrente, Nubank, Carteira">
         </div>
-        <!-- Feature 8: datas do cartão (só para cartão de crédito) -->
-        <div class="form-group full" id="accountCardDatesConfig" style="display:none">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
-            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:10px">💳 Datas do Cartão</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div>
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Melhor dia de compra</label>
-                <input type="number" id="accountBestPurchaseDay" min="1" max="31" placeholder="Ex: 10" inputmode="numeric"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);box-sizing:border-box;background:var(--surface)">
-                <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Dia com maior prazo até vencimento</div>
-              </div>
-              <div>
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Dia de vencimento</label>
-                <input type="number" id="accountDueDay" min="1" max="31" placeholder="Ex: 25" inputmode="numeric"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);box-sizing:border-box;background:var(--surface)">
-                <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Data de pagamento da fatura</div>
-              </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Tipo *</label>
+            <select id="accountType" onchange="onAccountTypeChange()">
+              <option value="corrente">🏦 Conta Corrente</option>
+              <option value="poupanca">🐷 Poupança</option>
+              <option value="cartao_credito">💳 Cartão de Crédito</option>
+              <option value="investimento">📈 Investimentos</option>
+              <option value="dinheiro">💵 Dinheiro</option>
+              <option value="outros">📁 Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Moeda</label>
+            <select id="accountCurrency">
+              <option value="BRL">🇧🇷 BRL — Real</option>
+              <option value="USD">🇺🇸 USD — Dólar</option>
+              <option value="EUR">🇪🇺 EUR — Euro</option>
+              <option value="GBP">🇬🇧 GBP — Libra</option>
+              <option value="AED">🇦🇪 AED — Dirham</option>
+              <option value="CHF">🇨🇭 CHF — Franco</option>
+              <option value="JPY">🇯🇵 JPY — Iene</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Seção 2: Saldo & Grupo ────────────────────────────────── -->
+      <div class="acc-modal-section">
+        <div class="acc-modal-section-label">Saldo & Organização</div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label" id="accountBalanceLabel">Saldo Inicial</label>
+            <div class="amt-wrap">
+              <button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button>
+              <input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00"
+                pattern="[0-9.,]*" autocomplete="off"
+                oninput="_amtFieldInput('accountBalance')"
+                onkeydown="_amtFieldKeydown('accountBalance', event)"
+                onblur="_amtFieldBlur('accountBalance')"
+                onfocus="_amtFieldFocus('accountBalance')">
+            </div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:4px;line-height:1.4">Saldo de abertura. O atual é calculado pelas transações.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grupo</label>
+            <select id="accountGroupId"><option value="">— Sem grupo —</option></select>
+          </div>
+        </div>
+
+        <!-- Conta favorita -->
+        <div class="acc-modal-toggle-row">
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="accountIsFavorite" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+            <span style="font-size:.85rem;font-weight:600">⭐ Conta favorita</span>
+          </label>
+          <span style="font-size:.73rem;color:var(--muted)">Aparece fixada no topo da lista</span>
+        </div>
+      </div>
+
+      <!-- ── Seção 3: Datas do cartão (condicional) ─────────────────── -->
+      <div class="form-group" id="accountCardDatesConfig" style="display:none">
+        <div class="acc-modal-section">
+          <div class="acc-modal-section-label">💳 Datas do Cartão</div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Melhor dia de compra</label>
+              <input type="number" id="accountBestPurchaseDay" min="1" max="31" placeholder="Ex: 10" inputmode="numeric">
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Dia com maior prazo até vencimento</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dia de vencimento</label>
+              <input type="number" id="accountDueDay" min="1" max="31" placeholder="Ex: 25" inputmode="numeric">
+              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Data de pagamento da fatura</div>
             </div>
           </div>
         </div>
-        <!-- IOF config - só para cartão de crédito -->
-        <div class="form-group full" id="accountIofConfig" style="display:none">
-          <div class="iof-config visible">
+      </div>
+
+      <!-- IOF config - só para cartão de crédito -->
+      <div class="form-group full" id="accountIofConfig" style="display:none">
+        <div class="iof-config visible">
+          <div class="iof-row">
+            <label class="iof-toggle">
+              <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
+              <span>🇧🇷 Cartão brasileiro</span>
+            </label>
+            <span style="font-size:.75rem;color:var(--muted)">Habilita cálculo de IOF em compras internacionais</span>
+          </div>
+          <div id="accountIofRateGroup" style="display:none;margin-top:10px">
             <div class="iof-row">
-              <label class="iof-toggle">
-                <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
-                <span>🇧🇷 Cartão brasileiro</span>
-              </label>
-              <span style="font-size:.75rem;color:var(--muted)">Habilita cálculo de IOF em compras internacionais</span>
-            </div>
-            <div id="accountIofRateGroup" style="display:none;margin-top:10px">
-              <div class="iof-row">
-                <label style="font-size:.85rem;flex-shrink:0">IOF sobre compras internacionais:</label>
-                <input type="number" id="accountIofRate" step="0.01" min="0" max="10" value="3.38" style="width:80px" inputmode="decimal">
-                <span style="font-size:.85rem;color:var(--muted)">% (padrão: 3,38%)</span>
-              </div>
+              <label style="font-size:.85rem;flex-shrink:0">IOF sobre compras internacionais:</label>
+              <input type="number" id="accountIofRate" step="0.01" min="0" max="10" value="3.38" style="width:80px" inputmode="decimal">
+              <span style="font-size:.85rem;color:var(--muted)">% (padrão: 3,38%)</span>
             </div>
           </div>
         </div>
-        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('accountBalance')" onkeydown="_amtFieldKeydown('accountBalance', event)" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
-        <div class="form-group full">
-          <label style="display:flex;align-items:center;justify-content:space-between">
-            <span>Ícone</span>
-            <button type="button" onclick="accountAiSuggestIcon()" title="Sugerir ícone com IA"
-              style="display:flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:all .15s"
-              onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
-              onmouseout="this.style.background='var(--accent-lt)';this.style.color='var(--accent)'">
-              🤖 Sugerir com IA
-            </button>
-          </label>
-          <!-- AI suggestions panel -->
-          <div id="accountAiSuggestPanel" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
-            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
-            <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
-              <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
-            </div>
+      </div>
+
+      <!-- ── Seção 4: Personalização (ícone + cor) ─────────────────── -->
+      <div class="acc-modal-section">
+        <div class="acc-modal-section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Personalização</span>
+          <button type="button" onclick="accountAiSuggestIcon()" title="Sugerir ícone com IA"
+            style="display:flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:all .15s"
+            onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+            onmouseout="this.style.background='var(--accent-lt)';this.style.color='var(--accent)'">
+            🤖 Sugerir com IA
+          </button>
+        </div>
+        <!-- AI suggestions panel -->
+        <div id="accountAiSuggestPanel" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
+          <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
           </div>
-          <div class="icon-picker" id="accountIconPicker">
+        </div>
+        <div class="icon-picker" id="accountIconPicker">
             <div class="icon-picker-tabs">
               <button class="icon-tab active" onclick="showIconGroup(event,'banks-br')">🇧🇷 Bancos BR</button>
               <button class="icon-tab" onclick="showIconGroup(event,'banks-fr')">🇫🇷 Bancos FR</button>
@@ -7117,6 +7176,15 @@ Se você não solicitou isso, ignore este e-mail.`,
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
+  </div>
+</div
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAccount()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -9782,7 +9850,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/dreams_kb.js"></script>
 <script src="js/dreams.js"></script>
   <script src="js/agent_engine.js"></script>
-  <script src="js/agent_capabilities.js"></script>
 <script src="js/agent.js"></script>
 
 <script>
@@ -10132,16 +10199,14 @@ window.openMyProfile = function(...args) {
   </div>
 
   <!-- Quick suggestions — preenchidas dinamicamente por agentRefreshQuickReplies() -->
-  <div id="agentQuickBar" style="padding:7px 10px;border-bottom:1px solid var(--border);
-    display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2);align-items:center">
-    <button onclick="agentShowCapabilities()" class="agent-discover-btn" title="Ver tudo que o agente pode fazer">✨ Descobrir</button>
-    <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px"></div>
-    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-quick-chip">📊 Gastos</button>
-    <button onclick="agentSuggest('qual meu saldo total?')" class="agent-quick-chip">💳 Saldo</button>
-    <button onclick="agentSuggest('criar despesa')" class="agent-quick-chip">💸 Despesa</button>
-    <button onclick="agentSuggest('criar receita')" class="agent-quick-chip">💰 Receita</button>
-    <button onclick="agentSuggest('resumo financeiro deste mês')" class="agent-quick-chip">📈 Resumo</button>
-    <button onclick="agentSuggest('como usar o FinTrack?')" class="agent-quick-chip">❓ Ajuda</button>
+  <div id="agentQuickBar" style="padding:8px 12px;border-bottom:1px solid var(--border);
+    display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2)">
+    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos do mês</button>
+    <button onclick="agentSuggest('Quais contas estão no vermelho?')" class="agent-chip">💰 Saldo</button>
+    <button onclick="agentSuggest('Crie uma despesa de R$')" class="agent-chip">➕ Despesa</button>
+    <button onclick="agentSuggest('Crie receita de R$')" class="agent-chip">💰 Receita</button>
+    <button onclick="agentSuggest('Resumo financeiro do mês')" class="agent-chip">📈 Resumo</button>
+    <button onclick="agentSuggest('Como adicionar uma conta?')" class="agent-chip">❓ Ajuda</button>
   </div>
 
   <!-- Feed -->
@@ -10341,576 +10406,6 @@ window.openMyProfile = function(...args) {
 /* ── Inline confirm bar ── */
 #agentConfirmBar { display:none; flex-wrap:wrap; gap:6px; align-items:center; }
 #agentConfirmBar.active { display:flex !important; }
-
-/* ════════════════════════════════════════════════════════════
-   CAPABILITIES PANEL — "Saiba o que posso fazer"
-════════════════════════════════════════════════════════════ */
-
-/* CTA button in welcome */
-.agent-caps-cta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  background: linear-gradient(135deg, rgba(22,163,74,.14), rgba(22,163,74,.07));
-  border: 1.5px solid rgba(22,163,74,.35);
-  border-radius: 12px;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  text-align: left;
-  width: 100%;
-  transition: all .18s ease;
-}
-.agent-caps-cta:hover {
-  background: linear-gradient(135deg, rgba(22,163,74,.22), rgba(22,163,74,.12));
-  border-color: rgba(22,163,74,.6);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(22,163,74,.2);
-}
-.agent-caps-cta-icon { font-size: 1.2rem; flex-shrink: 0; }
-.agent-caps-cta-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.agent-caps-cta-text strong { font-size: .85rem; color: var(--text); }
-.agent-caps-cta-text span   { font-size: .72rem; color: var(--muted); }
-.agent-caps-cta-arrow {
-  font-size: 1rem;
-  color: var(--accent);
-  flex-shrink: 0;
-  transition: transform .18s;
-}
-.agent-caps-cta:hover .agent-caps-cta-arrow { transform: translateX(3px); }
-
-/* Panel container */
-.agent-caps-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-radius: 14px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  overflow: hidden;
-  width: 100%;
-  animation: agentSlideIn .2s ease;
-  box-shadow: 0 4px 20px rgba(0,0,0,.1);
-}
-
-/* Panel header */
-.agent-caps-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 14px 11px;
-  background: linear-gradient(135deg, #0f5132, #166534);
-  position: relative;
-  overflow: hidden;
-}
-.agent-caps-header::before {
-  content: '';
-  position: absolute;
-  top: -30px; right: -20px;
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.06);
-  pointer-events: none;
-}
-.agent-caps-header-icon { font-size: 1.3rem; flex-shrink: 0; }
-.agent-caps-title {
-  font-size: .88rem;
-  font-weight: 800;
-  color: #f0fdf4;
-  letter-spacing: -.01em;
-}
-.agent-caps-subtitle {
-  font-size: .67rem;
-  color: rgba(240,253,244,.55);
-  margin-top: 1px;
-}
-.agent-caps-close {
-  margin-left: auto;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.2);
-  color: #f0fdf4;
-  width: 26px; height: 26px;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: .72rem;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: background .15s;
-}
-.agent-caps-close:hover { background: rgba(255,255,255,.22); }
-
-/* Category pills */
-.agent-caps-cats {
-  display: flex;
-  gap: 5px;
-  padding: 8px 10px 7px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.agent-caps-cats::-webkit-scrollbar { display: none; }
-.agent-cats-pill {
-  white-space: nowrap;
-  padding: 4px 11px;
-  font-size: .69rem;
-  font-weight: 600;
-  border: 1.5px solid var(--border);
-  border-radius: 20px;
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all .15s;
-  flex-shrink: 0;
-}
-.agent-cats-pill:hover { border-color: var(--accent); color: var(--accent); }
-.agent-cats-pill.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-/* Grid of sections */
-.agent-caps-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow-y: auto;
-  max-height: 340px;
-  padding: 8px 8px;
-  scrollbar-width: thin;
-}
-.agent-caps-section { margin-bottom: 8px; }
-
-/* Section header */
-.agent-caps-section-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 6px;
-  margin-bottom: 4px;
-}
-.agent-caps-section-icon { font-size: 1rem; }
-.agent-caps-section-title {
-  font-size: .76rem;
-  font-weight: 800;
-  color: var(--sec-color, var(--text));
-  letter-spacing: -.01em;
-}
-.agent-caps-section-desc {
-  font-size: .65rem;
-  color: var(--muted);
-  margin-left: 2px;
-}
-
-/* Action buttons */
-.agent-caps-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.agent-caps-action {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  border: 1.5px solid var(--border);
-  background: var(--surface2);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  text-align: left;
-  transition: all .15s ease;
-  width: 100%;
-}
-.agent-caps-action:hover {
-  border-color: var(--act-color, var(--accent));
-  background: var(--act-color-lt, rgba(22,163,74,.08));
-  transform: translateX(2px);
-}
-.agent-caps-action-icon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-  width: 26px;
-  text-align: center;
-}
-.agent-caps-action-body { flex: 1; min-width: 0; }
-.agent-caps-action-label {
-  font-size: .8rem;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.agent-caps-action-desc {
-  font-size: .69rem;
-  color: var(--muted);
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.agent-caps-action-badge {
-  font-size: .65rem;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 20px;
-  flex-shrink: 0;
-  letter-spacing: .02em;
-}
-.badge--action { background: rgba(22,163,74,.15); color: #16a34a; }
-.badge--query  { background: rgba(37,99,235,.12);  color: #2563eb; }
-.badge--nav    { background: rgba(100,116,139,.12); color: var(--muted); }
-
-/* Footer */
-.agent-caps-footer {
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--border);
-  background: var(--surface2);
-}
-.agent-caps-footer-label {
-  font-size: .68rem;
-  color: var(--muted);
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-.agent-caps-examples {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-.agent-caps-example {
-  padding: 4px 10px;
-  font-size: .68rem;
-  font-weight: 600;
-  border: 1.5px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  color: var(--text2);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all .15s;
-}
-.agent-caps-example:hover { border-color: var(--accent); color: var(--accent); }
-
-/* ════════════════════════════════════════════════════════════
-   GUIDED FORM — fluxo passo-a-passo
-════════════════════════════════════════════════════════════ */
-.agent-guided-form {
-  border-radius: 14px;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  overflow: hidden;
-  width: 100%;
-  animation: agentSlideIn .2s ease;
-}
-
-/* Header */
-.agf-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px 11px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--agf-color, #16a34a) 85%, #000) 0%, var(--agf-color, #16a34a) 100%);
-}
-.agf-header-icon { font-size: 1.2rem; flex-shrink: 0; }
-.agf-title {
-  font-size: .88rem;
-  font-weight: 800;
-  color: #fff;
-}
-.agf-subtitle { font-size: .67rem; color: rgba(255,255,255,.55); margin-top: 1px; }
-.agf-close {
-  margin-left: auto;
-  background: rgba(255,255,255,.14);
-  border: 1px solid rgba(255,255,255,.22);
-  color: #fff;
-  width: 24px; height: 24px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: .7rem;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-
-/* Progress */
-.agf-progress {
-  height: 4px;
-  background: var(--border);
-  margin: 0;
-}
-.agf-progress-bar {
-  height: 100%;
-  background: var(--accent);
-  transition: width .35s ease;
-}
-.agf-progress-label {
-  font-size: .64rem;
-  color: var(--muted);
-  padding: 3px 14px 0;
-  text-align: right;
-}
-
-/* Fields list */
-.agf-fields {
-  padding: 6px 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.agf-field {
-  border-radius: 8px;
-  padding: 8px 10px;
-  transition: background .15s;
-}
-.agf-field--done    { background: rgba(22,163,74,.05); }
-.agf-field--active  { background: var(--surface2); border: 1.5px solid var(--accent); }
-.agf-field--pending { opacity: .45; }
-
-.agf-field-row { display: flex; align-items: flex-start; gap: 10px; }
-.agf-field-status { padding-top: 2px; flex-shrink: 0; width: 20px; }
-.agf-status-done {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--accent); color: #fff; font-size: .62rem; font-weight: 800;
-}
-.agf-status-active {
-  display: inline-block;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
-  margin: 4px 4px;
-  animation: agentPulse 1.5s ease-in-out infinite;
-}
-.agf-status-pending {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--border2); color: var(--muted);
-  font-size: .6rem; font-weight: 700;
-}
-.agf-field-content { flex: 1; min-width: 0; }
-.agf-field-label {
-  font-size: .72rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-bottom: 4px;
-}
-.agf-required { color: var(--red, #dc2626); margin-left: 2px; }
-.agf-field-value {
-  font-size: .84rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-/* Inputs */
-.agf-input {
-  width: 100%;
-  padding: 8px 10px;
-  font-size: .85rem;
-  border: 1.5px solid var(--border2);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--font-sans);
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color .15s;
-}
-.agf-input:focus { border-color: var(--accent); }
-.agf-select { cursor: pointer; }
-.agf-money-wrap {
-  display: flex;
-  align-items: center;
-  border: 1.5px solid var(--border2);
-  border-radius: 8px;
-  background: var(--surface);
-  overflow: hidden;
-  transition: border-color .15s;
-}
-.agf-money-wrap:focus-within { border-color: var(--accent); }
-.agf-money-prefix {
-  padding: 0 8px;
-  font-size: .8rem;
-  font-weight: 700;
-  color: var(--muted);
-  background: var(--surface2);
-  align-self: stretch;
-  display: flex; align-items: center;
-  border-right: 1px solid var(--border);
-}
-.agf-money {
-  border: none !important;
-  border-radius: 0 !important;
-  text-align: right;
-  font-weight: 700;
-  font-family: var(--font-serif);
-  font-size: .92rem;
-}
-
-/* Chips */
-.agf-input-with-chips { display: flex; flex-direction: column; gap: 5px; }
-.agf-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.agf-chip {
-  padding: 3px 9px;
-  font-size: .68rem;
-  font-weight: 600;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface2);
-  color: var(--text2);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all .15s;
-}
-.agf-chip:hover { border-color: var(--accent); color: var(--accent); }
-
-/* Buttons */
-.agf-buttons {
-  display: flex;
-  gap: 6px;
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--border);
-  background: var(--surface2);
-  justify-content: flex-end;
-}
-.agf-btn {
-  padding: 8px 18px;
-  font-size: .8rem;
-  font-weight: 700;
-  border-radius: 9px;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all .15s;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  color: var(--text2);
-}
-.agf-btn--confirm {
-  background: linear-gradient(135deg, #15803d, #16a34a);
-  color: #fff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(22,163,74,.3);
-}
-.agf-btn--confirm:hover:not(:disabled) {
-  opacity: .9;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(22,163,74,.4);
-}
-.agf-btn--disabled {
-  opacity: .35;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-.agf-btn--skip { color: var(--muted); font-size: .75rem; }
-.agf-btn--skip:hover { color: var(--text); border-color: var(--text2); }
-
-/* ── Contextual suggestions after action ── */
-.agent-ctx-suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 10px 12px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  animation: agentSlideIn .18s ease;
-}
-.agent-ctx-label {
-  font-size: .72rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-.agent-ctx-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.agent-ctx-chip {
-  padding: 6px 13px;
-  font-size: .76rem;
-  font-weight: 600;
-  border: 1.5px solid var(--border);
-  border-radius: 20px;
-  background: var(--surface);
-  color: var(--text2);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all .15s ease;
-  flex-shrink: 0;
-}
-.agent-ctx-chip:hover {
-  border-color: var(--accent);
-  background: rgba(22,163,74,.08);
-  color: var(--accent);
-  transform: translateY(-1px);
-}
-.agent-ctx-chip--primary {
-  background: linear-gradient(135deg, rgba(22,163,74,.15), rgba(22,163,74,.08));
-  border-color: rgba(22,163,74,.4);
-  color: var(--accent);
-}
-.agent-ctx-chip--primary:hover {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-/* ── Capabilities search bar ── */
-.agent-caps-search-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.agent-caps-search {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: .82rem;
-  color: var(--text);
-  font-family: var(--font-sans);
-  outline: none;
-}
-.agent-caps-search::placeholder { color: var(--muted); }
-
-/* Also add "capabilities" quick chip to the quick bar */
-.agent-discover-btn {
-  white-space: nowrap;
-  padding: 4px 10px;
-  font-size: .69rem;
-  font-weight: 700;
-  border: 1.5px solid rgba(22,163,74,.45);
-  border-radius: 16px;
-  background: rgba(22,163,74,.1);
-  color: var(--accent);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all .15s;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.agent-discover-btn:hover {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
 </style>
 
   <script src="js/export_grid.js"></script>
