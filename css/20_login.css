@@ -103,13 +103,13 @@
 ───────────────────────────────────────────────────────────────── */
 .ls-form-panel {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
 }
 
 .ls-card {
   background: var(--ls-card);
-  border-radius: 20px;
-  padding: 36px 32px 32px;
+  border-radius: 24px;
+  padding: 44px 40px 40px;
   box-shadow: var(--ls-shadow);
   position: relative;
   overflow: hidden;
@@ -141,16 +141,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 26px;
+  margin-bottom: 32px;
 }
 
 /* ls-form-logo: a única imagem de logo visível */
 .ls-form-logo {
-  height: 56px;
+  height: 112px;        /* 2× original 56px */
   width: auto;
+  max-width: 240px;
   display: block;
-  filter: drop-shadow(0 2px 10px rgba(42,96,73,.22));
+  filter: drop-shadow(0 4px 20px rgba(42,96,73,.35));
   transition: opacity .3s;
+  animation: lsLogoFloat 6s ease-in-out infinite alternate;
+}
+@keyframes lsLogoFloat {
+  from { transform: translateY(0);   filter: drop-shadow(0 4px 20px rgba(42,96,73,.35)); }
+  to   { transform: translateY(-4px); filter: drop-shadow(0 8px 28px rgba(42,96,73,.50)); }
 }
 
 /* Garantias: se qualquer outro logo legado aparecer, esconde */
@@ -160,12 +166,12 @@
    TÍTULOS
 ───────────────────────────────────────────────────────────────── */
 .ls-card-title {
-  font-size: 1.15rem;
+  font-size: 1.4rem;
   font-weight: 800;
   color: var(--ls-text);
-  letter-spacing: -.025em;
-  margin-bottom: 4px;
-  line-height: 1.2;
+  letter-spacing: -.03em;
+  margin-bottom: 5px;
+  line-height: 1.15;
 }
 .ls-card-sub {
   font-size: .82rem;
