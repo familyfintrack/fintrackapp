@@ -587,7 +587,7 @@ function _scCardHtml(sc) {
         <div class="sc-card-meta">${freqPill}${meta ? `<span class="sc-card-meta-text">${meta}</span>` : ''}${catChip}${memberChips ? '<div class="sc-member-chips">' + memberChips + '</div>' : ''}</div>
       </div>
       <div class="sc-card-end">
-        <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount))}</div>
+        <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount))}${sc.currency && sc.currency !== 'BRL' ? `<span style="font-size:.65em;font-weight:500;opacity:.75;margin-left:3px">${esc(sc.currency)}</span>` : ''}</div>
         <div class="sc-card-badges">${nextBadge}<span class="sc-status-badge ${st.cls}">${st.label}</span></div>
       </div>
       <svg class="sc-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="scChev-${sc.id}"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1345,7 +1345,7 @@ async function saveScheduled() {
     notify_telegram_days_before: notifyTg ? notifyTgDaysBefore : 1,
     notify_telegram_on_processed: notifyTg ? !!notifyTgProcessed : false,
     notify_telegram_on_upcoming: notifyTg ? !!notifyTgUpcoming : false,
-    fx_mode:  fxVisible ? fxMode : null,
+    fx_mode:  (fxVisible || currVisible) ? fxMode : null,
     fx_rate:  fxRate,
     updated_at: new Date().toISOString(),
     family_member_ids: typeof getFmcMultiPickerSelected === 'function'
