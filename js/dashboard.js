@@ -289,11 +289,6 @@ async function loadDashboard(){
   _renderDashForecast().catch(()=>{});
   await loadDashboardAutoRunSummary();
 
-  // ── Cards de módulo: Investimentos e Sonhos ────────────────────────────
-  _ensureDashModuleCardEls();
-  _renderDashInvestmentsCard().catch(()=>{});
-  _renderDashDreamsCard().catch(()=>{});
-
   // FIX: Carregar orçamentos para o snapshot do dashboard.
   // loadBudgets popula _budgetCache e _budgetSpent, depois chama
   // _renderDashBudgetSnapshot automaticamente. Sem isso o card fica vazio.
@@ -884,28 +879,6 @@ async function loadDashboardAutoRunSummary(){
 const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
-// Retorna os cards disponíveis conforme módulos ativos da família
-function _getDashAvailableCards() {
-  const fid = typeof famId === 'function' ? famId() : null;
-  const fc  = window._familyFeaturesCache || {};
-  const invOn  = fid ? !!fc['investments_enabled_' + fid] : false;
-  const drmsOn = fid ? !!fc['dreams_enabled_' + fid]     : false;
-  const base = [
-    { id: 'kpis',       label: 'Patrimônio, Receita, Despesa e Saldo', icon: '💰', sub: 'Cards de resumo financeiro do mês', el: 'dashCardKpis'       },
-    { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
-    { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
-    { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
-    { id: 'budgetSnap', label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Resumo dos orçamentos ativos',              el: 'dashBudgetSnapshot' },
-    { id: 'upcoming',   label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
-    { id: 'forecast90', label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
-    { id: 'recent',     label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
-  ];
-  if (invOn)  base.push({ id: 'investments', label: 'Resumo de Investimentos', icon: '📈', sub: 'Carteira, distribuição e desempenho', el: 'dashCardInvestments', moduleKey: 'investments_enabled_' });
-  if (drmsOn) base.push({ id: 'dreams',      label: 'Resumo dos Sonhos',       icon: '🌟', sub: 'Metas, progresso e GPS financeiro',   el: 'dashCardDreams',      moduleKey: 'dreams_enabled_' });
-  return base;
-}
-
-// Compatibilidade: array estático para código que usa _DASH_CARDS diretamente
 const _DASH_CARDS = [
   { id: 'kpis',       label: 'Patrimônio, Receita, Despesa e Saldo', icon: '💰', sub: 'Cards de resumo financeiro do mês', el: 'dashCardKpis'       },
   { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
@@ -923,8 +896,7 @@ function _dashGetPrefs() {
     if (raw) return JSON.parse(raw);
   } catch (_e) {}
   // Defaults: tudo visível
-  const cards = _getDashAvailableCards();
-  return Object.fromEntries(cards.map(c => [c.id, true]));
+  return Object.fromEntries(_DASH_CARDS.map(c => [c.id, true]));
 }
 
 async function _dashSavePrefs(prefs) {
@@ -1012,43 +984,16 @@ function openDashCustomModal() {
   requestAnimationFrame(() => _dashInitDnD());
 }
 
-// Injeta elementos DOM dos cards de módulo se ainda não existirem
-function _ensureDashModuleCardEls() {
-  const fid = typeof famId === 'function' ? famId() : null;
-  const fc  = window._familyFeaturesCache || {};
-  const container = document.getElementById('dashCardKpis')?.parentElement;
-  if (!container) return;
-
-  // Card Investimentos
-  if (!document.getElementById('dashCardInvestments')) {
-    const inv = document.createElement('div');
-    inv.id = 'dashCardInvestments';
-    inv.className = 'card';
-    inv.style.display = 'none';
-    container.appendChild(inv);
-  }
-
-  // Card Sonhos
-  if (!document.getElementById('dashCardDreams')) {
-    const drm = document.createElement('div');
-    drm.id = 'dashCardDreams';
-    drm.className = 'card';
-    drm.style.display = 'none';
-    container.appendChild(drm);
-  }
-}
-
 function _getDashCardOrder(prefs) {
-  const allCards = _getDashAvailableCards();
   const savedOrder = prefs._order;
   if (savedOrder && Array.isArray(savedOrder)) {
     const ordered = savedOrder
-      .map(id => allCards.find(c => c.id === id))
+      .map(id => _DASH_CARDS.find(c => c.id === id))
       .filter(Boolean);
-    allCards.forEach(c => { if (!ordered.find(x => x.id === c.id)) ordered.push(c); });
+    _DASH_CARDS.forEach(c => { if (!ordered.find(x => x.id === c.id)) ordered.push(c); });
     return ordered;
   }
-  return [...allCards];
+  return [..._DASH_CARDS];
 }
 
 let _dashCustomCurrentOrder = null;
@@ -1056,11 +1001,7 @@ let _dashCustomCurrentOrder = null;
 function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
-  list.innerHTML = order.map((c, idx) => {
-    const modBadge = c.moduleKey
-      ? `<span style="font-size:.65rem;background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:2px 7px;font-weight:700;flex-shrink:0;margin-right:4px">módulo</span>`
-      : '';
-    return `
+  list.innerHTML = order.map((c, idx) => `
     <div class="dash-custom-item" data-card-id="${c.id}" draggable="true"
       style="display:flex;align-items:center;gap:10px;padding:11px 14px;
         background:var(--surface2);border:1.5px solid var(--border);
@@ -1070,10 +1011,7 @@ function _renderDashCustomList(order, prefs) {
       <span style="color:var(--muted);font-size:1rem;flex-shrink:0;cursor:grab" title="Arrastar">⠿</span>
       <span style="font-size:1.1rem;flex-shrink:0">${c.icon}</span>
       <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:.84rem;font-weight:600;color:var(--text)">${c.label}</span>
-          ${modBadge}
-        </div>
+        <div style="font-size:.84rem;font-weight:600;color:var(--text)">${c.label}</div>
         <div style="font-size:.71rem;color:var(--muted);margin-top:1px">${c.sub}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
@@ -1096,8 +1034,7 @@ function _renderDashCustomList(order, prefs) {
         style="flex-shrink:0"
         onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-item'))">
       </button>
-    </div>`;
-  }).join('');
+    </div>`).join('');
   requestAnimationFrame(() => _dashInitDnD());
 }
 
@@ -1838,29 +1775,87 @@ async function _renderDashForecastInner() {
           },
         },
         tooltip: {
-          backgroundColor: 'var(--surface)',
-          titleColor: 'var(--text)',
-          bodyColor: 'var(--text2)',
-          borderColor: 'var(--border)',
-          borderWidth: 1,
-          padding: 10,
-          cornerRadius: 10,
-          boxPadding: 4,
-          callbacks: {
-            title(items) {
-              const label = items?.[0]?.label || '';
-              return typeof fmtDate === 'function' ? fmtDate(label) : label;
-            },
-            label(ctx) {
-              const isNeg = ctx.parsed.y < 0;
-              return ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`;
-            },
-            afterBody(items) {
-              const label = items?.[0]?.label || '';
-              const groups = txByDateGrouped[label] || [];
-              if (!groups.length) return [];
-              return ['', ...groups.map(g => `  ${g.account_name}: ${g.items.length} lançamento(s)`)];
-            },
+          enabled: false,  // use custom HTML tooltip for readability
+          external: function(context) {
+            const { chart, tooltip } = context;
+            let el = document.getElementById('fcp-custom-tooltip');
+            if (!el) {
+              el = document.createElement('div');
+              el.id = 'fcp-custom-tooltip';
+              el.style.cssText = [
+                'position:absolute',
+                'background:#fff',
+                'border:1.5px solid #e2e8f0',
+                'border-radius:12px',
+                'padding:10px 14px',
+                'pointer-events:none',
+                'z-index:9999',
+                'box-shadow:0 4px 24px rgba(0,0,0,.14),0 1px 6px rgba(0,0,0,.08)',
+                'font-family:var(--font-sans,-apple-system,sans-serif)',
+                'font-size:12px',
+                'min-width:170px',
+                'max-width:260px',
+                'transition:opacity .12s ease',
+              ].join(';');
+              chart.canvas.parentNode.style.position = 'relative';
+              chart.canvas.parentNode.appendChild(el);
+            }
+
+            if (tooltip.opacity === 0) { el.style.opacity = '0'; return; }
+            el.style.opacity = '1';
+
+            const label = tooltip.dataPoints?.[0]?.label || '';
+            const dateStr = typeof fmtDate === 'function' ? fmtDate(label) : label;
+            const groups  = txByDateGrouped[label] || [];
+            const txCount = groups.reduce((s, g) => s + (g.items?.length || 0), 0);
+
+            let html = `<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">${dateStr}</div>`;
+
+            // Dataset values
+            html += '<div style="display:flex;flex-direction:column;gap:4px">';
+            tooltip.dataPoints.forEach(dp => {
+              const color = dp.dataset.borderColor || dp.dataset.backgroundColor || '#2a6049';
+              const val   = typeof fmt === 'function' ? fmt(dp.parsed.y) : dp.parsed.y;
+              const isNeg = dp.parsed.y < 0;
+              html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+                  <span style="color:#374151;font-size:11px;font-weight:500;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dp.dataset.label}</span>
+                </div>
+                <span style="font-weight:700;font-size:12px;color:${isNeg?'#dc2626':'#15803d'};font-family:var(--font-serif,Georgia,serif)">${val}</span>
+              </div>`;
+            });
+            html += '</div>';
+
+            // Transactions today
+            if (txCount > 0) {
+              html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9">
+                <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:4px">📋 Lançamentos do dia</div>`;
+              groups.slice(0,3).forEach(g => {
+                html += `<div style="font-size:10px;color:#64748b;display:flex;justify-content:space-between;gap:8px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.account_name}</span>
+                  <span style="color:#374151;font-weight:600;flex-shrink:0">${g.items.length} lançamento${g.items.length!==1?'s':''}</span>
+                </div>`;
+              });
+              if (groups.length > 3) html += `<div style="font-size:10px;color:#94a3b8;margin-top:2px">+${groups.length-3} mais…</div>`;
+              html += '</div>';
+            }
+
+            html += `<div style="font-size:9px;color:#cbd5e1;margin-top:6px;text-align:center">clique para detalhes</div>`;
+            el.innerHTML = html;
+
+            // Position
+            const pos    = context.chart.canvas.getBoundingClientRect();
+            const wrapper = chart.canvas.parentNode;
+            const wRect   = wrapper.getBoundingClientRect();
+            let x = tooltip.caretX + 12;
+            let y = tooltip.caretY - el.offsetHeight / 2;
+            // Prevent overflow right
+            if (tooltip.caretX + 12 + 270 > wRect.width) x = tooltip.caretX - 270;
+            if (x < 0) x = 4;
+            if (y < 0) y = 4;
+            el.style.left = x + 'px';
+            el.style.top  = y + 'px';
           },
         },
         annotation: { annotations },
@@ -2462,220 +2457,4 @@ async function _openPatrimonioModal() {
   document.getElementById('patrimonioModalBody').innerHTML = content;
 }
 window._openPatrimonioModal = _openPatrimonioModal;
-
-
-// ════════════════════════════════════════════════════════════════
-// CARD INVESTIMENTOS — resumo da carteira no dashboard
-// ════════════════════════════════════════════════════════════════
-async function _renderDashInvestmentsCard() {
-  const el = document.getElementById('dashCardInvestments');
-  if (!el) return;
-  const fid = typeof famId === 'function' ? famId() : null;
-  const fc  = window._familyFeaturesCache || {};
-  if (!fid || !fc['investments_enabled_' + fid]) {
-    el.style.display = 'none';
-    return;
-  }
-  const prefs = _dashGetPrefs();
-  if (prefs['investments'] === false) { el.style.display = 'none'; return; }
-
-  el.style.display = '';
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <span style="font-size:1.3rem">📈</span>
-    <h3 style="font-size:.95rem;font-weight:700;color:var(--text);margin:0">Investimentos</h3>
-    <button onclick="navigate('investments')" style="margin-left:auto;background:none;border:none;font-size:.75rem;color:var(--accent);cursor:pointer;font-weight:600">Ver tudo →</button>
-  </div>
-  <div id="dashInvCardBody" style="color:var(--muted);font-size:.82rem;text-align:center;padding:20px 0">⏳ Carregando…</div>`;
-
-  try {
-    const { data: positions } = await famQ(
-      sb.from('investment_positions').select('ticker,name,asset_type,quantity,avg_cost,current_price,currency')
-    );
-    const pos = positions || [];
-    if (!pos.length) {
-      document.getElementById('dashInvCardBody').innerHTML =
-        '<div style="text-align:center;padding:20px 0;color:var(--muted)">Nenhuma posição cadastrada.<br><button onclick="navigate(\'investments\')" style="margin-top:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 16px;cursor:pointer;font-size:.8rem">Adicionar investimentos</button></div>';
-      return;
-    }
-
-    // Calcular totais
-    const totalCost  = pos.reduce((s, p) => s + (p.quantity * p.avg_cost), 0);
-    const totalMkt   = pos.reduce((s, p) => s + (p.quantity * (p.current_price || p.avg_cost)), 0);
-    const gainLoss   = totalMkt - totalCost;
-    const gainPct    = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
-    const isPos      = gainLoss >= 0;
-
-    // Distribuição por tipo
-    const byType = {};
-    pos.forEach(p => {
-      const t = p.asset_type || 'outro';
-      byType[t] = (byType[t] || 0) + (p.quantity * (p.current_price || p.avg_cost));
-    });
-    const typeColors = { acoes:'#6366f1', fii:'#f59e0b', renda_fixa:'#10b981', etf:'#3b82f6', cripto:'#f97316', exterior:'#8b5cf6', outro:'#64748b' };
-    const typeLabels = { acoes:'Ações', fii:'FIIs', renda_fixa:'Renda Fixa', etf:'ETFs', cripto:'Cripto', exterior:'Exterior', outro:'Outros' };
-    const types = Object.entries(byType).sort((a, b) => b[1] - a[1]);
-
-    // Top 3 posições por valor de mercado
-    const top3 = [...pos]
-      .sort((a, b) => (b.quantity * (b.current_price||b.avg_cost)) - (a.quantity * (a.current_price||a.avg_cost)))
-      .slice(0, 3);
-
-    const f = (v) => typeof fmt === 'function' ? fmt(v, 'BRL') : 'R$ ' + v.toFixed(2);
-
-    document.getElementById('dashInvCardBody').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <div style="background:var(--surface2);border-radius:10px;padding:11px 13px">
-          <div style="font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Total Investido</div>
-          <div style="font-size:1rem;font-weight:800;color:var(--text);margin-top:3px;font-family:var(--font-serif)">${f(totalCost)}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:11px 13px">
-          <div style="font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor Atual</div>
-          <div style="font-size:1rem;font-weight:800;color:var(--accent);margin-top:3px;font-family:var(--font-serif)">${f(totalMkt)}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;background:${isPos?'var(--green-lt)':'var(--red-lt)'};border-radius:10px;padding:10px 14px;margin-bottom:14px">
-        <span style="font-size:.8rem;font-weight:600;color:var(--text2)">Resultado</span>
-        <span style="font-size:.92rem;font-weight:800;color:${isPos?'var(--green,#16a34a)':'var(--red)'}">${isPos?'+':''}${f(gainLoss)} (${isPos?'+':''}${gainPct.toFixed(2)}%)</span>
-      </div>
-      <div style="margin-bottom:12px">
-        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Distribuição</div>
-        <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:1px;margin-bottom:6px">
-          ${types.map(([t, v]) => `<div style="flex:${v};background:${typeColors[t]||'#64748b'};border-radius:2px;min-width:4px" title="${typeLabels[t]||t}: ${f(v)}"></div>`).join('')}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${types.slice(0,4).map(([t, v]) => `<span style="font-size:.7rem;padding:3px 8px;border-radius:20px;background:${typeColors[t]||'#64748b'}20;color:${typeColors[t]||'var(--text2)'}">
-            ${typeLabels[t]||t} ${((v/totalMkt)*100).toFixed(0)}%
-          </span>`).join('')}
-        </div>
-      </div>
-      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Top Posições</div>
-      ${top3.map(p => {
-        const mv = p.quantity * (p.current_price || p.avg_cost);
-        const cv = p.quantity * p.avg_cost;
-        const gl = mv - cv;
-        const gp = cv > 0 ? (gl/cv)*100 : 0;
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <span style="font-size:.82rem;font-weight:700;color:var(--text)">${p.ticker}</span>
-            <span style="font-size:.7rem;color:var(--muted);margin-left:5px">${p.quantity} cotas</span>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:.82rem;font-weight:700;color:var(--text)">${f(mv)}</div>
-            <div style="font-size:.68rem;color:${gp>=0?'var(--green,#16a34a)':'var(--red)'}">${gp>=0?'+':''}${gp.toFixed(1)}%</div>
-          </div>
-        </div>`;
-      }).join('')}`;
-  } catch(e) {
-    const b = document.getElementById('dashInvCardBody');
-    if (b) b.innerHTML = `<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Erro ao carregar investimentos</div>`;
-  }
-}
-window._renderDashInvestmentsCard = _renderDashInvestmentsCard;
-
-// ════════════════════════════════════════════════════════════════
-// CARD SONHOS — resumo das metas no dashboard
-// ════════════════════════════════════════════════════════════════
-async function _renderDashDreamsCard() {
-  const el = document.getElementById('dashCardDreams');
-  if (!el) return;
-  const fid = typeof famId === 'function' ? famId() : null;
-  const fc  = window._familyFeaturesCache || {};
-  if (!fid || !fc['dreams_enabled_' + fid]) {
-    el.style.display = 'none';
-    return;
-  }
-  const prefs = _dashGetPrefs();
-  if (prefs['dreams'] === false) { el.style.display = 'none'; return; }
-
-  el.style.display = '';
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-    <span style="font-size:1.3rem">🌟</span>
-    <h3 style="font-size:.95rem;font-weight:700;color:var(--text);margin:0">Sonhos</h3>
-    <button onclick="navigate('dreams')" style="margin-left:auto;background:none;border:none;font-size:.75rem;color:var(--accent);cursor:pointer;font-weight:600">Ver tudo →</button>
-  </div>
-  <div id="dashDrmCardBody" style="color:var(--muted);font-size:.82rem;text-align:center;padding:20px 0">⏳ Carregando…</div>`;
-
-  try {
-    const { data: dreams } = await famQ(
-      sb.from('dreams').select('id,title,dream_type,target_amount,currency,target_date,status,priority').eq('status', 'active').order('priority')
-    );
-    const ds = dreams || [];
-    if (!ds.length) {
-      document.getElementById('dashDrmCardBody').innerHTML =
-        '<div style="text-align:center;padding:20px 0;color:var(--muted)">Nenhum sonho ativo.<br><button onclick="navigate(\'dreams\')" style="margin-top:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 16px;cursor:pointer;font-size:.8rem">Criar primeiro sonho</button></div>';
-      return;
-    }
-
-    // Buscar contribuições para calcular progresso
-    const { data: contribs } = await famQ(
-      sb.from('dream_contributions').select('dream_id,amount').in('dream_id', ds.map(d => d.id))
-    );
-    const savedByDream = {};
-    (contribs || []).forEach(c => {
-      savedByDream[c.dream_id] = (savedByDream[c.dream_id] || 0) + parseFloat(c.amount || 0);
-    });
-
-    const totalTarget = ds.reduce((s, d) => s + parseFloat(d.target_amount || 0), 0);
-    const totalSaved  = ds.reduce((s, d) => s + (savedByDream[d.id] || 0), 0);
-    const overallPct  = totalTarget > 0 ? Math.min((totalSaved / totalTarget) * 100, 100) : 0;
-
-    const typeEmoji = { viagem:'✈️', automovel:'🚗', imovel:'🏠', cirurgia_plastica:'💆', outro:'🌟' };
-    const f = (v) => typeof fmt === 'function' ? fmt(v, 'BRL') : 'R$ ' + v.toFixed(2);
-
-    // Distribuição por tipo
-    const byType = {};
-    ds.forEach(d => { byType[d.dream_type] = (byType[d.dream_type] || 0) + 1; });
-
-    document.getElementById('dashDrmCardBody').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <div style="background:var(--surface2);border-radius:10px;padding:11px 13px">
-          <div style="font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Sonhos ativos</div>
-          <div style="font-size:1.3rem;font-weight:800;color:var(--text);margin-top:3px">${ds.length}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:11px 13px">
-          <div style="font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Meta total</div>
-          <div style="font-size:.92rem;font-weight:800;color:var(--accent);margin-top:3px;font-family:var(--font-serif)">${f(totalTarget)}</div>
-        </div>
-      </div>
-      <div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
-          <span style="font-size:.78rem;color:var(--text2);font-weight:600">Progresso geral</span>
-          <span style="font-size:.78rem;font-weight:700;color:var(--accent)">${overallPct.toFixed(1)}%</span>
-        </div>
-        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-          <div style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2,#3d8f5e));width:${overallPct}%;border-radius:4px;transition:width .5s ease"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px">
-          <span style="font-size:.72rem;color:var(--muted)">${f(totalSaved)} acumulado</span>
-          <span style="font-size:.72rem;color:var(--muted)">${f(totalTarget - totalSaved)} restante</span>
-        </div>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${Object.entries(byType).map(([t, n]) => `<span style="font-size:.72rem;padding:3px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)">${typeEmoji[t]||'🌟'} ${n}</span>`).join('')}
-      </div>
-      ${ds.slice(0, 3).map(d => {
-        const saved = savedByDream[d.id] || 0;
-        const tgt   = parseFloat(d.target_amount || 0);
-        const pct   = tgt > 0 ? Math.min((saved / tgt) * 100, 100) : 0;
-        const daysLeft = d.target_date ? Math.ceil((new Date(d.target_date) - new Date()) / 86400000) : null;
-        return `<div style="padding:8px 0;border-top:1px solid var(--border)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:.82rem;font-weight:700;color:var(--text)">${typeEmoji[d.dream_type]||'🌟'} ${d.title}</span>
-            ${daysLeft !== null ? `<span style="font-size:.68rem;color:var(--muted)">${daysLeft > 0 ? daysLeft + 'd' : 'Vencido'}</span>` : ''}
-          </div>
-          <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-            <div style="height:100%;background:var(--accent);width:${pct}%;border-radius:3px"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-top:3px">
-            <span style="font-size:.68rem;color:var(--muted)">${f(saved)}</span>
-            <span style="font-size:.68rem;color:var(--muted);font-weight:600">${pct.toFixed(0)}% de ${f(tgt)}</span>
-          </div>
-        </div>`;
-      }).join('')}`;
-  } catch(e) {
-    const b = document.getElementById('dashDrmCardBody');
-    if (b) b.innerHTML = `<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:16px">Erro ao carregar sonhos</div>`;
-  }
-}
-window._renderDashDreamsCard = _renderDashDreamsCard;
 
