@@ -62,6 +62,6 @@
   window.tryAutoConnect = tryAutoConnect;
   window.ensureSupabaseClient = ensureClient;
 
-  // eager attempt (non-blocking)
-  tryAutoConnect();
+  // Do not eagerly call tryAutoConnect() here. app.html keeps rendering
+  // significant markup after the script tags, and auth/app own the guarded boot.
 })();

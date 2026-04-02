@@ -469,37 +469,18 @@ function showLoginScreen() {
   if (sidebar) sidebar.style.display = 'none';
   if (sidebarOverlay) sidebarOverlay.style.display = 'none';
 
-  const legacy = document.getElementById('authScreen');
-  if (legacy) legacy.style.display = 'none';
-
   const ls = document.getElementById('loginScreen');
   if (ls) {
     ls.style.display = 'flex';
-    ls.style.visibility = 'visible';
-    ls.style.opacity = '1';
-
-    // Sempre restaura a área principal do login para evitar estados parciais
-    // depois de recovery/registro/mudança de senha ou renders interrompidos.
-    try { showLoginFormArea(); } catch(_) {}
-
-    const formArea = document.getElementById('loginFormArea');
-    if (formArea) {
-      formArea.style.display = '';
-      formArea.style.visibility = 'visible';
-      formArea.style.opacity = '1';
-    }
-    ['loginEmail','loginPassword','loginBtn','rememberMe'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.style.display = '';
-      el.style.visibility = 'visible';
-      el.style.opacity = '1';
-    });
-
+    // FIX: Re-aplicar tema sempre que a tela for exibida (cobre logout, sessão expirada,
+    // e qualquer re-exibição posterior ao boot). Lê do cache em memória se disponível,
+    // senão do localStorage (sempre disponível, sem network).
     try {
       // Login theme removed — single unified design
     } catch(_) {}
+    // Re-apply access request visibility every time login screen is shown
     _applyAccessRequestVisibilityFromLocalStorage();
+    // Fix logo: use same LOGO_URL used throughout the app
     const img = document.getElementById('loginLogoImg');
     if (typeof setAppLogo==='function') {
       const logoFromCache = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache && _appSettingsCache['app_logo_url']) ? _appSettingsCache['app_logo_url'] : '';
@@ -507,6 +488,7 @@ function showLoginScreen() {
     } else if (img) {
       img.src = (APP_LOGO_URL||DEFAULT_LOGO_URL);
     }
+    // Load remembered credentials
     const saved = _loadRememberedCredentials();
     if (saved) {
       const emailEl = document.getElementById('loginEmail');
@@ -4365,7 +4347,27 @@ async function ensureMasterAdmin() {
   } catch(e) { console.warn('ensureMasterAdmin:', e.message); }
 }
 
-tryAutoConnect();
+// Boot auth only after the full document is parsed.
+// app.html still contains significant markup after script tags, including the
+// real login shell, so running auto-connect immediately can leave a white page
+// or a partially rendered login.
+(function _startAutoBootOnce(){
+  async function run(){
+    if (window.__FT_AUTO_BOOT_STARTED) return;
+    window.__FT_AUTO_BOOT_STARTED = true;
+    try {
+      if (typeof tryAutoConnect === 'function') await tryAutoConnect();
+    } catch (e) {
+      console.warn('[auth] auto-boot failed:', e?.message || e);
+      try { showLoginScreen(); } catch(_) {}
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run, { once:true });
+  } else {
+    run();
+  }
+})();
 
 /* ══════════════════════════════════════════════════════════════════
    AUTO-REGISTER ENGINE — Transações Programadas Automáticas
