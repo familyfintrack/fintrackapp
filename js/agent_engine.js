@@ -784,33 +784,66 @@ const AgentQuickReplies = {
   getForPage(page) {
     const pageMap = {
       dashboard: [
-        { label: '💸 Nova despesa',  text: 'criar despesa' },
-        { label: '💰 Nova receita',  text: 'criar receita' },
-        { label: '📊 Meu resumo',    text: 'resumo financeiro deste mês' },
-        { label: '💳 Saldo',         text: 'qual meu saldo total?' },
+        { label: '💸 Nova despesa',    text: 'criar despesa' },
+        { label: '💰 Nova receita',    text: 'criar receita' },
+        { label: '📊 Resumo do mês',   text: 'resumo financeiro deste mês' },
+        { label: '💳 Saldo total',     text: 'qual meu saldo total?' },
+        { label: '🔮 Previsão',        text: 'previsão dos próximos 30 dias' },
       ],
       transactions: [
-        { label: '💸 Criar despesa', text: 'criar despesa' },
-        { label: '💰 Criar receita', text: 'criar receita' },
-        { label: '📅 Mês passado',   text: 'quanto gastei no mês passado?' },
-        { label: '🏷️ Por categoria', text: 'maiores categorias de gasto' },
+        { label: '💸 Nova despesa',    text: 'criar despesa' },
+        { label: '💰 Nova receita',    text: 'criar receita' },
+        { label: '📅 Mês passado',     text: 'quanto gastei no mês passado?' },
+        { label: '🏷️ Por categoria',  text: 'maiores categorias de gasto' },
+        { label: '🔍 Buscar',          text: 'mostre transações de' },
+      ],
+      accounts: [
+        { label: '🏦 Nova conta',      text: 'criar conta' },
+        { label: '💳 Saldo total',     text: 'qual meu saldo total?' },
+        { label: '📈 Maior saldo',     text: 'qual conta tem maior saldo?' },
       ],
       scheduled: [
-        { label: '📅 Criar programado',  text: 'criar transação programada mensal' },
-        { label: '📋 Meus programados',  text: 'quais são meus programados ativos?' },
+        { label: '📅 Novo programado', text: 'criar programado' },
+        { label: '📋 Ver ativos',      text: 'quais são meus programados ativos?' },
+        { label: '📊 Impacto mensal',  text: 'quanto saí programado este mês?' },
+      ],
+      budgets: [
+        { label: '🎯 Situação',        text: 'como estão meus orçamentos?' },
+        { label: '⚠️ Estourados',      text: 'quais orçamentos estão estourados?' },
+        { label: '💸 Criar despesa',   text: 'criar despesa' },
       ],
       debts: [
-        { label: '📋 Nova dívida',    text: 'registrar dívida' },
-        { label: '💳 Pagar dívida',   text: 'pagar dívida' },
+        { label: '📋 Nova dívida',     text: 'registrar dívida' },
+        { label: '💳 Pagar parcela',   text: 'pagar dívida' },
+        { label: '📊 Total devido',    text: 'qual o total das minhas dívidas?' },
+      ],
+      investments: [
+        { label: '📈 Resumo carteira', text: 'como estão meus investimentos?' },
+        { label: '💹 Rendimento',      text: 'quanto rendi nos investimentos?' },
+      ],
+      dreams: [
+        { label: '🌟 Novo sonho',      text: 'criar sonho' },
+        { label: '📊 Progresso',       text: 'como estão meus sonhos?' },
+        { label: '✈️ Viagem',          text: 'criar sonho de viagem' },
       ],
       payees: [
         { label: '👤 Novo beneficiário', text: 'criar beneficiário' },
+        { label: '📊 Maiores gastos',  text: 'maiores beneficiários deste mês' },
+      ],
+      categories: [
+        { label: '🏷️ Nova categoria', text: 'criar categoria' },
+        { label: '📊 Por categoria',   text: 'maiores categorias de gasto' },
+      ],
+      reports: [
+        { label: '📊 Resumo mensal',   text: 'resumo financeiro deste mês' },
+        { label: '📈 Evolução',        text: 'como evoluiu meu saldo?' },
+        { label: '💸 Maiores gastos',  text: 'onde estou gastando mais?' },
       ],
       default: [
-        { label: '💸 Nova despesa',  text: 'criar despesa' },
-        { label: '💰 Nova receita',  text: 'criar receita' },
-        { label: '❓ Ajuda',         text: 'como usar o FinTrack?' },
-        { label: '💳 Saldo',         text: 'qual meu saldo?' },
+        { label: '💸 Nova despesa',    text: 'criar despesa' },
+        { label: '💰 Nova receita',    text: 'criar receita' },
+        { label: '❓ Ajuda',           text: 'como usar o FinTrack?' },
+        { label: '💳 Saldo',           text: 'qual meu saldo?' },
       ],
     };
     return pageMap[page] || pageMap.default;

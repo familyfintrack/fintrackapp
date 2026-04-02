@@ -41,8 +41,8 @@ UPDATE dreams SET dream_type = 'outro'
   WHERE dream_type NOT IN ('viagem', 'automovel', 'imovel', 'outro');`;
 window.DREAMS_MIGRATION_SQL = DREAMS_MIGRATION_SQL;
 
-function _dreamTypeEmoji(t) { return { viagem:'✈️', automovel:'🚗', imovel:'🏠', outro:'🌟' }[t] || '🌟'; }
-function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 Automóvel', imovel:'🏠 Imóvel', outro:'🌟 Outro' }[t] || '🌟 Outro'; }
+function _dreamTypeEmoji(t) { return { viagem:'✈️', automovel:'🚗', imovel:'🏠', cirurgia_plastica:'💆', estudos:'🎓', outro:'🌟' }[t] || '🌟'; }
+function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 Automóvel', imovel:'🏠 Imóvel', cirurgia_plastica:'💆 Cirurgia Plástica', estudos:'🎓 Estudos', outro:'🌟 Outro' }[t] || '🌟 Outro'; }
 function _dreamStatusLabel(s) { return { active:'Ativo', paused:'Pausado', achieved:'🏆 Conquistado', cancelled:'Cancelado' }[s] || s; }
 function _dreamStatusColor(s) { return { active:'var(--accent)', paused:'var(--warning, #f39c12)', achieved:'#27ae60', cancelled:'var(--muted)' }[s] || 'var(--muted)'; }
 
@@ -922,10 +922,12 @@ window.closeDreamWizard = closeDreamWizard;
 
 function _wizStep1() {
   const types=[
-    {key:'viagem',   emoji:'✈️', label:'Viagem',    desc:'Destinos, passeios, hospedagem'},
-    {key:'automovel',emoji:'🚗', label:'Automóvel', desc:'Compra à vista ou financiada'},
-    {key:'imovel',   emoji:'🏠', label:'Imóvel',    desc:'Apartamento, casa, praia ou campo'},
-    {key:'outro',    emoji:'🌟', label:'Outro',     desc:'Saúde, educação, tecnologia…'},
+    {key:'viagem',            emoji:'✈️', label:'Viagem',            desc:'Destinos, passeios, hospedagem'},
+    {key:'automovel',         emoji:'🚗', label:'Automóvel',          desc:'Compra à vista ou financiada'},
+    {key:'imovel',            emoji:'🏠', label:'Imóvel',             desc:'Apartamento, casa, praia ou campo'},
+    {key:'cirurgia_plastica', emoji:'💆', label:'Cirurgia Plástica',  desc:'Estética, saúde e bem-estar'},
+    {key:'estudos',           emoji:'🎓', label:'Estudos',            desc:'Faculdade, pós-grad, intercâmbio, cursos'},
+    {key:'outro',             emoji:'🌟', label:'Outro',              desc:'Saúde, educação, tecnologia…'},
   ];
   return `<div class="drm-wiz-step1">
     <div class="drm-wiz-headline">Que tipo de sonho você quer realizar?</div>
@@ -961,7 +963,7 @@ async function wizardAiInterpret() {
   if(!apiKey||!apiKey.startsWith('AIza')){toast('Configure Gemini para usar IA','warning');return;}
   const btn=document.getElementById('wizAiBtn');
   if(btn){btn.disabled=true;btn.textContent='Interpretando…';}
-  const prompt=`Interprete este objetivo financeiro, retorne SOMENTE JSON sem markdown.\nObjetivo: "${input}"\n{"tipo":"viagem|automovel|imovel|outro","titulo":"título conciso","descricao":"1 frase","valor_estimado":15000,"prazo_meses_sugerido":18}\nTipo DEVE ser exatamente um de: viagem, automovel, imovel, outro`;
+  const prompt=`Interprete este objetivo financeiro, retorne SOMENTE JSON sem markdown.\nObjetivo: "${input}"\n{"tipo":"viagem|automovel|imovel|outro","titulo":"título conciso","descricao":"1 frase","valor_estimado":15000,"prazo_meses_sugerido":18}\nTipo DEVE ser exatamente um de: viagem, automovel, imovel, cirurgia_plastica, estudos, outro`;
   try {
     const url=`https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
     const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.3,maxOutputTokens:300}})});
@@ -988,6 +990,8 @@ function _wizStep2() {
   if(type==='viagem') sf=_wizFieldsViagem(d);
   else if(type==='automovel') sf=_wizFieldsAutomovel(d);
   else if(type==='imovel') sf=_wizFieldsImovel(d);
+  else if(type==='cirurgia_plastica') sf=_wizFieldsCirurgiaPlastica(d);
+  else if(type==='estudos') sf=_wizFieldsEstudos(d);
   const html = `<div class="drm-wiz-step2">
     <div class="drm-wiz-headline">${_dreamTypeEmoji(type)} Detalhes do sonho</div>
     <p class="drm-wiz-subhead">Quanto mais detalhes, mais precisas serão as recomendações.</p>
@@ -1074,6 +1078,122 @@ function _wizFieldsImovel(d) {
     <div class="form-group"><label class="form-label">Juros % a.m.</label><input type="number" id="wizJuros" class="form-input" step="0.01" placeholder="0,75" value="${m.taxa_juros||''}"></div>
   </div>`;
 }
+function _wizFieldsCirurgiaPlastica(d) {
+  const m=typeof d.ai_generated_fields_json==='object'?(d.ai_generated_fields_json||{}):{};
+  return `<div class="drm-wiz-section-title">💆 Cirurgia Plástica</div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Procedimento</label>
+      <select id="wizProcedimento" class="form-input">
+        <option value="rinoplastia" ${(m.procedimento||'')==='rinoplastia'?'selected':''}>Rinoplastia</option>
+        <option value="mamoplastia" ${m.procedimento==='mamoplastia'?'selected':''}>Mamoplastia</option>
+        <option value="lipoaspiracao" ${m.procedimento==='lipoaspiracao'?'selected':''}>Lipoaspiração</option>
+        <option value="blefaroplastia" ${m.procedimento==='blefaroplastia'?'selected':''}>Blefaroplastia</option>
+        <option value="abdominoplastia" ${m.procedimento==='abdominoplastia'?'selected':''}>Abdominoplastia</option>
+        <option value="lifting" ${m.procedimento==='lifting'?'selected':''}>Lifting Facial</option>
+        <option value="botox" ${m.procedimento==='botox'?'selected':''}>Botox/Preenchimento</option>
+        <option value="outro" ${m.procedimento==='outro'?'selected':''}>Outro</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Cidade / Clínica</label>
+      <input type="text" id="wizClinica" class="form-input" placeholder="Ex: São Paulo — Dr. Silva" value="${_esc(m.clinica||'')}">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Tipo de cobertura</label>
+      <select id="wizCobertura" class="form-input">
+        <option value="particular" ${(m.cobertura||'particular')==='particular'?'selected':''}>Particular (sem plano)</option>
+        <option value="plano_saude" ${m.cobertura==='plano_saude'?'selected':''}>Plano de Saúde</option>
+        <option value="financiamento" ${m.cobertura==='financiamento'?'selected':''}>Financiamento médico</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Nº de procedimentos</label>
+      <input type="number" id="wizNumProcs" class="form-input" min="1" max="10" placeholder="1" value="${m.num_procedimentos||''}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Observações</label>
+    <textarea id="wizObsCirurgia" class="form-input" rows="2" placeholder="Médico, data ideal, etc.">${_esc(m.observacoes||'')}</textarea>
+  </div>`;
+}
+
+function _wizFieldsEstudos(d) {
+  const m=typeof d.ai_generated_fields_json==='object'?(d.ai_generated_fields_json||{}):{};
+  return `<div class="drm-wiz-section-title">🎓 Estudos</div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Modalidade *</label>
+      <select id="wizEstModalidade" class="form-input" onchange="_wizEstOnModalidadeChange()">
+        <option value="graduacao"       ${(m.modalidade||'')==='graduacao'      ?'selected':''}>🎓 Graduação (Faculdade)</option>
+        <option value="graduacao_ext"   ${m.modalidade==='graduacao_ext'        ?'selected':''}>🌍 Graduação no Exterior</option>
+        <option value="pos_graduacao"   ${m.modalidade==='pos_graduacao'        ?'selected':''}>📜 Pós-Graduação / MBA</option>
+        <option value="pos_ext"         ${m.modalidade==='pos_ext'              ?'selected':''}>🌐 Pós-Grad. no Exterior</option>
+        <option value="mestrado"        ${m.modalidade==='mestrado'             ?'selected':''}>🔬 Mestrado</option>
+        <option value="doutorado"       ${m.modalidade==='doutorado'            ?'selected':''}>🏛️ Doutorado</option>
+        <option value="intercambio"     ${m.modalidade==='intercambio'          ?'selected':''}>✈️ Intercâmbio / Idiomas</option>
+        <option value="tecnico"         ${m.modalidade==='tecnico'              ?'selected':''}>🔧 Curso Técnico</option>
+        <option value="curso_livre"     ${m.modalidade==='curso_livre'          ?'selected':''}>📚 Curso Livre / Online</option>
+        <option value="certificacao"    ${m.modalidade==='certificacao'         ?'selected':''}>🏆 Certificação Profissional</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Curso / Área</label>
+      <input type="text" id="wizEstCurso" class="form-input" placeholder="Ex: Engenharia, MBA, IELTS" value="${_esc(m.curso||'')}">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Instituição</label>
+      <input type="text" id="wizEstInstituicao" class="form-input" placeholder="Ex: USP, FGV, Harvard, Duolingo" value="${_esc(m.instituicao||'')}">
+    </div>
+    <div class="form-group" id="wizEstPaisGroup">
+      <label class="form-label">País de Destino</label>
+      <input type="text" id="wizEstPais" class="form-input" placeholder="Ex: EUA, Canadá, Portugal" value="${_esc(m.pais_destino||'')}">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Duração (meses)</label>
+      <input type="number" id="wizEstDuracao" class="form-input" min="1" max="120" placeholder="Ex: 48" value="${m.duracao_meses||''}">
+    </div>
+    <div class="form-group"><label class="form-label">Bolsa de estudos?</label>
+      <select id="wizEstBolsa" class="form-input">
+        <option value="nao"          ${(m.bolsa||'nao')==='nao'         ?'selected':''}>Sem bolsa (custeio próprio)</option>
+        <option value="parcial"      ${m.bolsa==='parcial'               ?'selected':''}>Bolsa parcial</option>
+        <option value="integral"     ${m.bolsa==='integral'              ?'selected':''}>Bolsa integral</option>
+        <option value="fies"         ${m.bolsa==='fies'                  ?'selected':''}>FIES</option>
+        <option value="prouni"       ${m.bolsa==='prouni'                ?'selected':''}>ProUni</option>
+        <option value="financiamento"${m.bolsa==='financiamento'         ?'selected':''}>Financiamento estudantil</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:2px">
+    <label class="form-label" style="margin-bottom:4px">Custos incluídos além de mensalidades:</label>
+    <div style="display:flex;flex-wrap:wrap;gap:10px">
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer;font-weight:500">
+        <input type="checkbox" id="wizEstMoradia" ${m.moradia?'checked':''} style="width:15px;height:15px">
+        🏠 Moradia
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer;font-weight:500">
+        <input type="checkbox" id="wizEstPassagem" ${m.passagem?'checked':''} style="width:15px;height:15px">
+        ✈️ Passagens
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer;font-weight:500">
+        <input type="checkbox" id="wizEstMaterial" ${m.material?'checked':''} style="width:15px;height:15px">
+        📚 Material didático
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer;font-weight:500">
+        <input type="checkbox" id="wizEstVisto" ${m.visto?'checked':''} style="width:15px;height:15px">
+        📄 Visto / documentos
+      </label>
+    </div>
+  </div>`;
+}
+window._wizFieldsEstudos = _wizFieldsEstudos;
+
+function _wizEstOnModalidadeChange() {
+  const v = document.getElementById('wizEstModalidade')?.value || '';
+  const isExterior = ['graduacao_ext','pos_ext','intercambio'].includes(v);
+  const paisGroup  = document.getElementById('wizEstPaisGroup');
+  if (paisGroup) paisGroup.style.opacity = isExterior ? '1' : '.5';
+}
+window._wizEstOnModalidadeChange = _wizEstOnModalidadeChange;
+
 function _toggleFinanciamentoFields() {
   const v=document.getElementById('wizTipoCompra')?.value;
   const f=document.getElementById('wizFinancFields');
@@ -1277,6 +1397,8 @@ function wizardNext() {
     if(w.type==='viagem') w.data.ai_generated_fields_json={destino:document.getElementById('wizDestino')?.value||'',pessoas:document.getElementById('wizPessoas')?.value||''};
     else if(w.type==='automovel') w.data.ai_generated_fields_json={modelo:document.getElementById('wizModelo')?.value||'',ano:document.getElementById('wizAno')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:_drmReadAmt('wizEntrada')||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
     else if(w.type==='imovel') w.data.ai_generated_fields_json={subtipo:document.getElementById('wizSubtipo')?.value||'',cidade:document.getElementById('wizCidade')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:_drmReadAmt('wizEntrada')||'',fgts:_drmReadAmt('wizFgts')||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
+    else if(w.type==='cirurgia_plastica') w.data.ai_generated_fields_json={procedimento:document.getElementById('wizProcedimento')?.value||'',clinica:document.getElementById('wizClinica')?.value||'',cobertura:document.getElementById('wizCobertura')?.value||'particular',num_procedimentos:document.getElementById('wizNumProcs')?.value||'1',observacoes:document.getElementById('wizObsCirurgia')?.value||''};
+    else if(w.type==='estudos') w.data.ai_generated_fields_json={modalidade:document.getElementById('wizEstModalidade')?.value||'',curso:document.getElementById('wizEstCurso')?.value||'',instituicao:document.getElementById('wizEstInstituicao')?.value||'',pais_destino:document.getElementById('wizEstPais')?.value||'',duracao_meses:document.getElementById('wizEstDuracao')?.value||'',bolsa:document.getElementById('wizEstBolsa')?.value||'nao',moradia:document.getElementById('wizEstMoradia')?.checked||false,passagem:document.getElementById('wizEstPassagem')?.checked||false,material:document.getElementById('wizEstMaterial')?.checked||false,visto:document.getElementById('wizEstVisto')?.checked||false};
     w.step=3;
   } else if(w.step===3){
     const nameEls=document.querySelectorAll('.drm-wiz-item-name'), amtEls=document.querySelectorAll('.drm-wiz-item-amt');
