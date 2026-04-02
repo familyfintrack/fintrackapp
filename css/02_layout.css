@@ -1,11 +1,12 @@
 /* ════════════════════════════════════════════════════
-   02_layout.css
-   Modals, bottom nav, overlay, text utilities
-   Source: style.css L438–700 (263 lines)
-   Braces: 95 open / 95 close ✓
-════════════════════════════════════════════════════ */
+/* 02_layout.css */
+/* Modals, bottom nav, overlay, text utilities */
+/* Source: style.css L438–700 (263 lines) */
+/* Braces: 95 open / 95 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* MODALS */
+
 .modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:flex;align-items:flex-end;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
 .modal-overlay.open{opacity:1;pointer-events:all;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);}

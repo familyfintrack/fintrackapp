@@ -1,11 +1,12 @@
 /* ════════════════════════════════════════════════════
-   03_transactions.css
-   TX components, scheduled, settings, import, auth, user-mgmt, TX page
-   Source: style.css L701–2243 (1543 lines)
-   Braces: 514 open / 514 close ✓
-════════════════════════════════════════════════════ */
+/* 03_transactions.css */
+/* TX components, scheduled, settings, import, auth, user-mgmt, TX page */
+/* Source: style.css L701–2243 (1543 lines) */
+/* Braces: 514 open / 514 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* ─── PAYEE AUTOCOMPLETE ─── */
+
 .payee-input-wrap{position:relative;}
 .payee-input-wrap input{padding-right:32px;}
 .payee-status{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.8rem;pointer-events:none;}

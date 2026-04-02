@@ -1,12 +1,13 @@
 /* ════════════════════════════════════════════════════
-   14_scheduled.css
-   Scheduled modal, old login options
-   Source: style.css L19238–19630 (393 lines)
-   Braces: 69 open / 69 close ✓
-════════════════════════════════════════════════════ */
+/* 14_scheduled.css */
+/* Scheduled modal, old login options */
+/* Source: style.css L19238–19630 (393 lines) */
+/* Braces: 69 open / 69 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
-   SCHEDULED MODAL — collapsible automation + notifications
-═══════════════════════════════════════════════════════════════════════════ */
+/* SCHEDULED MODAL — collapsible automation + notifications */
+/* ═══════════════════════════════════════════════════════════════════════════ */ */
+
 .sc-section-card{
   border:1px solid var(--border);
   border-radius:var(--r);

@@ -1,9 +1,9 @@
 /* ════════════════════════════════════════════════════
-   10_rpt_tx.css
-   RPT-TX table + AI insights (early)
-   Source: style.css L11306–12481 (1176 lines)
-   Braces: 282 open / 282 close ✓
-════════════════════════════════════════════════════ */
+/* 10_rpt_tx.css */
+/* RPT-TX table + AI insights (early) */
+/* Source: style.css L11306–12481 (1176 lines) */
+/* Braces: 282 open / 282 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 .rpt-tx-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
 

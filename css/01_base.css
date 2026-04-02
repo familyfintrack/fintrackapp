@@ -1,9 +1,9 @@
 /* ════════════════════════════════════════════════════
-   01_base.css
-   CSS variables, reset, sidebar, topbar
-   Source: style.css L1–437 (437 lines)
-   Braces: 170 open / 170 close ✓
-════════════════════════════════════════════════════ */
+/* 01_base.css */
+/* CSS variables, reset, sidebar, topbar */
+/* Source: style.css L1–437 (437 lines) */
+/* Braces: 170 open / 170 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 :root{
   --bg:#f7f6f3;--bg2:#f0ede8;--surface:#ffffff;--surface2:#f9f8f6;

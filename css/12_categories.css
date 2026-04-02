@@ -1,16 +1,17 @@
 /* ════════════════════════════════════════════════════
-   12_categories.css
-   Categories page + investments page + prices
-   Source: style.css L15243–17779 (2537 lines)
-   Braces: 476 open / 476 close ✓
-════════════════════════════════════════════════════ */
+/* 12_categories.css */
+/* Categories page + investments page + prices */
+/* Source: style.css L15243–17779 (2537 lines) */
+/* Braces: 476 open / 476 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SCHEDULED PAGE — Mobile redesign
-   Replaces cramped header row / filter bar with stacked, touch-friendly layout
-═══════════════════════════════════════════════════════════════════════════ */
+/* SCHEDULED PAGE — Mobile redesign */
+/* Replaces cramped header row / filter bar with stacked, touch-friendly layout */
+/* ═══════════════════════════════════════════════════════════════════════════ */ */
+
 @media (max-width: 640px) {
 
   /* ── Section header: stack vertically instead of cramming side by side ── */

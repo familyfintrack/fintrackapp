@@ -1,14 +1,15 @@
 /* ════════════════════════════════════════════════════
-   11_debts.css
-   Debts module (incl. crossing @media)
-   Source: style.css L12482–15242 (2761 lines)
-   Braces: 533 open / 533 close ✓
-════════════════════════════════════════════════════ */
+/* 11_debts.css */
+/* Debts module (incl. crossing @media) */
+/* Source: style.css L12482–15242 (2761 lines) */
+/* Braces: 533 open / 533 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
-   DEBTS MODULE (.dbt-*)
-═══════════════════════════════════════════════════════════════════════════ */
+/* DEBTS MODULE (.dbt-*) */
+/* ═══════════════════════════════════════════════════════════════════════════ */ */
 
 /* ── KPI strip ─────────────────────────────────────────────────────────── */
+
 .dbt-kpi-strip {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));

@@ -1,13 +1,14 @@
 /* ════════════════════════════════════════════════════
-   15_tx_timeline.css
-   TX timeline, scheduled new layout, AI investments, audit misc
-   Source: style.css L19631–20723 (1093 lines)
-   Braces: 196 open / 196 close ✓
-════════════════════════════════════════════════════ */
+/* 15_tx_timeline.css */
+/* TX timeline, scheduled new layout, AI investments, audit misc */
+/* Source: style.css L19631–20723 (1093 lines) */
+/* Braces: 196 open / 196 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* ══ TX List — Timeline enhancements (Opção A) ═══════════════════════════ */
 
 /* Date separator: pill + trailing line + daily total */
+
 .tx-date-header-cell { position: relative; }
 .tx-date-label {
   display: inline-block;

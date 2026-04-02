@@ -1,16 +1,17 @@
 /* ════════════════════════════════════════════════════
-   17_modules.css
-   Super-TX, AI collapsible, feedback topbar, patrimônio, toast
-   Source: style.css L21431–22649 (1219 lines)
-   Braces: 218 open / 218 close ✓
-════════════════════════════════════════════════════ */
+/* 17_modules.css */
+/* Super-TX, AI collapsible, feedback topbar, patrimônio, toast */
+/* Source: style.css L21431–22649 (1219 lines) */
+/* Braces: 218 open / 218 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* ══════════════════════════════════════════════════════════════════════════
-   PROGRAMADOS — Mobile UX reformulado (≤640px)
-   Arquitetura: header ultra-compacto | KPIs inline | filtros em painel
-   ══════════════════════════════════════════════════════════════════════════ */
+/* PROGRAMADOS — Mobile UX reformulado (≤640px) */
+/* Arquitetura: header ultra-compacto | KPIs inline | filtros em painel */
+/* ══════════════════════════════════════════════════════════════════════════ */ */
 
 /* ── Desktop header: visível só no desktop ── */
+
 .sc-desktop-header { display: flex; }
 .sc-mobile-header  { display: none; }
 .sc-mobile-filters { display: none; }

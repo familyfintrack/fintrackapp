@@ -1,13 +1,13 @@
 /* ════════════════════════════════════════════════════
-   21_budget_modal.css
-   Budget modal v2, login theme CSS, RPT-TX new styles
-   Source: style.css L24173–24506 (334 lines)
-   Braces: 90 open / 90 close ✓
-════════════════════════════════════════════════════ */
+/* 21_budget_modal.css */
+/* Budget modal v2, login theme CSS, RPT-TX new styles */
+/* Source: style.css L24173–24506 (334 lines) */
+/* Braces: 90 open / 90 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* ═══════════════════════════════════════════════════════════════════
-   BUDGET MODAL v2 — design moderno
-   ═══════════════════════════════════════════════════════════════════ */
+/* BUDGET MODAL v2 — design moderno */
+/* ═══════════════════════════════════════════════════════════════════ */ */
 
 .bgt-modal-v2 { border-radius: var(--r-lg) var(--r-lg) 0 0; }
 

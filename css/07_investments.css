@@ -1,12 +1,13 @@
 /* ════════════════════════════════════════════════════
-   07_investments.css
-   Investments module
-   Source: style.css L7440–8610 (1171 lines)
-   Braces: 193 open / 193 close ✓
-════════════════════════════════════════════════════ */
+/* 07_investments.css */
+/* Investments module */
+/* Source: style.css L7440–8610 (1171 lines) */
+/* Braces: 193 open / 193 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
-   INVESTMENTS MODULE
-═══════════════════════════════════════════════════════════════════ */
+/* INVESTMENTS MODULE */
+/* ═══════════════════════════════════════════════════════════════════ */ */
+
 .inv-summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

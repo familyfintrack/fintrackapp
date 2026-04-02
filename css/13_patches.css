@@ -1,11 +1,12 @@
 /* ════════════════════════════════════════════════════
-   13_patches.css
-   Title bar patches, mobile UX 2026
-   Source: style.css L17780–19237 (1458 lines)
-   Braces: 271 open / 271 close ✓
-════════════════════════════════════════════════════ */
+/* 13_patches.css */
+/* Title bar patches, mobile UX 2026 */
+/* Source: style.css L17780–19237 (1458 lines) */
+/* Braces: 271 open / 271 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* === 2026-03-26 title bar revision: clean final state === */
+
 .topbar,
 .header,
 .app-header {
@@ -16,10 +17,10 @@
 
 .page-header-bar,
 .page-titlebar {
-  background: #eceff1 !important;
-  color: #111111 !important;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset !important;
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .page-header-bar-title,
@@ -27,12 +28,12 @@
 .page-title-sub,
 .page-header-bar,
 .page-titlebar {
-  color: #111111 !important;
+  color: var(--text) !important;
 }
 
 .page-header-bar-icon {
   background: rgba(15, 23, 42, 0.06) !important;
-  color: #111111 !important;
+  color: var(--text) !important;
   border: 1px solid rgba(15, 23, 42, 0.08) !important;
 }
 
@@ -41,25 +42,25 @@
 .page-titlebar .btn,
 .page-titlebar button,
 .page-header-bar-right button {
-  background: #ffffff !important;
-  color: #111111 !important;
-  border: 1px solid rgba(15, 23, 42, 0.10) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .page-header-action:hover,
 .page-titlebar .btn:hover,
 .page-titlebar button:hover,
 .page-header-bar-right button:hover {
-  background: #f8fafc !important;
-  border-color: rgba(15, 23, 42, 0.16) !important;
-  color: #111111 !important;
+  background: var(--bg2) !important;
+  border-color: var(--border2) !important;
+  color: var(--text) !important;
 }
 
 @media (max-width: 480px) {
   .page-header-bar,
   .page-titlebar {
-    background: #eceff1 !important;
+    background: var(--surface2) !important;
   }
 }
 

@@ -1,15 +1,16 @@
 /* ════════════════════════════════════════════════════
-   20_login.css
-   Login theme selector, login screen v4, help desktop
-   Source: style.css L23507–24172 (666 lines)
-   Braces: 106 open / 106 close ✓
-════════════════════════════════════════════════════ */
+/* 20_login.css */
+/* Login theme selector, login screen v4, help desktop */
+/* Source: style.css L23507–24172 (666 lines) */
+/* Braces: 106 open / 106 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* ═══════════════════════════════════════════════════════════════════
-   TRANSAÇÕES — Entrada modo Abas modernizado (2026 update)
-═══════════════════════════════════════════════════════════════════ */
+/* TRANSAÇÕES — Entrada modo Abas modernizado (2026 update) */
+/* ═══════════════════════════════════════════════════════════════════ */ */
 
 /* Tx context tab bar */
+
 #txContextTabBar {
   background: var(--surface2) !important;
   border-bottom: none !important;

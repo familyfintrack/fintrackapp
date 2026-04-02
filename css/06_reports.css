@@ -1,12 +1,13 @@
 /* ════════════════════════════════════════════════════
-   06_reports.css
-   Reports page + RPT components
-   Source: style.css L5454–7439 (1986 lines)
-   Braces: 528 open / 528 close ✓
-════════════════════════════════════════════════════ */
+/* 06_reports.css */
+/* Reports page + RPT components */
+/* Source: style.css L5454–7439 (1986 lines) */
+/* Braces: 528 open / 528 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 
 /* ── 4. Compact filter bar ──────────────────────────────────────────── */
+
 .tx-filter-bar   { gap: 5px; margin-bottom: 8px; }
 .tx-filter-select { font-size: .78rem; height: 30px; padding: 4px 6px; }
 .tx-search { min-width: 120px; }

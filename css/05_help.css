@@ -1,9 +1,9 @@
 /* ════════════════════════════════════════════════════
-   05_help.css
-   Help module + audit + profile (incl. crossing @media)
-   Source: style.css L3292–5453 (2162 lines)
-   Braces: 512 open / 512 close ✓
-════════════════════════════════════════════════════ */
+/* 05_help.css */
+/* Help module + audit + profile (incl. crossing @media) */
+/* Source: style.css L3292–5453 (2162 lines) */
+/* Braces: 512 open / 512 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 .audit-counter-ok     { border-top-color: var(--green); }
 .audit-counter-pending{ border-top-color: var(--amber); }

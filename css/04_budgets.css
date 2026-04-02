@@ -1,14 +1,15 @@
 /* ════════════════════════════════════════════════════
-   04_budgets.css
-   Budgets v3 + dashboard snapshot
-   Source: style.css L2244–3291 (1048 lines)
-   Braces: 235 open / 235 close ✓
-════════════════════════════════════════════════════ */
+/* 04_budgets.css */
+/* Budgets v3 + dashboard snapshot */
+/* Source: style.css L2244–3291 (1048 lines) */
+/* Braces: 235 open / 235 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
-   BUDGETS v3
-   ===================================================== */
+/* BUDGETS v3 */
+/* ===================================================== */ */
 
 /* ── Grid de cards ───────────────────────────────── */
+
 .budget-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

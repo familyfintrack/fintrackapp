@@ -1,13 +1,14 @@
 /* ════════════════════════════════════════════════════
-   18_dashboard.css
-   Dashboard fav type headers
-   Source: style.css L22650–22713 (64 lines)
-   Braces: 12 open / 12 close ✓
-════════════════════════════════════════════════════ */
+/* 18_dashboard.css */
+/* Dashboard fav type headers */
+/* Source: style.css L22650–22713 (64 lines) */
+/* Braces: 12 open / 12 close ✓ */
+/* ════════════════════════════════════════════════════ */ */
 
 /* ══════════════════════════════════════════════════════════════
-   DASHBOARD — fav type group headers (uniform with app fmt)
-══════════════════════════════════════════════════════════════ */
+/* DASHBOARD — fav type group headers (uniform with app fmt) */
+/* ══════════════════════════════════════════════════════════════ */ */
+
 .dash-fav-type-group { margin-bottom: 4px; }
 .dash-fav-type-header {
   display: flex;
