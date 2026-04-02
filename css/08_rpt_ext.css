@@ -1128,14 +1128,11 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* ── Header escuro premium ───────────────────────────────────────────────── */
 .fcp-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 20px 14px;
-  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%); /* alinhado com dbs-header */
+  flex-direction: column;
+  padding: 0;
+  background: linear-gradient(135deg, #0e3520 0%, #1a5c3a 100%);
   position: relative;
-  overflow: hidden;
-  flex-wrap: wrap;
+  overflow: visible;
 }
 /* Orbs decorativos */
 .fcp-header::before {
@@ -1165,6 +1162,17 @@ tr.reconcile-checked td { opacity: 1 !important; }
   flex-direction: column;
   gap: 2px;
 }
+/* Row 1 wrapper — title + controls */
+.fcp-header-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 12px;
+  position: relative;
+  z-index: 2;
+  flex-wrap: wrap;
+}
 .fcp-title {
   display: flex;
   align-items: center;
@@ -1191,7 +1199,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   gap: 8px;
   flex-wrap: wrap;
   position: relative;
-  z-index: 1;
+  z-index: 100;
 }
 
 /* Picker de conta */
@@ -1228,6 +1236,8 @@ tr.reconcile-checked td { opacity: 1 !important; }
   right: 0;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.10);
+  z-index: 9999;
+  z-index: 9999;
 }
 
 /* Toggle programados — pill switch */
@@ -1277,10 +1287,12 @@ tr.reconcile-checked td { opacity: 1 !important; }
 .fcp-kpi-strip {
   display: flex;
   align-items: center;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,.18);
+  border-top: 1px solid rgba(255,255,255,.08);
   overflow-x: auto;
   scrollbar-width: none;
+  position: relative;
+  z-index: 1;
 }
 .fcp-kpi-strip::-webkit-scrollbar { display: none; }
 .fcp-kpi {
@@ -1288,11 +1300,10 @@ tr.reconcile-checked td { opacity: 1 !important; }
   flex-direction: column;
   gap: 2px;
   flex: 1;
-  padding: 12px 16px;
-  border-right: 1px solid var(--border);
+  padding: 10px 14px;
+  border-right: 1px solid rgba(255,255,255,.08);
   min-width: 0;
   position: relative;
-  align-self: stretch;
 }
 .fcp-kpi:last-child { border-right: none; }
 /* Linha colorida no topo de cada KPI */
@@ -1304,32 +1315,32 @@ tr.reconcile-checked td { opacity: 1 !important; }
   background: var(--border);
   opacity: 0;
 }
-.fcp-kpi--accent::before { background: var(--accent); opacity: 1; }
+.fcp-kpi--accent::before { background: #4ade80; opacity: 1; }
 .fcp-kpi-lbl {
-  font-size: .60rem;
+  font-size: .58rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
-  color: var(--muted);
+  color: rgba(255,255,255,.45);
   white-space: nowrap;
 }
 .fcp-kpi-val {
-  font-size: .95rem;
+  font-size: .9rem;
   font-weight: 800;
   font-family: var(--font-serif);
-  color: var(--text);
+  color: rgba(255,255,255,.88);
   letter-spacing: -.02em;
   line-height: 1.2;
   white-space: nowrap;
 }
-.fcp-kpi--accent .fcp-kpi-val { color: var(--accent); }
-.fcp-kpi-val--min { color: var(--red, #dc2626) !important; }
-.fcp-kpi-val--max { color: var(--green, #16a34a) !important; }
+.fcp-kpi--accent .fcp-kpi-val { color: #4ade80; }
+.fcp-kpi-val--min { color: #f87171 !important; }
+.fcp-kpi-val--max { color: #4ade80 !important; }
 /* Seta entre inicial → final */
 .fcp-kpi-arrow {
   font-size: .8rem;
-  color: var(--muted);
-  opacity: .35;
+  color: rgba(255,255,255,.25);
+  opacity: 1;
   flex-shrink: 0;
   align-self: center;
   padding: 0 2px;
@@ -1341,22 +1352,29 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* ── Gráfico ─────────────────────────────────────────────────────────────── */
 .fcp-chart-wrap {
   position: relative;
-  height: 220px;
-  padding: 14px 14px 4px;
+  height: 210px;
+  padding: 16px 12px 6px;
   background: var(--surface);
-  overflow: hidden;
 }
-.fcp-chart-wrap canvas { display: block; width: 100% !important; }
+.fcp-chart-wrap canvas { display: block; }
+/* Gradiente sutil na borda inferior do gráfico */
+.fcp-chart-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 24px;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+  pointer-events: none;
+}
 
 /* ── Summary chips ───────────────────────────────────────────────────────── */
 .fcp-summary {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 10px 16px 10px;
+  padding: 10px 18px 8px;
   border-top: 1px solid var(--border);
   background: var(--surface2);
-  align-items: center;
 }
 .fcp-acct-chip {
   display: inline-flex;
