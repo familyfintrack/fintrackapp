@@ -6808,290 +6808,361 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div>
 
 <div class="modal-overlay" id="accountModal">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-header"><span class="modal-title" id="accountModalTitle">Nova Conta</span><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
-    <div class="modal-body">
+  <div class="modal acct-modal"><div class="modal-handle"></div>
+
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <div class="modal-header">
+      <span class="modal-title" id="accountModalTitle">Nova Conta</span>
+      <button class="modal-close" onclick="closeModal('accountModal')">✕</button>
+    </div>
+
+    <!-- ── Tabs ────────────────────────────────────────────────────── -->
+    <div class="acct-tabs" id="accountModalTabs">
+      <button type="button" class="acct-tab active" data-tab="accountTabPrincipal"
+        onclick="switchAccountTab('accountTabPrincipal', this)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Informações principais
+      </button>
+      <button type="button" class="acct-tab" data-tab="accountTabBank"
+        onclick="switchAccountTab('accountTabBank', this)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="22" x2="21" y2="22"/><rect x="3" y="2" width="18" height="20" rx="1"/><path d="M9 22V12h6v10"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01"/></svg>
+        Dados bancários
+        <span class="acct-tab-badge">opcional</span>
+      </button>
+    </div>
+
+    <!-- ── Modal body ──────────────────────────────────────────────── -->
+    <div class="modal-body acct-modal-body">
       <input type="hidden" id="accountId">
-      <div class="account-modal-tabs" id="accountModalTabs">
-        <button type="button" class="account-modal-tab active" data-tab="accountTabPrincipal" onclick="switchAccountTab('accountTabPrincipal', this)">Informações principais</button>
-        <button type="button" class="account-modal-tab" data-tab="accountTabBank" onclick="switchAccountTab('accountTabBank', this)">Dados bancários opcionais</button>
-      </div>
 
-      <div class="account-tab-pane" id="accountTabPrincipal">
-      <div class="form-grid">
-        <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
-        <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="onAccountTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
-        <div class="form-group"><label>Moeda</label><select id="accountCurrency"><option value="BRL">BRL — Real</option><option value="USD">USD — Dólar</option><option value="EUR">EUR — Euro</option><option value="AED">AED — Dirham</option></select></div>
-        <div class="form-group full"><label>Grupo</label><select id="accountGroupId"><option value="">— Sem grupo —</option></select></div>
-        <!-- Feature 7: conta favorita -->
-        <div class="form-group full">
-          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem;font-weight:500">
-            <input type="checkbox" id="accountIsFavorite" style="width:16px;height:16px;cursor:pointer">
-            ⭐ Conta favorita <span style="font-size:.75rem;color:var(--muted);font-weight:400">(aparece no topo da lista)</span>
-          </label>
-        </div>
-        <!-- Feature 8: datas do cartão (só para cartão de crédito) -->
-        <div class="form-group full" id="accountCardDatesConfig" style="display:none">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
-            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:10px">💳 Datas do Cartão</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div>
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Melhor dia de compra</label>
-                <input type="number" id="accountBestPurchaseDay" min="1" max="31" placeholder="Ex: 10" inputmode="numeric"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);box-sizing:border-box;background:var(--surface)">
-                <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Dia com maior prazo até vencimento</div>
-              </div>
-              <div>
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Dia de vencimento</label>
-                <input type="number" id="accountDueDay" min="1" max="31" placeholder="Ex: 25" inputmode="numeric"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);box-sizing:border-box;background:var(--surface)">
-                <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Data de pagamento da fatura</div>
+      <!-- ══ TAB 1: Informações principais ══ -->
+      <div class="account-tab-pane" id="accountTabPrincipal" style="display:block">
+
+        <!-- Nome + Tipo + Moeda + Grupo -->
+        <div class="acct-form-grid">
+
+          <div class="acct-field acct-field--full">
+            <label class="acct-label">Nome da Conta *</label>
+            <input type="text" id="accountName" class="acct-input" placeholder="Ex: Itaú Corrente">
+          </div>
+
+          <div class="acct-field">
+            <label class="acct-label">Tipo *</label>
+            <select id="accountType" class="acct-input" onchange="onAccountTypeChange()">
+              <option value="corrente">🏦 Conta Corrente</option>
+              <option value="poupanca">🐷 Poupança</option>
+              <option value="cartao_credito">💳 Cartão de Crédito</option>
+              <option value="investimento">📈 Investimentos</option>
+              <option value="dinheiro">💵 Dinheiro</option>
+              <option value="outros">📦 Outros</option>
+            </select>
+          </div>
+
+          <div class="acct-field">
+            <label class="acct-label">Moeda</label>
+            <select id="accountCurrency" class="acct-input">
+              <option value="BRL">🇧🇷 BRL — Real</option>
+              <option value="USD">🇺🇸 USD — Dólar</option>
+              <option value="EUR">🇪🇺 EUR — Euro</option>
+              <option value="AED">🇦🇪 AED — Dirham</option>
+              <option value="GBP">🇬🇧 GBP — Libra</option>
+              <option value="CHF">🇨🇭 CHF — Franco</option>
+              <option value="JPY">🇯🇵 JPY — Iene</option>
+            </select>
+          </div>
+
+          <div class="acct-field acct-field--full">
+            <label class="acct-label">Grupo</label>
+            <select id="accountGroupId" class="acct-input">
+              <option value="">— Sem grupo —</option>
+            </select>
+          </div>
+
+          <!-- Conta favorita -->
+          <div class="acct-field acct-field--full">
+            <label class="acct-check-label">
+              <input type="checkbox" id="accountIsFavorite" class="acct-check">
+              <span class="acct-check-box"></span>
+              <span>⭐ Conta favorita</span>
+              <span class="acct-hint">aparece no topo da lista</span>
+            </label>
+          </div>
+
+          <!-- Datas do Cartão (só cartão de crédito) -->
+          <div class="acct-field acct-field--full" id="accountCardDatesConfig" style="display:none">
+            <div class="acct-card-config">
+              <div class="acct-card-config-title">💳 Datas do Cartão</div>
+              <div class="acct-two-col">
+                <div>
+                  <label class="acct-sublabel">Melhor dia de compra</label>
+                  <input type="number" id="accountBestPurchaseDay" min="1" max="31" placeholder="Ex: 10"
+                    inputmode="numeric" class="acct-input">
+                  <div class="acct-hint-sm">Dia com maior prazo até vencimento</div>
+                </div>
+                <div>
+                  <label class="acct-sublabel">Dia de vencimento</label>
+                  <input type="number" id="accountDueDay" min="1" max="31" placeholder="Ex: 25"
+                    inputmode="numeric" class="acct-input">
+                  <div class="acct-hint-sm">Data de pagamento da fatura</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <!-- IOF config - só para cartão de crédito -->
-        <div class="form-group full" id="accountIofConfig" style="display:none">
-          <div class="iof-config visible">
-            <div class="iof-row">
-              <label class="iof-toggle">
-                <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
-                <span>🇧🇷 Cartão brasileiro</span>
-              </label>
-              <span style="font-size:.75rem;color:var(--muted)">Habilita cálculo de IOF em compras internacionais</span>
-            </div>
-            <div id="accountIofRateGroup" style="display:none;margin-top:10px">
+
+          <!-- IOF config -->
+          <div class="acct-field acct-field--full" id="accountIofConfig" style="display:none">
+            <div class="iof-config visible">
               <div class="iof-row">
-                <label style="font-size:.85rem;flex-shrink:0">IOF sobre compras internacionais:</label>
-                <input type="number" id="accountIofRate" step="0.01" min="0" max="10" value="3.38" style="width:80px" inputmode="decimal">
-                <span style="font-size:.85rem;color:var(--muted)">% (padrão: 3,38%)</span>
+                <label class="iof-toggle">
+                  <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
+                  <span>🇧🇷 Cartão brasileiro</span>
+                </label>
+                <span style="font-size:.75rem;color:var(--muted)">Habilita cálculo de IOF em compras internacionais</span>
+              </div>
+              <div id="accountIofRateGroup" style="display:none;margin-top:10px">
+                <div class="iof-row">
+                  <label style="font-size:.85rem;flex-shrink:0">IOF sobre compras internacionais:</label>
+                  <input type="number" id="accountIofRate" step="0.01" min="0" max="10" value="3.38"
+                    style="width:80px" inputmode="decimal">
+                  <span style="font-size:.85rem;color:var(--muted)">% (padrão: 3,38%)</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('accountBalance')" onkeydown="_amtFieldKeydown('accountBalance', event)" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
-        <div class="form-group full">
-          <label style="display:flex;align-items:center;justify-content:space-between">
-            <span>Ícone</span>
-            <button type="button" onclick="accountAiSuggestIcon()" title="Sugerir ícone com IA"
-              style="display:flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:all .15s"
-              onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
-              onmouseout="this.style.background='var(--accent-lt)';this.style.color='var(--accent)'">
-              🤖 Sugerir com IA
-            </button>
-          </label>
-          <!-- AI suggestions panel -->
-          <div id="accountAiSuggestPanel" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
-            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
-            <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
-              <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
+
+          <!-- Saldo inicial -->
+          <div class="acct-field acct-field--full">
+            <label class="acct-label" id="accountBalanceLabel">Saldo Inicial</label>
+            <div class="amt-wrap">
+              <button type="button" class="amt-sign-btn" id="accountBalanceSignBtn"
+                onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button>
+              <input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00"
+                pattern="[0-9.,]*" autocomplete="off" class="acct-input"
+                oninput="_amtFieldInput('accountBalance')"
+                onkeydown="_amtFieldKeydown('accountBalance', event)"
+                onblur="_amtFieldBlur('accountBalance')"
+                onfocus="_amtFieldFocus('accountBalance')">
+            </div>
+            <div class="acct-hint-sm">Saldo de abertura. O saldo atual é calculado pelas transações.</div>
+          </div>
+
+          <!-- Ícone + Cor -->
+          <div class="acct-field acct-field--full">
+            <label class="acct-label" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Ícone e Cor</span>
+              <button type="button" onclick="accountAiSuggestIcon()"
+                class="acct-ai-btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Sugerir com IA
+              </button>
+            </label>
+            <!-- AI suggestions panel -->
+            <div id="accountAiSuggestPanel" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+              <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
+              <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
+              </div>
+            </div>
+            <div class="icon-picker" id="accountIconPicker">
+              <div class="icon-picker-tabs">
+                <button class="icon-tab active" onclick="showIconGroup(event,'banks-br')">BR Bancos BR</button>
+                <button class="icon-tab" onclick="showIconGroup(event,'banks-fr')">FR Bancos FR</button>
+                <button class="icon-tab" onclick="showIconGroup(event,'cards')">💳 Cartões</button>
+                <button class="icon-tab" onclick="showIconGroup(event,'generic')">⭐ Outros</button>
+              </div>
+              <div class="icon-grid" id="iconGroup-banks-br">
+                <div class="icon-option" data-icon="itau" data-color="#FF6600" onclick="selectAccountIcon(this)" title="Itaú"><span class="bank-logo itau-logo">I</span><span class="icon-label">Itaú</span></div>
+                <div class="icon-option" data-icon="inter" data-color="#FF7A00" onclick="selectAccountIcon(this)" title="Banco Inter"><span class="bank-logo inter-logo">IN</span><span class="icon-label">Inter</span></div>
+                <div class="icon-option" data-icon="bradesco" data-color="#CC092F" onclick="selectAccountIcon(this)" title="Bradesco"><span class="bank-logo bradesco-logo">B</span><span class="icon-label">Bradesco</span></div>
+                <div class="icon-option" data-icon="nubank" data-color="#820AD1" onclick="selectAccountIcon(this)" title="Nubank"><span class="bank-logo nubank-logo">N</span><span class="icon-label">Nubank</span></div>
+                <div class="icon-option" data-icon="bb" data-color="#F5A623" onclick="selectAccountIcon(this)" title="Banco do Brasil"><span class="bank-logo bb-logo">BB</span><span class="icon-label">BB</span></div>
+                <div class="icon-option" data-icon="caixa" data-color="#005CA9" onclick="selectAccountIcon(this)" title="Caixa"><span class="bank-logo caixa-logo">CE</span><span class="icon-label">Caixa</span></div>
+                <div class="icon-option" data-icon="santander" data-color="#EC0000" onclick="selectAccountIcon(this)" title="Santander"><span class="bank-logo santander-logo">S</span><span class="icon-label">Santander</span></div>
+                <div class="icon-option" data-icon="xp" data-color="#000000" onclick="selectAccountIcon(this)" title="XP Investimentos"><span class="bank-logo xp-logo">XP</span><span class="icon-label">XP</span></div>
+                <div class="icon-option" data-icon="c6" data-color="#242424" onclick="selectAccountIcon(this)" title="C6 Bank"><span class="bank-logo c6-logo">C6</span><span class="icon-label">C6</span></div>
+                <div class="icon-option" data-icon="neon" data-color="#00D4FF" onclick="selectAccountIcon(this)" title="Neon"><span class="bank-logo neon-logo" style="background:#00D4FF">Ne</span><span class="icon-label">Neon</span></div>
+                <div class="icon-option" data-icon="next" data-color="#00AF3F" onclick="selectAccountIcon(this)" title="Next"><span class="bank-logo next-logo" style="background:#00AF3F">Nx</span><span class="icon-label">Next</span></div>
+                <div class="icon-option" data-icon="picpay" data-color="#21C25E" onclick="selectAccountIcon(this)" title="PicPay"><span class="bank-logo picpay-logo" style="background:#21C25E">PP</span><span class="icon-label">PicPay</span></div>
+                <div class="icon-option" data-icon="mercadopago" data-color="#009EE3" onclick="selectAccountIcon(this)" title="Mercado Pago"><span class="bank-logo mercadopago-logo" style="background:#009EE3">MP</span><span class="icon-label">Mercado Pago</span></div>
+                <div class="icon-option" data-icon="sicoob" data-color="#006837" onclick="selectAccountIcon(this)" title="Sicoob"><span class="bank-logo" style="background:#006837;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">SC</span><span class="icon-label">Sicoob</span></div>
+                <div class="icon-option" data-icon="rico" data-color="#00A86B" onclick="selectAccountIcon(this)" title="Rico"><span class="bank-logo" style="background:#00A86B;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">Rc</span><span class="icon-label">Rico</span></div>
+                <div class="icon-option" data-icon="will" data-color="#7B2D8B" onclick="selectAccountIcon(this)" title="Will Bank"><span class="bank-logo" style="background:#7B2D8B;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Will</span></div>
+              </div>
+              <div class="icon-grid" id="iconGroup-banks-fr" style="display:none">
+                <div class="icon-option" data-icon="boursobank" data-color="#1A2E5A" onclick="selectAccountIcon(this)" title="Boursobank"><span class="bank-logo boursobank-logo">Bb</span><span class="icon-label">Boursobank</span></div>
+                <div class="icon-option" data-icon="bnp" data-color="#009B55" onclick="selectAccountIcon(this)" title="BNP Paribas"><span class="bank-logo" style="background:#009B55;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BNP</span><span class="icon-label">BNP Paribas</span></div>
+                <div class="icon-option" data-icon="sg" data-color="#E30613" onclick="selectAccountIcon(this)" title="Société Générale"><span class="bank-logo" style="background:#E30613;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">SG</span><span class="icon-label">Soc. Gén.</span></div>
+                <div class="icon-option" data-icon="ca" data-color="#009A44" onclick="selectAccountIcon(this)" title="Crédit Agricole"><span class="bank-logo" style="background:#009A44;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">CA</span><span class="icon-label">Crédit Ag.</span></div>
+                <div class="icon-option" data-icon="lcl" data-color="#005BAB" onclick="selectAccountIcon(this)" title="LCL"><span class="bank-logo" style="background:#005BAB;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">LCL</span><span class="icon-label">LCL</span></div>
+                <div class="icon-option" data-icon="laposte" data-color="#FDD000" onclick="selectAccountIcon(this)" title="La Banque Postale"><span class="bank-logo" style="background:#FDD000;color:#333;border-radius:4px;font-weight:700;font-size:.6rem">LP</span><span class="icon-label">La Poste</span></div>
+                <div class="icon-option" data-icon="cic" data-color="#003087" onclick="selectAccountIcon(this)" title="CIC"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">CIC</span><span class="icon-label">CIC</span></div>
+                <div class="icon-option" data-icon="revolut" data-color="#0075EB" onclick="selectAccountIcon(this)" title="Revolut"><span class="bank-logo" style="background:#0075EB;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">Rv</span><span class="icon-label">Revolut</span></div>
+                <div class="icon-option" data-icon="n26" data-color="#3B82F6" onclick="selectAccountIcon(this)" title="N26"><span class="bank-logo" style="background:#3B82F6;color:#fff;border-radius:6px;font-weight:700;font-size:.7rem">N26</span><span class="icon-label">N26</span></div>
+                <div class="icon-option" data-icon="wise" data-color="#9FE870" onclick="selectAccountIcon(this)" title="Wise"><span class="bank-logo" style="background:#9FE870;color:#163300;border-radius:6px;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Wise</span></div>
+                <div class="icon-option" data-icon="paypal" data-color="#003087" onclick="selectAccountIcon(this)" title="PayPal"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">PP</span><span class="icon-label">PayPal</span></div>
+                <div class="icon-option" data-icon="bred" data-color="#C8102E" onclick="selectAccountIcon(this)" title="BRED"><span class="bank-logo" style="background:#C8102E;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BRED</span><span class="icon-label">BRED</span></div>
+              </div>
+              <div class="icon-grid" id="iconGroup-cards" style="display:none">
+                <div class="icon-option" data-icon="visa" data-color="#1A1F71" onclick="selectAccountIcon(this)" title="Visa"><span class="bank-logo card-visa"><em>VISA</em></span><span class="icon-label">Visa</span></div>
+                <div class="icon-option" data-icon="mastercard" data-color="#EB001B" onclick="selectAccountIcon(this)" title="Mastercard"><span class="bank-logo card-mc"><span class="mc-left"></span><span class="mc-right"></span></span><span class="icon-label">Mastercard</span></div>
+                <div class="icon-option" data-icon="amex" data-color="#2E77BC" onclick="selectAccountIcon(this)" title="American Express"><span class="bank-logo card-amex">AMEX</span><span class="icon-label">Amex</span></div>
+                <div class="icon-option" data-icon="elo" data-color="#000000" onclick="selectAccountIcon(this)" title="Elo"><span class="bank-logo card-elo">elo</span><span class="icon-label">Elo</span></div>
+                <div class="icon-option" data-icon="hipercard" data-color="#B40019" onclick="selectAccountIcon(this)" title="Hipercard"><span class="bank-logo" style="background:#B40019;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">HC</span><span class="icon-label">Hipercard</span></div>
+                <div class="icon-option" data-icon="dinersclub" data-color="#004B87" onclick="selectAccountIcon(this)" title="Diners Club"><span class="bank-logo" style="background:#004B87;color:#fff;border-radius:50%;font-weight:700;font-size:.6rem">DC</span><span class="icon-label">Diners</span></div>
+                <div class="icon-option" data-icon="sams" data-color="#0067A0" onclick="selectAccountIcon(this)" title="Sam's Club"><span class="bank-logo" style="background:#0067A0;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">S</span><span class="icon-label">Sam's</span></div>
+                <div class="icon-option" data-icon="porto" data-color="#005B8E" onclick="selectAccountIcon(this)" title="Porto Seguro"><span class="bank-logo" style="background:#005B8E;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">PS</span><span class="icon-label">Porto</span></div>
+              </div>
+              <div class="icon-grid" id="iconGroup-generic" style="display:none">
+                <div class="icon-option" data-icon="emoji-🏦" data-color="#2a6049" onclick="selectAccountIcon(this)" title="Banco"><span style="font-size:1.5rem">🏦</span><span class="icon-label">Banco</span></div>
+                <div class="icon-option" data-icon="emoji-💳" data-color="#1A1F71" onclick="selectAccountIcon(this)" title="Cartão"><span style="font-size:1.5rem">💳</span><span class="icon-label">Cartão</span></div>
+                <div class="icon-option" data-icon="emoji-💰" data-color="#F5A623" onclick="selectAccountIcon(this)" title="Dinheiro"><span style="font-size:1.5rem">💰</span><span class="icon-label">Dinheiro</span></div>
+                <div class="icon-option" data-icon="emoji-💵" data-color="#2a7a4a" onclick="selectAccountIcon(this)" title="Notas"><span style="font-size:1.5rem">💵</span><span class="icon-label">Notas</span></div>
+                <div class="icon-option" data-icon="emoji-📈" data-color="#1e5ba8" onclick="selectAccountIcon(this)" title="Investimentos"><span style="font-size:1.5rem">📈</span><span class="icon-label">Invest.</span></div>
+                <div class="icon-option" data-icon="emoji-🐷" data-color="#F4A0C0" onclick="selectAccountIcon(this)" title="Poupança"><span style="font-size:1.5rem">🐷</span><span class="icon-label">Poupança</span></div>
+                <div class="icon-option" data-icon="emoji-🌍" data-color="#1e5ba8" onclick="selectAccountIcon(this)" title="Internacional"><span style="font-size:1.5rem">🌍</span><span class="icon-label">Intern.</span></div>
+                <div class="icon-option" data-icon="emoji-💱" data-color="#b45309" onclick="selectAccountIcon(this)" title="Câmbio"><span style="font-size:1.5rem">💱</span><span class="icon-label">Câmbio</span></div>
+              </div>
+              <!-- Color + selected preview -->
+              <div class="acct-icon-selected">
+                <span style="font-size:.75rem;color:var(--muted)">Selecionado:</span>
+                <span id="accountIconPreview" style="font-size:1.2rem;min-width:28px"></span>
+                <input type="hidden" id="accountIcon">
+                <input type="color" id="accountColor" value="#2a6049" class="acct-color-input">
+                <span style="font-size:.72rem;color:var(--muted)">Ajustar cor</span>
+              </div>
             </div>
           </div>
-          <div class="icon-picker" id="accountIconPicker">
-            <div class="icon-picker-tabs">
-              <button class="icon-tab active" onclick="showIconGroup(event,'banks-br')">🇧🇷 Bancos BR</button>
-              <button class="icon-tab" onclick="showIconGroup(event,'banks-fr')">🇫🇷 Bancos FR</button>
-              <button class="icon-tab" onclick="showIconGroup(event,'cards')">💳 Cartões</button>
-              <button class="icon-tab" onclick="showIconGroup(event,'generic')">⭐ Outros</button>
+
+        </div><!-- /acct-form-grid -->
+      </div><!-- /accountTabPrincipal -->
+
+      <!-- ══ TAB 2: Dados bancários opcionais ══ -->
+      <div class="account-tab-pane" id="accountTabBank" style="display:none">
+        <div class="acct-form-grid">
+
+          <div class="acct-field acct-field--full">
+            <label class="acct-label" id="accountBankInstLabel">Instituição Financeira</label>
+            <input type="text" id="accountBankInstitution" class="acct-input"
+              placeholder="Ex: Itaú, Nubank, XP Investimentos" list="accountBankInstList">
+            <datalist id="accountBankInstList"></datalist>
+          </div>
+
+          <!-- Campos BRL -->
+          <div id="accountBankFieldsBRL" class="acct-field acct-field--full" style="display:flex;flex-direction:column;gap:12px">
+            <div class="acct-two-col">
+              <div>
+                <label class="acct-sublabel">Agência</label>
+                <input type="text" id="accountBankAgency" class="acct-input" placeholder="Ex: 1234-5" inputmode="numeric">
+              </div>
+              <div>
+                <label class="acct-sublabel">Número da Conta</label>
+                <input type="text" id="accountBankNumber" class="acct-input" placeholder="Ex: 00012345-6">
+              </div>
             </div>
-            <div class="icon-grid" id="iconGroup-banks-br">
-              <div class="icon-option" data-icon="itau" data-color="#FF6600" onclick="selectAccountIcon(this)" title="Itaú"><span class="bank-logo itau-logo">I</span><span class="icon-label">Itaú</span></div>
-              <div class="icon-option" data-icon="inter" data-color="#FF7A00" onclick="selectAccountIcon(this)" title="Banco Inter"><span class="bank-logo inter-logo">IN</span><span class="icon-label">Inter</span></div>
-              <div class="icon-option" data-icon="bradesco" data-color="#CC092F" onclick="selectAccountIcon(this)" title="Bradesco"><span class="bank-logo bradesco-logo">B</span><span class="icon-label">Bradesco</span></div>
-              <div class="icon-option" data-icon="nubank" data-color="#820AD1" onclick="selectAccountIcon(this)" title="Nubank"><span class="bank-logo nubank-logo">N</span><span class="icon-label">Nubank</span></div>
-              <div class="icon-option" data-icon="bb" data-color="#F5A623" onclick="selectAccountIcon(this)" title="Banco do Brasil"><span class="bank-logo bb-logo">BB</span><span class="icon-label">BB</span></div>
-              <div class="icon-option" data-icon="caixa" data-color="#005CA9" onclick="selectAccountIcon(this)" title="Caixa"><span class="bank-logo caixa-logo">CE</span><span class="icon-label">Caixa</span></div>
-              <div class="icon-option" data-icon="santander" data-color="#EC0000" onclick="selectAccountIcon(this)" title="Santander"><span class="bank-logo santander-logo">S</span><span class="icon-label">Santander</span></div>
-              <div class="icon-option" data-icon="xp" data-color="#000000" onclick="selectAccountIcon(this)" title="XP Investimentos"><span class="bank-logo xp-logo">XP</span><span class="icon-label">XP</span></div>
-              <div class="icon-option" data-icon="c6" data-color="#242424" onclick="selectAccountIcon(this)" title="C6 Bank"><span class="bank-logo c6-logo">C6</span><span class="icon-label">C6</span></div>
-              <div class="icon-option" data-icon="neon" data-color="#00D4FF" onclick="selectAccountIcon(this)" title="Neon"><span class="bank-logo neon-logo" style="background:#00D4FF">Ne</span><span class="icon-label">Neon</span></div>
-              <div class="icon-option" data-icon="next" data-color="#00AF3F" onclick="selectAccountIcon(this)" title="Next"><span class="bank-logo next-logo" style="background:#00AF3F">Nx</span><span class="icon-label">Next</span></div>
-              <div class="icon-option" data-icon="picpay" data-color="#21C25E" onclick="selectAccountIcon(this)" title="PicPay"><span class="bank-logo picpay-logo" style="background:#21C25E">PP</span><span class="icon-label">PicPay</span></div>
-              <div class="icon-option" data-icon="mercadopago" data-color="#009EE3" onclick="selectAccountIcon(this)" title="Mercado Pago"><span class="bank-logo mercadopago-logo" style="background:#009EE3">MP</span><span class="icon-label">Mercado Pago</span></div>
-              <div class="icon-option" data-icon="sicoob" data-color="#006837" onclick="selectAccountIcon(this)" title="Sicoob"><span class="bank-logo" style="background:#006837;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">SC</span><span class="icon-label">Sicoob</span></div>
-              <div class="icon-option" data-icon="rico" data-color="#00A86B" onclick="selectAccountIcon(this)" title="Rico"><span class="bank-logo" style="background:#00A86B;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">Rc</span><span class="icon-label">Rico</span></div>
-              <div class="icon-option" data-icon="will" data-color="#7B2D8B" onclick="selectAccountIcon(this)" title="Will Bank"><span class="bank-logo" style="background:#7B2D8B;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Will</span></div>
-            </div>
-            <div class="icon-grid" id="iconGroup-banks-fr" style="display:none">
-              <div class="icon-option" data-icon="boursobank" data-color="#1A2E5A" onclick="selectAccountIcon(this)" title="Boursobank"><span class="bank-logo boursobank-logo">Bb</span><span class="icon-label">Boursobank</span></div>
-              <div class="icon-option" data-icon="bnp" data-color="#009B55" onclick="selectAccountIcon(this)" title="BNP Paribas"><span class="bank-logo" style="background:#009B55;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BNP</span><span class="icon-label">BNP Paribas</span></div>
-              <div class="icon-option" data-icon="sg" data-color="#E30613" onclick="selectAccountIcon(this)" title="Société Générale"><span class="bank-logo" style="background:#E30613;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">SG</span><span class="icon-label">Soc. Gén.</span></div>
-              <div class="icon-option" data-icon="ca" data-color="#009A44" onclick="selectAccountIcon(this)" title="Crédit Agricole"><span class="bank-logo" style="background:#009A44;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">CA</span><span class="icon-label">Crédit Ag.</span></div>
-              <div class="icon-option" data-icon="lcl" data-color="#005BAB" onclick="selectAccountIcon(this)" title="LCL"><span class="bank-logo" style="background:#005BAB;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">LCL</span><span class="icon-label">LCL</span></div>
-              <div class="icon-option" data-icon="laposte" data-color="#FDD000" onclick="selectAccountIcon(this)" title="La Banque Postale"><span class="bank-logo" style="background:#FDD000;color:#333;border-radius:4px;font-weight:700;font-size:.6rem">LP</span><span class="icon-label">La Poste</span></div>
-              <div class="icon-option" data-icon="cic" data-color="#003087" onclick="selectAccountIcon(this)" title="CIC"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">CIC</span><span class="icon-label">CIC</span></div>
-              <div class="icon-option" data-icon="bred" data-color="#C8102E" onclick="selectAccountIcon(this)" title="BRED"><span class="bank-logo" style="background:#C8102E;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BRED</span><span class="icon-label">BRED</span></div>
-              <div class="icon-option" data-icon="revolut" data-color="#0075EB" onclick="selectAccountIcon(this)" title="Revolut"><span class="bank-logo" style="background:#0075EB;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">Rv</span><span class="icon-label">Revolut</span></div>
-              <div class="icon-option" data-icon="n26" data-color="#3B82F6" onclick="selectAccountIcon(this)" title="N26"><span class="bank-logo" style="background:#3B82F6;color:#fff;border-radius:6px;font-weight:700;font-size:.7rem">N26</span><span class="icon-label">N26</span></div>
-              <div class="icon-option" data-icon="wise" data-color="#9FE870" onclick="selectAccountIcon(this)" title="Wise"><span class="bank-logo" style="background:#9FE870;color:#163300;border-radius:6px;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Wise</span></div>
-              <div class="icon-option" data-icon="paypal" data-color="#003087" onclick="selectAccountIcon(this)" title="PayPal"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">PP</span><span class="icon-label">PayPal</span></div>
-            </div>
-            <div class="icon-grid" id="iconGroup-cards" style="display:none">
-              <div class="icon-option" data-icon="visa" data-color="#1A1F71" onclick="selectAccountIcon(this)" title="Visa"><span class="bank-logo card-visa"><em>VISA</em></span><span class="icon-label">Visa</span></div>
-              <div class="icon-option" data-icon="mastercard" data-color="#EB001B" onclick="selectAccountIcon(this)" title="Mastercard"><span class="bank-logo card-mc"><span class="mc-left"></span><span class="mc-right"></span></span><span class="icon-label">Mastercard</span></div>
-              <div class="icon-option" data-icon="amex" data-color="#2E77BC" onclick="selectAccountIcon(this)" title="American Express"><span class="bank-logo card-amex">AMEX</span><span class="icon-label">Amex</span></div>
-              <div class="icon-option" data-icon="elo" data-color="#000000" onclick="selectAccountIcon(this)" title="Elo"><span class="bank-logo card-elo">elo</span><span class="icon-label">Elo</span></div>
-              <div class="icon-option" data-icon="hipercard" data-color="#B40019" onclick="selectAccountIcon(this)" title="Hipercard"><span class="bank-logo" style="background:#B40019;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">HC</span><span class="icon-label">Hipercard</span></div>
-              <div class="icon-option" data-icon="dinersclub" data-color="#004B87" onclick="selectAccountIcon(this)" title="Diners Club"><span class="bank-logo" style="background:#004B87;color:#fff;border-radius:50%;font-weight:700;font-size:.6rem">DC</span><span class="icon-label">Diners</span></div>
-              <div class="icon-option" data-icon="sams" data-color="#0067A0" onclick="selectAccountIcon(this)" title="Sam's Club"><span class="bank-logo" style="background:#0067A0;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">S</span><span class="icon-label">Sam's</span></div>
-              <div class="icon-option" data-icon="porto" data-color="#005B8E" onclick="selectAccountIcon(this)" title="Porto Seguro"><span class="bank-logo" style="background:#005B8E;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">PS</span><span class="icon-label">Porto</span></div>
-            </div>
-            <div class="icon-grid" id="iconGroup-generic" style="display:none">
-              <div class="icon-option" data-icon="emoji-🏦" data-color="#2a6049" onclick="selectAccountIcon(this)" title="Banco"><span style="font-size:1.5rem">🏦</span><span class="icon-label">Banco</span></div>
-              <div class="icon-option" data-icon="emoji-💳" data-color="#1A1F71" onclick="selectAccountIcon(this)" title="Cartão"><span style="font-size:1.5rem">💳</span><span class="icon-label">Cartão</span></div>
-              <div class="icon-option" data-icon="emoji-💰" data-color="#F5A623" onclick="selectAccountIcon(this)" title="Dinheiro"><span style="font-size:1.5rem">💰</span><span class="icon-label">Dinheiro</span></div>
-              <div class="icon-option" data-icon="emoji-💵" data-color="#2a7a4a" onclick="selectAccountIcon(this)" title="Notas"><span style="font-size:1.5rem">💵</span><span class="icon-label">Notas</span></div>
-              <div class="icon-option" data-icon="emoji-📈" data-color="#1e5ba8" onclick="selectAccountIcon(this)" title="Investimentos"><span style="font-size:1.5rem">📈</span><span class="icon-label">Invest.</span></div>
-              <div class="icon-option" data-icon="emoji-🐷" data-color="#F4A0C0" onclick="selectAccountIcon(this)" title="Poupança"><span style="font-size:1.5rem">🐷</span><span class="icon-label">Poupança</span></div>
-              <div class="icon-option" data-icon="emoji-🌍" data-color="#1e5ba8" onclick="selectAccountIcon(this)" title="Internacional"><span style="font-size:1.5rem">🌍</span><span class="icon-label">Intern.</span></div>
-              <div class="icon-option" data-icon="emoji-💱" data-color="#b45309" onclick="selectAccountIcon(this)" title="Câmbio"><span style="font-size:1.5rem">💱</span><span class="icon-label">Câmbio</span></div>
-            </div>
-            <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:8px">
-              <span style="font-size:.75rem;color:var(--muted)">Selecionado:</span>
-              <span id="accountIconPreview" style="font-size:1.2rem;min-width:28px"></span>
-              <input type="hidden" id="accountIcon">
-              <input type="color" id="accountColor" value="#2a6049" style="width:36px;height:28px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--border)">
-              <span style="font-size:.72rem;color:var(--muted)">Ajustar cor</span>
+            <div class="acct-two-col">
+              <div>
+                <label class="acct-sublabel">Tipo de Conta</label>
+                <select id="accountBankAccountType" class="acct-input">
+                  <option value="">— Selecionar —</option>
+                  <option value="corrente">Conta Corrente</option>
+                  <option value="poupanca">Poupança</option>
+                  <option value="salario">Conta Salário</option>
+                  <option value="pagamento">Conta de Pagamento</option>
+                  <option value="investimento">Conta Investimento</option>
+                </select>
+              </div>
+              <div>
+                <label class="acct-sublabel">Chave PIX</label>
+                <input type="text" id="accountBankPix" class="acct-input" placeholder="CPF, e-mail, telefone ou aleatória">
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+
+          <!-- Campos IBAN -->
+          <div id="accountBankFieldsIBAN" class="acct-field acct-field--full" style="display:none;flex-direction:column;gap:12px">
+            <div>
+              <label class="acct-sublabel">IBAN</label>
+              <input type="text" id="accountBankIBAN" class="acct-input"
+                placeholder="Ex: GB29 NWBK 6016 1331 9268 19"
+                oninput="this.value=this.value.toUpperCase()" style="font-family:monospace;text-transform:uppercase">
+            </div>
+            <div class="acct-two-col">
+              <div>
+                <label class="acct-sublabel">BIC / SWIFT</label>
+                <input type="text" id="accountBankSwift" class="acct-input" placeholder="Ex: NWBKGB2L"
+                  oninput="this.value=this.value.toUpperCase()" style="font-family:monospace;text-transform:uppercase">
+              </div>
+              <div>
+                <label class="acct-sublabel">Nome do Banco</label>
+                <input type="text" id="accountBankForeignName" class="acct-input" placeholder="Ex: Barclays">
+              </div>
+            </div>
+          </div>
+
+          <!-- Campos USD -->
+          <div id="accountBankFieldsUSD" class="acct-field acct-field--full" style="display:none;flex-direction:column;gap:12px">
+            <div class="acct-two-col">
+              <div>
+                <label class="acct-sublabel">Routing Number (ABA)</label>
+                <input type="text" id="accountBankRouting" class="acct-input"
+                  placeholder="9 dígitos" inputmode="numeric" maxlength="9" style="font-family:monospace">
+              </div>
+              <div>
+                <label class="acct-sublabel">Account Number</label>
+                <input type="text" id="accountBankUSANumber" class="acct-input"
+                  placeholder="Número da conta" inputmode="numeric" style="font-family:monospace">
+              </div>
+            </div>
+            <div class="acct-two-col">
+              <div>
+                <label class="acct-sublabel">Account Type</label>
+                <select id="accountBankUSAType" class="acct-input">
+                  <option value="">— Select —</option>
+                  <option value="checking">Checking Account</option>
+                  <option value="savings">Savings Account</option>
+                  <option value="money_market">Money Market</option>
+                  <option value="brokerage">Brokerage Account</option>
+                  <option value="ira">IRA</option>
+                  <option value="roth_ira">Roth IRA</option>
+                  <option value="401k">401(k)</option>
+                </select>
+              </div>
+              <div>
+                <label class="acct-sublabel">Bank Name</label>
+                <input type="text" id="accountBankUSAName" class="acct-input" placeholder="Ex: Chase, Bank of America">
+              </div>
+            </div>
+            <div>
+              <label class="acct-sublabel">SWIFT / BIC</label>
+              <input type="text" id="accountBankUSASwift" class="acct-input" placeholder="Ex: CHASUS33"
+                oninput="this.value=this.value.toUpperCase()" style="font-family:monospace;text-transform:uppercase">
+            </div>
+          </div>
+
+          <!-- Observações -->
+          <div class="acct-field acct-field--full">
+            <label class="acct-sublabel">Observações</label>
+            <input type="text" id="accountBankNotes" class="acct-input"
+              placeholder="Gerente, contato, informações adicionais">
+          </div>
+
+        </div><!-- /acct-form-grid -->
+      </div><!-- /accountTabBank -->
+
+    </div><!-- /modal-body -->
+
+    <!-- ── Footer — always inside .modal, outside .modal-body ─────── -->
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAccount()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Salvar
+      </button>
     </div>
 
-      <!-- ── Dados Bancários (colapsável, opcional) ─────────────────── -->
-      <div class="form-group full" id="accountBankDetailsSection" style="margin-top:8px">
-        <details id="accountBankDetailsToggle" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;overflow:hidden">
-          <summary style="cursor:pointer;padding:11px 15px;font-size:.83rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;list-style:none;user-select:none;-webkit-appearance:none">
-            <span>🏛️</span>
-            <span id="accountBankSummaryLabel">Dados Bancários</span>
-            <span style="margin-left:auto;font-size:.72rem;font-weight:400;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:2px 9px">Opcional</span>
-          </summary>
-          <div style="padding:14px 15px;display:flex;flex-direction:column;gap:11px;border-top:1px solid var(--border)">
+  </div><!-- /.modal.acct-modal -->
+</div><!-- /#accountModal -->
 
-            <!-- Instituição -->
-            <div class="form-group" style="margin:0">
-              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px" id="accountBankInstLabel">Instituição Financeira</label>
-              <input type="text" id="accountBankInstitution" placeholder="Ex: Itaú, Nubank, XP Investimentos"
-                list="accountBankInstList"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-              <datalist id="accountBankInstList"></datalist>
-            </div>
-
-            <!-- Campos BRL: Agência + Conta + Tipo + PIX -->
-            <div id="accountBankFieldsBRL" style="display:flex;flex-direction:column;gap:10px">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Agência</label>
-                  <input type="text" id="accountBankAgency" placeholder="Ex: 1234-5" inputmode="numeric"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Número da Conta</label>
-                  <input type="text" id="accountBankNumber" placeholder="Ex: 00012345-6"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Tipo de Conta</label>
-                  <select id="accountBankAccountType"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                    <option value="">— Selecionar —</option>
-                    <option value="corrente">Conta Corrente</option>
-                    <option value="poupanca">Poupança</option>
-                    <option value="salario">Conta Salário</option>
-                    <option value="pagamento">Conta de Pagamento (fintech)</option>
-                    <option value="investimento">Conta Investimento</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Chave PIX</label>
-                  <input type="text" id="accountBankPix" placeholder="CPF, e-mail, telefone ou aleatória"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-            </div>
-
-            <!-- Campos IBAN (EUR, GBP, etc) -->
-            <div id="accountBankFieldsIBAN" style="display:none;flex-direction:column;gap:10px">
-              <div class="form-group" style="margin:0">
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">IBAN</label>
-                <input type="text" id="accountBankIBAN" placeholder="Ex: GB29 NWBK 6016 1331 9268 19"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box;text-transform:uppercase"
-                  oninput="this.value=this.value.toUpperCase()">
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">BIC / SWIFT</label>
-                  <input type="text" id="accountBankSwift" placeholder="Ex: NWBKGB2L"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box;text-transform:uppercase"
-                    oninput="this.value=this.value.toUpperCase()">
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Nome do Banco</label>
-                  <input type="text" id="accountBankForeignName" placeholder="Ex: Barclays, Deutsche Bank"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-            </div>
-
-            <!-- Campos USD -->
-            <div id="accountBankFieldsUSD" style="display:none;flex-direction:column;gap:10px">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Routing Number (ABA)</label>
-                  <input type="text" id="accountBankRouting" placeholder="9 dígitos" inputmode="numeric" maxlength="9"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Account Number</label>
-                  <input type="text" id="accountBankUSANumber" placeholder="Número da conta" inputmode="numeric"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Account Type</label>
-                  <select id="accountBankUSAType"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                    <option value="">— Select —</option>
-                    <option value="checking">Checking Account</option>
-                    <option value="savings">Savings Account</option>
-                    <option value="money_market">Money Market</option>
-                    <option value="brokerage">Brokerage Account</option>
-                    <option value="ira">IRA</option>
-                    <option value="roth_ira">Roth IRA</option>
-                    <option value="401k">401(k)</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Bank Name</label>
-                  <input type="text" id="accountBankUSAName" placeholder="Ex: Chase, Bank of America"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">SWIFT / BIC</label>
-                <input type="text" id="accountBankUSASwift" placeholder="Ex: CHASUS33"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box;text-transform:uppercase"
-                  oninput="this.value=this.value.toUpperCase()">
-              </div>
-            </div>
-
-            <!-- Observações comuns -->
-            <div class="form-group" style="margin:0">
-              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Observações</label>
-              <input type="text" id="accountBankNotes" placeholder="Gerente, contato, informações adicionais"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-            </div>
-          </div>
-        </details>
-      </div>
-      </div>
-
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
-  </div>
 
 <!-- GROUP MANAGEMENT MODAL -->
 <div class="modal-overlay" id="groupModal">
