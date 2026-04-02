@@ -411,7 +411,10 @@
 </nav>
 
 <!-- MAIN -->
-<div id="loginScreen" class="ls-shell" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0b1e12">
+
+
+  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
+  <div id="loginScreen" class="ls-shell" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0b1e12">
     <div class="ls-layout">
 
       <!-- ══ PAINEL ESQUERDO: formulário (branco) ══ -->
@@ -650,7 +653,7 @@
       </div><!-- /ls-form-panel -->
 
     </div><!-- /ls-layout -->
-  </div>
+  </div><!-- /loginScreen -->
 
 <div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
@@ -3396,7 +3399,7 @@
       </div>
 
     </div><!-- /page-privacy -->
-    <div class="page" id=-legacy-1"page-privacy">
+    <div class="page" id="page-privacy-legacy-1">
 
       <!-- Hero -->
       <div class="prv-hero">
@@ -4063,9 +4066,6 @@ Se você não solicitou isso, ignore este e-mail.`,
 
   </div><!-- /content -->
 </div><!-- /mainApp -->
-
-  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <!-- /loginScreen -->
 
 
     <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
@@ -6343,43 +6343,43 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-  <script src="js/state.js"></script>
-  <script src="js/i18n.js"></script>
-  <script src="js/translations_admin.js"></script>
-  <script src="js/cursor.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/telemetry.js"></script>
-  <script src="js/settings.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/accounts.js"></script>
-  <script src="js/categories.js"></script>
-  <script src="js/payees.js"></script>
-  <script src="js/transactions.js"></script>
-  <script src="js/budgets.js"></script>
-  <script src="js/fx_rates.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/reports.js"></script>
-  <script src="js/payee_autocomplete.js"></script>
-  <script src="js/ui_helpers.js"></script>
-  <script src="js/scheduled.js"></script>
-  <script src="js/attachments.js"></script>
-  <script src="js/iof.js"></script>
-  <script src="js/forecast.js"></script>
-  <script src="js/email.js"></script>
-  <script src="js/import.js"></script>
-  <script src="js/backup.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/feedback.js"></script>
-  <script src="js/admin.js"></script>
-  <script src="js/autocheck.js"></script>
-  <script src="js/auto_register.js"></script>
-<script src="js/audit.js"></script>
-<script src="js/receipt_ai.js"></script>
-  <script src="js/form_mode.js"></script>
-<script src="js/prices.js"></script>
-  <script src="js/grocery.js"></script>
+  <script defer src="js/state.js"></script>
+  <script defer src="js/i18n.js"></script>
+  <script defer src="js/translations_admin.js"></script>
+  <script defer src="js/cursor.js"></script>
+  <script defer src="js/db.js"></script>
+  <script defer src="js/utils.js"></script>
+  <script defer src="js/telemetry.js"></script>
+  <script defer src="js/settings.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/accounts.js"></script>
+  <script defer src="js/categories.js"></script>
+  <script defer src="js/payees.js"></script>
+  <script defer src="js/transactions.js"></script>
+  <script defer src="js/budgets.js"></script>
+  <script defer src="js/fx_rates.js"></script>
+  <script defer src="js/dashboard.js"></script>
+  <script defer src="js/reports.js"></script>
+  <script defer src="js/payee_autocomplete.js"></script>
+  <script defer src="js/ui_helpers.js"></script>
+  <script defer src="js/scheduled.js"></script>
+  <script defer src="js/attachments.js"></script>
+  <script defer src="js/iof.js"></script>
+  <script defer src="js/forecast.js"></script>
+  <script defer src="js/email.js"></script>
+  <script defer src="js/import.js"></script>
+  <script defer src="js/backup.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/feedback.js"></script>
+  <script defer src="js/admin.js"></script>
+  <script defer src="js/autocheck.js"></script>
+  <script defer src="js/auto_register.js"></script>
+<script defer src="js/audit.js"></script>
+<script defer src="js/receipt_ai.js"></script>
+  <script defer src="js/form_mode.js"></script>
+<script defer src="js/prices.js"></script>
+  <script defer src="js/grocery.js"></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -7580,7 +7580,7 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
   </div>
 
-  <script src="js/import_ai.js"></script>
+  <script defer src="js/import_ai.js"></script>
 
 <!-- ══ Modal: Normalizar Nomes de Beneficiários ══════════════════════════ -->
 <div class="modal-overlay" id="normalizePayeesModal">
@@ -7799,19 +7799,19 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-  <script src="js/family_members_composition.js"></script>
-  <script src="js/investments.js"></script>
-  <script src="js/ai_insights.js"></script>
-  <script src="js/help.js"></script>
-  <script src="js/privacy.js"></script>
-  <script src="js/orphan.js"></script>
-  <script src="js/family_prefs.js"></script>
-  <script src="js/wizard.js"></script>
+  <script defer src="js/family_members_composition.js"></script>
+  <script defer src="js/investments.js"></script>
+  <script defer src="js/ai_insights.js"></script>
+  <script defer src="js/help.js"></script>
+  <script defer src="js/privacy.js"></script>
+  <script defer src="js/orphan.js"></script>
+  <script defer src="js/family_prefs.js"></script>
+  <script defer src="js/wizard.js"></script>
   
 
 <!-- ═══ SETUP WIZARD ═══════════════════════════════════════════════════════ -->
     <!-- ══ PRIVACY PAGE ══════════════════════════════════════════════════ -->
-    <div class="page" id=-legacy-2"page-privacy">
+    <div class="page" id="page-privacy-legacy-2">
 
       <!-- Hero -->
       <div class="priv-hero">
@@ -7914,9 +7914,9 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
         <div class="priv-delete-form">
           <label style="font-size:.78rem;font-weight:600;color:var(--text)">Seu e-mail cadastrado *</label>
-          <input type="email" id=-legacy-1"privDeleteEmail" class="priv-delete-input" placeholder="seu@email.com" oninput="_privUpdateDeleteBtn()">
+          <input type="email" id="privDeleteEmail" class="priv-delete-input" placeholder="seu@email.com" oninput="_privUpdateDeleteBtn()">
           <label style="font-size:.78rem;font-weight:600;color:var(--text)">Motivo da solicitação</label>
-          <select id=-legacy-1"privDeleteReason" class="priv-delete-input" style="padding:8px 10px">
+          <select id="privDeleteReason" class="priv-delete-input" style="padding:8px 10px">
             <option value="">Selecione um motivo…</option>
             <option value="no_longer_using">Não uso mais o app</option>
             <option value="privacy_concerns">Preocupações com privacidade</option>
@@ -7925,7 +7925,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             <option value="other">Outro motivo</option>
           </select>
           <label style="font-size:.78rem;font-weight:600;color:var(--text)">Para confirmar, digite <strong>EXCLUIR MEUS DADOS</strong> abaixo *</label>
-          <input type="text" id=-legacy-1"privDeleteConfirm" class="priv-delete-input" placeholder="EXCLUIR MEUS DADOS" oninput="_privUpdateDeleteBtn()">
+          <input type="text" id="privDeleteConfirm" class="priv-delete-input" placeholder="EXCLUIR MEUS DADOS" oninput="_privUpdateDeleteBtn()">
           <div id="privDeleteStatus" style="display:none;font-size:.78rem;margin-bottom:10px;padding:8px 10px;border-radius:8px"></div>
           <button id="privDeleteSubmit" class="priv-delete-submit" onclick="_privSubmitDeletion()" disabled>
             🗑️ Enviar Solicitação de Exclusão
@@ -8104,11 +8104,11 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
   </div>
 
-  <script src="js/debts.js"></script>
-  <script src="js/dreams_kb.js"></script>
-<script src="js/dreams.js"></script>
-  <script src="js/agent_engine.js"></script>
-<script src="js/agent.js"></script>
+  <script defer src="js/debts.js"></script>
+  <script defer src="js/dreams_kb.js"></script>
+<script defer src="js/dreams.js"></script>
+  <script defer src="js/agent_engine.js"></script>
+<script defer src="js/agent.js"></script>
 
 <script>
 window.toggleScheduledSection = window.toggleScheduledSection || function(section){
@@ -8501,7 +8501,7 @@ window.openMyProfile = function(...args) {
   </div>
 </div>
 
-  <script src="js/export_grid.js"></script>
+  <script defer src="js/export_grid.js"></script>
 </body>
 </html>
 
