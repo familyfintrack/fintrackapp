@@ -400,75 +400,63 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 14px 12px 18px;
+  border-radius: 16px;
+  padding: 0 0 0 5px; /* left padding handled by inner content */
   cursor: pointer;
   overflow: hidden;
-  transition: box-shadow .18s, transform .18s;
+  transition: box-shadow .20s, transform .20s, border-color .20s;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 148px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.05), 0 2px 8px rgba(0,0,0,.04);
+  min-height: 152px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05), 0 2px 10px rgba(0,0,0,.04);
 }
 .acc-card-v2:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
   border-color: var(--border2);
 }
+
+/* Inner padding wrapper so bar doesn't eat content */
+.acc-card-v2 > *:not(.acc-card-bar) { padding-left: 14px; }
 
 /* Faixa lateral de cor */
 .acc-card-bar {
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 4px;
-  border-radius: 14px 0 0 14px;
+  width: 5px;
+  border-radius: 16px 0 0 16px;
 }
 
-/* Topo: ícone + estrela + ações */
+/* Topo: ícone + type badge + ações */
 .acc-card-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
+  gap: 8px;
+  padding: 12px 12px 8px 14px;
+  padding-left: 14px;
 }
 .acc-card-icon-wrap {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-
-/* Estrela de favorito */
-.acc-card-fav {
-  position: absolute;
-  top: 10px;
-  right: 42px;
-  width: 24px; height: 24px;
-  border: none; background: none; cursor: pointer;
-  color: var(--muted);
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 6px;
-  opacity: 0;
-  transition: opacity .15s, color .15s, transform .12s;
-  padding: 0;
-  z-index: 2;
+.acc-card-top .acc-card-type-badge {
+  flex: 1;
+  margin: 0;
 }
-.acc-card-fav.active { color: #f59e0b; opacity: 1; }
-.acc-card-v2:hover .acc-card-fav { opacity: 1; }
-.acc-card-fav:hover { color: #f59e0b; transform: scale(1.2); }
 
 /* Ações (aparecem no hover) */
 .acc-card-actions {
-  position: absolute;
-  top: 8px; right: 8px;
   display: flex;
   gap: 3px;
   opacity: 0;
   transition: opacity .15s;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .acc-card-v2:hover .acc-card-actions { opacity: 1; }
 .acc-action-btn {
@@ -493,58 +481,177 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
   border-color: var(--red, #dc2626);
 }
 
-/* Nome, tipo e saldo */
+/* Nome da conta */
 .acc-card-name {
   font-weight: 700;
-  font-size: .88rem;
+  font-size: .9rem;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: auto;
+  padding: 0 12px 2px 14px;
 }
+
+/* Type badge (usada também no top) */
 .acc-card-type-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: .66rem;
+  font-size: .64rem;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: .05em;
-  margin-bottom: 4px;
 }
+
+/* Saldo */
 .acc-card-balance {
   font-family: var(--font-serif);
-  font-size: 1.25rem;
+  font-size: 1.28rem;
   font-weight: 700;
   letter-spacing: -.02em;
   color: var(--accent);
   line-height: 1.2;
+  padding: 0 12px 0 14px;
 }
 .acc-card-balance.neg { color: var(--red, #dc2626); }
 .acc-card-currency {
-  font-size: .66rem;
+  font-size: .65rem;
   color: var(--muted);
   font-weight: 500;
-  margin-top: 1px;
+  padding: 0 12px 0 14px;
 }
 .acc-card-due {
-  font-size: .68rem;
+  font-size: .67rem;
   color: var(--muted);
-  margin-top: 2px;
+  padding: 0 12px 0 14px;
+}
+
+/* Footer: estrela de favorito à direita */
+.acc-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 8px 14px;
+  margin-top: auto;
+}
+
+/* Estrela de favorito — NO RODAPÉ, não mais absoluta */
+.acc-card-fav {
+  width: 26px; height: 26px;
+  border: none; background: none; cursor: pointer;
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 7px;
+  opacity: 0;
+  transition: opacity .15s, color .15s, background .12s, transform .12s;
+  padding: 0;
+}
+.acc-card-fav.active {
+  color: #f59e0b;
+  opacity: 1;
+}
+.acc-card-v2:hover .acc-card-fav { opacity: 1; }
+.acc-card-fav:hover {
+  color: #f59e0b;
+  background: rgba(245,158,11,.1);
+  transform: scale(1.15);
 }
 
 /* Grid: 3 col desktop, 2 col tablet, 1 col mobile */
 .account-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 @media (max-width: 480px) {
   .account-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
-  .acc-card-v2 { min-height: 130px; padding: 12px 12px 10px 16px; }
+  .acc-card-v2 { min-height: 130px; }
   .acc-card-balance { font-size: 1.05rem; }
+}
+
+/* ── Account Modal improved layout ─────────────────────────────────── */
+.acc-modal-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  margin-bottom: 12px;
+}
+.acc-modal-section-label {
+  font-size: .65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.acc-modal-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.acc-modal-section .form-group { margin-bottom: 0; }
+.acc-modal-section .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+.acc-modal-section .form-grid-2:last-child { margin-bottom: 0; }
+.acc-modal-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+  gap: 10px;
+}
+@media (max-width: 480px) {
+  .acc-modal-section .form-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Account page improvements ──────────────────────────────────────── */
+.account-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.account-summary-strip {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.account-summary-kpi {
+  flex: 1;
+  min-width: 110px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.account-summary-kpi-label {
+  font-size: .62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+.account-summary-kpi-value {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.01em;
 }
 
 /* TABLE */
@@ -789,17 +896,6 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 [data-theme="dark"] .search-wrap { background: var(--surface2); border-color: var(--border2); }
 [data-theme="dark"] .search-wrap input { background: transparent !important; color: var(--text) !important; }
 
-/* ── Topbar dark mode — mantém identidade visual verde mas com texto claro ── */
-[data-theme="dark"] .topbar {
-  background: linear-gradient(135deg, #071510 0%, #0e2b1a 52%, #112e1c 100%) !important;
-  border-bottom: 1px solid rgba(52,168,104,.15) !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,.45) !important;
-}
-[data-theme="dark"] .topbar-title,
-[data-theme="dark"] .topbar-actions .btn,
-[data-theme="dark"] .topbar-actions button { color: #e8eaf0 !important; }
-[data-theme="dark"] .topbar #topbarUserName { color: rgba(232,234,240,.85) !important; }
-
 /* ── User menu dropdown ──────────────────────────────────────────────── */
 [data-theme="dark"] #userMenuDropdown {
   background: var(--surface) !important;
@@ -811,34 +907,6 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 [data-theme="dark"] #userMenuEmail { color: var(--muted) !important; }
 [data-theme="dark"] .user-menu-item { color: var(--text); }
 [data-theme="dark"] .user-menu-item:hover { background: var(--surface2); }
-
-/* ── Theme toggle switch melhorado ──────────────────────────────────── */
-#umThemeToggle {
-  align-items: center !important;
-  padding: 10px 14px !important;
-  border-radius: 10px !important;
-  cursor: pointer;
-}
-#umThemeSwitch {
-  width: 42px !important;
-  height: 24px !important;
-  border-radius: 12px !important;
-  padding: 3px !important;
-  transition: background .25s ease !important;
-  flex-shrink: 0;
-}
-#umThemePill {
-  width: 18px !important;
-  height: 18px !important;
-  border-radius: 50% !important;
-  background: #fff !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,.28) !important;
-  transition: transform .25s cubic-bezier(.4,0,.2,1) !important;
-}
-[data-theme="dark"] #umThemeSwitch { background: var(--accent) !important; }
-[data-theme="dark"] #umThemePill { transform: translateX(18px) !important; }
-#umThemeLabel { font-size: .84rem; font-weight: 600; }
-#umThemeIcon  { font-size: 1rem; }
 
 /* ── Transaction table / list ────────────────────────────────────────── */
 [data-theme="dark"] .tx-v2-row:hover { background: rgba(255,255,255,.03) !important; }

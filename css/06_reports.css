@@ -1073,18 +1073,26 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 
 /* ── Forecast: fixed layout and always three lines ─────────────────── */
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
+/* Forecast column proportions: 10% date | 70% description | 20% amount */
+.forecast-col-date   { width: 10%; }
+.forecast-col-desc   { width: 70%; }
+.forecast-col-amount { width: 20%; }
+/* Override head cells to follow colgroup */
+.forecast-head-date   { width: 10%; min-width: 72px; }
+.forecast-head-desc   { width: 70%; }
+.forecast-head-amount { width: 20%; min-width: 90px; text-align: right; }
 .forecast-tx-row td { padding:7px 10px; vertical-align:middle; }
 .forecast-date-cell {
-  width: 15%;
-  min-width: 100px;
+  width: 10%;
+  min-width: 80px;
   padding: 4px 6px 4px 10px;
   color: var(--muted);
   vertical-align: middle;
   border-right: 1px solid var(--border);
 }
 .forecast-head-date {
-  width: 15%;
-  min-width: 100px;
+  width: 10%;
+  min-width: 80px;
 }
 .forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
@@ -1109,7 +1117,8 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-payee { font-size:.71rem; color:var(--muted); margin-top:1px; }
 .forecast-amount-cell,
 .forecast-balance-cell {
-  width: 100px;
+  width: 15%;
+  min-width: 90px;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
