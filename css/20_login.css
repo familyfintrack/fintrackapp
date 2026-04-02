@@ -663,3 +663,54 @@
   #loginScreen .ls-layout { align-items: flex-start; padding-top: 16px; padding-bottom: 16px; }
   #loginScreen .ls-card { max-height: calc(100dvh - 32px); }
 }
+
+
+/* Mobile hardening: garante formulário visível e rolável em iOS/Android */
+#loginScreen,
+#loginScreen .ls-layout,
+#loginScreen .ls-card {
+  min-width: 0;
+}
+#loginScreen .ls-card {
+  width: min(100%, 440px);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+#loginScreen #loginFormArea {
+  display: block;
+}
+@media (max-width: 640px) {
+  #loginScreen {
+    align-items: flex-start;
+  }
+  #loginScreen .ls-layout {
+    min-height: 100dvh;
+    align-items: flex-start;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  #loginScreen .ls-form-panel {
+    max-width: none;
+  }
+  #loginScreen .ls-card {
+    width: 100%;
+    max-height: none;
+    min-height: auto;
+    overflow-y: auto;
+  }
+  #loginScreen .ls-input {
+    font-size: 16px;
+  }
+}
+@media (max-width: 420px) {
+  #loginScreen .ls-card {
+    padding: 22px 16px 20px;
+    border-radius: 16px;
+  }
+  #loginScreen .ls-form-logo {
+    height: 42px;
+    max-width: 180px;
+  }
+  #loginScreen .ls-card-sub {
+    margin-bottom: 16px;
+  }
+}
