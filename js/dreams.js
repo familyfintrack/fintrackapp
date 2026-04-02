@@ -48,13 +48,28 @@ function _dreamStatusColor(s) { return { active:'var(--accent)', paused:'var(--w
 
 /* ── Feature flag ─────────────────────────────────────────────────── */
 async function isDreamsEnabled() {
-  const fid = famId(); if (!fid) return false;
+  const fid = famId();
+  if (!fid) return false;
+
+  // Fonte canônica atual: preferências da família.
+  if (typeof isModuleEnabled === 'function') {
+    try {
+      const byPrefs = isModuleEnabled('dreams');
+      if (byPrefs === true) return true;
+    } catch (_) {}
+  }
+
+  // Fallback legado: app_settings / cache antigo.
   const ck = 'dreams_enabled_' + fid;
   if (window._familyFeaturesCache && ck in window._familyFeaturesCache) return !!window._familyFeaturesCache[ck];
-  const raw = await getAppSetting(ck, false);
-  const on = raw === true || raw === 'true';
-  (window._familyFeaturesCache = window._familyFeaturesCache || {})[ck] = on;
-  return on;
+  try {
+    const raw = await getAppSetting(ck, false);
+    const on = raw === true || raw === 'true';
+    (window._familyFeaturesCache = window._familyFeaturesCache || {})[ck] = on;
+    return on;
+  } catch (_) {
+    return false;
+  }
 }
 async function applyDreamsFeature() {
   const fid = famId();
@@ -78,8 +93,21 @@ window.toggleFamilyDreams = toggleFamilyDreams;
 
 /* ── Page init ────────────────────────────────────────────────────── */
 async function initDreamsPage() {
-  if (!await isDreamsEnabled()) return;
-  await loadDreams(); renderDreamsPage();
+  const container = document.getElementById('dreams-list-container');
+  const enabled = await isDreamsEnabled();
+  if (!enabled) {
+    if (container) {
+      container.innerHTML = `
+        <div class="drm-empty-state">
+          <div class="drm-empty-icon">🌟</div>
+          <div class="drm-empty-title">Módulo de sonhos desativado</div>
+          <div class="drm-empty-text">Ative o módulo em Gestão da Família para voltar a usar esta área.</div>
+        </div>`;
+    }
+    return;
+  }
+  await loadDreams(true);
+  renderDreamsPage();
 }
 window.initDreamsPage = initDreamsPage;
 

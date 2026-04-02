@@ -897,45 +897,10 @@ function clearFamilyScopedUI() {
   } catch(e) {}
 }
 
-
-function _ensureGlobalPageActionDelegation(){
-  if (window.__ftGlobalPageActionDelegationBound) return;
-  window.__ftGlobalPageActionDelegationBound = true;
-  document.addEventListener('click', function(ev){
-    const txBtn = ev.target.closest('[data-page-action="new-transaction"]');
-    if (txBtn) {
-      ev.preventDefault();
-      if (typeof window.openTransactionModal === 'function') {
-        window.openTransactionModal();
-      }
-      return;
-    }
-    const accBtn = ev.target.closest('[data-page-action="new-account"]');
-    if (accBtn) {
-      ev.preventDefault();
-      if (typeof window.openAccountModal === 'function') {
-        window.openAccountModal();
-      }
-      return;
-    }
-    const accEditBtn = ev.target.closest('[data-account-edit-id]');
-    if (accEditBtn) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const id = accEditBtn.getAttribute('data-account-edit-id') || '';
-      if (id && typeof window.openAccountModal === 'function') {
-        window.openAccountModal(id);
-      }
-      return;
-    }
-  }, true);
-}
-_ensureGlobalPageActionDelegation();
-
 function navigate(page){
-  // Guard: settings/audit/telemetry são admin-only
-  // Guard: settings/telemetry são admin-only; audit é acessível a todos
-  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
+  // Guard: settings/telemetry exigem permissão administrativa.
+  // Aceita admin global ou perfis com can_admin, para não bloquear owners/family admins.
+  if ((page === 'settings' || page === 'telemetry') && !(currentUser?.role === 'admin' || currentUser?.can_admin)) {
     toast(t('error.admin_only'),'warning');
     return;
   }
@@ -968,8 +933,8 @@ function navigate(page){
     // Ações opcionais por página
     const actions = {
       dashboard:    `<button class="page-header-action" onclick="openDashCustomModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>Personalizar</button>`,
-      transactions: `<button class="page-header-action" data-page-action="new-transaction" onclick="openTransactionModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova</button>`,
-      accounts:     `<button class="page-header-action" data-page-action="new-account" onclick="openAccountModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova Conta</button>`,
+      transactions: `<button class="page-header-action" onclick="openTransactionModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova</button>`,
+      accounts:     `<button class="page-header-action" onclick="openAccountModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova Conta</button>`,
       budgets:      `<button class="page-header-action" onclick="openBudgetModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo</button>`,
       scheduled:    `<button class="page-header-action" onclick="openScheduledModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo</button>`,
       audit:        `<button class="page-header-action" onclick="loadAuditLogs()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Atualizar</button>`,
