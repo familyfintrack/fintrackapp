@@ -255,24 +255,37 @@ function _agentIsActionIntent(intent) {
 // Constrói um plano compatível com _agentExecute() a partir do resultado do engine
 async function _agentBuildPlanFromEngine(userMessage, engineResult) {
   // Inicia com o resultado local do engine
-  const data = engineResult.data || {};
-  const missingFields = engineResult.missingFields || [];
+  const data = { ...(engineResult.data || {}) };
+  const missingFields = [...(engineResult.missingFields || [])];
 
-  // Se confiança baixa e há chave Gemini, reforça com Gemini
-  if (engineResult.confidence < 0.75) {
+  // Integração mais forte com Gemini para ações naturais e multi-turn.
+  // Reforça quando há lacunas, ambiguidade, confiança moderada ou pedido financeiro curto.
+  const shouldReinforceWithGemini = (
+    _agentIsActionIntent(engineResult.intent)
+    && ((engineResult.confidence || 0) < 0.88
+      || missingFields.length > 0
+      || (engineResult.ambiguities || []).length > 0
+      || /(r\$|reais?|despesa|receita|gasto|compra|paguei|recebi)/i.test(userMessage || ''))
+  );
+
+  if (shouldReinforceWithGemini) {
     const key = await _agentGetKey();
     if (key) {
       try {
         const geminiResult = await AgentEngine.runWithGemini(
           userMessage, _agent, window.state || {}, key
         );
-        // Gemini tem prioridade para campos que o local não resolveu
-        Object.assign(data, geminiResult.data);
-        // Atualiza missing fields com a visão do Gemini
-        if (geminiResult.missingFields.length < missingFields.length) {
-          missingFields.length = 0;
-          missingFields.push(...geminiResult.missingFields);
-        }
+        Object.keys(geminiResult.data || {}).forEach(k => {
+          const v = geminiResult.data[k];
+          if (v !== undefined && v !== null && String(v).trim?.() !== '') data[k] = v;
+        });
+        missingFields.length = 0;
+        missingFields.push(...(geminiResult.missingFields || []));
+        engineResult = {
+          ...engineResult,
+          ambiguities: [...(engineResult.ambiguities || []), ...(geminiResult.ambiguities || [])],
+          guidedHtml: geminiResult.guidedHtml || engineResult.guidedHtml || null,
+        };
       } catch (e) {
         console.warn('[agent] Gemini reforço falhou:', e?.message);
       }
@@ -983,9 +996,21 @@ async function _agentExecute(plan, originalText) {
     _agent.pendingPlan = normalized;
     _agent.session.draftPlan = normalized;
     _agent.session.draftUpdatedAt = Date.now();
-    // v3: usa HTML rico do engine se disponível, senão HTML clássico
+    const nextField = normalized.missing_fields?.[0] || null;
+    const prompts = {
+      amount: 'Qual é o valor?',
+      account_name: 'Em que conta devo lançar isso?',
+      payee_name: 'Para qual beneficiário?',
+      category_name: 'Qual categoria devo usar?',
+      frequency: 'Qual será a recorrência?',
+      start_date: 'Quando isso começa?',
+      name: 'Qual é o nome?',
+      type: 'Qual tipo você quer usar?',
+      balance: 'Qual é o saldo inicial?'
+    };
+    const lead = nextField ? (prompts[nextField] || 'Preciso de mais uma informação.') : (normalized.summary || 'Preencha os campos faltantes.');
     const html = normalized._guidedHtml || _agentBuildGuidedHtml(normalized);
-    _agentAppendStructured('assistant', html, normalized.summary || 'Preencha os campos faltantes.');
+    _agentAppendStructured('assistant', html, lead);
     return;
   }
 
@@ -1345,11 +1370,13 @@ function _agentComputeMissingFields(intent,data){
   if(intent==='create_transaction'){
     if(noAmt(data)) missing.push('amount');
     if(isBlank(data.account_name)&&!data.account_id) missing.push('account_name');
+    if(isBlank(data.payee_name)) missing.push('payee_name');
     if(isBlank(data.category_name)&&!data.category_id) missing.push('category_name');
   }
   if(intent==='create_scheduled'){
     if(noAmt(data)) missing.push('amount');
     if(isBlank(data.account_name)&&!data.account_id) missing.push('account_name');
+    if(isBlank(data.payee_name)) missing.push('payee_name');
     if(isBlank(data.category_name)&&!data.category_id) missing.push('category_name');
     if(isBlank(data.frequency)) missing.push('frequency');
     if(isBlank(data.start_date)) missing.push('start_date');
@@ -1467,9 +1494,14 @@ function _agentApplySlotPayload(plan, payload){
   const data=cloned.actions?.[0]?.data||{};
   // v3: trata campos numéricos corretamente
   const numericFields=['amount','original_amount','target_amount','balance','pay_amount'];
-  data[field] = numericFields.includes(field)
-    ? Number(String(value).replace(',','.'))
-    : value;
+  if (value === '__skip__') {
+    data[field] = '';
+    if (cloned.missing_fields) cloned.missing_fields = cloned.missing_fields.filter(f => f !== field);
+  } else {
+    data[field] = numericFields.includes(field)
+      ? Number(String(value).replace(',','.'))
+      : value;
+  }
   cloned.actions[0].data=data;
   return _agentFinalizeGuidedPlan(cloned);
 }
@@ -1477,8 +1509,16 @@ function _agentMergeIntoPendingPlan(plan,text){
   const cloned=JSON.parse(JSON.stringify(plan));
   const data=cloned.actions?.[0]?.data||{};
   const raw=String(text||'').trim();
+  const rawNorm=_agentNormalizeName(raw);
   const missing=cloned.missing_fields||[];
   const firstMissing=missing[0];
+
+  if (firstMissing && /^(pular|sem|nenhum|nenhuma|nao tenho|não tenho|ignorar)$/i.test(rawNorm.replace(/\s+/g,' '))) {
+    data[firstMissing] = '';
+    cloned.actions[0].data=data;
+    cloned.missing_fields = missing.filter(f => f !== firstMissing);
+    return _agentFinalizeGuidedPlan(cloned);
+  }
 
   // Transação e programado
   if(cloned.intent==='create_transaction' || cloned.intent==='create_scheduled'){

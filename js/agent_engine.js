@@ -548,6 +548,25 @@ const AgentPipeline = {
     const missing = schema.fields
       .filter(f => f.required && isBlank(data[f.key]))
       .map(f => f.key);
+
+    // Conversa natural: para transações e programados, pedimos também o beneficiário
+    // quando estiver ausente, mas sempre como passo guiado que pode ser pulado.
+    if (intent === 'create_transaction' || intent === 'create_scheduled') {
+      const ordered = [];
+      const pushUnique = key => { if (key && !ordered.includes(key)) ordered.push(key); };
+      const preferred = ['amount', 'account_name', 'payee_name', 'category_name'];
+      preferred.forEach(key => {
+        const field = schema.fields.find(f => f.key === key);
+        if (!field) return;
+        const shouldAsk = missing.includes(key)
+          || (key === 'payee_name' && isBlank(data.payee_name));
+        if (shouldAsk) pushUnique(key);
+      });
+      missing.forEach(pushUnique);
+      AgentLogger.debug('[pipeline:5] missing fields (conversational):', ordered);
+      return ordered;
+    }
+
     AgentLogger.debug('[pipeline:5] missing fields:', missing);
     return missing;
   },
@@ -657,6 +676,9 @@ const AgentGuidedUI = {
     const icon = schema.icon || '⚡';
     const title = schema.label || 'Completar ação';
     const typeLabel = data.type === 'income' ? '🟢 Receita' : data.type === 'expense' ? '🔴 Despesa' : '';
+    const primaryMissing = missingFields[0] || null;
+    const primaryField = primaryMissing ? schema.fields.find(f => f.key === primaryMissing) : null;
+    const promptQuestion = this._buildPromptQuestion(intent, primaryField, data);
 
     const fieldRows = schema.fields.map(field => {
       const value = data[field.key];
@@ -665,11 +687,9 @@ const AgentGuidedUI = {
       return this._buildFieldRow(field, value, isMissing, resolved);
     }).join('');
 
-    const chipsSection = missingFields.map(fieldKey => {
-      const field = schema.fields.find(f => f.key === fieldKey);
-      if (!field) return '';
-      return this._buildFieldChips(field, data, resolvedEntities[fieldKey]);
-    }).filter(Boolean).join('');
+    const chipsSection = primaryField
+      ? this._buildFieldChips(primaryField, data, resolvedEntities[primaryField.key])
+      : '';
 
     const progress = this._progressBar(schema.fields.length - missingFields.length, schema.fields.length);
 
@@ -683,9 +703,10 @@ const AgentGuidedUI = {
     </div>
     ${progress}
   </div>
+  ${promptQuestion ? `<div class="agent-guided-question">${promptQuestion}</div>` : ''}
   <div class="agent-guided-fields">${fieldRows}</div>
   ${chipsSection ? `<div class="agent-guided-chips-section">${chipsSection}</div>` : ''}
-  <div class="agent-guided-hint">💬 Complete os campos destacados ou continue digitando naturalmente.</div>
+  <div class="agent-guided-hint">💬 Responda naturalmente ou toque em uma opção abaixo.</div>
 </div>`.trim();
   },
 
@@ -705,7 +726,8 @@ const AgentGuidedUI = {
 
   _buildFieldChips(field, data, resolved) {
     const options = this._getOptions(field, data);
-    if (!options.length) return '';
+    const allowSkip = ['payee_name', 'date', 'description'].includes(field.key);
+    if (!options.length && !allowSkip) return '';
 
     // Se há um match com confiança média (0.6-0.85), coloca como primeira opção destacada
     let headerHtml = '';
@@ -722,21 +744,59 @@ const AgentGuidedUI = {
       `<button class="agent-chip" onclick="agentChooseSlot('${field.key}', '${String(opt.value).replace(/'/g, "&#39;")}', true)">${opt.label}</button>`
     ).join('');
 
+    const skipBtn = allowSkip
+      ? `<button class="agent-chip agent-chip--alt" onclick="agentChooseSlot('${field.key}', '__skip__', true)">${field.key === 'payee_name' ? 'Sem beneficiário' : 'Pular'}</button>`
+      : '';
+
     return `
 <div class="agent-chips-group">
   <div class="agent-chips-label">${field.label}:</div>
   ${headerHtml}
-  <div class="agent-chips-row">${chipsBtns}</div>
+  <div class="agent-chips-row">${chipsBtns}${skipBtn}</div>
 </div>`.trim();
+  },
+
+  _buildPromptQuestion(intent, field, data) {
+    if (!field) return '';
+    const income = data.type === 'income';
+    const amountLabel = (() => {
+      const n = Math.abs(Number(data.amount || data.target_amount || data.original_amount || 0));
+      if (!n) return '';
+      return typeof fmt === 'function' ? fmt(n, 'BRL') : `R$ ${n.toFixed(2)}`;
+    })();
+    const questionMap = {
+      amount: intent === 'create_transaction' ? 'Qual é o valor?' : 'Qual é o valor programado?',
+      account_name: income ? 'Em qual conta essa receita entrou?' : 'Em qual conta devo lançar isso?',
+      payee_name: income ? 'De quem veio esse valor?' : 'Para qual beneficiário?',
+      category_name: income ? 'Qual categoria de receita devo usar?' : 'Qual categoria devo usar?',
+      frequency: 'Qual será a recorrência?',
+      start_date: 'Quando começa?',
+      name: `Qual é o ${field.label.toLowerCase()}?`,
+      type: 'Qual tipo devo usar?',
+      currency: 'Qual moeda?',
+      balance: 'Qual é o saldo inicial?',
+      target_amount: 'Qual é o valor alvo?',
+      original_amount: 'Qual é o valor da dívida?',
+      description: 'Deseja adicionar uma descrição?'
+    };
+    const base = questionMap[field.key] || `Informe ${field.label.toLowerCase()}.`;
+    if (field.key === 'account_name' && amountLabel && intent === 'create_transaction') {
+      return `${base} Vou lançar <strong>${amountLabel}</strong>.`;
+    }
+    return base;
   },
 
   _getOptions(field, data) {
     const s = this._state();
     if (field.entityList === 'accounts')   return (s.accounts   || []).map(a => ({ value: a.name, label: a.name }));
     if (field.entityList === 'categories') {
-      const type = data.type || 'expense';
+      const normalizeType = v => ({ expense:'expense', despesa:'expense', income:'income', receita:'income', transfer:'transfer', transferencia:'transfer', both:'both', ambos:'both' }[String(v||'').toLowerCase()] || String(v||'').toLowerCase());
+      const type = normalizeType(data.type || 'expense');
       return (s.categories || [])
-        .filter(c => !c.type || c.type === type || c.type === 'both')
+        .filter(c => {
+          const ct = normalizeType(c.type);
+          return !ct || ct === type || ct === 'both';
+        })
         .map(c => ({ value: c.name, label: c.name }));
     }
     if (field.entityList === 'payees')     return (s.payees || []).map(p => ({ value: p.name, label: p.name }));
