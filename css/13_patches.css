@@ -2600,4 +2600,10 @@ select.acct-input {
   display: inline-flex;
   align-items: center;
   color: inherit;
+  font-size: .85rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+#umThemeToggle {
+  min-height: 40px !important;
 }
