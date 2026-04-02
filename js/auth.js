@@ -4347,7 +4347,37 @@ async function ensureMasterAdmin() {
   } catch(e) { console.warn('ensureMasterAdmin:', e.message); }
 }
 
-tryAutoConnect();
+
+// Boot auth/app only after the full DOM is parsed.
+// Important because app.html still contains a large amount of HTML *after*
+// the script block that loads auth.js. Calling tryAutoConnect() immediately
+// here can start boot/login rendering while the document is still incomplete,
+// causing white-screen/flicker symptoms when boot touches elements that have
+// not been parsed yet.
+(function scheduleInitialBoot(){
+  if (window.__fintrackInitialBootScheduled) return;
+  window.__fintrackInitialBootScheduled = true;
+
+  const start = () => {
+    try {
+      if (window.__fintrackInitialBootStarted) return;
+      window.__fintrackInitialBootStarted = true;
+      Promise.resolve().then(() => tryAutoConnect()).catch(e => {
+        console.error('[initial boot]', e);
+        try { showLoginScreen(); } catch(_) {}
+      });
+    } catch (e) {
+      console.error('[initial boot sync]', e);
+      try { showLoginScreen(); } catch(_) {}
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
 
 /* ══════════════════════════════════════════════════════════════════
    AUTO-REGISTER ENGINE — Transações Programadas Automáticas
