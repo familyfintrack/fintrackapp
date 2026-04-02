@@ -134,15 +134,23 @@ function _agentWelcome() {
     : '';
 
   const welcomeHtml = `
-<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;flex-direction:column;gap:12px">
   <div>
     👋 Olá! Sou o <strong>FinTrack Copiloto</strong>.<br>
-    <span style="font-size:.8rem;color:var(--muted)">Posso criar transações, responder sobre suas finanças e ajudar com o app.</span>
+    <span style="font-size:.8rem;color:var(--muted)">Crio transações, analiso suas finanças e navego pelo app por você.</span>
   </div>
-  <div style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)">
-    <div>💸 <em>"Crie despesa de R$80 no Supermercado"</em></div>
-    <div>📊 <em>"Quanto gastei este mês?"</em></div>
-    <div>❓ <em>"Como adicionar uma conta?"</em></div>
+  <button class="agent-caps-cta" onclick="agentShowCapabilities()">
+    <span class="agent-caps-cta-icon">✨</span>
+    <div class="agent-caps-cta-text">
+      <strong>Saiba o que posso fazer</strong>
+      <span>Ver todos os atalhos e funcionalidades</span>
+    </div>
+    <span class="agent-caps-cta-arrow">→</span>
+  </button>
+  <div style="display:flex;flex-direction:column;gap:4px;font-size:.79rem;color:var(--muted)">
+    <div>💸 <em>"Paguei R$80 de mercado no Nubank"</em></div>
+    <div>📊 <em>"Quanto gastei em alimentação?"</em></div>
+    <div>❓ <em>"Como funciona o orçamento?"</em></div>
   </div>
   ${quickRepliesHtml}
 </div>`.trim();
@@ -321,11 +329,32 @@ function _agentHideConfirmBar() {
 
 // Atualiza quick replies baseado na página atual
 function _agentRefreshQuickReplies() {
-  if (typeof AgentEngine === 'undefined') return;
   const page = window.state?.currentPage || 'dashboard';
-  const bar = document.getElementById('agentQuickBar');
+  const bar  = document.getElementById('agentQuickBar');
   if (!bar) return;
-  bar.innerHTML = AgentEngine.QuickReplies.render(page);
+
+  // Always keep the Descobrir button first
+  const discoverBtn = `<button onclick="agentShowCapabilities()" class="agent-discover-btn" title="Ver tudo que o agente pode fazer">✨ Descobrir</button>
+    <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px"></div>`;
+
+  if (typeof AgentEngine !== 'undefined') {
+    const replies = AgentEngine.QuickReplies.getForPage(page);
+    const chips   = replies.map(r =>
+      `<button class="agent-quick-chip" onclick="agentSuggest('${r.text.replace(/'/g,"&#39;")}')">${r.label}</button>`
+    ).join('');
+    bar.innerHTML = discoverBtn + chips;
+  } else {
+    // Fallback static chips
+    const staticChips = [
+      ['📊 Gastos','Quanto gastei este mês?'],
+      ['💳 Saldo','qual meu saldo total?'],
+      ['💸 Despesa','criar despesa'],
+      ['💰 Receita','criar receita'],
+      ['📈 Resumo','resumo financeiro deste mês'],
+      ['❓ Ajuda','como usar o FinTrack?'],
+    ].map(([l,t]) => `<button onclick="agentSuggest('${t}')" class="agent-quick-chip">${l}</button>`).join('');
+    bar.innerHTML = discoverBtn + staticChips;
+  }
 }
 
 // ── Intent classifier ─────────────────────────────────────────────────────
@@ -341,6 +370,10 @@ function _agentClassifyIntent(text) {
     /como (mudar|trocar|alterar) (idioma|senha|foto|perfil|avatar|nome)/,
     /como (convidar|adicionar|remover) (membro|familiar|usuario)/,
     /o que (posso|da pra) fazer/,
+    /que (funcoes|funcionalidades|comandos|opcoes|recursos) (voce|vc) tem/,
+    /me (mostra|mostre|lista|liste) (o que|tudo)/,
+    /saiba (o que|tudo)/,
+    /suas (capacidades|habilidades|recursos)/,
   ];
   if (helpRx.some(p => p.test(msg))) return 'help';
 
@@ -371,6 +404,15 @@ function _agentClassifyIntent(text) {
 // ════════════════════════════════════════════════════════════════════════════
 
 async function _agentAnswerHelp(query) {
+  // Special case: "o que posso fazer" → show capabilities panel
+  const norm = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if (/o que (posso|da pra) fazer|que (funcoes|funcionalidades|comandos|opcoes|recursos)|(suas|minhas) (capacidades|habilidades)|saiba|me (mostra|lista) (o que|tudo|funcionalidades)/.test(norm)) {
+    if (typeof agentShowCapabilities === 'function') {
+      agentShowCapabilities();
+      return;
+    }
+  }
+
   const index = _agentBuildHelpIndex();
   if (!index.length) {
     _agentAppend('assistant', '⚠️ Central de ajuda não disponível no momento.');
@@ -1000,6 +1042,13 @@ async function _agentExecute(plan, originalText) {
     await _agentRefreshAfterPlan(plan);
     // v3: atualiza quick replies após ação
     setTimeout(_agentRefreshQuickReplies, 300);
+    // Mostra sugestões contextuais para ações de criação
+    const _intent = plan?.intent || plan?.actions?.[0]?.type;
+    const _data   = plan?.actions?.[0]?.data || {};
+    if (_intent && _intent.startsWith('create_') &&
+        typeof agentShowContextualSuggestions === 'function') {
+      setTimeout(() => agentShowContextualSuggestions(_intent, _data), 600);
+    }
   }
 }
 
