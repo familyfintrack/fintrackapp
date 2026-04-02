@@ -287,6 +287,7 @@ async function loadDashboard(){
   if (typeof renderDashboardUpcoming === 'function') await renderDashboardUpcoming(_dashMemberIds);
   if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
   _renderDashForecast().catch(()=>{});
+  _dashRenderInvestments().catch(()=>{});
   await loadDashboardAutoRunSummary();
 
   // FIX: Carregar orçamentos para o snapshot do dashboard.
@@ -880,14 +881,15 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'kpis',       label: 'Patrimônio, Receita, Despesa e Saldo', icon: '💰', sub: 'Cards de resumo financeiro do mês', el: 'dashCardKpis'       },
-  { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
-  { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
-  { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
-  { id: 'budgetSnap', label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Resumo dos orçamentos ativos',              el: 'dashBudgetSnapshot' },
-  { id: 'upcoming',   label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
-  { id: 'forecast90', label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
-  { id: 'recent',     label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
+  { id: 'kpis',        label: 'Patrimônio, Receita, Despesa e Saldo', icon: '💰', sub: 'Cards de resumo financeiro do mês', el: 'dashCardKpis'       },
+  { id: 'accounts',    label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
+  { id: 'charts',      label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
+  { id: 'favcats',     label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
+  { id: 'budgetSnap',  label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Resumo dos orçamentos ativos',              el: 'dashBudgetSnapshot' },
+  { id: 'investments', label: 'Carteira de Investimentos', icon: '📈', sub: 'Resumo da carteira: valor, custo e resultado', el: 'dashCardInvestments', moduleKey: 'investments_enabled' },
+  { id: 'upcoming',    label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
+  { id: 'forecast90',  label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
+  { id: 'recent',      label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
 ];
 
 function _dashGetPrefs() {
@@ -895,8 +897,19 @@ function _dashGetPrefs() {
     const raw = localStorage.getItem(_DASH_PREFS_KEY());
     if (raw) return JSON.parse(raw);
   } catch (_e) {}
-  // Defaults: tudo visível
-  return Object.fromEntries(_DASH_CARDS.map(c => [c.id, true]));
+  // Defaults: tudo visível (module cards start hidden until module is confirmed active)
+  return Object.fromEntries(_DASH_CARDS.map(c => [c.id, !c.moduleKey]));
+}
+
+/** Returns cards available based on enabled modules */
+function _getDashAvailableCards() {
+  const fid = typeof famId === 'function' ? famId() : null;
+  return _DASH_CARDS.filter(c => {
+    if (!c.moduleKey) return true;
+    const cacheKey = c.moduleKey + '_' + fid;
+    const cached = window._familyFeaturesCache?.[cacheKey];
+    return cached === true;
+  });
 }
 
 async function _dashSavePrefs(prefs) {
@@ -926,13 +939,161 @@ async function _syncDashPrefsFromServer() {
   } catch (e) { console.warn('[dashPrefs] sync exception:', e.message); }
 }
 
+// ════════════════════════════════════════════════════════
+// INVESTMENT DASHBOARD CARD — render & update
+// ════════════════════════════════════════════════════════
+function _dashEnsureInvCard() {
+  if (document.getElementById('dashCardInvestments')) return;
+  // Insert before dashCardUpcoming
+  const ref = document.getElementById('dashCardUpcoming');
+  if (!ref) return;
+  const card = document.createElement('div');
+  card.id = 'dashCardInvestments';
+  card.className = 'card mb-4';
+  card.innerHTML = `
+    <div class="card-header" style="gap:8px">
+      <span class="card-title">📈 Carteira de Investimentos</span>
+      <button class="btn btn-ghost btn-sm" onclick="navigate('investments')" style="margin-left:auto">Ver carteira →</button>
+    </div>
+    <div id="dashInvContent" style="padding:0 4px 4px">
+      <div class="text-muted" style="text-align:center;padding:18px;font-size:.83rem">Carregando…</div>
+    </div>`;
+  ref.parentElement.insertBefore(card, ref);
+}
+
+async function _dashRenderInvestments() {
+  // Only render if module is active
+  const fid = typeof famId === 'function' ? famId() : null;
+  if (!fid) return;
+  const cacheKey = 'investments_enabled_' + fid;
+  const enabled = window._familyFeaturesCache?.[cacheKey] === true;
+  if (!enabled) return;
+
+  _dashEnsureInvCard();
+  const prefs = _dashGetPrefs();
+  const card = document.getElementById('dashCardInvestments');
+  if (!card) return;
+  card.style.display = prefs.investments !== false ? '' : 'none';
+  if (prefs.investments === false) return;
+
+  const el = document.getElementById('dashInvContent');
+  if (!el) return;
+
+  // Gather data from investments module
+  const positions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions.filter(p => +(p.quantity) > 0) : [];
+
+  if (!positions.length) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.83rem">
+      <div style="font-size:1.5rem;margin-bottom:8px">📈</div>
+      Nenhuma posição registrada ainda.<br>
+      <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('investments')">Acessar Investimentos</button>
+    </div>`;
+    return;
+  }
+
+  // Calculate totals
+  const totalMV   = positions.reduce((s,p) => s + (typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0), 0);
+  const totalCost = positions.reduce((s,p) => s + (typeof _invCost === 'function' ? _invCost(p) : (+(p.quantity) * +(p.avg_cost))), 0);
+  const pnl       = totalMV - totalCost;
+  const pnlPct    = totalCost ? pnl / totalCost * 100 : 0;
+  const isPos     = pnl >= 0;
+
+  // Group by asset type
+  const byType = {};
+  positions.forEach(p => {
+    const k = p.asset_type || 'outro';
+    if (!byType[k]) byType[k] = { mv: 0, count: 0 };
+    byType[k].mv += typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0;
+    byType[k].count++;
+  });
+
+  const typeEmoji = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
+    bdr:'🌐', crypto:'₿', tesouro_direto:'🏛️', fundo_investimento:'🏦', renda_fixa:'💰', outro:'📌' };
+  const typeLabel = { acao_br:'Ações BR', fii:'FIIs', etf_br:'ETFs BR', acao_us:'Ações US',
+    etf_us:'ETFs US', bdr:'BDRs', crypto:'Cripto', tesouro_direto:'Tesouro', fundo_investimento:'Fundos',
+    renda_fixa:'Renda Fixa', outro:'Outros' };
+
+  const typeRows = Object.entries(byType)
+    .sort((a,b) => b[1].mv - a[1].mv)
+    .slice(0, 5)
+    .map(([type, d]) => {
+      const pct = totalMV ? (d.mv / totalMV * 100) : 0;
+      const emoji = typeEmoji[type] || '📌';
+      const lbl   = typeLabel[type] || type;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:.88rem;flex-shrink:0">${emoji}</span>
+        <span style="font-size:.78rem;font-weight:600;color:var(--text2);flex:1">${lbl}</span>
+        <span style="font-size:.7rem;color:var(--muted);min-width:34px;text-align:right">${pct.toFixed(0)}%</span>
+        <span style="font-size:.82rem;font-weight:700;color:var(--text);min-width:80px;text-align:right;font-family:var(--font-serif)">${fmt(d.mv)}</span>
+      </div>`;
+    }).join('');
+
+  // Top positions
+  const topPos = [...positions]
+    .sort((a,b) => (typeof _invMarketValue === 'function' ? _invMarketValue(b) - _invMarketValue(a) : 0))
+    .slice(0, 3);
+
+  const topRows = topPos.map(p => {
+    const mv  = typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0;
+    const c   = typeof _invCost === 'function' ? _invCost(p) : (+(p.quantity) * +(p.avg_cost));
+    const ret = c ? (mv - c) / c * 100 : 0;
+    const retColor = ret >= 0 ? 'var(--accent)' : 'var(--red,#dc2626)';
+    const netRet = typeof _invNetReturn === 'function' ? _invNetReturn(p) : null;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.ticker)}</div>
+        <div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name||'')}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.82rem;font-weight:700;font-family:var(--font-serif)">${fmt(mv)}</div>
+        <div style="font-size:.68rem;font-weight:600;color:${retColor}">${ret>=0?'+':''}${ret.toFixed(2)}%${netRet?.hasFees?' (liq. '+netRet.netReturnPct.toFixed(1)+'%)':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <!-- KPI strip -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
+      <div style="background:var(--surface2);padding:10px 14px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">Valor de mercado</div>
+        <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:var(--text)">${fmt(totalMV)}</div>
+      </div>
+      <div style="background:var(--surface2);padding:10px 14px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">Custo total</div>
+        <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:var(--text2)">${fmt(totalCost)}</div>
+      </div>
+      <div style="background:var(--surface2);padding:10px 14px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">Resultado</div>
+        <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:${isPos?'var(--accent)':'var(--red,#dc2626)'}">${isPos?'+':''}${fmt(pnl)} <span style="font-size:.72rem">(${pnlPct.toFixed(2)}%)</span></div>
+      </div>
+    </div>
+    <!-- Distribution by type -->
+    ${Object.keys(byType).length > 1 ? `
+    <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;padding:0 2px">Distribuição por tipo</div>
+    <div style="margin-bottom:10px">${typeRows}</div>` : ''}
+    <!-- Top positions -->
+    <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;padding:0 2px">Principais posições</div>
+    <div>${topRows}</div>
+    <div style="text-align:center;padding:8px 0 2px">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('investments')" style="font-size:.75rem">Ver carteira completa →</button>
+    </div>`;
+}
+window._dashRenderInvestments = _dashRenderInvestments;
+
 function _dashApplyPrefs(prefs) {
   const order = _getDashCardOrder(prefs);
+  const available = _getDashAvailableCards();
+  const availableIds = new Set(available.map(c => c.id));
 
   // ── 1. Visibilidade ────────────────────────────────────────────────────────
   order.forEach(c => {
     const el = document.getElementById(c.el);
     if (!el) return;
+    // Module-gated cards: only show if module is active AND user has it enabled
+    if (c.moduleKey && !availableIds.has(c.id)) {
+      el.style.display = 'none';
+      return;
+    }
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
 
@@ -1001,7 +1162,8 @@ let _dashCustomCurrentOrder = null;
 function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
-  list.innerHTML = order.map((c, idx) => `
+  const _avail = new Set(_getDashAvailableCards().map(c => c.id));
+  list.innerHTML = order.filter(c => !c.moduleKey || _avail.has(c.id)).map((c, idx) => `
     <div class="dash-custom-item" data-card-id="${c.id}" draggable="true"
       style="display:flex;align-items:center;gap:10px;padding:11px 14px;
         background:var(--surface2);border:1.5px solid var(--border);
