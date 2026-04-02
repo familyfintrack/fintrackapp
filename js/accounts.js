@@ -331,8 +331,8 @@ function switchAccountTab(tabId, btn){
   document.querySelectorAll('#accountModal .account-tab-pane').forEach(pane => {
     pane.style.display = pane.id === tabId ? 'block' : 'none';
   });
-  // Support all tab class variants
-  document.querySelectorAll('#accountModal .account-modal-tab, #accountModal .acct-tab, #accountModal .am-tab').forEach(tab => {
+  // Support both old (.account-modal-tab) and new (.acct-tab) class names
+  document.querySelectorAll('#accountModal .account-modal-tab, #accountModal .acct-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.tab === tabId);
   });
   if (btn && btn.blur) btn.blur();
