@@ -906,9 +906,50 @@ async function doChangeMyPwd() {
   } catch(e) { errEl.textContent = 'Erro: ' + (e?.message || e); errEl.style.display = ''; }
 }
 
+
+function _setLoginBusy(isBusy, label) {
+  try {
+    const btn = document.getElementById('loginBtn');
+    if (btn) {
+      btn.disabled = !!isBusy;
+      btn.dataset.originalHtml = btn.dataset.originalHtml || btn.innerHTML;
+      btn.innerHTML = isBusy ? `<span>${label || "A carregar..."}</span>` : (btn.dataset.originalHtml || btn.innerHTML);
+    }
+  } catch(_) {}
+}
+
+async function _bootIntoAppSafely(options = {}) {
+  const { allowFamilyWizard = true, busyLabel = 'A carregar...' } = options || {};
+  _setLoginBusy(true, busyLabel);
+  try {
+    updateUserUI();
+    if (!sb) throw new Error('Configure o Supabase primeiro.');
+
+    if (allowFamilyWizard && !currentUser?.family_id &&
+        currentUser?.role !== 'admin' &&
+        currentUser?.role !== 'owner') {
+      if (typeof enforceFirstLoginFamilyCreation === 'function') {
+        await enforceFirstLoginFamilyCreation();
+        return 'wizard';
+      }
+    }
+
+    await bootApp();
+    hideLoginScreen();
+    return 'booted';
+  } catch (e) {
+    console.error('[auth boot]', e);
+    showLoginScreen();
+    try { showLoginFormArea(); } catch(_) {}
+    try { showLoginErr('Erro ao carregar o aplicativo: ' + (e?.message || e)); } catch(_) {}
+    throw e;
+  } finally {
+    _setLoginBusy(false);
+  }
+}
+
 // ── On login success ──
 async function onLoginSuccess() {
-  updateUserUI();
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
   }
@@ -922,26 +963,17 @@ async function onLoginSuccess() {
     if (typeof Cursor !== 'undefined') Cursor.show('A carregar…');
   }
 
-  hideLoginScreen();
-
   // Check for new feedback reports (admin only)
   if (typeof _checkNewFeedbackOnLogin === 'function') _checkNewFeedbackOnLogin().catch(()=>{});
 
   // Apply access request visibility based on admin setting
   if (typeof initAccessRequestVisibility === 'function') Promise.resolve(initAccessRequestVisibility()).catch(()=>{});
 
-  // If the user has no family_id and is not a global admin/owner,
-  // launch the wizard so they can create their own family as Owner.
-  if (!currentUser?.family_id &&
-      currentUser?.role !== 'admin' &&
-      currentUser?.role !== 'owner') {
-    if (typeof enforceFirstLoginFamilyCreation === 'function') {
-      await enforceFirstLoginFamilyCreation();
-      return; // wizard's _wzFinish() calls bootApp() when done
-    }
+  try {
+    await _bootIntoAppSafely({ allowFamilyWizard: true, busyLabel: 'A carregar…' });
+  } finally {
+    if (!platformInfo.isWindows && typeof Cursor !== 'undefined') Cursor.hide();
   }
-  await bootApp();
-  if (!platformInfo.isWindows && typeof Cursor !== 'undefined') Cursor.hide();
 }
 
 // ── Magic-link post-auth gate ─────────────────────────────────────────────
@@ -4432,9 +4464,8 @@ async function doRecoveryPwd() {
 
     // Load context and enter the app
     await _loadCurrentUserContext();
-    document.getElementById('loginScreen').style.display = 'none';
     toast('✓ Senha redefinida com sucesso! Bem-vindo(a).', 'success');
-    await bootApp();
+    await _bootIntoAppSafely({ allowFamilyWizard: true, busyLabel: 'A carregar…' });
   } catch(e) {
     errEl.textContent = 'Erro: ' + (e?.message || e);
     errEl.style.display = '';
