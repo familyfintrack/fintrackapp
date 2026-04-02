@@ -1259,3 +1259,82 @@
   max-width: 130px;
   flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MEMBER CHIPS — Sonhos (associação de membros)
+   Renderizados em: card meta, detalhe modal, wizard revisão
+══════════════════════════════════════════════════════════════════ */
+
+/* Chip base */
+.drm-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .74rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface2));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  color: var(--accent);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Família (geral)" chip — slightly different style */
+.drm-member-chip--all {
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface2));
+  color: var(--text2);
+  border-color: var(--border);
+  font-weight: 500;
+}
+
+/* Small variant used in card meta */
+.drm-member-chip--sm {
+  font-size: .67rem;
+  padding: 2px 7px;
+  max-width: 110px;
+}
+
+/* Container in dream card */
+.drm-card-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* Container in detail modal */
+.drm-members-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Members section in detail modal */
+.drm-members-section {
+  padding-bottom: 2px;
+}
+
+/* Review card members row in wizard step 4 */
+.drm-review-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: .78rem;
+}
+.drm-review-members-label {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
