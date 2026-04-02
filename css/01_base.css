@@ -789,6 +789,17 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 [data-theme="dark"] .search-wrap { background: var(--surface2); border-color: var(--border2); }
 [data-theme="dark"] .search-wrap input { background: transparent !important; color: var(--text) !important; }
 
+/* ── Topbar dark mode — mantém identidade visual verde mas com texto claro ── */
+[data-theme="dark"] .topbar {
+  background: linear-gradient(135deg, #071510 0%, #0e2b1a 52%, #112e1c 100%) !important;
+  border-bottom: 1px solid rgba(52,168,104,.15) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.45) !important;
+}
+[data-theme="dark"] .topbar-title,
+[data-theme="dark"] .topbar-actions .btn,
+[data-theme="dark"] .topbar-actions button { color: #e8eaf0 !important; }
+[data-theme="dark"] .topbar #topbarUserName { color: rgba(232,234,240,.85) !important; }
+
 /* ── User menu dropdown ──────────────────────────────────────────────── */
 [data-theme="dark"] #userMenuDropdown {
   background: var(--surface) !important;
@@ -800,6 +811,34 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 [data-theme="dark"] #userMenuEmail { color: var(--muted) !important; }
 [data-theme="dark"] .user-menu-item { color: var(--text); }
 [data-theme="dark"] .user-menu-item:hover { background: var(--surface2); }
+
+/* ── Theme toggle switch melhorado ──────────────────────────────────── */
+#umThemeToggle {
+  align-items: center !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  cursor: pointer;
+}
+#umThemeSwitch {
+  width: 42px !important;
+  height: 24px !important;
+  border-radius: 12px !important;
+  padding: 3px !important;
+  transition: background .25s ease !important;
+  flex-shrink: 0;
+}
+#umThemePill {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.28) !important;
+  transition: transform .25s cubic-bezier(.4,0,.2,1) !important;
+}
+[data-theme="dark"] #umThemeSwitch { background: var(--accent) !important; }
+[data-theme="dark"] #umThemePill { transform: translateX(18px) !important; }
+#umThemeLabel { font-size: .84rem; font-weight: 600; }
+#umThemeIcon  { font-size: 1rem; }
 
 /* ── Transaction table / list ────────────────────────────────────────── */
 [data-theme="dark"] .tx-v2-row:hover { background: rgba(255,255,255,.03) !important; }
