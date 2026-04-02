@@ -4360,10 +4360,18 @@ if (!window.__FT_AUTH_BOOT_WIRED__) {
   document.addEventListener('DOMContentLoaded', () => {
     if (window.__FT_AUTH_BOOT_STARTED__) return;
     window.__FT_AUTH_BOOT_STARTED__ = true;
-    Promise.resolve(typeof tryAutoConnect === 'function' ? tryAutoConnect() : false).catch(err => {
-      console.warn('[auth] tryAutoConnect failed:', err?.message || err);
-      try { showLoginScreen(); } catch(_) {}
-    });
+    Promise.resolve(typeof tryAutoConnect === 'function' ? tryAutoConnect() : false)
+      .then((result) => {
+        const setupVisible = !!document.getElementById('setupScreen') && getComputedStyle(document.getElementById('setupScreen')).display !== 'none';
+        const loginVisible = !!document.getElementById('loginScreen') && getComputedStyle(document.getElementById('loginScreen')).display !== 'none';
+        if (!result && !setupVisible && !loginVisible) {
+          try { showLoginScreen(); } catch(_) {}
+        }
+      })
+      .catch(err => {
+        console.warn('[auth] tryAutoConnect failed:', err?.message || err);
+        try { showLoginScreen(); } catch(_) {}
+      });
   }, { once: true });
 }
 

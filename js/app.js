@@ -436,8 +436,13 @@ async function tryAutoConnect(){
           return; // createFirstFamily() calls bootApp() when done
         }
       }
-      await bootApp();
-      hideLoginScreen?.();
+      try {
+        await bootApp();
+        hideLoginScreen?.();
+      } catch (e) {
+        console.error('[boot] failed after session restore:', e);
+        showLoginScreen();
+      }
     } else {
       // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
@@ -455,8 +460,13 @@ async function tryAutoConnect(){
     const restored = await tryRestoreSession().catch(()=>false);
     if(restored){
       updateUserUI?.();
-      await bootApp();
-      hideLoginScreen?.();
+      try {
+        await bootApp();
+        hideLoginScreen?.();
+      } catch (e) {
+        console.error('[boot] failed after fallback restore:', e);
+        showLoginScreen();
+      }
     } else {
       showLoginScreen();
       // Verificar token de convite após mostrar a tela de login
@@ -908,9 +918,10 @@ function clearFamilyScopedUI() {
 function navigate(page){
   // Guard: settings/audit/telemetry são admin-only
   // Guard: settings/telemetry são admin-only; audit é acessível a todos
-  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
-    // FIX: if currentUser not loaded yet, don't block — let it through and page will show error
-    if (currentUser !== null) {
+  if ((page==='settings' || page==='telemetry')) {
+    const canAdmin = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.can_admin));
+    // If currentUser is still null, let navigation continue and let the page render its own empty/error state.
+    if (currentUser !== null && !canAdmin) {
       toast(t('error.admin_only'),'warning');
       return;
     }
@@ -926,7 +937,13 @@ function navigate(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
+  const targetPage = document.getElementById('page-'+page);
+  if(!targetPage){
+    console.warn('[navigate] page not found:', page);
+    toast('Página indisponível no momento.','warning');
+    return;
+  }
+  targetPage.classList.add('active');
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;
