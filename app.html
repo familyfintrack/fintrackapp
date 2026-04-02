@@ -92,17 +92,6 @@
   } catch(e) {}
 })();
 </script>
-<!-- Anti-FOUC: ocultar mainApp/sidebar instantaneamente até auth resolver -->
-<style>
-#mainApp, #sidebar, #sidebarOverlay {
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity .25s ease;
-}
-#loginScreen {
-  display: flex !important;
-}
-</style>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 <link rel="stylesheet" href="css/01_base.css">
 <link rel="stylesheet" href="css/02_layout.css">
@@ -3120,6 +3109,31 @@
               <div id="dbBackupList"><div style="color:var(--muted);font-size:.8rem">Carregando…</div></div>
             </div>
           </div>
+          <!-- ── Exportar dados completos em Excel ── -->
+          <div class="cfg-card">
+            <div class="cfg-row">
+              <div class="cfg-row-icon" style="background:#f0fdf4">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+              <div class="cfg-row-info">
+                <div class="cfg-row-label">Exportar para Excel</div>
+                <div class="cfg-row-sub">Baixar todos os dados em planilhas XLSX (ZIP)</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openFamilyExportModal()">
+                ⬇️ Exportar
+              </button>
+            </div>
+            <div style="padding:0 16px 12px;font-size:.76rem;color:var(--muted);line-height:1.5">
+              Gera uma planilha por tabela (transações, contas, categorias, investimentos, sonhos, etc.) e agrupa tudo em um arquivo ZIP para download.
+            </div>
+          </div>
+
           <div class="cfg-card" id="normalizeNamesSection" style="display:none">
             <div class="cfg-row">
               <div class="cfg-row-icon" style="background:#f0fdf4">
@@ -7125,17 +7139,6 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </div>
-        <!-- ── Vínculo com Sonho (módulo Sonhos ativo) ── -->
-        <div class="form-group full" id="accountDreamLinkWrap" style="display:none">
-          <label class="form-label" style="display:flex;align-items:center;gap:6px">
-            🌟 <span>Vincular a um Sonho</span>
-            <span style="font-size:.7rem;color:var(--muted);font-weight:400;margin-left:4px">— associa esta conta poupança a uma meta</span>
-          </label>
-          <select id="accountDreamLink" class="form-input" style="margin-top:4px">
-            <option value="">— Nenhum sonho vinculado —</option>
-          </select>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Vincula o saldo desta conta ao progresso do sonho selecionado.</div>
-        </div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
@@ -7861,7 +7864,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/import.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/two_fa.js"></script>
+  <script src="js/export_family.js"></script>
   <script src="js/feedback.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/autocheck.js"></script>
@@ -8140,12 +8143,6 @@ Se você não solicitou isso, ignore este e-mail.`,
 
         <!-- ── Tab: Notificações ── -->
         <div class="prof-tab-pane" id="profTabNotif" style="display:none">
-
-          <!-- ── 2FA: Verificação em duas etapas ── -->
-          <div class="prof-section-label">🔐 Segurança · Autenticação</div>
-          <div id="myProfile2FAWrap" style="margin-bottom:20px">
-            <div style="color:var(--muted);font-size:.8rem;padding:12px 0">⏳ Carregando configurações de segurança…</div>
-          </div>
 
           <!-- Notificação por transação -->
           <div class="prof-section-label">📩 Notificação por transação</div>
