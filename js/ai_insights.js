@@ -154,7 +154,7 @@ function _aiShowTab(tab) {
     const btn   = document.getElementById('aiTab-' + t);
     const panel = document.getElementById('aiPanel-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
-    if (panel) panel.style.display = t === tab ? '' : 'none';
+    if (panel) panel.style.display = t === tab ? 'block' : 'none';
   });
   if (tab === 'snapshots') {
     loadAiSnapshots().catch(err => console.warn('[AIInsights] snapshots tab refresh:', err?.message || err));
@@ -244,7 +244,7 @@ function _aiEnsureSnapshotScaffold() {
     const chatPanel = document.getElementById('aiPanel-chat');
     const panel = document.createElement('div');
     panel.id = 'aiPanel-snapshots';
-    panel.style.display = 'none';
+    panel.style.display = 'none'; /* will be set to 'block' by _aiShowTab */
     panel.innerHTML = `
       <div class="ai-snapshots-wrap">
         <div class="ai-snapshots-header card">
