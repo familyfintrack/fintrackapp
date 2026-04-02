@@ -905,17 +905,35 @@ function clearFamilyScopedUI() {
   } catch(e) {}
 }
 
+
+function _pageAccessAllowed(page){
+  if(page !== "settings" && page !== "telemetry") return true;
+  if(currentUser == null) return true;
+  return !!(currentUser?.can_admin || currentUser?.role === "admin" || currentUser?.role === "owner");
+}
+
+function _renderPageLoadError(page, message){
+  try{
+    const pageEl = document.getElementById('page-' + page);
+    if(!pageEl) return;
+    const preserved = new Set(Array.from(pageEl.querySelectorAll(':scope > .page-header-bar, :scope > #fxRatesBadge, :scope > .fx-bar')));
+    Array.from(pageEl.children).forEach((child)=>{ if(!preserved.has(child)) child.remove(); });
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.cssText = 'padding:24px;max-width:760px';
+    card.innerHTML = `<div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">Não foi possível carregar esta página</div><div style="color:var(--muted);line-height:1.6">${String(message||'Erro inesperado.')}</div>`;
+    pageEl.appendChild(card);
+  }catch(_){}
+}
+
 function navigate(page){
-  const _canAdminAccess = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.can_admin));
-  if ((page === 'settings' || page === 'telemetry') && currentUser !== null && !_canAdminAccess) {
-    toast(t('error.admin_only'),'warning');
+  const pageEl = document.getElementById('page-'+page);
+  if(!pageEl){
+    toast('Página não encontrada','error');
     return;
   }
-
-  const targetPage = document.getElementById('page-' + page);
-  if (!targetPage) {
-    console.warn('[navigate] page not found:', page);
-    toast('Página não encontrada: ' + page, 'warning');
+  if(!_pageAccessAllowed(page)){
+    toast(t('error.admin_only'),'warning');
     return;
   }
 
@@ -929,8 +947,7 @@ function navigate(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  if (targetPage.style.display === 'none') targetPage.style.display = '';
-  targetPage.classList.add('active');
+  pageEl.classList.add('active');
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;
@@ -988,88 +1005,69 @@ function navigate(page){
     }
   })(page);
   state.currentPage=page;closeSidebar();
-  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(targetPage);
+  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(pageEl);
   _scrollActivePageToTop(page);
   try {
-  if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){
-    if(state.reconcileMode && typeof exitReconcileMode==='function') exitReconcileMode(false);
-    populateTxMonthFilter();
-    if(typeof populateSelects==='function') populateSelects();
-    // FIX: populateSelects reconstrói o innerHTML dos selects e apaga qualquer .value
-    // definido antes da navegação (ex: goToAccountTransactions). Restaurar do state.
-    const _tf = state.txFilter || {};
-    const _txAccEl = document.getElementById('txAccount');
-    if (_txAccEl && _tf.account) _txAccEl.value = _tf.account;
-    const _txMonthEl = document.getElementById('txMonth');
-    if (_txMonthEl && _tf.month) _txMonthEl.value = _tf.month;
-    const _txTypeEl = document.getElementById('txType');
-    if (_txTypeEl && _tf.type) _txTypeEl.value = _tf.type;
-    const _txCatEl = document.getElementById('txCategoryFilter');
-    if (_txCatEl && _tf.categoryId) _txCatEl.value = _tf.categoryId;
-    // Aplicar is-active em todos os chips — marca visualmente os filtros ativos
-    ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','txReconcileFilter'].forEach(id => {
-      const _el = document.getElementById(id);
-      if (_el) _el.classList.toggle('is-active', !!_el.value);
-    });
-    // Se há filtro de conta/mês/tipo ativo, abrir o painel de filtros e atualizar badge
-    if (_tf.account || _tf.month || _tf.type || _tf.categoryId) {
-      const _panel = document.getElementById('tx-filters-panel');
-      const _btn   = document.getElementById('txFilterToggle');
-      if (_panel) _panel.classList.add('open');
-      if (_btn)   _btn.classList.add('active');
-      if (typeof _txUpdateFilterBadge === 'function') _txUpdateFilterBadge();
+    if(page==='dashboard' && sb) loadDashboard();
+    else if(page==='transactions'){
+      if(state.reconcileMode && typeof exitReconcileMode==='function') exitReconcileMode(false);
+      populateTxMonthFilter();
+      if(typeof populateSelects==='function') populateSelects();
+      const _tf = state.txFilter || {};
+      const _txAccEl = document.getElementById('txAccount');
+      if (_txAccEl && _tf.account) _txAccEl.value = _tf.account;
+      const _txMonthEl = document.getElementById('txMonth');
+      if (_txMonthEl && _tf.month) _txMonthEl.value = _tf.month;
+      const _txTypeEl = document.getElementById('txType');
+      if (_txTypeEl && _tf.type) _txTypeEl.value = _tf.type;
+      const _txCatEl = document.getElementById('txCategoryFilter');
+      if (_txCatEl && _tf.categoryId) _txCatEl.value = _tf.categoryId;
+      ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','txReconcileFilter'].forEach(id => {
+        const _el = document.getElementById(id);
+        if (_el) _el.classList.toggle('is-active', !!_el.value);
+      });
+      if (_tf.account || _tf.month || _tf.type || _tf.categoryId) {
+        const _panel = document.getElementById('tx-filters-panel');
+        const _btn   = document.getElementById('txFilterToggle');
+        if (_panel) _panel.classList.add('open');
+        if (_btn)   _btn.classList.add('active');
+        if (typeof _txUpdateFilterBadge === 'function') _txUpdateFilterBadge();
+      }
+      loadTransactions();
     }
-    loadTransactions();
-  }
-  else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
-  else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
-  else if(page==='budgets')initBudgetsPage();
-  else if(page==='categories')initCategoriesPage();
-  else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
-  else if(page==='scheduled') {
-    const _now = new Date();
-    const _todayStr = _now.toISOString().slice(0,10);
-    // Always reset calendar to current month/day
-    if (typeof _scCalYear  !== 'undefined') { window._scCalYear  = _now.getFullYear(); }
-    if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
-    // Use the exposed setter so the module-scoped variable is actually set
-    if (typeof window._setScCalSelDay === 'function') window._setScCalSelDay(_todayStr);
-
-    // FIX: Restaurar a view preferida ANTES do loadScheduled para evitar o flash
-    // list→calendar. A lista começa oculta (display:none no HTML) e a view correta
-    // é aplicada imediatamente antes de qualquer dado chegar.
-    const _savedView = currentUser?.preferred_sc_view ||
-                       localStorage.getItem('sc_view_pref') ||
-                       'calendar';
-    if (typeof setScView === 'function') setScView(_savedView);
-
-    loadScheduled().then(() => {
-      // Após os dados carregarem, re-aplicar a view para re-renderizar o conteúdo
+    else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
+    else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
+    else if(page==='budgets')initBudgetsPage();
+    else if(page==='categories')initCategoriesPage();
+    else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
+    else if(page==='scheduled') {
+      const _now = new Date();
+      const _todayStr = _now.toISOString().slice(0,10);
+      if (typeof _scCalYear  !== 'undefined') { window._scCalYear  = _now.getFullYear(); }
+      if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
+      if (typeof window._setScCalSelDay === 'function') window._setScCalSelDay(_todayStr);
+      const _savedView = currentUser?.preferred_sc_view || localStorage.getItem('sc_view_pref') || 'calendar';
       if (typeof setScView === 'function') setScView(_savedView);
-      // Open upcoming panel if it has events, keep day groups collapsed per spec
-      if (typeof _openUpcomingIfHasEvents === 'function') _openUpcomingIfHasEvents();
-    });
-  }
-  else if(page==='import')initImportPage();
-  else if(page==='settings')loadSettings();
-  else if(page==='audit')loadAuditLogs();
-  else if(page==='telemetry')loadTelemetryDashboard?.();
-  else if(page==='investments')loadInvestmentsPage?.();
-  else if(page==='debts')loadDebtsPage?.();
-  else if(page==='prices')initPricesPage();
-  else if(page==='grocery')initGroceryPage();
-  else if(page==='ai_insights')initAiInsightsPage();
-  else if(page==='dreams')initDreamsPage?.();
-  else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
-  else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
-  } catch (err) {
-    console.error('[navigate] failed for page', page, err);
-    if (targetPage) {
-      targetPage.innerHTML = `<div class="card" style="max-width:720px;margin:18px auto"><div style="font-size:1.05rem;font-weight:700;margin-bottom:8px">Erro ao carregar a página</div><div style="color:var(--muted);font-size:.9rem;margin-bottom:12px">${esc(err?.message || err || 'Falha inesperada')}</div><button class="btn btn-primary" onclick="navigate('${page}')">Tentar novamente</button></div>`;
-      targetPage.classList.add('active');
-      targetPage.style.display = '';
+      loadScheduled().then(() => {
+        if (typeof setScView === 'function') setScView(_savedView);
+        if (typeof _openUpcomingIfHasEvents === 'function') _openUpcomingIfHasEvents();
+      });
     }
+    else if(page==='import')initImportPage();
+    else if(page==='settings')loadSettings();
+    else if(page==='audit')loadAuditLogs();
+    else if(page==='telemetry')loadTelemetryDashboard?.();
+    else if(page==='investments')loadInvestmentsPage?.();
+    else if(page==='debts')loadDebtsPage?.();
+    else if(page==='prices')initPricesPage();
+    else if(page==='grocery')initGroceryPage();
+    else if(page==='ai_insights')initAiInsightsPage();
+    else if(page==='dreams')initDreamsPage?.();
+    else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
+    else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
+  } catch(err) {
+    console.error('[navigate:'+page+']', err);
+    _renderPageLoadError(page, err?.message || 'Erro inesperado ao montar a página.');
   }
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
