@@ -62,6 +62,7 @@
   window.tryAutoConnect = tryAutoConnect;
   window.ensureSupabaseClient = ensureClient;
 
-  // Do not eagerly call tryAutoConnect() here. app.html keeps rendering
-  // significant markup after the script tags, and auth/app own the guarded boot.
+  // Startup is centralized after DOMContentLoaded in auth.js/app.js.
+  // Do not auto-run here because app.html continues after script tags and
+  // an eager session restore can boot against an incomplete DOM.
 })();

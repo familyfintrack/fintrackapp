@@ -4347,27 +4347,17 @@ async function ensureMasterAdmin() {
   } catch(e) { console.warn('ensureMasterAdmin:', e.message); }
 }
 
-// Boot auth only after the full document is parsed.
-// app.html still contains significant markup after script tags, including the
-// real login shell, so running auto-connect immediately can leave a white page
-// or a partially rendered login.
-(function _startAutoBootOnce(){
-  async function run(){
-    if (window.__FT_AUTO_BOOT_STARTED) return;
-    window.__FT_AUTO_BOOT_STARTED = true;
-    try {
-      if (typeof tryAutoConnect === 'function') await tryAutoConnect();
-    } catch (e) {
-      console.warn('[auth] auto-boot failed:', e?.message || e);
+if (!window.__FT_AUTH_BOOT_WIRED__) {
+  window.__FT_AUTH_BOOT_WIRED__ = true;
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.__FT_AUTH_BOOT_STARTED__) return;
+    window.__FT_AUTH_BOOT_STARTED__ = true;
+    Promise.resolve(typeof tryAutoConnect === 'function' ? tryAutoConnect() : false).catch(err => {
+      console.warn('[auth] tryAutoConnect failed:', err?.message || err);
       try { showLoginScreen(); } catch(_) {}
-    }
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', run, { once:true });
-  } else {
-    run();
-  }
-})();
+    });
+  }, { once: true });
+}
 
 /* ══════════════════════════════════════════════════════════════════
    AUTO-REGISTER ENGINE — Transações Programadas Automáticas

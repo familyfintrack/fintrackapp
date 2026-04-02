@@ -436,13 +436,8 @@ async function tryAutoConnect(){
           return; // createFirstFamily() calls bootApp() when done
         }
       }
-      try {
-        await bootApp();
-        hideLoginScreen?.();
-      } catch (e) {
-        console.error('[boot] restored session failed:', e);
-        showLoginScreen();
-      }
+      await bootApp();
+      hideLoginScreen?.();
     } else {
       // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
@@ -460,13 +455,8 @@ async function tryAutoConnect(){
     const restored = await tryRestoreSession().catch(()=>false);
     if(restored){
       updateUserUI?.();
-      try {
-        await bootApp();
-        hideLoginScreen?.();
-      } catch (e) {
-        console.error('[boot] restored session failed:', e);
-        showLoginScreen();
-      }
+      await bootApp();
+      hideLoginScreen?.();
     } else {
       showLoginScreen();
       // Verificar token de convite após mostrar a tela de login
@@ -609,6 +599,14 @@ async function bootApp(){
   state.txFilter.month=ym;
   // Navegar para dashboard
   navigate('dashboard');
+  try {
+    if (typeof loadDashboard === 'function') {
+      await loadDashboard();
+    }
+  } catch (e) {
+    console.error('[boot] dashboard initial load failed:', e);
+    throw e;
+  }
   // Notificações de login para o usuário (transações do dia + saúde financeira)
   // Notifications: run after loadScheduled resolves so data is ready
 
