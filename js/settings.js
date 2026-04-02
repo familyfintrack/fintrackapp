@@ -1723,8 +1723,7 @@ async function loadTelemetryDashboard() {
     if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon">🔐</div><div class="tel-empty-text">Sessão não iniciada. Faça login novamente.</div></div>';
     return;
   }
-  const _isTelAdmin = !!(currentUser && (currentUser.can_admin || currentUser.role === 'admin' || currentUser.role === 'owner'))
-  if (!_isTelAdmin) {
+  if (!(currentUser.can_admin || currentUser.role === 'admin' || currentUser.role === 'owner')) {
     const kpiEl = document.getElementById('telKpis');
     if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon">🚫</div><div class="tel-empty-text">Acesso restrito a administradores.</div></div>';
     return;

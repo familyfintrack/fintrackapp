@@ -906,14 +906,17 @@ function clearFamilyScopedUI() {
 }
 
 function navigate(page){
-  // Guard: settings/audit/telemetry são admin-only
-  // Guard: settings/telemetry são admin-only; audit é acessível a todos
-  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
-    // FIX: if currentUser not loaded yet, don't block — let it through and page will show error
-    if (currentUser !== null) {
-      toast(t('error.admin_only'),'warning');
-      return;
-    }
+  const _canAdminAccess = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.can_admin));
+  if ((page === 'settings' || page === 'telemetry') && currentUser !== null && !_canAdminAccess) {
+    toast(t('error.admin_only'),'warning');
+    return;
+  }
+
+  const targetPage = document.getElementById('page-' + page);
+  if (!targetPage) {
+    console.warn('[navigate] page not found:', page);
+    toast('Página não encontrada: ' + page, 'warning');
+    return;
   }
 
   // Track history — skip duplicate consecutive
@@ -926,7 +929,8 @@ function navigate(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
+  if (targetPage.style.display === 'none') targetPage.style.display = '';
+  targetPage.classList.add('active');
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;
@@ -984,8 +988,9 @@ function navigate(page){
     }
   })(page);
   state.currentPage=page;closeSidebar();
-  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document.getElementById('page-'+page));
+  if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(targetPage);
   _scrollActivePageToTop(page);
+  try {
   if(page==='dashboard' && sb) loadDashboard();
   else if(page==='transactions'){
     if(state.reconcileMode && typeof exitReconcileMode==='function') exitReconcileMode(false);
@@ -1056,20 +1061,14 @@ function navigate(page){
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
   else if(page==='dreams')initDreamsPage?.();
-  else if(page==='help'){
-    try {
-      if (typeof initHelpPage === 'function') initHelpPage();
-      else pageEl.innerHTML += '<div style="padding:24px">Central de Ajuda indisponível no momento.</div>';
-    } catch (e) {
-      console.error('[navigate.help]', e);
-      pageEl.innerHTML += '<div style="padding:24px">Erro ao carregar a Central de Ajuda.</div>';
-    }
-  }
-  else if(page==='privacy'){
-    try {
-      if (typeof _prvInitPage === 'function') _prvInitPage();
-    } catch (e) {
-      console.error('[navigate.privacy]', e);
+  else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
+  else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
+  } catch (err) {
+    console.error('[navigate] failed for page', page, err);
+    if (targetPage) {
+      targetPage.innerHTML = `<div class="card" style="max-width:720px;margin:18px auto"><div style="font-size:1.05rem;font-weight:700;margin-bottom:8px">Erro ao carregar a página</div><div style="color:var(--muted);font-size:.9rem;margin-bottom:12px">${esc(err?.message || err || 'Falha inesperada')}</div><button class="btn btn-primary" onclick="navigate('${page}')">Tentar novamente</button></div>`;
+      targetPage.classList.add('active');
+      targetPage.style.display = '';
     }
   }
 
