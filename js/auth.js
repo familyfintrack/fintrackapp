@@ -471,12 +471,47 @@ function showLoginScreen() {
 
   const ls = document.getElementById('loginScreen');
   if (ls) {
+    ls.classList.remove('exiting');
     ls.style.display = 'flex';
+    ls.style.visibility = 'visible';
+    ls.style.opacity = '1';
     // FIX: Re-aplicar tema sempre que a tela for exibida (cobre logout, sessão expirada,
     // e qualquer re-exibição posterior ao boot). Lê do cache em memória se disponível,
     // senão do localStorage (sempre disponível, sem network).
     try {
       // Login theme removed — single unified design
+    } catch(_) {}
+    try {
+      applyLoginPlatformMode();
+    } catch(_) {}
+    // Sempre resetar a área principal do login. Em mobile, um fluxo anterior
+    // interrompido podia deixar loginFormArea escondida e exibir só parte do card.
+    try {
+      ['forgotPwdArea','registerFormArea','pendingApprovalArea','changePwdArea','recoveryPwdArea']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.style.display = 'none';
+            el.style.visibility = 'hidden';
+            el.style.opacity = '0';
+          }
+        });
+      const loginArea = document.getElementById('loginFormArea');
+      if (loginArea) {
+        loginArea.style.display = '';
+        loginArea.style.visibility = 'visible';
+        loginArea.style.opacity = '1';
+      }
+      const pwd = document.getElementById('loginPassword');
+      const btn = document.getElementById('loginBtn');
+      const remember = document.querySelector('#loginFormArea .ls-remember');
+      const request = document.getElementById('loginRequestAccessWrap');
+      const error = document.getElementById('loginError');
+      if (pwd) { pwd.style.display = ''; pwd.disabled = false; }
+      if (btn) { btn.style.display = ''; btn.disabled = false; }
+      if (remember) remember.style.display = '';
+      if (request) request.style.display = request.style.display === 'none' ? 'none' : '';
+      if (error) { error.style.display = 'none'; error.textContent = ''; }
     } catch(_) {}
     // Re-apply access request visibility every time login screen is shown
     _applyAccessRequestVisibilityFromLocalStorage();
@@ -4360,18 +4395,10 @@ if (!window.__FT_AUTH_BOOT_WIRED__) {
   document.addEventListener('DOMContentLoaded', () => {
     if (window.__FT_AUTH_BOOT_STARTED__) return;
     window.__FT_AUTH_BOOT_STARTED__ = true;
-    Promise.resolve(typeof tryAutoConnect === 'function' ? tryAutoConnect() : false)
-      .then((result) => {
-        const setupVisible = !!document.getElementById('setupScreen') && getComputedStyle(document.getElementById('setupScreen')).display !== 'none';
-        const loginVisible = !!document.getElementById('loginScreen') && getComputedStyle(document.getElementById('loginScreen')).display !== 'none';
-        if (!result && !setupVisible && !loginVisible) {
-          try { showLoginScreen(); } catch(_) {}
-        }
-      })
-      .catch(err => {
-        console.warn('[auth] tryAutoConnect failed:', err?.message || err);
-        try { showLoginScreen(); } catch(_) {}
-      });
+    Promise.resolve(typeof tryAutoConnect === 'function' ? tryAutoConnect() : false).catch(err => {
+      console.warn('[auth] tryAutoConnect failed:', err?.message || err);
+      try { showLoginScreen(); } catch(_) {}
+    });
   }, { once: true });
 }
 
