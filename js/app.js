@@ -428,7 +428,6 @@ async function tryAutoConnect(){
     // Register magic-link gate to catch passwordless SIGNED_IN events
     if(typeof _registerMagicLinkGate === 'function') _registerMagicLinkGate();
     if(restored && currentUser){
-      hideLoginScreen?.();
       updateUserUI?.();
       // If user has no family_id, show family creation screen before app boots
       if (!currentUser.family_id && currentUser.role !== 'admin' && currentUser.role !== 'owner') {
@@ -437,7 +436,13 @@ async function tryAutoConnect(){
           return; // createFirstFamily() calls bootApp() when done
         }
       }
-      await bootApp();
+      try {
+        await bootApp();
+        hideLoginScreen?.();
+      } catch (e) {
+        console.error('[boot] restored session failed:', e);
+        showLoginScreen();
+      }
     } else {
       // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
@@ -454,9 +459,14 @@ async function tryAutoConnect(){
     ensureSupabaseClient();
     const restored = await tryRestoreSession().catch(()=>false);
     if(restored){
-      hideLoginScreen?.();
       updateUserUI?.();
-      await bootApp();
+      try {
+        await bootApp();
+        hideLoginScreen?.();
+      } catch (e) {
+        console.error('[boot] restored session failed:', e);
+        showLoginScreen();
+      }
     } else {
       showLoginScreen();
       // Verificar token de convite após mostrar a tela de login
@@ -569,7 +579,7 @@ async function bootApp(){
     ]);
   } catch(e) {
     toast(t('error.load_data')+' '+e.message,'error');
-    return;
+    throw e;
   }
   // Dados secundários em background — não bloqueiam o dashboard
   loadScheduled().then(() => {
@@ -900,8 +910,7 @@ function clearFamilyScopedUI() {
 function navigate(page){
   // Guard: settings/audit/telemetry são admin-only
   // Guard: settings/telemetry são admin-only; audit é acessível a todos
-  const _isAdminUser = !!(currentUser?.role === 'admin' || currentUser?.can_admin);
-  if((page==='settings'||page==='telemetry') && !_isAdminUser){
+  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
     toast(t('error.admin_only'),'warning');
     return;
   }
@@ -1038,28 +1047,16 @@ function navigate(page){
   }
   else if(page==='import')initImportPage();
   else if(page==='settings')loadSettings();
-  else if(page==='audit'){
-    if (typeof loadAuditLogs === 'function') loadAuditLogs();
-    else setTimeout(() => window.loadAuditLogs?.(), 50);
-  }
-  else if(page==='telemetry'){
-    if (typeof loadTelemetryDashboard === 'function') loadTelemetryDashboard();
-    else setTimeout(() => window.loadTelemetryDashboard?.(), 50);
-  }
+  else if(page==='audit')loadAuditLogs();
+  else if(page==='telemetry')loadTelemetryDashboard?.();
   else if(page==='investments')loadInvestmentsPage?.();
   else if(page==='debts')loadDebtsPage?.();
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
   else if(page==='dreams')initDreamsPage?.();
-  else if(page==='help'){
-    if(typeof initHelpPage==='function') initHelpPage();
-    else setTimeout(() => window.initHelpPage?.(), 50);
-  }
-  else if(page==='privacy'){
-    if(typeof _prvInitPage==='function') _prvInitPage();
-    else setTimeout(() => window._prvInitPage?.(), 50);
-  }
+  else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
+  else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);
