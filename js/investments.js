@@ -1854,6 +1854,10 @@ async function applyInvestmentsFeature() {
   if (enabled) {
     await loadInvestments();
     _invAugmentAccountBalances();
+    // Refresh dashboard investment card if on dashboard
+    if (typeof _dashRenderInvestments === 'function') {
+      setTimeout(() => _dashRenderInvestments().catch(() => {}), 300);
+    }
   }
 }
 
