@@ -1882,3 +1882,40 @@ html, body{
 [data-theme="dark"] .tx-section-total      { color: var(--text2); }
 [data-theme="dark"] .amt-wrap              { background: var(--surface2); border-color: var(--border); }
 [data-theme="dark"] .amt-sign-btn          { background: var(--surface2); color: var(--muted); border-color: var(--border); }
+
+
+/* ── Transaction category picker: keep it above modal footer and selectable ── */
+#txModal .modal {
+  overflow: visible;
+}
+#txModal .modal-body {
+  overflow-y: auto;
+  overflow-x: visible;
+  max-height: calc(92dvh - 132px);
+  padding-bottom: 180px;
+}
+#txModal #txCategoryGroup,
+#txModal .cat-picker-wrap {
+  position: relative;
+  z-index: 25;
+}
+#txModal .cat-picker-dropdown {
+  z-index: 1405;
+}
+#txModal .cat-picker-dropdown.open-up {
+  top: auto;
+  bottom: calc(100% + 2px);
+  border-top: 1.5px solid var(--accent);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+}
+
+@media (max-width: 640px) {
+  #txModal .modal-body {
+    max-height: calc(96dvh - 126px);
+    padding-bottom: 220px;
+  }
+  #txModal .cat-picker-dropdown {
+    max-height: min(320px, 48dvh);
+  }
+}
