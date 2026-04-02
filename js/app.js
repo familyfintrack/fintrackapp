@@ -1298,3 +1298,81 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK / LIGHT MODE TOGGLE
+   Persiste em localStorage('app_theme') e data-theme no <html>.
+   Chamado pelo botão #umThemeToggle no user menu dropdown.
+══════════════════════════════════════════════════════════════════ */
+function toggleAppTheme() {
+  const html    = document.documentElement;
+  const current = html.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next    = current === 'dark' ? 'light' : 'dark';
+
+  if (next === 'dark') {
+    html.setAttribute('data-theme', 'dark');
+    // Keep inline style in sync with anti-flash approach
+    html.style.background  = '#0f1410';
+    html.style.colorScheme = 'dark';
+  } else {
+    html.removeAttribute('data-theme');
+    html.style.background  = '#f7f6f3';
+    html.style.colorScheme = 'light';
+  }
+
+  try { localStorage.setItem('app_theme', next); } catch (_) {}
+
+  // Persist to Supabase asynchronously (best-effort, non-blocking)
+  if (typeof saveAppSetting === 'function') {
+    saveAppSetting('app_theme', next).catch(() => {});
+  }
+
+  _syncAppThemeToggleUI(next);
+}
+window.toggleAppTheme = toggleAppTheme;
+
+/**
+ * Atualiza o visual do toggle no user menu (ícone, label, switch pill)
+ * para refletir o tema atual.
+ * Deve ser chamado após toggleAppTheme() e sempre que o menu abre.
+ */
+function _syncAppThemeToggleUI(theme) {
+  const isDark  = (theme || document.documentElement.getAttribute('data-theme')) === 'dark';
+
+  const iconEl  = document.getElementById('umThemeIcon');
+  const labelEl = document.getElementById('umThemeLabel');
+  const sw      = document.getElementById('umThemeSwitch');
+  const pill    = document.getElementById('umThemePill');
+
+  if (iconEl)  iconEl.textContent  = isDark ? '☀️' : '🌙';
+  if (labelEl) labelEl.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+
+  if (sw) {
+    sw.style.background = isDark ? 'var(--accent)' : 'var(--border2)';
+  }
+  if (pill) {
+    pill.style.transform = isDark ? 'translateX(16px)' : 'translateX(0)';
+  }
+}
+window._syncAppThemeToggleUI = _syncAppThemeToggleUI;
+
+// Sincroniza UI do toggle quando o menu abre: patch feito após DOMContentLoaded
+// para garantir que auth.js (que define toggleUserMenu) já carregou
+document.addEventListener('DOMContentLoaded', function() {
+  const _orig = window.toggleUserMenu;
+  if (typeof _orig === 'function') {
+    window.toggleUserMenu = function(e) {
+      _orig.call(this, e);
+      requestAnimationFrame(function() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        if (typeof _syncAppThemeToggleUI === 'function') _syncAppThemeToggleUI(currentTheme);
+      });
+    };
+  }
+}, { once: true });
+
+// Sync theme toggle UI on page load (anti-flash applied data-theme from localStorage)
+document.addEventListener('DOMContentLoaded', function() {
+  const t = localStorage.getItem('app_theme') || 'light';
+  if (typeof _syncAppThemeToggleUI === 'function') _syncAppThemeToggleUI(t);
+}, { once: true });
