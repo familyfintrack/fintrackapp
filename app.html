@@ -43,6 +43,21 @@
   } catch(e) {}
 })();
 </script>
+<style>
+/* ── Anti-flash: prevent content bleed during auth transition ──────── */
+#mainApp[style*="visibility:hidden"],
+#mainApp[style*="opacity:0"] {
+  pointer-events: none !important;
+  contain: strict !important;
+}
+#loginScreen {
+  z-index: 50000;
+}
+/* Prevent any child of mainApp from painting while hidden */
+#mainApp:not([style*="opacity:1"]) * {
+  animation-play-state: paused !important;
+}
+</style>
 <!-- ══ Anti-flash: aplica tema de login ANTES do primeiro frame ══════════════
      Este script inline roda antes de qualquer CSS externo ser aplicado.
      Lê o tema do localStorage e adiciona a classe no loginScreen via dataset
@@ -635,7 +650,7 @@
 </nav>
 
 <!-- MAIN -->
-<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
+<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .22s ease;contain:paint">
   <header class="topbar">
     <div class="topbar-left">
       <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
@@ -810,55 +825,57 @@
       <!-- ── Previsão de Caixa 90 dias ── -->
       <div id="dashCardForecast90" class="fcp-card mb-4">
 
-        <!-- Header escuro premium -->
+        <!-- Header escuro — two-row layout -->
         <div class="fcp-header">
-          <div class="fcp-header-left">
-            <div class="fcp-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-              Previsão de Caixa
+          <!-- Row 1: title + controls (same line) -->
+          <div class="fcp-header-row1">
+            <div class="fcp-header-left">
+              <div class="fcp-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                Previsão de Caixa
+              </div>
+              <div class="fcp-subtitle">próximos 90 dias</div>
             </div>
-            <div class="fcp-subtitle">próximos 90 dias</div>
-          </div>
-          <div class="fcp-controls">
-            <!-- Picker de conta -->
-            <div class="fcp-acct-picker" id="dashForecastAcctPicker">
-              <button type="button" class="fcp-acct-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                <span id="dashForecastAcctLabel">Todas as contas</span>
-                <svg class="fcp-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
+            <div class="fcp-controls">
+              <!-- Picker de conta — dropdown abre para baixo com z-index alto -->
+              <div class="fcp-acct-picker" id="dashForecastAcctPicker">
+                <button type="button" class="fcp-acct-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                  <span id="dashForecastAcctLabel">Todas as contas</span>
+                  <svg class="fcp-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
+              </div>
+              <!-- Toggle programados -->
+              <label class="fcp-toggle-wrap">
+                <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" class="fcp-toggle-input">
+                <span class="fcp-toggle-track">
+                  <span class="fcp-toggle-thumb"></span>
+                </span>
+                <span class="fcp-toggle-label">Programados</span>
+              </label>
             </div>
-            <!-- Toggle programados -->
-            <label class="fcp-toggle-wrap">
-              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" class="fcp-toggle-input">
-              <span class="fcp-toggle-track">
-                <span class="fcp-toggle-thumb"></span>
-              </span>
-              <span class="fcp-toggle-label">Programados</span>
-            </label>
           </div>
-        </div>
-
-        <!-- KPI strip: saldo inicial → projetado + min/max -->
-        <div class="fcp-kpi-strip" id="dashForecastKpis">
-          <div class="fcp-kpi">
-            <div class="fcp-kpi-lbl">Saldo atual</div>
-            <div class="fcp-kpi-val" id="fcp-kpi-inicial">—</div>
-          </div>
-          <div class="fcp-kpi-arrow">→</div>
-          <div class="fcp-kpi fcp-kpi--accent">
-            <div class="fcp-kpi-lbl">Projetado em 90d</div>
-            <div class="fcp-kpi-val" id="fcp-kpi-final">—</div>
-          </div>
-          <div class="fcp-kpi-sep"></div>
-          <div class="fcp-kpi">
-            <div class="fcp-kpi-lbl">Mínimo esperado</div>
-            <div class="fcp-kpi-val fcp-kpi-val--min" id="fcp-kpi-min">—</div>
-          </div>
-          <div class="fcp-kpi">
-            <div class="fcp-kpi-lbl">Máximo esperado</div>
-            <div class="fcp-kpi-val fcp-kpi-val--max" id="fcp-kpi-max">—</div>
+          <!-- Row 2: KPI pills inside the header, below controls -->
+          <div class="fcp-kpi-strip" id="dashForecastKpis">
+            <div class="fcp-kpi">
+              <div class="fcp-kpi-lbl">Saldo atual</div>
+              <div class="fcp-kpi-val" id="fcp-kpi-inicial">—</div>
+            </div>
+            <div class="fcp-kpi-arrow">→</div>
+            <div class="fcp-kpi fcp-kpi--accent">
+              <div class="fcp-kpi-lbl">Projetado em 90d</div>
+              <div class="fcp-kpi-val" id="fcp-kpi-final">—</div>
+            </div>
+            <div class="fcp-kpi-sep"></div>
+            <div class="fcp-kpi">
+              <div class="fcp-kpi-lbl">Mínimo esperado</div>
+              <div class="fcp-kpi-val fcp-kpi-val--min" id="fcp-kpi-min">—</div>
+            </div>
+            <div class="fcp-kpi">
+              <div class="fcp-kpi-lbl">Máximo esperado</div>
+              <div class="fcp-kpi-val fcp-kpi-val--max" id="fcp-kpi-max">—</div>
+            </div>
           </div>
         </div>
 
@@ -7177,16 +7194,6 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
   </div>
-</div
-      </div>
-
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveAccount()">Salvar</button>
-    </div>
-  </div>
-</div>
 
 <!-- GROUP MANAGEMENT MODAL -->
 <div class="modal-overlay" id="groupModal">
