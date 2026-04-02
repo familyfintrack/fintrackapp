@@ -6977,6 +6977,12 @@ Se você não solicitou isso, ignore este e-mail.`,
     <div class="modal-header"><span class="modal-title" id="accountModalTitle">Nova Conta</span><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="accountId">
+      <div class="account-modal-tabs" id="accountModalTabs">
+        <button type="button" class="account-modal-tab active" data-tab="accountTabPrincipal" onclick="switchAccountTab('accountTabPrincipal', this)">Informações principais</button>
+        <button type="button" class="account-modal-tab" data-tab="accountTabBank" onclick="switchAccountTab('accountTabBank', this)">Dados bancários opcionais</button>
+      </div>
+
+      <div class="account-tab-pane" id="accountTabPrincipal">
       <div class="form-grid">
         <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
         <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="onAccountTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
@@ -7245,6 +7251,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </details>
+      </div>
       </div>
 
     </div>
