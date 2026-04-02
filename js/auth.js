@@ -864,8 +864,14 @@ async function doLogin() {
           .catch(() => {}); // ignore error if column doesn't exist yet
       }
     } catch(_) {} // non-blocking — upgrade is best-effort
-    await _loadCurrentUserContext(authData);
 
+    // ── 2FA check — intercept login if enabled for this user ─────────────
+    if (typeof check2FAAndProceed === 'function') {
+      const intercepted = await check2FAAndProceed(authData, appUser, email, password);
+      if (intercepted) return; // 2FA screen shown — halt normal flow
+    }
+
+    await _loadCurrentUserContext(authData);
     await onLoginSuccess();
   } catch(e) {
     showLoginErr('Erro: ' + (e?.message || e));
@@ -1486,6 +1492,10 @@ function openMyProfile() {
   }
   // Reaplicar visibilidade de canais (WA/Telegram) ao abrir o perfil
   if (typeof applyNotifChannelVisibility === 'function') applyNotifChannelVisibility();
+  // Carregar configurações de 2FA
+  if (typeof load2FASettingsIntoProfile === 'function') {
+    load2FASettingsIntoProfile().catch(() => {});
+  }
 }
 
 function previewMyProfileAvatar(input) {

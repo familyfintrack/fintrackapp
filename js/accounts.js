@@ -366,6 +366,8 @@ async function openAccountModal(id=''){
   if(bpdEl) bpdEl.value=form.best_purchase_day||'';
   const ddEl=document.getElementById('accountDueDay');
   if(ddEl) ddEl.value=form.due_day||'';
+  // ── Vínculo com Sonho (poupança → sonho) ─────────────────────────────
+  await _populateAccountDreamLink(form.id, form.type, form.linked_dream_id);
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
   openModal('accountModal');
 }
@@ -381,6 +383,8 @@ async function saveAccount(){
   const favEl=document.getElementById('accountIsFavorite');
   const bpdEl=document.getElementById('accountBestPurchaseDay');
   const ddEl=document.getElementById('accountDueDay');
+  const dreamLinkSel = document.getElementById('accountDreamLink');
+  const linkedDreamId = dreamLinkSel?.value || null;
   const data={
     name:document.getElementById('accountName').value.trim(),
     type:document.getElementById('accountType').value,
@@ -396,6 +400,10 @@ async function saveAccount(){
     due_day: isCC&&ddEl&&ddEl.value ? (parseInt(ddEl.value)||null) : null,
     updated_at:new Date().toISOString()
   };
+  // Persist dream link on accounts table if column exists
+  if (linkedDreamId !== undefined) {
+    try { data.linked_dream_id = linkedDreamId || null; } catch(_) {}
+  }
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}
   if(!id) data.family_id=famId();
   let err;
@@ -1036,3 +1044,53 @@ window.accountSelectAiIcon = function(iconKeyOrEmoji, color) {
   }
   if (panel) panel.style.display = 'none';
 };
+
+// ════════════════════════════════════════════════════════════════
+// VÍNCULO CONTA → SONHO (poupança vinculada a um sonho)
+// Só aparece para contas do tipo poupança quando o módulo Sonhos
+// está ativo para a família.
+// ════════════════════════════════════════════════════════════════
+async function _populateAccountDreamLink(accountId, accountType, currentDreamId) {
+  const wrap = document.getElementById('accountDreamLinkWrap');
+  if (!wrap) return;
+
+  // Só exibir para contas poupança com módulo Sonhos ativo
+  const fid = typeof famId === 'function' ? famId() : null;
+  const fc  = window._familyFeaturesCache || {};
+  const dreamsOn = fid && !!fc['dreams_enabled_' + fid];
+
+  if (!dreamsOn) { wrap.style.display = 'none'; return; }
+
+  // Buscar sonhos ativos sem conta vinculada (ou com esta conta já vinculada)
+  try {
+    const { data: dreams } = await famQ(
+      sb.from('dreams')
+        .select('id,title,dream_type,target_amount,currency')
+        .eq('status', 'active')
+        .or(`linked_account_id.is.null,linked_account_id.eq.${accountId || '00000000-0000-0000-0000-000000000000'}`)
+        .order('priority')
+    );
+
+    const dreamList = dreams || [];
+    if (!dreamList.length) { wrap.style.display = 'none'; return; }
+
+    const typeEmoji = { viagem:'✈️', automovel:'🚗', imovel:'🏠', cirurgia_plastica:'💆', outro:'🌟' };
+    const sel = document.getElementById('accountDreamLink');
+    if (!sel) return;
+
+    sel.innerHTML = '<option value="">— Nenhum sonho vinculado —</option>' +
+      dreamList.map(d => {
+        const em = typeEmoji[d.dream_type] || '🌟';
+        const amt = typeof fmt === 'function' ? fmt(d.target_amount, d.currency || 'BRL') : d.target_amount;
+        return `<option value="${d.id}" ${currentDreamId === d.id ? 'selected' : ''}>${em} ${esc(d.title)} (meta: ${amt})</option>`;
+      }).join('');
+
+    sel.value = currentDreamId || '';
+    wrap.style.display = '';
+  } catch(e) {
+    console.warn('[accounts] _populateAccountDreamLink:', e.message);
+    wrap.style.display = 'none';
+  }
+}
+window._populateAccountDreamLink = _populateAccountDreamLink;
+

@@ -41,8 +41,8 @@ UPDATE dreams SET dream_type = 'outro'
   WHERE dream_type NOT IN ('viagem', 'automovel', 'imovel', 'outro');`;
 window.DREAMS_MIGRATION_SQL = DREAMS_MIGRATION_SQL;
 
-function _dreamTypeEmoji(t) { return { viagem:'✈️', automovel:'🚗', imovel:'🏠', outro:'🌟' }[t] || '🌟'; }
-function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 Automóvel', imovel:'🏠 Imóvel', outro:'🌟 Outro' }[t] || '🌟 Outro'; }
+function _dreamTypeEmoji(t) { return { viagem:'✈️', automovel:'🚗', imovel:'🏠', cirurgia_plastica:'💆', outro:'🌟' }[t] || '🌟'; }
+function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 Automóvel', imovel:'🏠 Imóvel', cirurgia_plastica:'💆 Cirurgia Plástica', outro:'🌟 Outro' }[t] || '🌟 Outro'; }
 function _dreamStatusLabel(s) { return { active:'Ativo', paused:'Pausado', achieved:'🏆 Conquistado', cancelled:'Cancelado' }[s] || s; }
 function _dreamStatusColor(s) { return { active:'var(--accent)', paused:'var(--warning, #f39c12)', achieved:'#27ae60', cancelled:'var(--muted)' }[s] || 'var(--muted)'; }
 
@@ -922,10 +922,11 @@ window.closeDreamWizard = closeDreamWizard;
 
 function _wizStep1() {
   const types=[
-    {key:'viagem',   emoji:'✈️', label:'Viagem',    desc:'Destinos, passeios, hospedagem'},
-    {key:'automovel',emoji:'🚗', label:'Automóvel', desc:'Compra à vista ou financiada'},
-    {key:'imovel',   emoji:'🏠', label:'Imóvel',    desc:'Apartamento, casa, praia ou campo'},
-    {key:'outro',    emoji:'🌟', label:'Outro',     desc:'Saúde, educação, tecnologia…'},
+    {key:'viagem',            emoji:'✈️', label:'Viagem',             desc:'Destinos, passeios, hospedagem'},
+    {key:'automovel',         emoji:'🚗', label:'Automóvel',          desc:'Compra à vista ou financiada'},
+    {key:'imovel',            emoji:'🏠', label:'Imóvel',             desc:'Apartamento, casa, praia ou campo'},
+    {key:'cirurgia_plastica', emoji:'💆', label:'Cirurgia Plástica',  desc:'Estética, saúde e bem-estar'},
+    {key:'outro',             emoji:'🌟', label:'Outro',              desc:'Saúde, educação, tecnologia…'},
   ];
   return `<div class="drm-wiz-step1">
     <div class="drm-wiz-headline">Que tipo de sonho você quer realizar?</div>
@@ -961,7 +962,7 @@ async function wizardAiInterpret() {
   if(!apiKey||!apiKey.startsWith('AIza')){toast('Configure Gemini para usar IA','warning');return;}
   const btn=document.getElementById('wizAiBtn');
   if(btn){btn.disabled=true;btn.textContent='Interpretando…';}
-  const prompt=`Interprete este objetivo financeiro, retorne SOMENTE JSON sem markdown.\nObjetivo: "${input}"\n{"tipo":"viagem|automovel|imovel|outro","titulo":"título conciso","descricao":"1 frase","valor_estimado":15000,"prazo_meses_sugerido":18}\nTipo DEVE ser exatamente um de: viagem, automovel, imovel, outro`;
+  const prompt=`Interprete este objetivo financeiro, retorne SOMENTE JSON sem markdown.\nObjetivo: "${input}"\n{"tipo":"viagem|automovel|imovel|cirurgia_plastica|outro","titulo":"título conciso","descricao":"1 frase","valor_estimado":15000,"prazo_meses_sugerido":18}\nTipo DEVE ser exatamente um de: viagem, automovel, imovel, cirurgia_plastica, outro`;
   try {
     const url=`https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
     const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.3,maxOutputTokens:300}})});
@@ -988,6 +989,7 @@ function _wizStep2() {
   if(type==='viagem') sf=_wizFieldsViagem(d);
   else if(type==='automovel') sf=_wizFieldsAutomovel(d);
   else if(type==='imovel') sf=_wizFieldsImovel(d);
+  else if(type==='cirurgia_plastica') sf=_wizFieldsCirurgiaPlastica(d);
   const html = `<div class="drm-wiz-step2">
     <div class="drm-wiz-headline">${_dreamTypeEmoji(type)} Detalhes do sonho</div>
     <p class="drm-wiz-subhead">Quanto mais detalhes, mais precisas serão as recomendações.</p>
@@ -1081,6 +1083,44 @@ function _toggleFinanciamentoFields() {
 }
 window._toggleFinanciamentoFields = _toggleFinanciamentoFields;
 
+function _wizFieldsCirurgiaPlastica(d) {
+  const m=typeof d.ai_generated_fields_json==='object'?(d.ai_generated_fields_json||{}):{};
+  return `<div class="drm-wiz-section-title">💆 Cirurgia Plástica</div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Procedimento</label>
+      <select id="wizProcedimento" class="form-input">
+        <option value="rinoplastia" ${(m.procedimento||'')==='rinoplastia'?'selected':''}>Rinoplastia</option>
+        <option value="mamoplastia" ${m.procedimento==='mamoplastia'?'selected':''}>Mamoplastia</option>
+        <option value="lipoaspiração" ${m.procedimento==='lipoaspiração'?'selected':''}>Lipoaspiração</option>
+        <option value="blefaroplastia" ${m.procedimento==='blefaroplastia'?'selected':''}>Blefaroplastia</option>
+        <option value="abdominoplastia" ${m.procedimento==='abdominoplastia'?'selected':''}>Abdominoplastia</option>
+        <option value="lifting" ${m.procedimento==='lifting'?'selected':''}>Lifting Facial</option>
+        <option value="botox_preenchimento" ${m.procedimento==='botox_preenchimento'?'selected':''}>Botox/Preenchimento</option>
+        <option value="outro" ${m.procedimento==='outro'?'selected':''}>Outro</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Cidade / Clínica</label>
+      <input type="text" id="wizClinica" class="form-input" placeholder="Ex: São Paulo — Dr. Silva" value="${_esc(m.clinica||'')}">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group"><label class="form-label">Tipo de cobertura</label>
+      <select id="wizCobertura" class="form-input">
+        <option value="particular" ${(m.cobertura||'particular')==='particular'?'selected':''}>Particular (sem plano)</option>
+        <option value="plano_saude" ${m.cobertura==='plano_saude'?'selected':''}>Plano de Saúde</option>
+        <option value="financiamento" ${m.cobertura==='financiamento'?'selected':''}>Financiamento médico</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Nº de procedimentos</label>
+      <input type="number" id="wizNumProcs" class="form-input" min="1" max="10" placeholder="1" value="${m.num_procedimentos||''}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Observações / Detalhes</label>
+    <textarea id="wizObsCirurgia" class="form-input" rows="2" placeholder="Médico de referência, data ideal, etc.">${_esc(m.observacoes||'')}</textarea>
+  </div>`;
+}
+
 function _wizStep3() {
   const w=_drm.wizard, items=w.items||[];
   const total=items.reduce((s,it)=>s+(parseFloat(it.estimated_amount)||0),0);
@@ -1147,6 +1187,7 @@ async function wizardAiSuggestItems() {
   if(type==='viagem')    { extra.destino=document.getElementById('wizDestino')?.value||''; extra.pessoas=parseInt(document.getElementById('wizPessoas')?.value||2); }
   else if(type==='automovel') { extra.modelo=document.getElementById('wizModelo')?.value||''; extra.tipo_compra=document.getElementById('wizTipoCompra')?.value||'avista'; }
   else if(type==='imovel')    { extra.subtipo=document.getElementById('wizSubtipo')?.value||''; extra.cidade=document.getElementById('wizCidade')?.value||''; extra.tipo_compra=document.getElementById('wizTipoCompra')?.value||'avista'; }
+  else if(type==='cirurgia_plastica') { extra.procedimento=document.getElementById('wizProcedimento')?.value||''; extra.cobertura=document.getElementById('wizCobertura')?.value||'particular'; }
 
   // ── 1. Tentar KB local primeiro (sem API, sem latência) ───────────────────
   let kbItems = [];
@@ -1277,6 +1318,7 @@ function wizardNext() {
     if(w.type==='viagem') w.data.ai_generated_fields_json={destino:document.getElementById('wizDestino')?.value||'',pessoas:document.getElementById('wizPessoas')?.value||''};
     else if(w.type==='automovel') w.data.ai_generated_fields_json={modelo:document.getElementById('wizModelo')?.value||'',ano:document.getElementById('wizAno')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:_drmReadAmt('wizEntrada')||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
     else if(w.type==='imovel') w.data.ai_generated_fields_json={subtipo:document.getElementById('wizSubtipo')?.value||'',cidade:document.getElementById('wizCidade')?.value||'',tipo_compra:document.getElementById('wizTipoCompra')?.value||'avista',entrada:_drmReadAmt('wizEntrada')||'',fgts:_drmReadAmt('wizFgts')||'',taxa_juros:document.getElementById('wizJuros')?.value||''};
+    else if(w.type==='cirurgia_plastica') w.data.ai_generated_fields_json={procedimento:document.getElementById('wizProcedimento')?.value||'',clinica:document.getElementById('wizClinica')?.value||'',cobertura:document.getElementById('wizCobertura')?.value||'particular',num_procedimentos:document.getElementById('wizNumProcs')?.value||'1',observacoes:document.getElementById('wizObsCirurgia')?.value||''};
     w.step=3;
   } else if(w.step===3){
     const nameEls=document.querySelectorAll('.drm-wiz-item-name'), amtEls=document.querySelectorAll('.drm-wiz-item-amt');
