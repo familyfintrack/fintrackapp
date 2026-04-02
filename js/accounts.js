@@ -329,9 +329,10 @@ function accountTypeLabel(t){
 
 function switchAccountTab(tabId, btn){
   document.querySelectorAll('#accountModal .account-tab-pane').forEach(pane => {
-    pane.style.display = pane.id === tabId ? '' : 'none';
+    pane.style.display = pane.id === tabId ? 'block' : 'none';
   });
-  document.querySelectorAll('#accountModal .account-modal-tab').forEach(tab => {
+  // Support both old (.account-modal-tab) and new (.acct-tab) class names
+  document.querySelectorAll('#accountModal .account-modal-tab, #accountModal .acct-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.tab === tabId);
   });
   if (btn && btn.blur) btn.blur();
