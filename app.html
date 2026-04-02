@@ -3109,31 +3109,6 @@
               <div id="dbBackupList"><div style="color:var(--muted);font-size:.8rem">Carregando…</div></div>
             </div>
           </div>
-          <!-- ── Exportar dados completos em Excel ── -->
-          <div class="cfg-card">
-            <div class="cfg-row">
-              <div class="cfg-row-icon" style="background:#f0fdf4">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
-              </div>
-              <div class="cfg-row-info">
-                <div class="cfg-row-label">Exportar para Excel</div>
-                <div class="cfg-row-sub">Baixar todos os dados em planilhas XLSX (ZIP)</div>
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="openFamilyExportModal()">
-                ⬇️ Exportar
-              </button>
-            </div>
-            <div style="padding:0 16px 12px;font-size:.76rem;color:var(--muted);line-height:1.5">
-              Gera uma planilha por tabela (transações, contas, categorias, investimentos, sonhos, etc.) e agrupa tudo em um arquivo ZIP para download.
-            </div>
-          </div>
-
           <div class="cfg-card" id="normalizeNamesSection" style="display:none">
             <div class="cfg-row">
               <div class="cfg-row-icon" style="background:#f0fdf4">
@@ -7864,7 +7839,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/import.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/export_family.js"></script>
   <script src="js/feedback.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/autocheck.js"></script>
@@ -9808,6 +9782,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/dreams_kb.js"></script>
 <script src="js/dreams.js"></script>
   <script src="js/agent_engine.js"></script>
+  <script src="js/agent_capabilities.js"></script>
 <script src="js/agent.js"></script>
 
 <script>
@@ -10157,14 +10132,16 @@ window.openMyProfile = function(...args) {
   </div>
 
   <!-- Quick suggestions — preenchidas dinamicamente por agentRefreshQuickReplies() -->
-  <div id="agentQuickBar" style="padding:8px 12px;border-bottom:1px solid var(--border);
-    display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2)">
-    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos do mês</button>
-    <button onclick="agentSuggest('Quais contas estão no vermelho?')" class="agent-chip">💰 Saldo</button>
-    <button onclick="agentSuggest('Crie uma despesa de R$')" class="agent-chip">➕ Despesa</button>
-    <button onclick="agentSuggest('Crie receita de R$')" class="agent-chip">💰 Receita</button>
-    <button onclick="agentSuggest('Resumo financeiro do mês')" class="agent-chip">📈 Resumo</button>
-    <button onclick="agentSuggest('Como adicionar uma conta?')" class="agent-chip">❓ Ajuda</button>
+  <div id="agentQuickBar" style="padding:7px 10px;border-bottom:1px solid var(--border);
+    display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2);align-items:center">
+    <button onclick="agentShowCapabilities()" class="agent-discover-btn" title="Ver tudo que o agente pode fazer">✨ Descobrir</button>
+    <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px"></div>
+    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-quick-chip">📊 Gastos</button>
+    <button onclick="agentSuggest('qual meu saldo total?')" class="agent-quick-chip">💳 Saldo</button>
+    <button onclick="agentSuggest('criar despesa')" class="agent-quick-chip">💸 Despesa</button>
+    <button onclick="agentSuggest('criar receita')" class="agent-quick-chip">💰 Receita</button>
+    <button onclick="agentSuggest('resumo financeiro deste mês')" class="agent-quick-chip">📈 Resumo</button>
+    <button onclick="agentSuggest('como usar o FinTrack?')" class="agent-quick-chip">❓ Ajuda</button>
   </div>
 
   <!-- Feed -->
@@ -10364,6 +10341,503 @@ window.openMyProfile = function(...args) {
 /* ── Inline confirm bar ── */
 #agentConfirmBar { display:none; flex-wrap:wrap; gap:6px; align-items:center; }
 #agentConfirmBar.active { display:flex !important; }
+
+/* ════════════════════════════════════════════════════════════
+   CAPABILITIES PANEL — "Saiba o que posso fazer"
+════════════════════════════════════════════════════════════ */
+
+/* CTA button in welcome */
+.agent-caps-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, rgba(22,163,74,.14), rgba(22,163,74,.07));
+  border: 1.5px solid rgba(22,163,74,.35);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+  width: 100%;
+  transition: all .18s ease;
+}
+.agent-caps-cta:hover {
+  background: linear-gradient(135deg, rgba(22,163,74,.22), rgba(22,163,74,.12));
+  border-color: rgba(22,163,74,.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(22,163,74,.2);
+}
+.agent-caps-cta-icon { font-size: 1.2rem; flex-shrink: 0; }
+.agent-caps-cta-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.agent-caps-cta-text strong { font-size: .85rem; color: var(--text); }
+.agent-caps-cta-text span   { font-size: .72rem; color: var(--muted); }
+.agent-caps-cta-arrow {
+  font-size: 1rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: transform .18s;
+}
+.agent-caps-cta:hover .agent-caps-cta-arrow { transform: translateX(3px); }
+
+/* Panel container */
+.agent-caps-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+  width: 100%;
+  animation: agentSlideIn .2s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+}
+
+/* Panel header */
+.agent-caps-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px 11px;
+  background: linear-gradient(135deg, #0f5132, #166534);
+  position: relative;
+  overflow: hidden;
+}
+.agent-caps-header::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -20px;
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  pointer-events: none;
+}
+.agent-caps-header-icon { font-size: 1.3rem; flex-shrink: 0; }
+.agent-caps-title {
+  font-size: .88rem;
+  font-weight: 800;
+  color: #f0fdf4;
+  letter-spacing: -.01em;
+}
+.agent-caps-subtitle {
+  font-size: .67rem;
+  color: rgba(240,253,244,.55);
+  margin-top: 1px;
+}
+.agent-caps-close {
+  margin-left: auto;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #f0fdf4;
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: .72rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.agent-caps-close:hover { background: rgba(255,255,255,.22); }
+
+/* Category pills */
+.agent-caps-cats {
+  display: flex;
+  gap: 5px;
+  padding: 8px 10px 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.agent-caps-cats::-webkit-scrollbar { display: none; }
+.agent-cats-pill {
+  white-space: nowrap;
+  padding: 4px 11px;
+  font-size: .69rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.agent-cats-pill:hover { border-color: var(--accent); color: var(--accent); }
+.agent-cats-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Grid of sections */
+.agent-caps-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  max-height: 340px;
+  padding: 8px 8px;
+  scrollbar-width: thin;
+}
+.agent-caps-section { margin-bottom: 8px; }
+
+/* Section header */
+.agent-caps-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  margin-bottom: 4px;
+}
+.agent-caps-section-icon { font-size: 1rem; }
+.agent-caps-section-title {
+  font-size: .76rem;
+  font-weight: 800;
+  color: var(--sec-color, var(--text));
+  letter-spacing: -.01em;
+}
+.agent-caps-section-desc {
+  font-size: .65rem;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+/* Action buttons */
+.agent-caps-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.agent-caps-action {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+  transition: all .15s ease;
+  width: 100%;
+}
+.agent-caps-action:hover {
+  border-color: var(--act-color, var(--accent));
+  background: var(--act-color-lt, rgba(22,163,74,.08));
+  transform: translateX(2px);
+}
+.agent-caps-action-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 26px;
+  text-align: center;
+}
+.agent-caps-action-body { flex: 1; min-width: 0; }
+.agent-caps-action-label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-caps-action-desc {
+  font-size: .69rem;
+  color: var(--muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-caps-action-badge {
+  font-size: .65rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 20px;
+  flex-shrink: 0;
+  letter-spacing: .02em;
+}
+.badge--action { background: rgba(22,163,74,.15); color: #16a34a; }
+.badge--query  { background: rgba(37,99,235,.12);  color: #2563eb; }
+.badge--nav    { background: rgba(100,116,139,.12); color: var(--muted); }
+
+/* Footer */
+.agent-caps-footer {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+.agent-caps-footer-label {
+  font-size: .68rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.agent-caps-examples {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.agent-caps-example {
+  padding: 4px 10px;
+  font-size: .68rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s;
+}
+.agent-caps-example:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ════════════════════════════════════════════════════════════
+   GUIDED FORM — fluxo passo-a-passo
+════════════════════════════════════════════════════════════ */
+.agent-guided-form {
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  width: 100%;
+  animation: agentSlideIn .2s ease;
+}
+
+/* Header */
+.agf-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 11px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--agf-color, #16a34a) 85%, #000) 0%, var(--agf-color, #16a34a) 100%);
+}
+.agf-header-icon { font-size: 1.2rem; flex-shrink: 0; }
+.agf-title {
+  font-size: .88rem;
+  font-weight: 800;
+  color: #fff;
+}
+.agf-subtitle { font-size: .67rem; color: rgba(255,255,255,.55); margin-top: 1px; }
+.agf-close {
+  margin-left: auto;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.22);
+  color: #fff;
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .7rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Progress */
+.agf-progress {
+  height: 4px;
+  background: var(--border);
+  margin: 0;
+}
+.agf-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width .35s ease;
+}
+.agf-progress-label {
+  font-size: .64rem;
+  color: var(--muted);
+  padding: 3px 14px 0;
+  text-align: right;
+}
+
+/* Fields list */
+.agf-fields {
+  padding: 6px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agf-field {
+  border-radius: 8px;
+  padding: 8px 10px;
+  transition: background .15s;
+}
+.agf-field--done    { background: rgba(22,163,74,.05); }
+.agf-field--active  { background: var(--surface2); border: 1.5px solid var(--accent); }
+.agf-field--pending { opacity: .45; }
+
+.agf-field-row { display: flex; align-items: flex-start; gap: 10px; }
+.agf-field-status { padding-top: 2px; flex-shrink: 0; width: 20px; }
+.agf-status-done {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: .62rem; font-weight: 800;
+}
+.agf-status-active {
+  display: inline-block;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  margin: 4px 4px;
+  animation: agentPulse 1.5s ease-in-out infinite;
+}
+.agf-status-pending {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--border2); color: var(--muted);
+  font-size: .6rem; font-weight: 700;
+}
+.agf-field-content { flex: 1; min-width: 0; }
+.agf-field-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 4px;
+}
+.agf-required { color: var(--red, #dc2626); margin-left: 2px; }
+.agf-field-value {
+  font-size: .84rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Inputs */
+.agf-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: .85rem;
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+.agf-input:focus { border-color: var(--accent); }
+.agf-select { cursor: pointer; }
+.agf-money-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.agf-money-wrap:focus-within { border-color: var(--accent); }
+.agf-money-prefix {
+  padding: 0 8px;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface2);
+  align-self: stretch;
+  display: flex; align-items: center;
+  border-right: 1px solid var(--border);
+}
+.agf-money {
+  border: none !important;
+  border-radius: 0 !important;
+  text-align: right;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: .92rem;
+}
+
+/* Chips */
+.agf-input-with-chips { display: flex; flex-direction: column; gap: 5px; }
+.agf-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.agf-chip {
+  padding: 3px 9px;
+  font-size: .68rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s;
+}
+.agf-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Buttons */
+.agf-buttons {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  justify-content: flex-end;
+}
+.agf-btn {
+  padding: 8px 18px;
+  font-size: .8rem;
+  font-weight: 700;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+}
+.agf-btn--confirm {
+  background: linear-gradient(135deg, #15803d, #16a34a);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(22,163,74,.3);
+}
+.agf-btn--confirm:hover:not(:disabled) {
+  opacity: .9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(22,163,74,.4);
+}
+.agf-btn--disabled {
+  opacity: .35;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.agf-btn--skip { color: var(--muted); font-size: .75rem; }
+.agf-btn--skip:hover { color: var(--text); border-color: var(--text2); }
+
+/* Also add "capabilities" quick chip to the quick bar */
+.agent-discover-btn {
+  white-space: nowrap;
+  padding: 4px 10px;
+  font-size: .69rem;
+  font-weight: 700;
+  border: 1.5px solid rgba(22,163,74,.45);
+  border-radius: 16px;
+  background: rgba(22,163,74,.1);
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.agent-discover-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
 </style>
 
   <script src="js/export_grid.js"></script>
