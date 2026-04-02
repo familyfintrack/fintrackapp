@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" style="background:#f7f6f3">
 <head>
 <meta charset="UTF-8">
 <link rel="manifest" href="manifest.json">
@@ -20,14 +20,37 @@
 <title>Family Fintrack · Família inteligente, Finanças sob controle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/01_base.css">
+<link rel="stylesheet" href="css/02_layout.css">
+<link rel="stylesheet" href="css/03_transactions.css">
+<link rel="stylesheet" href="css/04_budgets.css">
+<link rel="stylesheet" href="css/05_help.css">
+<link rel="stylesheet" href="css/06_reports.css">
+<link rel="stylesheet" href="css/07_investments.css">
+<link rel="stylesheet" href="css/08_rpt_ext.css">
+<link rel="stylesheet" href="css/09_help_shell.css">
+<link rel="stylesheet" href="css/10_rpt_tx.css">
+<link rel="stylesheet" href="css/11_debts.css">
+<link rel="stylesheet" href="css/12_categories.css">
+<link rel="stylesheet" href="css/13_patches.css">
+<link rel="stylesheet" href="css/14_scheduled.css">
+<link rel="stylesheet" href="css/15_tx_timeline.css">
+<link rel="stylesheet" href="css/16_ai.css">
+<link rel="stylesheet" href="css/17_modules.css">
+<link rel="stylesheet" href="css/18_dashboard.css">
+<link rel="stylesheet" href="css/19_dreams.css">
+<link rel="stylesheet" href="css/20_login.css">
+<link rel="stylesheet" href="css/21_budget_modal.css">
+<!-- Critical: Supabase + Chart.js loaded synchronously (needed at DOMContentLoaded) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Non-critical: deferred so they don't block CSS/render -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script>
 (function(){
   try {
@@ -81,39 +104,25 @@
 (function(){
   try {
     var t = localStorage.getItem('app_theme');
-    // Fallback: system preference
     if (!t) {
       t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark' : 'light';
     }
+    var root = document.documentElement;
     if (t === 'dark') {
-      document.documentElement.setAttribute('data-theme','dark');
+      root.setAttribute('data-theme', 'dark');
+      // Override inline bg immediately — before CSS variables parse
+      root.style.background = '#0f1410';
+      root.style.colorScheme = 'dark';
+    } else {
+      root.style.background = '#f7f6f3';
+      root.style.colorScheme = 'light';
     }
   } catch(e) {}
 })();
 </script>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
-<link rel="stylesheet" href="css/01_base.css">
-<link rel="stylesheet" href="css/02_layout.css">
-<link rel="stylesheet" href="css/03_transactions.css">
-<link rel="stylesheet" href="css/04_budgets.css">
-<link rel="stylesheet" href="css/05_help.css">
-<link rel="stylesheet" href="css/06_reports.css">
-<link rel="stylesheet" href="css/07_investments.css">
-<link rel="stylesheet" href="css/08_rpt_ext.css">
-<link rel="stylesheet" href="css/09_help_shell.css">
-<link rel="stylesheet" href="css/10_rpt_tx.css">
-<link rel="stylesheet" href="css/11_debts.css">
-<link rel="stylesheet" href="css/12_categories.css">
-<link rel="stylesheet" href="css/13_patches.css">
-<link rel="stylesheet" href="css/14_scheduled.css">
-<link rel="stylesheet" href="css/15_tx_timeline.css">
-<link rel="stylesheet" href="css/16_ai.css">
-<link rel="stylesheet" href="css/17_modules.css">
-<link rel="stylesheet" href="css/18_dashboard.css">
-<link rel="stylesheet" href="css/19_dreams.css">
-<link rel="stylesheet" href="css/20_login.css">
-<link rel="stylesheet" href="css/21_budget_modal.css">
+
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    SIDEBAR — Tema escuro com identidade do logo Family FinTrack
