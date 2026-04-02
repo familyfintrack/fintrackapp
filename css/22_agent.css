@@ -78,6 +78,10 @@
 .agent-guided-icon { font-size:1.4rem; flex-shrink:0; line-height:1; }
 .agent-guided-title { font-weight:700; color:var(--text); font-size:.88rem; }
 .agent-guided-subtitle { font-size:.74rem; color:var(--muted); margin-top:2px; }
+.agent-guided-question {
+  background:rgba(22,163,74,.08); border:1px solid rgba(22,163,74,.18);
+  color:var(--text); border-radius:10px; padding:10px 12px; font-size:.8rem; font-weight:600;
+}
 .agent-guided-progress {
   margin-left:auto; width:48px; height:4px;
   background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; margin-top:6px;
