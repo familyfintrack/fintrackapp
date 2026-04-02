@@ -906,10 +906,11 @@ function clearFamilyScopedUI() {
 }
 
 function navigate(page){
+  // Guard: settings/audit/telemetry são admin-only
   // Guard: settings/telemetry são admin-only; audit é acessível a todos
-  if (page === 'settings' || page === 'telemetry') {
-    const isAdminLike = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.can_admin));
-    if (!isAdminLike && currentUser !== null) {
+  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
+    // FIX: if currentUser not loaded yet, don't block — let it through and page will show error
+    if (currentUser !== null) {
       toast(t('error.admin_only'),'warning');
       return;
     }
@@ -925,14 +926,7 @@ function navigate(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  const _targetPageEl = document.getElementById('page-'+page);
-  if (!_targetPageEl) {
-    console.warn('[navigate] page not found:', page);
-    toast('Página não encontrada: ' + page, 'warning');
-    return;
-  }
-  if (page === 'dreams') _targetPageEl.style.display = '';
-  _targetPageEl.classList.add('active');
+  document.getElementById('page-'+page).classList.add('active');
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;
@@ -1062,8 +1056,22 @@ function navigate(page){
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();
   else if(page==='dreams')initDreamsPage?.();
-  else if(page==='help'){if(typeof initHelpPage==='function')initHelpPage();}
-  else if(page==='privacy'){if(typeof _prvInitPage==='function')_prvInitPage();}
+  else if(page==='help'){
+    try {
+      if (typeof initHelpPage === 'function') initHelpPage();
+      else pageEl.innerHTML += '<div style="padding:24px">Central de Ajuda indisponível no momento.</div>';
+    } catch (e) {
+      console.error('[navigate.help]', e);
+      pageEl.innerHTML += '<div style="padding:24px">Erro ao carregar a Central de Ajuda.</div>';
+    }
+  }
+  else if(page==='privacy'){
+    try {
+      if (typeof _prvInitPage === 'function') _prvInitPage();
+    } catch (e) {
+      console.error('[navigate.privacy]', e);
+    }
+  }
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);
