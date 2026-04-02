@@ -1276,7 +1276,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* ── KPI strip ───────────────────────────────────────────────────────────── */
 .fcp-kpi-strip {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   background: var(--surface2);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
@@ -1292,6 +1292,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   border-right: 1px solid var(--border);
   min-width: 0;
   position: relative;
+  align-self: stretch;
 }
 .fcp-kpi:last-child { border-right: none; }
 /* Linha colorida no topo de cada KPI */
@@ -1332,7 +1333,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
   flex-shrink: 0;
   align-self: center;
   padding: 0 2px;
-  margin-top: 10px;
+  margin-top: 0;
 }
 /* Separadores — substituídos por border-right nos kpis */
 .fcp-kpi-sep { display: none; }
@@ -1340,29 +1341,22 @@ tr.reconcile-checked td { opacity: 1 !important; }
 /* ── Gráfico ─────────────────────────────────────────────────────────────── */
 .fcp-chart-wrap {
   position: relative;
-  height: 210px;
-  padding: 16px 12px 6px;
+  height: 220px;
+  padding: 14px 14px 4px;
   background: var(--surface);
+  overflow: hidden;
 }
-.fcp-chart-wrap canvas { display: block; }
-/* Gradiente sutil na borda inferior do gráfico */
-.fcp-chart-wrap::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 24px;
-  background: linear-gradient(to bottom, transparent, var(--surface));
-  pointer-events: none;
-}
+.fcp-chart-wrap canvas { display: block; width: 100% !important; }
 
 /* ── Summary chips ───────────────────────────────────────────────────────── */
 .fcp-summary {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 10px 18px 8px;
+  padding: 10px 16px 10px;
   border-top: 1px solid var(--border);
   background: var(--surface2);
+  align-items: center;
 }
 .fcp-acct-chip {
   display: inline-flex;
