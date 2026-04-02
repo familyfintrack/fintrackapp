@@ -712,3 +712,406 @@ tr.payee-row[onclick] { cursor: pointer; }
   }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCHEDULED — Mobile UX overhaul v2 (2026-04)
+   Fixes: viewport overflow, card layout, upcoming items, action buttons,
+          filter bar, KPI bar, currency panel, modal form
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Root containment: page never wider than 100vw ────────────────── */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  #page-scheduled {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #page-scheduled .page-body,
+  #page-scheduled .section,
+  #page-scheduled .card {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── 2. KPI / Summary bar: horizontal scroll, no overflow ─────────── */
+  #page-scheduled .sc-mobile-kpis,
+  #page-scheduled .sc-summary-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 8px !important;
+    padding-bottom: 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #page-scheduled .sc-mobile-kpis::-webkit-scrollbar,
+  #page-scheduled .sc-summary-bar::-webkit-scrollbar { display: none; }
+
+  #page-scheduled .sc-mkpi {
+    flex: 0 0 auto !important;
+    min-width: 72px !important;
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+  }
+  #page-scheduled .sc-mkpi-val { font-size: .84rem !important; }
+  #page-scheduled .sc-mkpi-lbl { font-size: .6rem !important; }
+
+  /* ── 3. Filter bar: vertical stack, full width ────────────────────── */
+  #page-scheduled .sc-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px 12px !important;
+  }
+  #page-scheduled .sc-filter-bar .search-wrap,
+  #page-scheduled .sc-filter-bar input[type="text"],
+  #page-scheduled .sc-filter-bar input[type="search"] {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #page-scheduled .sc-filter-chips {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #page-scheduled .sc-filter-chips::-webkit-scrollbar { display: none; }
+
+  /* ── 4. Section header: never overflow ────────────────────────────── */
+  #page-scheduled .section-header {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .section-header > div {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* ── 5. sc-card (recorrentes): iron-clad flex layout ─────────────── */
+  #page-scheduled .sc-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    margin-bottom: 8px !important;
+    border-radius: 14px !important;
+  }
+  #page-scheduled .sc-card-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 13px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sc-card-icon {
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    border-radius: 10px !important;
+    font-size: .88rem !important;
+  }
+  #page-scheduled .sc-card-mid {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sc-card-title2 {
+    font-size: .875rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+  #page-scheduled .sc-card-meta {
+    font-size: .7rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+  #page-scheduled .sc-card-end {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    max-width: 36% !important;
+    align-items: flex-end !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sc-card-amt {
+    font-size: .9rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+  #page-scheduled .sc-card-badges {
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    overflow: hidden !important;
+    gap: 3px !important;
+  }
+  #page-scheduled .sc-card-chevron {
+    flex: 0 0 16px !important;
+    width: 16px !important;
+  }
+
+  /* ── 6. sc-card action bar ────────────────────────────────────────── */
+  #page-scheduled .sc-card-actions {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 8px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  #page-scheduled .sc-card-actions::-webkit-scrollbar { display: none; }
+  #page-scheduled .sc-reg-btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: 36px !important;
+    font-size: .8rem !important;
+    border-radius: 10px !important;
+    padding: 0 12px !important;
+    white-space: nowrap !important;
+  }
+  #page-scheduled .sc-icon-btns {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    gap: 4px !important;
+  }
+  #page-scheduled .sc-icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── 7. sup-item (upcoming): iron-clad flex, no overflow ─────────── */
+  #page-scheduled .sup-group {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sup-group-hdr {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  #page-scheduled .sup-group-left {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  #page-scheduled .sup-group-meta {
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+  #page-scheduled .sup-day-total {
+    font-size: .82rem !important;
+    white-space: nowrap !important;
+  }
+  #page-scheduled .sup-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sup-icon {
+    flex: 0 0 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 9px !important;
+    font-size: .8rem !important;
+  }
+  #page-scheduled .sup-body {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sup-desc {
+    font-size: .8rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+  #page-scheduled .sup-acct {
+    font-size: .67rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+  #page-scheduled .sup-right {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    max-width: 42% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+  #page-scheduled .sup-amt {
+    font-size: .84rem !important;
+    white-space: nowrap !important;
+    font-weight: 700 !important;
+  }
+  #page-scheduled .sup-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+  }
+  #page-scheduled .sup-register-btn {
+    height: 28px !important;
+    padding: 0 10px !important;
+    font-size: .72rem !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+  #page-scheduled .sup-ignore-btn {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 7px !important;
+    font-size: .68rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── 8. Upcoming panel: clean accent card on mobile ──────────────── */
+  #page-scheduled #scUpcomingPanel {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── 9. View toggle bar ───────────────────────────────────────────── */
+  #page-scheduled .sc-view-toggle {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    flex-wrap: nowrap !important;
+  }
+  #page-scheduled .sc-view-toggle::-webkit-scrollbar { display: none; }
+  #page-scheduled .sc-view-btn {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    padding: 5px 10px !important;
+    font-size: .76rem !important;
+  }
+  #page-scheduled .sc-view-lbl { display: none !important; }
+
+  /* ── 10. sc-card-body / details grid ─────────────────────────────── */
+  #page-scheduled .sc-card-body {
+    padding: 12px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #page-scheduled .sc-details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* ── 11. Status/frequency badges: no overflow ─────────────────────── */
+  #page-scheduled .sc-status-badge,
+  #page-scheduled .sc-freq-pill,
+  #page-scheduled .sc-next-pill,
+  #page-scheduled .sc-cat-chip {
+    white-space: nowrap !important;
+    max-width: 100px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── 12. Currency conversion panel inside form ───────────────────── */
+  #page-scheduled #scCurrencyPanel,
+  #page-scheduled #scFxPanel {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
+  }
+  #page-scheduled .tx-amount-row {
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+  #page-scheduled .tx-currency-sel {
+    flex-shrink: 0 !important;
+    max-width: 72px !important;
+    font-size: .76rem !important;
+  }
+
+  /* ── 13. Modal form: max-height + scroll ──────────────────────────── */
+  #scModal .modal,
+  #scModal .modal-body {
+    max-height: 90dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  #scModal .tx-ctx-tab {
+    font-size: .73rem !important;
+    padding: 7px 10px !important;
+  }
+  #scModal #txContextTabBar {
+    gap: 2px !important;
+    padding: 8px 10px !important;
+  }
+}
+
+/* ── Extra-small (≤390px) ─────────────────────────────────────────────── */
+@media (max-width: 390px) {
+  #page-scheduled .sc-card-row { padding: 11px 12px !important; gap: 8px !important; }
+  #page-scheduled .sc-card-icon { flex: 0 0 30px !important; width: 30px !important; height: 30px !important; }
+  #page-scheduled .sc-card-amt  { font-size: .82rem !important; }
+  #page-scheduled .sc-card-end  { max-width: 34% !important; }
+  #page-scheduled .sup-item     { padding: 8px 12px !important; gap: 8px !important; }
+  #page-scheduled .sup-icon     { flex: 0 0 28px !important; width: 28px !important; height: 28px !important; }
+  #page-scheduled .sup-right    { max-width: 38% !important; }
+  #page-scheduled .sup-amt      { font-size: .78rem !important; }
+  #page-scheduled .sup-register-btn { padding: 0 7px !important; font-size: .68rem !important; }
+}

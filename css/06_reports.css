@@ -758,7 +758,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;
 }
 .sc-card-end {
-  flex-shrink: 0; text-align: right; min-width: 80px;
+  flex-shrink: 0; text-align: right; min-width: 0; max-width: 120px;
 }
 .sc-card-amt {
   font-family: var(--font-serif); font-weight: 700;

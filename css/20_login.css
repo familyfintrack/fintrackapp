@@ -685,8 +685,15 @@
     filter: drop-shadow(0 2px 16px rgba(93,219,160,.40));
   }
 
-  /* ls-form-logo: oculto no mobile base (substituído por ls-mobile-logo) */
-  .ls-form-logo { display: none !important; }
+  /* ls-form-logo: visível no mobile — substituiu ls-mobile-logo */
+  .ls-form-logo {
+    display: block !important;
+    height: 110px !important;
+    width: auto !important;
+    object-fit: contain !important;
+    margin: 0 auto 20px !important;
+    filter: drop-shadow(0 2px 16px rgba(93,219,160,.40)) !important;
+  }
 
   /* Safe area para iPhone com notch/Dynamic Island */
   @supports (padding-top: env(safe-area-inset-top)) {
@@ -1133,11 +1140,11 @@ body.platform-windows .ls-input {
     padding-right: 14px !important;
   }
   .ls-card-title { font-size: 1.25rem; }
-  .ls-mobile-logo img { height: 88px !important; }
+  .ls-form-logo { height: 90px !important; margin-bottom: 14px !important; }
   #loginScreen.ls-theme-centered .ls-form-logo,
   #loginScreen.ls-theme-minimal .ls-form-logo,
   #loginScreen.ls-theme-immersive .ls-form-logo {
-    height: 120px !important;
+    height: 110px !important;
     margin-bottom: 16px !important;
   }
   .ls-field-group { margin-bottom: 14px; }
@@ -1210,11 +1217,15 @@ body.platform-windows .ls-input {
     margin-left: auto !important;
     margin-right: auto !important;
   }
-  /* ── Logo mobile: DOBRO do tamanho desktop ─────────────────────── */
-  /* split / asymmetric usam ls-mobile-logo (hero está oculto) */
-  #loginScreen.ls-theme-split .ls-mobile-logo img,
-  #loginScreen.ls-theme-asymmetric .ls-mobile-logo img {
-    height: 104px !important;   /* dobro de 52px */
+  /* ── Logo mobile: tamanho grande para todos os temas ───────────── */
+  /* split / asymmetric: ls-form-logo agora substitui ls-mobile-logo */
+  #loginScreen.ls-theme-split .ls-form-logo,
+  #loginScreen.ls-theme-asymmetric .ls-form-logo {
+    display: block !important;
+    height: 110px !important;
+    width: auto !important;
+    object-fit: contain !important;
+    margin: 0 auto 20px !important;
     filter: drop-shadow(0 2px 16px rgba(93,219,160,.40)) !important;
   }
   /* centered / minimal / immersive usam ls-form-logo dentro do card */
