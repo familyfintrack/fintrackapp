@@ -77,7 +77,7 @@ async function applyDreamsFeature() {
   if (!fid) { if (navEl) navEl.style.display='none'; if (typeof _syncModulesSection==='function') _syncModulesSection(); return; }
   const on = await isDreamsEnabled();
   if (navEl) { navEl.style.display = on?'':'none'; navEl.dataset.featureControlled='1'; }
-  if (pageEl) pageEl.style.display = on?'':'none';
+  if (pageEl) pageEl.style.display = '';
   if (typeof _syncModulesSection==='function') _syncModulesSection();
   if (on && !_drm.loaded) await loadDreams().catch(()=>{});
 }
@@ -94,6 +94,8 @@ window.toggleFamilyDreams = toggleFamilyDreams;
 /* ── Page init ────────────────────────────────────────────────────── */
 async function initDreamsPage() {
   const container = document.getElementById('dreams-list-container');
+  const pageEl = document.getElementById('page-dreams');
+  if (pageEl) pageEl.style.display = '';
   const enabled = await isDreamsEnabled();
   if (!enabled) {
     if (container) {

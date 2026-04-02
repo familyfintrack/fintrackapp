@@ -134,7 +134,8 @@ const _categories = {
         sb.from('categories').select('id,name,type,icon,color,parent_id,family_id')
       ).order('name');
       if (error) throw error;
-      state.categories = data || [];
+      const _normCatType = (v) => ({ expense:'despesa', income:'receita', transfer:'transferencia', transferencia:'transferencia', despesa:'despesa', receita:'receita' }[(v || '').toLowerCase()] || v || 'despesa');
+      state.categories = (data || []).map(c => ({ ...c, type: _normCatType(c.type) }));
       _touch('categories');
     }));
   },

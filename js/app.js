@@ -436,8 +436,8 @@ async function tryAutoConnect(){
           return; // createFirstFamily() calls bootApp() when done
         }
       }
-      if (typeof _bootIntoAppSafely === 'function') await _bootIntoAppSafely({ allowFamilyWizard: true, busyLabel: 'A carregar…' });
-      else { await bootApp(); hideLoginScreen?.(); }
+      await bootApp();
+      hideLoginScreen?.();
     } else {
       // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
@@ -455,8 +455,8 @@ async function tryAutoConnect(){
     const restored = await tryRestoreSession().catch(()=>false);
     if(restored){
       updateUserUI?.();
-      if (typeof _bootIntoAppSafely === 'function') await _bootIntoAppSafely({ allowFamilyWizard: true, busyLabel: 'A carregar…' });
-      else { await bootApp(); hideLoginScreen?.(); }
+      await bootApp();
+      hideLoginScreen?.();
     } else {
       showLoginScreen();
       // Verificar token de convite após mostrar a tela de login
@@ -906,29 +906,33 @@ function clearFamilyScopedUI() {
 }
 
 function navigate(page){
-  const isAdminLike = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.can_admin));
-  if((page==='settings' || page==='telemetry') && currentUser && !isAdminLike){
-    toast(t('error.admin_only'),'warning');
-    return;
+  // Guard: settings/telemetry são admin-only; audit é acessível a todos
+  if (page === 'settings' || page === 'telemetry') {
+    const isAdminLike = !!(currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.can_admin));
+    if (!isAdminLike && currentUser !== null) {
+      toast(t('error.admin_only'),'warning');
+      return;
+    }
   }
 
+  // Track history — skip duplicate consecutive
   if (_navHistory[_navHistory.length-1] !== page) {
     _navHistory.push(page);
     if (_navHistory.length > 30) _navHistory.shift();
   }
   _syncBackBtn();
 
-  const pageEl = document.getElementById('page-'+page);
-  if (!pageEl) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  const _targetPageEl = document.getElementById('page-'+page);
+  if (!_targetPageEl) {
     console.warn('[navigate] page not found:', page);
     toast('Página não encontrada: ' + page, 'warning');
     return;
   }
-
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  pageEl.classList.add('active');
+  if (page === 'dreams') _targetPageEl.style.display = '';
+  _targetPageEl.classList.add('active');
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;
@@ -938,10 +942,12 @@ function navigate(page){
   (function _injectPageHeader(pg) {
     const pageEl = document.getElementById('page-' + pg);
     if (!pageEl) return;
+    // Remove header anterior se existir
     const old = pageEl.querySelector('.page-header-bar');
     if (old) old.remove();
     const icon = _pageIconsSVG[pg] || _pageIconsSVG['dashboard'];
     const title = pageTitles[pg] || pg;
+    // Ações opcionais por página
     const actions = {
       dashboard:    `<button class="page-header-action" onclick="openDashCustomModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/></svg>Personalizar</button>`,
       transactions: `<button class="page-header-action" onclick="openTransactionModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova</button>`,
@@ -950,15 +956,26 @@ function navigate(page){
       scheduled:    `<button class="page-header-action" onclick="openScheduledModal()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo</button>`,
       audit:        `<button class="page-header-action" onclick="loadAuditLogs()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Atualizar</button>`,
       telemetry:    `<button class="page-header-action" onclick="loadTelemetryDashboard?.()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Atualizar</button>`,
-      privacy:      '', reports:      '', categories:   '', payees:       '', import:       '', settings:     '',
-      investments:  '', debts:        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
-      prices:       '', grocery:      '', ai_insights:  '', dreams:       `<button class="page-header-action" onclick="openDreamWizard()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo Sonho</button>`,
+      privacy:      '',
+      reports:      '',
+      categories:   '',
+      payees:       '',
+      import:       '',
+      settings:     '',
+      investments:  '',
+      debts:        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+      prices:       '',
+      grocery:      '',
+      ai_insights:  '',
+      dreams:       `<button class="page-header-action" onclick="openDreamWizard()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo Sonho</button>`,
       help:         '',
     };
     const bar = document.createElement('div');
     bar.className = 'page-header-bar';
     bar.innerHTML = `<div class="page-header-bar-left"><div class="page-header-bar-icon">${icon}</div><span class="page-header-bar-title">${title}</span></div><div class="page-header-bar-right">${actions[pg]||''}</div>`;
     pageEl.insertBefore(bar, pageEl.firstChild);
+
+    // Keep FX bar directly below the page title bar
     let fxBar = document.getElementById('fxRatesBadge');
     if (!fxBar && typeof _renderFxBadge === 'function') {
       try { _renderFxBadge(); } catch (_) {}
@@ -980,6 +997,8 @@ function navigate(page){
     if(state.reconcileMode && typeof exitReconcileMode==='function') exitReconcileMode(false);
     populateTxMonthFilter();
     if(typeof populateSelects==='function') populateSelects();
+    // FIX: populateSelects reconstrói o innerHTML dos selects e apaga qualquer .value
+    // definido antes da navegação (ex: goToAccountTransactions). Restaurar do state.
     const _tf = state.txFilter || {};
     const _txAccEl = document.getElementById('txAccount');
     if (_txAccEl && _tf.account) _txAccEl.value = _tf.account;
@@ -989,10 +1008,12 @@ function navigate(page){
     if (_txTypeEl && _tf.type) _txTypeEl.value = _tf.type;
     const _txCatEl = document.getElementById('txCategoryFilter');
     if (_txCatEl && _tf.categoryId) _txCatEl.value = _tf.categoryId;
+    // Aplicar is-active em todos os chips — marca visualmente os filtros ativos
     ['txMonth','txAccount','txType','txStatusFilter','txCategoryFilter','txReconcileFilter'].forEach(id => {
       const _el = document.getElementById(id);
       if (_el) _el.classList.toggle('is-active', !!_el.value);
     });
+    // Se há filtro de conta/mês/tipo ativo, abrir o painel de filtros e atualizar badge
     if (_tf.account || _tf.month || _tf.type || _tf.categoryId) {
       const _panel = document.getElementById('tx-filters-panel');
       const _btn   = document.getElementById('txFilterToggle');
@@ -1010,13 +1031,24 @@ function navigate(page){
   else if(page==='scheduled') {
     const _now = new Date();
     const _todayStr = _now.toISOString().slice(0,10);
+    // Always reset calendar to current month/day
     if (typeof _scCalYear  !== 'undefined') { window._scCalYear  = _now.getFullYear(); }
     if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
+    // Use the exposed setter so the module-scoped variable is actually set
     if (typeof window._setScCalSelDay === 'function') window._setScCalSelDay(_todayStr);
-    const _savedView = currentUser?.preferred_sc_view || localStorage.getItem('sc_view_pref') || 'calendar';
+
+    // FIX: Restaurar a view preferida ANTES do loadScheduled para evitar o flash
+    // list→calendar. A lista começa oculta (display:none no HTML) e a view correta
+    // é aplicada imediatamente antes de qualquer dado chegar.
+    const _savedView = currentUser?.preferred_sc_view ||
+                       localStorage.getItem('sc_view_pref') ||
+                       'calendar';
     if (typeof setScView === 'function') setScView(_savedView);
+
     loadScheduled().then(() => {
+      // Após os dados carregarem, re-aplicar a view para re-renderizar o conteúdo
       if (typeof setScView === 'function') setScView(_savedView);
+      // Open upcoming panel if it has events, keep day groups collapsed per spec
       if (typeof _openUpcomingIfHasEvents === 'function') _openUpcomingIfHasEvents();
     });
   }
@@ -1036,7 +1068,6 @@ function navigate(page){
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);
 }
-
 // Handle SW messages (e.g., deep links from notifications)
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message', (ev)=>{

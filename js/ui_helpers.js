@@ -147,7 +147,8 @@ function buildCatPicker(typeFilter, ctx) {
   }
 
   const allCats = state.categories || [];
-  const cats = typeFilter ? allCats.filter(function(c){ return c.type === typeFilter; }) : allCats;
+  const _normCatType = function(v){ return ({ expense:'despesa', income:'receita', transfer:'transferencia', transferencia:'transferencia', despesa:'despesa', receita:'receita' }[(v || '').toLowerCase()] || (v || '')); };
+  const cats = typeFilter ? allCats.filter(function(c){ return _normCatType(c.type) === _normCatType(typeFilter); }) : allCats;
 
   const parents = cats
     .filter(function(c){ return !c.parent_id; })
