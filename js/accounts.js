@@ -258,12 +258,12 @@ function accountCardHTML(a) {
   const currLine = a.currency !== 'BRL'
     ? `<div class="acc-card-currency">${a.currency}</div>` : '';
 
-  // Estrela de favorito
+  // Estrela de favorito — posicionada no rodapé direito do card
   const favBtn = `<button class="acc-card-fav ${a.is_favorite ? 'active' : ''}"
     onclick="event.stopPropagation();toggleAccountFavorite('${a.id}',${!!a.is_favorite})"
     title="${a.is_favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
     id="favStar-${a.id}">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="${a.is_favorite ? 'currentColor' : 'none'}"
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="${a.is_favorite ? 'currentColor' : 'none'}"
       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
     </svg>
@@ -273,12 +273,15 @@ function accountCardHTML(a) {
     <!-- Faixa de cor lateral -->
     <div class="acc-card-bar" style="background:${color}"></div>
 
-    <!-- Topo: ícone + estrela + ações -->
+    <!-- Topo: ícone + ações (sem estrela) -->
     <div class="acc-card-top">
       <div class="acc-card-icon-wrap" style="background:color-mix(in srgb,${color} 14%,transparent)">
         ${renderIconEl(a.icon, a.color, 22)}
       </div>
-      ${favBtn}
+      <div class="acc-card-type-badge">
+        <span>${typeBadge.icon}</span>
+        <span>${typeBadge.label}</span>
+      </div>
       <div class="acc-card-actions">
         <button class="acc-action-btn" title="Consolidar saldo"
           onclick="event.stopPropagation();openConsolidateModal('${a.id}')">
@@ -295,17 +298,19 @@ function accountCardHTML(a) {
       </div>
     </div>
 
-    <!-- Corpo: nome + tipo -->
+    <!-- Nome da conta -->
     <div class="acc-card-name">${esc(a.name)}</div>
-    <div class="acc-card-type-badge">
-      <span>${typeBadge.icon}</span>
-      <span>${typeBadge.label}</span>
-    </div>
 
     <!-- Saldo -->
     <div class="acc-card-balance ${isNeg ? 'neg' : ''}">${fmt(a.balance, a.currency)}</div>
     ${currLine}
     ${dueLine}
+
+    <!-- Rodapé: favorito à direita -->
+    <div class="acc-card-footer">
+      <span></span>
+      ${favBtn}
+    </div>
   </div>`;
 }
 
@@ -367,15 +372,6 @@ async function openAccountModal(id=''){
   const ddEl=document.getElementById('accountDueDay');
   if(ddEl) ddEl.value=form.due_day||'';
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
-  // Bank details — load from account notes & sync visible fields
-  _clearBankDetails();
-  _loadBankDetails(id ? state.accounts.find(x=>x.id===id) : null);
-  // Re-sync when currency changes
-  const _currEl = document.getElementById('accountCurrency');
-  if (_currEl && !_currEl._bankSyncBound) {
-    _currEl._bankSyncBound = true;
-    _currEl.addEventListener('change', _syncBankFields);
-  }
   openModal('accountModal');
 }
 
@@ -406,15 +402,6 @@ async function saveAccount(){
     updated_at:new Date().toISOString()
   };
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}
-  // Merge bank details into notes JSON
-  if (typeof _collectBankDetails === 'function') {
-    const _bankDetails = _collectBankDetails();
-    const _existingAcc = id ? state.accounts.find(x=>x.id===id) : null;
-    const _mergedNotes = typeof _mergeBankDetailsIntoNotes === 'function'
-      ? _mergeBankDetailsIntoNotes(_existingAcc?.notes || null, _bankDetails)
-      : null;
-    data.notes = _mergedNotes;
-  }
   if(!id) data.family_id=famId();
   let err;
   if(id){({error:err}=await sb.from('accounts').update(data).eq('id',id));}
@@ -782,11 +769,6 @@ function onAccountTypeChange(){
   if(iofConfig)iofConfig.style.display=isCC?'':'none';
   const cardDates=document.getElementById('accountCardDatesConfig');
   if(cardDates)cardDates.style.display=isCC?'':'none';
-  // Hide bank details for cash accounts (no banking info needed)
-  const bankSec=document.getElementById('accountBankDetailsSection');
-  if(bankSec)bankSec.style.display=type==='dinheiro'?'none':'';
-  // Re-sync bank field visibility when type changes
-  if(typeof _syncBankFields==='function') _syncBankFields();
 }
 
 async function checkAccountIofConfig(accountId){
@@ -1059,132 +1041,3 @@ window.accountSelectAiIcon = function(iconKeyOrEmoji, color) {
   }
   if (panel) panel.style.display = 'none';
 };
-
-// ════════════════════════════════════════════════════════════════════════════
-// DADOS BANCÁRIOS — Tab opcional no cadastro de contas
-// Armazenados em JSON no campo `notes` da conta (chave: bank_details)
-// ════════════════════════════════════════════════════════════════════════════
-
-const _BANK_INST_BR = [
-  'Banco do Brasil','Caixa Econômica Federal','Bradesco','Itaú Unibanco',
-  'Santander','Nubank','Banco Inter','C6 Bank','BTG Pactual','XP Investimentos',
-  'Rico','Clear','Avenue','Órama','Modalmais','Genial Investimentos','Warren',
-  'Sicoob','Sicredi','Banco Original','Safra','Banrisul','PagBank',
-  'Mercado Pago','PicPay','Neon','Sofisa Direto','Daycoval'
-];
-const _BANK_INST_US = [
-  'Chase','Bank of America','Wells Fargo','Citibank','Goldman Sachs',
-  'Morgan Stanley','Fidelity','Charles Schwab','Interactive Brokers',
-  'Ally Bank','Capital One','American Express','TD Bank'
-];
-
-/** Atualiza campos visíveis e datalist conforme moeda selecionada */
-function _syncBankFields() {
-  const currency = document.getElementById('accountCurrency')?.value || 'BRL';
-  const brlDiv   = document.getElementById('accountBankFieldsBRL');
-  const ibanDiv  = document.getElementById('accountBankFieldsIBAN');
-  const usdDiv   = document.getElementById('accountBankFieldsUSD');
-  const instLbl  = document.getElementById('accountBankInstLabel');
-  const summLbl  = document.getElementById('accountBankSummaryLabel');
-  const dl       = document.getElementById('accountBankInstList');
-
-  if (brlDiv)  brlDiv.style.display  = currency === 'BRL' ? 'flex' : 'none';
-  if (ibanDiv) ibanDiv.style.display  = !['BRL','USD'].includes(currency) ? 'flex' : 'none';
-  if (usdDiv)  usdDiv.style.display   = currency === 'USD' ? 'flex' : 'none';
-
-  if (instLbl) instLbl.textContent = currency === 'USD' ? 'Institution / Broker' : 'Instituição Financeira';
-  if (summLbl) summLbl.textContent = currency === 'USD' ? 'Bank Details' : 'Dados Bancários';
-
-  if (dl) {
-    const list = currency === 'USD' ? _BANK_INST_US : _BANK_INST_BR;
-    dl.innerHTML = list.map(i => `<option value="${i}">`).join('');
-  }
-}
-window._syncBankFields = _syncBankFields;
-
-/** Carrega dados bancários do campo notes no formulário */
-function _loadBankDetails(account) {
-  _syncBankFields();
-  if (!account?.notes) return;
-  let details;
-  try {
-    const n = typeof account.notes === 'object' ? account.notes : JSON.parse(account.notes);
-    details = n?.bank_details;
-  } catch(_) { return; }
-  if (!details) return;
-
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('accountBankInstitution', details.institution);
-  set('accountBankAgency',      details.agency);
-  set('accountBankNumber',      details.number);
-  set('accountBankAccountType', details.accountType);
-  set('accountBankPix',         details.pix);
-  set('accountBankIBAN',        details.iban);
-  set('accountBankSwift',       details.swift);
-  set('accountBankForeignName', details.foreignName);
-  set('accountBankRouting',     details.routing);
-  set('accountBankUSANumber',   details.usaNumber);
-  set('accountBankUSAType',     details.usaType);
-  set('accountBankUSAName',     details.usaName);
-  set('accountBankUSASwift',    details.usaSwift);
-  set('accountBankNotes',       details.notes);
-
-  // Auto-open if data exists
-  const hasData = Object.values(details).some(v => v && v !== '');
-  if (hasData) {
-    const det = document.getElementById('accountBankDetailsToggle');
-    if (det) det.open = true;
-  }
-}
-window._loadBankDetails = _loadBankDetails;
-
-/** Limpa todos os campos bancários */
-function _clearBankDetails() {
-  ['accountBankInstitution','accountBankAgency','accountBankNumber','accountBankAccountType',
-   'accountBankPix','accountBankIBAN','accountBankSwift','accountBankForeignName',
-   'accountBankRouting','accountBankUSANumber','accountBankUSAType','accountBankUSAName',
-   'accountBankUSASwift','accountBankNotes'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const det = document.getElementById('accountBankDetailsToggle');
-  if (det) det.open = false;
-}
-
-/** Coleta dados bancários do formulário */
-function _collectBankDetails() {
-  const currency = document.getElementById('accountCurrency')?.value || 'BRL';
-  const get = id => document.getElementById(id)?.value?.trim() || '';
-
-  const base = {
-    institution: get('accountBankInstitution'),
-    notes:       get('accountBankNotes'),
-  };
-
-  if (currency === 'BRL') {
-    return { ...base, agency: get('accountBankAgency'), number: get('accountBankNumber'),
-      accountType: get('accountBankAccountType'), pix: get('accountBankPix') };
-  } else if (currency === 'USD') {
-    return { ...base, routing: get('accountBankRouting'), usaNumber: get('accountBankUSANumber'),
-      usaType: get('accountBankUSAType'), usaName: get('accountBankUSAName'),
-      usaSwift: get('accountBankUSASwift') };
-  } else {
-    return { ...base, iban: get('accountBankIBAN'), swift: get('accountBankSwift'),
-      foreignName: get('accountBankForeignName') };
-  }
-}
-window._collectBankDetails = _collectBankDetails;
-
-/** Funde bank_details no campo notes JSON da conta */
-function _mergeBankDetailsIntoNotes(existingNotes, bankDetails) {
-  let base = {};
-  if (existingNotes) {
-    try { base = typeof existingNotes === 'object' ? existingNotes : JSON.parse(existingNotes); } catch(_) {}
-  }
-  const hasData = Object.values(bankDetails).some(v => v && v !== '');
-  if (hasData) { base.bank_details = bankDetails; }
-  else { delete base.bank_details; }
-  return Object.keys(base).length ? JSON.stringify(base) : null;
-}
-window._mergeBankDetailsIntoNotes = _mergeBankDetailsIntoNotes;
-
