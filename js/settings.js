@@ -79,12 +79,7 @@ async function loadAppSettings() {
     // Apply logo override (if any)
     const logo = _appSettingsCache['app_logo_url'] || '';
     if (typeof setAppLogo === 'function') setAppLogo(logo);
-    // Apply login theme on boot
-    const _loginTheme = _appSettingsCache[LOGIN_THEME_SETTING] || 'split';
-    // FIX: Sincroniza DB → localStorage para garantir que próximo DOMContentLoaded
-    // já tenha o valor correto (elimina dependência de estar logado para ver o tema).
-    try { localStorage.setItem(LOGIN_THEME_SETTING, _loginTheme); } catch(_) {}
-    if (typeof applyLoginTheme === 'function') applyLoginTheme(_loginTheme);
+    // Login theme removed — single unified design
 
     // Sincroniza canais de notificação do DB → localStorage
     const _notifKeys = ['notif_channel_email_enabled','notif_channel_wa_enabled','notif_channel_tg_enabled'];
@@ -158,17 +153,7 @@ async function saveAppSetting(key, value) {
 }
 
 
-// ── Login theme selector ──────────────────────────────────────────────────
-const LOGIN_THEME_SETTING = 'login_theme';
 
-function _saveLoginThemeBtn() {
-  // Mantido por compatibilidade — o tema agora é salvo via onchange direto
-  const sel = document.querySelector('input[name="loginTheme"]:checked');
-  const theme = sel ? sel.value : null;
-  if (!theme) return;
-  saveLoginTheme(theme);
-}
-window._saveLoginThemeBtn = _saveLoginThemeBtn;
 
 // ── Chaves de configuração dos canais de notificação ──────────────────────────
 const NOTIF_CHANNEL_KEYS = {
@@ -274,65 +259,7 @@ async function loadNotifChannelSettings() {
 }
 window.loadNotifChannelSettings = loadNotifChannelSettings;
 
-async function saveLoginTheme(theme) {
-  // FIX: Persiste no localStorage ANTES do DB para que DOMContentLoaded e
-  // showLoginScreen() possam aplicar o tema mesmo antes do boot estar completo.
-  // Esta é a fonte de verdade para renderização imediata (sem network).
-  try { localStorage.setItem(LOGIN_THEME_SETTING, theme); } catch(_) {}
-  await saveAppSetting(LOGIN_THEME_SETTING, theme);
-  applyLoginTheme(theme);
-  // Update radio + visual selection
-  document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
-    r.checked = (r.value === theme);
-  });
-  const status = document.getElementById('loginThemeSaveStatus');
-  if (status) {
-    status.innerHTML = '<span>✓</span> Tema salvo com sucesso';
-    setTimeout(() => { status.innerHTML = ''; }, 3000);
-  }
-}
 
-function applyLoginTheme(theme) {
-  const ls = document.getElementById('loginScreen');
-  if (!ls) return;
-  // Remove all existing theme classes
-  ['ls-theme-centered','ls-theme-split','ls-theme-asymmetric','ls-theme-immersive','ls-theme-minimal'].forEach(c => ls.classList.remove(c));
-  // FIX: 'split' é o default visual mas também recebe sua classe para consistência.
-  // Todos os temas recebem a classe — o CSS os diferencia por seletor.
-  const t = (theme && typeof theme === 'string') ? theme.trim() : 'split';
-  ls.classList.add('ls-theme-' + (t || 'split'));
-}
-
-function loadLoginThemeSelector() {
-  // FIX: Lê localStorage primeiro (disponível imediatamente, sem network).
-  // Fallback para getAppSetting (DB) apenas se não houver valor local.
-  const localTheme = (() => { try { return localStorage.getItem(LOGIN_THEME_SETTING); } catch(_) { return null; } })();
-  const applyAndMark = (t) => {
-    const theme = t || 'split';
-    applyLoginTheme(theme);
-    document.querySelectorAll('.login-theme-option input[type=radio]').forEach(r => {
-      r.checked = (r.value === theme);
-    });
-    // Highlight selected card
-    document.querySelectorAll('.login-theme-option').forEach(card => {
-      const isActive = card.dataset.theme === theme;
-      card.style.outline = isActive ? '2px solid var(--accent)' : '';
-      card.style.background = isActive ? 'var(--accent-lt,#e8f2ee)' : '';
-    });
-  };
-  if (localTheme) {
-    applyAndMark(localTheme);
-  }
-  // Sempre sincroniza com o DB para garantir consistência entre dispositivos
-  getAppSetting(LOGIN_THEME_SETTING, 'split').then(dbTheme => {
-    const t = dbTheme || 'split';
-    // Se DB difere do localStorage, localStorage recebe o valor do DB (fonte de verdade)
-    if (t !== localTheme) {
-      try { localStorage.setItem(LOGIN_THEME_SETTING, t); } catch(_) {}
-    }
-    applyAndMark(t);
-  });
-}
 
 
 async function getAppSetting(key, defaultValue = null) {
@@ -848,7 +775,7 @@ function loadSettings() {
     initSettingsVisibilityForm();
     initServiceRoleKeySection();
     // Login theme selector
-    if (typeof loadLoginThemeSelector === 'function') loadLoginThemeSelector();
+
     try { _loadNormalizeNamesInfo().catch(()=>{}); } catch {}
     // Translations admin (admin only)
     if (typeof initTranslationsAdmin === 'function') {

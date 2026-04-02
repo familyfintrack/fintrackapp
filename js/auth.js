@@ -476,11 +476,7 @@ function showLoginScreen() {
     // e qualquer re-exibição posterior ao boot). Lê do cache em memória se disponível,
     // senão do localStorage (sempre disponível, sem network).
     try {
-      const _themeToApply =
-        (typeof _appSettingsCache !== 'undefined' && _appSettingsCache && _appSettingsCache['login_theme']) ||
-        localStorage.getItem('login_theme') ||
-        'split';
-      if (typeof applyLoginTheme === 'function') applyLoginTheme(_themeToApply);
+      // Login theme removed — single unified design
     } catch(_) {}
     // Re-apply access request visibility every time login screen is shown
     _applyAccessRequestVisibilityFromLocalStorage();
@@ -559,10 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
   //    sem depender do boot. Garante que o usuário veja o tema correto desde o
   //    primeiro frame, mesmo antes de qualquer sessão ser restaurada.
   try {
-    const _savedTheme = localStorage.getItem('login_theme') || 'split';
-    if (typeof applyLoginTheme === 'function') {
-      applyLoginTheme(_savedTheme);
-    }
+    // Login theme removed — single unified design
   } catch(_) {}
 });
 
