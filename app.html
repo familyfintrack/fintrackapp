@@ -3408,22 +3408,8 @@ Se você não solicitou isso, ignore este e-mail.`,
         }
       }
       window._prvSubmitDeleteRequest = _prvSubmitDeleteRequest;
-
-      function _prvInitPage() {
-        // Auto-fill email from current user
-        const emailInput = document.getElementById('prvDeleteEmail');
-        if (emailInput && typeof currentUser !== 'undefined' && currentUser?.email) {
-          emailInput.value = currentUser.email;
-        }
-        // Reset form state
-        const confirmCb = document.getElementById('prvDeleteConfirm');
-        const submitBtn = document.getElementById('prvDeleteSubmitBtn');
-        const statusEl  = document.getElementById('prvDeleteStatus');
-        if (confirmCb) confirmCb.checked = false;
-        if (submitBtn) submitBtn.disabled = true;
-        if (statusEl)  statusEl.style.display = 'none';
-      }
-      window._prvInitPage = _prvInitPage;
+      // FIX: _prvInitPage is defined fully in privacy.js — do NOT redefine here
+      // The inline version was incomplete and was overwriting the full version from privacy.js
       </script>
 
     </div><!-- /page-privacy -->
@@ -7815,6 +7801,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/investments.js"></script>
   <script src="js/ai_insights.js"></script>
   <script src="js/help.js"></script>
+  <script src="js/privacy.js"></script>
   <script src="js/orphan.js"></script>
   <script src="js/family_prefs.js"></script>
   <script src="js/wizard.js"></script>
