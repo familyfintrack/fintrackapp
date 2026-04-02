@@ -385,7 +385,7 @@ async function loadDashboard(){
       // Desktop: grupos lado a lado. Mobile: empilhados (CSS cuida disso).
       const activeGroups = [
         favCC.length     ? _favTypeCol(favCC,    'Cartão de Crédito')          : '',
-        favCheck.length  ? _favTypeCol(favCheck,  'Contas Correntes / Poupança') : '',
+        favCheck.length  ? _favTypeCol(favCheck,  'Corrente / Poupança') : '',
         favOthers.length ? _favTypeCol(favOthers, 'Outros')                     : '',
       ].filter(Boolean);
 
