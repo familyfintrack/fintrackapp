@@ -2582,3 +2582,25 @@ select.acct-input {
 
 /* BEM modifier standalone stub — ensures class is "defined" for audit */
 .ai2-context-field--title { /* modifier of .ai2-context-field — see 16_ai.css */ }
+
+
+/* 2026-04-02 transaction filter select rendering fix */
+#page-transactions .tx-chip-select,
+#page-transactions .tx-filter-chip-wrap select {
+  display: block !important;
+  line-height: 1.2 !important;
+  background-repeat: no-repeat !important;
+  background-origin: padding-box !important;
+  text-indent: 0 !important;
+}
+#page-transactions .tx-filter-chip-wrap {
+  min-width: 0;
+}
+#page-transactions #txMonth,
+#page-transactions #txAccount,
+#page-transactions #txCategoryFilter,
+#page-transactions #txType,
+#page-transactions #txStatusFilter {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
