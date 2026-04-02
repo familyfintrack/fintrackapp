@@ -133,6 +133,14 @@ function _catSearchId(ctx) {
   return ctx === 'sc' ? 'scCatPickerSearch' : 'catPickerSearch';
 }
 
+function _normalizeCatType(type) {
+  var v = String(type || '').trim().toLowerCase();
+  if (['expense', 'despesa', 'gasto', 'saida', 'saída'].includes(v)) return 'despesa';
+  if (['income', 'receita', 'entrada', 'ganho'].includes(v)) return 'receita';
+  if (['transfer', 'transferencia', 'transferência'].includes(v)) return 'transferencia';
+  return v;
+}
+
 function buildCatPicker(typeFilter, ctx) {
   ctx = ctx || 'tx';
   var c = _catCtx(ctx);
@@ -146,9 +154,12 @@ function buildCatPicker(typeFilter, ctx) {
     else if (txType === 'income') typeFilter = 'receita';
   }
 
-  const allCats = state.categories || [];
-  const _normCatType = function(v){ return ({ expense:'despesa', income:'receita', transfer:'transferencia', transferencia:'transferencia', despesa:'despesa', receita:'receita' }[(v || '').toLowerCase()] || (v || '')); };
-  const cats = typeFilter ? allCats.filter(function(c){ return _normCatType(c.type) === _normCatType(typeFilter); }) : allCats;
+  typeFilter = _normalizeCatType(typeFilter);
+  const allCats = (state.categories || []).map(function(cat){
+    if (!cat) return cat;
+    return Object.assign({}, cat, { type: _normalizeCatType(cat.type) });
+  });
+  const cats = typeFilter ? allCats.filter(function(c){ return _normalizeCatType(c.type) === typeFilter; }) : allCats;
 
   const parents = cats
     .filter(function(c){ return !c.parent_id; })
@@ -246,7 +257,7 @@ function buildCatPicker(typeFilter, ctx) {
     const currentId = document.getElementById(c.inputId) && document.getElementById(c.inputId).value;
     if (currentId) {
       const cat = allCats.find(function(x){ return x.id === currentId; });
-      if (cat && cat.type !== typeFilter) setCatPickerValue(null, ctx);
+      if (cat && _normalizeCatType(cat.type) !== typeFilter) setCatPickerValue(null, ctx);
     }
   }
 }

@@ -859,6 +859,9 @@ async function openTransactionModal(id=''){
   if (typeof loadFamilyComposition === 'function' && typeof _fmc !== 'undefined' && !_fmc.loaded) {
     await loadFamilyComposition().catch(() => {});
   }
+  if (window.DB?.categories?.load) {
+    await window.DB.categories.load().catch(() => {});
+  }
   _txModalSafe(() => resetTxModal(), 'resetTxModal');
   _txModalSetValue('txDate', new Date().toISOString().slice(0,10));
   _txModalSetText('txModalTitle', 'Nova Transação');
@@ -874,6 +877,8 @@ async function openTransactionModal(id=''){
     }
   }
   openModal('txModal');
+  _txModalSafe(() => buildCatPicker(null, 'tx'), 'buildCatPicker(open)');
+  setTimeout(function(){ _txModalSafe(() => buildCatPicker(null, 'tx'), 'buildCatPicker(open delayed)'); }, 80);
   _txModalSafe(() => { if (typeof initTxFormMode === 'function') initTxFormMode(); }, 'initTxFormMode');
 }
 function resetTxModal(){
