@@ -1,11 +1,40 @@
-/* ════════════════════════════════════════════════════════════════
-   20_login.css — Login Screen v5 "Checkered Green"
-   Design: fundo quadriculado verde, card branco flutuante central
-   Responsivo: desktop · mobile · landscape
-   Braces balanced ✓
-════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   20_login.css — Family FinTrack Login v6
+   Design: quadriculado verde escuro · card flutuante · logo único
+   Totalmente responsivo: desktop · mobile · landscape
+   Todas as classes do HTML referenciadas e definidas aqui.
+════════════════════════════════════════════════════════════════════ */
 
-/* ── Shell ───────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   VARIÁVEIS LOCAIS (não dependem do tema do app)
+───────────────────────────────────────────────────────────────── */
+.ls-shell {
+  --ls-bg:       #0b1e12;
+  --ls-bg2:      #0f2618;
+  --ls-accent:   #2a6049;
+  --ls-accent2:  #3d8a5a;
+  --ls-lime:     #5ddba0;
+  --ls-border:   rgba(93,219,160,.14);
+  --ls-border2:  rgba(93,219,160,.28);
+  --ls-card:     #ffffff;
+  --ls-text:     #0d1f14;
+  --ls-text2:    #2d4a38;
+  --ls-muted:    #6b8c78;
+  --ls-surface:  #f5faf7;
+  --ls-surface2: #eaf3ed;
+  --ls-input-bg: #f7fbf9;
+  --ls-input-bd: #cde3d6;
+  --ls-red:      #dc2626;
+  --ls-shadow:
+    0 0 0 1px rgba(0,0,0,.05),
+    0 4px 16px rgba(0,0,0,.10),
+    0 24px 64px rgba(0,0,0,.20),
+    0 48px 120px rgba(0,0,0,.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SHELL — full-screen container
+───────────────────────────────────────────────────────────────── */
 .ls-shell {
   position: fixed;
   inset: 0;
@@ -14,48 +43,50 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #0d2318;
+  background: var(--ls-bg);
   font-family: var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Checkered background ─────────────────────────────────────── */
+/* Grid quadriculado animado */
 .ls-shell::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -5%;
   background-image:
-    linear-gradient(rgba(93,219,160,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(93,219,160,.07) 1px, transparent 1px);
-  background-size: 40px 40px;
-  animation: lsGridShift 60s linear infinite;
+    linear-gradient(rgba(93,219,160,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93,219,160,.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+  animation: lsGridDrift 80s linear infinite;
   pointer-events: none;
   z-index: 0;
 }
-@keyframes lsGridShift {
-  from { background-position: 0 0; }
-  to   { background-position: 40px 40px; }
+@keyframes lsGridDrift {
+  from { transform: translate(0,0); }
+  to   { transform: translate(44px, 44px); }
 }
 
-/* ── Decorative orbs ──────────────────────────────────────────── */
+/* Orbs de profundidade */
 .ls-shell::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 55% at 15% 20%, rgba(42,96,73,.45) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 60% at 85% 80%, rgba(26,61,39,.38) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(93,219,160,.06) 0%, transparent 55%);
+    radial-gradient(ellipse 55% 50% at 8% 12%,  rgba(42,96,73,.50) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 55% at 92% 88%,  rgba(20,50,35,.42) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 30% at 50% 50%,  rgba(93,219,160,.04) 0%, transparent 55%);
   pointer-events: none;
   z-index: 0;
-  animation: lsOrbPulse 14s ease-in-out infinite alternate;
+  animation: lsOrbBreath 16s ease-in-out infinite alternate;
 }
-@keyframes lsOrbPulse {
-  from { opacity: .8; }
-  to   { opacity: 1; transform: scale(1.04); }
+@keyframes lsOrbBreath {
+  from { opacity: .85; }
+  to   { opacity: 1; transform: scale(1.03); }
 }
 
-/* ── Layout wrapper (keeps card centred) ─────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   LAYOUT — centring wrapper
+───────────────────────────────────────────────────────────────── */
 .ls-layout {
   position: relative;
   z-index: 1;
@@ -63,215 +94,324 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 100%;
-  padding: 24px 16px;
+  min-height: 100%;
+  padding: 32px 16px;
 }
 
-/* ── Card ─────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   FORM PANEL + CARD
+───────────────────────────────────────────────────────────────── */
 .ls-form-panel {
   width: 100%;
-  max-width: 420px;
-  position: relative;
-  z-index: 2;
+  max-width: 400px;
 }
 
 .ls-card {
-  background: #fff;
-  border-radius: 24px;
-  padding: 40px 36px 36px;
-  box-shadow:
-    0 2px 0 rgba(0,0,0,.04),
-    0 8px 32px rgba(0,0,0,.14),
-    0 32px 80px rgba(0,0,0,.18),
-    0 0 0 1px rgba(255,255,255,.08);
+  background: var(--ls-card);
+  border-radius: 20px;
+  padding: 36px 32px 32px;
+  box-shadow: var(--ls-shadow);
   position: relative;
   overflow: hidden;
-  animation: lsCardIn .55s cubic-bezier(.22,.68,0,1.2) both;
+  animation: lsCardIn .5s cubic-bezier(.22,.68,0,1.18) both;
 }
 @keyframes lsCardIn {
-  from { opacity: 0; transform: translateY(28px) scale(.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(24px) scale(.975); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
-/* Card accent stripe top */
+/* Linha decorativa superior */
 .ls-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #2a6049, #5ddba0, #2a6049);
-  background-size: 200% 100%;
-  animation: lsStripeShift 4s ease-in-out infinite;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--ls-accent), var(--ls-lime), var(--ls-accent));
+  background-size: 200%;
+  animation: lsTopBar 5s ease-in-out infinite;
 }
-@keyframes lsStripeShift {
-  0%, 100% { background-position: 0% 0; }
-  50%       { background-position: 100% 0; }
+@keyframes lsTopBar {
+  0%, 100% { background-position:   0%; }
+  50%       { background-position: 100%; }
 }
 
-/* ── Logo ──────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   LOGO — único, centrado, sem duplicatas
+───────────────────────────────────────────────────────────────── */
 .ls-logo-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 28px;
-}
-.ls-form-logo {
-  height: 52px;
-  width: auto;
-  display: block;
-  filter: drop-shadow(0 2px 8px rgba(42,96,73,.18));
+  margin-bottom: 26px;
 }
 
-/* ── Headings ─────────────────────────────────────────────────── */
+/* ls-form-logo: a única imagem de logo visível */
+.ls-form-logo {
+  height: 56px;
+  width: auto;
+  display: block;
+  filter: drop-shadow(0 2px 10px rgba(42,96,73,.22));
+  transition: opacity .3s;
+}
+
+/* Garantias: se qualquer outro logo legado aparecer, esconde */
+.ls-hero-logo { display: none !important; }
+
+/* ─────────────────────────────────────────────────────────────────
+   TÍTULOS
+───────────────────────────────────────────────────────────────── */
 .ls-card-title {
-  font-size: 1.18rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  color: #0e2016;
+  color: var(--ls-text);
   letter-spacing: -.025em;
   margin-bottom: 4px;
   line-height: 1.2;
 }
 .ls-card-sub {
   font-size: .82rem;
-  color: #5a7a64;
-  margin-bottom: 28px;
-  font-weight: 400;
-  line-height: 1.4;
+  color: var(--ls-muted);
+  margin-bottom: 24px;
+  line-height: 1.45;
+}
+.ls-muted {
+  font-size: .8rem;
+  color: var(--ls-muted);
 }
 
-/* ── Form elements ────────────────────────────────────────────── */
-.ls-field {
+/* ─────────────────────────────────────────────────────────────────
+   GRUPOS DE CAMPO
+───────────────────────────────────────────────────────────────── */
+.ls-field-group {
   margin-bottom: 14px;
 }
+.ls-field-group:last-of-type {
+  margin-bottom: 0;
+}
+
 .ls-label {
   display: block;
-  font-size: .72rem;
+  font-size: .68rem;
   font-weight: 700;
-  color: #3a5a46;
+  color: var(--ls-accent);
   text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-bottom: 6px;
+  letter-spacing: .07em;
+  margin-bottom: 5px;
 }
+
+/* Wrapper com ícone + input */
+.ls-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ls-input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--ls-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+  opacity: .6;
+}
+.ls-input-wrap .ls-input {
+  padding-left: 38px;
+}
+.ls-input-wrap .ls-input:focus ~ .ls-input-icon,
+.ls-input-wrap:focus-within .ls-input-icon {
+  color: var(--ls-accent);
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   INPUTS
+───────────────────────────────────────────────────────────────── */
 .ls-input {
   width: 100%;
-  padding: 11px 14px;
-  border: 1.5px solid #d1e0d8;
-  border-radius: 12px;
-  font-size: .9rem;
+  padding: 11px 13px;
+  border: 1.5px solid var(--ls-input-bd);
+  border-radius: 10px;
+  font-size: .875rem;
   font-family: var(--font-sans, system-ui, sans-serif);
-  color: #0e2016;
-  background: #f7fbf8;
+  color: var(--ls-text);
+  background: var(--ls-input-bg);
   outline: none;
   transition: border-color .18s, box-shadow .18s, background .18s;
   box-sizing: border-box;
+  -webkit-appearance: none;
 }
 .ls-input:focus {
-  border-color: #2a6049;
+  border-color: var(--ls-accent);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(42,96,73,.12);
+  box-shadow: 0 0 0 3px rgba(42,96,73,.10);
 }
-.ls-input::placeholder { color: #a0b8aa; }
+.ls-input::placeholder { color: #b4c8bc; }
 
-/* Password wrapper */
-.ls-pw-wrap {
-  position: relative;
+/* Select */
+.ls-select,
+.ls-input.ls-select {
+  cursor: pointer;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b8c78' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  appearance: none;
+  -webkit-appearance: none;
 }
-.ls-pw-wrap .ls-input {
-  padding-right: 44px;
-}
-.ls-pw-toggle {
+
+/* Botão olho — ver senha */
+.ls-eye-btn {
   position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 10px;
   background: none;
   border: none;
   cursor: pointer;
-  color: #7a9888;
+  color: var(--ls-muted);
   padding: 4px;
   line-height: 0;
+  border-radius: 6px;
   transition: color .15s;
 }
-.ls-pw-toggle:hover { color: #2a6049; }
+.ls-eye-btn:hover { color: var(--ls-accent); }
 
-/* ── Primary button ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   CHECKBOX "Lembrar-me"
+───────────────────────────────────────────────────────────────── */
+.ls-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: .8rem;
+  color: var(--ls-muted);
+  margin: 14px 0 0;
+  user-select: none;
+}
+.ls-remember input[type="checkbox"] { display: none; }
+.ls-check-box {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--ls-input-bd);
+  border-radius: 4px;
+  background: var(--ls-input-bg);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.ls-remember input:checked ~ .ls-check-box {
+  background: var(--ls-accent);
+  border-color: var(--ls-accent);
+}
+.ls-remember input:checked ~ .ls-check-box::after {
+  content: '';
+  width: 8px; height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BOTÕES
+───────────────────────────────────────────────────────────────── */
 .ls-btn-primary {
   width: 100%;
-  padding: 13px;
-  background: linear-gradient(135deg, #2a6049 0%, #1e4a38 100%);
+  padding: 13px 20px;
+  background: linear-gradient(135deg, var(--ls-accent) 0%, #1f4a37 100%);
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 11px;
   font-size: .9rem;
   font-weight: 700;
   font-family: var(--font-sans, system-ui, sans-serif);
   cursor: pointer;
   letter-spacing: .01em;
   transition: all .22s;
-  box-shadow: 0 2px 12px rgba(42,96,73,.25), 0 1px 0 rgba(255,255,255,.08) inset;
+  box-shadow: 0 2px 14px rgba(42,96,73,.28), inset 0 1px 0 rgba(255,255,255,.1);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.ls-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.08) 0%, transparent 60%);
+  pointer-events: none;
 }
 .ls-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #346b53 0%, #245542 100%);
-  box-shadow: 0 4px 20px rgba(42,96,73,.38);
+  background: linear-gradient(135deg, #326b56 0%, #254f3e 100%);
+  box-shadow: 0 4px 22px rgba(42,96,73,.40);
   transform: translateY(-1px);
 }
 .ls-btn-primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(42,96,73,.2);
+  box-shadow: 0 2px 8px rgba(42,96,73,.20);
 }
-.ls-btn-primary:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-  transform: none;
+.ls-btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.ls-btn-ghost {
+  width: 100%;
+  padding: 11px 20px;
+  background: transparent;
+  color: var(--ls-accent);
+  border: 1.5px solid var(--ls-input-bd);
+  border-radius: 11px;
+  font-size: .875rem;
+  font-weight: 600;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 10px;
 }
-.ls-btn-spinner {
-  width: 16px; height: 16px;
-  border: 2px solid rgba(255,255,255,.35);
+.ls-btn-ghost:hover { border-color: var(--ls-accent); background: rgba(42,96,73,.05); }
+
+/* Spinner inline */
+.ls-spinner {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.3);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: lsSpin .7s linear infinite;
+  animation: lsSpin .65s linear infinite;
+  flex-shrink: 0;
 }
 @keyframes lsSpin { to { transform: rotate(360deg); } }
 
-/* ── Link buttons ─────────────────────────────────────────────── */
-.ls-links-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 16px;
-  gap: 4px;
-}
+/* ─────────────────────────────────────────────────────────────────
+   LINKS
+───────────────────────────────────────────────────────────────── */
 .ls-link {
   font-size: .8rem;
-  color: #5a7a64;
+  color: var(--ls-muted);
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 3px 5px;
+  border-radius: 5px;
   font-family: var(--font-sans, system-ui, sans-serif);
   transition: color .15s, background .15s;
   text-decoration: none;
 }
-.ls-link:hover { color: #2a6049; background: rgba(42,96,73,.07); }
-.ls-link--bold { font-weight: 700; color: #2a6049; }
-.ls-link--bold:hover { color: #1a4030; }
+.ls-link:hover { color: var(--ls-accent); background: rgba(42,96,73,.06); }
+.ls-link--bold { font-weight: 700; color: var(--ls-accent); }
+.ls-link--bold:hover { color: #1f4a37; }
 
-/* ── Error / messages ─────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   MENSAGENS
+───────────────────────────────────────────────────────────────── */
 .ls-error {
   font-size: .8rem;
-  color: #dc2626;
+  color: var(--ls-red);
   background: #fef2f2;
   border: 1px solid #fecaca;
   border-radius: 8px;
   padding: 9px 12px;
   margin-top: 12px;
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
 }
 .ls-success {
   font-size: .8rem;
@@ -283,27 +423,63 @@
   margin-top: 12px;
   line-height: 1.5;
 }
-.ls-info-msg {
+.ls-info-msg, .ls-info-banner {
   font-size: .8rem;
-  color: #5a7a64;
-  background: #f0fdf4;
-  border: 1px solid #d1e0d8;
+  color: var(--ls-text2);
+  background: var(--ls-surface2);
+  border: 1px solid rgba(42,96,73,.18);
   border-radius: 8px;
   padding: 9px 12px;
-  margin-top: 12px;
-  line-height: 1.5;
+  margin-bottom: 18px;
+  line-height: 1.55;
   text-align: center;
 }
 
-/* ── Divider ──────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   ÍCONE DE ESTADO (badge grande)
+───────────────────────────────────────────────────────────────── */
+.ls-icon-badge {
+  font-size: 2.6rem;
+  text-align: center;
+  margin: 4px 0 14px;
+  line-height: 1;
+  display: block;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   NAVEGAÇÃO — voltar
+───────────────────────────────────────────────────────────────── */
+.ls-back-row {
+  margin-bottom: 12px;
+}
+.ls-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--ls-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  transition: color .15s, background .15s;
+}
+.ls-back-btn:hover { color: var(--ls-accent); background: rgba(42,96,73,.07); }
+
+/* ─────────────────────────────────────────────────────────────────
+   DIVIDER
+───────────────────────────────────────────────────────────────── */
 .ls-divider {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 20px 0;
-  color: #c5d8ce;
-  font-size: .72rem;
-  font-weight: 600;
+  margin: 18px 0;
+  color: var(--ls-input-bd);
+  font-size: .7rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .07em;
 }
@@ -312,10 +488,12 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: #e8f0ec;
+  background: var(--ls-input-bd);
 }
 
-/* ── 2FA code inputs ─────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   2FA — dígitos
+───────────────────────────────────────────────────────────────── */
 .ls-2fa-inputs {
   display: flex;
   gap: 8px;
@@ -323,222 +501,137 @@
   margin: 20px 0;
 }
 .ls-2fa-digit {
-  width: 44px;
-  height: 52px;
+  width: 44px; height: 52px;
   text-align: center;
   font-size: 1.3rem;
   font-weight: 700;
-  border: 1.5px solid #d1e0d8;
+  border: 1.5px solid var(--ls-input-bd);
   border-radius: 10px;
-  background: #f7fbf8;
-  color: #0e2016;
+  background: var(--ls-input-bg);
+  color: var(--ls-text);
   outline: none;
   transition: border-color .15s, box-shadow .15s;
   font-family: var(--font-mono, monospace);
 }
 .ls-2fa-digit:focus {
-  border-color: #2a6049;
-  box-shadow: 0 0 0 3px rgba(42,96,73,.12);
+  border-color: var(--ls-accent);
+  box-shadow: 0 0 0 3px rgba(42,96,73,.11);
   background: #fff;
 }
 
-/* ── Register form extras ─────────────────────────────────────── */
-.ls-select {
-  width: 100%;
-  padding: 11px 14px;
-  border: 1.5px solid #d1e0d8;
-  border-radius: 12px;
-  font-size: .9rem;
-  font-family: var(--font-sans, system-ui, sans-serif);
-  color: #0e2016;
-  background: #f7fbf8;
-  outline: none;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235a7a64' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
-  transition: border-color .15s;
-  box-sizing: border-box;
+/* ─────────────────────────────────────────────────────────────────
+   DARK MODE
+───────────────────────────────────────────────────────────────── */
+[data-theme="dark"] .ls-card {
+  --ls-card:     #162a1d;
+  --ls-text:     #e6f2ea;
+  --ls-text2:    #8bbf9a;
+  --ls-muted:    #5a8a6a;
+  --ls-input-bg: #0e1f14;
+  --ls-input-bd: #2a4036;
+  --ls-surface:  #0f1f14;
+  --ls-surface2: #142419;
+  background: var(--ls-card);
+  box-shadow:
+    0 0 0 1px rgba(93,219,160,.06),
+    0 4px 16px rgba(0,0,0,.40),
+    0 32px 80px rgba(0,0,0,.55);
 }
-.ls-select:focus { border-color: #2a6049; }
-
-/* ── Pending approval box ─────────────────────────────────────── */
-.ls-pending-box {
-  text-align: center;
-  padding: 8px 0 4px;
+[data-theme="dark"] .ls-input {
+  background: var(--ls-input-bg);
+  border-color: var(--ls-input-bd);
+  color: var(--ls-text);
 }
-.ls-pending-icon {
-  font-size: 2.4rem;
-  margin-bottom: 12px;
-  display: block;
+[data-theme="dark"] .ls-input:focus {
+  border-color: var(--ls-lime);
+  background: #0b1810;
+  box-shadow: 0 0 0 3px rgba(93,219,160,.13);
 }
-
-/* ── Invite welcome ───────────────────────────────────────────── */
-.ls-invite-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .72rem;
-  font-weight: 700;
-  background: #f0fdf4;
-  color: #2a6049;
-  border: 1px solid #bbf7d0;
-  border-radius: 20px;
-  padding: 4px 12px;
-  margin-bottom: 16px;
+[data-theme="dark"] .ls-input::placeholder { color: #2d4a38; }
+[data-theme="dark"] .ls-error {
+  background: rgba(220,38,38,.12);
+  border-color: rgba(220,38,38,.28);
+  color: #fca5a5;
 }
-
-/* ── Ambient logo watermark behind card ─────────────────────────
-   Subtle large logo behind the card for visual depth            */
-.ls-bg-mark {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
+[data-theme="dark"] .ls-info-banner,
+[data-theme="dark"] .ls-info-msg {
+  background: rgba(42,96,73,.18);
+  border-color: rgba(42,96,73,.30);
+  color: #8bbf9a;
 }
-.ls-bg-mark img {
-  width: min(520px, 80vw);
-  opacity: .025;
-  filter: blur(1px) brightness(3);
-  transform: scale(1.1);
-  pointer-events: none;
-  user-select: none;
+[data-theme="dark"] .ls-check-box {
+  background: var(--ls-input-bg);
+  border-color: var(--ls-input-bd);
+}
+[data-theme="dark"] .ls-btn-ghost {
+  border-color: var(--ls-input-bd);
+  color: var(--ls-lime);
 }
 
-/* ── Bottom tagline ───────────────────────────────────────────── */
-.ls-tagline-wrap {
-  position: absolute;
-  bottom: 24px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  pointer-events: none;
-  z-index: 2;
-  animation: lsCardIn .7s .2s both;
-}
-.ls-tagline {
-  font-size: .65rem;
-  font-weight: 600;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.22);
-}
-.ls-tagline strong {
-  color: rgba(93,219,160,.45);
-  font-weight: 700;
+/* ─────────────────────────────────────────────────────────────────
+   RESPONSIVO — MOBILE
+───────────────────────────────────────────────────────────────── */
+@media (max-width: 440px) {
+  .ls-card {
+    padding: 28px 20px 24px;
+    border-radius: 16px;
+    margin: 0 2px;
+  }
+  .ls-form-logo { height: 48px; }
+  .ls-logo-wrap { margin-bottom: 20px; }
+  .ls-card-title { font-size: 1.05rem; }
 }
 
-/* ── Legacy classes — kept for JS compatibility ──────────────── */
-/* These are referenced by auth.js; map to the new structure      */
+/* LANDSCAPE (teclado aberto no mobile) */
+@media (max-height: 560px) and (orientation: landscape) {
+  .ls-layout {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 12px 16px 20px;
+  }
+  .ls-card { padding: 20px 24px; }
+  .ls-logo-wrap { margin-bottom: 14px; }
+  .ls-form-logo { height: 38px; }
+  .ls-card-sub  { margin-bottom: 14px; }
+  .ls-field-group { margin-bottom: 10px; }
+  .ls-btn-primary { margin-top: 14px; padding: 11px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPATIBILIDADE — classes legadas ignoradas silenciosamente
+   O JS pode ainda adicionar/remover estas classes; não causam erro.
+───────────────────────────────────────────────────────────────── */
 .ls-hero,
-.ls-hero-logo,
 .ls-hero-inner,
 .ls-hero-orb,
 .ls-hero-tagline,
 .ls-hero-sub,
 .ls-hero-features,
-.ls-feat { display: none !important; }
+.ls-feat,
+.ls-bg-mark,
+.ls-tagline-wrap,
+.ls-tagline,
+.ls-theme-split,
+.ls-theme-centered,
+.ls-theme-asymmetric,
+.ls-theme-immersive,
+.ls-theme-minimal { display: none !important; }
 
-/* Sidebar-legacy: ls-form-logo was only shown in non-split modes */
-/* Now it's always shown in the centered card                      */
-
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .ls-card {
-    padding: 32px 22px 28px;
-    border-radius: 20px;
-    margin: 0 4px;
-  }
-  .ls-form-logo { height: 44px; }
-  .ls-card-title { font-size: 1.05rem; }
-  .ls-btn-primary { font-size: .875rem; }
+/* Transitions de saída (usadas pelo auth.js no login bem-sucedido) */
+.ls-shell.exiting {
+  animation: lsShellOut .4s ease both;
 }
-
-@media (max-height: 600px) and (orientation: landscape) {
-  .ls-layout {
-    align-items: flex-start;
-    overflow-y: auto;
-    padding: 16px;
-  }
-  .ls-card {
-    padding: 22px 28px 22px;
-    margin: 8px auto;
-  }
-  .ls-logo-wrap { margin-bottom: 16px; }
-  .ls-form-logo { height: 38px; }
-  .ls-card-sub  { margin-bottom: 18px; }
-  .ls-field     { margin-bottom: 10px; }
-  .ls-btn-primary { margin-top: 14px; padding: 11px; }
-  .ls-tagline-wrap { display: none; }
+.ls-card.exiting {
+  animation: lsCardOut .35s ease both;
+}
+@keyframes lsShellOut {
+  to { opacity: 0; }
+}
+@keyframes lsCardOut {
+  to { opacity: 0; transform: translateY(-16px) scale(.98); }
 }
 
-/* ── Dark mode adjustments ───────────────────────────────────── */
-[data-theme="dark"] .ls-card {
-  background: #1a2d22;
-  box-shadow:
-    0 2px 0 rgba(0,0,0,.2),
-    0 8px 32px rgba(0,0,0,.4),
-    0 32px 80px rgba(0,0,0,.5),
-    0 0 0 1px rgba(93,219,160,.08);
-}
-[data-theme="dark"] .ls-card-title { color: #e8f4ec; }
-[data-theme="dark"] .ls-card-sub   { color: #7aaa8a; }
-[data-theme="dark"] .ls-input {
-  background: #0f1f16;
-  border-color: #2a4036;
-  color: #e8f4ec;
-}
-[data-theme="dark"] .ls-input:focus {
-  border-color: #5ddba0;
-  background: #122018;
-  box-shadow: 0 0 0 3px rgba(93,219,160,.14);
-}
-[data-theme="dark"] .ls-input::placeholder { color: #3a5a46; }
-[data-theme="dark"] .ls-select {
-  background-color: #0f1f16;
-  border-color: #2a4036;
-  color: #e8f4ec;
-}
-[data-theme="dark"] .ls-label  { color: #5ddba0; }
-[data-theme="dark"] .ls-link   { color: #7aaa8a; }
-[data-theme="dark"] .ls-link:hover { color: #5ddba0; background: rgba(93,219,160,.08); }
-[data-theme="dark"] .ls-link--bold { color: #5ddba0; }
-[data-theme="dark"] .ls-error  {
-  background: rgba(220,38,38,.12);
-  border-color: rgba(220,38,38,.3);
-  color: #fca5a5;
-}
-[data-theme="dark"] .ls-divider,
-[data-theme="dark"] .ls-divider::before,
-[data-theme="dark"] .ls-divider::after { color: #2a4036; background: #2a4036; }
-[data-theme="dark"] .ls-2fa-digit {
-  background: #0f1f16;
-  border-color: #2a4036;
-  color: #e8f4ec;
-}
-
-/* ── Spin utility ────────────────────────────────────────────── */
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Compatibility: old theme classes are now no-ops ──────────
-   Keep them so JS that adds/removes them doesn't cause errors   */
-.ls-theme-split .ls-hero,
-.ls-theme-centered .ls-hero,
-.ls-theme-asymmetric .ls-hero,
-.ls-theme-immersive .ls-hero,
-.ls-theme-minimal .ls-hero { display: none !important; }
-
-.ls-theme-split .ls-form-panel,
-.ls-theme-centered .ls-form-panel,
-.ls-theme-asymmetric .ls-form-panel,
-.ls-theme-immersive .ls-form-panel,
-.ls-theme-minimal .ls-form-panel {
-  max-width: 420px;
+/* auth.js adiciona .exiting ao loginLogoImg quando faz login bem-sucedido */
+#loginLogoImg.exiting {
+  animation: lsCardOut .3s ease both;
 }
