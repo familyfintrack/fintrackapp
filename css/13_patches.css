@@ -1500,31 +1500,66 @@
    A strip fica entre o header e o chart. z-index garante que
    o dropdown (z-index:500) flutue sobre ela.
 ══════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: fcp-kpi-strip — redesign integrado ao card
+   Remove a ruptura visual entre o header escuro e o gráfico.
+   A strip agora fica "embutida" com fundo branco/surface limpo,
+   sem o cinza intermediário que cria o defeito de design.
+══════════════════════════════════════════════════════════════════ */
 .fcp-kpi-strip {
   position: relative;
   z-index: 0;
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   PATCH: fcp-kpi-strip — melhor design
-   Bordas mais suaves, tipografia consistente com o resto do app
-══════════════════════════════════════════════════════════════════ */
-.fcp-kpi-strip {
+  background: var(--surface);          /* mesmo fundo da área do gráfico */
   border-bottom: 1px solid var(--border);
-  background: var(--surface2, #f8faf9);
+  border-top: none;
 }
 [data-theme="dark"] .fcp-kpi-strip {
-  background: rgba(255,255,255,.03);
+  background: var(--surface);
 }
+
+/* KPI cells: padding generoso, sem fundo próprio */
+.fcp-kpi {
+  background: transparent;
+  padding: 14px 20px;
+}
+
+/* Label: mais legível */
 .fcp-kpi-lbl {
-  font-size: .60rem;
-  font-weight: 600;
-  letter-spacing: .07em;
-  opacity: .65;
-}
-.fcp-kpi-val {
-  font-size: .88rem;
+  font-size: .58rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--muted);
+  opacity: 1;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+/* Valor: numeração elegante */
+.fcp-kpi-val {
+  font-size: .95rem;
+  font-weight: 800;
+  font-family: var(--font-serif, Georgia, serif);
+  color: var(--text);
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* Acento no KPI projetado */
+.fcp-kpi--accent {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.fcp-kpi--accent .fcp-kpi-lbl { color: var(--accent); opacity: .75; }
+
+/* Seta: mais visível */
+.fcp-kpi-arrow {
+  font-size: .9rem;
+  color: var(--muted);
+  opacity: .4;
+  flex-shrink: 0;
+  align-self: center;
+  padding: 0 4px;
 }
 
 /* ══════════════════════════════════════════════════════════════════
