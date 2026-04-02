@@ -1135,6 +1135,1350 @@ async function _invFetchTDPriceForForm() {
   }
 }
 
+// ── Parse value from either Brazilian format (1.234,56) or plain (1234.56) ──
+function _invParseAmount(val) {
+  if (!val && val !== 0) return 0;
+  let s = String(val).trim();
+  // Remove currency symbol and spaces
+  s = s.replace(/R\$\s*/g, '').trim();
+  // Brazilian: has period as thousands sep + comma as decimal → "1.234,56"
+  if (/\d{1,3}(\.\d{3})+,\d/.test(s)) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    // Just swap comma for period (simple case: "1234,56" or "1234.56")
+    s = s.replace(/\./g, '').replace(',', '.');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function _invCalcTotal() {
+  const assetType = document.getElementById('invTxAssetType')?.value;
+  let total = 0;
+
+  if (assetType === 'fundo_investimento') {
+    // For funds, qty IS the total value applied (price = 1)
+    const qty = _invParseAmount(document.getElementById('invTxQty')?.value);
+    total = qty;
+  } else if (assetType === 'tesouro_direto') {
+    const qty   = _invParseAmount(document.getElementById('invTxQty')?.value);
+    const price = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+    total = qty * price;
+  } else {
+    const qty   = _invParseAmount(document.getElementById('invTxQty')?.value);
+    const price = _invParseAmount(document.getElementById('invTxPrice')?.value);
+    total = qty * price;
+  }
+
+  const el = document.getElementById('invTxTotal');
+  if (el) el.textContent = fmt(total);
+
+  // Cash warning for buys
+  const type  = document.getElementById('invTxType')?.value;
+  const accId = document.getElementById('invTxAccount')?.value;
+  const warn  = document.getElementById('invTxCashWarning');
+  if (warn && type === 'buy' && accId) {
+    const acc  = _invAccounts().find(a => a.id === accId);
+    const cash = acc ? (+(acc.balance) || 0) : 0;
+    warn.style.display = (total > 0 && cash < total) ? '' : 'none';
+  }
+}
+
+async function saveInvTransaction() {
+  const btn    = document.getElementById('invTxSaveBtn');
+  const errEl  = document.getElementById('invTxError');
+  const type   = document.getElementById('invTxType').value;
+  const accId  = document.getElementById('invTxAccount').value;
+  const date   = document.getElementById('invTxDate').value;
+  const assetT = document.getElementById('invTxAssetType').value;
+  const name   = document.getElementById('invTxName').value.trim();
+  const notes  = document.getElementById('invTxNotes').value.trim();
+  const posId  = document.getElementById('invTxPositionId').value;
+
+  if (errEl) errEl.style.display = 'none';
+  if (!accId) { _invShowErr('Selecione a conta'); return; }
+  if (!date)  { _invShowErr('Informe a data'); return; }
+
+  // ── Coleta metadata de TD / Fundo ─────────────────────────────────────────
+  let metaJson = {};
+
+  if (assetT === 'tesouro_direto') {
+    const sub      = document.getElementById('invTxTDSubtype')?.value || 'LFT';
+    const maturity = document.getElementById('invTxTDMaturity')?.value || '';
+    const tdRate   = parseFloat((document.getElementById('invTxTDRate')?.value || '').replace(',', '.')) || 0;
+    const tdPrice  = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+    if (!maturity) { _invShowErr('Informe o vencimento do título'); return; }
+    if (!tdPrice)  { _invShowErr('Informe o preço por título'); return; }
+    const t = TD_SUBTYPES.find(x => x.value === sub);
+    metaJson = { td_subtype: sub, td_maturity: maturity, td_rate: tdRate,
+                 td_index: t?.index || 'selic', td_purchase_price: tdPrice, last_update: date };
+    // Gera ticker padronizado: TD-SELIC-2029
+    const yr = maturity.slice(0, 4);
+    const codeLabel = { LFT:'SELIC', LTN:'PRE', 'NTN-F':'PREF', 'NTN-B':'IPCA', 'NTN-B_P':'IPCAJ', 'NTN-C':'IGPM' };
+    const generatedTicker = 'TD-' + (codeLabel[sub] || sub) + '-' + yr;
+    const tickerEl = document.getElementById('invTxTicker');
+    if (tickerEl && !tickerEl.value.startsWith('TD-')) tickerEl.value = generatedTicker;
+  }
+
+  if (assetT === 'fundo_investimento') {
+    const fundIdx  = document.getElementById('invTxFundIndex')?.value || 'cdi';
+    const fundRate = parseFloat((document.getElementById('invTxFundRate')?.value || '').replace(',', '.')) || 0;
+    if (!fundRate) { _invShowErr('Informe o ' + (fundIdx === 'cdi' ? '% do CDI' : 'taxa % a.a.')); return; }
+    const cdiAtual = window._invLastCDI || null;
+    metaJson = { fund_index: fundIdx,
+                 fund_cdi_pct: fundIdx === 'cdi' ? fundRate : null,
+                 fund_rate: fundIdx !== 'cdi' ? fundRate : null,
+                 fund_last_cdi: cdiAtual, fund_last_update: date };
+  }
+
+  // ── Lê ticker final ────────────────────────────────────────────────────────
+  const ticker = (document.getElementById('invTxTicker')?.value || '').trim().toUpperCase();
+  if (!ticker) { _invShowErr('Informe o código do ativo'); return; }
+
+  // ── Lê quantidade e preço por tipo de ativo ────────────────────────────────
+  let qtyRaw, priceRaw;
+  if (assetT === 'fundo_investimento') {
+    qtyRaw   = _invParseAmount(document.getElementById('invTxQty')?.value);
+    priceRaw = 1;
+    if (!qtyRaw || qtyRaw <= 0) { _invShowErr('Informe o valor aplicado'); return; }
+  } else if (assetT === 'tesouro_direto') {
+    qtyRaw   = _invParseAmount(document.getElementById('invTxQty')?.value);
+    priceRaw = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+    if (!qtyRaw || qtyRaw <= 0)    { _invShowErr('Informe a quantidade de títulos (mín: 0,01)'); return; }
+    if (!priceRaw || priceRaw <= 0){ _invShowErr('Informe o preço por título'); return; }
+  } else {
+    qtyRaw   = _invParseAmount(document.getElementById('invTxQty')?.value);
+    priceRaw = _invParseAmount(document.getElementById('invTxPrice')?.value);
+    if (!qtyRaw || qtyRaw <= 0)    { _invShowErr('Informe a quantidade'); return; }
+    if (!priceRaw || priceRaw <= 0){ _invShowErr('Informe o preço unitário'); return; }
+  }
+
+  const total    = qtyRaw * priceRaw;
+
+  // ── Persist fees into metaJson ──────────────────────────────────────────
+  const _adminFeeVal = _invParseAmount(document.getElementById('invTxAdminFee')?.value);
+  const _perfFeeVal  = _invParseAmount(document.getElementById('invTxPerfFee')?.value);
+  const _perfBm      = document.getElementById('invTxPerfBenchmark')?.value || 'cdi';
+  const _feesSection = document.getElementById('invTxFeesSection');
+  const _feesVisible = _feesSection?.style.display !== 'none';
+  if (_feesVisible) {
+    if (!metaJson) metaJson = {};
+    if (_adminFeeVal > 0) metaJson.admin_fee       = _adminFeeVal;
+    if (_perfFeeVal > 0)  { metaJson.perf_fee       = _perfFeeVal; metaJson.perf_benchmark = _perfBm; }
+  }
+
+  const notesStr = Object.keys(metaJson).length ? _invMetaStr(metaJson) : (notes || null);
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
+
+  try {
+    // 1. Upsert position
+    let position = posId
+      ? _inv.positions.find(p => p.id === posId)
+      : _inv.positions.find(p => p.account_id === accId && p.ticker === ticker);
+
+    if (!position) {
+      const { data: newPos, error: posErr } = await sb.from('investment_positions').insert({
+        family_id:     famId(),
+        account_id:    accId,
+        ticker,
+        asset_type:    assetT,
+        name:          name || ticker,
+        quantity:      0,
+        avg_cost:      0,
+        current_price: priceRaw,
+        currency:      ['acao_us','etf_us'].includes(assetT) ? 'USD' : 'BRL',
+        notes:         notesStr,
+      }).select().single();
+      if (posErr) throw posErr;
+      position = newPos;
+      _inv.positions.push(position);
+    } else if (Object.keys(metaJson).length) {
+      await sb.from('investment_positions').update({ notes: notesStr }).eq('id', position.id);
+      position.notes = notesStr;
+    }
+
+    // 2. Atualiza qty e avg_cost
+    const oldQty  = +(position.quantity) || 0;
+    const oldCost = +(position.avg_cost)  || 0;
+    let newQty, newAvgCost;
+
+    if (type === 'buy') {
+      newQty     = oldQty + qtyRaw;
+      newAvgCost = newQty > 0 ? (oldQty * oldCost + qtyRaw * priceRaw) / newQty : priceRaw;
+    } else {
+      if (qtyRaw > oldQty + 0.00001) { _invShowErr('Quantidade insuficiente (disponível: ' + oldQty + ')'); return; }
+      newQty     = Math.max(0, oldQty - qtyRaw);
+      newAvgCost = oldCost;
+    }
+
+    const { error: updErr } = await sb.from('investment_positions').update({
+      quantity:      newQty,
+      avg_cost:      newAvgCost,
+      current_price: priceRaw,
+      name:          name || position.name || ticker,
+      asset_type:    assetT || position.asset_type,
+      updated_at:    new Date().toISOString(),
+    }).eq('id', position.id);
+    if (updErr) throw updErr;
+    Object.assign(position, { quantity: newQty, avg_cost: newAvgCost, current_price: priceRaw });
+
+    // 3. Transação financeira na conta
+    const txAmount = type === 'buy' ? -total : total;
+    const txDesc   = assetT === 'tesouro_direto'
+      ? (type==='buy' ? 'Compra TD: ' : 'Venda TD: ') + ticker + ' ' + qtyRaw + ' título(s) @ ' + fmt(priceRaw)
+      : assetT === 'fundo_investimento'
+      ? (type==='buy' ? 'Aplicação Fundo: ' : 'Resgate Fundo: ') + ticker
+      : (type==='buy' ? 'Compra: ' : 'Venda: ') + ticker + ' ' + qtyRaw + 'x @ ' + fmt(priceRaw);
+
+    const { data: txData, error: txErr } = await sb.from('transactions').insert({
+      family_id:   famId(),
+      account_id:  accId,
+      date,
+      description: txDesc,
+      amount:      txAmount,
+      category_id: null,
+      memo:        notes || null,
+      status:      'confirmed',
+      is_transfer: false,
+    }).select().single();
+    if (txErr) throw txErr;
+
+    // 4. Registro na investment_transactions
+    await sb.from('investment_transactions').insert({
+      family_id:   famId(),
+      position_id: position.id,
+      account_id:  accId,
+      tx_id:       txData.id,
+      type,
+      quantity:    qtyRaw,
+      unit_price:  priceRaw,
+      total_brl:   total,
+      date,
+      notes:       notesStr,
+    });
+
+    // 5. Histórico de preço
+    const today = new Date().toISOString().slice(0, 10);
+    await sb.from('investment_price_history').upsert({
+      position_id: position.id,
+      family_id:   famId(),
+      date:        date || today,
+      price:       priceRaw,
+      currency:    'BRL',
+      source:      'manual',
+    }, { onConflict: 'position_id,date' });
+
+    const lbl = assetT==='fundo_investimento' ? (type==='buy'?'Aplicação':'Resgate')
+              : assetT==='tesouro_direto' ? (type==='buy'?'Compra TD':'Venda TD')
+              : (type==='buy'?'Compra':'Venda');
+    toast('✅ ' + lbl + ' de ' + ticker + ' registrada!', 'success');
+    closeModal('invTxModal');
+
+    await loadInvestments(true);
+    DB.accounts.bust();
+    await DB.accounts.load(true);
+    _invAugmentAccountBalances();
+    _renderInvestmentsPage();
+    if (state.currentPage === 'accounts') renderAccounts?.();
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+
+  } catch(e) {
+    _invShowErr(e.message || 'Erro ao salvar');
+    if (btn) { btn.disabled = false; btn.textContent = type==='buy' ? '💾 Registrar Compra' : '💾 Registrar Venda'; }
+  }
+}
+
+function _invShowErr(msg) {
+  const errEl = document.getElementById('invTxError');
+  if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUTO-YIELD ENGINE — Tesouro Direto & Fundos CDI
+// Atualiza preços e registra movimentações de rendimento automaticamente.
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Ponto de entrada do motor de rendimento.
+ * Chamado no _invUpdatePrices para posições de TD e Fundos.
+ */
+async function _invRunAutoYield(positions) {
+  const autoYield = positions.filter(p => _invIsAutoYield(p) && +(p.quantity) > 0);
+  if (!autoYield.length) return;
+
+  // Busca CDI e preços TD em paralelo
+  const [cdiAnual, tdPrices] = await Promise.all([
+    _fetchCDIAnual().catch(() => null),
+    _fetchTDPrices().catch(() => []),
+  ]);
+
+  // Armazena CDI em cache de sessão para uso nos formulários
+  if (cdiAnual) window._invLastCDI = cdiAnual;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (const pos of autoYield) {
+    try {
+      if (_invIsTD(pos)) {
+        await _invUpdateTDPosition(pos, tdPrices, today);
+      } else if (_invIsFund(pos)) {
+        await _invUpdateFundPosition(pos, cdiAnual, today);
+      }
+    } catch(e) {
+      console.warn('[inv] auto-yield error for', pos.ticker, ':', e.message);
+    }
+  }
+}
+
+/**
+ * Atualiza posição de Tesouro Direto via API B3.
+ * Se a API não retornar dados, calcula estimativa local.
+ */
+async function _invUpdateTDPosition(pos, tdPrices, today) {
+  const meta    = _invGetMeta(pos);
+  const lastUpd = meta.last_update || pos.created_at?.slice(0,10) || today;
+  if (lastUpd === today) return; // já atualizado hoje
+
+  const sub      = meta.td_subtype || 'LFT';
+  const oldPrice = +(pos.current_price) || +(pos.avg_cost) || 0;
+  let   newPrice = oldPrice;
+
+  // Tenta achar o título na lista B3
+  const codeMap  = { LFT:'selic', LTN:'prefixado', 'NTN-F':'prefixado', 'NTN-B':'ipca', 'NTN-B_P':'ipca', 'NTN-C':'igpm' };
+  const kw       = (codeMap[sub] || '').toLowerCase();
+  const matYear  = (meta.td_maturity || '').slice(0,4);
+  const matched  = (tdPrices || []).find(t => {
+    const n = t.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return n.includes(kw) && (!matYear || t.name.includes(matYear));
+  });
+
+  if (matched?.buyPrice && matched.buyPrice > 0) {
+    newPrice = matched.buyPrice;
+  } else if (sub === 'LTN' && meta.td_rate && meta.td_maturity) {
+    // Estimativa local para Prefixado quando API indisponível
+    const du = _busyDays(today, meta.td_maturity);
+    if (du > 0) newPrice = _calcLTNPrice(meta.td_rate, du);
+  }
+
+  if (newPrice <= 0 || Math.abs(newPrice - oldPrice) < 0.001) return;
+
+  const qty  = +(pos.quantity) || 0;
+  const gain = (newPrice - oldPrice) * qty;
+
+  await _invApplyYieldGain(pos, newPrice, gain, today, 'td_auto',
+    'Rendimento TD: ' + pos.ticker + ' — PU ' + fmt(oldPrice) + ' → ' + fmt(newPrice));
+
+  // Atualiza metadata com data de hoje
+  const newMeta = { ...meta, last_update: today };
+  await sb.from('investment_positions').update({ notes: _invMetaStr(newMeta) }).eq('id', pos.id);
+  pos.notes = _invMetaStr(newMeta);
+}
+
+/**
+ * Atualiza posição de Fundo de Investimento via CDI do BCB.
+ */
+async function _invUpdateFundPosition(pos, cdiAnual, today) {
+  const meta    = _invGetMeta(pos);
+  const lastUpd = meta.fund_last_update || pos.created_at?.slice(0,10) || today;
+  if (lastUpd === today) return;
+
+  const result = _calcFundYield(pos, cdiAnual);
+  if (!result || result.gain === 0 || Math.abs(result.gain) < 0.01) return;
+
+  const { newPrice, gain } = result;
+  const indexLabel = { cdi:'CDI', prefixado:'Prefixado', ipca:'IPCA+', selic:'Selic' }[meta.fund_index] || 'CDI';
+  const pctInfo = meta.fund_index === 'cdi'
+    ? meta.fund_cdi_pct + '% do CDI (' + (cdiAnual||0).toFixed(2) + '% a.a.)'
+    : meta.fund_rate + '% a.a. ' + indexLabel;
+
+  await _invApplyYieldGain(pos, newPrice, gain, today, 'fund_cdi',
+    'Rendimento Fundo: ' + pos.ticker + ' — ' + pctInfo + ' (' + result.dias + ' dias)');
+
+  // Atualiza metadata
+  const newMeta = { ...meta, fund_last_update: today, fund_last_cdi: cdiAnual || meta.fund_last_cdi };
+  await sb.from('investment_positions').update({ notes: _invMetaStr(newMeta) }).eq('id', pos.id);
+  pos.notes = _invMetaStr(newMeta);
+}
+
+/**
+ * Aplica o ganho/perda: atualiza current_price, grava histórico e
+ * registra movimentação de rendimento na investment_transactions e transactions.
+ */
+async function _invApplyYieldGain(pos, newPrice, gain, date, source, description) {
+  if (!pos?.id) return;
+
+  // 1. Atualiza current_price na posição
+  await sb.from('investment_positions').update({
+    current_price:    newPrice,
+    price_updated_at: new Date().toISOString(),
+    updated_at:       new Date().toISOString(),
+  }).eq('id', pos.id);
+  pos.current_price = newPrice;
+
+  // 2. Grava histórico de preço
+  await sb.from('investment_price_history').upsert({
+    position_id: pos.id,
+    family_id:   pos.family_id || famId(),
+    date,
+    price:       newPrice,
+    currency:    'BRL',
+    source,
+  }, { onConflict: 'position_id,date' });
+
+  // 3. Registra movimentação de rendimento na transactions principal
+  const { data: txData } = await sb.from('transactions').insert({
+    family_id:   pos.family_id || famId(),
+    account_id:  pos.account_id,
+    date,
+    description,
+    amount:      gain, // positivo = crédito na conta
+    category_id: null,
+    memo:        'Rendimento automático — ' + source,
+    status:      'confirmed',
+    is_transfer: false,
+  }).select('id').single();
+
+  // 4. Grava em investment_transactions com notes marcando como rendimento
+  if (txData?.id) {
+    await sb.from('investment_transactions').insert({
+      family_id:   pos.family_id || famId(),
+      position_id: pos.id,
+      account_id:  pos.account_id,
+      tx_id:       txData.id,
+      type:        gain >= 0 ? 'buy' : 'sell', // buy = ganho (aumenta posição), sell = perda
+      quantity:    0,  // rendimento não muda qty, apenas o preço
+      unit_price:  newPrice,
+      total_brl:   Math.abs(gain),
+      date,
+      notes:       _invMetaStr({ type: 'rendimento', source, gain }),
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PAINEL DE DETALHE ESTENDIDO para TD e Fundos
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Abre painel de atualização manual de rendimento para TD/Fundos.
+ * Permite ao usuário corrigir o valor manualmente.
+ */
+function openInvYieldEditPanel(positionId) {
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos || !_invIsAutoYield(pos)) return;
+
+  document.getElementById('invYieldEditModal')?.remove();
+  const meta     = _invGetMeta(pos);
+  const isTD     = _invIsTD(pos);
+  const isFund   = _invIsFund(pos);
+  const curPrice = +(pos.current_price) || +(pos.avg_cost) || 0;
+  const qty      = +(pos.quantity) || 0;
+  const curValue = curPrice * qty;
+  const cost     = +(pos.avg_cost) * qty;
+  const pnl      = curValue - cost;
+
+  // Informações do indexador atual
+  let indexInfo = '';
+  if (isTD) {
+    const t = TD_SUBTYPES.find(x => x.value === meta.td_subtype) || {};
+    indexInfo = (t.label || 'Tesouro') + (meta.td_maturity ? ' · Vence ' + fmtDate(meta.td_maturity) : '')
+              + (meta.td_rate ? ' · ' + meta.td_rate + '% a.a.' : '');
+  }
+  if (isFund) {
+    const idx = FUND_INDEXERS.find(x => x.value === meta.fund_index) || {};
+    const rate = meta.fund_index === 'cdi' ? (meta.fund_cdi_pct + '% CDI') : (meta.fund_rate + '% a.a.');
+    indexInfo = idx.label + ' · ' + rate + (meta.fund_last_cdi ? ' · CDI ref: ' + (+meta.fund_last_cdi).toFixed(2) + '%' : '');
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'invYieldEditModal';
+  modal.style.zIndex = '10020';
+  modal.innerHTML = `
+  <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">✏️ Atualizar Rendimento — ${esc(pos.ticker)}</span>
+      <button class="modal-close" onclick="closeModal('invYieldEditModal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- KPIs atuais -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:3px">Saldo Atual</div>
+          <div style="font-size:.9rem;font-weight:700">${fmt(curValue)}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:3px">Custo Total</div>
+          <div style="font-size:.9rem;font-weight:700">${fmt(cost)}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:.68rem;color:var(--muted);margin-bottom:3px">Resultado</div>
+          <div style="font-size:.9rem;font-weight:700;color:${pnl>=0?'var(--green)':'var(--danger)'}">
+            ${pnl>=0?'+':''}${fmt(pnl)}</div>
+        </div>
+      </div>
+
+      <!-- Parâmetros do indexador -->
+      <div style="font-size:.78rem;color:var(--muted);background:var(--surface2);border-radius:8px;padding:10px">
+        📐 ${esc(indexInfo)}
+      </div>
+
+      <!-- CDI atual (somente fundos) -->
+      ${isFund ? `
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:.82rem;flex:1">CDI atual (Banco Central):</span>
+        <span id="invYieldCDIVal" style="font-weight:700;color:var(--accent)">
+          ${window._invLastCDI ? (+window._invLastCDI).toFixed(2)+'% a.a.' : '—'}
+        </span>
+        <button type="button" class="btn btn-ghost btn-sm" style="font-size:.72rem"
+          onclick="_invYieldRefreshCDI()">🔄</button>
+      </div>` : ''}
+
+      <!-- Tipo de atualização -->
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:.78rem;font-weight:600">Tipo de atualização</label>
+        <div style="display:flex;gap:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+            <input type="radio" name="yieldUpdateType" value="auto" checked
+              onchange="_invYieldToggleMode(this.value)"> Auto (calcular)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+            <input type="radio" name="yieldUpdateType" value="manual"
+              onchange="_invYieldToggleMode(this.value)"> Manual (informar valor)
+          </label>
+        </div>
+      </div>
+
+      <!-- Modo auto -->
+      <div id="invYieldAutoMode">
+        <div style="font-size:.82rem;color:var(--muted);padding:8px 12px;background:rgba(42,96,73,.07);border-radius:8px">
+          🔄 Clique em <strong>Calcular e Aplicar</strong> para recalcular o rendimento
+          desde <strong>${fmtDate(meta.fund_last_update || meta.last_update || 'hoje')}</strong> usando os índices atuais.
+        </div>
+        <div id="invYieldPreview" style="display:none;margin-top:8px;padding:10px 12px;
+          background:var(--surface2);border-radius:8px;font-size:.82rem">
+        </div>
+      </div>
+
+      <!-- Modo manual -->
+      <div id="invYieldManualMode" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="form-group" style="margin:0">
+            <label style="font-size:.75rem">Novo valor total (R$)</label>
+            <input type="text" id="invYieldNewValue" inputmode="decimal"
+              value="${curValue.toFixed(2).replace('.',',')}"
+              style="font-size:.9rem;font-weight:600"
+              oninput="_invYieldCalcManual()">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:.75rem">Ganho / Perda</label>
+            <div id="invYieldGainDisplay" style="padding:8px 10px;border:1px solid var(--border);
+              border-radius:var(--r-sm);font-size:.9rem;font-weight:700;color:var(--muted)">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="invYieldError" style="display:none;color:var(--danger);font-size:.8rem;
+        padding:8px;background:#fef2f2;border-radius:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('invYieldEditModal')">Cancelar</button>
+      <button class="btn btn-primary" id="invYieldApplyBtn"
+        onclick="applyInvYield('${positionId}')">
+        🔄 Calcular e Aplicar
+      </button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(modal);
+  // Pré-calcula rendimento no modo auto
+  _invYieldPreviewAuto(positionId);
+}
+
+window.openInvYieldEditPanel = openInvYieldEditPanel;
+
+function _invYieldToggleMode(mode) {
+  const autoEl   = document.getElementById('invYieldAutoMode');
+  const manualEl = document.getElementById('invYieldManualMode');
+  const btn      = document.getElementById('invYieldApplyBtn');
+  if (autoEl)   autoEl.style.display   = mode === 'auto'   ? '' : 'none';
+  if (manualEl) manualEl.style.display = mode === 'manual' ? '' : 'none';
+  if (btn) btn.textContent = mode === 'auto' ? '🔄 Calcular e Aplicar' : '💾 Aplicar Valor Manual';
+}
+
+async function _invYieldRefreshCDI() {
+  const cdi = await _fetchCDIAnual().catch(() => null);
+  if (cdi) {
+    window._invLastCDI = cdi;
+    const el = document.getElementById('invYieldCDIVal');
+    if (el) el.textContent = cdi.toFixed(2) + '% a.a.';
+  }
+}
+
+async function _invYieldPreviewAuto(positionId) {
+  const pos  = _inv.positions.find(p => p.id === positionId);
+  if (!pos) return;
+  const cdi  = window._invLastCDI || await _fetchCDIAnual().catch(() => null);
+  const prev = document.getElementById('invYieldPreview');
+  if (!prev) return;
+
+  if (_invIsTD(pos)) {
+    const meta = _invGetMeta(pos);
+    const tdP  = await _fetchTDPrices().catch(() => []);
+    const sub  = meta.td_subtype || 'LFT';
+    const codeMap = { LFT:'selic',LTN:'prefixado','NTN-F':'prefixado','NTN-B':'ipca','NTN-B_P':'ipca','NTN-C':'igpm' };
+    const kw   = (codeMap[sub]||'').toLowerCase();
+    const mat  = (meta.td_maturity||'').slice(0,4);
+    const m    = tdP.find(t => t.name.toLowerCase().includes(kw) && (!mat || t.name.includes(mat)));
+    if (m?.buyPrice) {
+      const qty   = +(pos.quantity) || 0;
+      const oldP  = +(pos.current_price) || +(pos.avg_cost) || 0;
+      const gain  = (m.buyPrice - oldP) * qty;
+      prev.innerHTML = 'Novo PU: <strong>' + fmt(m.buyPrice) + '</strong> &nbsp;|&nbsp; Ganho: <strong style="color:' + (gain>=0?'var(--green)':'var(--danger)') + '">' + (gain>=0?'+':'') + fmt(gain) + '</strong>';
+      prev.style.display = '';
+    }
+  } else if (_invIsFund(pos)) {
+    const r = _calcFundYield(pos, cdi);
+    if (r) {
+      prev.innerHTML = 'Rendimento (' + r.dias + ' dias): <strong style="color:' + (r.gain>=0?'var(--green)':'var(--danger)') + '">' + (r.gain>=0?'+':'') + fmt(r.gain) + '</strong>'
+        + ' &nbsp;|&nbsp; ' + r.pct.toFixed(3) + '% &nbsp;|&nbsp; Novo saldo: <strong>' + fmt(r.newValue) + '</strong>';
+      prev.style.display = '';
+    }
+  }
+}
+
+function _invYieldCalcManual() {
+  const pos = _inv.positions.find(p => document.getElementById('invYieldNewValue'));
+  const newValEl = document.getElementById('invYieldNewValue');
+  const gainEl   = document.getElementById('invYieldGainDisplay');
+  if (!newValEl || !gainEl) return;
+  // Find position from modal context — read positionId from apply button
+  const applyBtn = document.getElementById('invYieldApplyBtn');
+  const pid = applyBtn?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+  const p   = pid ? _inv.positions.find(x => x.id === pid) : null;
+  if (!p) return;
+  const qty     = +(p.quantity) || 1;
+  const curVal  = (+(p.current_price) || +(p.avg_cost) || 0) * qty;
+  const newVal  = parseFloat(newValEl.value.replace(',','.')) || 0;
+  const gain    = newVal - curVal;
+  gainEl.textContent = (gain >= 0 ? '+' : '') + fmt(gain);
+  gainEl.style.color = gain >= 0 ? 'var(--green)' : 'var(--danger)';
+}
+
+async function applyInvYield(positionId) {
+  const pos    = _inv.positions.find(p => p.id === positionId);
+  const errEl  = document.getElementById('invYieldError');
+  const btn    = document.getElementById('invYieldApplyBtn');
+  if (!pos) return;
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Aplicando…'; }
+
+  const mode  = document.querySelector('input[name="yieldUpdateType"]:checked')?.value || 'auto';
+  const today = new Date().toISOString().slice(0, 10);
+  const qty   = +(pos.quantity) || 1;
+
+  try {
+    if (mode === 'auto') {
+      const cdi = window._invLastCDI || await _fetchCDIAnual().catch(() => null);
+
+      if (_invIsTD(pos)) {
+        const meta = _invGetMeta(pos);
+        const tdP  = await _fetchTDPrices().catch(() => []);
+        const sub  = meta.td_subtype || 'LFT';
+        const codeMap = { LFT:'selic',LTN:'prefixado','NTN-F':'prefixado','NTN-B':'ipca','NTN-B_P':'ipca','NTN-C':'igpm' };
+        const kw   = (codeMap[sub]||'').toLowerCase();
+        const mat  = (meta.td_maturity||'').slice(0,4);
+        const m    = tdP.find(t => t.name.toLowerCase().includes(kw) && (!mat || t.name.includes(mat)));
+        if (!m?.buyPrice) throw new Error('Preço do título não encontrado na API B3. Tente novamente mais tarde ou use o modo Manual.');
+        const gain = (m.buyPrice - (+(pos.current_price)||0)) * qty;
+        await _invApplyYieldGain(pos, m.buyPrice, gain, today, 'td_auto',
+          'Rendimento TD: ' + pos.ticker + ' — PU ' + fmt(pos.current_price) + ' → ' + fmt(m.buyPrice));
+        const newMeta = { ..._invGetMeta(pos), last_update: today };
+        await sb.from('investment_positions').update({ notes: _invMetaStr(newMeta) }).eq('id', pos.id);
+        pos.notes = _invMetaStr(newMeta);
+
+      } else if (_invIsFund(pos)) {
+        const r = _calcFundYield(pos, cdi);
+        if (!r || Math.abs(r.gain) < 0.01) throw new Error('Sem rendimento a aplicar (verificar datas ou taxa).');
+        const meta = _invGetMeta(pos);
+        const indexLabel = { cdi:'CDI', prefixado:'Prefixado', ipca:'IPCA+', selic:'Selic' }[meta.fund_index] || 'CDI';
+        await _invApplyYieldGain(pos, r.newPrice, r.gain, today, 'fund_cdi',
+          'Rendimento Fundo: ' + pos.ticker + ' — ' + (meta.fund_cdi_pct||meta.fund_rate) + '% ' + indexLabel + ' (' + r.dias + ' dias)');
+        const newMeta = { ...meta, fund_last_update: today, fund_last_cdi: cdi || meta.fund_last_cdi };
+        await sb.from('investment_positions').update({ notes: _invMetaStr(newMeta) }).eq('id', pos.id);
+        pos.notes = _invMetaStr(newMeta);
+      }
+
+    } else {
+      // Modo manual: usuário informa o novo valor total
+      const newTotal = parseFloat((document.getElementById('invYieldNewValue')?.value || '').replace(',','.'));
+      if (!newTotal || newTotal <= 0) throw new Error('Informe o novo valor total.');
+      const curTotal = (+(pos.current_price) || +(pos.avg_cost) || 0) * qty;
+      const gain     = newTotal - curTotal;
+      const newPrice = qty > 0 ? newTotal / qty : newTotal;
+      await _invApplyYieldGain(pos, newPrice, gain, today, 'manual',
+        'Atualização manual: ' + pos.ticker + ' — novo saldo ' + fmt(newTotal));
+      if (_invIsFund(pos)) {
+        const meta    = _invGetMeta(pos);
+        const newMeta = { ...meta, fund_last_update: today };
+        await sb.from('investment_positions').update({ notes: _invMetaStr(newMeta) }).eq('id', pos.id);
+        pos.notes = _invMetaStr(newMeta);
+      }
+    }
+
+    toast('✅ Rendimento de ' + pos.ticker + ' atualizado!', 'success');
+    closeModal('invYieldEditModal');
+    closeModal('invDetailModal');
+    await loadInvestments(true);
+    DB.accounts.bust();
+    await DB.accounts.load(true);
+    _invAugmentAccountBalances();
+    _renderInvestmentsPage();
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+
+  } catch(e) {
+    if (errEl) { errEl.textContent = '❌ ' + (e.message || 'Erro'); errEl.style.display = ''; }
+    if (btn) { btn.disabled = false; btn.textContent = mode==='auto' ? '🔄 Calcular e Aplicar' : '💾 Aplicar Valor Manual'; }
+  }
+}
+window.applyInvYield = applyInvYield;
+
+
+// ── Position detail (history) ───────────────────────────────────────────────
+
+/** Renders fee info panel for position detail modal */
+function _invRenderFeePanel(pos) {
+  const feeInfo = typeof _invNetReturn === 'function' ? _invNetReturn(pos) : null;
+  if (!feeInfo || !feeInfo.hasFees) return '';
+  const netColor = feeInfo.netReturnPct >= 0 ? 'var(--accent)' : 'var(--red,#dc2626)';
+  const bmMap = { cdi:'CDI', ipca:'IPCA', ibovespa:'Ibovespa', ihfa:'IHFA', '0':'livre' };
+  const bmLabel = bmMap[_invGetMeta(pos).perf_benchmark] || 'CDI';
+  const adminHtml = feeInfo.adminFee > 0
+    ? '<div><div style="color:var(--muted);font-size:.66rem">Taxa Adm.</div>'
+    + '<strong style="color:var(--text2)">' + feeInfo.adminFee.toFixed(2).replace('.',',') + '% a.a.</strong></div>'
+    : '';
+  const perfHtml = feeInfo.perfFee > 0
+    ? '<div><div style="color:var(--muted);font-size:.66rem">Taxa Perf.</div>'
+    + '<strong style="color:var(--text2)">' + feeInfo.perfFee.toFixed(2).replace('.',',') + '% / ' + bmLabel + '</strong></div>'
+    : '';
+  const sign = feeInfo.netReturnPct >= 0 ? '+' : '';
+  return '<div style="background:linear-gradient(135deg,rgba(42,96,73,.07),rgba(42,96,73,.04));'
+    + 'border:1px solid rgba(42,96,73,.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:.78rem">'
+    + '<div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">📋 Taxas e Performance Líquida</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+    + adminHtml + perfHtml
+    + '<div><div style="color:var(--muted);font-size:.66rem">Retorno Líquido Est.</div>'
+    + '<strong style="color:' + netColor + '">' + sign + feeInfo.netReturnPct.toFixed(2) + '%</strong></div>'
+    + '</div></div>';
+}
+
+async function openInvPositionDetail(positionId) {
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) return;
+
+  const txs = _inv.transactions.filter(t => t.position_id === positionId);
+  const { data: history } = await sb.from('investment_price_history')
+    .select('*').eq('position_id', positionId)
+    .order('date', { ascending: false }).limit(90);
+
+  document.getElementById('invDetailModal')?.remove();
+
+  const t = _invAssetType(pos.asset_type);
+  const mv   = _invMarketValue(pos);
+  const cost = _invCost(pos);
+  const pnl  = mv - cost;
+  const ret  = cost ? pnl / cost * 100 : 0;
+
+  const txRows = txs.map(tx => `
+    <tr>
+      <td>${fmtDate(tx.date)}</td>
+      <td><span class="badge" style="background:${tx.type==='buy'?'#dcfce7':'#fee2e2'};color:${tx.type==='buy'?'#15803d':'#b91c1c'}">${tx.type==='buy'?'Compra':'Venda'}</span></td>
+      <td>${(+(tx.quantity)).toFixed(4)}</td>
+      <td>${fmt(tx.unit_price)}</td>
+      <td class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
+    </tr>`).join('');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'invDetailModal';
+  modal.style.zIndex = '10010';
+  modal.innerHTML = `
+  <div class="modal" style="max-width:560px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">${t.emoji} ${esc(pos.ticker)} — ${esc(pos.name || pos.ticker)}</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="deleteInvPosition('${positionId}')"
+          style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:var(--danger,#dc2626);background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .2s"
+          onmouseover="this.style.background='rgba(220,38,38,.15)'" onmouseout="this.style.background='rgba(220,38,38,.08)'">
+          🗑️ Excluir
+        </button>
+        <button class="modal-close" onclick="closeModal('invDetailModal')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <!-- KPIs -->
+      <div class="inv-summary-cards" style="margin-bottom:16px">
+        <div class="inv-kpi-card"><div class="inv-kpi-label">Posição</div>
+          <div class="inv-kpi-value">${(+(pos.quantity)).toFixed(4)} ${esc(pos.ticker)}</div></div>
+        <div class="inv-kpi-card"><div class="inv-kpi-label">Custo Médio</div>
+          <div class="inv-kpi-value">${fmt(+(pos.avg_cost))}</div></div>
+        <div class="inv-kpi-card"><div class="inv-kpi-label">Cotação Atual</div>
+          <div class="inv-kpi-value">${_invBrlPrice(pos) ? fmt(_invBrlPrice(pos)) : '—'}</div></div>
+        <div class="inv-kpi-card"><div class="inv-kpi-label">Resultado Bruto</div>
+          <div class="inv-kpi-value ${pnl>=0?'amount-pos':'amount-neg'}">
+            ${pnl>=0?'+':''}${fmt(pnl)} (${ret.toFixed(2)}%)</div></div>
+      </div>
+      ${_invRenderFeePanel(pos)}
+
+      <!-- ── Painel de rendimento automático (TD e Fundos) ─────────────── -->
+      ${_invIsAutoYield(pos) ? `
+      <div style="background:linear-gradient(135deg,rgba(42,96,73,.08),rgba(42,96,73,.04));
+        border:1px solid rgba(42,96,73,.25);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:.82rem;font-weight:700;color:var(--accent)">
+            ${_invIsTD(pos) ? '🏛️ Tesouro Direto' : '🏦 Fundo de Investimento'}
+          </div>
+          <button class="btn btn-primary btn-sm"
+            style="font-size:.72rem;padding:5px 12px"
+            onclick="openInvYieldEditPanel('${pos.id}')">
+            🔄 Atualizar Rendimento
+          </button>
+        </div>
+        ${(() => {
+          const meta = _invGetMeta(pos);
+          if (_invIsTD(pos)) {
+            const t = TD_SUBTYPES.find(x => x.value === meta.td_subtype) || {};
+            return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.78rem">'
+              + '<div><div style="color:var(--muted);font-size:.68rem">Título</div><strong>' + esc(t.label||meta.td_subtype||'—') + '</strong></div>'
+              + '<div><div style="color:var(--muted);font-size:.68rem">Vencimento</div><strong>' + (meta.td_maturity ? fmtDate(meta.td_maturity) : '—') + '</strong></div>'
+              + '<div><div style="color:var(--muted);font-size:.68rem">Taxa</div><strong>' + (meta.td_rate ? meta.td_rate+'% a.a.' : '—') + '</strong></div>'
+              + '</div>';
+          } else {
+            const idx = FUND_INDEXERS.find(x => x.value === meta.fund_index) || {};
+            const rate = meta.fund_index === 'cdi' ? (meta.fund_cdi_pct + '% do CDI') : (meta.fund_rate + '% a.a.');
+            const cdiRef = meta.fund_last_cdi ? 'CDI ref: ' + (+meta.fund_last_cdi).toFixed(2)+'%' : '';
+            return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.78rem">'
+              + '<div><div style="color:var(--muted);font-size:.68rem">Indexador</div><strong>' + esc(idx.label||meta.fund_index||'CDI') + '</strong></div>'
+              + '<div><div style="color:var(--muted);font-size:.68rem">Taxa</div><strong>' + esc(rate) + '</strong></div>'
+              + '<div><div style="color:var(--muted);font-size:.68rem">CDI Ref.</div><strong>' + esc(cdiRef||'—') + '</strong></div>'
+              + '</div>';
+          }
+        })()}
+        <div style="margin-top:8px;font-size:.7rem;color:var(--muted)">
+          Última atualização: <strong>${fmtDate((_invGetMeta(pos).fund_last_update || _invGetMeta(pos).last_update || pos.updated_at?.slice(0,10) || '—'))}</strong>
+        </div>
+      </div>` : ''}
+
+      <!-- Manual price update for renda_fixa / outro (mantido para compatibilidade) -->
+      ${['renda_fixa','outro'].includes(pos.asset_type) ? `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;
+        padding:10px 14px;background:var(--surface2);border-radius:var(--r-sm)">
+        <span style="font-size:.82rem;font-weight:600;flex:1">Atualizar cotação manualmente:</span>
+        <input type="text" id="invManualPrice" value="${pos.current_price || ''}"
+          style="width:120px;padding:6px 10px" inputmode="decimal" placeholder="0,00">
+        <button class="btn btn-primary btn-sm" onclick="updateManualPrice('${pos.id}')">Salvar</button>
+      </div>` : ''}
+
+      <!-- Gain/Loss Chart -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:.82rem;font-weight:700">Evolução do Investimento</div>
+        <span id="invChartNoData" style="display:none;font-size:.73rem;color:var(--muted)">Sem histórico de preços</span>
+      </div>
+      <div style="position:relative;height:150px;margin-bottom:16px;background:var(--surface2);border-radius:var(--r-sm);overflow:hidden">
+        <canvas id="invGainLossChart" style="width:100%;height:100%"></canvas>
+      </div>
+      <!-- Transaction history -->
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:8px">Histórico de Movimentações</div>
+      ${txRows ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
+        <thead><tr style="background:var(--surface2)">
+          <th style="padding:6px 8px;text-align:left">Data</th>
+          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th>
+        </tr></thead>
+        <tbody>${txRows}</tbody>
+      </table>` : '<div style="color:var(--muted);font-size:.82rem">Nenhuma movimentação registrada.</div>'}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('invDetailModal')">Fechar</button>
+      <button class="btn btn-primary" onclick="closeModal('invDetailModal');openInvTransactionModal(null,'${pos.id}')">
+        + Nova Movimentação
+      </button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function updateManualPrice(positionId) {
+  const val = parseFloat(document.getElementById('invManualPrice')?.value?.replace(',','.'));
+  if (!val || val <= 0) { toast('Preço inválido', 'error'); return; }
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) return;
+  const today = new Date().toISOString().slice(0, 10);
+  await _invSavePrice(pos, val, 'BRL', today, 'manual');
+  await loadInvestments(true);
+  _invAugmentAccountBalances();
+  closeModal('invDetailModal');
+  _renderInvestmentsPage();
+  toast('Cotação atualizada', 'success');
+}
+
+// ── Module activation ───────────────────────────────────────────────────────
+
+async function applyInvestmentsFeature() {
+  const famId_ = famId();
+  const navEl   = document.getElementById('investmentsNav');
+  const pageEl  = document.getElementById('page-investments');
+
+  if (!famId_) {
+    if (navEl) navEl.style.display = 'none';
+    if (pageEl) pageEl.style.display = 'none';
+    if (typeof _syncModulesSection === 'function') _syncModulesSection();
+    return;
+  }
+
+  let enabled = false;
+  const cacheKey = 'investments_enabled_' + famId_;
+  if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache) {
+    enabled = !!window._familyFeaturesCache[cacheKey];
+  } else {
+    const raw = await getAppSetting(cacheKey, false);
+    enabled = raw === true || raw === 'true';
+    window._familyFeaturesCache = window._familyFeaturesCache || {};
+    window._familyFeaturesCache[cacheKey] = enabled;
+  }
+
+  if (navEl) {
+    navEl.style.display = enabled ? '' : 'none';
+    navEl.dataset.featureControlled = '1';
+  }
+  if (pageEl) pageEl.style.display = enabled ? '' : 'none';
+  if (typeof _syncModulesSection === 'function') _syncModulesSection();
+
+  if (enabled) {
+    await loadInvestments();
+    _invAugmentAccountBalances();
+  }
+}
+
+// Called from accounts.js after recalculating balances
+function invPostBalanceHook() {
+  if (_inv.loaded) _invAugmentAccountBalances();
+}
+
+
+
+// ── Portfolio performance chart (page-level) ────────────────────────────────
+async function renderInvPerformanceChart() {
+  const cvId = 'invPortfolioChart';
+  const cv = document.getElementById(cvId);
+  if (!cv) return;
+
+  const positions = _inv.positions.filter(p => +(p.quantity) > 0);
+  if (!positions.length) { cv.style.display = 'none'; return; }
+
+  // Collect all price history for current positions
+  let allHistory = [];
+  try {
+    const posIds = positions.map(p => p.id);
+    // Fetch up to 90 days of price history across all positions
+    const { data: hist } = await famQ(
+      sb.from('investment_price_history')
+        .select('position_id,date,price,currency')
+    ).in('position_id', posIds)
+      .order('date', { ascending: true })
+      .limit(5000);
+    allHistory = hist || [];
+  } catch(e) {
+    console.warn('[inv] perf chart history:', e.message);
+    cv.style.display = 'none'; return;
+  }
+
+  if (!allHistory.length) { cv.style.display = 'none'; return; }
+
+  // Group by date — compute total portfolio market value at each date
+  const dateMap = {};
+  allHistory.forEach(h => {
+    const pos = positions.find(p => p.id === h.position_id);
+    if (!pos) return;
+    const qty = +(pos.quantity) || 0;
+    const price = +(h.price) || 0;
+    const mv = qty * price;
+    if (!dateMap[h.date]) dateMap[h.date] = 0;
+    dateMap[h.date] += mv;
+  });
+
+  const sortedDates = Object.keys(dateMap).sort();
+  if (sortedDates.length < 2) { cv.style.display = 'none'; return; }
+
+  const labels = sortedDates.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  });
+  const values = sortedDates.map(d => +dateMap[d].toFixed(2));
+
+  const totalCost = positions.reduce((s, p) => s + _invCost(p), 0);
+  const first = values[0];
+  const last  = values[values.length - 1];
+  const isPos = last >= totalCost;
+
+  const G = '#22c55e', R = '#ef4444';
+  const lineColor = isPos ? G : R;
+  const fillColor = isPos ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.1)';
+
+  // Destroy existing
+  if (cv._chart) { try { cv._chart.destroy(); } catch(_) {} }
+
+  const fmt_ = v => 'R$ ' + (+v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+  cv.style.display = '';
+  cv._chart = new Chart(cv.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Valor de Mercado',
+          data: values,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 2.5,
+          pointRadius: values.length > 30 ? 0 : 3,
+          pointHoverRadius: 5,
+          fill: 'origin',
+          tension: 0.35,
+        },
+        {
+          label: 'Custo Total',
+          data: sortedDates.map(() => +totalCost.toFixed(2)),
+          borderColor: 'rgba(100,116,139,.5)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [6, 3],
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { size: 11 }, boxWidth: 12, padding: 10 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${fmt_(ctx.parsed.y)}`,
+            afterBody: items => {
+              const mv = items[0]?.parsed.y;
+              if (mv == null) return;
+              const diff = mv - totalCost;
+              const pct  = totalCost ? (diff / totalCost * 100).toFixed(2) : '—';
+              const sign = diff >= 0 ? '+' : '';
+              return [``, ` P&L: ${sign}${fmt_(diff)} (${sign}${pct}%)`];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 10 }, maxTicksLimit: 8 },
+          grid: { display: false },
+        },
+        y: {
+          ticks: {
+            font: { size: 10 },
+            callback: v => 'R$ ' + (+v).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }),
+          },
+          grid: { color: 'rgba(0,0,0,.04)' },
+        },
+      },
+    },
+  });
+}
+
+// ── Allocation donut chart ───────────────────────────────────────────────────
+function renderInvAllocationChart() {
+  const cvId = 'invAllocationChart';
+  const cv = document.getElementById(cvId);
+  if (!cv) return;
+
+  const positions = _inv.positions.filter(p => +(p.quantity) > 0);
+  if (!positions.length) { cv.style.display = 'none'; return; }
+
+  const COLORS = {
+    acao_br: '#2a6049', fii: '#7c3aed', etf_br: '#0891b2',
+    acao_us: '#dc2626', etf_us: '#ea580c', bdr: '#d97706',
+    crypto: '#f59e0b', renda_fixa: '#16a34a', outro: '#94a3b8',
+  };
+
+  // Group by asset type
+  const byType = {};
+  const totalMV = positions.reduce((s, p) => s + _invMarketValue(p), 0);
+  positions.forEach(p => {
+    const k = p.asset_type || 'outro';
+    byType[k] = (byType[k] || 0) + _invMarketValue(p);
+  });
+
+  const entries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  const labels = entries.map(([k]) => _invAssetType(k).label);
+  const data   = entries.map(([, v]) => +v.toFixed(2));
+  const colors = entries.map(([k]) => COLORS[k] || '#94a3b8');
+
+  if (cv._chart) { try { cv._chart.destroy(); } catch(_) {} }
+  cv.style.display = '';
+
+  const fmtShort = v => 'R$ ' + (+v).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
+
+  cv._chart = new Chart(cv.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: 'var(--surface, #fff)',
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            font: { size: 11 },
+            padding: 10,
+            boxWidth: 12,
+            generateLabels: chart => {
+              const ds = chart.data.datasets[0];
+              return chart.data.labels.map((label, i) => ({
+                text: `${label} ${(data[i] / totalMV * 100).toFixed(1)}%`,
+                fillStyle: ds.backgroundColor[i],
+                strokeStyle: ds.backgroundColor[i],
+                lineWidth: 0,
+                index: i,
+              }));
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${fmtShort(ctx.parsed)} (${(ctx.parsed / totalMV * 100).toFixed(1)}%)`,
+          },
+        },
+      },
+    },
+  });
+}
+
+function _renderInvGainLossChart(pos, history) {
+  const cv=document.getElementById('invGainLossChart');
+  const nd=document.getElementById('invChartNoData');
+  if(!cv) return;
+  const hist=[...history].sort((a,b)=>a.date.localeCompare(b.date));
+  if(!hist.length){if(nd)nd.style.display='';cv.style.display='none';return;}
+  if(nd)nd.style.display='none'; cv.style.display='';
+  if(cv._ci){try{cv._ci.destroy();}catch(_){}}
+  const cost=_invCost(pos), qty=+(pos.quantity)||0, cur=pos.currency||'BRL';
+  const fC=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:cur,notation:'compact'}).format(v);
+  const fF=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:cur}).format(v);
+  const labels=hist.map(h=>{const d=new Date(h.date+'T12:00:00');return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});});
+  const mvData=hist.map(h=>+(h.price)*qty);
+  const pnlData=mvData.map(mv=>mv-cost);
+  const lp=pnlData[pnlData.length-1]??0;
+  const G='rgba(22,163,74,.85)',R='rgba(192,57,43,.85)',GL='rgba(22,163,74,.15)',RL='rgba(192,57,43,.12)';
+  cv._ci=new Chart(cv.getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Valor Mercado',data:mvData,borderColor:G,backgroundColor:'transparent',borderWidth:2,pointRadius:hist.length>40?0:2,fill:false,tension:.35,order:1},
+      {label:'Custo',data:hist.map(()=>cost),borderColor:'rgba(100,116,139,.6)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:false,order:2},
+      {label:'Ganho/Perda',data:pnlData,borderColor:lp>=0?G:R,backgroundColor:lp>=0?GL:RL,borderWidth:1.5,pointRadius:0,fill:'origin',tension:.35,order:3},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10,padding:8}},
+        tooltip:{callbacks:{label:c=>{const v=c.parsed.y;return ` ${c.dataset.label}: ${v>=0?'+':''}${fF(v)}`;}}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxTicksLimit:8},grid:{display:false}},
+        y:{ticks:{font:{size:9},callback:fC},grid:{color:'rgba(0,0,0,.05)'}}
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXCLUIR POSIÇÃO DE INVESTIMENTO
+// ══════════════════════════════════════════════════════════════════════════════
+async function deleteInvPosition(positionId) {
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) { toast('Posição não encontrada', 'error'); return; }
+
+  // Two-step confirmation — critical financial data
+  const step1 = await new Promise(resolve => {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10020;display:flex;align-items:center;justify-content:center;padding:24px';
+    d.innerHTML = `
+      <div style="background:var(--surface);border-radius:var(--r-lg);padding:28px 24px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3)">
+        <div style="font-size:1.5rem;text-align:center;margin-bottom:14px">⚠️</div>
+        <div style="font-family:var(--font-serif);font-size:1.1rem;font-weight:600;color:var(--text);text-align:center;margin-bottom:10px">Excluir posição?</div>
+        <div style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:6px">
+          <strong>${esc(pos.ticker)}</strong> — ${esc(pos.name || pos.ticker)}
+        </div>
+        <div style="font-size:.78rem;color:var(--danger,#dc2626);text-align:center;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.15);border-radius:8px;padding:10px;margin-bottom:20px">
+          Isso também excluirá todas as transações e histórico de preços desta posição. Ação irreversível.
+        </div>
+        <div style="display:flex;gap:10px">
+          <button onclick="this.closest('[style*=fixed]').remove();window._invDelResolve(false)"
+            style="flex:1;padding:11px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);font-family:var(--font-sans);font-size:.88rem;cursor:pointer">Cancelar</button>
+          <button onclick="this.closest('[style*=fixed]').remove();window._invDelResolve(true)"
+            style="flex:1;padding:11px;border-radius:var(--r-sm);border:none;background:var(--danger,#dc2626);color:#fff;font-family:var(--font-sans);font-size:.88rem;font-weight:700;cursor:pointer">Excluir</button>
+        </div>
+      </div>`;
+    window._invDelResolve = resolve;
+    document.body.appendChild(d);
+  });
+  delete window._invDelResolve;
+  if (!step1) return;
+
+  try {
+    // Delete in order: price history → transactions → position
+    await sb.from('investment_price_history').delete().eq('position_id', positionId);
+    await sb.from('investment_transactions').delete().eq('position_id', positionId);
+    const { error } = await sb.from('investment_positions').delete().eq('id', positionId);
+    if (error) throw error;
+
+    toast(`✓ Posição ${pos.ticker} excluída com sucesso.`, 'success');
+    closeModal('invDetailModal');
+    await loadInvestments(true);
+    _renderInvestmentsPage();
+  } catch(e) {
+    toast('Erro ao excluir: ' + e.message, 'error');
+  }
+}
+window.deleteInvPosition = deleteInvPosition;
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAXAS DE INVESTIMENTO — toggle, persistência e análise de performance
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Toggle do painel de taxas */
+function _invToggleFees() {
+  const section = document.getElementById('invTxFeesSection');
+  const lbl     = document.getElementById('invTxFeeToggleLabel');
+  const btn     = document.getElementById('invTxFeeToggle');
+  if (!section) return;
+  const visible = section.style.display !== 'none';
+  section.style.display = visible ? 'none' : '';
+  if (lbl) lbl.textContent = visible ? 'Informar taxas (opcional)' : 'Ocultar taxas';
+  if (btn) {
+    btn.querySelector('svg').style.transform = visible ? '' : 'rotate(45deg)';
+  }
+  if (!visible) _invCalcFeeImpact();
+}
+window._invToggleFees = _invToggleFees;
+
+/** Mostra impacto estimado das taxas no campo de dica */
+function _invCalcFeeImpact() {
+  const impactEl    = document.getElementById('invTxFeeImpact');
+  const adminFeeVal = _invParseAmount(document.getElementById('invTxAdminFee')?.value);
+  const perfFeeVal  = _invParseAmount(document.getElementById('invTxPerfFee')?.value);
+  const totalApplied = _invParseAmount(
+    (document.getElementById('invTxAssetType')?.value === 'fundo_investimento')
+      ? document.getElementById('invTxQty')?.value
+      : document.getElementById('invTxPrice')?.value
+  ) * (_invParseAmount(document.getElementById('invTxQty')?.value) || 1);
+
+  if (!impactEl) return;
+  const lines = [];
+
+  if (adminFeeVal > 0 && totalApplied > 0) {
+    const annualCost = totalApplied * (adminFeeVal / 100);
+    const monthlyCost = annualCost / 12;
+    lines.push(`💼 Taxa adm. de ${adminFeeVal.toFixed(2).replace('.',',')}% a.a. → custo estimado: <strong>${fmt(annualCost)}/ano</strong> (${fmt(monthlyCost)}/mês sobre o valor aplicado)`);
+  }
+  if (perfFeeVal > 0) {
+    const benchmark = document.getElementById('invTxPerfBenchmark')?.value || 'cdi';
+    const bmLabel = { cdi:'CDI', ipca:'IPCA', ibovespa:'Ibovespa', ihfa:'IHFA', '0':'qualquer ganho' }[benchmark] || benchmark;
+    lines.push(`🎯 Taxa perf. de ${perfFeeVal.toFixed(2).replace('.',',')}% sobre ganho acima do ${bmLabel}`);
+  }
+
+  if (lines.length) {
+    impactEl.innerHTML = lines.join('<br>');
+    impactEl.style.display = '';
+  } else {
+    impactEl.style.display = 'none';
+  }
+}
+window._invCalcFeeImpact = _invCalcFeeImpact;
+
+/** Mostra campos de taxas se posição já tem taxas salvas */
+function _invLoadFeesIntoForm(pos) {
+  if (!pos) return;
+  const meta = _invGetMeta(pos);
+  const adminFee = meta.admin_fee;
+  const perfFee  = meta.perf_fee;
+  const perfBm   = meta.perf_benchmark || 'cdi';
+
+  if (adminFee || perfFee) {
+    // Open the fees panel automatically
+    const section = document.getElementById('invTxFeesSection');
+    const lbl     = document.getElementById('invTxFeeToggleLabel');
+    if (section) section.style.display = '';
+    if (lbl) lbl.textContent = 'Ocultar taxas';
+
+    const adminEl = document.getElementById('invTxAdminFee');
+    const perfEl  = document.getElementById('invTxPerfFee');
+    const bmEl    = document.getElementById('invTxPerfBenchmark');
+    if (adminEl && adminFee) adminEl.value = String(adminFee).replace('.', ',');
+    if (perfEl  && perfFee)  perfEl.value  = String(perfFee).replace('.', ',');
+    if (bmEl    && perfBm)   bmEl.value    = perfBm;
+    _invCalcFeeImpact();
+  }
+}
+
+/** Calcula rentabilidade líquida descontando taxas */
+function _invNetReturn(pos) {
+  const meta       = _invGetMeta(pos);
+  const adminFee   = +(meta.admin_fee) || 0;
+  const perfFee    = +(meta.perf_fee)  || 0;
+  const mv         = _invMarketValue(pos);
+  const cost       = _invCost(pos);
+  const grossReturn = cost ? (mv - cost) / cost * 100 : 0;
+
+  // Annualized cost of admin fee (simple approximation)
+  const adminCostPct = adminFee; // already % a.a.
+
+  // Performance fee impact (rough: applied to gross return above 0)
+  const grossGain   = Math.max(0, mv - cost);
+  const perfFeeCost = perfFee > 0 ? grossGain * (perfFee / 100) : 0;
+  const perfFeePct  = cost ? (perfFeeCost / cost * 100) : 0;
+
+  const netReturnPct = grossReturn - adminCostPct - perfFeePct;
+
+  return {
+    grossReturn,
+    adminCostPct,
+    perfFeePct,
+    netReturnPct,
+    adminFee,
+    perfFee,
+    hasFees: adminFee > 0 || perfFee > 0,
+  };
+}
+window._invNetReturn = _invNetReturn;
+
 function _invCalcTDTotal() {
   const qty   = parseFloat(document.getElementById('invTxQty')?.value?.replace(',', '.')) || 0;
   const price = parseFloat(document.getElementById('invTxTDPurchasePrice')?.value?.replace(',', '.')) || 0;
@@ -1151,10 +2495,16 @@ function _invOnAccountChange() {
 }
 
 function _invCalcTotal() {
-  const qty   = parseFloat(document.getElementById('invTxQty')?.value?.replace(',','.')) || 0;
-  const price = parseFloat(document.getElementById('invTxPrice')?.value?.replace(',','.')) || 0;
-  const total = qty * price;
-  const el    = document.getElementById('invTxTotal');
+  const assetType = document.getElementById('invTxAssetType')?.value;
+  let total = 0;
+  if (assetType === 'fundo_investimento') {
+    total = _invParseAmount(document.getElementById('invTxQty')?.value);
+  } else if (assetType === 'tesouro_direto') {
+    total = _invParseAmount(document.getElementById('invTxQty')?.value) * _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+  } else {
+    total = _invParseAmount(document.getElementById('invTxQty')?.value) * _invParseAmount(document.getElementById('invTxPrice')?.value);
+  }
+  const el = document.getElementById('invTxTotal');
   if (el) el.textContent = fmt(total);
 
   // Cash warning for buys

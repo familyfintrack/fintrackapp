@@ -461,15 +461,11 @@ function showLoginScreen() {
   if (!sb && typeof ensureSupabaseClient === 'function') {
     sb = ensureSupabaseClient();
   }
-  // Hide main app — immediately and thoroughly to prevent any content flash
+  // Hide main app
   const mainApp = document.getElementById('mainApp');
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
-  if (mainApp) {
-    mainApp.style.opacity = '0';
-    mainApp.style.visibility = 'hidden';
-    mainApp.style.display = 'none';
-  }
+  if (mainApp) { mainApp.style.display = 'none'; mainApp.style.visibility = 'hidden'; mainApp.style.opacity = '0'; }
   if (sidebar) sidebar.style.display = 'none';
   if (sidebarOverlay) sidebarOverlay.style.display = 'none';
 
@@ -543,39 +539,21 @@ function _clearRememberedCredentials() {
 }
 function hideLoginScreen() {
   const ls = document.getElementById('loginScreen');
+  if (ls) {
+    ls.style.transition = 'opacity .2s ease';
+    ls.style.opacity = '0';
+    setTimeout(() => { ls.style.display = 'none'; ls.style.opacity = ''; ls.style.transition = ''; }, 200);
+  }
   const mainApp = document.getElementById('mainApp');
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-  // 1. Reveal sidebar BEFORE main so layout doesn't jump
-  if (sidebar) sidebar.style.display = '';
-  if (sidebarOverlay) sidebarOverlay.style.display = '';
-
-  // 2. Prepare mainApp before making visible — prevents content flash
   if (mainApp) {
     mainApp.style.display = '';
     mainApp.style.visibility = 'visible';
-    mainApp.style.opacity = '0';
-    // Force a layout reflow so the browser paints the real content first
-    void mainApp.offsetHeight;
-    // Then fade in smoothly
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        mainApp.style.opacity = '1';
-      });
-    });
+    requestAnimationFrame(() => { mainApp.style.opacity = '1'; });
   }
-
-  // 3. Fade out login screen after content is ready
-  if (ls) {
-    ls.style.transition = 'opacity .18s ease';
-    ls.style.opacity = '0';
-    setTimeout(() => {
-      ls.style.display = 'none';
-      ls.style.opacity = '';
-      ls.style.transition = '';
-    }, 180);
-  }
+  if (sidebar) sidebar.style.display = '';
+  if (sidebarOverlay) sidebarOverlay.style.display = '';
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
@@ -2835,6 +2813,7 @@ async function loadFamiliesList() {
           <button class="btn btn-primary fam-btn-full" id="inviteBtn-${fid}"
             onclick="inviteToFamily('${fid}','${fmcEscape(fname)}')">📨 Convidar</button>
         </div>
+        <div id="inviteStatus-${fid}" style="display:none;margin-top:10px"></div>
       </div>`;
 
     const modulesRow = `
@@ -3208,7 +3187,9 @@ async function inviteToFamily(familyId, familyName) {
   if (!isGlobalAdmin && !isFamOwner) { toast('Apenas o owner pode convidar','error'); return; }
 
   const btn = document.getElementById(`inviteBtn-${familyId}`);
+  const statusEl = document.getElementById(`inviteStatus-${familyId}`);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
 
   try {
     // ── Verificar se já é usuário cadastrado ──────────────────────────────
@@ -3266,14 +3247,44 @@ async function inviteToFamily(familyId, familyName) {
     const inviteUrl = `${appUrl}?invite=${token}`;
 
     // Enviar e-mail com o link
-    await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl);
+    let emailSent = false;
+    let emailError = null;
+    try {
+      await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl);
+      emailSent = true;
+    } catch(emailErr) {
+      emailError = emailErr.message || String(emailErr);
+      console.warn('[inviteToFamily] email error:', emailError);
+    }
 
-    toast(`✅ Convite enviado para ${email}. O link expira em 7 dias.`, 'success');
+    if (emailSent) {
+      toast(`✅ Convite enviado para ${email}. O link expira em 7 dias.`, 'success');
+    } else {
+      toast(`⚠️ Token criado mas e-mail falhou. Compartilhe o link: ${inviteUrl}`, 'warning');
+    }
     if (emailEl) emailEl.value = '';
+
+    // Show inline confirmation status
+    if (statusEl) {
+      statusEl.style.display = '';
+      if (emailSent) {
+        statusEl.style.cssText = 'display:block;margin-top:10px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#15803d;font-size:.82rem;line-height:1.55';
+        statusEl.innerHTML = `<strong>✅ Convite enviado!</strong><br>Um e-mail com o link de acesso foi enviado para <strong>${email}</strong>. O link expira em 7 dias.`;
+        setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 8000);
+      } else {
+        statusEl.style.cssText = 'display:block;margin-top:10px;padding:10px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;color:#92400e;font-size:.82rem;line-height:1.6';
+        statusEl.innerHTML = `<strong>⚠️ Token criado, mas o e-mail não foi enviado</strong><br>${emailError || 'Erro desconhecido.'}<br><br>Compartilhe este link diretamente com o convidado:<br><code style="font-size:.76rem;word-break:break-all;user-select:all;background:rgba(0,0,0,.06);padding:2px 5px;border-radius:4px">${inviteUrl}</code>`;
+      }
+    }
     await loadFamiliesList();
 
   } catch(e) {
     toast('Erro ao convidar: ' + (e.message || e), 'error');
+    if (statusEl) {
+      statusEl.style.display = '';
+      statusEl.style.cssText = 'display:block;margin-top:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;color:#dc2626;font-size:.82rem';
+      statusEl.textContent = '❌ Erro ao enviar convite: ' + (e.message || 'tente novamente');
+    }
     console.error('[inviteToFamily]', e);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📨 Convidar'; }
@@ -3453,16 +3464,22 @@ CREATE POLICY "Allow update for token owner" ON family_invites
   FOR UPDATE USING (true);`;
 
 async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl) {
+  const { autoCheckConfig } = await _getAutoCheckConfig().catch(() => ({ autoCheckConfig: null }));
+  const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
+  const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
+  const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
+
+  if (typeof emailjs === 'undefined') {
+    console.warn('[InviteEmail] EmailJS not loaded');
+    toast('E-mail não enviado: EmailJS não carregado. Compartilhe o link manualmente.', 'warning');
+    return;
+  }
+
+  const linkText = inviteUrl
+    ? `\n\nClique no link abaixo para criar sua conta e entrar diretamente na família:\n${inviteUrl}\n\nO link expira em 7 dias.`
+    : '';
+
   try {
-    const { autoCheckConfig } = await _getAutoCheckConfig();
-    const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
-    const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
-    const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
-
-    const linkText = inviteUrl
-      ? `\n\nClique no link abaixo para criar sua conta e entrar diretamente na família:\n${inviteUrl}\n\nO link expira em 7 dias.`
-      : '';
-
     await emailjs.send(serviceId, templateId, {
       to_email:       toEmail,
       report_subject: `[Family FinTrack] Convite para a família "${familyName}"`,
@@ -3472,9 +3489,11 @@ async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl) {
       inviter:        inviterName,
       app_url:        inviteUrl || '',
     }, publicKey);
+    console.info('[InviteEmail] sent to', toEmail);
   } catch(e) {
-    console.warn('[InviteEmail]', e.message);
-    // Não falhar o fluxo por erro de e-mail
+    console.warn('[InviteEmail] failed:', e.message || e);
+    // Surface to caller so UI can show a partial-success message
+    throw new Error('E-mail não pôde ser enviado: ' + (e.message || e) + '. O token de convite foi criado — compartilhe o link manualmente.');
   }
 }
 
