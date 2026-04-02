@@ -428,7 +428,6 @@ async function tryAutoConnect(){
     // Register magic-link gate to catch passwordless SIGNED_IN events
     if(typeof _registerMagicLinkGate === 'function') _registerMagicLinkGate();
     if(restored && currentUser){
-      hideLoginScreen?.();
       updateUserUI?.();
       // If user has no family_id, show family creation screen before app boots
       if (!currentUser.family_id && currentUser.role !== 'admin' && currentUser.role !== 'owner') {
@@ -438,6 +437,7 @@ async function tryAutoConnect(){
         }
       }
       await bootApp();
+      hideLoginScreen?.();
     } else {
       // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
@@ -454,9 +454,9 @@ async function tryAutoConnect(){
     ensureSupabaseClient();
     const restored = await tryRestoreSession().catch(()=>false);
     if(restored){
-      hideLoginScreen?.();
       updateUserUI?.();
       await bootApp();
+      hideLoginScreen?.();
     } else {
       showLoginScreen();
       // Verificar token de convite após mostrar a tela de login
@@ -568,8 +568,8 @@ async function bootApp(){
         : Promise.resolve()),
     ]);
   } catch(e) {
-    toast(t('error.load_data')+' '+e.message,'error');
-    return;
+    toast(t('error.load_data')+' '+(e?.message || e),'error');
+    throw e;
   }
   // Dados secundários em background — não bloqueiam o dashboard
   loadScheduled().then(() => {
@@ -622,6 +622,7 @@ async function bootApp(){
   if (typeof applyDreamsFeature === 'function') applyDreamsFeature().catch(() => {});
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
+  return true;
 }
 
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
