@@ -23,6 +23,119 @@
   --sidebar-w:240px;--topbar-h:58px;--bottom-h:64px;
   --brand-bg:#0e3520;   /* Option 2: richer mid-green — sidebar + page header bar */
 }
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE — full variable override
+   Applied via [data-theme="dark"] on <html>.
+   The anti-flash script in app.html sets this BEFORE first paint
+   from localStorage so there is no colour-scheme flicker.
+══════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --bg:      #0f1410;   /* deep dark green-black */
+  --bg2:     #141a16;   /* slightly lighter */
+  --surface: #1a2219;   /* card/modal surface */
+  --surface2:#202c24;   /* elevated surface, inputs */
+  --border:  #2a3a2e;   /* subtle dividers */
+  --border2: #354a38;   /* stronger borders */
+  --text:    #e8f2ea;   /* near-white, warm green tint */
+  --text2:   #a8c4b0;   /* secondary text */
+  --muted:   #647d6b;   /* muted labels, hints */
+  --muted2:  #4a5e50;   /* very muted */
+  --accent:      #3d9e70;  /* brighter green on dark */
+  --accent-lt:   rgba(61,158,112,.14);
+  --accent2:     #4db882;
+  --green:       #2ecc71;
+  --green-lt:    rgba(46,204,113,.12);
+  --red:         #e74c3c;
+  --red-lt:      rgba(231,76,60,.12);
+  --amber:       #f39c12;
+  --amber-lt:    rgba(243,156,18,.12);
+  --blue:        #3498db;
+  --blue-lt:     rgba(52,152,219,.12);
+  --shadow-sm:   0 1px 4px rgba(0,0,0,.3),  0 2px 12px rgba(0,0,0,.2);
+  --shadow:      0 4px 24px rgba(0,0,0,.4),  0 1px 4px rgba(0,0,0,.2);
+  --shadow-lg:   0 12px 48px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.3);
+  /* Sidebar stays its own dark green — no override needed */
+}
+
+/* Explicit element overrides that var() alone can't cover */
+[data-theme="dark"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Cards, modals, surfaces */
+[data-theme="dark"] .card,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .dropdown,
+[data-theme="dark"] .user-menu-dropdown {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* Inputs */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--border);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--muted2); }
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--accent);
+  outline-color: var(--accent);
+}
+
+/* Topbar */
+[data-theme="dark"] .topbar {
+  background: #141a16;
+  border-bottom-color: var(--border);
+}
+
+/* Page header bar */
+[data-theme="dark"] .page-header-bar {
+  background: #0d1a10;
+  border-bottom-color: var(--border);
+}
+
+/* Tables */
+[data-theme="dark"] table { color: var(--text); }
+[data-theme="dark"] th    { background: var(--surface2); color: var(--text2); }
+[data-theme="dark"] tbody tr:hover { background: var(--surface2); }
+
+/* Badges & pills */
+[data-theme="dark"] .badge { background: var(--surface2); color: var(--text2); }
+
+/* Buttons — ghost stays readable */
+[data-theme="dark"] .btn-ghost {
+  color: var(--text2);
+  border-color: var(--border2);
+}
+[data-theme="dark"] .btn-ghost:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* Nav items */
+[data-theme="dark"] .nav-item { color: rgba(255,255,255,.65); }
+[data-theme="dark"] .nav-item:hover,
+[data-theme="dark"] .nav-item.active { color: #fff; background: rgba(255,255,255,.08); }
+
+/* Main content area */
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .page-content { background: var(--bg); }
+
+/* Scrollbar */
+[data-theme="dark"] * {
+  scrollbar-color: var(--border2) var(--surface);
+}
+[data-theme="dark"] ::-webkit-scrollbar-track  { background: var(--surface); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb  { background: var(--border2); border-radius: 99px; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{font-size:15px;-webkit-text-size-adjust:100%;}
 body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased;}
