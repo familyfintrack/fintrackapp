@@ -113,9 +113,9 @@
   padding: 30px 32px 28px;
   max-height: calc(100dvh - 40px);
   overflow-y: auto;
+  overflow-x: hidden; /* FIX: was "overflow:hidden" which cancelled overflow-y:auto */
   box-shadow: var(--ls-shadow);
   position: relative;
-  overflow: hidden;
   animation: lsCardIn .5s cubic-bezier(.22,.68,0,1.18) both;
 }
 @keyframes lsCardIn {
@@ -131,6 +131,8 @@
   background: linear-gradient(90deg, var(--ls-accent), var(--ls-lime), var(--ls-accent));
   background-size: 200%;
   animation: lsTopBar 5s ease-in-out infinite;
+  border-radius: 24px 24px 0 0; /* clip top corners without needing overflow:hidden on card */
+  z-index: 1;
 }
 @keyframes lsTopBar {
   0%, 100% { background-position:   0%; }
@@ -289,10 +291,20 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-size: .8rem;
+  font-size: .75rem;
+  font-weight: 500;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif);
   color: var(--ls-muted);
   margin: 14px 0 0;
   user-select: none;
+  line-height: 1.4;
+}
+/* FIX: ensure span text inside remember label uses same font/size */
+.ls-remember span:not(.ls-check-box) {
+  font-size: .75rem;
+  font-weight: 500;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif);
+  color: var(--ls-muted);
 }
 .ls-remember input[type="checkbox"] { display: none; }
 .ls-check-box {
