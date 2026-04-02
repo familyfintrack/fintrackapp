@@ -41,6 +41,36 @@ const FUND_INDEXERS = [
   { value: 'selic',     label: '% da Selic',      hint: 'Ex: 100% da Selic' },
 ];
 
+// ── Corretoras e bancos populares Brasil ─────────────────────────────────────
+const INV_BROKERS = [
+  { value: 'xp',          label: 'XP Investimentos' },
+  { value: 'clear',       label: 'Clear Corretora' },
+  { value: 'rico',        label: 'Rico' },
+  { value: 'btg',         label: 'BTG Pactual' },
+  { value: 'nubank',      label: 'Nubank (NuInvest)' },
+  { value: 'inter',       label: 'Banco Inter' },
+  { value: 'itau',        label: 'Itaú' },
+  { value: 'bradesco',    label: 'Bradesco' },
+  { value: 'bb',          label: 'Banco do Brasil' },
+  { value: 'caixa',       label: 'Caixa Econômica' },
+  { value: 'santander',   label: 'Santander' },
+  { value: 'avenue',      label: 'Avenue Securities' },
+  { value: 'orama',       label: 'Órama' },
+  { value: 'modalmais',   label: 'ModalMais' },
+  { value: 'genial',      label: 'Genial Investimentos' },
+  { value: 'ativa',       label: 'Ativa Investimentos' },
+  { value: 'warren',      label: 'Warren' },
+  { value: 'c6',          label: 'C6 Bank' },
+  { value: 'sofisa',      label: 'Sofisa Direto' },
+  { value: 'sicoob',      label: 'Sicoob' },
+  { value: 'agora',       label: 'Agora Investimentos' },
+  { value: 'outro',       label: 'Outro (digitar)' },
+];
+
+const INV_BROKER_OPTS = INV_BROKERS.map(b =>
+  `<option value="${b.value}">${b.label}</option>`
+).join('');
+
 // ── notes JSON helpers (zero-migration metadata storage) ────────────────────
 function _invGetMeta(pos) {
   if (!pos?.notes) return {};
@@ -53,6 +83,11 @@ function _invMetaStr(meta) {
 function _invIsTD(pos)   { return pos?.asset_type === 'tesouro_direto'; }
 function _invIsFund(pos) { return pos?.asset_type === 'fundo_investimento'; }
 function _invIsAutoYield(pos) { return _invIsTD(pos) || _invIsFund(pos); }
+function _invIsPosFixado(pos)  {
+  if (!_invIsFund(pos)) return false;
+  const meta = _invGetMeta(pos);
+  return meta.fund_is_pos_fixado === true || meta.fund_index === 'pos_fixado';
+}
 
 // ── BCB/B3 API helpers ───────────────────────────────────────────────────────
 
@@ -633,11 +668,34 @@ async function updateAllPrices() {
   }
 
   // 5 — Tesouro Direto & Fundos: motor de auto-yield
-  if (autoYield.length) {
-    if (status) status.textContent = `Atualizando ${autoYield.length} TD/Fundo(s)…`;
+  // Separar pós-fixados (CVM API) de fundos de rendimento calculado
+  const posFixado   = autoYield.filter(p => _invIsPosFixado(p) && _invGetMeta(p).fund_cnpj);
+  const yieldCalc   = autoYield.filter(p => !posFixado.includes(p));
+
+  if (posFixado.length) {
+    if (status) status.textContent = `Buscando cotas CVM (${posFixado.length} fundo(s) pós-fixado(s))…`;
+    for (const pos of posFixado) {
+      try {
+        const price = await _invUpdatePosFundPrice(pos);
+        if (price) {
+          Object.assign(pos, { current_price: price });
+          updated++;
+        } else {
+          // Fallback to yield calculation if CVM fails
+          yieldCalc.push(pos);
+        }
+      } catch(e) {
+        console.warn('[inv] pos-fixado CVM error:', e.message);
+        yieldCalc.push(pos);
+      }
+    }
+  }
+
+  if (yieldCalc.length) {
+    if (status) status.textContent = `Atualizando ${yieldCalc.length} TD/Fundo(s)…`;
     try {
-      await _invRunAutoYield(autoYield);
-      updated += autoYield.length;
+      await _invRunAutoYield(yieldCalc);
+      updated += yieldCalc.length;
     } catch(e) {
       console.warn('[inv] auto-yield batch error:', e.message);
     }
@@ -681,6 +739,29 @@ async function _invSavePrice(pos, price, currency, date, source) {
 }
 
 // ── Transaction modal (buy / sell) ──────────────────────────────────────────
+
+// ── Decimal input mask for quantity fields (up to N decimal places) ──────────
+function _invBindDecimalInput(el, maxDecimals = 4) {
+  if (!el || el._invDecBound) return;
+  el._invDecBound = true;
+  el.setAttribute('inputmode', 'decimal');
+  el.addEventListener('input', function() {
+    let v = el.value.replace(/[^0-9,\.]/g, '').replace('.', ',');
+    // Allow only one comma
+    const parts = v.split(',');
+    if (parts.length > 2) v = parts[0] + ',' + parts.slice(1).join('');
+    // Limit decimal places
+    if (parts[1] !== undefined && parts[1].length > maxDecimals) {
+      v = parts[0] + ',' + parts[1].slice(0, maxDecimals);
+    }
+    if (el.value !== v) el.value = v;
+  });
+  el.addEventListener('blur', function() {
+    if (el.value && !isNaN(parseFloat(el.value.replace(',', '.')))) {
+      // keep as-is on blur for qty — don't force 2 decimals
+    }
+  });
+}
 
 function openInvTransactionModal(accountId = null, positionId = null) {
   document.getElementById('invTxModal')?.remove();
@@ -784,12 +865,32 @@ function openInvTransactionModal(accountId = null, positionId = null) {
         <!-- ── Fundo de Investimento: campos extras ───────────────────── -->
         <div id="invTxFundFields" class="form-group full" style="display:none">
           <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;display:flex;flex-direction:column;gap:10px">
-            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:2px">🏦 Parâmetros do Fundo</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+              <div style="font-size:.78rem;font-weight:700;color:var(--accent)">🏦 Parâmetros do Fundo</div>
+              <button type="button" class="btn btn-primary btn-sm" style="font-size:.7rem;padding:4px 10px;display:flex;align-items:center;gap:5px"
+                onclick="_invGeminiFundLookup()">
+                🤖 Buscar com IA
+              </button>
+            </div>
+            <!-- Gemini result banner -->
+            <div id="invTxFundGeminiResult" style="display:none;background:linear-gradient(135deg,rgba(42,96,73,.1),rgba(42,96,73,.06));border:1px solid rgba(42,96,73,.3);border-radius:8px;padding:10px 12px;font-size:.76rem;color:var(--text2)"></div>
+            <!-- CNPJ do fundo -->
+            <div class="form-group" style="margin:0">
+              <label style="font-size:.75rem">CNPJ do Fundo (opcional)</label>
+              <div style="display:flex;gap:6px">
+                <input type="text" id="invTxFundCNPJ" inputmode="numeric" placeholder="00.000.000/0001-00"
+                  style="font-size:.82rem;flex:1" oninput="_invMaskCNPJ(this)">
+                <button type="button" class="btn btn-ghost btn-sm" style="font-size:.7rem;flex-shrink:0"
+                  onclick="_invCVMFundLookup()" title="Buscar dados na CVM">🔍 CVM</button>
+              </div>
+              <div id="invTxFundCVMStatus" style="font-size:.7rem;color:var(--muted);margin-top:3px"></div>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <div class="form-group" style="margin:0">
                 <label style="font-size:.75rem">Indexador *</label>
                 <select id="invTxFundIndex" onchange="_invOnFundIndexChange()" style="font-size:.82rem;width:100%">
                   ${FUND_INDEXERS.map(f => `<option value="${f.value}">${f.label}</option>`).join('')}
+                  <option value="pos_fixado">Pós-fixado (CNPJ/CVM)</option>
                 </select>
               </div>
               <div class="form-group" style="margin:0" id="invTxFundCdiPctGroup">
@@ -797,6 +898,14 @@ function openInvTransactionModal(accountId = null, positionId = null) {
                 <input type="text" id="invTxFundRate" inputmode="decimal" placeholder="Ex: 110"
                   style="font-size:.82rem;width:100%">
               </div>
+            </div>
+            <!-- Pós-fixado: informações extras para auto-update via API -->
+            <div id="invTxFundPosFixadoPanel" style="display:none;background:rgba(79,70,229,.07);border:1px solid rgba(79,70,229,.25);border-radius:8px;padding:10px 12px">
+              <div style="font-size:.74rem;font-weight:700;color:#4338ca;margin-bottom:8px">📡 Atualização automática via CVM/API</div>
+              <div style="font-size:.72rem;color:var(--text2);line-height:1.6">
+                Com CNPJ informado, o app buscará automaticamente a cota mais recente na CVM e atualizará o valor do fundo. Clique em "Buscar com IA" para extrair automaticamente o CNPJ a partir do nome do fundo.
+              </div>
+              <div id="invTxFundCVMDetails" style="margin-top:8px;display:none"></div>
             </div>
             <div id="invTxFundHint" style="font-size:.72rem;color:var(--muted);padding:6px 8px;background:rgba(42,96,73,.07);border-radius:6px">
               A aplicação buscará o CDI via Banco Central e calculará o rendimento automaticamente.
@@ -832,9 +941,21 @@ function openInvTransactionModal(accountId = null, positionId = null) {
             ⚠️ Saldo em caixa insuficiente para esta compra.
           </div>
         </div>
+        <!-- ── Corretora / Banco ──────────────────────────────────────── -->
+        <div class="form-group">
+          <label>Corretora / Banco</label>
+          <select id="invTxBroker" onchange="_invOnBrokerChange()" style="width:100%">
+            <option value="">— Selecionar —</option>
+            ${INV_BROKER_OPTS}
+          </select>
+        </div>
+        <div class="form-group" id="invTxBrokerOtherGroup" style="display:none">
+          <label>Nome da Corretora</label>
+          <input type="text" id="invTxBrokerOther" class="form-input" placeholder="Digite o nome da corretora">
+        </div>
         <div class="form-group full">
           <label>Observação</label>
-          <input type="text" id="invTxNotes" placeholder="Corretora, estratégia…">
+          <input type="text" id="invTxNotes" placeholder="Estratégia, notas…">
         </div>
       </div>
       <div id="invTxError" style="display:none;color:var(--red);font-size:.8rem;margin-top:8px;
@@ -849,6 +970,27 @@ function openInvTransactionModal(accountId = null, positionId = null) {
   </div>`;
 
   document.body.appendChild(modal);
+  // ── Bind automatic money formatting to price/qty fields ─────────────────
+  requestAnimationFrame(() => {
+    ['invTxPrice','invTxQty','invTxTDPurchasePrice','invTxTDRate','invTxFundRate'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && typeof bindMoneyInput === 'function') {
+        // qty and rate fields: use decimal mask without fixed 2 decimals
+        if (id === 'invTxQty') {
+          _invBindDecimalInput(el, 6); // up to 6 decimal places for quantities
+        } else {
+          bindMoneyInput(el);
+        }
+        el._moneyBound = false; // allow rebind
+        if (typeof bindMoneyInput === 'function') bindMoneyInput(el);
+      }
+    });
+    // Re-wire oninput after binding
+    const priceEl = document.getElementById('invTxPrice');
+    const qtyEl   = document.getElementById('invTxQty');
+    if (priceEl) priceEl.addEventListener('input', _invCalcTotal);
+    if (qtyEl)   qtyEl.addEventListener('input', _invCalcTotal);
+  });
   // chart rendered in detail modal only
   if (accountId) document.getElementById('invTxAccount').value = accountId;
   if (pos) {
@@ -928,6 +1070,13 @@ function _invOnTDSubtypeChange() {
     hint.textContent = hints[sub] || '';
   }
 }
+
+function _invOnBrokerChange() {
+  const v = document.getElementById('invTxBroker')?.value;
+  const og = document.getElementById('invTxBrokerOtherGroup');
+  if (og) og.style.display = v === 'outro' ? '' : 'none';
+}
+window._invOnBrokerChange = _invOnBrokerChange;
 
 function _invOnFundIndexChange() {
   const idx = document.getElementById('invTxFundIndex')?.value;
@@ -1060,10 +1209,28 @@ async function saveInvTransaction() {
     const fundRate = parseFloat((document.getElementById('invTxFundRate')?.value || '').replace(',', '.')) || 0;
     if (!fundRate) { _invShowErr('Informe o ' + (fundIdx === 'cdi' ? '% do CDI' : 'taxa % a.a.')); return; }
     const cdiAtual = window._invLastCDI || null;
+    // Collect Gemini-detected info
+    const _fundCNPJ = window._invFundCNPJ ||
+      (document.getElementById('invTxFundCNPJ')?.value || '').replace(/\D/g,'') || null;
+    const _geminiInfoEl = document.getElementById('invTxFundFields');
+    let _geminiMeta = {};
+    try { _geminiMeta = _geminiInfoEl?.dataset?.geminiInfo ? JSON.parse(_geminiInfoEl.dataset.geminiInfo) : {}; } catch(_) {}
+
     metaJson = { fund_index: fundIdx,
                  fund_cdi_pct: fundIdx === 'cdi' ? fundRate : null,
                  fund_rate: fundIdx !== 'cdi' ? fundRate : null,
-                 fund_last_cdi: cdiAtual, fund_last_update: date };
+                 fund_last_cdi: cdiAtual, fund_last_update: date,
+                 fund_cnpj:     _fundCNPJ || null,
+                 fund_is_pos_fixado: fundIdx === 'pos_fixado',
+                 fund_gestor:   _geminiMeta.gestor  || null,
+                 fund_categoria:_geminiMeta.categoria || null,
+                 fund_taxa_adm: _geminiMeta.taxa_administracao || null,
+                 fund_resgate_d:_geminiMeta.resgate_dias || null,
+               };
+    // Clean nulls to avoid bloating notes JSON
+    Object.keys(metaJson).forEach(k => { if (metaJson[k] === null || metaJson[k] === undefined) delete metaJson[k]; });
+    // Clear temp state
+    window._invFundCNPJ = null;
   }
 
   // ── Lê ticker final ────────────────────────────────────────────────────────
@@ -1089,6 +1256,15 @@ async function saveInvTransaction() {
   }
 
   const total    = qtyRaw * priceRaw;
+  // Append broker to meta
+  const brokerVal = document.getElementById('invTxBroker')?.value || '';
+  const brokerLabel = brokerVal === 'outro'
+    ? (document.getElementById('invTxBrokerOther')?.value?.trim() || '')
+    : (INV_BROKERS.find(b => b.value === brokerVal)?.label || '');
+  if (brokerLabel) {
+    if (!metaJson) metaJson = {};
+    metaJson.broker = brokerLabel;
+  }
   const notesStr = Object.keys(metaJson).length ? _invMetaStr(metaJson) : (notes || null);
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
@@ -1689,12 +1865,19 @@ async function openInvPositionDetail(positionId) {
   const ret  = cost ? pnl / cost * 100 : 0;
 
   const txRows = txs.map(tx => `
-    <tr>
+    <tr id="invTxRow-${tx.id}">
       <td>${fmtDate(tx.date)}</td>
       <td><span class="badge" style="background:${tx.type==='buy'?'#dcfce7':'#fee2e2'};color:${tx.type==='buy'?'#15803d':'#b91c1c'}">${tx.type==='buy'?'Compra':'Venda'}</span></td>
       <td>${(+(tx.quantity)).toFixed(4)}</td>
       <td>${fmt(tx.unit_price)}</td>
       <td class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
+      <td style="text-align:right;padding:4px 6px">
+        <button onclick="deleteInvTransaction('${tx.id}','${tx.position_id}','${tx.tx_id||''}')"
+          title="Excluir movimentação"
+          style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 6px;border-radius:4px;transition:all .15s"
+          onmouseover="this.style.color='var(--red,#dc2626)';this.style.background='rgba(220,38,38,.08)'"
+          onmouseout="this.style.color='var(--muted)';this.style.background='none'">🗑️</button>
+      </td>
     </tr>`).join('');
 
   const modal = document.createElement('div');
@@ -1752,13 +1935,31 @@ async function openInvPositionDetail(positionId) {
               + '<div><div style="color:var(--muted);font-size:.68rem">Taxa</div><strong>' + (meta.td_rate ? meta.td_rate+'% a.a.' : '—') + '</strong></div>'
               + '</div>';
           } else {
-            const idx = FUND_INDEXERS.find(x => x.value === meta.fund_index) || {};
-            const rate = meta.fund_index === 'cdi' ? (meta.fund_cdi_pct + '% do CDI') : (meta.fund_rate + '% a.a.');
+            const idx = [...FUND_INDEXERS, {value:'pos_fixado',label:'Pós-fixado (CVM/API)'}].find(x => x.value === meta.fund_index) || {};
+            const rate = meta.fund_is_pos_fixado
+              ? 'Via CVM'
+              : meta.fund_index === 'cdi'
+              ? (meta.fund_cdi_pct + '% do CDI')
+              : ((meta.fund_rate || '—') + '% a.a.');
             const cdiRef = meta.fund_last_cdi ? 'CDI ref: ' + (+meta.fund_last_cdi).toFixed(2)+'%' : '';
+            const cnpjFmt = meta.fund_cnpj
+              ? meta.fund_cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+              : null;
+            const brokerInfo  = meta.broker    ? meta.broker    : null;
+            const gestorInfo  = meta.fund_gestor ? meta.fund_gestor : null;
+            const taxaAdm     = meta.fund_taxa_adm ? meta.fund_taxa_adm + '% a.a.' : null;
+            const resgateD    = meta.fund_resgate_d ? 'D+' + meta.fund_resgate_d : null;
             return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.78rem">'
               + '<div><div style="color:var(--muted);font-size:.68rem">Indexador</div><strong>' + esc(idx.label||meta.fund_index||'CDI') + '</strong></div>'
               + '<div><div style="color:var(--muted);font-size:.68rem">Taxa</div><strong>' + esc(rate) + '</strong></div>'
               + '<div><div style="color:var(--muted);font-size:.68rem">CDI Ref.</div><strong>' + esc(cdiRef||'—') + '</strong></div>'
+              + (cnpjFmt ? '<div style="grid-column:1/-1"><div style="color:var(--muted);font-size:.68rem">CNPJ do Fundo</div><strong style="font-family:monospace">' + cnpjFmt + '</strong>'
+                + (meta.fund_is_pos_fixado ? ' <span style="font-size:.65rem;background:rgba(79,70,229,.12);color:#4338ca;border:1px solid rgba(79,70,229,.25);border-radius:20px;padding:1px 6px">Pós-fixado · Auto-atualiza</span>' : '')
+                + '</div>' : '')
+              + (brokerInfo  ? '<div><div style="color:var(--muted);font-size:.68rem">Corretora</div><strong>' + esc(brokerInfo)  + '</strong></div>' : '')
+              + (gestorInfo  ? '<div><div style="color:var(--muted);font-size:.68rem">Gestora</div><strong>'   + esc(gestorInfo)  + '</strong></div>' : '')
+              + (taxaAdm     ? '<div><div style="color:var(--muted);font-size:.68rem">Taxa Adm.</div><strong>' + esc(taxaAdm)     + '</strong></div>' : '')
+              + (resgateD    ? '<div><div style="color:var(--muted);font-size:.68rem">Resgate</div><strong>'   + esc(resgateD)    + '</strong></div>' : '')
               + '</div>';
           }
         })()}
@@ -1790,7 +1991,7 @@ async function openInvPositionDetail(positionId) {
       ${txRows ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <thead><tr style="background:var(--surface2)">
           <th style="padding:6px 8px;text-align:left">Data</th>
-          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th>
+          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th><th></th>
         </tr></thead>
         <tbody>${txRows}</tbody>
       </table>` : '<div style="color:var(--muted);font-size:.82rem">Nenhuma movimentação registrada.</div>'}
@@ -1804,6 +2005,98 @@ async function openInvPositionDetail(positionId) {
   </div>`;
   document.body.appendChild(modal);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// EXCLUIR TRANSAÇÃO DE INVESTIMENTO
+// Reverte qty/avg_cost da posição e remove a transação financeira
+// ─────────────────────────────────────────────────────────────────
+async function deleteInvTransaction(invTxId, positionId, linkedTxId) {
+  if (!confirm('Excluir esta movimentação?\n\nA posição será recalculada automaticamente.')) return;
+
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) { toast('Posição não encontrada', 'error'); return; }
+
+  // Buscar detalhes da transação antes de deletar
+  const { data: invTx, error: fetchErr } = await sb
+    .from('investment_transactions')
+    .select('*')
+    .eq('id', invTxId)
+    .single();
+  if (fetchErr || !invTx) { toast('Transação não encontrada', 'error'); return; }
+
+  try {
+    // 1. Remover da investment_transactions
+    const { error: delInvErr } = await sb.from('investment_transactions').delete().eq('id', invTxId);
+    if (delInvErr) throw delInvErr;
+
+    // 2. Remover a transação financeira vinculada (se existir)
+    if (linkedTxId) {
+      await sb.from('transactions').delete().eq('id', linkedTxId).catch(() => {});
+    }
+
+    // 3. Recalcular posição a partir das transações restantes
+    const { data: remainingTxs } = await sb
+      .from('investment_transactions')
+      .select('*')
+      .eq('position_id', positionId)
+      .order('date', { ascending: true });
+
+    const txList = remainingTxs || [];
+
+    if (!txList.length) {
+      // Sem transações — zerar a posição
+      await sb.from('investment_positions').update({
+        quantity: 0, avg_cost: 0, updated_at: new Date().toISOString()
+      }).eq('id', positionId);
+      pos.quantity = 0; pos.avg_cost = 0;
+    } else {
+      // Recalcular qty e avg_cost do zero
+      let qty = 0, avgCost = 0;
+      for (const tx of txList) {
+        const q = +(tx.quantity) || 0;
+        const p = +(tx.unit_price) || 0;
+        if (tx.type === 'buy') {
+          const newQty = qty + q;
+          avgCost = newQty > 0 ? (qty * avgCost + q * p) / newQty : p;
+          qty = newQty;
+        } else {
+          qty = Math.max(0, qty - q);
+        }
+      }
+      qty = Math.max(0, qty);
+      await sb.from('investment_positions').update({
+        quantity: qty, avg_cost: avgCost, updated_at: new Date().toISOString()
+      }).eq('id', positionId);
+      pos.quantity = qty; pos.avg_cost = avgCost;
+    }
+
+    // 4. Atualizar saldo da conta
+    _invAugmentAccountBalances();
+    DB.accounts.bust();
+
+    // 5. Visual feedback — remover linha da tabela imediatamente
+    const row = document.getElementById('invTxRow-' + invTxId);
+    if (row) { row.style.opacity = '0'; row.style.transition = 'opacity .2s'; setTimeout(() => row.remove(), 200); }
+
+    toast('Movimentação excluída e posição recalculada', 'success');
+
+    // 6. Recarregar dados completos
+    await loadInvestments(true);
+    _invAugmentAccountBalances();
+
+    // Fechar e reabrir o detalhe da posição para refletir mudança
+    closeModal('invDetailModal');
+    if (pos.quantity > 0) {
+      setTimeout(() => openInvPositionDetail(positionId), 300);
+    } else {
+      _renderInvestmentsPage();
+    }
+
+  } catch(e) {
+    toast('Erro ao excluir: ' + (e.message || e), 'error');
+  }
+}
+window.deleteInvTransaction = deleteInvTransaction;
 
 async function updateManualPrice(positionId) {
   const val = parseFloat(document.getElementById('invManualPrice')?.value?.replace(',','.'));
@@ -1854,10 +2147,6 @@ async function applyInvestmentsFeature() {
   if (enabled) {
     await loadInvestments();
     _invAugmentAccountBalances();
-    // Refresh dashboard investment card if on dashboard
-    if (typeof _dashRenderInvestments === 'function') {
-      setTimeout(() => _dashRenderInvestments().catch(() => {}), 300);
-    }
   }
 }
 
@@ -2167,3 +2456,271 @@ async function deleteInvPosition(positionId) {
   }
 }
 window.deleteInvPosition = deleteInvPosition;
+
+// ════════════════════════════════════════════════════════════════════════════
+// FUNDO DE INVESTIMENTO — Gemini AI lookup + CVM API + Pós-fixado
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Formatar CNPJ enquanto digita */
+function _invMaskCNPJ(el) {
+  let v = (el.value || '').replace(/\D/g, '').slice(0, 14);
+  if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2}).*/, '$1.$2.$3/$4-$5');
+  else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4}).*/, '$1.$2.$3/$4');
+  else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3}).*/, '$1.$2.$3');
+  else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,3}).*/, '$1.$2');
+  el.value = v;
+}
+window._invMaskCNPJ = _invMaskCNPJ;
+
+/** Busca dados do fundo via Gemini AI usando nome/ticker */
+async function _invGeminiFundLookup() {
+  const ticker  = document.getElementById('invTxTicker')?.value?.trim();
+  const name    = document.getElementById('invTxName')?.value?.trim();
+  const resultEl = document.getElementById('invTxFundGeminiResult');
+  const statusEl = document.getElementById('invTxFundCVMStatus');
+  const cnpjEl   = document.getElementById('invTxFundCNPJ');
+
+  if (!ticker && !name) {
+    toast('Informe o código ou nome do fundo primeiro', 'warning');
+    return;
+  }
+
+  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING || 'gemini_api_key', '').catch(() => '');
+  if (!apiKey || !apiKey.startsWith('AIza')) {
+    toast('Configure a chave Gemini em Configurações → IA', 'warning');
+    return;
+  }
+
+  if (resultEl) {
+    resultEl.style.display = '';
+    resultEl.innerHTML = '⏳ Consultando Gemini sobre o fundo…';
+  }
+
+  const fundQuery = name || ticker;
+  const prompt = `Você é um especialista em fundos de investimento brasileiros.
+Dado o nome/ticker: "${fundQuery}", forneça as seguintes informações em JSON puro (sem markdown):
+{
+  "nome_completo": "Nome completo do fundo",
+  "cnpj": "XX.XXX.XXX/XXXX-XX ou null se desconhecido",
+  "tipo": "FI/FIC/ETF/etc",
+  "categoria": "Renda Fixa/Multimercado/Ações/etc",
+  "indexador": "CDI/IPCA/Selic/Prefixado/Ibovespa",
+  "percentual_indexador": número ou null,
+  "taxa_administracao": número (% a.a.) ou null,
+  "taxa_performance": "20% sobre IPCA+" ou null,
+  "gestor": "Nome da gestora",
+  "classificacao_anbima": "texto ou null",
+  "resgate_dias": número (D+) ou null,
+  "aplicacao_minima": número (R$) ou null,
+  "is_pos_fixado": boolean,
+  "notas": "Resumo em 1 frase"
+}
+Responda APENAS o JSON, sem texto adicional.`;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
+      }),
+    });
+    const data = await res.json();
+    const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/```json\n?|\n?```/g, '').trim();
+    const info  = JSON.parse(clean);
+
+    // Apply extracted info to form
+    if (info.nome_completo && !document.getElementById('invTxName').value) {
+      document.getElementById('invTxName').value = info.nome_completo;
+    }
+    if (info.cnpj && cnpjEl) {
+      cnpjEl.value = info.cnpj;
+    }
+
+    // Set indexer
+    const fundIndexSel = document.getElementById('invTxFundIndex');
+    if (fundIndexSel && info.indexador) {
+      const idxMap = {
+        'CDI':'cdi', 'IPCA':'ipca', 'Selic':'selic', 'Prefixado':'prefixado'
+      };
+      const detectedIdx = Object.entries(idxMap).find(([k]) => info.indexador.toUpperCase().includes(k.toUpperCase()));
+      if (detectedIdx) fundIndexSel.value = detectedIdx[1];
+    }
+    if (info.percentual_indexador) {
+      const rateEl = document.getElementById('invTxFundRate');
+      if (rateEl && !rateEl.value) rateEl.value = String(info.percentual_indexador).replace('.', ',');
+    }
+
+    // Show pos_fixado panel if detected
+    if (info.is_pos_fixado && info.cnpj) {
+      const posPanel = document.getElementById('invTxFundPosFixadoPanel');
+      if (posPanel) posPanel.style.display = '';
+      const fundIndexSel2 = document.getElementById('invTxFundIndex');
+      if (fundIndexSel2) fundIndexSel2.value = 'pos_fixado';
+      _invOnFundIndexChange();
+    }
+
+    // Store full info in a data attribute for saving
+    const fundFields = document.getElementById('invTxFundFields');
+    if (fundFields) fundFields.dataset.geminiInfo = JSON.stringify(info);
+
+    // Display result
+    if (resultEl) {
+      const badge = (label, val) => val
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:.68rem;margin:2px">${label}: <strong>${val}</strong></span>`
+        : '';
+      resultEl.innerHTML = `
+        <div style="font-weight:700;color:var(--accent);margin-bottom:6px">🤖 ${info.nome_completo || fundQuery}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px">
+          ${badge('Tipo', info.tipo)}
+          ${badge('Categoria', info.categoria)}
+          ${badge('Indexador', info.indexador + (info.percentual_indexador ? ' '+info.percentual_indexador+'%' : ''))}
+          ${badge('Taxa Adm.', info.taxa_administracao ? info.taxa_administracao+'% a.a.' : null)}
+          ${badge('Gestor', info.gestor)}
+          ${badge('Resgate', info.resgate_dias ? 'D+'+info.resgate_dias : null)}
+        </div>
+        ${info.notas ? `<div style="font-size:.7rem;color:var(--muted);margin-top:4px;font-style:italic">${info.notas}</div>` : ''}
+        ${info.cnpj ? `<div style="font-size:.7rem;color:var(--muted);margin-top:2px">CNPJ: ${info.cnpj}</div>` : ''}
+      `;
+    }
+
+    // Trigger CVM lookup if CNPJ found
+    if (info.cnpj) {
+      setTimeout(() => _invCVMFundLookup(), 500);
+    }
+
+  } catch(e) {
+    console.warn('[invGeminiFundLookup]', e);
+    if (resultEl) {
+      resultEl.innerHTML = `<span style="color:var(--muted)">⚠️ Não foi possível obter informações automáticas. Preencha manualmente.</span>`;
+    }
+  }
+}
+window._invGeminiFundLookup = _invGeminiFundLookup;
+
+/** Busca dados do fundo na CVM usando CNPJ */
+async function _invCVMFundLookup() {
+  const cnpjEl   = document.getElementById('invTxFundCNPJ');
+  const statusEl = document.getElementById('invTxFundCVMStatus');
+  const detailEl = document.getElementById('invTxFundCVMDetails');
+  const posPanel = document.getElementById('invTxFundPosFixadoPanel');
+
+  const cnpjRaw = (cnpjEl?.value || '').replace(/\D/g, '');
+  if (cnpjRaw.length !== 14) {
+    if (statusEl) statusEl.textContent = 'CNPJ inválido (14 dígitos necessários)';
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = '⏳ Consultando CVM…';
+
+  try {
+    // CVM Open Data API: dados cadastrais de fundos
+    const url = `https://dados.cvm.gov.br/dados/FI/CAD/DADOS/inf_cadastral_fi.csv`;
+    // CVM daily quota API (JSON)
+    const cvmUrl = `https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_${_invGetLastMonthYYYYMM()}.csv`;
+
+    // Simpler approach: use the CVM REST API for fund info
+    const apiUrl = `https://dados.cvm.gov.br/dados/FI/CAD/DADOS/inf_cadastral_fi_ativo.csv`;
+
+    // Try brapi fund endpoint
+    const brapiUrl = `https://brapi.dev/api/v2/funds?cnpj=${cnpjRaw}`;
+    let fundData = null;
+    try {
+      const brapiRes = await fetch(brapiUrl, { signal: AbortSignal.timeout(5000) });
+      if (brapiRes.ok) {
+        const brapiJson = await brapiRes.json();
+        fundData = brapiJson?.funds?.[0] || brapiJson?.data?.[0] || null;
+      }
+    } catch(_) {}
+
+    if (fundData) {
+      const cnpjFormatted = cnpjRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+
+      if (statusEl) statusEl.textContent = `✅ Fundo encontrado via API`;
+      if (posPanel) posPanel.style.display = '';
+
+      if (detailEl) {
+        detailEl.style.display = '';
+        detailEl.innerHTML = `
+          <div style="font-size:.72rem;display:flex;flex-direction:column;gap:3px">
+            <div><strong>CNPJ:</strong> ${cnpjFormatted}</div>
+            ${fundData.name ? `<div><strong>Nome:</strong> ${fundData.name}</div>` : ''}
+            ${fundData.quota ? `<div><strong>Cota atual:</strong> R$ ${(+fundData.quota).toFixed(6)}</div>` : ''}
+            ${fundData.quotaDate ? `<div><strong>Data cota:</strong> ${fundData.quotaDate}</div>` : ''}
+          </div>`;
+      }
+
+      // Store CNPJ in meta for future auto-update
+      window._invFundCNPJ = cnpjRaw;
+
+    } else {
+      // CVM direct — store CNPJ regardless for auto-update
+      const cnpjFormatted = cnpjRaw.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      if (statusEl) statusEl.textContent = `📋 CNPJ ${cnpjFormatted} registrado para atualizações automáticas`;
+      if (posPanel) posPanel.style.display = '';
+      window._invFundCNPJ = cnpjRaw;
+    }
+
+  } catch(e) {
+    if (statusEl) statusEl.textContent = `⚠️ API indisponível — CNPJ salvo para futura verificação`;
+    window._invFundCNPJ = cnpjRaw;
+  }
+}
+window._invCVMFundLookup = _invCVMFundLookup;
+
+/** Helper: retorna YYYYMM do mês anterior (para CVM API) */
+function _invGetLastMonthYYYYMM() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return d.getFullYear().toString() + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/** Atualiza cota de fundo pós-fixado via CVM API */
+async function _invUpdatePosFundPrice(pos) {
+  const meta = _invGetMeta(pos);
+  const cnpj = (meta.fund_cnpj || '').replace(/\D/g, '');
+  if (!cnpj || cnpj.length !== 14) return null;
+
+  try {
+    // Buscar via brapi
+    const res = await fetch(`https://brapi.dev/api/v2/funds?cnpj=${cnpj}`, {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const fund = data?.funds?.[0] || data?.data?.[0];
+    if (!fund?.quota) return null;
+
+    const newPrice = parseFloat(fund.quota);
+    if (!newPrice || newPrice <= 0) return null;
+
+    // Atualizar preço
+    await _invSavePrice(pos, newPrice, 'BRL', new Date().toISOString().slice(0,10), 'cvm_api');
+    return newPrice;
+  } catch(_) { return null; }
+}
+window._invUpdatePosFundPrice = _invUpdatePosFundPrice;
+
+/** Extensão de _invOnFundIndexChange para tratar pos_fixado */
+const _invOnFundIndexChange_orig = _invOnFundIndexChange;
+function _invOnFundIndexChange() {
+  _invOnFundIndexChange_orig();
+  const idx      = document.getElementById('invTxFundIndex')?.value;
+  const posPanel = document.getElementById('invTxFundPosFixadoPanel');
+  const rateGroup = document.getElementById('invTxFundCdiPctGroup');
+  const rateLabel = document.getElementById('invTxFundRateLabel');
+  const hint      = document.getElementById('invTxFundHint');
+
+  if (idx === 'pos_fixado') {
+    if (posPanel)   posPanel.style.display  = '';
+    if (rateGroup)  rateGroup.style.display = 'none';
+    if (hint) hint.textContent = 'Fundo pós-fixado: o valor da cota será atualizado automaticamente via CVM/API usando o CNPJ informado.';
+  } else {
+    if (posPanel) posPanel.style.display = 'none';
+  }
+}
+window._invOnFundIndexChange = _invOnFundIndexChange;
+
