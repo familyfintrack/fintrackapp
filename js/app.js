@@ -568,7 +568,7 @@ async function bootApp(){
         : Promise.resolve()),
     ]);
   } catch(e) {
-    toast(t('error.load_data')+' '+(e?.message || e),'error');
+    toast(t('error.load_data')+' '+e.message,'error');
     throw e;
   }
   // Dados secundários em background — não bloqueiam o dashboard
@@ -622,7 +622,6 @@ async function bootApp(){
   if (typeof applyDreamsFeature === 'function') applyDreamsFeature().catch(() => {});
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
-  return true;
 }
 
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',

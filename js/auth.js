@@ -4347,20 +4347,22 @@ async function ensureMasterAdmin() {
   } catch(e) { console.warn('ensureMasterAdmin:', e.message); }
 }
 
-window.__FT_TRY_AUTOCONNECT_STARTED = window.__FT_TRY_AUTOCONNECT_STARTED || false;
-function _startTryAutoConnectOnce(){
-  if (window.__FT_TRY_AUTOCONNECT_STARTED) return;
-  window.__FT_TRY_AUTOCONNECT_STARTED = true;
-  Promise.resolve().then(() => tryAutoConnect()).catch(err => {
-    console.error('[tryAutoConnect]', err);
-    try { showLoginScreen(); } catch(_) {}
-  });
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _startTryAutoConnectOnce, { once: true });
-} else {
-  _startTryAutoConnectOnce();
-}
+(function(){
+  let __ftBootStarted = false;
+  const _startAutoConnect = () => {
+    if (__ftBootStarted) return;
+    __ftBootStarted = true;
+    Promise.resolve().then(() => tryAutoConnect()).catch(err => {
+      console.error('[auth] auto-connect failed:', err);
+      try { showLoginScreen(); } catch(_) {}
+    });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _startAutoConnect, { once:true });
+  } else {
+    _startAutoConnect();
+  }
+})();
 
 /* ══════════════════════════════════════════════════════════════════
    AUTO-REGISTER ENGINE — Transações Programadas Automáticas
