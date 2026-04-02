@@ -10815,6 +10815,79 @@ window.openMyProfile = function(...args) {
 .agf-btn--skip { color: var(--muted); font-size: .75rem; }
 .agf-btn--skip:hover { color: var(--text); border-color: var(--text2); }
 
+/* ── Contextual suggestions after action ── */
+.agent-ctx-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  animation: agentSlideIn .18s ease;
+}
+.agent-ctx-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.agent-ctx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.agent-ctx-chip {
+  padding: 6px 13px;
+  font-size: .76rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s ease;
+  flex-shrink: 0;
+}
+.agent-ctx-chip:hover {
+  border-color: var(--accent);
+  background: rgba(22,163,74,.08);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.agent-ctx-chip--primary {
+  background: linear-gradient(135deg, rgba(22,163,74,.15), rgba(22,163,74,.08));
+  border-color: rgba(22,163,74,.4);
+  color: var(--accent);
+}
+.agent-ctx-chip--primary:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Capabilities search bar ── */
+.agent-caps-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.agent-caps-search {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: .82rem;
+  color: var(--text);
+  font-family: var(--font-sans);
+  outline: none;
+}
+.agent-caps-search::placeholder { color: var(--muted); }
+
 /* Also add "capabilities" quick chip to the quick bar */
 .agent-discover-btn {
   white-space: nowrap;
