@@ -79,10 +79,10 @@ async function loadDashboardRecent(memberIds = null){
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const _tn = new Date();
+  const todayStr = [_tn.getFullYear(), String(_tn.getMonth()+1).padStart(2,'0'), String(_tn.getDate()).padStart(2,'0')].join('-');
+  const _yn = new Date(); _yn.setDate(_yn.getDate() - 1);
+  const yesterdayStr = [_yn.getFullYear(), String(_yn.getMonth()+1).padStart(2,'0'), String(_yn.getDate()).padStart(2,'0')].join('-');
   const byDate = {};
   items.forEach(t => { (byDate[t.date] ||= []).push(t); });
 
@@ -851,7 +851,8 @@ async function loadDashboardAutoRunSummary(){
   const el = document.getElementById('dashAutoRunSummary');
   if(!el || !sb) return;
   try{
-    const today = new Date().toISOString().slice(0,10);
+    const _td = new Date();
+    const today = [_td.getFullYear(), String(_td.getMonth()+1).padStart(2,'0'), String(_td.getDate()).padStart(2,'0')].join('-');
     const q = famQ(sb.from('scheduled_run_logs').select('id',{count:'exact', head:true}))
       .eq('scheduled_date', today);
     const { count, error } = await q;
@@ -942,9 +943,10 @@ async function _syncDashPrefsFromServer() {
 // ════════════════════════════════════════════════════════
 // INVESTMENT DASHBOARD CARD — render & update
 // ════════════════════════════════════════════════════════
+let _dashInvChart = null; // Chart.js instance for donut
+
 function _dashEnsureInvCard() {
   if (document.getElementById('dashCardInvestments')) return;
-  // Insert before dashCardUpcoming
   const ref = document.getElementById('dashCardUpcoming');
   if (!ref) return;
   const card = document.createElement('div');
@@ -962,7 +964,6 @@ function _dashEnsureInvCard() {
 }
 
 async function _dashRenderInvestments() {
-  // Only render if module is active
   const fid = typeof famId === 'function' ? famId() : null;
   if (!fid) return;
   const cacheKey = 'investments_enabled_' + fid;
@@ -971,7 +972,7 @@ async function _dashRenderInvestments() {
 
   _dashEnsureInvCard();
   const prefs = _dashGetPrefs();
-  const card = document.getElementById('dashCardInvestments');
+  const card  = document.getElementById('dashCardInvestments');
   if (!card) return;
   card.style.display = prefs.investments !== false ? '' : 'none';
   if (prefs.investments === false) return;
@@ -979,104 +980,158 @@ async function _dashRenderInvestments() {
   const el = document.getElementById('dashInvContent');
   if (!el) return;
 
-  // Gather data from investments module
-  const positions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions.filter(p => +(p.quantity) > 0) : [];
+  const positions = (typeof _inv !== 'undefined' && _inv.positions)
+    ? _inv.positions.filter(p => +(p.quantity) > 0) : [];
 
   if (!positions.length) {
-    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.83rem">
-      <div style="font-size:1.5rem;margin-bottom:8px">📈</div>
-      Nenhuma posição registrada ainda.<br>
-      <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('investments')">Acessar Investimentos</button>
+    if (_dashInvChart) { _dashInvChart.destroy(); _dashInvChart = null; }
+    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">
+      <div style="font-size:1.8rem;margin-bottom:8px">📈</div>
+      Nenhuma posição registrada.<br>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="navigate('investments')">Acessar Investimentos</button>
     </div>`;
     return;
   }
 
-  // Calculate totals
-  const totalMV   = positions.reduce((s,p) => s + (typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0), 0);
-  const totalCost = positions.reduce((s,p) => s + (typeof _invCost === 'function' ? _invCost(p) : (+(p.quantity) * +(p.avg_cost))), 0);
+  // ── Totals ────────────────────────────────────────────────────────────────
+  const mv    = p => typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0;
+  const cost  = p => typeof _invCost       === 'function' ? _invCost(p)       : (+(p.quantity) * +(p.avg_cost));
+  const totalMV   = positions.reduce((s,p) => s + mv(p), 0);
+  const totalCost = positions.reduce((s,p) => s + cost(p), 0);
   const pnl       = totalMV - totalCost;
-  const pnlPct    = totalCost ? pnl / totalCost * 100 : 0;
+  const pnlPct    = totalCost ? (pnl / totalCost * 100) : 0;
   const isPos     = pnl >= 0;
 
-  // Group by asset type
+  // ── Donut data by asset type ──────────────────────────────────────────────
+  const TYPE_EMOJI = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
+    bdr:'🌐', crypto:'₿', tesouro_direto:'🏛️', fundo_investimento:'🏦', renda_fixa:'💰', outro:'📌' };
+  const TYPE_LABEL = { acao_br:'Ações BR', fii:'FIIs', etf_br:'ETFs BR', acao_us:'Ações US',
+    etf_us:'ETFs US', bdr:'BDRs', crypto:'Cripto', tesouro_direto:'Tesouro',
+    fundo_investimento:'Fundos', renda_fixa:'Renda Fixa', outro:'Outros' };
+  const TYPE_COLORS = ['#2a6049','#3d8a5a','#5aaa78','#7dc242','#1d4ed8',
+    '#7c3aed','#b45309','#0891b2','#be185d','#dc2626','#6b7280'];
+
   const byType = {};
   positions.forEach(p => {
     const k = p.asset_type || 'outro';
     if (!byType[k]) byType[k] = { mv: 0, count: 0 };
-    byType[k].mv += typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0;
+    byType[k].mv += mv(p);
     byType[k].count++;
   });
+  const sortedTypes = Object.entries(byType).sort((a,b) => b[1].mv - a[1].mv);
+  const chartLabels = sortedTypes.map(([t]) => TYPE_LABEL[t] || t);
+  const chartData   = sortedTypes.map(([,d]) => d.mv);
+  const chartColors = sortedTypes.map((_,i) => TYPE_COLORS[i % TYPE_COLORS.length]);
 
-  const typeEmoji = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
-    bdr:'🌐', crypto:'₿', tesouro_direto:'🏛️', fundo_investimento:'🏦', renda_fixa:'💰', outro:'📌' };
-  const typeLabel = { acao_br:'Ações BR', fii:'FIIs', etf_br:'ETFs BR', acao_us:'Ações US',
-    etf_us:'ETFs US', bdr:'BDRs', crypto:'Cripto', tesouro_direto:'Tesouro', fundo_investimento:'Fundos',
-    renda_fixa:'Renda Fixa', outro:'Outros' };
+  // ── Top 3 positions ───────────────────────────────────────────────────────
+  const topPos = [...positions].sort((a,b) => mv(b) - mv(a)).slice(0,3);
 
-  const typeRows = Object.entries(byType)
-    .sort((a,b) => b[1].mv - a[1].mv)
-    .slice(0, 5)
-    .map(([type, d]) => {
-      const pct = totalMV ? (d.mv / totalMV * 100) : 0;
-      const emoji = typeEmoji[type] || '📌';
-      const lbl   = typeLabel[type] || type;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:.88rem;flex-shrink:0">${emoji}</span>
-        <span style="font-size:.78rem;font-weight:600;color:var(--text2);flex:1">${lbl}</span>
-        <span style="font-size:.7rem;color:var(--muted);min-width:34px;text-align:right">${pct.toFixed(0)}%</span>
-        <span style="font-size:.82rem;font-weight:700;color:var(--text);min-width:80px;text-align:right;font-family:var(--font-serif)">${fmt(d.mv)}</span>
-      </div>`;
-    }).join('');
-
-  // Top positions
-  const topPos = [...positions]
-    .sort((a,b) => (typeof _invMarketValue === 'function' ? _invMarketValue(b) - _invMarketValue(a) : 0))
-    .slice(0, 3);
-
-  const topRows = topPos.map(p => {
-    const mv  = typeof _invMarketValue === 'function' ? _invMarketValue(p) : 0;
-    const c   = typeof _invCost === 'function' ? _invCost(p) : (+(p.quantity) * +(p.avg_cost));
-    const ret = c ? (mv - c) / c * 100 : 0;
-    const retColor = ret >= 0 ? 'var(--accent)' : 'var(--red,#dc2626)';
-    const netRet = typeof _invNetReturn === 'function' ? _invNetReturn(p) : null;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.ticker)}</div>
-        <div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name||'')}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:.82rem;font-weight:700;font-family:var(--font-serif)">${fmt(mv)}</div>
-        <div style="font-size:.68rem;font-weight:600;color:${retColor}">${ret>=0?'+':''}${ret.toFixed(2)}%${netRet?.hasFees?' (liq. '+netRet.netReturnPct.toFixed(1)+'%)':''}</div>
-      </div>
-    </div>`;
-  }).join('');
-
+  // ── Render HTML ───────────────────────────────────────────────────────────
   el.innerHTML = `
     <!-- KPI strip -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
-      <div style="background:var(--surface2);padding:10px 14px">
-        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">Valor de mercado</div>
-        <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:var(--text)">${fmt(totalMV)}</div>
+    <div class="dash-inv-kpis">
+      <div class="dash-inv-kpi">
+        <div class="dash-inv-kpi-lbl">Valor de mercado</div>
+        <div class="dash-inv-kpi-val">${fmt(totalMV)}</div>
       </div>
-      <div style="background:var(--surface2);padding:10px 14px">
-        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">Custo total</div>
-        <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:var(--text2)">${fmt(totalCost)}</div>
+      <div class="dash-inv-kpi">
+        <div class="dash-inv-kpi-lbl">Custo total</div>
+        <div class="dash-inv-kpi-val" style="color:var(--text2)">${fmt(totalCost)}</div>
       </div>
-      <div style="background:var(--surface2);padding:10px 14px">
-        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px">Resultado</div>
-        <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:${isPos?'var(--accent)':'var(--red,#dc2626)'}">${isPos?'+':''}${fmt(pnl)} <span style="font-size:.72rem">(${pnlPct.toFixed(2)}%)</span></div>
+      <div class="dash-inv-kpi">
+        <div class="dash-inv-kpi-lbl">Resultado</div>
+        <div class="dash-inv-kpi-val" style="color:${isPos?'var(--accent)':'var(--red,#dc2626)'}">${isPos?'+':''}${fmt(pnl)}<span class="dash-inv-kpi-pct">${pnlPct.toFixed(1)}%</span></div>
       </div>
     </div>
-    <!-- Distribution by type -->
-    ${Object.keys(byType).length > 1 ? `
-    <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;padding:0 2px">Distribuição por tipo</div>
-    <div style="margin-bottom:10px">${typeRows}</div>` : ''}
-    <!-- Top positions -->
-    <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;padding:0 2px">Principais posições</div>
-    <div>${topRows}</div>
-    <div style="text-align:center;padding:8px 0 2px">
+
+    <!-- Body: donut + list -->
+    <div class="dash-inv-body">
+
+      <!-- Donut chart -->
+      <div class="dash-inv-chart-wrap">
+        <canvas id="dashInvDonut" width="140" height="140"></canvas>
+        <div class="dash-inv-chart-center">
+          <div class="dash-inv-chart-total">${positions.length}</div>
+          <div class="dash-inv-chart-sub">posições</div>
+        </div>
+      </div>
+
+      <!-- Legend + top positions -->
+      <div class="dash-inv-right">
+        <!-- Allocation legend -->
+        <div class="dash-inv-section-lbl">Alocação</div>
+        <div class="dash-inv-legend">
+          ${sortedTypes.slice(0,5).map(([type, d], i) => {
+            const pct = totalMV ? (d.mv / totalMV * 100) : 0;
+            return `<div class="dash-inv-legend-row">
+              <span class="dash-inv-legend-dot" style="background:${chartColors[i]}"></span>
+              <span class="dash-inv-legend-label">${TYPE_LABEL[type]||type}</span>
+              <span class="dash-inv-legend-bar-wrap"><span class="dash-inv-legend-bar" style="width:${pct.toFixed(0)}%;background:${chartColors[i]}"></span></span>
+              <span class="dash-inv-legend-pct">${pct.toFixed(0)}%</span>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <!-- Top positions -->
+        <div class="dash-inv-section-lbl" style="margin-top:12px">Top posições</div>
+        <div class="dash-inv-positions">
+          ${topPos.map(p => {
+            const pMV  = mv(p);
+            const pC   = cost(p);
+            const ret  = pC ? (pMV - pC) / pC * 100 : 0;
+            const retC = ret >= 0 ? 'var(--accent)' : 'var(--red,#dc2626)';
+            const wgt  = totalMV ? (pMV / totalMV * 100) : 0;
+            return `<div class="dash-inv-pos-row">
+              <div class="dash-inv-pos-ticker">${esc(p.ticker)}</div>
+              <div class="dash-inv-pos-bar-wrap"><div class="dash-inv-pos-bar" style="width:${wgt.toFixed(0)}%"></div></div>
+              <div class="dash-inv-pos-val">${fmt(pMV)}</div>
+              <div class="dash-inv-pos-ret" style="color:${retC}">${ret>=0?'+':''}${ret.toFixed(1)}%</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding:6px 0 4px">
       <button class="btn btn-ghost btn-sm" onclick="navigate('investments')" style="font-size:.75rem">Ver carteira completa →</button>
     </div>`;
+
+  // ── Draw donut via Chart.js ───────────────────────────────────────────────
+  requestAnimationFrame(() => {
+    const canvas = document.getElementById('dashInvDonut');
+    if (!canvas || typeof Chart === 'undefined') return;
+    if (_dashInvChart) { _dashInvChart.destroy(); _dashInvChart = null; }
+    _dashInvChart = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          data: chartData,
+          backgroundColor: chartColors,
+          borderWidth: 2,
+          borderColor: 'var(--surface,#fff)',
+          hoverBorderWidth: 0,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: false,
+        cutout: '66%',
+        animation: { duration: 600, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const pct = totalMV ? (ctx.parsed / totalMV * 100) : 0;
+                return ` ${ctx.label}: ${fmt(ctx.parsed)} (${pct.toFixed(1)}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  });
 }
 window._dashRenderInvestments = _dashRenderInvestments;
 
@@ -1512,10 +1567,11 @@ async function renderDashboardUpcoming(memberIds = null) {
     try { if (typeof loadScheduled === 'function') await loadScheduled(); } catch(e) { console.warn('[dash upcoming loadScheduled]', e?.message || e); }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const _td2 = new Date();
+  const today = [_td2.getFullYear(), String(_td2.getMonth()+1).padStart(2,'0'), String(_td2.getDate()).padStart(2,'0')].join('-');
   const limit = new Date();
   limit.setDate(limit.getDate() + 10);
-  const limitStr = limit.toISOString().slice(0, 10);
+  const limitStr = [limit.getFullYear(), String(limit.getMonth()+1).padStart(2,'0'), String(limit.getDate()).padStart(2,'0')].join('-');
 
   const memberSet = Array.isArray(memberIds) && memberIds.length ? new Set(memberIds) : null;
   const upcoming = [];
@@ -1572,7 +1628,7 @@ async function renderDashboardUpcoming(memberIds = null) {
   upcoming.forEach(u => { (byDate[u.date] ||= []).push(u); });
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  const tomorrowStr = [tomorrow.getFullYear(), String(tomorrow.getMonth()+1).padStart(2,'0'), String(tomorrow.getDate()).padStart(2,'0')].join('-');
 
   listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
     const isToday = date === today;
@@ -1692,8 +1748,9 @@ async function _renderDashForecastInner() {
   const fromDate = new Date();
   const toDate   = new Date();
   toDate.setDate(toDate.getDate() + 90);
-  const fromStr = fromDate.toISOString().slice(0, 10);
-  const toStr   = toDate.toISOString().slice(0, 10);
+  const _fmtLocal = (d) => [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+  const fromStr = _fmtLocal(fromDate);
+  const toStr   = _fmtLocal(toDate);
 
   // Fetch real transactions in period
   let q = famQ(sb.from('transactions')
@@ -1791,7 +1848,7 @@ async function _renderDashForecastInner() {
   const dates = [];
   let cur = new Date(fromStr+'T12:00');
   const end = new Date(toStr+'T12:00');
-  while (cur <= end) { dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  while (cur <= end) { dates.push([cur.getFullYear(), String(cur.getMonth()+1).padStart(2,'0'), String(cur.getDate()).padStart(2,'0')].join('-')); cur.setDate(cur.getDate()+1); }
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
   const visibleAccounts = accounts.slice(0,6);
