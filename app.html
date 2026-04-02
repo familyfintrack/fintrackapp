@@ -85,7 +85,11 @@
 <script>
 (function(){
   try {
-    var t = localStorage.getItem('app_theme') || 'light';
+    var t = localStorage.getItem('app_theme');
+    if (!t) {
+      t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark' : 'light';
+    }
     var root = document.documentElement;
     if (t === 'dark') {
       root.setAttribute('data-theme', 'dark');
@@ -2836,7 +2840,7 @@
     </div>
 
     <!-- ══ Página: Política de Privacidade ══════════════════════════════════ -->
-    <div class="page" id="page-privacy">
+    <div class="page" id="page-privacy-legacy-1">
 
       <!-- Hero -->
       <div class="priv-hero">
@@ -3151,7 +3155,7 @@
       </div>
 
     </div><!-- /page-privacy -->
-    <div class="page" id="page-privacy-legacy-1">
+    <div class="page" id="page-privacy-legacy-2">
 
       <!-- Hero -->
       <div class="prv-hero">
@@ -7805,7 +7809,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
 <!-- ═══ SETUP WIZARD ═══════════════════════════════════════════════════════ -->
     <!-- ══ PRIVACY PAGE ══════════════════════════════════════════════════ -->
-    <div class="page" id="page-privacy-legacy-2">
+    <div class="page" id="page-privacy">
 
       <!-- Hero -->
       <div class="priv-hero">
