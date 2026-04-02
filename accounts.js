@@ -326,6 +326,17 @@ function accountTypeLabel(t){
   return{corrente:'Conta Corrente',poupanca:'Poupança',cartao_credito:'Cartão de Crédito',investimento:'Investimentos',dinheiro:'Dinheiro',outros:'Outros'}[t]||t;
 }
 
+
+function switchAccountTab(tabId, btn){
+  document.querySelectorAll('#accountModal .account-tab-pane').forEach(pane => {
+    pane.style.display = pane.id === tabId ? 'block' : 'none';
+  });
+  document.querySelectorAll('#accountModal .account-modal-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabId);
+  });
+  if (btn && btn.blur) btn.blur();
+}
+
 async function openAccountModal(id=''){
   const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null};
   if(id){
@@ -340,6 +351,7 @@ async function openAccountModal(id=''){
   document.getElementById('accountIcon').value=form.icon||'';
   document.getElementById('accountColor').value=form.color||'#2a6049';
   document.getElementById('accountModalTitle').textContent=id?'Editar Conta':'Nova Conta';
+  if (typeof switchAccountTab === 'function') switchAccountTab('accountTabPrincipal');
   const gSel=document.getElementById('accountGroupId');
   if(gSel){
     if(!state.groups||!state.groups.length){try{await loadGroups();}catch(_e){}}
@@ -366,14 +378,16 @@ async function openAccountModal(id=''){
   if(bpdEl) bpdEl.value=form.best_purchase_day||'';
   const ddEl=document.getElementById('accountDueDay');
   if(ddEl) ddEl.value=form.due_day||'';
-  // ── Dados bancários ────────────────────────────────────────────────────
-  _loadBankDetailsIntoForm(id ? state.accounts.find(x => x.id===id) : null);
-  const _currSel = document.getElementById('accountCurrency');
-  if (_currSel && !_currSel._bankSyncBound) {
-    _currSel._bankSyncBound = true;
-    _currSel.addEventListener('change', _syncAccountBankFields);
-  }
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
+  // Bank details — load from account notes & sync visible fields
+  _clearBankDetails();
+  _loadBankDetails(id ? state.accounts.find(x=>x.id===id) : null);
+  // Re-sync when currency changes
+  const _currEl = document.getElementById('accountCurrency');
+  if (_currEl && !_currEl._bankSyncBound) {
+    _currEl._bankSyncBound = true;
+    _currEl.addEventListener('change', _syncBankFields);
+  }
   openModal('accountModal');
 }
 
@@ -404,14 +418,14 @@ async function saveAccount(){
     updated_at:new Date().toISOString()
   };
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}
-  // ── Merge bank details into notes JSON ─────────────────────────────────
-  const _bankDetails = typeof _collectBankDetails === 'function' ? _collectBankDetails() : null;
-  if (_bankDetails) {
+  // Merge bank details into notes JSON
+  if (typeof _collectBankDetails === 'function') {
+    const _bankDetails = _collectBankDetails();
     const _existingAcc = id ? state.accounts.find(x=>x.id===id) : null;
     const _mergedNotes = typeof _mergeBankDetailsIntoNotes === 'function'
       ? _mergeBankDetailsIntoNotes(_existingAcc?.notes || null, _bankDetails)
       : null;
-    if (_mergedNotes !== undefined) data.notes = _mergedNotes;
+    data.notes = _mergedNotes;
   }
   if(!id) data.family_id=famId();
   let err;
@@ -780,11 +794,11 @@ function onAccountTypeChange(){
   if(iofConfig)iofConfig.style.display=isCC?'':'none';
   const cardDates=document.getElementById('accountCardDatesConfig');
   if(cardDates)cardDates.style.display=isCC?'':'none';
-  // Bank details section label
-  const bankSec = document.getElementById('accountBankDetailsSection');
-  if (bankSec) bankSec.style.display = type === 'dinheiro' ? 'none' : '';
-  // Sync bank field visibility on type change
-  _syncAccountBankFields();
+  // Hide bank details for cash accounts (no banking info needed)
+  const bankSec=document.getElementById('accountBankDetailsSection');
+  if(bankSec)bankSec.style.display=type==='dinheiro'?'none':'';
+  // Re-sync bank field visibility when type changes
+  if(typeof _syncBankFields==='function') _syncBankFields();
 }
 
 async function checkAccountIofConfig(accountId){
@@ -1058,148 +1072,135 @@ window.accountSelectAiIcon = function(iconKeyOrEmoji, color) {
   if (panel) panel.style.display = 'none';
 };
 
-// ════════════════════════════════════════════════════════════════
-// DADOS BANCÁRIOS — lógica de exibição e persistência
-// Os dados são armazenados em JSON no campo `notes` da conta.
-// Chave: "bank_details" dentro do objeto JSON de notas.
-// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// DADOS BANCÁRIOS — Tab opcional no cadastro de contas
+// Armazenados em JSON no campo `notes` da conta (chave: bank_details)
+// ════════════════════════════════════════════════════════════════════════════
 
-// Instituições populares BR (usadas no datalist)
-const BANK_INSTITUTIONS_BR = [
+const _BANK_INST_BR = [
   'Banco do Brasil','Caixa Econômica Federal','Bradesco','Itaú Unibanco',
-  'Santander','Nubank','Inter','C6 Bank','BTG Pactual','XP Investimentos',
-  'Rico','Clear','Avenue','Modalmais','Órama','Sicoob','Sicredi',
-  'Banco Original','Safra','Banrisul','PagBank','Mercado Pago','PicPay',
-  'Neon','Sofisa Direto','Daycoval'
+  'Santander','Nubank','Banco Inter','C6 Bank','BTG Pactual','XP Investimentos',
+  'Rico','Clear','Avenue','Órama','Modalmais','Genial Investimentos','Warren',
+  'Sicoob','Sicredi','Banco Original','Safra','Banrisul','PagBank',
+  'Mercado Pago','PicPay','Neon','Sofisa Direto','Daycoval'
 ];
-const BANK_INSTITUTIONS_US = [
+const _BANK_INST_US = [
   'Chase','Bank of America','Wells Fargo','Citibank','Goldman Sachs',
-  'Morgan Stanley','Fidelity','Charles Schwab','TD Ameritrade','Interactive Brokers',
-  'Ally Bank','Capital One','American Express','Discover'
+  'Morgan Stanley','Fidelity','Charles Schwab','Interactive Brokers',
+  'Ally Bank','Capital One','American Express','TD Bank'
 ];
 
-/** Atualiza campos visíveis conforme moeda selecionada */
-function _syncAccountBankFields() {
+/** Atualiza campos visíveis e datalist conforme moeda selecionada */
+function _syncBankFields() {
   const currency = document.getElementById('accountCurrency')?.value || 'BRL';
-  const brlDiv  = document.getElementById('accountBankFieldsBRL');
-  const ibanDiv = document.getElementById('accountBankFieldsIBAN');
-  const usdDiv  = document.getElementById('accountBankFieldsUSD');
-  const label   = document.getElementById('accountBankSummaryLabel');
-  const instLabel = document.getElementById('accountBankInstLabel');
-  const instInput = document.getElementById('accountBankInstitution');
-  const datalist  = document.getElementById('accountBankInstList');
+  const brlDiv   = document.getElementById('accountBankFieldsBRL');
+  const ibanDiv  = document.getElementById('accountBankFieldsIBAN');
+  const usdDiv   = document.getElementById('accountBankFieldsUSD');
+  const instLbl  = document.getElementById('accountBankInstLabel');
+  const summLbl  = document.getElementById('accountBankSummaryLabel');
+  const dl       = document.getElementById('accountBankInstList');
 
   if (brlDiv)  brlDiv.style.display  = currency === 'BRL' ? 'flex' : 'none';
-  if (ibanDiv) ibanDiv.style.display  = (!['BRL','USD'].includes(currency)) ? 'flex' : 'none';
+  if (ibanDiv) ibanDiv.style.display  = !['BRL','USD'].includes(currency) ? 'flex' : 'none';
   if (usdDiv)  usdDiv.style.display   = currency === 'USD' ? 'flex' : 'none';
 
-  if (label) label.textContent = currency === 'USD' ? 'Bank Details' : 'Dados Bancários';
-  if (instLabel) instLabel.textContent = currency === 'USD' ? 'Institution / Broker' : 'Instituição Financeira';
+  if (instLbl) instLbl.textContent = currency === 'USD' ? 'Institution / Broker' : 'Instituição Financeira';
+  if (summLbl) summLbl.textContent = currency === 'USD' ? 'Bank Details' : 'Dados Bancários';
 
-  // Populate datalist
-  if (datalist) {
-    const institutions = currency === 'USD' ? BANK_INSTITUTIONS_US : BANK_INSTITUTIONS_BR;
-    datalist.innerHTML = institutions.map(i => `<option value="${i}">`).join('');
+  if (dl) {
+    const list = currency === 'USD' ? _BANK_INST_US : _BANK_INST_BR;
+    dl.innerHTML = list.map(i => `<option value="${i}">`).join('');
   }
 }
-window._syncAccountBankFields = _syncAccountBankFields;
+window._syncBankFields = _syncBankFields;
 
-/** Carrega dados bancários do campo notes da conta no formulário */
-function _loadBankDetailsIntoForm(account) {
-  const details = _getAccountBankDetails(account);
-  if (!details) { _syncAccountBankFields(); return; }
+/** Carrega dados bancários do campo notes no formulário */
+function _loadBankDetails(account) {
+  _syncBankFields();
+  if (!account?.notes) return;
+  let details;
+  try {
+    const n = typeof account.notes === 'object' ? account.notes : JSON.parse(account.notes);
+    details = n?.bank_details;
+  } catch(_) { return; }
+  if (!details) return;
 
-  _syncAccountBankFields();
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('accountBankInstitution', details.institution);
+  set('accountBankAgency',      details.agency);
+  set('accountBankNumber',      details.number);
+  set('accountBankAccountType', details.accountType);
+  set('accountBankPix',         details.pix);
+  set('accountBankIBAN',        details.iban);
+  set('accountBankSwift',       details.swift);
+  set('accountBankForeignName', details.foreignName);
+  set('accountBankRouting',     details.routing);
+  set('accountBankUSANumber',   details.usaNumber);
+  set('accountBankUSAType',     details.usaType);
+  set('accountBankUSAName',     details.usaName);
+  set('accountBankUSASwift',    details.usaSwift);
+  set('accountBankNotes',       details.notes);
 
-  // BRL fields
-  _setVal('accountBankInstitution', details.institution || '');
-  _setVal('accountBankAgency',      details.agency || '');
-  _setVal('accountBankNumber',      details.number || '');
-  _setVal('accountBankAccountType', details.accountType || '');
-  _setVal('accountBankPix',         details.pix || '');
-  // IBAN fields
-  _setVal('accountBankIBAN',        details.iban || '');
-  _setVal('accountBankSwift',       details.swift || '');
-  _setVal('accountBankForeignName', details.foreignName || '');
-  // USD fields
-  _setVal('accountBankRouting',  details.routing || '');
-  _setVal('accountBankUSANumber',details.usaNumber || '');
-  _setVal('accountBankUSAType',  details.usaType || '');
-  _setVal('accountBankUSAName',  details.usaName || '');
-  _setVal('accountBankUSASwift', details.usaSwift || '');
-  // Common
-  _setVal('accountBankNotes', details.notes || '');
-
-  // Open details panel if data exists
+  // Auto-open if data exists
   const hasData = Object.values(details).some(v => v && v !== '');
   if (hasData) {
     const det = document.getElementById('accountBankDetailsToggle');
     if (det) det.open = true;
   }
 }
+window._loadBankDetails = _loadBankDetails;
 
-function _setVal(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.value = val || '';
-}
-
-/** Lê dados bancários do campo notes (JSON) */
-function _getAccountBankDetails(account) {
-  if (!account?.notes) return null;
-  try {
-    const n = typeof account.notes === 'object' ? account.notes : JSON.parse(account.notes);
-    return n?.bank_details || null;
-  } catch(_) { return null; }
+/** Limpa todos os campos bancários */
+function _clearBankDetails() {
+  ['accountBankInstitution','accountBankAgency','accountBankNumber','accountBankAccountType',
+   'accountBankPix','accountBankIBAN','accountBankSwift','accountBankForeignName',
+   'accountBankRouting','accountBankUSANumber','accountBankUSAType','accountBankUSAName',
+   'accountBankUSASwift','accountBankNotes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const det = document.getElementById('accountBankDetailsToggle');
+  if (det) det.open = false;
 }
 
 /** Coleta dados bancários do formulário */
 function _collectBankDetails() {
   const currency = document.getElementById('accountCurrency')?.value || 'BRL';
+  const get = id => document.getElementById(id)?.value?.trim() || '';
+
   const base = {
-    institution: document.getElementById('accountBankInstitution')?.value?.trim() || '',
-    notes:       document.getElementById('accountBankNotes')?.value?.trim() || '',
+    institution: get('accountBankInstitution'),
+    notes:       get('accountBankNotes'),
   };
+
   if (currency === 'BRL') {
-    return { ...base,
-      agency:      document.getElementById('accountBankAgency')?.value?.trim() || '',
-      number:      document.getElementById('accountBankNumber')?.value?.trim() || '',
-      accountType: document.getElementById('accountBankAccountType')?.value || '',
-      pix:         document.getElementById('accountBankPix')?.value?.trim() || '',
-    };
+    return { ...base, agency: get('accountBankAgency'), number: get('accountBankNumber'),
+      accountType: get('accountBankAccountType'), pix: get('accountBankPix') };
   } else if (currency === 'USD') {
-    return { ...base,
-      routing:   document.getElementById('accountBankRouting')?.value?.trim() || '',
-      usaNumber: document.getElementById('accountBankUSANumber')?.value?.trim() || '',
-      usaType:   document.getElementById('accountBankUSAType')?.value || '',
-      usaName:   document.getElementById('accountBankUSAName')?.value?.trim() || '',
-      usaSwift:  document.getElementById('accountBankUSASwift')?.value?.trim().toUpperCase() || '',
-    };
+    return { ...base, routing: get('accountBankRouting'), usaNumber: get('accountBankUSANumber'),
+      usaType: get('accountBankUSAType'), usaName: get('accountBankUSAName'),
+      usaSwift: get('accountBankUSASwift') };
   } else {
-    return { ...base,
-      iban:        document.getElementById('accountBankIBAN')?.value?.trim().toUpperCase() || '',
-      swift:       document.getElementById('accountBankSwift')?.value?.trim().toUpperCase() || '',
-      foreignName: document.getElementById('accountBankForeignName')?.value?.trim() || '',
-    };
+    return { ...base, iban: get('accountBankIBAN'), swift: get('accountBankSwift'),
+      foreignName: get('accountBankForeignName') };
   }
 }
+window._collectBankDetails = _collectBankDetails;
 
-/** Mescla bank_details dentro do JSON de notes sem perder outros campos */
+/** Funde bank_details no campo notes JSON da conta */
 function _mergeBankDetailsIntoNotes(existingNotes, bankDetails) {
   let base = {};
   if (existingNotes) {
     try { base = typeof existingNotes === 'object' ? existingNotes : JSON.parse(existingNotes); } catch(_) {}
   }
-  // Só armazenar se houver pelo menos um campo preenchido
   const hasData = Object.values(bankDetails).some(v => v && v !== '');
-  if (hasData) {
-    base.bank_details = bankDetails;
-  } else {
-    delete base.bank_details;
-  }
+  if (hasData) { base.bank_details = bankDetails; }
+  else { delete base.bank_details; }
   return Object.keys(base).length ? JSON.stringify(base) : null;
 }
 window._mergeBankDetailsIntoNotes = _mergeBankDetailsIntoNotes;
-window._collectBankDetails        = _collectBankDetails;
-window._loadBankDetailsIntoForm   = _loadBankDetailsIntoForm;
-window._syncAccountBankFields     = _syncAccountBankFields;
 
+
+window.openAccountModal = openAccountModal;
+window.switchAccountTab = switchAccountTab;
+window.saveAccount = saveAccount;
