@@ -401,10 +401,7 @@ async function openAccountModal(id=''){
     _currEl._bankSyncBound = true;
     _currEl.addEventListener('change', _syncBankFields);
   }
-  const opened = openModal('accountModal');
-  if(!opened){
-    console.warn('[accounts] accountModal not found');
-  }
+  openModal('accountModal');
 }
 
 async function saveAccount(){
@@ -1222,22 +1219,24 @@ window.switchAccountTab = switchAccountTab;
 window.saveAccount = saveAccount;
 
 
-if (!window.__FT_ACCOUNT_EVENTS_WIRED__) {
-  window.__FT_ACCOUNT_EVENTS_WIRED__ = true;
+if (!window.__FT_ACCOUNTS_EVENTS_WIRED__) {
+  window.__FT_ACCOUNTS_EVENTS_WIRED__ = true;
   document.addEventListener('click', function(ev){
-    const openBtn = ev.target.closest('[onclick*="openAccountModal("]');
-    if (openBtn && typeof window.openAccountModal === 'function') {
-      // Inline onclick should normally handle it. This is a fallback for re-rendered DOM.
-      const raw = openBtn.getAttribute('onclick') || '';
-      const m = raw.match(/openAccountModal\(([^)]*)\)/);
-      if (m) {
+    const trigger = ev.target.closest('[onclick*="openAccountModal"]');
+    if (!trigger) return;
+    const oc = trigger.getAttribute('onclick') || '';
+    if (!/openAccountModal/.test(oc)) return;
+    try {
+      const match = oc.match(/openAccountModal\('([^']*)'\)/);
+      if (match) {
         ev.preventDefault();
-        ev.stopPropagation();
-        let id = '';
-        const arg = (m[1] || '').trim();
-        if (arg && arg !== "''" && arg !== '""') id = arg.replace(/^['"]|['"]$/g,'');
-        try { window.openAccountModal(id); } catch(e) { console.warn('[accounts] delegated openAccountModal failed:', e?.message || e); }
+        openAccountModal(match[1]);
+      } else if (/openAccountModal\(\)/.test(oc)) {
+        ev.preventDefault();
+        openAccountModal('');
       }
+    } catch(e) {
+      console.warn('[accounts] delegated openAccountModal failed:', e?.message || e);
     }
-  }, true);
+  });
 }
