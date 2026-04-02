@@ -1463,3 +1463,144 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Forecast card — dropdown não é clipado pelo overflow:hidden
+   O .fcp-card tem overflow:hidden para o border-radius. Removemos
+   isso e aplicamos border-radius via clip-path workaround: usamos
+   um wrapper com overflow:hidden apenas para o conteúdo visual,
+   mas deixamos o card principal sem clip para o dropdown aparecer.
+══════════════════════════════════════════════════════════════════ */
+#dashCardForecast90.fcp-card {
+  overflow: visible;
+}
+#dashCardForecast90.fcp-card > * {
+  /* Primeira e última filho herdam o border-radius visualmente */
+}
+/* Re-aplica border-radius nos filhos diretos visíveis */
+#dashCardForecast90 .fcp-header {
+  border-radius: 18px 18px 0 0;
+}
+#dashCardForecast90 .fcp-hint,
+#dashCardForecast90 .fcp-summary:last-child,
+#dashCardForecast90 > *:last-child {
+  border-radius: 0 0 18px 18px;
+}
+/* Garante que o dropdown flutue acima de tudo */
+#dashCardForecast90 .fc-acct-dropdown.open {
+  z-index: 500;
+}
+/* Garante que fcp-header não clipe o dropdown */
+#dashCardForecast90 .fcp-header {
+  overflow: visible;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: fcp-kpi-strip — não bloqueia cliques no header acima dela
+   A strip fica entre o header e o chart. z-index garante que
+   o dropdown (z-index:500) flutue sobre ela.
+══════════════════════════════════════════════════════════════════ */
+.fcp-kpi-strip {
+  position: relative;
+  z-index: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: fcp-kpi-strip — melhor design
+   Bordas mais suaves, tipografia consistente com o resto do app
+══════════════════════════════════════════════════════════════════ */
+.fcp-kpi-strip {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2, #f8faf9);
+}
+[data-theme="dark"] .fcp-kpi-strip {
+  background: rgba(255,255,255,.03);
+}
+.fcp-kpi-lbl {
+  font-size: .60rem;
+  font-weight: 600;
+  letter-spacing: .07em;
+  opacity: .65;
+}
+.fcp-kpi-val {
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Conta favorita estrela — não sobrepõe botões de ação
+   Os botões de ação (.acc-card-actions) ficam no canto superior
+   direito (top:8px, right:8px). A estrela estava em right:42px
+   que podia colidir. Reposicionamos para o canto inferior direito
+   do card — mais consistente e sem colisão.
+══════════════════════════════════════════════════════════════════ */
+.acc-card-fav {
+  position: absolute;
+  /* Reposicionar: canto inferior direito, acima do saldo */
+  top: auto;
+  right: 10px;
+  bottom: 10px;
+  width: 22px;
+  height: 22px;
+  z-index: 2;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Dashboard — cards de contas favoritas menos altos
+   Reduz o padding vertical para compactar no dashboard
+══════════════════════════════════════════════════════════════════ */
+.dash-fav-accounts .account-card,
+.dash-fav-accounts .acc-card-v2,
+#dashFavAccounts .account-card,
+#dashFavAccounts .acc-card-v2 {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  min-height: 0;
+}
+#dashFavAccounts .acc-card-balance {
+  font-size: 1.05rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Account modal tabs — visual consistente com o app
+   As tabs "Informações principais" / "Dados bancários opcionais"
+   seguem o padrão pill-tab do resto do app
+══════════════════════════════════════════════════════════════════ */
+.account-modal-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 14px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.account-modal-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font-sans);
+}
+.account-modal-tab:hover {
+  background: var(--surface2);
+  color: var(--text2);
+}
+.account-modal-tab.active {
+  background: var(--accent-lt, rgba(42,96,73,.10));
+  color: var(--accent);
+  border-color: var(--accent);
+}
+/* Garante que apenas o painel ativo seja visível */
+.account-tab-pane {
+  display: none;
+}
+.account-tab-pane:first-of-type,
+.account-tab-pane[style*="display: ;"],
+.account-tab-pane[style*="display:"],
+.account-tab-pane.active {
+  display: block;
+}
