@@ -43,21 +43,6 @@
   } catch(e) {}
 })();
 </script>
-<style>
-/* ── Anti-flash: prevent content bleed during auth transition ──────── */
-#mainApp[style*="visibility:hidden"],
-#mainApp[style*="opacity:0"] {
-  pointer-events: none !important;
-  contain: strict !important;
-}
-#loginScreen {
-  z-index: 50000;
-}
-/* Prevent any child of mainApp from painting while hidden */
-#mainApp:not([style*="opacity:1"]) * {
-  animation-play-state: paused !important;
-}
-</style>
 <!-- ══ Anti-flash: aplica tema de login ANTES do primeiro frame ══════════════
      Este script inline roda antes de qualquer CSS externo ser aplicado.
      Lê o tema do localStorage e adiciona a classe no loginScreen via dataset
@@ -66,19 +51,10 @@
 <script>
 (function(){
   try {
-    // Default mobile-aware: mobile sem localStorage usa 'centered' (card flutuante,
-    // sem painel hero lateral que não faz sentido em 1 coluna).
-    // Desktop sem localStorage usa 'split' (layout clássico 50/50).
-    var ua = navigator.userAgent || '';
-    var isMobile = /android|iphone|ipad|ipod/i.test(ua) ||
-                   (/mac/i.test(navigator.platform || '') && navigator.maxTouchPoints > 1);
-    var mobileDefault = 'centered'; // grid design — works on all devices
-    var theme = localStorage.getItem('login_theme') || mobileDefault;
-    var validThemes = ['split','centered','asymmetric','immersive','minimal'];
-    if (validThemes.indexOf(theme) === -1) theme = mobileDefault;
-    // Marcador lido pelo CSS antes do DOMContentLoaded (anti-flash)
+    var theme = localStorage.getItem('login_theme') || 'split';
+    // Marcador lido pelo CSS antes do DOMContentLoaded
     document.documentElement.setAttribute('data-login-theme', theme);
-    // Adiciona a classe assim que o DOM existir
+    // Também adiciona a classe assim que o DOM existir
     document.addEventListener('DOMContentLoaded', function() {
       var ls = document.getElementById('loginScreen');
       if (!ls) return;
@@ -86,24 +62,6 @@
        'ls-theme-immersive','ls-theme-minimal'].forEach(function(c){ ls.classList.remove(c); });
       ls.classList.add('ls-theme-' + theme);
     }, { once: true });
-  } catch(e) {}
-})();
-</script>
-<!-- ══ Anti-flash: aplica tema dark/light ANTES do primeiro frame ══════════
-     Lê localStorage (cache offline) e aplica data-theme="dark" imediatamente.
-     DB sobrescreve depois via bootApplyAppTheme() no boot autenticado. ══ -->
-<script>
-(function(){
-  try {
-    var t = localStorage.getItem('app_theme');
-    // Fallback: system preference
-    if (!t) {
-      t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark' : 'light';
-    }
-    if (t === 'dark') {
-      document.documentElement.setAttribute('data-theme','dark');
-    }
   } catch(e) {}
 })();
 </script>
@@ -650,7 +608,7 @@
 </nav>
 
 <!-- MAIN -->
-<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .22s ease;contain:paint">
+<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
     <div class="topbar-left">
       <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
@@ -825,57 +783,55 @@
       <!-- ── Previsão de Caixa 90 dias ── -->
       <div id="dashCardForecast90" class="fcp-card mb-4">
 
-        <!-- Header escuro — two-row layout -->
+        <!-- Header escuro premium -->
         <div class="fcp-header">
-          <!-- Row 1: title + controls (same line) -->
-          <div class="fcp-header-row1">
-            <div class="fcp-header-left">
-              <div class="fcp-title">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                Previsão de Caixa
-              </div>
-              <div class="fcp-subtitle">próximos 90 dias</div>
+          <div class="fcp-header-left">
+            <div class="fcp-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+              Previsão de Caixa
             </div>
-            <div class="fcp-controls">
-              <!-- Picker de conta — dropdown abre para baixo com z-index alto -->
-              <div class="fcp-acct-picker" id="dashForecastAcctPicker">
-                <button type="button" class="fcp-acct-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                  <span id="dashForecastAcctLabel">Todas as contas</span>
-                  <svg class="fcp-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
-              </div>
-              <!-- Toggle programados -->
-              <label class="fcp-toggle-wrap">
-                <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" class="fcp-toggle-input">
-                <span class="fcp-toggle-track">
-                  <span class="fcp-toggle-thumb"></span>
-                </span>
-                <span class="fcp-toggle-label">Programados</span>
-              </label>
-            </div>
+            <div class="fcp-subtitle">próximos 90 dias</div>
           </div>
-          <!-- Row 2: KPI pills inside the header, below controls -->
-          <div class="fcp-kpi-strip" id="dashForecastKpis">
-            <div class="fcp-kpi">
-              <div class="fcp-kpi-lbl">Saldo atual</div>
-              <div class="fcp-kpi-val" id="fcp-kpi-inicial">—</div>
+          <div class="fcp-controls">
+            <!-- Picker de conta -->
+            <div class="fcp-acct-picker" id="dashForecastAcctPicker">
+              <button type="button" class="fcp-acct-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span id="dashForecastAcctLabel">Todas as contas</span>
+                <svg class="fcp-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
             </div>
-            <div class="fcp-kpi-arrow">→</div>
-            <div class="fcp-kpi fcp-kpi--accent">
-              <div class="fcp-kpi-lbl">Projetado em 90d</div>
-              <div class="fcp-kpi-val" id="fcp-kpi-final">—</div>
-            </div>
-            <div class="fcp-kpi-sep"></div>
-            <div class="fcp-kpi">
-              <div class="fcp-kpi-lbl">Mínimo esperado</div>
-              <div class="fcp-kpi-val fcp-kpi-val--min" id="fcp-kpi-min">—</div>
-            </div>
-            <div class="fcp-kpi">
-              <div class="fcp-kpi-lbl">Máximo esperado</div>
-              <div class="fcp-kpi-val fcp-kpi-val--max" id="fcp-kpi-max">—</div>
-            </div>
+            <!-- Toggle programados -->
+            <label class="fcp-toggle-wrap">
+              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" class="fcp-toggle-input">
+              <span class="fcp-toggle-track">
+                <span class="fcp-toggle-thumb"></span>
+              </span>
+              <span class="fcp-toggle-label">Programados</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- KPI strip: saldo inicial → projetado + min/max -->
+        <div class="fcp-kpi-strip" id="dashForecastKpis">
+          <div class="fcp-kpi">
+            <div class="fcp-kpi-lbl">Saldo atual</div>
+            <div class="fcp-kpi-val" id="fcp-kpi-inicial">—</div>
+          </div>
+          <div class="fcp-kpi-arrow">→</div>
+          <div class="fcp-kpi fcp-kpi--accent">
+            <div class="fcp-kpi-lbl">Projetado em 90d</div>
+            <div class="fcp-kpi-val" id="fcp-kpi-final">—</div>
+          </div>
+          <div class="fcp-kpi-sep"></div>
+          <div class="fcp-kpi">
+            <div class="fcp-kpi-lbl">Mínimo esperado</div>
+            <div class="fcp-kpi-val fcp-kpi-val--min" id="fcp-kpi-min">—</div>
+          </div>
+          <div class="fcp-kpi">
+            <div class="fcp-kpi-lbl">Máximo esperado</div>
+            <div class="fcp-kpi-val fcp-kpi-val--max" id="fcp-kpi-max">—</div>
           </div>
         </div>
 
@@ -3180,86 +3136,137 @@
             </div>
           </div>
 
-          <div class="cfg-section-label">Visual da tela de login</div>
+          <div class="cfg-section-label">Tema da tela de login</div>
           <div class="cfg-card">
             <div style="padding:16px">
-              <p style="font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.55">
-                Escolha o visual da tela de login. A configuração é salva no banco e aplicada imediatamente para todos os usuários.
+              <p style="font-size:.78rem;color:var(--muted);margin-bottom:14px;line-height:1.5">
+                Escolha o visual da tela de login para todos os usuários da família.
+                A configuração é salva no banco de dados e aplicada imediatamente.
               </p>
-              <div id="loginThemeGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
+              <div id="loginThemeGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
 
-                <!-- ✦ Opção 1: Visual Padrão (Grid) — RECOMENDADO -->
+                <!-- Opção 1: Card centrado em fundo verde -->
                 <label class="login-theme-option" data-theme="centered" style="cursor:pointer">
                   <input type="radio" name="loginTheme" value="centered" style="display:none" onchange="saveLoginTheme('centered')">
-                  <div class="login-theme-preview" style="background:#0a1e12;border-radius:10px;height:96px;position:relative;overflow:hidden;border:2px solid transparent;transition:border-color .18s">
-                    <!-- Grid quadriculado -->
-                    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:13px 13px"></div>
-                    <!-- Vinheta -->
-                    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(10,30,18,0) 0%,rgba(10,30,18,.65) 100%)"></div>
-                    <!-- Card centralizado -->
+                  <div class="login-theme-preview" style="background:#0e3520;border-radius:10px;height:90px;position:relative;overflow:hidden;border:2px solid transparent;transition:border-color .18s">
+                    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:14px 14px"></div>
                     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                      <div style="background:#fff;border-radius:7px;width:78px;padding:7px 7px 6px;box-shadow:0 8px 24px rgba(0,0,0,.45);position:relative;overflow:hidden">
-                        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#1a4d30,#2a6049,#3d8a5a)"></div>
-                        <div style="height:6px;background:#1e5c42;border-radius:2px;margin:4px 0 4px;width:55%"></div>
-                        <div style="height:3px;background:#e5e7eb;border-radius:2px;margin-bottom:2px"></div>
-                        <div style="height:3px;background:#e5e7eb;border-radius:2px;margin-bottom:4px"></div>
-                        <div style="height:5px;background:linear-gradient(135deg,#1a4d30,#2a6049);border-radius:2px"></div>
+                      <div style="background:#fff;border-radius:8px;width:72px;padding:8px 6px;box-shadow:0 8px 24px rgba(0,0,0,.4)">
+                        <div style="height:8px;background:#1e5c42;border-radius:3px;margin-bottom:5px"></div>
+                        <div style="height:5px;background:#e5e7eb;border-radius:2px;margin-bottom:3px"></div>
+                        <div style="height:5px;background:#e5e7eb;border-radius:2px;margin-bottom:5px"></div>
+                        <div style="height:7px;background:linear-gradient(135deg,#1e5c42,#2a6049);border-radius:3px"></div>
                       </div>
                     </div>
                   </div>
                   <div class="lts-option-footer">
                     <div>
-                      <div style="font-size:.75rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px">
-                        Visual Padrão
-                        <span style="font-size:.58rem;font-weight:700;background:var(--accent);color:#fff;padding:1px 6px;border-radius:20px;letter-spacing:.04em">PADRÃO</span>
-                      </div>
-                      <div style="font-size:.67rem;color:var(--muted)">Grid + card centralizado</div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Card centrado</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Fundo verde, card branco</div>
                     </div>
                     <span class="lts-active-badge">Ativo</span>
                   </div>
                 </label>
 
-                <!-- Opção 2: Dark imersivo (tela cheia verde) -->
+                <!-- Opção 2: Split 50/50 -->
+                <label class="login-theme-option" data-theme="split" style="cursor:pointer">
+                  <input type="radio" name="loginTheme" value="split" style="display:none" onchange="saveLoginTheme('split')">
+                  <div class="login-theme-preview" style="border-radius:10px;height:90px;overflow:hidden;display:flex;border:2px solid transparent;transition:border-color .18s">
+                    <div style="flex:1;background:#fff;padding:6px">
+                      <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:3px;width:70%"></div>
+                      <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:6px;width:50%"></div>
+                      <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:3px"></div>
+                      <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:7px"></div>
+                      <div style="height:6px;background:linear-gradient(135deg,#1e5c42,#2a6049);border-radius:2px"></div>
+                    </div>
+                    <div style="width:1px;background:rgba(0,0,0,.08)"></div>
+                    <div style="flex:1;background:#0e3520;position:relative;overflow:hidden">
+                      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:12px 12px"></div>
+                      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                        <div style="width:36px;height:12px;background:rgba(255,255,255,.25);border-radius:4px"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Split 50/50</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Form branco | Hero verde</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
+                </label>
+
+                <!-- Opção 3: Split assimétrico 40/60 -->
+                <label class="login-theme-option" data-theme="asymmetric" style="cursor:pointer">
+                  <input type="radio" name="loginTheme" value="asymmetric" style="display:none" onchange="saveLoginTheme('asymmetric')">
+                  <div class="login-theme-preview" style="border-radius:10px;height:90px;overflow:hidden;display:flex;border:2px solid transparent;transition:border-color .18s">
+                    <div style="flex:0 0 40%;background:#fff;padding:6px">
+                      <div style="height:3px;background:#e5e7eb;border-radius:2px;margin-bottom:3px;width:80%"></div>
+                      <div style="height:3px;background:#e5e7eb;border-radius:2px;margin-bottom:5px;width:55%"></div>
+                      <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:3px"></div>
+                      <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:6px"></div>
+                      <div style="height:6px;background:linear-gradient(135deg,#1e5c42,#2a6049);border-radius:2px"></div>
+                    </div>
+                    <div style="flex:1;background:#0e3520;position:relative;overflow:hidden">
+                      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:12px 12px"></div>
+                      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+                        <div style="width:48px;height:14px;background:rgba(255,255,255,.22);border-radius:5px"></div>
+                        <div style="width:36px;height:5px;background:rgba(255,255,255,.12);border-radius:3px"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lts-option-footer">
+                    <div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Assimétrico 40/60</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Form compacto | Logo grande</div>
+                    </div>
+                    <span class="lts-active-badge">Ativo</span>
+                  </div>
+                </label>
+
+                <!-- Opção 4: Tela cheia verde, form dark integrado -->
                 <label class="login-theme-option" data-theme="immersive" style="cursor:pointer">
                   <input type="radio" name="loginTheme" value="immersive" style="display:none" onchange="saveLoginTheme('immersive')">
-                  <div class="login-theme-preview" style="background:#071510;border-radius:10px;height:96px;position:relative;overflow:hidden;border:2px solid transparent;transition:border-color .18s">
-                    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:13px 13px"></div>
-                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                      <div style="background:rgba(255,255,255,.07);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12);border-radius:7px;width:78px;padding:8px 7px 6px">
-                        <div style="height:6px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:4px;width:55%"></div>
-                        <div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-bottom:2px"></div>
-                        <div style="height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-bottom:4px"></div>
-                        <div style="height:5px;background:linear-gradient(135deg,rgba(42,96,73,.9),rgba(61,138,90,.9));border-radius:2px"></div>
-                      </div>
+                  <div class="login-theme-preview" style="background:#0e3520;border-radius:10px;height:90px;position:relative;overflow:hidden;display:flex;border:2px solid transparent;transition:border-color .18s">
+                    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:14px 14px"></div>
+                    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;justify-content:center;padding:8px">
+                      <div style="width:40px;height:9px;background:rgba(255,255,255,.2);border-radius:3px;margin-bottom:6px"></div>
+                      <div style="width:55px;height:5px;background:rgba(255,255,255,.12);border-radius:2px;margin-bottom:3px"></div>
+                      <div style="width:40px;height:5px;background:rgba(255,255,255,.08);border-radius:2px"></div>
+                    </div>
+                    <div style="width:1px;background:rgba(255,255,255,.08)"></div>
+                    <div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;justify-content:center;padding:8px;gap:4px">
+                      <div style="height:5px;background:rgba(255,255,255,.12);border-radius:2px"></div>
+                      <div style="height:5px;background:rgba(255,255,255,.18);border-radius:2px"></div>
+                      <div style="height:7px;background:linear-gradient(135deg,rgba(42,122,82,.8),rgba(30,92,66,.9));border-radius:3px;margin-top:3px;border:1px solid rgba(93,219,160,.25)"></div>
                     </div>
                   </div>
                   <div class="lts-option-footer">
                     <div>
-                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Dark Imersivo</div>
-                      <div style="font-size:.67rem;color:var(--muted)">Card translúcido em verde</div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Imersivo</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Tela cheia verde + form dark</div>
                     </div>
                     <span class="lts-active-badge">Ativo</span>
                   </div>
                 </label>
 
-                <!-- Opção 3: Minimalista claro -->
+                <!-- Opção 5: Minimalista branco total -->
                 <label class="login-theme-option" data-theme="minimal" style="cursor:pointer">
                   <input type="radio" name="loginTheme" value="minimal" style="display:none" onchange="saveLoginTheme('minimal')">
-                  <div class="login-theme-preview" style="background:#f8faf9;border-radius:10px;height:96px;position:relative;overflow:hidden;border:2px solid transparent;transition:border-color .18s">
-                    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(42,96,73,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(42,96,73,.06) 1px,transparent 1px);background-size:16px 16px"></div>
+                  <div class="login-theme-preview" style="background:#f9fafb;border-radius:10px;height:90px;position:relative;overflow:hidden;border:2px solid transparent;transition:border-color .18s;border:2px solid transparent">
                     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
-                      <div style="background:#fff;border-radius:7px;width:78px;padding:7px 7px 6px;box-shadow:0 4px 16px rgba(0,0,0,.10)">
-                        <div style="height:6px;background:#1e5c42;border-radius:2px;margin-bottom:4px;width:55%"></div>
-                        <div style="height:3px;background:#e5e7eb;border-radius:2px;margin-bottom:2px"></div>
-                        <div style="height:3px;background:#e5e7eb;border-radius:2px;margin-bottom:4px"></div>
-                        <div style="height:5px;background:linear-gradient(135deg,#1e5c42,#2a6049);border-radius:2px"></div>
+                      <div style="width:90px;text-align:center;padding:8px">
+                        <div style="height:8px;background:#1e5c42;border-radius:3px;margin:0 auto 8px;width:50px"></div>
+                        <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:3px"></div>
+                        <div style="height:4px;background:#e5e7eb;border-radius:2px;margin-bottom:6px"></div>
+                        <div style="height:6px;background:linear-gradient(135deg,#1e5c42,#2a6049);border-radius:3px"></div>
                       </div>
                     </div>
                   </div>
                   <div class="lts-option-footer">
                     <div>
-                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Minimalista Claro</div>
-                      <div style="font-size:.67rem;color:var(--muted)">Fundo suave, grid verde</div>
+                      <div style="font-size:.75rem;font-weight:600;color:var(--text)">Minimalista</div>
+                      <div style="font-size:.67rem;color:var(--muted)">Fundo claro, sem hero</div>
                     </div>
                     <span class="lts-active-badge">Ativo</span>
                   </div>
@@ -5224,9 +5231,14 @@ Se você não solicitou isso, ignore este e-mail.`,
       <div class="ls-form-panel">
         <div class="ls-card">
 
-          <!-- Logo — usa logo_glow_soft.png; mobile/desktop via CSS -->
+          <!-- Logo adaptado ao tema — usa sempre logo_glow_soft.png -->
           <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
             onerror="this.onerror=null">
+
+          <!-- Mobile-only logo -->
+          <div class="ls-mobile-logo">
+            <img src="logo_glow_soft.png" alt="Family FinTrack" onerror="this.onerror=null">
+          </div>
 
           <div class="ls-card-title">Bem-vindo de volta</div>
           <div class="ls-card-sub">Acesse sua conta</div>
@@ -6939,139 +6951,80 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div>
 
 <div class="modal-overlay" id="accountModal">
-  <div class="modal" style="max-width:520px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title" id="accountModalTitle">Nova Conta</span>
-      <button class="modal-close" onclick="closeModal('accountModal')">✕</button>
-    </div>
-    <div class="modal-body" style="padding:20px">
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-header"><span class="modal-title" id="accountModalTitle">Nova Conta</span><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
+    <div class="modal-body">
       <input type="hidden" id="accountId">
-
-      <!-- ── Seção 1: Identidade da conta ─────────────────────────── -->
-      <div class="acc-modal-section">
-        <div class="acc-modal-section-label">Identidade</div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label class="form-label">Nome da Conta *</label>
-          <input type="text" id="accountName" placeholder="Ex: Itaú Corrente, Nubank, Carteira">
-        </div>
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label class="form-label">Tipo *</label>
-            <select id="accountType" onchange="onAccountTypeChange()">
-              <option value="corrente">🏦 Conta Corrente</option>
-              <option value="poupanca">🐷 Poupança</option>
-              <option value="cartao_credito">💳 Cartão de Crédito</option>
-              <option value="investimento">📈 Investimentos</option>
-              <option value="dinheiro">💵 Dinheiro</option>
-              <option value="outros">📁 Outros</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Moeda</label>
-            <select id="accountCurrency">
-              <option value="BRL">🇧🇷 BRL — Real</option>
-              <option value="USD">🇺🇸 USD — Dólar</option>
-              <option value="EUR">🇪🇺 EUR — Euro</option>
-              <option value="GBP">🇬🇧 GBP — Libra</option>
-              <option value="AED">🇦🇪 AED — Dirham</option>
-              <option value="CHF">🇨🇭 CHF — Franco</option>
-              <option value="JPY">🇯🇵 JPY — Iene</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Seção 2: Saldo & Grupo ────────────────────────────────── -->
-      <div class="acc-modal-section">
-        <div class="acc-modal-section-label">Saldo & Organização</div>
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label class="form-label" id="accountBalanceLabel">Saldo Inicial</label>
-            <div class="amt-wrap">
-              <button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button>
-              <input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00"
-                pattern="[0-9.,]*" autocomplete="off"
-                oninput="_amtFieldInput('accountBalance')"
-                onkeydown="_amtFieldKeydown('accountBalance', event)"
-                onblur="_amtFieldBlur('accountBalance')"
-                onfocus="_amtFieldFocus('accountBalance')">
-            </div>
-            <div style="font-size:.7rem;color:var(--muted);margin-top:4px;line-height:1.4">Saldo de abertura. O atual é calculado pelas transações.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Grupo</label>
-            <select id="accountGroupId"><option value="">— Sem grupo —</option></select>
-          </div>
-        </div>
-
-        <!-- Conta favorita -->
-        <div class="acc-modal-toggle-row">
-          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="accountIsFavorite" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
-            <span style="font-size:.85rem;font-weight:600">⭐ Conta favorita</span>
+      <div class="form-grid">
+        <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
+        <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="onAccountTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
+        <div class="form-group"><label>Moeda</label><select id="accountCurrency"><option value="BRL">BRL — Real</option><option value="USD">USD — Dólar</option><option value="EUR">EUR — Euro</option><option value="AED">AED — Dirham</option></select></div>
+        <div class="form-group full"><label>Grupo</label><select id="accountGroupId"><option value="">— Sem grupo —</option></select></div>
+        <!-- Feature 7: conta favorita -->
+        <div class="form-group full">
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem;font-weight:500">
+            <input type="checkbox" id="accountIsFavorite" style="width:16px;height:16px;cursor:pointer">
+            ⭐ Conta favorita <span style="font-size:.75rem;color:var(--muted);font-weight:400">(aparece no topo da lista)</span>
           </label>
-          <span style="font-size:.73rem;color:var(--muted)">Aparece fixada no topo da lista</span>
         </div>
-      </div>
-
-      <!-- ── Seção 3: Datas do cartão (condicional) ─────────────────── -->
-      <div class="form-group" id="accountCardDatesConfig" style="display:none">
-        <div class="acc-modal-section">
-          <div class="acc-modal-section-label">💳 Datas do Cartão</div>
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label class="form-label">Melhor dia de compra</label>
-              <input type="number" id="accountBestPurchaseDay" min="1" max="31" placeholder="Ex: 10" inputmode="numeric">
-              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Dia com maior prazo até vencimento</div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Dia de vencimento</label>
-              <input type="number" id="accountDueDay" min="1" max="31" placeholder="Ex: 25" inputmode="numeric">
-              <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Data de pagamento da fatura</div>
+        <!-- Feature 8: datas do cartão (só para cartão de crédito) -->
+        <div class="form-group full" id="accountCardDatesConfig" style="display:none">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px">
+            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:10px">💳 Datas do Cartão</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Melhor dia de compra</label>
+                <input type="number" id="accountBestPurchaseDay" min="1" max="31" placeholder="Ex: 10" inputmode="numeric"
+                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);box-sizing:border-box;background:var(--surface)">
+                <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Dia com maior prazo até vencimento</div>
+              </div>
+              <div>
+                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Dia de vencimento</label>
+                <input type="number" id="accountDueDay" min="1" max="31" placeholder="Ex: 25" inputmode="numeric"
+                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-family:var(--font-serif);box-sizing:border-box;background:var(--surface)">
+                <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Data de pagamento da fatura</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- IOF config - só para cartão de crédito -->
-      <div class="form-group full" id="accountIofConfig" style="display:none">
-        <div class="iof-config visible">
-          <div class="iof-row">
-            <label class="iof-toggle">
-              <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
-              <span>🇧🇷 Cartão brasileiro</span>
-            </label>
-            <span style="font-size:.75rem;color:var(--muted)">Habilita cálculo de IOF em compras internacionais</span>
-          </div>
-          <div id="accountIofRateGroup" style="display:none;margin-top:10px">
+        <!-- IOF config - só para cartão de crédito -->
+        <div class="form-group full" id="accountIofConfig" style="display:none">
+          <div class="iof-config visible">
             <div class="iof-row">
-              <label style="font-size:.85rem;flex-shrink:0">IOF sobre compras internacionais:</label>
-              <input type="number" id="accountIofRate" step="0.01" min="0" max="10" value="3.38" style="width:80px" inputmode="decimal">
-              <span style="font-size:.85rem;color:var(--muted)">% (padrão: 3,38%)</span>
+              <label class="iof-toggle">
+                <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
+                <span>🇧🇷 Cartão brasileiro</span>
+              </label>
+              <span style="font-size:.75rem;color:var(--muted)">Habilita cálculo de IOF em compras internacionais</span>
+            </div>
+            <div id="accountIofRateGroup" style="display:none;margin-top:10px">
+              <div class="iof-row">
+                <label style="font-size:.85rem;flex-shrink:0">IOF sobre compras internacionais:</label>
+                <input type="number" id="accountIofRate" step="0.01" min="0" max="10" value="3.38" style="width:80px" inputmode="decimal">
+                <span style="font-size:.85rem;color:var(--muted)">% (padrão: 3,38%)</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- ── Seção 4: Personalização (ícone + cor) ─────────────────── -->
-      <div class="acc-modal-section">
-        <div class="acc-modal-section-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Personalização</span>
-          <button type="button" onclick="accountAiSuggestIcon()" title="Sugerir ícone com IA"
-            style="display:flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:all .15s"
-            onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
-            onmouseout="this.style.background='var(--accent-lt)';this.style.color='var(--accent)'">
-            🤖 Sugerir com IA
-          </button>
-        </div>
-        <!-- AI suggestions panel -->
-        <div id="accountAiSuggestPanel" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
-          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
-          <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
-            <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
+        <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('accountBalance')" onkeydown="_amtFieldKeydown('accountBalance', event)" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
+        <div class="form-group full">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>Ícone</span>
+            <button type="button" onclick="accountAiSuggestIcon()" title="Sugerir ícone com IA"
+              style="display:flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:all .15s"
+              onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+              onmouseout="this.style.background='var(--accent-lt)';this.style.color='var(--accent)'">
+              🤖 Sugerir com IA
+            </button>
+          </label>
+          <!-- AI suggestions panel -->
+          <div id="accountAiSuggestPanel" style="display:none;margin-bottom:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
+            <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
+            </div>
           </div>
-        </div>
-        <div class="icon-picker" id="accountIconPicker">
+          <div class="icon-picker" id="accountIconPicker">
             <div class="icon-picker-tabs">
               <button class="icon-tab active" onclick="showIconGroup(event,'banks-br')">🇧🇷 Bancos BR</button>
               <button class="icon-tab" onclick="showIconGroup(event,'banks-fr')">🇫🇷 Bancos FR</button>
@@ -7140,140 +7093,10 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
         </div>
       </div>
-
-      <!-- ── Dados Bancários (colapsável, opcional) ─────────────────── -->
-      <div class="form-group full" id="accountBankDetailsSection" style="margin-top:8px">
-        <details id="accountBankDetailsToggle" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;overflow:hidden">
-          <summary style="cursor:pointer;padding:11px 15px;font-size:.83rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;list-style:none;user-select:none;-webkit-appearance:none">
-            <span>🏛️</span>
-            <span id="accountBankSummaryLabel">Dados Bancários</span>
-            <span style="margin-left:auto;font-size:.72rem;font-weight:400;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:2px 9px">Opcional</span>
-          </summary>
-          <div style="padding:14px 15px;display:flex;flex-direction:column;gap:11px;border-top:1px solid var(--border)">
-
-            <!-- Instituição -->
-            <div class="form-group" style="margin:0">
-              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px" id="accountBankInstLabel">Instituição Financeira</label>
-              <input type="text" id="accountBankInstitution" placeholder="Ex: Itaú, Nubank, XP Investimentos"
-                list="accountBankInstList"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-              <datalist id="accountBankInstList"></datalist>
-            </div>
-
-            <!-- Campos BRL: Agência + Conta + Tipo + PIX -->
-            <div id="accountBankFieldsBRL" style="display:flex;flex-direction:column;gap:10px">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Agência</label>
-                  <input type="text" id="accountBankAgency" placeholder="Ex: 1234-5" inputmode="numeric"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Número da Conta</label>
-                  <input type="text" id="accountBankNumber" placeholder="Ex: 00012345-6"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Tipo de Conta</label>
-                  <select id="accountBankAccountType"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                    <option value="">— Selecionar —</option>
-                    <option value="corrente">Conta Corrente</option>
-                    <option value="poupanca">Poupança</option>
-                    <option value="salario">Conta Salário</option>
-                    <option value="pagamento">Conta de Pagamento (fintech)</option>
-                    <option value="investimento">Conta Investimento</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Chave PIX</label>
-                  <input type="text" id="accountBankPix" placeholder="CPF, e-mail, telefone ou aleatória"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-            </div>
-
-            <!-- Campos IBAN (EUR, GBP, etc) -->
-            <div id="accountBankFieldsIBAN" style="display:none;flex-direction:column;gap:10px">
-              <div class="form-group" style="margin:0">
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">IBAN</label>
-                <input type="text" id="accountBankIBAN" placeholder="Ex: GB29 NWBK 6016 1331 9268 19"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box;text-transform:uppercase"
-                  oninput="this.value=this.value.toUpperCase()">
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">BIC / SWIFT</label>
-                  <input type="text" id="accountBankSwift" placeholder="Ex: NWBKGB2L"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box;text-transform:uppercase"
-                    oninput="this.value=this.value.toUpperCase()">
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Nome do Banco</label>
-                  <input type="text" id="accountBankForeignName" placeholder="Ex: Barclays, Deutsche Bank"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-            </div>
-
-            <!-- Campos USD -->
-            <div id="accountBankFieldsUSD" style="display:none;flex-direction:column;gap:10px">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Routing Number (ABA)</label>
-                  <input type="text" id="accountBankRouting" placeholder="9 dígitos" inputmode="numeric" maxlength="9"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Account Number</label>
-                  <input type="text" id="accountBankUSANumber" placeholder="Número da conta" inputmode="numeric"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Account Type</label>
-                  <select id="accountBankUSAType"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                    <option value="">— Select —</option>
-                    <option value="checking">Checking Account</option>
-                    <option value="savings">Savings Account</option>
-                    <option value="money_market">Money Market</option>
-                    <option value="brokerage">Brokerage Account</option>
-                    <option value="ira">IRA</option>
-                    <option value="roth_ira">Roth IRA</option>
-                    <option value="401k">401(k)</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Bank Name</label>
-                  <input type="text" id="accountBankUSAName" placeholder="Ex: Chase, Bank of America"
-                    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-                </div>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">SWIFT / BIC</label>
-                <input type="text" id="accountBankUSASwift" placeholder="Ex: CHASUS33"
-                  style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:monospace;background:var(--surface);color:var(--text);box-sizing:border-box;text-transform:uppercase"
-                  oninput="this.value=this.value.toUpperCase()">
-              </div>
-            </div>
-
-            <!-- Observações comuns -->
-            <div class="form-group" style="margin:0">
-              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Observações</label>
-              <input type="text" id="accountBankNotes" placeholder="Gerente, contato, informações adicionais"
-                style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;background:var(--surface);color:var(--text);box-sizing:border-box">
-            </div>
-          </div>
-        </details>
-      </div>
-
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
   </div>
+</div>
 
 <!-- GROUP MANAGEMENT MODAL -->
 <div class="modal-overlay" id="groupModal">
@@ -9858,25 +9681,6 @@ Se você não solicitou isso, ignore este e-mail.`,
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
               onclick="closeUserMenu();setTimeout(openMyFamilyMgmt,80)">
         <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
-      </button>
-      <div style="height:1px;background:var(--border);margin:4px 0"></div>
-      <!-- Dark / Light mode toggle -->
-      <button class="user-menu-item" id="umThemeToggle" onclick="toggleAppTheme()" style="justify-content:space-between">
-        <span style="display:flex;align-items:center;gap:10px">
-          <span id="umThemeIcon">🌙</span>
-          <span id="umThemeLabel">Modo Escuro</span>
-        </span>
-        <span id="umThemeSwitch" style="
-          display:inline-flex;align-items:center;
-          width:36px;height:20px;border-radius:10px;
-          background:var(--border2);padding:2px;
-          transition:background .2s;flex-shrink:0">
-          <span id="umThemePill" style="
-            width:16px;height:16px;border-radius:50%;
-            background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);
-            transform:translateX(0);transition:transform .2s;
-            display:block"></span>
-        </span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="user-menu-item" onclick="closeUserMenu();navigate('help')">
