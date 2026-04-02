@@ -1816,3 +1816,276 @@
   height: auto;
   display: block;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   PATCH: Account Modal — redesign completo
+   Corrige: campos sumindo, botão fora do modal, tab estrutura errada
+   Melhora: design moderno, inputs consistentes, tabs pill style
+══════════════════════════════════════════════════════════════════ */
+
+/* Modal size */
+.acct-modal {
+  max-width: 520px;
+  width: 100%;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+.acct-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px 20px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.acct-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 10px;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  transition: color .15s, border-color .15s, background .15s;
+  margin-bottom: -1px;
+  border-radius: 8px 8px 0 0;
+  white-space: nowrap;
+}
+.acct-tab svg { opacity: .55; flex-shrink: 0; transition: opacity .15s; }
+.acct-tab:hover:not(.active) {
+  color: var(--text2);
+  background: var(--surface2);
+}
+.acct-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  font-weight: 700;
+}
+.acct-tab.active svg { opacity: 1; }
+
+/* Optional badge */
+.acct-tab-badge {
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.acct-tab.active .acct-tab-badge {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ── Modal body ──────────────────────────────────────────────────── */
+.acct-modal-body {
+  padding: 20px 20px 8px;
+  overflow-y: auto;
+  max-height: calc(80vh - 120px);
+}
+
+/* ── Form grid ───────────────────────────────────────────────────── */
+.acct-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.acct-field { display: flex; flex-direction: column; gap: 5px; }
+.acct-field--full { grid-column: 1 / -1; }
+
+/* ── Labels ──────────────────────────────────────────────────────── */
+.acct-label {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.acct-sublabel {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--text2);
+  display: block;
+  margin-bottom: 4px;
+}
+.acct-hint {
+  font-size: .72rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.acct-hint-sm {
+  font-size: .68rem;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────── */
+.acct-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  font-size: .875rem;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+}
+.acct-input:focus {
+  border-color: var(--accent);
+  background: var(--surface2, #f7fbf9);
+  box-shadow: 0 0 0 3px rgba(42,96,73,.09);
+}
+.acct-input::placeholder { color: var(--muted, #94a3b8); opacity: .7; }
+select.acct-input {
+  cursor: pointer;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  appearance: none;
+}
+
+/* ── Checkbox ────────────────────────────────────────────────────── */
+.acct-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: .875rem;
+  font-weight: 500;
+  color: var(--text2);
+  user-select: none;
+}
+.acct-check { display: none; }
+.acct-check-box {
+  width: 17px; height: 17px;
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.acct-check:checked ~ .acct-check-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.acct-check:checked ~ .acct-check-box::after {
+  content: '';
+  width: 9px; height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+/* ── Card config box (datas do cartão) ───────────────────────────── */
+.acct-card-config {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.acct-card-config-title {
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.acct-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 420px) {
+  .acct-two-col { grid-template-columns: 1fr; }
+}
+
+/* ── AI button ───────────────────────────────────────────────────── */
+.acct-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-lt, rgba(42,96,73,.08));
+  color: var(--accent);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+.acct-ai-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ── Icon selected strip ─────────────────────────────────────────── */
+.acct-icon-selected {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.acct-color-input {
+  width: 36px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────── */
+@media (max-width: 500px) {
+  .acct-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .acct-field--full {
+    grid-column: 1;
+  }
+  .acct-modal-body {
+    padding: 14px 14px 6px;
+    max-height: calc(85vh - 110px);
+  }
+  .acct-tabs {
+    padding: 8px 12px 0;
+    gap: 2px;
+  }
+  .acct-tab {
+    font-size: .74rem;
+    padding: 7px 10px 8px;
+  }
+}
+
+/* ── Ensure tab panes respect display:block/none ─────────────────── */
+#accountModal .account-tab-pane[style*="display: none"],
+#accountModal .account-tab-pane[style*="display:none"] {
+  display: none !important;
+}
+#accountModal .account-tab-pane[style*="display: block"],
+#accountModal .account-tab-pane[style*="display:block"] {
+  display: block !important;
+}
