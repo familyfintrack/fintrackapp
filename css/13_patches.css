@@ -2602,47 +2602,37 @@ select.acct-input {
   color: inherit;
 }
 
-
-/* === 2026-04-02 light-surface recovery + tx filters hardening === */
-html:not([data-theme="dark"]) body,
-html:not([data-theme="dark"]) .main,
-html:not([data-theme="dark"]) #mainApp,
-html:not([data-theme="dark"]) .content,
-html:not([data-theme="dark"]) .main-content,
-html:not([data-theme="dark"]) .content-area {
-  background: var(--bg) !important;
+/* ── Hide legacy duplicate privacy pages to avoid layout collisions ───────── */
+.legacy-page-hidden,
+[id^="page-privacy-legacy-"] {
+  display: none !important;
 }
 
-html:not([data-theme="dark"]) .page {
-  background: transparent;
+/* ── User menu: force dark-mode row typography parity ────────────────────── */
+#userMenuDropdown .user-menu-item,
+#userMenuDropdown .user-menu-item span,
+#userMenuDropdown #umThemeToggle,
+#userMenuDropdown #umThemeToggle span,
+#userMenuDropdown #umThemeLabel,
+#userMenuDropdown #umThemeIcon {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  text-transform: none !important;
 }
 
-#page-transactions #tx-filterbar,
-#page-transactions #tx-filters-panel {
-  background: var(--surface) !important;
+/* ── Privacy page: keep content aligned under page header ────────────────── */
+#page-privacy {
+  position: relative;
 }
-
-#page-transactions .tx-chip-select {
-  background-color: var(--surface) !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238c8278' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 12px center !important;
-  background-size: 10px 10px !important;
-  padding-right: 34px !important;
-  color: var(--text2) !important;
-}
-
-#page-transactions .tx-chip-select.is-active {
-  background-color: var(--accent-lt) !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%232a6049' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-}
-
-#page-transactions #txMonth,
-#page-transactions #txAccount,
-#page-transactions #txCategoryFilter,
-#page-transactions #txType,
-#page-transactions #txStatusFilter,
-#page-transactions #txMemberPicker {
-  min-width: 0;
+#page-privacy .priv-hero,
+#page-privacy .prv-hero,
+#page-privacy .priv-section,
+#page-privacy .prv-card,
+#page-privacy .priv-toc {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
