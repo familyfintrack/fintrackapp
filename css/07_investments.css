@@ -1200,11 +1200,17 @@
 
 /* ── Page header ── */
 
-/* ── Botão discreto de consolidar saldo no card favorito ───────── */
-.dash-fav-card__consolidate-btn {
+/* ── Ações discretas nos cards favoritos de contas ───────────────── */
+.dash-fav-card__actions {
   position: absolute;
-  bottom: 8px;
   right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 3;
+}
+.dash-fav-card__action-btn {
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -1217,21 +1223,24 @@
   justify-content: center;
   opacity: 0;
   transition: opacity .18s, background .15s, color .15s, transform .12s;
-  z-index: 3;
   line-height: 0;
   padding: 0;
 }
-.dash-fav-card:hover .dash-fav-card__consolidate-btn {
+.dash-fav-card:hover .dash-fav-card__action-btn,
+.dash-fav-card:focus-within .dash-fav-card__action-btn {
   opacity: 1;
 }
-.dash-fav-card__consolidate-btn:hover {
+.dash-fav-card__action-btn:hover {
   background: rgba(255,255,255,.25);
   color: #fff;
   border-color: rgba(255,255,255,.50);
   transform: scale(1.15);
 }
-.dash-fav-card__consolidate-btn:active {
+.dash-fav-card__action-btn:active {
   transform: scale(.92);
+}
+@media (hover:none) {
+  .dash-fav-card__action-btn { opacity: 1; }
 }
 
 /* ── Badge de moeda estrangeira nos itens do painel próximos 10 dias ── */
