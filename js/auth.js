@@ -1237,6 +1237,14 @@ function toggleUserMenu(e) {
   dd.style.top  = top  + 'px';
   dd.style.left = left + 'px';
 
+  // FIX: Sync dark mode toggle state whenever menu opens (handles race with app.js patch)
+  requestAnimationFrame(function() {
+    try {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      if (typeof _syncAppThemeToggleUI === 'function') _syncAppThemeToggleUI(currentTheme);
+    } catch(_) {}
+  });
+
   // Close on outside click
   setTimeout(() => document.addEventListener('click', _closeUserMenuOutside), 10);
 }

@@ -909,8 +909,11 @@ function navigate(page){
   // Guard: settings/audit/telemetry são admin-only
   // Guard: settings/telemetry são admin-only; audit é acessível a todos
   if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
-    toast(t('error.admin_only'),'warning');
-    return;
+    // FIX: if currentUser not loaded yet, don't block — let it through and page will show error
+    if (currentUser !== null) {
+      toast(t('error.admin_only'),'warning');
+      return;
+    }
   }
 
   // Track history — skip duplicate consecutive
@@ -1364,20 +1367,44 @@ function _syncAppThemeToggleUI(theme) {
 }
 window._syncAppThemeToggleUI = _syncAppThemeToggleUI;
 
-// Sincroniza UI do toggle quando o menu abre: patch feito após DOMContentLoaded
-// para garantir que auth.js (que define toggleUserMenu) já carregou
-document.addEventListener('DOMContentLoaded', function() {
-  const _orig = window.toggleUserMenu;
-  if (typeof _orig === 'function') {
-    window.toggleUserMenu = function(e) {
-      _orig.call(this, e);
-      requestAnimationFrame(function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        if (typeof _syncAppThemeToggleUI === 'function') _syncAppThemeToggleUI(currentTheme);
-      });
-    };
+// FIX: Replace fragile DOMContentLoaded patch with a robust wrapper that handles
+// script load order race conditions. We use a late-binding approach via window property
+// interception and a fallback polling mechanism.
+(function _installThemeSyncPatch() {
+  function _applyPatch() {
+    const _orig = window.toggleUserMenu;
+    if (typeof _orig === 'function' && !_orig.__themeSynced) {
+      window.toggleUserMenu = function(e) {
+        _orig.call(this, e);
+        requestAnimationFrame(function() {
+          const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+          if (typeof _syncAppThemeToggleUI === 'function') _syncAppThemeToggleUI(currentTheme);
+        });
+      };
+      window.toggleUserMenu.__themeSynced = true;
+    }
   }
-}, { once: true });
+
+  // Try immediately (if auth.js already loaded)
+  _applyPatch();
+
+  // Try again on DOMContentLoaded (covers normal load order)
+  document.addEventListener('DOMContentLoaded', function() {
+    _applyPatch();
+    const t = localStorage.getItem('app_theme') || 'light';
+    if (typeof _syncAppThemeToggleUI === 'function') _syncAppThemeToggleUI(t);
+  }, { once: true });
+
+  // Fallback: poll until toggleUserMenu is available (handles deferred script loading)
+  let _patchAttempts = 0;
+  const _patchInterval = setInterval(function() {
+    _applyPatch();
+    if (typeof window.toggleUserMenu === 'function' && window.toggleUserMenu.__themeSynced) {
+      clearInterval(_patchInterval);
+    }
+    if (++_patchAttempts > 30) clearInterval(_patchInterval);
+  }, 100);
+})();
 
 // Sync theme toggle UI on page load (anti-flash applied data-theme from localStorage)
 document.addEventListener('DOMContentLoaded', function() {

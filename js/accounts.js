@@ -363,7 +363,10 @@ async function openAccountModal(id=''){
   if (typeof switchAccountTab === 'function') switchAccountTab('accountTabPrincipal');
   const gSel=document.getElementById('accountGroupId');
   if(gSel){
-    if(!state.groups||!state.groups.length){try{await loadGroups();}catch(_e){}}
+    // FIX: catch error but DO NOT let it prevent openModal from being called
+    if(!state.groups||!state.groups.length){
+      try{await loadGroups();}catch(_e){ console.warn('[accounts] loadGroups failed:', _e?.message); state.groups = state.groups || []; }
+    }
     gSel.innerHTML='<option value="">— Sem grupo —</option>'+(state.groups||[]).map(g=>`<option value="${g.id}">${g.emoji||'🗂️'} ${esc(g.name)}</option>`).join('');
     gSel.value=form.group_id||'';
   }

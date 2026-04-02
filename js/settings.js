@@ -1717,8 +1717,22 @@ const _telDash = {
 
 // ── Entry point chamado pelo navigate() ──────────────────────────────────────
 async function loadTelemetryDashboard() {
-  if (!currentUser?.can_admin) return;
-  if (typeof sb === 'undefined' || !sb) return;
+  // FIX: show error instead of silently returning when user is not admin/not loaded
+  if (!currentUser) {
+    const kpiEl = document.getElementById('telKpis');
+    if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon">🔐</div><div class="tel-empty-text">Sessão não iniciada. Faça login novamente.</div></div>';
+    return;
+  }
+  if (!currentUser.can_admin) {
+    const kpiEl = document.getElementById('telKpis');
+    if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon">🚫</div><div class="tel-empty-text">Acesso restrito a administradores.</div></div>';
+    return;
+  }
+  if (typeof sb === 'undefined' || !sb) {
+    const kpiEl = document.getElementById('telKpis');
+    if (kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1" class="tel-empty"><div class="tel-empty-icon">⚠️</div><div class="tel-empty-text">Sem conexão com o banco de dados.</div></div>';
+    return;
+  }
 
   const days   = parseInt(document.getElementById('telPeriod')?.value || '30', 10);
   const cutoff = new Date();
