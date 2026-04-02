@@ -2752,3 +2752,9 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+
+// Expose tx modal functions for inline handlers and delegated page actions
+window.openTransactionModal = openTransactionModal;
+window.editTransaction = editTransaction;
+window.openTransactionEdit = editTransaction;
