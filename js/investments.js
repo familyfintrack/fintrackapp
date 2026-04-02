@@ -832,62 +832,6 @@ function openInvTransactionModal(accountId = null, positionId = null) {
             ⚠️ Saldo em caixa insuficiente para esta compra.
           </div>
         </div>
-        <!-- ── Taxas (opcional) ───────────────────────────────────────── -->
-        <div id="invTxFeesSection" class="form-group full" style="display:none">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
-            <div style="font-size:.74rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">
-              📋 Taxas — opcional
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div>
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">
-                  Taxa de Administração (% a.a.)
-                </label>
-                <input type="text" id="invTxAdminFee" class="form-input" inputmode="decimal"
-                  placeholder="Ex: 1,50" style="font-size:.82rem"
-                  oninput="_invCalcTotal()">
-                <div style="font-size:.67rem;color:var(--muted);margin-top:2px">Cobrada anualmente sobre o patrimônio</div>
-              </div>
-              <div>
-                <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">
-                  Taxa de Performance (% sobre ganho)
-                </label>
-                <input type="text" id="invTxPerfFee" class="form-input" inputmode="decimal"
-                  placeholder="Ex: 20,00" style="font-size:.82rem"
-                  oninput="_invCalcTotal()">
-                <div style="font-size:.67rem;color:var(--muted);margin-top:2px">
-                  <span id="invTxPerfFeeHint">% sobre rentabilidade acima do benchmark</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">
-                Benchmark da Performance
-              </label>
-              <select id="invTxPerfBenchmark" style="font-size:.82rem;width:100%" class="form-input">
-                <option value="cdi">CDI</option>
-                <option value="ipca">IPCA</option>
-                <option value="ibovespa">Ibovespa</option>
-                <option value="ihfa">IHFA</option>
-                <option value="0">Livre (qualquer ganho)</option>
-              </select>
-            </div>
-            <div id="invTxFeeImpact" style="display:none;font-size:.73rem;color:var(--muted);padding:6px 9px;background:rgba(0,0,0,.04);border-radius:6px;line-height:1.55"></div>
-          </div>
-        </div>
-
-        <!-- Toggle para exibir taxas -->
-        <div class="form-group full" style="margin-bottom:0">
-          <button type="button" id="invTxFeeToggle"
-            onclick="_invToggleFees()"
-            style="font-family:var(--font-sans);font-size:.74rem;font-weight:600;color:var(--muted);background:none;border:1px dashed var(--border);border-radius:8px;padding:6px 14px;cursor:pointer;width:100%;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px"
-            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span id="invTxFeeToggleLabel">Informar taxas (opcional)</span>
-          </button>
-        </div>
-
         <div class="form-group full">
           <label>Observação</label>
           <input type="text" id="invTxNotes" placeholder="Corretora, estratégia…">
@@ -905,32 +849,6 @@ function openInvTransactionModal(accountId = null, positionId = null) {
   </div>`;
 
   document.body.appendChild(modal);
-  // Bind money formatting to price field immediately on open
-  requestAnimationFrame(() => {
-    const priceEl = document.getElementById('invTxPrice');
-    if (priceEl && typeof bindMoneyInput === 'function') {
-      priceEl._moneyBound = false;
-      bindMoneyInput(priceEl);
-      // Re-attach calc after bindMoneyInput replaces oninput
-      priceEl.addEventListener('input', _invCalcTotal);
-    }
-    const tdPriceEl = document.getElementById('invTxTDPurchasePrice');
-    if (tdPriceEl && typeof bindMoneyInput === 'function') {
-      tdPriceEl._moneyBound = false;
-      bindMoneyInput(tdPriceEl);
-      tdPriceEl.addEventListener('input', _invCalcTDTotal);
-    }
-    const tdRateEl = document.getElementById('invTxTDRate');
-    if (tdRateEl && typeof bindMoneyInput === 'function') {
-      tdRateEl._moneyBound = false;
-      bindMoneyInput(tdRateEl);
-    }
-    const fundRateEl = document.getElementById('invTxFundRate');
-    if (fundRateEl && typeof bindMoneyInput === 'function') {
-      fundRateEl._moneyBound = false;
-      bindMoneyInput(fundRateEl);
-    }
-  });
   // chart rendered in detail modal only
   if (accountId) document.getElementById('invTxAccount').value = accountId;
   if (pos) {
@@ -976,30 +894,10 @@ function _invOnAssetTypeChange() {
     if (priceLabel) priceLabel.textContent = 'Cota Inicial (R$)';
     if (priceGroup) priceGroup.style.display = 'none'; // fundo usa 1 unidade = valor total
     if (qtyGroup) qtyGroup.style.display = ''; // mostra campo de valor
-    // Bind money formatting to qty field when it's used as BRL value
-    requestAnimationFrame(() => {
-      const qtyEl = document.getElementById('invTxQty');
-      if (qtyEl && typeof bindMoneyInput === 'function') {
-        qtyEl._moneyBound = false;
-        bindMoneyInput(qtyEl);
-        qtyEl.placeholder = '0,00';
-        // Re-attach calc listener after binding
-        qtyEl.addEventListener('input', _invCalcTotal);
-      }
-    });
     _invOnFundIndexChange();
     _invFetchCDIForForm();
   } else {
     if (ticker) { ticker.placeholder = 'Ex: PETR4, BTC, AAPL'; }
-    // Rebind money format to price field for normal assets
-    requestAnimationFrame(() => {
-      const priceEl2 = document.getElementById('invTxPrice');
-      if (priceEl2 && typeof bindMoneyInput === 'function') {
-        priceEl2._moneyBound = false;
-        bindMoneyInput(priceEl2);
-        priceEl2.addEventListener('input', _invCalcTotal);
-      }
-    });
     if (qtyLabel) qtyLabel.textContent = 'Quantidade *';
     if (priceLabel) priceLabel.textContent = 'Preço Unitário (BRL) *';
     if (priceGroup) priceGroup.style.display = '';
@@ -1089,8 +987,8 @@ async function _invFetchTDPriceForForm() {
 }
 
 function _invCalcTDTotal() {
-  const qty   = _invParseAmount(document.getElementById('invTxQty')?.value);
-  const price = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+  const qty   = parseFloat(document.getElementById('invTxQty')?.value?.replace(',', '.')) || 0;
+  const price = parseFloat(document.getElementById('invTxTDPurchasePrice')?.value?.replace(',', '.')) || 0;
   const total = qty * price;
   const el = document.getElementById('invTxTotal');
   if (el) el.textContent = fmt(total);
@@ -1103,42 +1001,11 @@ function _invOnAccountChange() {
   _invCalcTotal();
 }
 
-// ── Parse value from either Brazilian format (1.234,56) or plain (1234.56) ──
-function _invParseAmount(val) {
-  if (!val && val !== 0) return 0;
-  let s = String(val).trim();
-  // Remove currency symbol and spaces
-  s = s.replace(/R\$\s*/g, '').trim();
-  // Brazilian: has period as thousands sep + comma as decimal → "1.234,56"
-  if (/\d{1,3}(\.\d{3})+,\d/.test(s)) {
-    s = s.replace(/\./g, '').replace(',', '.');
-  } else {
-    // Just swap comma for period (simple case: "1234,56" or "1234.56")
-    s = s.replace(/\./g, '').replace(',', '.');
-  }
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
-}
-
 function _invCalcTotal() {
-  const assetType = document.getElementById('invTxAssetType')?.value;
-  let total = 0;
-
-  if (assetType === 'fundo_investimento') {
-    // For funds, qty IS the total value applied (price = 1)
-    const qty = _invParseAmount(document.getElementById('invTxQty')?.value);
-    total = qty;
-  } else if (assetType === 'tesouro_direto') {
-    const qty   = _invParseAmount(document.getElementById('invTxQty')?.value);
-    const price = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
-    total = qty * price;
-  } else {
-    const qty   = _invParseAmount(document.getElementById('invTxQty')?.value);
-    const price = _invParseAmount(document.getElementById('invTxPrice')?.value);
-    total = qty * price;
-  }
-
-  const el = document.getElementById('invTxTotal');
+  const qty   = parseFloat(document.getElementById('invTxQty')?.value?.replace(',','.')) || 0;
+  const price = parseFloat(document.getElementById('invTxPrice')?.value?.replace(',','.')) || 0;
+  const total = qty * price;
+  const el    = document.getElementById('invTxTotal');
   if (el) el.textContent = fmt(total);
 
   // Cash warning for buys
@@ -1146,8 +1013,8 @@ function _invCalcTotal() {
   const accId = document.getElementById('invTxAccount')?.value;
   const warn  = document.getElementById('invTxCashWarning');
   if (warn && type === 'buy' && accId) {
-    const acc  = _invAccounts().find(a => a.id === accId);
-    const cash = acc ? (+(acc.balance) || 0) : 0;
+    const acc   = _invAccounts().find(a => a.id === accId);
+    const cash  = acc ? (+(acc.balance) || 0) : 0;
     warn.style.display = (total > 0 && cash < total) ? '' : 'none';
   }
 }
@@ -1174,7 +1041,7 @@ async function saveInvTransaction() {
     const sub      = document.getElementById('invTxTDSubtype')?.value || 'LFT';
     const maturity = document.getElementById('invTxTDMaturity')?.value || '';
     const tdRate   = parseFloat((document.getElementById('invTxTDRate')?.value || '').replace(',', '.')) || 0;
-    const tdPrice  = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+    const tdPrice  = parseFloat((document.getElementById('invTxTDPurchasePrice')?.value || '').replace(',', '.')) || 0;
     if (!maturity) { _invShowErr('Informe o vencimento do título'); return; }
     if (!tdPrice)  { _invShowErr('Informe o preço por título'); return; }
     const t = TD_SUBTYPES.find(x => x.value === sub);
@@ -1206,35 +1073,22 @@ async function saveInvTransaction() {
   // ── Lê quantidade e preço por tipo de ativo ────────────────────────────────
   let qtyRaw, priceRaw;
   if (assetT === 'fundo_investimento') {
-    qtyRaw   = _invParseAmount(document.getElementById('invTxQty')?.value);
+    qtyRaw   = parseFloat((document.getElementById('invTxQty')?.value || '').replace(',', '.')) || 0;
     priceRaw = 1;
     if (!qtyRaw || qtyRaw <= 0) { _invShowErr('Informe o valor aplicado'); return; }
   } else if (assetT === 'tesouro_direto') {
-    qtyRaw   = _invParseAmount(document.getElementById('invTxQty')?.value);
-    priceRaw = _invParseAmount(document.getElementById('invTxTDPurchasePrice')?.value);
+    qtyRaw   = parseFloat((document.getElementById('invTxQty')?.value || '').replace(',', '.')) || 0;
+    priceRaw = parseFloat((document.getElementById('invTxTDPurchasePrice')?.value || '').replace(',', '.')) || 0;
     if (!qtyRaw || qtyRaw <= 0)    { _invShowErr('Informe a quantidade de títulos (mín: 0,01)'); return; }
     if (!priceRaw || priceRaw <= 0){ _invShowErr('Informe o preço por título'); return; }
   } else {
-    qtyRaw   = _invParseAmount(document.getElementById('invTxQty')?.value);
-    priceRaw = _invParseAmount(document.getElementById('invTxPrice')?.value);
+    qtyRaw   = parseFloat((document.getElementById('invTxQty')?.value || '').replace(',', '.')) || 0;
+    priceRaw = parseFloat((document.getElementById('invTxPrice')?.value || '').replace(',', '.')) || 0;
     if (!qtyRaw || qtyRaw <= 0)    { _invShowErr('Informe a quantidade'); return; }
     if (!priceRaw || priceRaw <= 0){ _invShowErr('Informe o preço unitário'); return; }
   }
 
   const total    = qtyRaw * priceRaw;
-
-  // ── Persist fees into metaJson ──────────────────────────────────────────
-  const _adminFeeVal = _invParseAmount(document.getElementById('invTxAdminFee')?.value);
-  const _perfFeeVal  = _invParseAmount(document.getElementById('invTxPerfFee')?.value);
-  const _perfBm      = document.getElementById('invTxPerfBenchmark')?.value || 'cdi';
-  const _feesSection = document.getElementById('invTxFeesSection');
-  const _feesVisible = _feesSection?.style.display !== 'none';
-  if (_feesVisible) {
-    if (!metaJson) metaJson = {};
-    if (_adminFeeVal > 0) metaJson.admin_fee       = _adminFeeVal;
-    if (_perfFeeVal > 0)  { metaJson.perf_fee       = _perfFeeVal; metaJson.perf_benchmark = _perfBm; }
-  }
-
   const notesStr = Object.keys(metaJson).length ? _invMetaStr(metaJson) : (notes || null);
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
@@ -1817,32 +1671,6 @@ window.applyInvYield = applyInvYield;
 
 // ── Position detail (history) ───────────────────────────────────────────────
 
-/** Renders fee info panel for position detail modal */
-function _invRenderFeePanel(pos) {
-  const feeInfo = typeof _invNetReturn === 'function' ? _invNetReturn(pos) : null;
-  if (!feeInfo || !feeInfo.hasFees) return '';
-  const netColor = feeInfo.netReturnPct >= 0 ? 'var(--accent)' : 'var(--red,#dc2626)';
-  const bmMap = { cdi:'CDI', ipca:'IPCA', ibovespa:'Ibovespa', ihfa:'IHFA', '0':'livre' };
-  const bmLabel = bmMap[_invGetMeta(pos).perf_benchmark] || 'CDI';
-  const adminHtml = feeInfo.adminFee > 0
-    ? '<div><div style="color:var(--muted);font-size:.66rem">Taxa Adm.</div>'
-    + '<strong style="color:var(--text2)">' + feeInfo.adminFee.toFixed(2).replace('.',',') + '% a.a.</strong></div>'
-    : '';
-  const perfHtml = feeInfo.perfFee > 0
-    ? '<div><div style="color:var(--muted);font-size:.66rem">Taxa Perf.</div>'
-    + '<strong style="color:var(--text2)">' + feeInfo.perfFee.toFixed(2).replace('.',',') + '% / ' + bmLabel + '</strong></div>'
-    : '';
-  const sign = feeInfo.netReturnPct >= 0 ? '+' : '';
-  return '<div style="background:linear-gradient(135deg,rgba(42,96,73,.07),rgba(42,96,73,.04));'
-    + 'border:1px solid rgba(42,96,73,.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:.78rem">'
-    + '<div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">📋 Taxas e Performance Líquida</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
-    + adminHtml + perfHtml
-    + '<div><div style="color:var(--muted);font-size:.66rem">Retorno Líquido Est.</div>'
-    + '<strong style="color:' + netColor + '">' + sign + feeInfo.netReturnPct.toFixed(2) + '%</strong></div>'
-    + '</div></div>';
-}
-
 async function openInvPositionDetail(positionId) {
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) return;
@@ -1895,11 +1723,10 @@ async function openInvPositionDetail(positionId) {
           <div class="inv-kpi-value">${fmt(+(pos.avg_cost))}</div></div>
         <div class="inv-kpi-card"><div class="inv-kpi-label">Cotação Atual</div>
           <div class="inv-kpi-value">${_invBrlPrice(pos) ? fmt(_invBrlPrice(pos)) : '—'}</div></div>
-        <div class="inv-kpi-card"><div class="inv-kpi-label">Resultado Bruto</div>
+        <div class="inv-kpi-card"><div class="inv-kpi-label">Resultado</div>
           <div class="inv-kpi-value ${pnl>=0?'amount-pos':'amount-neg'}">
             ${pnl>=0?'+':''}${fmt(pnl)} (${ret.toFixed(2)}%)</div></div>
       </div>
-      ${_invRenderFeePanel(pos)}
 
       <!-- ── Painel de rendimento automático (TD e Fundos) ─────────────── -->
       ${_invIsAutoYield(pos) ? `
@@ -2027,6 +1854,10 @@ async function applyInvestmentsFeature() {
   if (enabled) {
     await loadInvestments();
     _invAugmentAccountBalances();
+    // Refresh dashboard investment card if on dashboard
+    if (typeof _dashRenderInvestments === 'function') {
+      setTimeout(() => _dashRenderInvestments().catch(() => {}), 300);
+    }
   }
 }
 
@@ -2336,114 +2167,3 @@ async function deleteInvPosition(positionId) {
   }
 }
 window.deleteInvPosition = deleteInvPosition;
-
-// ════════════════════════════════════════════════════════════════════════════
-// TAXAS DE INVESTIMENTO — toggle, persistência e análise de performance
-// ════════════════════════════════════════════════════════════════════════════
-
-/** Toggle do painel de taxas */
-function _invToggleFees() {
-  const section = document.getElementById('invTxFeesSection');
-  const lbl     = document.getElementById('invTxFeeToggleLabel');
-  const btn     = document.getElementById('invTxFeeToggle');
-  if (!section) return;
-  const visible = section.style.display !== 'none';
-  section.style.display = visible ? 'none' : '';
-  if (lbl) lbl.textContent = visible ? 'Informar taxas (opcional)' : 'Ocultar taxas';
-  if (btn) {
-    btn.querySelector('svg').style.transform = visible ? '' : 'rotate(45deg)';
-  }
-  if (!visible) _invCalcFeeImpact();
-}
-window._invToggleFees = _invToggleFees;
-
-/** Mostra impacto estimado das taxas no campo de dica */
-function _invCalcFeeImpact() {
-  const impactEl    = document.getElementById('invTxFeeImpact');
-  const adminFeeVal = _invParseAmount(document.getElementById('invTxAdminFee')?.value);
-  const perfFeeVal  = _invParseAmount(document.getElementById('invTxPerfFee')?.value);
-  const totalApplied = _invParseAmount(
-    (document.getElementById('invTxAssetType')?.value === 'fundo_investimento')
-      ? document.getElementById('invTxQty')?.value
-      : document.getElementById('invTxPrice')?.value
-  ) * (_invParseAmount(document.getElementById('invTxQty')?.value) || 1);
-
-  if (!impactEl) return;
-  const lines = [];
-
-  if (adminFeeVal > 0 && totalApplied > 0) {
-    const annualCost = totalApplied * (adminFeeVal / 100);
-    const monthlyCost = annualCost / 12;
-    lines.push(`💼 Taxa adm. de ${adminFeeVal.toFixed(2).replace('.',',')}% a.a. → custo estimado: <strong>${fmt(annualCost)}/ano</strong> (${fmt(monthlyCost)}/mês sobre o valor aplicado)`);
-  }
-  if (perfFeeVal > 0) {
-    const benchmark = document.getElementById('invTxPerfBenchmark')?.value || 'cdi';
-    const bmLabel = { cdi:'CDI', ipca:'IPCA', ibovespa:'Ibovespa', ihfa:'IHFA', '0':'qualquer ganho' }[benchmark] || benchmark;
-    lines.push(`🎯 Taxa perf. de ${perfFeeVal.toFixed(2).replace('.',',')}% sobre ganho acima do ${bmLabel}`);
-  }
-
-  if (lines.length) {
-    impactEl.innerHTML = lines.join('<br>');
-    impactEl.style.display = '';
-  } else {
-    impactEl.style.display = 'none';
-  }
-}
-window._invCalcFeeImpact = _invCalcFeeImpact;
-
-/** Mostra campos de taxas se posição já tem taxas salvas */
-function _invLoadFeesIntoForm(pos) {
-  if (!pos) return;
-  const meta = _invGetMeta(pos);
-  const adminFee = meta.admin_fee;
-  const perfFee  = meta.perf_fee;
-  const perfBm   = meta.perf_benchmark || 'cdi';
-
-  if (adminFee || perfFee) {
-    // Open the fees panel automatically
-    const section = document.getElementById('invTxFeesSection');
-    const lbl     = document.getElementById('invTxFeeToggleLabel');
-    if (section) section.style.display = '';
-    if (lbl) lbl.textContent = 'Ocultar taxas';
-
-    const adminEl = document.getElementById('invTxAdminFee');
-    const perfEl  = document.getElementById('invTxPerfFee');
-    const bmEl    = document.getElementById('invTxPerfBenchmark');
-    if (adminEl && adminFee) adminEl.value = String(adminFee).replace('.', ',');
-    if (perfEl  && perfFee)  perfEl.value  = String(perfFee).replace('.', ',');
-    if (bmEl    && perfBm)   bmEl.value    = perfBm;
-    _invCalcFeeImpact();
-  }
-}
-
-/** Calcula rentabilidade líquida descontando taxas */
-function _invNetReturn(pos) {
-  const meta       = _invGetMeta(pos);
-  const adminFee   = +(meta.admin_fee) || 0;
-  const perfFee    = +(meta.perf_fee)  || 0;
-  const mv         = _invMarketValue(pos);
-  const cost       = _invCost(pos);
-  const grossReturn = cost ? (mv - cost) / cost * 100 : 0;
-
-  // Annualized cost of admin fee (simple approximation)
-  const adminCostPct = adminFee; // already % a.a.
-
-  // Performance fee impact (rough: applied to gross return above 0)
-  const grossGain   = Math.max(0, mv - cost);
-  const perfFeeCost = perfFee > 0 ? grossGain * (perfFee / 100) : 0;
-  const perfFeePct  = cost ? (perfFeeCost / cost * 100) : 0;
-
-  const netReturnPct = grossReturn - adminCostPct - perfFeePct;
-
-  return {
-    grossReturn,
-    adminCostPct,
-    perfFeePct,
-    netReturnPct,
-    adminFee,
-    perfFee,
-    hasFees: adminFee > 0 || perfFee > 0,
-  };
-}
-window._invNetReturn = _invNetReturn;
-
