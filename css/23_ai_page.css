@@ -352,3 +352,55 @@ select.ai-filter-input {
 #page-ai_insights .ai2-tabbar {
   padding: 0;  /* overridden by .ai-page-header .ai2-tabbar */
 }
+
+
+/* ── AI Insights polish pass ─────────────────────────────────────────── */
+#page-ai_insights {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 3%, var(--bg)) 0%, var(--bg) 160px);
+}
+.ai-page-header {
+  box-shadow: 0 8px 28px rgba(15, 81, 50, .10);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.ai-page-hero-icon {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 24px rgba(0,0,0,.12);
+}
+.ai-filter-card,
+.ai2-result-wrap.ai-snapshots-wrap,
+#aiAnalysisResult {
+  border-radius: 18px;
+  overflow: clip;
+}
+.ai-filter-card {
+  margin: 14px 14px 0;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(18, 54, 36, .06);
+}
+#aiAnalysisResult,
+.ai2-result-wrap.ai-snapshots-wrap {
+  margin: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(18, 54, 36, .05);
+}
+.ai-empty-state {
+  min-height: 280px;
+}
+.ai2-tab {
+  border-radius: 12px 12px 0 0;
+}
+.ai2-btn-icon,
+.ai-analyze-btn {
+  box-shadow: 0 6px 16px rgba(15, 81, 50, .08);
+}
+[data-theme="dark"] #page-ai_insights {
+  background: linear-gradient(180deg, #09120d 0%, var(--bg) 180px);
+}
+[data-theme="dark"] .ai-page-header {
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+}
+[data-theme="dark"] .ai-filter-card,
+[data-theme="dark"] #aiAnalysisResult,
+[data-theme="dark"] .ai2-result-wrap.ai-snapshots-wrap {
+  box-shadow: 0 14px 30px rgba(0,0,0,.22);
+}

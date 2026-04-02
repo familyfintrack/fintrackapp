@@ -2584,40 +2584,20 @@ select.acct-input {
 .ai2-context-field--title { /* modifier of .ai2-context-field — see 16_ai.css */ }
 
 
-/* === Transaction modal: reliable scroll + category picker reachability === */
-#txModal .modal,
-#scheduledModal .modal {
-  display: flex;
-  flex-direction: column;
+/* ── User menu: normalize dark-mode row typography ───────────────────── */
+.user-menu-item #umThemeLabel,
+.user-menu-item #umThemeIcon {
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
 }
-#txModal .modal-body,
-#scheduledModal .modal-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 110px;
+#umThemeToggle > span:first-child {
+  min-width: 0;
 }
-#txModal .cat-picker-wrap,
-#scheduledModal .cat-picker-wrap {
-  position: relative;
-  isolation: isolate;
-}
-#txModal .cat-picker-dropdown,
-#scheduledModal .cat-picker-dropdown {
-  max-height: min(320px, 46vh);
-}
-#txModal .cat-picker-dropdown.open-up,
-#scheduledModal .cat-picker-dropdown.open-up {
-  top: auto;
-  bottom: calc(100% - 1px);
-  border-top: 1.5px solid var(--accent);
-  border-bottom: none;
-  border-radius: 12px 12px 0 0;
-  box-shadow: 0 -8px 32px rgba(0,0,0,.14), 0 -2px 8px rgba(0,0,0,.08);
-}
-#txModal .cat-option,
-#scheduledModal .cat-option {
-  min-height: 42px;
+#umThemeToggle #umThemeLabel {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
 }
