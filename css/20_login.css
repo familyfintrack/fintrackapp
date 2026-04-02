@@ -611,11 +611,7 @@
 .ls-bg-mark,
 .ls-tagline-wrap,
 .ls-tagline,
-.ls-theme-split,
-.ls-theme-centered,
-.ls-theme-asymmetric,
-.ls-theme-immersive,
-.ls-theme-minimal { display: none !important; }
+
 
 /* Transitions de saída (usadas pelo auth.js no login bem-sucedido) */
 .ls-shell.exiting {
