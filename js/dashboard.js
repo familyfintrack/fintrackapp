@@ -1937,14 +1937,19 @@ async function _renderDashForecastInner() {
           },
         },
         tooltip: {
-          backgroundColor: 'var(--surface)',
-          titleColor: 'var(--text)',
-          bodyColor: 'var(--text2)',
-          borderColor: 'var(--border)',
+          backgroundColor: '#ffffff',
+          titleColor: '#0f172a',
+          bodyColor: '#334155',
+          borderColor: 'rgba(15,23,42,.10)',
           borderWidth: 1,
-          padding: 10,
-          cornerRadius: 10,
-          boxPadding: 4,
+          titleFont: { size: 12, weight: '700' },
+          bodyFont: { size: 11, weight: '600' },
+          displayColors: true,
+          usePointStyle: true,
+          padding: 12,
+          cornerRadius: 12,
+          boxPadding: 5,
+          caretPadding: 8,
           callbacks: {
             title(items) {
               const label = items?.[0]?.label || '';

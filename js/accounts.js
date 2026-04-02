@@ -326,6 +326,17 @@ function accountTypeLabel(t){
   return{corrente:'Conta Corrente',poupanca:'Poupança',cartao_credito:'Cartão de Crédito',investimento:'Investimentos',dinheiro:'Dinheiro',outros:'Outros'}[t]||t;
 }
 
+
+function switchAccountTab(tabId, btn){
+  document.querySelectorAll('#accountModal .account-tab-pane').forEach(pane => {
+    pane.style.display = pane.id === tabId ? '' : 'none';
+  });
+  document.querySelectorAll('#accountModal .account-modal-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabId);
+  });
+  if (btn && btn.blur) btn.blur();
+}
+
 async function openAccountModal(id=''){
   const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null};
   if(id){
@@ -340,6 +351,7 @@ async function openAccountModal(id=''){
   document.getElementById('accountIcon').value=form.icon||'';
   document.getElementById('accountColor').value=form.color||'#2a6049';
   document.getElementById('accountModalTitle').textContent=id?'Editar Conta':'Nova Conta';
+  if (typeof switchAccountTab === 'function') switchAccountTab('accountTabPrincipal');
   const gSel=document.getElementById('accountGroupId');
   if(gSel){
     if(!state.groups||!state.groups.length){try{await loadGroups();}catch(_e){}}
@@ -1188,3 +1200,7 @@ function _mergeBankDetailsIntoNotes(existingNotes, bankDetails) {
 }
 window._mergeBankDetailsIntoNotes = _mergeBankDetailsIntoNotes;
 
+
+window.openAccountModal = openAccountModal;
+window.switchAccountTab = switchAccountTab;
+window.saveAccount = saveAccount;
