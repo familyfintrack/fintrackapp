@@ -9577,14 +9577,19 @@ window.openMyProfile = function(...args) {
              transition:background .15s">✕</button>
   </div>
 
-  <!-- Quick suggestions — preenchidas dinamicamente por agentRefreshQuickReplies() -->
+  <!-- Quick suggestions — preenchidas dinamicamente por _agentRefreshQuickReplies() -->
   <div id="agentQuickBar" style="padding:8px 12px;border-bottom:1px solid var(--border);
     display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2)">
-    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos do mês</button>
-    <button onclick="agentSuggest('Quais contas estão no vermelho?')" class="agent-chip">💰 Saldo</button>
-    <button onclick="agentSuggest('Crie uma despesa de R$')" class="agent-chip">➕ Despesa</button>
-    <button onclick="agentSuggest('Crie receita de R$')" class="agent-chip">💰 Receita</button>
-    <button onclick="agentSuggest('Resumo financeiro do mês')" class="agent-chip">📈 Resumo</button>
+    <button onclick="agentShowCapabilities()" class="agent-chip agent-chip--highlight"
+      style="background:linear-gradient(135deg,rgba(22,163,74,.15),rgba(15,81,50,.12));border-color:rgba(22,163,74,.35);white-space:nowrap;flex-shrink:0">
+      💡 O que posso fazer
+    </button>
+    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos</button>
+    <button onclick="agentSuggest('qual meu saldo total?')" class="agent-chip">💳 Saldo</button>
+    <button onclick="agentSuggest('criar despesa')" class="agent-chip">➕ Despesa</button>
+    <button onclick="agentSuggest('criar receita')" class="agent-chip">💰 Receita</button>
+    <button onclick="agentSuggest('resumo financeiro deste mês')" class="agent-chip">📈 Resumo</button>
+    <button onclick="agentSuggest('previsão próximos 30 dias')" class="agent-chip">🔮 Previsão</button>
     <button onclick="agentSuggest('Como adicionar uma conta?')" class="agent-chip">❓ Ajuda</button>
   </div>
 
