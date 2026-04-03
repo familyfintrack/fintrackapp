@@ -635,6 +635,9 @@ function loadSettings() {
 
 
 
+  // Canais de notificação — carregar estado ao abrir settings
+  if (typeof loadNotifChannelSettings === 'function') loadNotifChannelSettings().catch(() => {});
+
   // Apply admin nav tabs
   if (typeof _cfgApplyAdminNav === 'function') _cfgApplyAdminNav();
 
@@ -2795,3 +2798,293 @@ async function _telRenderLandingContent(el, cachedRows) {
           </div>`}
     </div>`;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   CONTROLE DE CANAIS DE NOTIFICAÇÃO — Painel Admin
+   Persiste em app_settings como flags booleanas por família
+   Chaves: notify_email_enabled, notify_whatsapp_enabled, notify_telegram_enabled
+══════════════════════════════════════════════════════════════════ */
+
+const _NOTIF_CHANNEL_KEYS = {
+  email:    'notify_email_enabled',
+  whatsapp: 'notify_whatsapp_enabled',
+  telegram: 'notify_telegram_enabled',
+};
+
+// ── Salvar flag de canal ──
+async function saveNotifChannelSetting(channel, enabled) {
+  const key = _NOTIF_CHANNEL_KEYS[channel];
+  if (!key) return;
+
+  // Atualizar UI de label imediatamente
+  _updateNotifChannelLabel(channel, enabled);
+
+  // Persistir
+  try {
+    await saveAppSetting(key, enabled);
+    try { localStorage.setItem(key, String(enabled)); } catch(_) {}
+    // Aplicar visibilidade nos formulários abertos
+    _applyNotifChannelVisibility();
+    toast(enabled ? `Canal ${channel} ativado` : `Canal ${channel} desativado`, 'success');
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+
+// ── Atualizar label do toggle ──
+function _updateNotifChannelLabel(channel, enabled) {
+  const labelMap = { email: 'notifEmailLabel', whatsapp: 'notifWhatsappLabel', telegram: 'notifTelegramLabel' };
+  const el = document.getElementById(labelMap[channel]);
+  if (el) {
+    el.textContent = enabled ? 'Ativo' : 'Inativo';
+    el.style.color = enabled ? 'var(--accent)' : 'var(--muted)';
+  }
+}
+
+// ── Carregar estados dos canais (ao abrir settings) ──
+async function loadNotifChannelSettings() {
+  const defaults = { email: true, whatsapp: true, telegram: true };
+  const result   = { ...defaults };
+
+  // Tentar do cache primeiro
+  for (const [ch, key] of Object.entries(_NOTIF_CHANNEL_KEYS)) {
+    const lsVal = localStorage.getItem(key);
+    if (lsVal !== null) result[ch] = lsVal !== 'false' && lsVal !== '0';
+  }
+
+  // Buscar do banco
+  try {
+    const keys = Object.values(_NOTIF_CHANNEL_KEYS);
+    const { data } = await sb.from('app_settings').select('key,value').in('key', keys);
+    (data || []).forEach(row => {
+      const ch = Object.entries(_NOTIF_CHANNEL_KEYS).find(([,k]) => k === row.key)?.[0];
+      if (ch) {
+        const val = row.value === true || row.value === 'true' || row.value === 1;
+        result[ch] = val;
+        try { localStorage.setItem(row.key, String(val)); } catch(_) {}
+      }
+    });
+  } catch(_) {}
+
+  // Aplicar na UI
+  for (const [ch, enabled] of Object.entries(result)) {
+    const chkMap = { email: 'notifEmailEnabled', whatsapp: 'notifWhatsappEnabled', telegram: 'notifTelegramEnabled' };
+    const chk = document.getElementById(chkMap[ch]);
+    if (chk) chk.checked = enabled;
+    _updateNotifChannelLabel(ch, enabled);
+  }
+
+  _applyNotifChannelVisibility();
+  return result;
+}
+
+// ── Ler estado atual de um canal ──
+function isNotifChannelEnabled(channel) {
+  const key = _NOTIF_CHANNEL_KEYS[channel];
+  if (!key) return true;
+  const lsVal = localStorage.getItem(key);
+  if (lsVal !== null) return lsVal !== 'false' && lsVal !== '0';
+  return true; // default: ativo
+}
+
+// ── Aplicar visibilidade dos canais em toda a UI ──
+function _applyNotifChannelVisibility() {
+  const emailOn    = isNotifChannelEnabled('email');
+  const whatsappOn = isNotifChannelEnabled('whatsapp');
+  const telegramOn = isNotifChannelEnabled('telegram');
+
+  // Seções de notificação em Programados
+  const emailSec    = document.getElementById('scNotifyEmailRow')    || document.querySelector('[data-notif-channel="email"]');
+  const whatsappSec = document.getElementById('scNotifyWhatsappRow') || document.querySelector('[data-notif-channel="whatsapp"]');
+  const telegramSec = document.getElementById('scNotifyTelegramRow') || document.querySelector('[data-notif-channel="telegram"]');
+  if (emailSec)    emailSec.style.display    = emailOn    ? '' : 'none';
+  if (whatsappSec) whatsappSec.style.display = whatsappOn ? '' : 'none';
+  if (telegramSec) telegramSec.style.display = telegramOn ? '' : 'none';
+
+  // Perfil: campos de contato
+  const waProfileRow = document.getElementById('myProfileWhatsappRow');
+  const tgProfileRow = document.getElementById('myProfileTelegramRow');
+  if (waProfileRow) waProfileRow.style.display = whatsappOn ? '' : 'none';
+  if (tgProfileRow) tgProfileRow.style.display = telegramOn ? '' : 'none';
+
+  // Canal 2FA: esconder Telegram se desativado
+  const tgChanLabel = document.getElementById('twoFaChanTgLabel');
+  if (tgChanLabel) tgChanLabel.style.display = telegramOn ? '' : 'none';
+}
+
+// Carregar ao navegar para settings
+const _origCfgShowPane = window.cfgShowPane;
+if (typeof window.cfgShowPane === 'function') {
+  const _origFn = window.cfgShowPane;
+  window.cfgShowPane = function(paneId) {
+    _origFn(paneId);
+    if (paneId === 'pane-geral' || paneId === 'pane-auto') {
+      loadNotifChannelSettings().catch(() => {});
+    }
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   2FA — Gerenciamento no perfil do usuário
+══════════════════════════════════════════════════════════════════ */
+
+// ── Mostrar/esconder painel de opções 2FA ──
+function _toggle2FAPanel(enabled) {
+  const panel = document.getElementById('myProfile2faPanel');
+  if (panel) panel.style.display = enabled ? '' : 'none';
+}
+
+// ── Carregar estado 2FA atual no modal de perfil ──
+function _load2FAIntoProfile() {
+  if (!currentUser) return;
+  // Buscar do banco para ter o estado mais recente
+  sb.from('app_users')
+    .select('two_fa_enabled, two_fa_channel, telegram_chat_id, email')
+    .eq('id', currentUser.app_user_id || currentUser.id)
+    .maybeSingle()
+    .then(({ data }) => {
+      if (!data) return;
+      const enabled = !!data.two_fa_enabled;
+      const channel = data.two_fa_channel || 'email';
+      const hasTg   = !!data.telegram_chat_id;
+
+      const chk = document.getElementById('myProfile2faEnabled');
+      if (chk) chk.checked = enabled;
+      _toggle2FAPanel(enabled);
+
+      const chanEl = document.getElementById(channel === 'telegram' ? 'twoFaChanTelegram' : 'twoFaChanEmail');
+      if (chanEl) chanEl.checked = true;
+
+      // Hint email
+      const emailHint = document.getElementById('twoFaEmailHint');
+      if (emailHint) emailHint.textContent = `Código enviado para ${data.email}`;
+
+      // Hint telegram
+      const tgHint = document.getElementById('twoFaTgHint');
+      if (tgHint) {
+        tgHint.textContent = hasTg
+          ? 'Chat ID configurado ✓'
+          : 'Configure o Chat ID em Notificações primeiro';
+      }
+      // Desabilitar opção telegram se não tem chat_id
+      const tgLabel = document.getElementById('twoFaChanTgLabel');
+      if (tgLabel) {
+        tgLabel.style.opacity = hasTg ? '1' : '.45';
+        const tgRadio = document.getElementById('twoFaChanTelegram');
+        if (tgRadio) tgRadio.disabled = !hasTg;
+      }
+    })
+    .catch(() => {});
+}
+
+// ── Salvar configurações 2FA (chamado junto com saveMyProfile) ──
+async function _save2FASettings(appUserId) {
+  const enabled  = !!(document.getElementById('myProfile2faEnabled')?.checked);
+  const chanEmail = document.getElementById('twoFaChanEmail');
+  const chanTg    = document.getElementById('twoFaChanTelegram');
+  const channel  = (chanTg?.checked && !chanTg?.disabled) ? 'telegram' : 'email';
+
+  const { error } = await sb.from('app_users').update({
+    two_fa_enabled: enabled,
+    two_fa_channel: channel,
+  }).eq('id', appUserId);
+
+  if (error) throw new Error('Erro ao salvar 2FA: ' + error.message);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TELEGRAM — Vincular Chat ID via Deep Link (URL+token)
+   Fluxo:
+   1. Gerar token único → salvar em app_settings com user_id e TTL
+   2. Abrir link t.me/BotName?start=TOKEN no Telegram
+   3. Bot recebe /start TOKEN, obtém chat_id, chama webhook/RPC
+   4. Poll em localStorage por resultado (ou via Supabase realtime)
+══════════════════════════════════════════════════════════════════ */
+
+let _tgLinkPollInterval = null;
+
+async function openTelegramLinkFlow() {
+  const btn    = document.getElementById('tgLinkFlowBtn');
+  const status = document.getElementById('tgLinkStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando link...'; }
+  if (status) status.textContent = '';
+
+  try {
+    // 1. Gerar token único
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10min
+
+    // 2. Salvar token no app_settings com user_id
+    const userId = currentUser?.app_user_id || currentUser?.id;
+    await saveAppSetting('tg_link_token_' + token, JSON.stringify({
+      user_id: userId,
+      expires_at: expiresAt,
+      used: false,
+    }));
+
+    // 3. Buscar nome do bot
+    let botName = 'FinTrackBot'; // fallback
+    try {
+      const { data: botRow } = await sb.from('app_settings').select('value').eq('key', 'tg_bot_name').maybeSingle();
+      if (botRow?.value) botName = String(botRow.value).replace(/^@/, '');
+    } catch(_) {}
+
+    // 4. Abrir Telegram com deep link
+    const tgUrl = `https://t.me/${botName}?start=${token}`;
+    window.open(tgUrl, '_blank');
+
+    if (status) status.textContent = '📱 Aguardando vinculação no Telegram...';
+    if (btn) { btn.disabled = false; btn.textContent = '✈️ Abrir novamente'; }
+
+    // 5. Poll por resultado a cada 3s por até 2min
+    if (_tgLinkPollInterval) clearInterval(_tgLinkPollInterval);
+    let elapsed = 0;
+    _tgLinkPollInterval = setInterval(async () => {
+      elapsed += 3;
+      if (elapsed > 120) {
+        clearInterval(_tgLinkPollInterval);
+        if (status) status.textContent = '⏱ Tempo esgotado. Tente novamente.';
+        return;
+      }
+      try {
+        const { data: tokenRow } = await sb.from('app_settings')
+          .select('value').eq('key', 'tg_link_token_' + token).maybeSingle();
+        if (!tokenRow) return;
+        const payload = typeof tokenRow.value === 'string' ? JSON.parse(tokenRow.value) : tokenRow.value;
+        if (payload?.chat_id) {
+          // Chat ID recebido!
+          clearInterval(_tgLinkPollInterval);
+          const chatId = String(payload.chat_id);
+
+          // Atualizar campo no perfil
+          const inp = document.getElementById('myProfileTelegramChatId');
+          if (inp) inp.value = chatId;
+
+          // Salvar imediatamente no app_users
+          if (currentUser?.app_user_id) {
+            await sb.from('app_users').update({ telegram_chat_id: chatId }).eq('id', currentUser.app_user_id);
+            currentUser.telegram_chat_id = chatId;
+          }
+
+          // Limpar token do banco
+          await sb.from('app_settings').delete().eq('key', 'tg_link_token_' + token);
+
+          if (status) {
+            status.textContent = '✅ Telegram vinculado! Chat ID: ' + chatId;
+            status.style.color = 'var(--accent)';
+          }
+          toast('✅ Telegram vinculado com sucesso!', 'success');
+          // Recarregar 2FA hints
+          _load2FAIntoProfile();
+        }
+      } catch(_) {}
+    }, 3000);
+
+  } catch(e) {
+    if (status) { status.textContent = 'Erro: ' + e.message; status.style.color = 'var(--red)'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✈️ Vincular via Telegram'; }
+    toast('Erro ao iniciar vinculação: ' + e.message, 'error');
+  }
+}
+

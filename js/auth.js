@@ -690,6 +690,22 @@ async function doLogin() {
       return;
     }
 
+    // ── 2FA: verificar se usuário tem 2FA ativo e dispositivo não está trusted ──
+    if (appUser?.two_fa_enabled) {
+      // Buscar dados completos do usuário para 2FA (id, channel, telegram_chat_id)
+      const { data: appUserFull } = await sb
+        .from('app_users')
+        .select('id, email, name, two_fa_channel, telegram_chat_id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (appUserFull && !_is2FATrusted(appUserFull.id)) {
+        // Interromper login normal — iniciar fluxo 2FA
+        await _initiate2FA(authData, appUserFull);
+        return; // onLoginSuccess() será chamado após verificação do código
+      }
+    }
+
     // Upgrade legacy SHA-256 hash to PBKDF2 transparently on login
     try {
       const { data: _pwRow } = await sb.from('app_users')
@@ -1277,6 +1293,9 @@ function openMyProfile() {
     document.getElementById('myProfileFamilyRow')?.style.setProperty('display', 'none');
   }
 
+  // --- 2FA settings ---
+  if (typeof _load2FAIntoProfile === 'function') _load2FAIntoProfile();
+
   // --- Language preference ---
   const langSel = document.getElementById('myProfileLanguage');
   if (langSel && typeof i18nGetAvailableLanguages === 'function') {
@@ -1567,6 +1586,15 @@ async function saveMyProfile() {
       }
     }
 
+    // 1b. 2FA settings
+    if (appRow) {
+      try {
+        if (typeof _save2FASettings === 'function') await _save2FASettings(appRow.id);
+      } catch(e2fa) {
+        console.warn('[2FA save]', e2fa.message);
+      }
+    }
+
     // 2. Password
     if (pwd1) {
       const { error: pwdErr } = await sb.auth.updateUser({ password: pwd1 });
@@ -1677,7 +1705,7 @@ function showRegisterForm() {
   focusFieldSafely('regName');
 }
 function showLoginFormArea() {
-  ['registerFormArea','pendingApprovalArea','changePwdArea','forgotPwdArea','recoveryPwdArea']
+  ['registerFormArea','pendingApprovalArea','changePwdArea','forgotPwdArea','recoveryPwdArea','twoFaArea']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('loginFormArea').style.display = '';
   document.getElementById('loginError').style.display = 'none';
@@ -3979,6 +4007,319 @@ async function ensureMasterAdmin() {
       await sb.from('app_users').update({ password_hash: hash, must_change_pwd: true }).eq('email', MASTER_EMAIL);
     }
   } catch(e) { console.warn('ensureMasterAdmin:', e.message); }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE — Toggle com persistência em localStorage
+══════════════════════════════════════════════════════════════════ */
+
+function _applyDarkMode(isDark) {
+  if (isDark) {
+    document.body.classList.add('dark');
+    document.documentElement.classList.add('dark');
+  } else {
+    document.body.classList.remove('dark');
+    document.documentElement.classList.remove('dark');
+  }
+  // Atualizar ícone e label no toggle do menu
+  const icon  = document.getElementById('darkModeIcon');
+  const label = document.getElementById('darkModeLabel');
+  if (icon)  icon.textContent  = isDark ? '☀️' : '🌙';
+  if (label) label.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+  try { localStorage.setItem('ft_dark_mode', isDark ? '1' : '0'); } catch(_) {}
+}
+
+function toggleDarkMode() {
+  const isDark = document.body.classList.contains('dark');
+  _applyDarkMode(!isDark);
+}
+
+// Aplicar dark mode salvo ao carregar
+(function _initDarkMode() {
+  try {
+    const saved = localStorage.getItem('ft_dark_mode');
+    if (saved === '1') _applyDarkMode(true);
+  } catch(_) {}
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   2FA — Autenticação em Dois Fatores por usuário
+   Tabela: public.two_fa_codes (já existe no banco)
+   Canais: email (via EmailJS) | telegram
+   Trusted device: cookie/localStorage por 30 dias
+══════════════════════════════════════════════════════════════════ */
+
+// Estado do fluxo 2FA — guardado entre telas
+let _2fa = {
+  userId:     null,   // app_users.id do usuário que está autenticando
+  email:      null,   // para reenvio
+  channel:    null,   // 'email' | 'telegram'
+  tgChatId:   null,   // telegram_chat_id do usuário
+  sessionData: null,  // authData do signInWithPassword (para completar login após 2FA)
+};
+
+// ── Gera código aleatório de 6 dígitos ──
+function _gen2FACode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// ── Chave de trusted device para este usuário ──
+function _2faTrustKey(userId) {
+  return 'ft_2fa_trust_' + userId;
+}
+
+// ── Verifica se este dispositivo está trusted para o usuário ──
+function _is2FATrusted(userId) {
+  try {
+    const raw = localStorage.getItem(_2faTrustKey(userId));
+    if (!raw) return false;
+    const { until } = JSON.parse(raw);
+    return Date.now() < until;
+  } catch(_) { return false; }
+}
+
+// ── Salva trusted device por 30 dias ──
+function _set2FATrusted(userId) {
+  try {
+    const until = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(_2faTrustKey(userId), JSON.stringify({ until }));
+  } catch(_) {}
+}
+
+// ── Envia código por email via EmailJS ──
+async function _send2FAByEmail(email, code, name) {
+  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) {
+    console.warn('[2FA] EmailJS não configurado');
+    return;
+  }
+  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
+  if (!tplId) return;
+
+  const body = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">
+<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">
+<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:20px 28px">
+  <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">Family FinTrack</div>
+  <div style="font-size:20px;font-weight:700;color:#fff">🔐 Código de verificação</div>
+</div>
+<div style="padding:24px 28px">
+  <p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6">Olá${name ? ', ' + name : ''}! Use o código abaixo para acessar o Family FinTrack:</p>
+  <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px">
+    <div style="font-size:36px;font-weight:900;letter-spacing:.28em;color:#1e5c42;font-family:'Courier New',monospace">${code}</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:8px">Válido por 10 minutos</div>
+  </div>
+  <p style="font-size:12px;color:#9ca3af;margin:0">Se você não tentou fazer login, ignore este e-mail.</p>
+</div>
+</div></div>`;
+
+  try {
+    emailjs.init(EMAILJS_CONFIG.publicKey);
+    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+      to_email:       email,
+      report_subject: '[Family FinTrack] Seu código de verificação: ' + code,
+      Subject:        '[Family FinTrack] Código de verificação',
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content: body,
+    });
+  } catch(e) {
+    console.warn('[2FA] send email:', e.message);
+    throw e;
+  }
+}
+
+// ── Envia código por Telegram ──
+async function _send2FAByTelegram(chatId, code) {
+  try {
+    const msg = `🔐 *Family FinTrack — Verificação*
+
+Seu código: *${code}*
+
+Válido por 10 minutos.`;
+    const { data, error } = await sb.functions.invoke('send-telegram', {
+      body: { chat_id: chatId, message: msg }
+    });
+    if (error) throw new Error(error.message);
+  } catch(e) {
+    console.warn('[2FA] send telegram:', e.message);
+    throw e;
+  }
+}
+
+// ── Persiste código na tabela two_fa_codes ──
+async function _store2FACode(userId, code) {
+  // Expirar códigos antigos do mesmo usuário
+  try {
+    await sb.from('two_fa_codes')
+      .update({ used: true })
+      .eq('user_id', userId)
+      .eq('used', false);
+  } catch(_) {}
+  // Inserir novo
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const { error } = await sb.from('two_fa_codes').insert({
+    user_id:    userId,
+    code:       code,
+    channel:    _2fa.channel || 'email',
+    used:       false,
+    expires_at: expiresAt,
+  });
+  if (error) throw new Error('Erro ao salvar código 2FA: ' + error.message);
+}
+
+// ── Inicia fluxo 2FA após validação de senha bem-sucedida ──
+async function _initiate2FA(authData, appUserRow) {
+  _2fa.userId      = appUserRow.id;
+  _2fa.email       = appUserRow.email;
+  _2fa.channel     = appUserRow.two_fa_channel || 'email';
+  _2fa.tgChatId    = appUserRow.telegram_chat_id || null;
+  _2fa.sessionData = authData;
+
+  const code = _gen2FACode();
+  await _store2FACode(_2fa.userId, code);
+
+  let sent = false;
+  let errMsg = '';
+
+  if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+    try { await _send2FAByTelegram(_2fa.tgChatId, code); sent = true; } catch(e) { errMsg = e.message; }
+    // Fallback para email se telegram falhar
+    if (!sent) {
+      try { await _send2FAByEmail(_2fa.email, code, appUserRow.name); sent = true; } catch(e2) { errMsg = e2.message; }
+    }
+  } else {
+    try { await _send2FAByEmail(_2fa.email, code, appUserRow.name); sent = true; } catch(e) { errMsg = e.message; }
+  }
+
+  if (!sent) {
+    console.warn('[2FA] Falha ao enviar código, mostrando tela mesmo assim:', errMsg);
+  }
+
+  // Atualizar subtítulo com canal usado
+  const sub = document.getElementById('twoFaSub');
+  if (sub) {
+    if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+      sub.innerHTML = 'Enviamos um código de 6 dígitos para o seu <strong>Telegram</strong>.<br>Insira-o abaixo para continuar.';
+    } else {
+      sub.innerHTML = `Enviamos um código de 6 dígitos para <strong>${_2fa.email}</strong>.<br>Insira-o abaixo para continuar.`;
+    }
+  }
+
+  // Exibir tela 2FA
+  _show2FAScreen();
+}
+
+function _show2FAScreen() {
+  // Esconder todos os formulários de login
+  ['loginFormArea','registerFormArea','pendingApprovalArea',
+   'forgotPwdArea','changePwdArea','recoveryPwdArea']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  const area = document.getElementById('twoFaArea');
+  if (area) area.style.display = '';
+
+  const codeInput = document.getElementById('twoFaCode');
+  if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+
+  const errEl = document.getElementById('twoFaError');
+  if (errEl) errEl.style.display = 'none';
+}
+
+// ── Verificar código inserido pelo usuário ──
+async function doVerify2FA() {
+  const codeInput = document.getElementById('twoFaCode');
+  const errEl     = document.getElementById('twoFaError');
+  const btn       = document.getElementById('twoFaVerifyBtn');
+  const trust     = document.getElementById('twoFaTrust')?.checked;
+
+  const code = (codeInput?.value || '').trim();
+  if (errEl) errEl.style.display = 'none';
+
+  if (!code || code.length !== 6) {
+    if (errEl) { errEl.textContent = 'Digite o código de 6 dígitos.'; errEl.style.display = ''; }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Verificando...'; }
+
+  try {
+    // Buscar código válido e não expirado para este usuário
+    const { data: codeRow, error: fetchErr } = await sb
+      .from('two_fa_codes')
+      .select('id, code, used, expires_at')
+      .eq('user_id', _2fa.userId)
+      .eq('used', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (fetchErr) throw new Error('Erro ao verificar código: ' + fetchErr.message);
+    if (!codeRow) {
+      if (errEl) { errEl.textContent = 'Código inválido ou expirado. Solicite um novo.'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Checar expiração
+    if (new Date(codeRow.expires_at) < new Date()) {
+      if (errEl) { errEl.textContent = 'Código expirado. Clique em "Reenviar código".'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Checar correspondência
+    if (codeRow.code !== code) {
+      if (errEl) { errEl.textContent = 'Código incorreto. Tente novamente.'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Marcar como usado
+    await sb.from('two_fa_codes').update({ used: true }).eq('id', codeRow.id);
+
+    // Salvar trusted device se solicitado
+    if (trust) _set2FATrusted(_2fa.userId);
+
+    // Continuar fluxo de login
+    await _loadCurrentUserContext(_2fa.sessionData);
+    await onLoginSuccess();
+
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Verificar'; }
+  }
+}
+
+// ── Reenviar código ──
+async function resend2FACode() {
+  const btn = document.getElementById('twoFaResendBtn');
+  const errEl = document.getElementById('twoFaError');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    if (!_2fa.userId) throw new Error('Sessão expirada. Faça login novamente.');
+    const code = _gen2FACode();
+    await _store2FACode(_2fa.userId, code);
+
+    if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+      await _send2FAByTelegram(_2fa.tgChatId, code).catch(async () => {
+        // Fallback email
+        const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
+        await _send2FAByEmail(_2fa.email, code, u?.name || '');
+      });
+    } else {
+      const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
+      await _send2FAByEmail(_2fa.email, code, u?.name || '');
+    }
+
+    if (errEl) { errEl.textContent = '✓ Novo código enviado!'; errEl.style.color = '#16a34a'; errEl.style.display = ''; }
+    setTimeout(() => { if (errEl) { errEl.style.display = 'none'; errEl.style.color = '#dc2626'; } }, 4000);
+
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Erro ao reenviar: ' + (e.message || e); errEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Reenviar código'; }
+  }
 }
 
 tryAutoConnect();
