@@ -1,0 +1,9 @@
+/* BOOT SAFE UI */
+
+body.booting #mainApp {
+  display:none !important;
+}
+
+body.booting #loginScreen {
+  display:block !important;
+}
