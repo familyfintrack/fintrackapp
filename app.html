@@ -5,6 +5,7 @@
 <link rel="manifest" href="manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="FinTrack">
 <meta name="theme-color" content="#0d2318">
@@ -105,262 +106,253 @@
 </script>
 <!-- ══ CSS split into modules — edite apenas o arquivo relevante ══ -->
 </head>
-<body class="app-shell" style="background:#0b1e12">
+<body class="app-shell" style="background:#f7f6f3">
+
+  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
+  <div id="loginScreen" class="ls-shell" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0b1e12">
+    <div class="ls-layout">
+
+      <!-- ══ PAINEL ESQUERDO: formulário (branco) ══ -->
+      <div class="ls-form-panel">
+        <div class="ls-card">
+          <!-- Logo always centred in new design -->
+          <div class="ls-logo-wrap">
+            <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
+              onerror="this.src='logo_transparent.png'">
+          </div>
+
+          <div class="ls-card-title">Bem-vindo de volta</div>
+          <div class="ls-card-sub">Acesse sua conta</div>
+
+          <!-- ── LOGIN ── -->
+          <div id="loginFormArea">
+            <div class="ls-field-group">
+              <label class="ls-label" data-i18n="auth.label_email">E-mail</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="loginEmail" name="email" class="ls-input" placeholder="seu@email.com" autocomplete="username email"
+                  onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <label class="ls-label" data-i18n="auth.label_password">Senha</label>
+                <button onclick="showForgotPwdForm()" class="ls-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
+              </div>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="loginPassword" name="password" class="ls-input" placeholder="••••••••" autocomplete="current-password"
+                  onkeydown="if(event.key==='Enter')doLogin()">
+                <button onclick="toggleLoginPwd()" class="ls-eye-btn" type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <label class="ls-remember">
+              <input type="checkbox" id="rememberMe">
+              <span class="ls-check-box"></span>
+              <span data-i18n="auth.remember_me">Salvar e-mail e senha</span>
+            </label>
+            <button onclick="doLogin()" id="loginBtn" class="ls-btn-primary">
+              <span data-i18n="auth.btn_enter">Entrar</span>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <div id="loginError" class="ls-error" style="display:none"></div>
+            <div id="loginRequestAccessWrap" style="text-align:center;margin-top:18px;display:none">
+              <span class="ls-muted" data-i18n="auth.no_account">Não tem conta?</span>
+              <button id="loginRequestAccessBtn" onclick="showRegisterForm()" class="ls-link ls-link--bold" data-i18n="auth.request_access">Solicitar acesso</button>
+            </div>
+          </div><!-- /loginFormArea -->
+
+          <!-- ── FORGOT PASSWORD ── -->
+          <div id="forgotPwdArea" style="display:none">
+            <div class="ls-back-row">
+              <button onclick="showLoginFormArea()" class="ls-back-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar
+              </button>
+            </div>
+            <div class="ls-card-title" style="font-size:1.1rem">Recuperar Senha</div>
+            <div class="ls-card-sub">Enviaremos um link para seu e-mail</div>
+            <div class="ls-field-group">
+              <label class="ls-label">E-mail</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="forgotPwdEmail" class="ls-input" placeholder="seu@email.com"
+                  onkeydown="if(event.key==='Enter')doForgotPwd()">
+              </div>
+            </div>
+            <button onclick="doForgotPwd()" id="forgotPwdBtn" class="ls-btn-primary">
+              <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
+            </button>
+            <div id="forgotPwdError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── RECOVERY PASSWORD ── -->
+          <div id="recoveryPwdArea" style="display:none">
+            <div class="ls-icon-badge">🔐</div>
+            <div class="ls-card-title">Nova Senha</div>
+            <div class="ls-card-sub">Escolha uma senha segura para sua conta</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nova senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="recoveryPwd1" class="ls-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+                  onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="recoveryPwd2" class="ls-input" placeholder="Repita a nova senha" autocomplete="new-password"
+                  onkeydown="if(event.key==='Enter')doRecoveryPwd()">
+              </div>
+            </div>
+            <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="ls-btn-primary">
+              <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
+            </button>
+            <div id="recoveryPwdError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── REGISTER ── -->
+          <div id="registerFormArea" style="display:none">
+            <div class="ls-back-row">
+              <button onclick="showLoginFormArea()" class="ls-back-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar
+              </button>
+            </div>
+            <div class="ls-card-title" style="font-size:1.1rem">Solicitar Acesso</div>
+            <div class="ls-card-sub">Crie sua conta para começar</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nome completo</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input type="text" id="regName" class="ls-input" placeholder="Seu nome">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">E-mail</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="regEmail" class="ls-input" placeholder="seu@email.com">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="regPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="regPassword2" class="ls-input" placeholder="Repita a senha"
+                  onkeydown="if(event.key==='Enter')doRegister()">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Idioma</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <select id="regLanguage" class="ls-input ls-select">
+                  <option value="pt">🇧🇷 Português</option>
+                  <option value="en">🇺🇸 English</option>
+                  <option value="es">🇪🇸 Español</option>
+                  <option value="fr">🇫🇷 Français</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="doRegister()" id="regBtn" class="ls-btn-primary">
+              <span data-i18n="register.btn_submit">Enviar Solicitação</span>
+            </button>
+            <div id="regError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── PENDING APPROVAL ── -->
+          <div id="pendingApprovalArea" style="display:none;text-align:center;padding:12px 0">
+            <div class="ls-icon-badge">⏳</div>
+            <div class="ls-card-title">Aguardando aprovação</div>
+            <div class="ls-card-sub" style="margin-bottom:24px">Um administrador irá aprovar seu acesso em breve.</div>
+            <button onclick="showLoginFormArea()" class="ls-btn-ghost">Voltar ao login</button>
+          </div>
+
+          <!-- ── INVITE ACCEPTED — registro via convite ── -->
+          <div id="inviteRegisterArea" style="display:none">
+            <div class="ls-icon-badge">🎉</div>
+            <div class="ls-card-title" style="font-size:1.1rem;text-align:center">Você foi convidado!</div>
+            <div class="ls-card-sub" id="inviteWelcomeMsg" style="text-align:center;margin-bottom:20px">Complete seu cadastro para entrar na família</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nome completo</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input type="text" id="inviteRegName" class="ls-input" placeholder="Seu nome completo">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">E-mail (confirmação)</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="inviteRegEmail" class="ls-input" placeholder="seu@email.com" readonly style="background:var(--surface2,#f3f4f6);color:var(--muted,#6b7280)">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="inviteRegPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="inviteRegPassword2" class="ls-input" placeholder="Repita a senha"
+                  onkeydown="if(event.key==='Enter')doInviteRegister()">
+              </div>
+            </div>
+            <input type="hidden" id="inviteToken">
+            <button onclick="doInviteRegister()" id="inviteRegBtn" class="ls-btn-primary">
+              Criar conta e entrar na família
+            </button>
+            <div id="inviteRegError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── CHANGE PASSWORD (first login) ── -->
+          <div id="changePwdArea" style="display:none">
+            <div class="ls-info-banner">🔐 Defina uma nova senha no seu primeiro acesso.</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nova Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="newPwd1" class="ls-input" placeholder="Mínimo 8 caracteres">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="newPwd2" class="ls-input" placeholder="Repita a senha">
+              </div>
+            </div>
+            <button onclick="doChangePwd()" class="ls-btn-primary">
+              <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
+            </button>
+            <div id="changePwdError" class="ls-error" style="display:none"></div>
+          </div>
+
+        </div><!-- /ls-card -->
+      </div><!-- /ls-form-panel -->
+
+    </div><!-- /ls-layout -->
+  </div><!-- /loginScreen -->
+
 
 <!-- SETUP -->
 <!-- PIN LOCK SCREEN -->
-<!-- ══════ USER MANAGEMENT MODAL ══════ -->
-<div class="modal-overlay" id="userMgmtModal">
-  <div class="modal" style="max-width:600px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title">👥 Gerenciar Usuários</span>
-      <button class="modal-close" onclick="closeModal('userMgmtModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div style="font-size:.82rem;color:var(--muted)" id="userMgmtCount"></div>
-        <button class="btn btn-primary btn-sm" onclick="showAddUserForm()">+ Novo Usuário</button>
-      </div>
-
-      <!-- Add user form -->
-      <div id="addUserForm" style="display:none;background:var(--accent-lt);border:1.5px solid rgba(42,96,73,.2);border-radius:var(--r);padding:16px;margin-bottom:14px">
-        <div style="font-size:.85rem;font-weight:600;margin-bottom:10px">Novo Usuário</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div class="form-group" style="margin:0"><label>E-mail</label><input type="email" id="newUserEmail" placeholder="email@dominio.com"></div>
-          <div class="form-group" style="margin:0"><label>Nome</label><input type="text" id="newUserName" placeholder="Nome completo"></div>
-          <div class="form-group" style="margin:0"><label>Senha Inicial</label><input type="password" id="newUserPw" placeholder="Mínimo 8 chars"></div>
-          <div class="form-group" style="margin:0"><label>Perfil</label>
-            <select id="newUserRole">
-              <option value="viewer">Viewer (somente leitura)</option>
-              <option value="editor">Editor (cria/edita dados)</option>
-              <option value="admin">Admin (acesso total)</option>
-            </select>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="createUser()">Criar Usuário</button>
-          <button class="btn btn-ghost btn-sm" onclick="hideAddUserForm()">Cancelar</button>
-        </div>
-      </div>
-
-      <div id="userList"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════ EDIT USER MODAL (legacy — kept for compatibility) ══════ -->
-<div class="modal-overlay" id="editUserModal">
-  <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title">✏️ Editar Usuário</span>
-      <button class="modal-close" onclick="closeModal('editUserModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="editUserIdLegacy">
-      <div class="form-group"><label>Nome</label><input type="text" id="editUserName"></div>
-      <div class="form-group"><label>Perfil</label>
-        <select id="editUserRole">
-          <option value="viewer">Viewer (somente leitura)</option>
-          <option value="editor">Editor (cria/edita dados)</option>
-          <option value="admin">Admin (acesso total)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Nova Senha (deixe em branco para não alterar)</label>
-        <input type="password" id="editUserNewPw" placeholder="Nova senha...">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="editUserActive" style="width:16px;height:16px">
-        <label for="editUserActive" style="font-size:.85rem;cursor:pointer">Usuário ativo</label>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('editUserModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveEditUser()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<div class="pin-screen" id="pinScreen" style="display:none">
-  <div class="pin-card">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:2.2rem;margin-bottom:6px">🔐</div>
-      <div class="pin-title">Family FinTrack</div>
-      <div class="pin-subtitle">Digite o Masterpin para acessar</div>
-    </div>
-    <div class="pin-dots" id="pinDots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-      <div class="pin-dot" id="pd4"></div>
-      <div class="pin-dot" id="pd5"></div>
-    </div>
-    <div class="pin-keypad" id="pinKeypad">
-      <button class="pin-key" onclick="pinKey(1)">1</button>
-      <button class="pin-key" onclick="pinKey(2)">2</button>
-      <button class="pin-key" onclick="pinKey(3)">3</button>
-      <button class="pin-key" onclick="pinKey(4)">4</button>
-      <button class="pin-key" onclick="pinKey(5)">5</button>
-      <button class="pin-key" onclick="pinKey(6)">6</button>
-      <button class="pin-key" onclick="pinKey(7)">7</button>
-      <button class="pin-key" onclick="pinKey(8)">8</button>
-      <button class="pin-key" onclick="pinKey(9)">9</button>
-      <button class="pin-key zero" onclick="pinKey(0)">0</button>
-      <button class="pin-key del" onclick="pinDel()">⌫</button>
-    </div>
-    <div class="pin-error-msg" id="pinErrorMsg"></div>
-  </div>
-</div>
-
-<!-- SUPABASE SETUP -->
-<div class="setup-screen" id="setupScreen" style="display:none">
-  <div class="setup-box">
-    <div style="text-align:center;margin-bottom:16px">
-      <img src="logo.jpg" style="height:130px;object-fit:contain;mix-blend-mode:normal" alt="Family FinTrack">
-    </div>
-    <p style="text-align:center">Configure sua conexão com o Supabase para começar.</p>
-    <div class="form-group"><label>Supabase URL</label><input type="url" id="supabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></div>
-    <div class="form-group"><label>Supabase Anon Key</label><input type="password" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiI..." autocomplete="off"></div>
-    <button class="btn btn-primary" onclick="initSupabase()" style="width:100%;justify-content:center;padding:11px;margin-top:6px;font-size:.9rem">Conectar</button>
-    <p class="setup-hint">Credenciais salvas apenas no seu browser (localStorage).</p>
-  </div>
-</div>
-
-<!-- SIDEBAR OVERLAY -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
-<nav class="sidebar" id="sidebar">
-
-  <!-- Header: logo + close button -->
-  <div class="sb-header">
-    <div class="sb-logo-wrap">
-      <img id="sidebarLogoImg"
-           src="logo.jpg"
-           alt="Family FinTrack"
-           class="sb-logo-img"
-           style="width:100%;height:100%;object-fit:contain;display:block;filter:brightness(0) invert(1)">
-    </div>
-    <button class="sb-close" onclick="closeSidebar()" aria-label="Fechar menu">✕</button>
-  </div>
-
-  <!-- Scrollable nav body -->
-  <div class="sidebar-nav">
-
-    <div class="nav-section">
-      <div class="nav-label" data-i18n="nav.section_main">Principal</div>
-      <button class="nav-item active" onclick="navigate('dashboard')" id="dashboardNav"    data-nav="dashboard">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        </span><span data-i18n="nav.dashboard">Dashboard
-      </button>
-      <button class="nav-item" onclick="navigate('transactions')" id="transactionsNav" data-nav="transactions">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        </span><span data-i18n="nav.transactions">Transações
-      </button>
-      <button class="nav-item" onclick="navigate('accounts')" id="accountsNav"     data-nav="accounts">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        </span><span data-i18n="nav.accounts">Contas
-      </button>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label" data-i18n="nav.section_analysis">Análise</div>
-      <button class="nav-item" onclick="navigate('reports')" id="reportsNav"      data-nav="reports">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </span><span data-i18n="nav.reports">Relatórios
-      </button>
-      <button class="nav-item" onclick="navigate('budgets')" id="budgetsNav"      data-nav="budgets">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </span><span data-i18n="nav.budgets">Orçamentos
-      </button>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label" data-i18n="nav.section_planning">Planejamento</div>
-      <button class="nav-item" onclick="navigate('scheduled')" id="scheduledNav"    data-nav="scheduled">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </span><span data-i18n="nav.scheduled">Programados
-      </button>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label" data-i18n="nav.section_data">Cadastros</div>
-      <button class="nav-item" onclick="navigate('categories')" id="categoriesNav"   data-nav="categories">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        </span><span data-i18n="nav.categories">Categorias
-      </button>
-      <button class="nav-item" onclick="navigate('payees')" id="payeesNav"       data-nav="payees">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </span><span data-i18n="nav.payees">Beneficiários
-      </button>
-    </div>
-
-    <!-- Módulos opcionais: visíveis apenas quando ativados por feature flag -->
-    <div class="nav-section" id="modulesNavSection" style="display:none">
-      <div class="nav-label" data-i18n="nav.section_modules">Módulos</div>
-      <button class="nav-item" id="groceryNav" data-nav="grocery" data-feature-controlled="1" onclick="navigate('grocery')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        </span><span data-i18n="nav.grocery">Mercado
-      </button>
-      <button class="nav-item" id="investmentsNav" data-nav="investments" data-feature-controlled="1" onclick="navigate('investments')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-        </span><span data-i18n="nav.investments">Investimentos
-      </button>
-      <button class="nav-item" id="debtsNav" data-nav="debts" data-feature-controlled="1" onclick="navigate('debts')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        </span><span data-i18n="nav.debts">Dívidas
-      </button>
-      <button class="nav-item" id="pricesNav" data-nav="prices" data-feature-controlled="1" onclick="navigate('prices')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
-        </span><span data-i18n="nav.prices">Preços
-      </button>
-      <button class="nav-item" id="aiInsightsNav" data-nav="ai_insights" data-feature-controlled="1" onclick="navigate('ai_insights')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="19" cy="5" r="3" fill="currentColor" stroke="none" opacity=".8"/></svg>
-        </span><span data-i18n="nav.ai_insights">AI Insights
-      </button>
-      <button class="nav-item" id="dreamsNav" data-nav="dreams" data-feature-controlled="1" onclick="navigate('dreams')" style="display:none">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </span><span data-i18n="nav.dreams">Sonhos
-      </button>
-    </div><!-- /modules section end -->
-
-    <!-- Help always visible -->
-    <div class="nav-section" style="margin-top:auto;padding-top:8px;border-top:1px solid var(--border2)">
-      <button class="nav-item" onclick="navigate('help')" id="helpNav" data-nav="help">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </span>Ajuda
-      </button>
-      <button class="nav-item" onclick="navigate('privacy')" id="privacyNav" data-nav="privacy">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </span>Privacidade
-      </button>
-    </div>
-      
-
-    <!-- adminNavSection: audit removed from sidebar — accessible via topbar icon only -->
-
-  </div><!-- /sidebar-nav -->
-
-</nav>
-
-<!-- MAIN -->
 <div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
     <div class="topbar-left">
@@ -3106,7 +3098,6 @@
 
     </div><!-- /page-privacy -->
 
-
     <div class="page" id="page-audit">
 
 
@@ -3516,247 +3507,7 @@
   </div><!-- /content -->
 </div><!-- /mainApp -->
 
-  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <div id="loginScreen" class="ls-shell" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0b1e12">
-    <div class="ls-layout">
 
-      <!-- ══ PAINEL ESQUERDO: formulário (branco) ══ -->
-      <div class="ls-form-panel">
-        <div class="ls-card">
-          <!-- Logo always centred in new design -->
-          <div class="ls-logo-wrap">
-            <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
-              onerror="this.src='logo_transparent.png'">
-          </div>
-
-          <div class="ls-card-title">Bem-vindo de volta</div>
-          <div class="ls-card-sub">Acesse sua conta</div>
-
-          <!-- ── LOGIN ── -->
-          <div id="loginFormArea">
-            <div class="ls-field-group">
-              <label class="ls-label" data-i18n="auth.label_email">E-mail</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="loginEmail" name="email" class="ls-input" placeholder="seu@email.com" autocomplete="username email"
-                  onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <div style="display:flex;justify-content:space-between;align-items:baseline">
-                <label class="ls-label" data-i18n="auth.label_password">Senha</label>
-                <button onclick="showForgotPwdForm()" class="ls-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
-              </div>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="loginPassword" name="password" class="ls-input" placeholder="••••••••" autocomplete="current-password"
-                  onkeydown="if(event.key==='Enter')doLogin()">
-                <button onclick="toggleLoginPwd()" class="ls-eye-btn" type="button">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-            </div>
-            <label class="ls-remember">
-              <input type="checkbox" id="rememberMe">
-              <span class="ls-check-box"></span>
-              <span data-i18n="auth.remember_me">Salvar e-mail e senha</span>
-            </label>
-            <button onclick="doLogin()" id="loginBtn" class="ls-btn-primary">
-              <span data-i18n="auth.btn_enter">Entrar</span>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
-            <div id="loginError" class="ls-error" style="display:none"></div>
-            <div id="loginRequestAccessWrap" style="text-align:center;margin-top:18px;display:none">
-              <span class="ls-muted" data-i18n="auth.no_account">Não tem conta?</span>
-              <button id="loginRequestAccessBtn" onclick="showRegisterForm()" class="ls-link ls-link--bold" data-i18n="auth.request_access">Solicitar acesso</button>
-            </div>
-          </div><!-- /loginFormArea -->
-
-          <!-- ── FORGOT PASSWORD ── -->
-          <div id="forgotPwdArea" style="display:none">
-            <div class="ls-back-row">
-              <button onclick="showLoginFormArea()" class="ls-back-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Voltar
-              </button>
-            </div>
-            <div class="ls-card-title" style="font-size:1.1rem">Recuperar Senha</div>
-            <div class="ls-card-sub">Enviaremos um link para seu e-mail</div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="forgotPwdEmail" class="ls-input" placeholder="seu@email.com"
-                  onkeydown="if(event.key==='Enter')doForgotPwd()">
-              </div>
-            </div>
-            <button onclick="doForgotPwd()" id="forgotPwdBtn" class="ls-btn-primary">
-              <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
-            </button>
-            <div id="forgotPwdError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── RECOVERY PASSWORD ── -->
-          <div id="recoveryPwdArea" style="display:none">
-            <div class="ls-icon-badge">🔐</div>
-            <div class="ls-card-title">Nova Senha</div>
-            <div class="ls-card-sub">Escolha uma senha segura para sua conta</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nova senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="recoveryPwd1" class="ls-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
-                  onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="recoveryPwd2" class="ls-input" placeholder="Repita a nova senha" autocomplete="new-password"
-                  onkeydown="if(event.key==='Enter')doRecoveryPwd()">
-              </div>
-            </div>
-            <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="ls-btn-primary">
-              <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
-            </button>
-            <div id="recoveryPwdError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── REGISTER ── -->
-          <div id="registerFormArea" style="display:none">
-            <div class="ls-back-row">
-              <button onclick="showLoginFormArea()" class="ls-back-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Voltar
-              </button>
-            </div>
-            <div class="ls-card-title" style="font-size:1.1rem">Solicitar Acesso</div>
-            <div class="ls-card-sub">Crie sua conta para começar</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nome completo</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" id="regName" class="ls-input" placeholder="Seu nome">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="regEmail" class="ls-input" placeholder="seu@email.com">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="regPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="regPassword2" class="ls-input" placeholder="Repita a senha"
-                  onkeydown="if(event.key==='Enter')doRegister()">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Idioma</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                <select id="regLanguage" class="ls-input ls-select">
-                  <option value="pt">🇧🇷 Português</option>
-                  <option value="en">🇺🇸 English</option>
-                  <option value="es">🇪🇸 Español</option>
-                  <option value="fr">🇫🇷 Français</option>
-                </select>
-              </div>
-            </div>
-            <button onclick="doRegister()" id="regBtn" class="ls-btn-primary">
-              <span data-i18n="register.btn_submit">Enviar Solicitação</span>
-            </button>
-            <div id="regError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── PENDING APPROVAL ── -->
-          <div id="pendingApprovalArea" style="display:none;text-align:center;padding:12px 0">
-            <div class="ls-icon-badge">⏳</div>
-            <div class="ls-card-title">Aguardando aprovação</div>
-            <div class="ls-card-sub" style="margin-bottom:24px">Um administrador irá aprovar seu acesso em breve.</div>
-            <button onclick="showLoginFormArea()" class="ls-btn-ghost">Voltar ao login</button>
-          </div>
-
-          <!-- ── INVITE ACCEPTED — registro via convite ── -->
-          <div id="inviteRegisterArea" style="display:none">
-            <div class="ls-icon-badge">🎉</div>
-            <div class="ls-card-title" style="font-size:1.1rem;text-align:center">Você foi convidado!</div>
-            <div class="ls-card-sub" id="inviteWelcomeMsg" style="text-align:center;margin-bottom:20px">Complete seu cadastro para entrar na família</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nome completo</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" id="inviteRegName" class="ls-input" placeholder="Seu nome completo">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail (confirmação)</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="inviteRegEmail" class="ls-input" placeholder="seu@email.com" readonly style="background:var(--surface2,#f3f4f6);color:var(--muted,#6b7280)">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="inviteRegPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="inviteRegPassword2" class="ls-input" placeholder="Repita a senha"
-                  onkeydown="if(event.key==='Enter')doInviteRegister()">
-              </div>
-            </div>
-            <input type="hidden" id="inviteToken">
-            <button onclick="doInviteRegister()" id="inviteRegBtn" class="ls-btn-primary">
-              Criar conta e entrar na família
-            </button>
-            <div id="inviteRegError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── CHANGE PASSWORD (first login) ── -->
-          <div id="changePwdArea" style="display:none">
-            <div class="ls-info-banner">🔐 Defina uma nova senha no seu primeiro acesso.</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nova Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="newPwd1" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="newPwd2" class="ls-input" placeholder="Repita a senha">
-              </div>
-            </div>
-            <button onclick="doChangePwd()" class="ls-btn-primary">
-              <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
-            </button>
-            <div id="changePwdError" class="ls-error" style="display:none"></div>
-          </div>
-
-        </div><!-- /ls-card -->
-      </div><!-- /ls-form-panel -->
-
-    </div><!-- /ls-layout -->
-  </div><!-- /loginScreen -->
 
 
     <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
@@ -6034,43 +5785,43 @@
   </div>
 </div>
 
-  <script src="js/state.js"></script>
-  <script src="js/i18n.js"></script>
-  <script src="js/translations_admin.js"></script>
-  <script src="js/cursor.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/telemetry.js"></script>
-  <script src="js/settings.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/accounts.js"></script>
-  <script src="js/categories.js"></script>
-  <script src="js/payees.js"></script>
-  <script src="js/transactions.js"></script>
-  <script src="js/budgets.js"></script>
-  <script src="js/fx_rates.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/reports.js"></script>
-  <script src="js/payee_autocomplete.js"></script>
-  <script src="js/ui_helpers.js"></script>
-  <script src="js/scheduled.js"></script>
-  <script src="js/attachments.js"></script>
-  <script src="js/iof.js"></script>
-  <script src="js/forecast.js"></script>
-  <script src="js/email.js"></script>
-  <script src="js/import.js"></script>
-  <script src="js/backup.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/feedback.js"></script>
-  <script src="js/admin.js"></script>
-  <script src="js/autocheck.js"></script>
-  <script src="js/auto_register.js"></script>
-<script src="js/audit.js"></script>
-<script src="js/receipt_ai.js"></script>
-  <script src="js/form_mode.js"></script>
-<script src="js/prices.js"></script>
-  <script src="js/grocery.js"></script>
+  <script src="js/state.js" defer></script>
+  <script src="js/i18n.js" defer></script>
+  <script src="js/translations_admin.js" defer></script>
+  <script src="js/cursor.js" defer></script>
+  <script src="js/db.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/telemetry.js" defer></script>
+  <script src="js/settings.js" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/app.js" defer></script>
+  <script src="js/accounts.js" defer></script>
+  <script src="js/categories.js" defer></script>
+  <script src="js/payees.js" defer></script>
+  <script src="js/transactions.js" defer></script>
+  <script src="js/budgets.js" defer></script>
+  <script src="js/fx_rates.js" defer></script>
+  <script src="js/dashboard.js" defer></script>
+  <script src="js/reports.js" defer></script>
+  <script src="js/payee_autocomplete.js" defer></script>
+  <script src="js/ui_helpers.js" defer></script>
+  <script src="js/scheduled.js" defer></script>
+  <script src="js/attachments.js" defer></script>
+  <script src="js/iof.js" defer></script>
+  <script src="js/forecast.js" defer></script>
+  <script src="js/email.js" defer></script>
+  <script src="js/import.js" defer></script>
+  <script src="js/backup.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/feedback.js" defer></script>
+  <script src="js/admin.js" defer></script>
+  <script src="js/autocheck.js" defer></script>
+  <script src="js/auto_register.js" defer></script>
+<script src="js/audit.js" defer></script>
+<script src="js/receipt_ai.js" defer></script>
+  <script src="js/form_mode.js" defer></script>
+<script src="js/prices.js" defer></script>
+  <script src="js/grocery.js" defer></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -7271,7 +7022,7 @@
     </div>
   </div>
 
-  <script src="js/import_ai.js"></script>
+  <script src="js/import_ai.js" defer></script>
 
 <!-- ══ Modal: Normalizar Nomes de Beneficiários ══════════════════════════ -->
 <div class="modal-overlay" id="normalizePayeesModal">
@@ -7490,19 +7241,18 @@
   </div>
 </div>
 
-  <script src="js/family_members_composition.js"></script>
-  <script src="js/investments.js"></script>
-  <script src="js/ai_insights.js"></script>
-  <script src="js/help.js"></script>
-  <script src="js/privacy.js"></script>
-  <script src="js/orphan.js"></script>
-  <script src="js/family_prefs.js"></script>
-  <script src="js/wizard.js"></script>
+  <script src="js/family_members_composition.js" defer></script>
+  <script src="js/investments.js" defer></script>
+  <script src="js/ai_insights.js" defer></script>
+  <script src="js/help.js" defer></script>
+  <script src="js/privacy.js" defer></script>
+  <script src="js/orphan.js" defer></script>
+  <script src="js/family_prefs.js" defer></script>
+  <script src="js/wizard.js" defer></script>
   
 
 <!-- ═══ SETUP WIZARD ═══════════════════════════════════════════════════════ -->
     <!-- ══ PRIVACY PAGE ══════════════════════════════════════════════════ -->
-
 
 <div id="wizardOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)">
   <div class="wz-modal">
@@ -7662,11 +7412,11 @@
     </div>
   </div>
 
-  <script src="js/debts.js"></script>
-  <script src="js/dreams_kb.js"></script>
-<script src="js/dreams.js"></script>
-  <script src="js/agent_engine.js"></script>
-<script src="js/agent.js"></script>
+  <script src="js/debts.js" defer></script>
+  <script src="js/dreams_kb.js" defer></script>
+<script src="js/dreams.js" defer></script>
+  <script src="js/agent_engine.js" defer></script>
+<script src="js/agent.js" defer></script>
 
 <script>
 window.toggleScheduledSection = window.toggleScheduledSection || function(section){
@@ -8059,7 +7809,7 @@ window.openMyProfile = function(...args) {
   </div>
 </div>
 
-  <script src="js/export_grid.js"></script>
+  <script src="js/export_grid.js" defer></script>
 </body>
 </html>
 
