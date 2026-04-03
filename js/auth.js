@@ -471,47 +471,12 @@ function showLoginScreen() {
 
   const ls = document.getElementById('loginScreen');
   if (ls) {
-    ls.classList.remove('exiting');
     ls.style.display = 'flex';
-    ls.style.visibility = 'visible';
-    ls.style.opacity = '1';
     // FIX: Re-aplicar tema sempre que a tela for exibida (cobre logout, sessão expirada,
     // e qualquer re-exibição posterior ao boot). Lê do cache em memória se disponível,
     // senão do localStorage (sempre disponível, sem network).
     try {
       // Login theme removed — single unified design
-    } catch(_) {}
-    try {
-      applyLoginPlatformMode();
-    } catch(_) {}
-    // Sempre resetar a área principal do login. Em mobile, um fluxo anterior
-    // interrompido podia deixar loginFormArea escondida e exibir só parte do card.
-    try {
-      ['forgotPwdArea','registerFormArea','pendingApprovalArea','changePwdArea','recoveryPwdArea']
-        .forEach(id => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.style.display = 'none';
-            el.style.visibility = 'hidden';
-            el.style.opacity = '0';
-          }
-        });
-      const loginArea = document.getElementById('loginFormArea');
-      if (loginArea) {
-        loginArea.style.display = '';
-        loginArea.style.visibility = 'visible';
-        loginArea.style.opacity = '1';
-      }
-      const pwd = document.getElementById('loginPassword');
-      const btn = document.getElementById('loginBtn');
-      const remember = document.querySelector('#loginFormArea .ls-remember');
-      const request = document.getElementById('loginRequestAccessWrap');
-      const error = document.getElementById('loginError');
-      if (pwd) { pwd.style.display = ''; pwd.disabled = false; }
-      if (btn) { btn.style.display = ''; btn.disabled = false; }
-      if (remember) remember.style.display = '';
-      if (request) request.style.display = request.style.display === 'none' ? 'none' : '';
-      if (error) { error.style.display = 'none'; error.textContent = ''; }
     } catch(_) {}
     // Re-apply access request visibility every time login screen is shown
     _applyAccessRequestVisibilityFromLocalStorage();
@@ -1726,7 +1691,10 @@ async function doLogout() {
   const passEl = document.getElementById('loginPassword');
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
-  // Reload the page for a completely clean state
+  // Exibe login imediatamente para evitar tela branca durante o reload limpo
+  try { document.getElementById('mainApp')?.style.setProperty('visibility','hidden'); } catch(_) {}
+  try { document.getElementById('mainApp')?.style.setProperty('opacity','0'); } catch(_) {}
+  try { showLoginScreen(); } catch(_) {}
   window.location.reload();
 }
 
@@ -1758,7 +1726,10 @@ async function clearAppCache() {
     // Clear sessionStorage
     sessionStorage.clear();
     toast(t('toast.cache_cleared'), 'success');
-    setTimeout(() => window.location.reload(), 1200);
+    try { document.getElementById('mainApp')?.style.setProperty('visibility','hidden'); } catch(_) {}
+    try { document.getElementById('mainApp')?.style.setProperty('opacity','0'); } catch(_) {}
+    try { showLoginScreen(); } catch(_) {}
+    setTimeout(() => window.location.reload(), 900);
   } catch(e) {
     toast('Erro ao limpar cache: ' + e.message, 'error');
   }

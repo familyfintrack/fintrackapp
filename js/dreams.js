@@ -46,50 +46,17 @@ function _dreamTypeLabel(t) { return { viagem:'✈️ Viagem', automovel:'🚗 A
 function _dreamStatusLabel(s) { return { active:'Ativo', paused:'Pausado', achieved:'🏆 Conquistado', cancelled:'Cancelado' }[s] || s; }
 function _dreamStatusColor(s) { return { active:'var(--accent)', paused:'var(--warning, #f39c12)', achieved:'#27ae60', cancelled:'var(--muted)' }[s] || 'var(--muted)'; }
 
-function _normDreamType(t) {
-  const v = String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return ({
-    viagem:'viagem', travel:'viagem', turismo:'viagem',
-    automovel:'automovel', automóvel:'automovel', carro:'automovel', veiculo:'automovel', veiculo:'automovel', auto:'automovel',
-    imovel:'imovel', imóvel:'imovel', casa:'imovel', apartamento:'imovel',
-    cirurgia_plastica:'cirurgia_plastica', cirurgia:'cirurgia_plastica', plastica:'cirurgia_plastica',
-    estudos:'estudos', estudo:'estudos', education:'estudos',
-    outro:'outro', other:'outro'
-  })[v] || 'outro';
-}
-function _normDreamStatus(s) {
-  const v = String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return ({
-    active:'active', ativo:'active', aberta:'active', open:'active',
-    paused:'paused', pausado:'paused', pause:'paused',
-    achieved:'achieved', conquistado:'achieved', concluido:'achieved', concluído:'achieved', completed:'achieved', done:'achieved',
-    cancelled:'cancelled', cancelado:'cancelled', canceled:'cancelled'
-  })[v] || 'active';
-}
-function _parseDreamJson(v) {
-  if (!v) return null;
-  if (typeof v === 'object') return v;
-  try { return JSON.parse(v); } catch (_) { return null; }
-}
-function _normalizeDreamRecord(d) {
-  const out = { ...(d || {}) };
-  out.dream_type = _normDreamType(out.dream_type);
-  out.status = _normDreamStatus(out.status);
-  out.ai_generated_fields_json = _parseDreamJson(out.ai_generated_fields_json);
-  out.simulation_json = _parseDreamJson(out.simulation_json);
-  if (!Array.isArray(out._contributions)) out._contributions = [];
-  return out;
-}
-
 /* ── Feature flag ─────────────────────────────────────────────────── */
 async function isDreamsEnabled() {
   const fid = famId();
   if (!fid) return false;
 
+  // Fonte canônica: family_preferences. Se ainda não estiver em cache,
+  // força o carregamento para evitar falso negativo no menu lateral.
   if (typeof getFamilyPreferences === 'function') {
     try {
       const prefs = await getFamilyPreferences();
-      if (prefs && prefs.modules && Object.prototype.hasOwnProperty.call(prefs.modules, 'dreams')) {
+      if (prefs && prefs.modules && typeof prefs.modules.dreams !== 'undefined') {
         return !!prefs.modules.dreams;
       }
     } catch (_) {}
@@ -102,6 +69,7 @@ async function isDreamsEnabled() {
     } catch (_) {}
   }
 
+  // Fallback legado: app_settings / cache antigo.
   const ck = 'dreams_enabled_' + fid;
   if (window._familyFeaturesCache && ck in window._familyFeaturesCache) return !!window._familyFeaturesCache[ck];
   try {
@@ -116,17 +84,33 @@ async function isDreamsEnabled() {
 async function applyDreamsFeature() {
   const fid = famId();
   const navEl = document.getElementById('dreamsNav'), pageEl = document.getElementById('page-dreams');
-  if (!fid) { if (navEl) navEl.style.display='none'; if (typeof _syncModulesSection==='function') _syncModulesSection(); return; }
+  if (!fid) {
+    if (navEl) navEl.style.display='none';
+    if (pageEl) pageEl.style.display='none';
+    if (typeof _syncModulesSection==='function') _syncModulesSection();
+    return;
+  }
   const on = await isDreamsEnabled();
-  if (navEl) { navEl.style.display = on ? '' : 'none'; navEl.dataset.featureControlled='1'; }
-  if (pageEl && !on && state?.currentPage === 'dreams') {
-    const container = document.getElementById('dreams-list-container');
-    if (container) container.innerHTML = `<div class="drm-empty-state"><div class="drm-empty-icon">🌟</div><div class="drm-empty-title">Módulo de sonhos desativado</div><div class="drm-empty-text">Ative o módulo em Gestão da Família para voltar a usar esta área.</div></div>`;
+  if (navEl) {
+    navEl.style.display = on ? '' : 'none';
+    navEl.dataset.featureControlled = '1';
+  }
+  if (pageEl) {
+    if (on) {
+      pageEl.style.removeProperty('display');
+    } else {
+      pageEl.style.display = 'none';
+      if (window.state?.currentPage === 'dreams' && typeof navigate === 'function') {
+        navigate('dashboard');
+      }
+    }
   }
   if (typeof _syncModulesSection==='function') _syncModulesSection();
   if (on && !_drm.loaded) await loadDreams().catch(()=>{});
 }
 window.applyDreamsFeature = applyDreamsFeature;
+document.addEventListener('familyprefs:loaded', () => { applyDreamsFeature().catch(()=>{}); });
+document.addEventListener('familyprefs:changed', () => { applyDreamsFeature().catch(()=>{}); });
 
 async function toggleFamilyDreams(familyId, enabled) {
   await saveAppSetting('dreams_enabled_' + familyId, enabled);
@@ -139,27 +123,20 @@ window.toggleFamilyDreams = toggleFamilyDreams;
 /* ── Page init ────────────────────────────────────────────────────── */
 async function initDreamsPage() {
   const container = document.getElementById('dreams-list-container');
-  try {
-    const enabled = await isDreamsEnabled();
-    if (!enabled) {
-      if (container) {
-        container.innerHTML = `
-          <div class="drm-empty-state">
-            <div class="drm-empty-icon">🌟</div>
-            <div class="drm-empty-title">Módulo de sonhos desativado</div>
-            <div class="drm-empty-text">Ative o módulo em Gestão da Família para voltar a usar esta área.</div>
-          </div>`;
-      }
-      return;
-    }
-    await loadDreams(true);
-    renderDreamsPage();
-  } catch (e) {
-    console.error('[Dreams] initDreamsPage:', e);
+  const enabled = await isDreamsEnabled();
+  if (!enabled) {
     if (container) {
-      container.innerHTML = `<div class="drm-empty"><div class="drm-empty-icon">⚠️</div><div class="drm-empty-title">Não foi possível carregar os sonhos</div><div class="drm-empty-desc">${_esc(e?.message || 'Erro inesperado')}</div></div>`;
+      container.innerHTML = `
+        <div class="drm-empty-state">
+          <div class="drm-empty-icon">🌟</div>
+          <div class="drm-empty-title">Módulo de sonhos desativado</div>
+          <div class="drm-empty-text">Ative o módulo em Gestão da Família para voltar a usar esta área.</div>
+        </div>`;
     }
+    return;
   }
+  await loadDreams(true);
+  renderDreamsPage();
 }
 window.initDreamsPage = initDreamsPage;
 
@@ -172,43 +149,21 @@ async function loadDreams(force=false) {
       if (error.code==='42P01'||error.message?.includes('does not exist')) {
         const c = document.getElementById('dreams-list-container');
         if (c) c.innerHTML=`<div class="drm-empty"><div class="drm-empty-icon">⚠️</div><div class="drm-empty-title">Migração pendente</div><div class="drm-empty-desc">Execute o script SQL v2 no Supabase.</div></div>`;
-        _drm.dreams = [];
-        _drm.items = {};
-        _drm.loaded = true;
         return;
       }
       throw error;
     }
-    _drm.dreams = (data || []).map(_normalizeDreamRecord);
-    _drm.items = {};
-
+    _drm.dreams = data || [];
     if (_drm.dreams.length) {
-      const ids = _drm.dreams.map(d=>d.id).filter(Boolean);
-      if (ids.length) {
-        try {
-          const { data: items, error: itemsErr } = await sb.from('dream_items').select('*').in('dream_id',ids).order('estimated_amount',{ascending:false});
-          if (itemsErr && !(itemsErr.code==='42P01'||itemsErr.message?.includes('does not exist'))) throw itemsErr;
-          (items||[]).forEach(it=>{ (_drm.items[it.dream_id]=_drm.items[it.dream_id]||[]).push(it); });
-        } catch(e) {
-          console.warn('[Dreams] dream_items unavailable:', e?.message || e);
-        }
-        try {
-          const { data: contribs, error: contribErr } = await sb.from('dream_contributions').select('*').in('dream_id',ids).order('date',{ascending:false});
-          if (contribErr && !(contribErr.code==='42P01'||contribErr.message?.includes('does not exist'))) throw contribErr;
-          (contribs||[]).forEach(c=>{ const d=_drm.dreams.find(d=>d.id===c.dream_id); if(d){(d._contributions=d._contributions||[]).push(c);} });
-        } catch(e) {
-          console.warn('[Dreams] dream_contributions unavailable:', e?.message || e);
-        }
-      }
+      const ids = _drm.dreams.map(d=>d.id);
+      const { data: items } = await sb.from('dream_items').select('*').in('dream_id',ids).order('estimated_amount',{ascending:false});
+      _drm.items = {};
+      (items||[]).forEach(it=>{ (_drm.items[it.dream_id]=_drm.items[it.dream_id]||[]).push(it); });
+      const { data: contribs } = await sb.from('dream_contributions').select('*').in('dream_id',ids).order('date',{ascending:false});
+      (contribs||[]).forEach(c=>{ const d=_drm.dreams.find(d=>d.id===c.dream_id); if(d){(d._contributions=d._contributions||[]).push(c);} });
     }
     _drm.loaded = true;
-  } catch(e) {
-    console.warn('[Dreams] loadDreams:',e?.message||e);
-    _drm.dreams=[];
-    _drm.items={};
-    _drm.loaded=true;
-    throw e;
-  }
+  } catch(e) { console.warn('[Dreams] loadDreams:',e?.message||e); _drm.dreams=[]; _drm.loaded=true; }
 }
 
 /* ── Goal Engine ──────────────────────────────────────────────────── */
@@ -352,13 +307,11 @@ function _drmRenderMemberChips(dream, opts = {}) {
 function renderDreamsPage() {
   const container=document.getElementById('dreams-list-container'); if(!container) return;
   if (!_drm.dreams.length) { container.innerHTML=_renderEmptyState(); return; }
-  const normalized = (_drm.dreams || []).map(_normalizeDreamRecord);
-  _drm.dreams = normalized;
   const groups=[
-    {label:'Ativos',          dreams:normalized.filter(d=>d.status==='active')},
-    {label:'🏆 Conquistados', dreams:normalized.filter(d=>d.status==='achieved')},
-    {label:'⏸️ Pausados',     dreams:normalized.filter(d=>d.status==='paused')},
-    {label:'Cancelados',      dreams:normalized.filter(d=>d.status==='cancelled')},
+    {label:'Ativos',          dreams:_drm.dreams.filter(d=>d.status==='active')},
+    {label:'🏆 Conquistados', dreams:_drm.dreams.filter(d=>d.status==='achieved')},
+    {label:'⏸️ Pausados',     dreams:_drm.dreams.filter(d=>d.status==='paused')},
+    {label:'Cancelados',      dreams:_drm.dreams.filter(d=>d.status==='cancelled')},
   ];
   const active=groups[0].dreams;
   let html='';
@@ -378,9 +331,6 @@ function renderDreamsPage() {
     html+=`<div class="drm-group-label">${g.label}</div><div class="drm-cards-grid">`;
     for (const d of g.dreams) html+=_renderDreamCard(d);
     html+=`</div>`;
-  }
-  if (!html.trim()) {
-    html = _renderEmptyState();
   }
   container.innerHTML=html;
 }
