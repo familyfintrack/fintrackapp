@@ -128,27 +128,107 @@ window.agentChooseSlot = function(field, value, sendNow=false) {
 
 // ── Welcome ───────────────────────────────────────────────────────────────
 function _agentWelcome() {
+  const name = (window.currentUser?.name || '').split(' ')[0];
+  const greeting = name ? `Olá, <strong>${name}</strong>!` : 'Olá!';
   const page = window.state?.currentPage || 'dashboard';
-  const quickRepliesHtml = typeof AgentEngine !== 'undefined'
-    ? AgentEngine.QuickReplies.render(page)
-    : '';
 
   const welcomeHtml = `
-<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;flex-direction:column;gap:12px">
   <div>
-    👋 Olá! Sou o <strong>FinTrack Copiloto</strong>.<br>
-    <span style="font-size:.8rem;color:var(--muted)">Posso criar transações, responder sobre suas finanças e ajudar com o app.</span>
+    👋 ${greeting} Sou o <strong>FinTrack Agente</strong>.<br>
+    <span style="font-size:.8rem;color:var(--muted)">Converse naturalmente — entendo português e executo ações no app.</span>
   </div>
-  <div style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)">
-    <div>💸 <em>"Crie despesa de R$80 no Supermercado"</em></div>
-    <div>📊 <em>"Quanto gastei este mês?"</em></div>
-    <div>❓ <em>"Como adicionar uma conta?"</em></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.78rem">
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer"
+      onclick="agentSuggest('criar despesa de R\$50 no mercado')">
+      <div style="font-weight:700;margin-bottom:2px">💸 Lançar despesa</div>
+      <div style="color:var(--muted)">"despesa de R$50 no mercado"</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer"
+      onclick="agentSuggest('quanto gastei este mês?')">
+      <div style="font-weight:700;margin-bottom:2px">📊 Consultar gastos</div>
+      <div style="color:var(--muted)">"quanto gastei este mês?"</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer"
+      onclick="agentSuggest('criar transação programada mensal')">
+      <div style="font-weight:700;margin-bottom:2px">📅 Programar conta</div>
+      <div style="color:var(--muted)">"conta mensal de internet"</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer"
+      onclick="agentShowCapabilities()">
+      <div style="font-weight:700;margin-bottom:2px">💡 Ver tudo</div>
+      <div style="color:var(--muted)">Todos os atalhos</div>
+    </div>
   </div>
-  ${quickRepliesHtml}
 </div>`.trim();
 
-  _agentAppendStructured('assistant', welcomeHtml, 'Olá! Sou o FinTrack Copiloto.');
+  _agentAppendStructured('assistant', welcomeHtml, 'Olá! Sou o FinTrack Agente.');
 }
+
+// ── "O que posso fazer" — guia de capacidades ──────────────────────────────
+function agentShowCapabilities() {
+  const html = `
+<div style="display:flex;flex-direction:column;gap:14px">
+  <div style="font-weight:700;color:var(--text);font-size:.9rem">💡 O que posso fazer por você</div>
+
+  <div>
+    <div style="font-size:.76rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">💸 Transações</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${[
+        ['criar despesa de R$80 no supermercado', 'Lançar despesa'],
+        ['criar receita de R$2000 de salário', 'Lançar receita'],
+        ['criar transferência de corrente para poupança', 'Transferência entre contas'],
+        ['editar última transação', 'Editar última transação'],
+      ].map(([t,l]) => `<button class="agent-cap-chip" onclick="agentSuggest('${t.replace(/'/g,'&#39;')}')">${l}</button>`).join('')}
+    </div>
+  </div>
+
+  <div>
+    <div style="font-size:.76rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📊 Consultas financeiras</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${[
+        ['quanto gastei este mês?', 'Gastos do mês'],
+        ['qual meu saldo total?', 'Saldo das contas'],
+        ['maiores categorias de gasto', 'Gastos por categoria'],
+        ['resumo financeiro deste mês', 'Resumo mensal'],
+        ['previsão próximos 30 dias', 'Previsão de fluxo de caixa'],
+        ['contas com saldo negativo', 'Contas no vermelho'],
+      ].map(([t,l]) => `<button class="agent-cap-chip" onclick="agentSuggest('${t.replace(/'/g,'&#39;')}')">${l}</button>`).join('')}
+    </div>
+  </div>
+
+  <div>
+    <div style="font-size:.76rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📅 Programados & Orçamentos</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${[
+        ['criar transação programada mensal de aluguel R$1500', 'Criar programado'],
+        ['quais programados vencem esta semana?', 'Vencimentos próximos'],
+        ['qual meu orçamento restante em alimentação?', 'Orçamento restante'],
+      ].map(([t,l]) => `<button class="agent-cap-chip" onclick="agentSuggest('${t.replace(/'/g,'&#39;')}')">${l}</button>`).join('')}
+    </div>
+  </div>
+
+  <div>
+    <div style="font-size:.76rem;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🧭 Navegação & App</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${[
+        ['abrir dashboard', 'Ir para Dashboard'],
+        ['abrir transações', 'Ir para Transações'],
+        ['abrir relatórios', 'Ir para Relatórios'],
+        ['como adicionar uma conta?', 'Ajuda: contas'],
+        ['como convidar um familiar?', 'Ajuda: família'],
+      ].map(([t,l]) => `<button class="agent-cap-chip" onclick="agentSuggest('${t.replace(/'/g,'&#39;')}')">${l}</button>`).join('')}
+    </div>
+  </div>
+
+  <div style="font-size:.74rem;color:var(--muted);line-height:1.55;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+    💬 Fale naturalmente — não precisa usar os atalhos exatos. Posso entender contexto, completar informações faltantes e confirmar antes de executar ações.
+  </div>
+</div>`.trim();
+
+  _agentAppendStructured('assistant', html, 'Guia de capacidades do Agente');
+}
+window.agentShowCapabilities = agentShowCapabilities;
 
 // ── Main dispatcher — v3 com engine pipeline ──────────────────────────────
 async function _agentDispatch(text) {

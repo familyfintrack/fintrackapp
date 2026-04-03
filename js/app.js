@@ -383,6 +383,12 @@ async function tryAutoConnect(){
       }
     });
 
+    // ── Verificar token de convite (?invite=TOKEN) ───────────────────────────
+    // Deve ser feito antes do recovery check, mas depois do client ser criado
+    if (typeof _checkInviteToken === 'function') {
+      await _checkInviteToken().catch(() => {});
+    }
+
     // Strip ?code from URL AFTER client creation so a page-refresh
     // doesn't attempt to reuse the (now spent) code.
     if (hasCodeParam) {
@@ -430,6 +436,10 @@ async function tryAutoConnect(){
     if(restored && currentUser){
       hideLoginScreen?.();
       updateUserUI?.();
+      // Aceitar convite pendente (se veio via link ?invite=TOKEN)
+      if (typeof _acceptPendingInvite === 'function' && window._pendingInvite) {
+        await _acceptPendingInvite().catch(() => {});
+      }
       // If user has no family_id, show family creation screen before app boots
       if (!currentUser.family_id && currentUser.role !== 'admin' && currentUser.role !== 'owner') {
         if (typeof enforceFirstLoginFamilyCreation === 'function') {

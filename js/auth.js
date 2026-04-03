@@ -916,6 +916,10 @@ async function onLoginSuccess() {
   if (!sb) {
     toast('Configure o Supabase primeiro','error'); return;
   }
+  // Aceitar convite pendente se o usuário veio via link ?invite=TOKEN
+  if (window._pendingInvite) {
+    await _acceptPendingInvite().catch(() => {});
+  }
 
   const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : { isWindows:false };
   const loginLogo = document.getElementById('loginLogoImg');
@@ -2948,40 +2952,62 @@ async function inviteToFamily(familyId, familyName) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
 
   try {
-    // Verificar se já é usuário cadastrado
-    const { data: existing } = await sb.from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
+    // ── Caso 1: Usuário já cadastrado → adicionar direto à família ──
+    const { data: existing } = await sb
+      .from('app_users').select('id,name,approved,active').eq('email', email).maybeSingle();
 
-    if (existing) {
-      // Usuário já existe: adicionar diretamente à família
+    if (existing?.approved && existing?.active) {
       const { error } = await sb.from('family_members').upsert(
         { user_id: existing.id, family_id: familyId, role },
         { onConflict: 'user_id,family_id' }
       );
       if (error) throw new Error(error.message);
-      toast(`✓ ${email} adicionado à família como ${role}`, 'success');
-    } else {
-      // Usuário novo: criar registro pendente com vínculo à família
-      const { data: newUser, error: insErr } = await sb.from('app_users').insert({
-        email,
-        name:       email.split('@')[0],
-        role:       'user',
-        approved:   false,
-        active:     false,
-        family_id:  familyId,
-        must_change_pwd: true,
-      }).select().single();
-      if (insErr) throw new Error(insErr.message);
-
-      // Adicionar em family_members com role escolhido
-      await sb.from('family_members').insert({ user_id: newUser.id, family_id: familyId, role });
-
-      // Enviar e-mail de convite via EmailJS
-      await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email);
-      toast(`✓ Convite enviado para ${email}`, 'success');
+      // Enviar email de notificação (não-bloqueante)
+      _sendInviteEmail(email, familyName, currentUser.name || currentUser.email).catch(() => {});
+      toast(`✓ ${existing.name || email} adicionado à família como ${role}`, 'success');
+      if (emailEl) emailEl.value = '';
+      await loadFamiliesList();
+      return;
     }
 
+    // ── Caso 2: Novo usuário → criar convite via family_invites ──
+    // Gerar token único
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => b.toString(16).padStart(2,'0')).join('');
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 dias
+
+    // Invalidar convites anteriores para o mesmo email+família
+    await sb.from('family_invites')
+      .update({ used: true })
+      .eq('email', email)
+      .eq('family_id', familyId)
+      .eq('used', false);
+
+    // Inserir novo convite
+    const inviterAppId = currentUser?.app_user_id || null;
+    const { error: invErr } = await sb.from('family_invites').insert({
+      token,
+      email,
+      family_id:   familyId,
+      role,
+      invited_by:  inviterAppId,
+      expires_at:  expiresAt,
+      used:        false,
+    });
+    if (invErr) throw new Error('Erro ao criar convite: ' + invErr.message);
+
+    // Montar URL de convite
+    const appUrl  = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const inviteUrl = `${appUrl}?invite=${token}`;
+
+    // Enviar email de convite com link
+    await _sendInviteEmail(email, familyName, currentUser.name || currentUser.email, inviteUrl, role);
+
+    toast(`✓ Convite enviado para ${email} (válido por 7 dias)`, 'success');
     if (emailEl) emailEl.value = '';
     await loadFamiliesList();
+
   } catch(e) {
     toast('Erro ao convidar: ' + e.message, 'error');
   } finally {
@@ -2989,26 +3015,56 @@ async function inviteToFamily(familyId, familyName) {
   }
 }
 
-async function _sendInviteEmail(toEmail, familyName, inviterName) {
+async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl, role) {
   try {
     const { autoCheckConfig } = await _getAutoCheckConfig();
     const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
     const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
     const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
-    const appUrl     = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const appUrl     = inviteUrl || (typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname));
 
+    const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador', editor:'Editor' }[role] || role || 'Usuário';
+    const nameEsc   = (familyName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    const invEsc    = (inviterName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+    const body = `
+<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">
+<div style="max-width:540px;margin:0 auto;background:#fff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:22px 28px">
+    <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">Family FinTrack</div>
+    <div style="font-size:20px;font-weight:700;color:#fff">📨 Você foi convidado!</div>
+  </div>
+  <div style="padding:24px 28px">
+    <p style="font-size:14px;color:#374151;margin:0 0 16px;line-height:1.6">
+      <strong>${invEsc}</strong> convidou você para participar da família <strong>${nameEsc}</strong> no Family FinTrack como <strong>${roleLabel}</strong>.
+    </p>
+    <div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:6px;padding:12px 16px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:4px">O que é o Family FinTrack?</div>
+      <div style="font-size:13px;color:#15803d;line-height:1.6">Um app de gestão financeira familiar com IA — controle de gastos, receitas, orçamentos, programados e muito mais.</div>
+    </div>
+    <div style="text-align:center;margin-bottom:20px">
+      <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:700">
+        ✅ Aceitar Convite →
+      </a>
+    </div>
+    ${inviteUrl ? `<div style="font-size:11px;color:#9ca3af;text-align:center;margin-bottom:12px">Link válido por 7 dias</div>` : ''}
+    <p style="font-size:12px;color:#9ca3af;margin:0">Se você não esperava este convite, pode ignorar este e-mail.</p>
+  </div>
+  <div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">
+    <div style="font-size:11px;color:#9ca3af">Family FinTrack · Convite de família</div>
+  </div>
+</div></div>`;
+
+    emailjs.init(publicKey);
     await emailjs.send(serviceId, templateId, {
       to_email:       toEmail,
       report_subject: `[Family FinTrack] Convite para a família "${familyName}"`,
-      subject:        `[Family FinTrack] Convite para a família "${familyName}"`,
-      message:        `Você foi convidado por ${inviterName} para participar da família "${familyName}" no FinTrack.\n\nAcesse ${appUrl} e solicite acesso com este e-mail (${toEmail}).\n\nSeu acesso será aprovado automaticamente após o login.`,
-      family_name:    familyName,
-      inviter:        inviterName,
-      app_url:        appUrl,
+      Subject:        `[Family FinTrack] Convite para a família "${familyName}"`,
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content: body,
     }, publicKey);
   } catch(e) {
     console.warn('[InviteEmail]', e.message);
-    // Não falhar o fluxo por erro de e-mail
   }
 }
 
@@ -4322,6 +4378,163 @@ async function resend2FACode() {
   }
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   CONVITE DE FAMÍLIA — Processamento do token na URL
+   Fluxo: ?invite=TOKEN → valida → mostra banner → ao registrar/logar vincula
+══════════════════════════════════════════════════════════════════ */
+
+// Estado do convite ativo (se URL contiver ?invite=TOKEN)
+let _pendingInvite = null;
+
+// ── Verificar e processar token de convite na URL ──
+async function _checkInviteToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('invite');
+  if (!token) return;
+
+  // Limpar token da URL sem reload
+  try {
+    const cleanUrl = window.location.pathname + (window.location.hash || '');
+    history.replaceState(null, '', cleanUrl);
+  } catch(_) {}
+
+  try {
+    // Buscar convite no banco
+    const { data: invite, error } = await sb
+      .from('family_invites')
+      .select('id, token, email, family_id, role, invited_by, expires_at, used, families(name)')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (error || !invite) {
+      _showInviteBanner('❌ Link de convite inválido ou expirado.', 'error', null);
+      return;
+    }
+    if (invite.used) {
+      _showInviteBanner('⚠️ Este link de convite já foi utilizado.', 'warning', null);
+      return;
+    }
+    if (new Date(invite.expires_at) < new Date()) {
+      _showInviteBanner('⏱ Este link de convite expirou. Peça um novo ao administrador.', 'warning', null);
+      return;
+    }
+
+    // Convite válido — salvar em estado e mostrar banner
+    _pendingInvite = invite;
+    const famName = invite.families?.name || 'família';
+    const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[invite.role] || 'Usuário';
+    _showInviteBanner(
+      `🎉 Você foi convidado para a família <strong>${famName}</strong> como <strong>${roleLabel}</strong>.`,
+      'success',
+      invite
+    );
+
+    // Se email do convite corresponde a usuário logado — aceitar direto
+    if (currentUser?.email === invite.email) {
+      await _acceptPendingInvite();
+    }
+
+  } catch(e) {
+    console.warn('[invite]', e.message);
+  }
+}
+
+// ── Mostrar banner de convite na tela de login ──
+function _showInviteBanner(message, type, invite) {
+  document.getElementById('inviteBanner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'inviteBanner';
+  const bgColor = type === 'success' ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' :
+                  type === 'error'   ? 'linear-gradient(135deg,#fef2f2,#fee2e2)' :
+                  'linear-gradient(135deg,#fffbeb,#fef3c7)';
+  const borderColor = type === 'success' ? '#22c55e' : type === 'error' ? '#dc2626' : '#f59e0b';
+  banner.style.cssText = `
+    position:fixed;top:16px;left:50%;transform:translateX(-50%);
+    z-index:10001;max-width:min(440px,calc(100vw - 32px));width:100%;
+    background:${bgColor};border:1.5px solid ${borderColor};
+    border-radius:14px;padding:14px 18px;
+    box-shadow:0 8px 32px rgba(0,0,0,.16);
+    animation:slideDownFadeIn .3s ease;
+  `;
+  banner.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1;font-size:.84rem;color:#1a1714;line-height:1.55">${message}</div>
+      <button onclick="document.getElementById('inviteBanner')?.remove()"
+        style="background:none;border:none;cursor:pointer;font-size:.8rem;color:#9ca3af;flex-shrink:0;padding:2px">✕</button>
+    </div>
+    ${invite ? `
+    <div style="margin-top:10px;font-size:.78rem;color:#6b7280">
+      Faça login ou crie sua conta com o e-mail <strong>${invite.email}</strong> para aceitar.
+    </div>` : ''}`;
+  document.body.appendChild(banner);
+
+  // Injetar email no campo de login
+  if (invite?.email) {
+    const emailEl = document.getElementById('loginEmail');
+    if (emailEl && !emailEl.value) emailEl.value = invite.email;
+  }
+
+  // Keyframe da animação
+  if (!document.getElementById('_inviteBannerStyle')) {
+    const s = document.createElement('style');
+    s.id = '_inviteBannerStyle';
+    s.textContent = '@keyframes slideDownFadeIn{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+    document.head.appendChild(s);
+  }
+}
+
+// ── Aceitar convite pendente (após login bem-sucedido) ──
+async function _acceptPendingInvite() {
+  if (!_pendingInvite || !currentUser) return;
+  const invite = _pendingInvite;
+  _pendingInvite = null;
+
+  // Verificar se email bate
+  if (invite.email && currentUser.email !== invite.email) {
+    toast(`⚠️ Este convite é para ${invite.email}. Você está logado como ${currentUser.email}.`, 'warning');
+    return;
+  }
+
+  try {
+    const userId = currentUser.app_user_id || currentUser.id;
+
+    // Vincular à família
+    const { error: fmErr } = await sb.from('family_members').upsert(
+      { user_id: userId, family_id: invite.family_id, role: invite.role },
+      { onConflict: 'user_id,family_id' }
+    );
+    if (fmErr) throw new Error(fmErr.message);
+
+    // Atualizar family_id no app_users se não tiver
+    if (!currentUser.family_id) {
+      await sb.from('app_users').update({ family_id: invite.family_id }).eq('id', userId);
+    }
+
+    // Marcar convite como usado
+    await sb.from('family_invites').update({ used: true, used_at: new Date().toISOString() }).eq('id', invite.id);
+
+    // Recarregar contexto
+    await _loadCurrentUserContext();
+    updateUserUI();
+    _renderFamilySwitcher();
+
+    const famName = invite.families?.name || 'família';
+    const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[invite.role] || 'Usuário';
+    toast(`🎉 Bem-vindo à família "${famName}" como ${roleLabel}!`, 'success');
+
+    // Esconder banner
+    document.getElementById('inviteBanner')?.remove();
+
+  } catch(e) {
+    console.warn('[invite accept]', e.message);
+    toast('Erro ao aceitar convite: ' + e.message, 'error');
+  }
+}
+
+// Expor globalmente
+window._checkInviteToken  = _checkInviteToken;
+window._acceptPendingInvite = _acceptPendingInvite;
 tryAutoConnect();
 
 /* ══════════════════════════════════════════════════════════════════
