@@ -2596,43 +2596,11 @@ select.acct-input {
 #umThemeToggle > span:first-child {
   min-width: 0;
 }
+#umThemeToggle > span {
+  font-size: inherit !important;
+}
 #umThemeToggle #umThemeLabel {
   display: inline-flex;
   align-items: center;
   color: inherit;
-}
-
-/* ── Hide legacy duplicate privacy pages to avoid layout collisions ───────── */
-.legacy-page-hidden,
-[id^="page-privacy-legacy-"] {
-  display: none !important;
-}
-
-/* ── User menu: force dark-mode row typography parity ────────────────────── */
-#userMenuDropdown .user-menu-item,
-#userMenuDropdown .user-menu-item span,
-#userMenuDropdown #umThemeToggle,
-#userMenuDropdown #umThemeToggle span,
-#userMenuDropdown #umThemeLabel,
-#userMenuDropdown #umThemeIcon {
-  font-family: inherit !important;
-  font-size: inherit !important;
-  font-weight: inherit !important;
-  line-height: inherit !important;
-  letter-spacing: inherit !important;
-  text-transform: none !important;
-}
-
-/* ── Privacy page: keep content aligned under page header ────────────────── */
-#page-privacy {
-  position: relative;
-}
-#page-privacy .priv-hero,
-#page-privacy .prv-hero,
-#page-privacy .priv-section,
-#page-privacy .prv-card,
-#page-privacy .priv-toc {
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
 }
