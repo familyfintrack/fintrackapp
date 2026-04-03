@@ -5,7 +5,6 @@
 <link rel="manifest" href="manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="FinTrack">
 <meta name="theme-color" content="#0d2318">
@@ -88,8 +87,7 @@
   try {
     var t = localStorage.getItem('app_theme');
     if (!t) {
-      t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark' : 'light';
+      t = 'light';
     }
     var root = document.documentElement;
     if (t === 'dark') {
@@ -412,247 +410,6 @@
 </nav>
 
 <!-- MAIN -->
-<div id="loginScreen" class="ls-shell" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0b1e12">
-    <div class="ls-layout">
-
-      <!-- ══ PAINEL ESQUERDO: formulário (branco) ══ -->
-      <div class="ls-form-panel">
-        <div class="ls-card">
-          <!-- Logo always centred in new design -->
-          <div class="ls-logo-wrap">
-            <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
-              onerror="this.src='logo_transparent.png'">
-          </div>
-
-          <div class="ls-card-title">Bem-vindo de volta</div>
-          <div class="ls-card-sub">Acesse sua conta</div>
-
-          <!-- ── LOGIN ── -->
-          <div id="loginFormArea">
-            <div class="ls-field-group">
-              <label class="ls-label" data-i18n="auth.label_email">E-mail</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="loginEmail" name="email" class="ls-input" placeholder="seu@email.com" autocomplete="username email"
-                  onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <div style="display:flex;justify-content:space-between;align-items:baseline">
-                <label class="ls-label" data-i18n="auth.label_password">Senha</label>
-                <button onclick="showForgotPwdForm()" class="ls-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
-              </div>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="loginPassword" name="password" class="ls-input" placeholder="••••••••" autocomplete="current-password"
-                  onkeydown="if(event.key==='Enter')doLogin()">
-                <button onclick="toggleLoginPwd()" class="ls-eye-btn" type="button">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-            </div>
-            <label class="ls-remember">
-              <input type="checkbox" id="rememberMe">
-              <span class="ls-check-box"></span>
-              <span data-i18n="auth.remember_me">Salvar e-mail e senha</span>
-            </label>
-            <button onclick="doLogin()" id="loginBtn" class="ls-btn-primary">
-              <span data-i18n="auth.btn_enter">Entrar</span>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
-            <div id="loginError" class="ls-error" style="display:none"></div>
-            <div id="loginRequestAccessWrap" style="text-align:center;margin-top:18px;display:none">
-              <span class="ls-muted" data-i18n="auth.no_account">Não tem conta?</span>
-              <button id="loginRequestAccessBtn" onclick="showRegisterForm()" class="ls-link ls-link--bold" data-i18n="auth.request_access">Solicitar acesso</button>
-            </div>
-          </div><!-- /loginFormArea -->
-
-          <!-- ── FORGOT PASSWORD ── -->
-          <div id="forgotPwdArea" style="display:none">
-            <div class="ls-back-row">
-              <button onclick="showLoginFormArea()" class="ls-back-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Voltar
-              </button>
-            </div>
-            <div class="ls-card-title" style="font-size:1.1rem">Recuperar Senha</div>
-            <div class="ls-card-sub">Enviaremos um link para seu e-mail</div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="forgotPwdEmail" class="ls-input" placeholder="seu@email.com"
-                  onkeydown="if(event.key==='Enter')doForgotPwd()">
-              </div>
-            </div>
-            <button onclick="doForgotPwd()" id="forgotPwdBtn" class="ls-btn-primary">
-              <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
-            </button>
-            <div id="forgotPwdError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── RECOVERY PASSWORD ── -->
-          <div id="recoveryPwdArea" style="display:none">
-            <div class="ls-icon-badge">🔐</div>
-            <div class="ls-card-title">Nova Senha</div>
-            <div class="ls-card-sub">Escolha uma senha segura para sua conta</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nova senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="recoveryPwd1" class="ls-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
-                  onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="recoveryPwd2" class="ls-input" placeholder="Repita a nova senha" autocomplete="new-password"
-                  onkeydown="if(event.key==='Enter')doRecoveryPwd()">
-              </div>
-            </div>
-            <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="ls-btn-primary">
-              <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
-            </button>
-            <div id="recoveryPwdError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── REGISTER ── -->
-          <div id="registerFormArea" style="display:none">
-            <div class="ls-back-row">
-              <button onclick="showLoginFormArea()" class="ls-back-btn">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                Voltar
-              </button>
-            </div>
-            <div class="ls-card-title" style="font-size:1.1rem">Solicitar Acesso</div>
-            <div class="ls-card-sub">Crie sua conta para começar</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nome completo</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" id="regName" class="ls-input" placeholder="Seu nome">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="regEmail" class="ls-input" placeholder="seu@email.com">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="regPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="regPassword2" class="ls-input" placeholder="Repita a senha"
-                  onkeydown="if(event.key==='Enter')doRegister()">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Idioma</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                <select id="regLanguage" class="ls-input ls-select">
-                  <option value="pt">🇧🇷 Português</option>
-                  <option value="en">🇺🇸 English</option>
-                  <option value="es">🇪🇸 Español</option>
-                  <option value="fr">🇫🇷 Français</option>
-                </select>
-              </div>
-            </div>
-            <button onclick="doRegister()" id="regBtn" class="ls-btn-primary">
-              <span data-i18n="register.btn_submit">Enviar Solicitação</span>
-            </button>
-            <div id="regError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── PENDING APPROVAL ── -->
-          <div id="pendingApprovalArea" style="display:none;text-align:center;padding:12px 0">
-            <div class="ls-icon-badge">⏳</div>
-            <div class="ls-card-title">Aguardando aprovação</div>
-            <div class="ls-card-sub" style="margin-bottom:24px">Um administrador irá aprovar seu acesso em breve.</div>
-            <button onclick="showLoginFormArea()" class="ls-btn-ghost">Voltar ao login</button>
-          </div>
-
-          <!-- ── INVITE ACCEPTED — registro via convite ── -->
-          <div id="inviteRegisterArea" style="display:none">
-            <div class="ls-icon-badge">🎉</div>
-            <div class="ls-card-title" style="font-size:1.1rem;text-align:center">Você foi convidado!</div>
-            <div class="ls-card-sub" id="inviteWelcomeMsg" style="text-align:center;margin-bottom:20px">Complete seu cadastro para entrar na família</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nome completo</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" id="inviteRegName" class="ls-input" placeholder="Seu nome completo">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">E-mail (confirmação)</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" id="inviteRegEmail" class="ls-input" placeholder="seu@email.com" readonly style="background:var(--surface2,#f3f4f6);color:var(--muted,#6b7280)">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="inviteRegPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="inviteRegPassword2" class="ls-input" placeholder="Repita a senha"
-                  onkeydown="if(event.key==='Enter')doInviteRegister()">
-              </div>
-            </div>
-            <input type="hidden" id="inviteToken">
-            <button onclick="doInviteRegister()" id="inviteRegBtn" class="ls-btn-primary">
-              Criar conta e entrar na família
-            </button>
-            <div id="inviteRegError" class="ls-error" style="display:none"></div>
-          </div>
-
-          <!-- ── CHANGE PASSWORD (first login) ── -->
-          <div id="changePwdArea" style="display:none">
-            <div class="ls-info-banner">🔐 Defina uma nova senha no seu primeiro acesso.</div>
-            <div class="ls-field-group">
-              <label class="ls-label">Nova Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="newPwd1" class="ls-input" placeholder="Mínimo 8 caracteres">
-              </div>
-            </div>
-            <div class="ls-field-group">
-              <label class="ls-label">Confirmar Senha</label>
-              <div class="ls-input-wrap">
-                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type="password" id="newPwd2" class="ls-input" placeholder="Repita a senha">
-              </div>
-            </div>
-            <button onclick="doChangePwd()" class="ls-btn-primary">
-              <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
-            </button>
-            <div id="changePwdError" class="ls-error" style="display:none"></div>
-          </div>
-
-        </div><!-- /ls-card -->
-      </div><!-- /ls-form-panel -->
-
-    </div><!-- /ls-layout -->
-  </div><!-- /loginScreen -->
-
 <div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
     <div class="topbar-left">
@@ -3065,7 +2822,7 @@
       </div>
     </div>
 
-<div class="page" id="page-dreams" style="display:none">
+<div class="page" id="page-dreams">
       <div id="dreams-list-container" style="padding:0 0 100px">
         <!-- Rendered by dreams.js renderDreamsPage() -->
         <div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
@@ -4066,7 +3823,246 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div><!-- /mainApp -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  
+  <div id="loginScreen" class="ls-shell" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0b1e12">
+    <div class="ls-layout">
+
+      <!-- ══ PAINEL ESQUERDO: formulário (branco) ══ -->
+      <div class="ls-form-panel">
+        <div class="ls-card">
+          <!-- Logo always centred in new design -->
+          <div class="ls-logo-wrap">
+            <img class="ls-form-logo" src="logo_glow_soft.png" alt="Family FinTrack" id="loginLogoImg"
+              onerror="this.src='logo_transparent.png'">
+          </div>
+
+          <div class="ls-card-title">Bem-vindo de volta</div>
+          <div class="ls-card-sub">Acesse sua conta</div>
+
+          <!-- ── LOGIN ── -->
+          <div id="loginFormArea">
+            <div class="ls-field-group">
+              <label class="ls-label" data-i18n="auth.label_email">E-mail</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="loginEmail" name="email" class="ls-input" placeholder="seu@email.com" autocomplete="username email"
+                  onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <label class="ls-label" data-i18n="auth.label_password">Senha</label>
+                <button onclick="showForgotPwdForm()" class="ls-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
+              </div>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="loginPassword" name="password" class="ls-input" placeholder="••••••••" autocomplete="current-password"
+                  onkeydown="if(event.key==='Enter')doLogin()">
+                <button onclick="toggleLoginPwd()" class="ls-eye-btn" type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <label class="ls-remember">
+              <input type="checkbox" id="rememberMe">
+              <span class="ls-check-box"></span>
+              <span data-i18n="auth.remember_me">Salvar e-mail e senha</span>
+            </label>
+            <button onclick="doLogin()" id="loginBtn" class="ls-btn-primary">
+              <span data-i18n="auth.btn_enter">Entrar</span>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <div id="loginError" class="ls-error" style="display:none"></div>
+            <div id="loginRequestAccessWrap" style="text-align:center;margin-top:18px;display:none">
+              <span class="ls-muted" data-i18n="auth.no_account">Não tem conta?</span>
+              <button id="loginRequestAccessBtn" onclick="showRegisterForm()" class="ls-link ls-link--bold" data-i18n="auth.request_access">Solicitar acesso</button>
+            </div>
+          </div><!-- /loginFormArea -->
+
+          <!-- ── FORGOT PASSWORD ── -->
+          <div id="forgotPwdArea" style="display:none">
+            <div class="ls-back-row">
+              <button onclick="showLoginFormArea()" class="ls-back-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar
+              </button>
+            </div>
+            <div class="ls-card-title" style="font-size:1.1rem">Recuperar Senha</div>
+            <div class="ls-card-sub">Enviaremos um link para seu e-mail</div>
+            <div class="ls-field-group">
+              <label class="ls-label">E-mail</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="forgotPwdEmail" class="ls-input" placeholder="seu@email.com"
+                  onkeydown="if(event.key==='Enter')doForgotPwd()">
+              </div>
+            </div>
+            <button onclick="doForgotPwd()" id="forgotPwdBtn" class="ls-btn-primary">
+              <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
+            </button>
+            <div id="forgotPwdError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── RECOVERY PASSWORD ── -->
+          <div id="recoveryPwdArea" style="display:none">
+            <div class="ls-icon-badge">🔐</div>
+            <div class="ls-card-title">Nova Senha</div>
+            <div class="ls-card-sub">Escolha uma senha segura para sua conta</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nova senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="recoveryPwd1" class="ls-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+                  onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="recoveryPwd2" class="ls-input" placeholder="Repita a nova senha" autocomplete="new-password"
+                  onkeydown="if(event.key==='Enter')doRecoveryPwd()">
+              </div>
+            </div>
+            <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="ls-btn-primary">
+              <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
+            </button>
+            <div id="recoveryPwdError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── REGISTER ── -->
+          <div id="registerFormArea" style="display:none">
+            <div class="ls-back-row">
+              <button onclick="showLoginFormArea()" class="ls-back-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar
+              </button>
+            </div>
+            <div class="ls-card-title" style="font-size:1.1rem">Solicitar Acesso</div>
+            <div class="ls-card-sub">Crie sua conta para começar</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nome completo</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input type="text" id="regName" class="ls-input" placeholder="Seu nome">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">E-mail</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="regEmail" class="ls-input" placeholder="seu@email.com">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="regPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="regPassword2" class="ls-input" placeholder="Repita a senha"
+                  onkeydown="if(event.key==='Enter')doRegister()">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Idioma</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <select id="regLanguage" class="ls-input ls-select">
+                  <option value="pt">🇧🇷 Português</option>
+                  <option value="en">🇺🇸 English</option>
+                  <option value="es">🇪🇸 Español</option>
+                  <option value="fr">🇫🇷 Français</option>
+                </select>
+              </div>
+            </div>
+            <button onclick="doRegister()" id="regBtn" class="ls-btn-primary">
+              <span data-i18n="register.btn_submit">Enviar Solicitação</span>
+            </button>
+            <div id="regError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── PENDING APPROVAL ── -->
+          <div id="pendingApprovalArea" style="display:none;text-align:center;padding:12px 0">
+            <div class="ls-icon-badge">⏳</div>
+            <div class="ls-card-title">Aguardando aprovação</div>
+            <div class="ls-card-sub" style="margin-bottom:24px">Um administrador irá aprovar seu acesso em breve.</div>
+            <button onclick="showLoginFormArea()" class="ls-btn-ghost">Voltar ao login</button>
+          </div>
+
+          <!-- ── INVITE ACCEPTED — registro via convite ── -->
+          <div id="inviteRegisterArea" style="display:none">
+            <div class="ls-icon-badge">🎉</div>
+            <div class="ls-card-title" style="font-size:1.1rem;text-align:center">Você foi convidado!</div>
+            <div class="ls-card-sub" id="inviteWelcomeMsg" style="text-align:center;margin-bottom:20px">Complete seu cadastro para entrar na família</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nome completo</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <input type="text" id="inviteRegName" class="ls-input" placeholder="Seu nome completo">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">E-mail (confirmação)</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <input type="email" id="inviteRegEmail" class="ls-input" placeholder="seu@email.com" readonly style="background:var(--surface2,#f3f4f6);color:var(--muted,#6b7280)">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="inviteRegPassword" class="ls-input" placeholder="Mínimo 8 caracteres">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="inviteRegPassword2" class="ls-input" placeholder="Repita a senha"
+                  onkeydown="if(event.key==='Enter')doInviteRegister()">
+              </div>
+            </div>
+            <input type="hidden" id="inviteToken">
+            <button onclick="doInviteRegister()" id="inviteRegBtn" class="ls-btn-primary">
+              Criar conta e entrar na família
+            </button>
+            <div id="inviteRegError" class="ls-error" style="display:none"></div>
+          </div>
+
+          <!-- ── CHANGE PASSWORD (first login) ── -->
+          <div id="changePwdArea" style="display:none">
+            <div class="ls-info-banner">🔐 Defina uma nova senha no seu primeiro acesso.</div>
+            <div class="ls-field-group">
+              <label class="ls-label">Nova Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="newPwd1" class="ls-input" placeholder="Mínimo 8 caracteres">
+              </div>
+            </div>
+            <div class="ls-field-group">
+              <label class="ls-label">Confirmar Senha</label>
+              <div class="ls-input-wrap">
+                <svg class="ls-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="newPwd2" class="ls-input" placeholder="Repita a senha">
+              </div>
+            </div>
+            <button onclick="doChangePwd()" class="ls-btn-primary">
+              <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
+            </button>
+            <div id="changePwdError" class="ls-error" style="display:none"></div>
+          </div>
+
+        </div><!-- /ls-card -->
+      </div><!-- /ls-form-panel -->
+
+    </div><!-- /ls-layout -->
+  </div><!-- /loginScreen -->
 
 
     <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
@@ -6344,43 +6340,43 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-  <script src="js/state.js" defer></script>
-  <script src="js/i18n.js" defer></script>
-  <script src="js/translations_admin.js" defer></script>
-  <script src="js/cursor.js" defer></script>
-  <script src="js/db.js" defer></script>
-  <script src="js/utils.js" defer></script>
-  <script src="js/telemetry.js" defer></script>
-  <script src="js/settings.js" defer></script>
-  <script src="js/config.js" defer></script>
-  <script src="js/app.js" defer></script>
-  <script src="js/accounts.js" defer></script>
-  <script src="js/categories.js" defer></script>
-  <script src="js/payees.js" defer></script>
-  <script src="js/transactions.js" defer></script>
-  <script src="js/budgets.js" defer></script>
-  <script src="js/fx_rates.js" defer></script>
-  <script src="js/dashboard.js" defer></script>
-  <script src="js/reports.js" defer></script>
-  <script src="js/payee_autocomplete.js" defer></script>
-  <script src="js/ui_helpers.js" defer></script>
-  <script src="js/scheduled.js" defer></script>
-  <script src="js/attachments.js" defer></script>
-  <script src="js/iof.js" defer></script>
-  <script src="js/forecast.js" defer></script>
-  <script src="js/email.js" defer></script>
-  <script src="js/import.js" defer></script>
-  <script src="js/backup.js" defer></script>
-  <script src="js/auth.js" defer></script>
-  <script src="js/feedback.js" defer></script>
-  <script src="js/admin.js" defer></script>
-  <script src="js/autocheck.js" defer></script>
-  <script src="js/auto_register.js" defer></script>
-<script src="js/audit.js" defer></script>
-<script src="js/receipt_ai.js" defer></script>
-  <script src="js/form_mode.js" defer></script>
-<script src="js/prices.js" defer></script>
-  <script src="js/grocery.js" defer></script>
+  <script src="js/state.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/translations_admin.js"></script>
+  <script src="js/cursor.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/telemetry.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/accounts.js"></script>
+  <script src="js/categories.js"></script>
+  <script src="js/payees.js"></script>
+  <script src="js/transactions.js"></script>
+  <script src="js/budgets.js"></script>
+  <script src="js/fx_rates.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/payee_autocomplete.js"></script>
+  <script src="js/ui_helpers.js"></script>
+  <script src="js/scheduled.js"></script>
+  <script src="js/attachments.js"></script>
+  <script src="js/iof.js"></script>
+  <script src="js/forecast.js"></script>
+  <script src="js/email.js"></script>
+  <script src="js/import.js"></script>
+  <script src="js/backup.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/feedback.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/autocheck.js"></script>
+  <script src="js/auto_register.js"></script>
+<script src="js/audit.js"></script>
+<script src="js/receipt_ai.js"></script>
+  <script src="js/form_mode.js"></script>
+<script src="js/prices.js"></script>
+  <script src="js/grocery.js"></script>
 
   <!-- Approval Modal -->
   <div class="modal-overlay" id="approvalModal">
@@ -7581,7 +7577,7 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
   </div>
 
-  <script src="js/import_ai.js" defer></script>
+  <script src="js/import_ai.js"></script>
 
 <!-- ══ Modal: Normalizar Nomes de Beneficiários ══════════════════════════ -->
 <div class="modal-overlay" id="normalizePayeesModal">
@@ -7800,14 +7796,14 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-  <script src="js/family_members_composition.js" defer></script>
-  <script src="js/investments.js" defer></script>
-  <script src="js/ai_insights.js" defer></script>
-  <script src="js/help.js" defer></script>
-  <script src="js/privacy.js" defer></script>
-  <script src="js/orphan.js" defer></script>
-  <script src="js/family_prefs.js" defer></script>
-  <script src="js/wizard.js" defer></script>
+  <script src="js/family_members_composition.js"></script>
+  <script src="js/investments.js"></script>
+  <script src="js/ai_insights.js"></script>
+  <script src="js/help.js"></script>
+  <script src="js/privacy.js"></script>
+  <script src="js/orphan.js"></script>
+  <script src="js/family_prefs.js"></script>
+  <script src="js/wizard.js"></script>
   
 
 <!-- ═══ SETUP WIZARD ═══════════════════════════════════════════════════════ -->
@@ -8105,11 +8101,11 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
   </div>
 
-  <script src="js/debts.js" defer></script>
-  <script src="js/dreams_kb.js" defer></script>
-<script src="js/dreams.js" defer></script>
-  <script src="js/agent_engine.js" defer></script>
-<script src="js/agent.js" defer></script>
+  <script src="js/debts.js"></script>
+  <script src="js/dreams_kb.js"></script>
+<script src="js/dreams.js"></script>
+  <script src="js/agent_engine.js"></script>
+<script src="js/agent.js"></script>
 
 <script>
 window.toggleScheduledSection = window.toggleScheduledSection || function(section){
@@ -8502,7 +8498,7 @@ window.openMyProfile = function(...args) {
   </div>
 </div>
 
-  <script src="js/export_grid.js" defer></script>
+  <script src="js/export_grid.js"></script>
 </body>
 </html>
 
