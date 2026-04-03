@@ -51,21 +51,11 @@ async function isDreamsEnabled() {
   const fid = famId();
   if (!fid) return false;
 
-  // Fonte canônica: family_preferences. Se ainda não estiver em cache,
-  // força o carregamento para evitar falso negativo no menu lateral.
-  if (typeof getFamilyPreferences === 'function') {
-    try {
-      const prefs = await getFamilyPreferences();
-      if (prefs && prefs.modules && typeof prefs.modules.dreams !== 'undefined') {
-        return !!prefs.modules.dreams;
-      }
-    } catch (_) {}
-  }
-
+  // Fonte canônica atual: preferências da família.
   if (typeof isModuleEnabled === 'function') {
     try {
       const byPrefs = isModuleEnabled('dreams');
-      if (typeof byPrefs === 'boolean') return byPrefs;
+      if (byPrefs === true) return true;
     } catch (_) {}
   }
 
@@ -84,33 +74,15 @@ async function isDreamsEnabled() {
 async function applyDreamsFeature() {
   const fid = famId();
   const navEl = document.getElementById('dreamsNav'), pageEl = document.getElementById('page-dreams');
-  if (!fid) {
-    if (navEl) navEl.style.display='none';
-    if (pageEl) pageEl.style.display='none';
-    if (typeof _syncModulesSection==='function') _syncModulesSection();
-    return;
-  }
+  if (!fid) { if (navEl) navEl.style.display='none'; if (typeof _syncModulesSection==='function') _syncModulesSection(); return; }
   const on = await isDreamsEnabled();
-  if (navEl) {
-    navEl.style.display = on ? '' : 'none';
-    navEl.dataset.featureControlled = '1';
-  }
-  if (pageEl) {
-    if (on) {
-      pageEl.style.removeProperty('display');
-    } else {
-      pageEl.style.display = 'none';
-      if (window.state?.currentPage === 'dreams' && typeof navigate === 'function') {
-        navigate('dashboard');
-      }
-    }
-  }
+  if (navEl) { navEl.style.display = on ? '' : 'none'; navEl.dataset.featureControlled='1'; }
+  if (pageEl && !on) pageEl.style.display = 'none';
+  if (pageEl && on && pageEl.id === 'page-dreams') pageEl.style.removeProperty('display');
   if (typeof _syncModulesSection==='function') _syncModulesSection();
   if (on && !_drm.loaded) await loadDreams().catch(()=>{});
 }
 window.applyDreamsFeature = applyDreamsFeature;
-document.addEventListener('familyprefs:loaded', () => { applyDreamsFeature().catch(()=>{}); });
-document.addEventListener('familyprefs:changed', () => { applyDreamsFeature().catch(()=>{}); });
 
 async function toggleFamilyDreams(familyId, enabled) {
   await saveAppSetting('dreams_enabled_' + familyId, enabled);
