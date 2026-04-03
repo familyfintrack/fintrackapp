@@ -4997,9 +4997,9 @@ Se você não solicitou isso, ignore este e-mail.`,
     <div class="login-orb login-orb2"></div>
     <div class="login-orb login-orb3"></div>
 
-    <div class="login-card login-card-a" style="width:100%;max-width:400px">
+    <div class="login-card login-card-a" style="width:100%;max-width:620px">
       <div style="text-align:center;margin-bottom:28px">
-        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:299px;height:auto;object-fit:contain;margin-bottom:12px">
+        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:598px;max-width:90vw;height:auto;object-fit:contain;margin-bottom:12px">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
       </div>
       <div id="loginFormArea">
@@ -6530,45 +6530,6 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </div>
-        <!-- Dados bancários — expandíveis -->
-        <div class="form-group full" id="accountBankDataSection">
-          <details id="accountBankDetails" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
-            <summary style="padding:10px 14px;cursor:pointer;font-size:.82rem;font-weight:700;color:var(--text2);user-select:none;list-style:none">
-              🏦 Dados Bancários <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(opcional)</span>
-            </summary>
-            <div style="padding:12px 14px;border-top:1px solid var(--border)">
-              <div class="form-grid" style="gap:10px">
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Banco / Instituição</label><input type="text" id="accountBankName" placeholder="Ex: Itaú, Nubank…"></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Código</label><input type="text" id="accountBankCode" placeholder="Ex: 341" inputmode="numeric"></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Agência</label><input type="text" id="accountAgency" placeholder="Ex: 0001-9"></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Número da Conta</label><input type="text" id="accountNumber" placeholder="Ex: 12345-6"></div>
-                <div class="form-group full" style="margin:0"><label style="font-size:.75rem">IBAN</label><input type="text" id="accountIban" placeholder="Ex: FR7630001007941234567890185" style="font-family:monospace;font-size:.82rem"></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Routing Number (EUA)</label><input type="text" id="accountRoutingNumber" placeholder="9 dígitos ABA" inputmode="numeric"></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">SWIFT / BIC</label><input type="text" id="accountSwiftBic" placeholder="Ex: BNPAFRPPXXX" style="font-family:monospace;font-size:.82rem"></div>
-              </div>
-            </div>
-          </details>
-        </div>
-
-        <!-- Cartão de crédito — só visível para cartao_credito -->
-        <div class="form-group full" id="accountCardDataSection" style="display:none">
-          <details id="accountCardDetails" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
-            <summary style="padding:10px 14px;cursor:pointer;font-size:.82rem;font-weight:700;color:var(--text2);user-select:none;list-style:none">
-              💳 Detalhes do Cartão <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(opcional)</span>
-            </summary>
-            <div style="padding:12px 14px;border-top:1px solid var(--border)">
-              <div class="form-grid" style="gap:10px">
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Banco Emissor</label><input type="text" id="accountCardIssuer" placeholder="Ex: Itaú, Bradesco…"></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Bandeira</label>
-                  <select id="accountCardBrand"><option value="">— Selecionar —</option><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="elo">Elo</option><option value="amex">American Express</option><option value="hipercard">Hipercard</option><option value="dinersclub">Diners Club</option><option value="outro">Outro</option></select></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Categoria</label>
-                  <select id="accountCardType"><option value="">— Selecionar —</option><option value="standard">Standard</option><option value="gold">Gold</option><option value="platinum">Platinum</option><option value="black">Black</option><option value="infinite">Infinite</option></select></div>
-                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Limite Total</label><input type="number" id="accountCardLimit" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
-              </div>
-            </div>
-          </details>
-        </div>
-
         <!-- Vincular a sonho -->
         <div class="form-group full" id="accountDreamLinkSection">
           <label style="font-size:.82rem;font-weight:600;color:var(--text2)">🌟 Vincular a Sonho</label>
@@ -6664,6 +6625,56 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
     </div>
+      </div><!-- end accTabGeral -->
+
+      <!-- TAB: Dados Bancários -->
+      <div id="accTabBanco" class="acc-tab-panel" style="display:none">
+        <div class="form-grid" style="padding-top:4px">
+
+          <!-- Conta bancária -->
+          <div class="form-group full">
+            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px">🏦 Conta Bancária</div>
+            <div class="form-grid" style="gap:10px">
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Banco / Instituição</label><input type="text" id="accountBankName" placeholder="Ex: Itaú, Nubank…"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Código do Banco</label><input type="text" id="accountBankCode" placeholder="Ex: 341" inputmode="numeric"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Agência</label><input type="text" id="accountAgency" placeholder="Ex: 0001-9"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Número da Conta</label><input type="text" id="accountNumber" placeholder="Ex: 12345-6"></div>
+            </div>
+          </div>
+
+          <!-- Internacional -->
+          <div class="form-group full">
+            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px">🌍 Dados Internacionais</div>
+            <div class="form-grid" style="gap:10px">
+              <div class="form-group full" style="margin:0"><label style="font-size:.75rem">IBAN</label><input type="text" id="accountIban" placeholder="Ex: FR7630001007941234567890185" style="font-family:monospace;font-size:.82rem"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Routing Number (EUA / ABA)</label><input type="text" id="accountRoutingNumber" placeholder="9 dígitos" inputmode="numeric"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">SWIFT / BIC</label><input type="text" id="accountSwiftBic" placeholder="Ex: BNPAFRPPXXX" style="font-family:monospace;font-size:.82rem"></div>
+            </div>
+          </div>
+
+          <!-- Cartão de crédito -->
+          <div class="form-group full" id="accTabCardSection">
+            <div style="font-size:.78rem;font-weight:700;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px">💳 Dados do Cartão</div>
+            <div class="form-grid" style="gap:10px">
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Banco Emissor</label><input type="text" id="accountCardIssuer" placeholder="Ex: Itaú, Bradesco…"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Bandeira</label>
+                <select id="accountCardBrand"><option value="">— Selecionar —</option><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="elo">Elo</option><option value="amex">American Express</option><option value="hipercard">Hipercard</option><option value="dinersclub">Diners Club</option><option value="outro">Outro</option></select></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Categoria do Cartão</label>
+                <select id="accountCardType"><option value="">— Selecionar —</option><option value="standard">Standard</option><option value="gold">Gold</option><option value="platinum">Platinum</option><option value="black">Black</option><option value="infinite">Infinite</option></select></div>
+              <div class="form-group" style="margin:0"><label style="font-size:.75rem">Limite Total (R$)</label><input type="number" id="accountCardLimit" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+            </div>
+          </div>
+
+          <!-- Notas -->
+          <div class="form-group full">
+            <label style="font-size:.75rem;font-weight:600">Observações bancárias</label>
+            <textarea id="accountNotes" class="form-input" rows="2" placeholder="Informações adicionais da conta…" style="resize:vertical;font-size:.85rem"></textarea>
+          </div>
+
+        </div>
+      </div><!-- end accTabBanco -->
+
+    </div><!-- end modal-body -->
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
   </div>
 </div>
