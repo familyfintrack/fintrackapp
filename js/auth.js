@@ -745,9 +745,15 @@ function showLoginErr(msg) {
 
 // ── Login method tab switcher ─────────────────────────────────────────────
 function switchLoginTab(tab) {
+  // loginPanelPassword / loginPanelMagic não existem no HTML atual.
+  // Login unificado — função mantida por compatibilidade, com fallback seguro.
+  const pwdPanel = document.getElementById('loginPanelPassword') || document.getElementById('loginFormArea');
+  const magicPanel = document.getElementById('loginPanelMagic');
+  if (!pwdPanel && !magicPanel) return;
+
   const isPassword = tab === 'password';
-  document.getElementById('loginPanelPassword').style.display = isPassword ? '' : 'none';
-  document.getElementById('loginPanelMagic').style.display    = isPassword ? 'none' : '';
+  if (pwdPanel) pwdPanel.style.display = isPassword ? '' : 'none';
+  if (magicPanel) magicPanel.style.display = isPassword ? 'none' : '';
 
   const tabPwd   = document.getElementById('loginTabPassword');
   const tabMagic = document.getElementById('loginTabMagic');
@@ -756,14 +762,14 @@ function switchLoginTab(tab) {
   if (tabPwd)   tabPwd.style.cssText   += isPassword ? activeStyle : inactiveStyle;
   if (tabMagic) tabMagic.style.cssText += isPassword ? inactiveStyle : activeStyle;
 
-  // Reset magic link state when switching away
   if (isPassword) {
     const sent = document.getElementById('magicLinkSent');
     const btn  = document.getElementById('magicLinkBtn');
     if (sent) sent.style.display = 'none';
     if (btn)  { btn.style.display = ''; btn.disabled = false; btn.textContent = '✉️ Enviar Link de Acesso'; }
   }
-  document.getElementById('loginError').style.display = 'none';
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.style.display = 'none';
 }
 
 // ── Passwordless / Magic Link login ──────────────────────────────────────
@@ -934,7 +940,13 @@ async function _bootIntoAppSafely(options = {}) {
       }
     }
 
-    await bootApp();
+    const bootOk = await bootApp();
+    if (bootOk === false) {
+      showLoginScreen();
+      try { showLoginFormArea(); } catch(_) {}
+      try { showLoginErr('Erro ao carregar o aplicativo.'); } catch(_) {}
+      return 'failed';
+    }
     hideLoginScreen();
     return 'booted';
   } catch (e) {
@@ -1691,10 +1703,7 @@ async function doLogout() {
   const passEl = document.getElementById('loginPassword');
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
-  // Exibe login imediatamente para evitar tela branca durante o reload limpo
-  try { document.getElementById('mainApp')?.style.setProperty('visibility','hidden'); } catch(_) {}
-  try { document.getElementById('mainApp')?.style.setProperty('opacity','0'); } catch(_) {}
-  try { showLoginScreen(); } catch(_) {}
+  // Reload the page for a completely clean state
   window.location.reload();
 }
 
@@ -1726,10 +1735,7 @@ async function clearAppCache() {
     // Clear sessionStorage
     sessionStorage.clear();
     toast(t('toast.cache_cleared'), 'success');
-    try { document.getElementById('mainApp')?.style.setProperty('visibility','hidden'); } catch(_) {}
-    try { document.getElementById('mainApp')?.style.setProperty('opacity','0'); } catch(_) {}
-    try { showLoginScreen(); } catch(_) {}
-    setTimeout(() => window.location.reload(), 900);
+    setTimeout(() => window.location.reload(), 1200);
   } catch(e) {
     toast('Erro ao limpar cache: ' + e.message, 'error');
   }
@@ -1772,7 +1778,7 @@ function showLoginFormArea() {
   ['registerFormArea','pendingApprovalArea','changePwdArea','forgotPwdArea','recoveryPwdArea']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   document.getElementById('loginFormArea').style.display = '';
-  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginError')?.style && (document.getElementById('loginError').style.display = 'none');
   document.getElementById('regError').style.display = 'none';
   focusFieldSafely('loginEmail');
 }

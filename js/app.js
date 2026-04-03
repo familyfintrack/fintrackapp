@@ -436,8 +436,9 @@ async function tryAutoConnect(){
           return; // createFirstFamily() calls bootApp() when done
         }
       }
-      await bootApp();
-      hideLoginScreen?.();
+      const bootOk = await bootApp().catch(e => { console.error('[boot]', e); return false; });
+      if (bootOk === false) showLoginScreen?.();
+      else hideLoginScreen?.();
     } else {
       // Session restored but context failed (e.g. family_id null) → show login
       showLoginScreen();
@@ -455,8 +456,9 @@ async function tryAutoConnect(){
     const restored = await tryRestoreSession().catch(()=>false);
     if(restored){
       updateUserUI?.();
-      await bootApp();
-      hideLoginScreen?.();
+      const bootOk = await bootApp().catch(e => { console.error('[boot]', e); return false; });
+      if (bootOk === false) showLoginScreen?.();
+      else hideLoginScreen?.();
     } else {
       showLoginScreen();
       // Verificar token de convite após mostrar a tela de login
@@ -569,7 +571,8 @@ async function bootApp(){
     ]);
   } catch(e) {
     toast(t('error.load_data')+' '+e.message,'error');
-    throw e;
+    console.error('[boot] preload failed:', e);
+    return false;
   }
   // Dados secundários em background — não bloqueiam o dashboard
   loadScheduled().then(() => {
@@ -605,7 +608,6 @@ async function bootApp(){
     }
   } catch (e) {
     console.error('[boot] dashboard initial load failed:', e);
-    throw e;
   }
   // Notificações de login para o usuário (transações do dia + saúde financeira)
   // Notifications: run after loadScheduled resolves so data is ready
@@ -627,9 +629,15 @@ async function bootApp(){
   if (typeof applyInvestmentsFeature === 'function') applyInvestmentsFeature().catch(() => {});
   if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
   if (typeof applyDebtsFeature === 'function') applyDebtsFeature().catch(() => {});
-  if (typeof applyDreamsFeature === 'function') applyDreamsFeature().catch(() => {});
+  if (typeof applyDreamsFeature === 'function') {
+    try {
+      await applyDreamsFeature();
+    } catch (_) {}
+    try { if (typeof _syncModulesSection === 'function') _syncModulesSection(); } catch (_) {}
+  }
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
+  return true;
 }
 
 const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
@@ -908,7 +916,7 @@ function clearFamilyScopedUI() {
 function navigate(page){
   // Guard: settings/audit/telemetry são admin-only
   // Guard: settings/telemetry são admin-only; audit é acessível a todos
-  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin'){
+  if((page==='settings'||page==='telemetry') && currentUser?.role !== 'admin' && currentUser?.role !== 'owner'){
     // FIX: if currentUser not loaded yet, don't block — let it through and page will show error
     if (currentUser !== null) {
       toast(t('error.admin_only'),'warning');
@@ -926,13 +934,7 @@ function navigate(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
-  const _pageEl = document.getElementById('page-'+page);
-  if (!_pageEl) {
-    console.warn('[navigate] page not found:', page);
-    return;
-  }
-  _pageEl.style.removeProperty('display');
-  _pageEl.classList.add('active');
+  document.getElementById('page-'+page).classList.add('active');
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;
