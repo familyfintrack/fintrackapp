@@ -19109,7 +19109,7 @@ section[data-page="transactions"] .content {
       0 0 0 1px rgba(255,255,255,.05);
   }
   #loginLogoImg {
-    width: 160px !important;
+    width: 320px !important;
   }
   #loginScreen .form-group { margin-bottom: 14px !important; }
   .login-card-a input[type="email"],
@@ -19131,7 +19131,7 @@ section[data-page="transactions"] .content {
 
 @media (max-width: 360px) {
   .login-card-a { padding: 18px 12px 22px; }
-  #loginLogoImg { width: 130px !important; }
+  #loginLogoImg { width: 240px !important; }
 }
 
 
@@ -22527,6 +22527,35 @@ tr.payee-row[onclick] { cursor: pointer; }
 .drm-scenario-desc  { font-size: .88rem; font-weight: 800; color: var(--text); margin-bottom: 3px; }
 .drm-scenario-period { font-size: .68rem; color: var(--muted); }
 
+/* ── Dream type specific meta grid ──────────────────────────────── */
+.drm-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.drm-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.drm-meta-label {
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.drm-meta-value {
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* ── Items list ──────────────────────────────────────────────────── */
 .drm-items-list { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .drm-item-row {
@@ -23185,8 +23214,8 @@ tr.payee-row[onclick] { cursor: pointer; }
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(125,194,66,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125,194,66,.025) 1px, transparent 1px);
+    linear-gradient(rgba(125,194,66,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.07) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
