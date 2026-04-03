@@ -21,9 +21,18 @@ const ASSET_TYPES = [
 
 // Corretoras conhecidas — combo com "Outro" para entrada livre
 const KNOWN_BROKERS = [
-  'XP Investimentos', 'Clear', 'Rico', 'BTG Pactual', 'Itaú', 'Bradesco',
-  'Banco do Brasil', 'Santander', 'Caixa', 'NuInvest (Easynvest)', 'Avenue',
-  'Inter Invest', 'Toro Investimentos', 'Warren', 'Órama', 'Modal', 'Outro',
+  // Corretoras independentes
+  'XP Investimentos', 'Clear', 'Rico', 'BTG Pactual Digital', 'Toro Investimentos',
+  'Warren', 'Órama', 'Modal', 'NuInvest (Easynvest)', 'Avenue', 'Stake',
+  'Inter Invest', 'Genial Investimentos', 'Guide Investimentos', 'Mirae Asset',
+  'CM Capital', 'Ágora Investimentos', 'SWM', 'Vitreo', 'Kinea',
+  // Bancos com plataforma de investimentos
+  'Itaú', 'Bradesco', 'Banco do Brasil', 'Santander', 'Caixa',
+  'Nubank', 'C6 Bank', 'Banco Inter', 'Sicoob', 'Sicredi',
+  // Internacionais
+  'Interactive Brokers', 'TD Ameritrade', 'Charles Schwab', 'Fidelity',
+  'Binance', 'Coinbase', 'Kraken',
+  'Outro',
 ];
 
 // Module state
@@ -541,13 +550,15 @@ function openInvTransactionModal(accountId = null, positionId = null) {
         <div class="form-group">
           <label>Quantidade *</label>
           <input type="text" id="invTxQty" inputmode="decimal" placeholder="0"
-            oninput="_invCalcTotal()">
+            oninput="_invCalcTotal();_invFmtQty(this)"
+            onblur="_invFmtQtyBlur(this)">
         </div>
         <div class="form-group">
           <label>Preço Unitário (BRL) *</label>
           <div class="amt-wrap">
             <input type="text" id="invTxPrice" inputmode="decimal" placeholder="0,00"
-              oninput="_invCalcTotal()">
+              oninput="_invCalcTotal();_invFmtPrice(this)"
+              onblur="_invFmtPriceBlur(this)">
           </div>
         </div>
         <div class="form-group full">
@@ -654,6 +665,33 @@ function _invOnBrokerChange() {
   if (otherGrp) otherGrp.style.display = sel?.value === 'Outro' ? '' : 'none';
 }
 window._invOnBrokerChange = _invOnBrokerChange;
+
+// ── Formatação automática de qty / price ──────────────────────────────────
+function _invFmtQty(el) {
+  // Allow digits, dot, comma — clean non-numeric except separator
+  let v = el.value.replace(/[^\d.,]/g, '');
+  // Normalize comma to dot for parsing
+  el.value = v;
+}
+function _invFmtQtyBlur(el) {
+  const v = parseFloat(el.value.replace(',', '.'));
+  if (!isNaN(v) && v > 0) el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+}
+function _invFmtPrice(el) {
+  let raw = el.value.replace(/[^\d,]/g, '');
+  el.value = raw;
+}
+function _invFmtPriceBlur(el) {
+  const raw = el.value.replace(',', '.');
+  const v = parseFloat(raw);
+  if (!isNaN(v) && v > 0) {
+    el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+  }
+}
+window._invFmtQty = _invFmtQty;
+window._invFmtQtyBlur = _invFmtQtyBlur;
+window._invFmtPrice = _invFmtPrice;
+window._invFmtPriceBlur = _invFmtPriceBlur;
 
 // ── Enriquecer fundo com Gemini ──
 async function _invEnrichFundoAI() {
@@ -940,11 +978,18 @@ async function openInvPositionDetail(positionId) {
 
   const txRows = txs.map(tx => `
     <tr>
-      <td>${fmtDate(tx.date)}</td>
-      <td><span class="badge" style="background:${tx.type==='buy'?'#dcfce7':'#fee2e2'};color:${tx.type==='buy'?'#15803d':'#b91c1c'}">${tx.type==='buy'?'Compra':'Venda'}</span></td>
-      <td>${(+(tx.quantity)).toFixed(4)}</td>
-      <td>${fmt(tx.unit_price)}</td>
-      <td class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
+      <td style="padding:6px 8px">${fmtDate(tx.date)}</td>
+      <td style="padding:6px 8px;text-align:center"><span class="badge" style="background:${tx.type==='buy'?'#dcfce7':'#fee2e2'};color:${tx.type==='buy'?'#15803d':'#b91c1c'}">${tx.type==='buy'?'Compra':'Venda'}</span></td>
+      <td style="padding:6px 8px;text-align:right">${(+(tx.quantity)).toFixed(4)}</td>
+      <td style="padding:6px 8px;text-align:right">${fmt(tx.unit_price)}</td>
+      <td style="padding:6px 8px;text-align:right" class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
+      <td style="padding:6px 4px;text-align:center">
+        <button onclick="deleteInvTransaction('${tx.id}','${pos.id}')"
+          title="Excluir movimentação"
+          style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--muted);padding:2px 6px;border-radius:6px;transition:all .15s"
+          onmouseover="this.style.color='var(--danger,#dc2626)';this.style.background='rgba(220,38,38,.08)'"
+          onmouseout="this.style.color='var(--muted)';this.style.background='none'">🗑️</button>
+      </td>
     </tr>`).join('');
 
   const modal = document.createElement('div');

@@ -327,6 +327,12 @@ async function loadDashboard(){
           <div class="dash-fav-card__top">
             <div class="dash-fav-card__icon">${_dashRenderIcon(a.icon,a.color,20)}</div>
             <span class="dash-fav-card__type">${esc(_typeLabel)}</span>
+            <button class="dash-fav-card__detail-btn"
+              onclick="event.stopPropagation();openAccountDetailPanel('${a.id}')"
+              title="Ver detalhes da conta"
+              style="margin-left:auto;background:rgba(255,255,255,.15);border:none;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.7rem;color:rgba(255,255,255,.85);font-weight:600;transition:all .15s;line-height:1;backdrop-filter:blur(4px)"
+              onmouseover="this.style.background='rgba(255,255,255,.28)'"
+              onmouseout="this.style.background='rgba(255,255,255,.15)'">⋯</button>
           </div>
           <div class="dash-fav-card__name">${esc(a.name)}</div>
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>

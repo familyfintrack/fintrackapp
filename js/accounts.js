@@ -244,6 +244,17 @@ function accountCardHTML(a){
     id="favStar-${a.id}">${a.is_favorite ? '⭐' : '<span style="opacity:.3;font-size:.8rem">☆</span>'}</span>`;
   const dueLine = (a.type==='cartao_credito' && a.due_day)
     ? `<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Vence dia ${a.due_day}</div>` : '';
+  // Build discreet bank info line
+  const bankParts = [];
+  if (a.bank_name) bankParts.push(a.bank_name);
+  if (a.agency)    bankParts.push(`Ag ${a.agency}`);
+  if (a.account_number) bankParts.push(a.account_number);
+  if (a.iban)      bankParts.push(`IBAN …${a.iban.slice(-6)}`);
+  if (a.card_brand) bankParts.push(a.card_brand.charAt(0).toUpperCase() + a.card_brand.slice(1));
+  const bankInfoLine = bankParts.length
+    ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.8">${esc(bankParts.join(' · '))}</div>`
+    : '';
+
   return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
     ${favStar}
     <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
@@ -253,6 +264,7 @@ function accountCardHTML(a){
     <div class="account-type">${accountTypeLabel(a.type)}</div>
     <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
     <div class="account-currency">${a.currency}</div>
+    ${bankInfoLine}
     ${dueLine}
   </div>`;
 }
@@ -1080,3 +1092,60 @@ window.accountSelectAiIcon = function(iconKeyOrEmoji, color) {
   }
   if (panel) panel.style.display = 'none';
 };
+
+// ── Painel de detalhes da conta (acionado pelo dashboard) ─────────────────
+function openAccountDetailPanel(accountId) {
+  const a = (state.accounts || []).find(x => x.id === accountId);
+  if (!a) { toast('Conta não encontrada', 'error'); return; }
+
+  document.getElementById('accDetailPanel')?.remove();
+
+  const typeLabel = accountTypeLabel(a.type) || a.type;
+  const balColor  = a.balance < 0 ? 'var(--red)' : 'var(--accent)';
+  const bankInfo  = [a.bank_name, a.agency && `Ag: ${a.agency}`, a.account_number && `CC: ${a.account_number}`]
+    .filter(Boolean).join(' · ');
+  const cardInfo  = a.type === 'cartao_credito'
+    ? [a.card_brand, a.card_type, a.card_limit && `Limite: ${fmt(a.card_limit)}`].filter(Boolean).join(' · ')
+    : '';
+  const ibanInfo  = a.iban ? `IBAN: ${a.iban}` : (a.routing_number ? `Routing: ${a.routing_number}` : '');
+  const swiftInfo = a.swift_bic ? `SWIFT: ${a.swift_bic}` : '';
+
+  const panel = document.createElement('div');
+  panel.id = 'accDetailPanel';
+  panel.className = 'modal-overlay active';
+  panel.style.zIndex = '10020';
+  panel.onclick = e => { if (e.target === panel) panel.remove(); };
+  panel.innerHTML = `
+  <div class="modal" style="max-width:400px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">${_dashRenderIcon ? '' : '🏦 '}${esc(a.name)}</span>
+      <button class="modal-close" onclick="document.getElementById('accDetailPanel').remove()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px">
+      <!-- Balance hero -->
+      <div style="text-align:center;padding:16px;background:var(--surface2);border-radius:12px;margin-bottom:16px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${esc(typeLabel)}</div>
+        <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${balColor}">${fmt(a.balance, a.currency)}</div>
+        ${a.currency !== 'BRL' ? `<div style="font-size:.82rem;color:var(--muted);margin-top:2px">≈ ${fmt(toBRL ? toBRL(a.balance, a.currency) : a.balance, 'BRL')} BRL</div>` : ''}
+      </div>
+
+      <!-- Info rows -->
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:.85rem">
+        ${a.group_id ? (() => { const g = (state.groups||[]).find(x=>x.id===a.group_id); return g ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Grupo</span><span>${esc(g.name)}</span></div>` : ''; })() : ''}
+        ${a.currency !== 'BRL' ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Moeda</span><span>${esc(a.currency)}</span></div>` : ''}
+        ${bankInfo ? `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><span style="color:var(--muted)">Banco</span><span style="text-align:right">${esc(bankInfo)}</span></div>` : ''}
+        ${cardInfo ? `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><span style="color:var(--muted)">Cartão</span><span style="text-align:right">${esc(cardInfo)}</span></div>` : ''}
+        ${ibanInfo ? `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><span style="color:var(--muted)">IBAN / Routing</span><span style="font-family:monospace;font-size:.78rem;text-align:right">${esc(ibanInfo)}</span></div>` : ''}
+        ${swiftInfo ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">SWIFT/BIC</span><span style="font-family:monospace;font-size:.78rem">${esc(swiftInfo)}</span></div>` : ''}
+        ${a.due_day ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Vencimento</span><span>Dia ${a.due_day}</span></div>` : ''}
+        ${a.notes ? `<div style="margin-top:4px;padding:8px 10px;background:var(--surface2);border-radius:8px;color:var(--text2);font-size:.82rem;line-height:1.45">${esc(a.notes)}</div>` : ''}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('accDetailPanel').remove()">Fechar</button>
+      <button class="btn btn-primary" onclick="document.getElementById('accDetailPanel').remove();openAccountModal('${a.id}')">✏️ Editar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(panel);
+}
+window.openAccountDetailPanel = openAccountDetailPanel;

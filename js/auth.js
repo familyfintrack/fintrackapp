@@ -938,6 +938,9 @@ async function onLoginSuccess() {
   // Apply access request visibility based on admin setting
   if (typeof initAccessRequestVisibility === 'function') initAccessRequestVisibility().catch(()=>{});
 
+  // Check for Telegram chat_id in URL (e.g. after bot redirect)
+  _checkTelegramChatIdUrl().catch(() => {});
+
   // If the user has no family_id and is not a global admin/owner,
   // launch the wizard so they can create their own family as Owner.
   if (!currentUser?.family_id &&
@@ -4387,6 +4390,54 @@ async function resend2FACode() {
 // Estado do convite ativo (se URL contiver ?invite=TOKEN)
 let _pendingInvite = null;
 
+// ── Verificar chat_id do Telegram via URL (?tg_chat_id=CHATID&tg_user_id=UID) ──
+async function _checkTelegramChatIdUrl() {
+  const params   = new URLSearchParams(window.location.search);
+  const chatId   = params.get('tg_chat_id') || params.get('tgid');
+  const tgToken  = params.get('tg_token');   // token de segurança gerado pelo app
+
+  if (!chatId) return;
+
+  // Limpar parâmetros da URL
+  try {
+    const clean = window.location.pathname + (window.location.hash || '');
+    history.replaceState(null, '', clean);
+  } catch(_) {}
+
+  // Se há token de verificação, validar no banco
+  if (tgToken) {
+    try {
+      const { data: tokenRow } = await sb.from('app_settings')
+        .select('value').eq('key', 'tg_link_token_' + tgToken).maybeSingle();
+      if (tokenRow) {
+        const payload = typeof tokenRow.value === 'string' ? JSON.parse(tokenRow.value) : tokenRow.value;
+        // Atualizar payload com chat_id para o polling detectar
+        await sb.from('app_settings').upsert({
+          key: 'tg_link_token_' + tgToken,
+          value: JSON.stringify({ ...payload, chat_id: chatId }),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'key' });
+        toast('📱 Telegram vinculado! Aguarde...', 'success');
+        return;
+      }
+    } catch(_) {}
+  }
+
+  // Sem token: salvar diretamente se usuário já está logado
+  if (currentUser?.app_user_id && chatId) {
+    try {
+      await sb.from('app_users').update({ telegram_chat_id: chatId }).eq('id', currentUser.app_user_id);
+      currentUser.telegram_chat_id = chatId;
+      // Atualizar campo de perfil se visível
+      const inp = document.getElementById('myProfileTelegramChatId');
+      if (inp) inp.value = chatId;
+      toast('✅ Telegram vinculado com sucesso! Chat ID: ' + chatId, 'success');
+    } catch(e) {
+      console.warn('[tg_chat_id url]', e);
+    }
+  }
+}
+
 // ── Verificar e processar token de convite na URL ──
 async function _checkInviteToken() {
   const params = new URLSearchParams(window.location.search);
@@ -4535,6 +4586,21 @@ async function _acceptPendingInvite() {
 // Expor globalmente
 window._checkInviteToken  = _checkInviteToken;
 window._acceptPendingInvite = _acceptPendingInvite;
+window._checkTelegramChatIdUrl = _checkTelegramChatIdUrl;
+
+// Verificar parâmetros de URL ao carregar
+(function _checkUrlParams() {
+  // Invite token
+  if (new URLSearchParams(window.location.search).get('invite')) {
+    _checkInviteToken().catch(() => {});
+  }
+  // Telegram chat_id via URL
+  if (new URLSearchParams(window.location.search).get('tg_chat_id') ||
+      new URLSearchParams(window.location.search).get('tgid')) {
+    _checkTelegramChatIdUrl().catch(() => {});
+  }
+})();
+
 tryAutoConnect();
 
 /* ══════════════════════════════════════════════════════════════════
