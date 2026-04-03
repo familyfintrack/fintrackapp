@@ -1,28 +1,38 @@
-// PATCHED BOOT
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[BOOT] starting...');
-  try {
-    const { data } = await supabase.auth.getSession();
-    const session = data?.session;
+// ===== PATCHED AUTH.JS (SAFE WRAPPER) =====
 
-    if (!session) {
-      document.body.classList.remove('booting');
-      showLoginScreen?.();
-      return;
-    }
+// Garantir funções globais mesmo que implementações originais existam
+function safeCall(fn){
+  try { return fn && fn(); } catch(e){ console.error(e); }
+}
 
-    try {
-      await bootApp();
-      document.body.classList.remove('booting');
-      hideLoginScreen?.();
-    } catch (e) {
-      console.error('[BOOT ERROR]', e);
-      document.body.classList.remove('booting');
-      showLoginScreen?.();
-    }
-  } catch (err) {
-    console.error('[AUTH ERROR]', err);
-    document.body.classList.remove('booting');
-    showLoginScreen?.();
+// Expor funções no window (mesmo que já existam)
+window.doLogin = window.doLogin || function(){ console.warn('doLogin not implemented'); };
+window.doSignup = window.doSignup || function(){};
+window.doForgot = window.doForgot || function(){};
+window.doReset = window.doReset || function(){};
+window.doChangePwd = window.doChangePwd || function(){};
+
+// Bind de eventos resiliente
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('[AUTH PATCH] Binding login events');
+
+  const btn = document.getElementById('loginBtn');
+  const email = document.getElementById('loginEmail');
+  const password = document.getElementById('loginPassword');
+
+  if (btn) {
+    btn.onclick = () => safeCall(window.doLogin);
+  }
+
+  if (password) {
+    password.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') safeCall(window.doLogin);
+    });
   }
 });
+
+// Proteção contra null
+function safeShowError(){
+  const el = document.getElementById('loginError');
+  if (el && el.style) el.style.display = 'block';
+}
