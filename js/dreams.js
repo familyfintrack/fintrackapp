@@ -166,12 +166,26 @@ function _fmtCurrency(val, currency = 'BRL') {
 }
 
 function _dreamTypeLabel(type) {
-  const labels = { viagem: '✈️ Viagem', automovel: '🚗 Automóvel', imovel: '🏠 Imóvel' };
+  const labels = {
+    viagem:           '✈️ Viagem',
+    automovel:        '🚗 Automóvel',
+    imovel:           '🏠 Imóvel',
+    cirurgia_plastica:'💉 Cirurgia Plástica',
+    estudos:          '🎓 Estudos',
+    outro:            '🌟 Outro Sonho',
+  };
   return labels[type] || '🌟 Sonho';
 }
 
 function _dreamTypeEmoji(type) {
-  const e = { viagem: '✈️', automovel: '🚗', imovel: '🏠' };
+  const e = {
+    viagem:           '✈️',
+    automovel:        '🚗',
+    imovel:           '🏠',
+    cirurgia_plastica:'💉',
+    estudos:          '🎓',
+    outro:            '🌟',
+  };
   return e[type] || '🌟';
 }
 
@@ -371,6 +385,47 @@ function openDreamDetail(dreamId) {
             ${monthly !== null && monthly > 0 && !privacy ? `<span>Economia necessária: <strong>${_fmtCurrency(monthly, d.currency)}/mês</strong></span>` : ''}
           </div>` : ''}
         </div>
+
+        <!-- Detalhes específicos por tipo -->
+        ${aiFields && d.dream_type === 'cirurgia_plastica' ? `
+        <div class="drm-detail-section">
+          <div class="drm-section-title">💉 Detalhes da Cirurgia</div>
+          <div class="drm-meta-grid">
+            ${aiFields.tipo_cirurgia ? `<div class="drm-meta-item"><span class="drm-meta-label">Procedimento</span><span class="drm-meta-value">${_esc(aiFields.tipo_cirurgia)}</span></div>` : ''}
+            ${aiFields.medico ? `<div class="drm-meta-item"><span class="drm-meta-label">Médico</span><span class="drm-meta-value">${_esc(aiFields.medico)}</span></div>` : ''}
+            ${aiFields.clinica ? `<div class="drm-meta-item"><span class="drm-meta-label">Clínica</span><span class="drm-meta-value">${_esc(aiFields.clinica)}</span></div>` : ''}
+            ${aiFields.protese ? `<div class="drm-meta-item"><span class="drm-meta-label">Prótese</span><span class="drm-meta-value">${_esc(aiFields.protese)}</span></div>` : ''}
+            ${aiFields.custo_medico > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Honorários</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_medico)}</span></div>` : ''}
+            ${aiFields.custo_anestesia > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Anestesia</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_anestesia)}</span></div>` : ''}
+            ${aiFields.custo_hospital > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Hospital</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_hospital)}</span></div>` : ''}
+            ${aiFields.custo_exames > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Exames pré-op</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_exames)}</span></div>` : ''}
+          </div>
+        </div>` : ''}
+
+        ${aiFields && d.dream_type === 'estudos' ? `
+        <div class="drm-detail-section">
+          <div class="drm-section-title">🎓 Detalhes dos Estudos</div>
+          <div class="drm-meta-grid">
+            ${aiFields.tipo_estudo ? `<div class="drm-meta-item"><span class="drm-meta-label">Tipo</span><span class="drm-meta-value">${_esc(aiFields.tipo_estudo)}</span></div>` : ''}
+            ${aiFields.instituicao ? `<div class="drm-meta-item"><span class="drm-meta-label">Instituição</span><span class="drm-meta-value">${_esc(aiFields.instituicao)}</span></div>` : ''}
+            ${aiFields.pais ? `<div class="drm-meta-item"><span class="drm-meta-label">País</span><span class="drm-meta-value">${_esc(aiFields.pais)}</span></div>` : ''}
+            ${aiFields.duracao_meses > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Duração</span><span class="drm-meta-value">${aiFields.duracao_meses} meses</span></div>` : ''}
+            ${aiFields.moeda && aiFields.moeda !== 'BRL' ? `<div class="drm-meta-item"><span class="drm-meta-label">Moeda</span><span class="drm-meta-value">${aiFields.moeda}</span></div>` : ''}
+            ${aiFields.custo_mensalidade > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Mensalidade</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_mensalidade)}/mês</span></div>` : ''}
+            ${aiFields.custo_moradia > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Moradia</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_moradia)}/mês</span></div>` : ''}
+            ${aiFields.custo_passagem > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Passagem</span><span class="drm-meta-value">${_fmtCurrency(aiFields.custo_passagem)}</span></div>` : ''}
+          </div>
+        </div>` : ''}
+
+        ${aiFields && d.dream_type === 'outro' ? `
+        <div class="drm-detail-section">
+          <div class="drm-section-title">🌟 Detalhes do Objetivo</div>
+          <div class="drm-meta-grid">
+            ${aiFields.categoria ? `<div class="drm-meta-item"><span class="drm-meta-label">Categoria</span><span class="drm-meta-value">${_esc(aiFields.categoria)}</span></div>` : ''}
+            ${aiFields.prazo_meses > 0 ? `<div class="drm-meta-item"><span class="drm-meta-label">Prazo desejado</span><span class="drm-meta-value">${aiFields.prazo_meses} meses</span></div>` : ''}
+          </div>
+          ${aiFields.detalhes ? `<div style="margin-top:8px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:.85rem;color:var(--text2);line-height:1.5">${_esc(aiFields.detalhes)}</div>` : ''}
+        </div>` : ''}
 
         <!-- Simulation scenarios -->
         ${!privacy && remaining > 0 ? `
@@ -815,9 +870,12 @@ window.closeDreamWizard = closeDreamWizard;
 /* ── Step 1: Escolha do tipo ──────────────────────────────────────── */
 function _wizStep1() {
   const types = [
-    { key: 'viagem',    emoji: '✈️', label: 'Viagem',    desc: 'Destinos, passeios, hospedagem e mais' },
-    { key: 'automovel', emoji: '🚗', label: 'Automóvel', desc: 'Compra à vista ou financiada' },
-    { key: 'imovel',    emoji: '🏠', label: 'Imóvel',    desc: 'Apartamento, casa, praia ou campo' },
+    { key: 'viagem',            emoji: '✈️', label: 'Viagem',            desc: 'Destinos, passeios, hospedagem e mais' },
+    { key: 'automovel',         emoji: '🚗', label: 'Automóvel',         desc: 'Compra à vista ou financiada' },
+    { key: 'imovel',            emoji: '🏠', label: 'Imóvel',            desc: 'Apartamento, casa, praia ou campo' },
+    { key: 'cirurgia_plastica', emoji: '💉', label: 'Cirurgia Plástica', desc: 'Médico, clínica, tipo de procedimento' },
+    { key: 'estudos',           emoji: '🎓', label: 'Estudos',           desc: 'Faculdade, curso, intercâmbio no exterior' },
+    { key: 'outro',             emoji: '🌟', label: 'Outro Sonho',       desc: 'Qualquer objetivo financeiro personalizado' },
   ];
   return `
   <div class="drm-wiz-step1">
@@ -872,7 +930,7 @@ Objetivo: "${input}"
 
 JSON esperado (sem markdown, sem texto adicional):
 {
-  "tipo": "viagem|automovel|imovel",
+  "tipo": "viagem|automovel|imovel|cirurgia_plastica|estudos|outro",
   "titulo": "título conciso do sonho",
   "descricao": "descrição em 1 frase",
   "destino_ou_modelo": "destino ou modelo do bem",
@@ -931,6 +989,7 @@ function _wizStep2() {
   else if (type === 'imovel') specificFields = _wizFieldsImovel(d);
   else if (type === 'cirurgia_plastica') specificFields = _wizFieldsCirurgia(d);
   else if (type === 'estudos') specificFields = _wizFieldsEstudos(d);
+  else if (type === 'outro') specificFields = _wizFieldsOutro(d);
 
   return `
   <div class="drm-wiz-step2">
@@ -1200,9 +1259,11 @@ async function wizardAiSuggestItems() {
     extra.custo_moradia = parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0;
     extra.custo_passagem = parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0;
     extra.moeda         = document.getElementById('wizMoedaEstudo')?.value || 'BRL';
+  } else if (type === 'outro') {
+    extra.categoria = document.getElementById('wizOutroCategoria')?.value || '';
+    extra.prazo_meses = parseInt(document.getElementById('wizOutroPrazo')?.value) || 0;
+    extra.detalhes  = document.getElementById('wizOutroDetalhes')?.value || '';
   }
-
-  const prompt = `Você é um planejador financeiro. Sugira componentes de custo para o sonho abaixo.
 Tipo: ${type}
 Título: ${title}
 Valor total: R$ ${amount}
@@ -1363,6 +1424,34 @@ function wizardNext() {
         entrada:    document.getElementById('wizEntrada')?.value || '',
         fgts:       document.getElementById('wizFgts')?.value || '',
         taxa_juros: document.getElementById('wizJuros')?.value || '',
+      };
+    } else if (w.type === 'cirurgia_plastica') {
+      w.data.ai_generated_fields_json = {
+        tipo_cirurgia:   document.getElementById('wizTipoCirurgia')?.value || '',
+        medico:          document.getElementById('wizMedico')?.value || '',
+        clinica:         document.getElementById('wizClinica')?.value || '',
+        protese:         document.getElementById('wizProtese')?.value || '',
+        custo_medico:    parseFloat(document.getElementById('wizCustoMedico')?.value) || 0,
+        custo_anestesia: parseFloat(document.getElementById('wizCustoAnestesia')?.value) || 0,
+        custo_hospital:  parseFloat(document.getElementById('wizCustoHospital')?.value) || 0,
+        custo_exames:    parseFloat(document.getElementById('wizCustoExames')?.value) || 0,
+      };
+    } else if (w.type === 'estudos') {
+      w.data.ai_generated_fields_json = {
+        tipo_estudo:      document.getElementById('wizTipoEstudo')?.value || '',
+        instituicao:      document.getElementById('wizInstituicao')?.value || '',
+        pais:             document.getElementById('wizPaisEstudo')?.value || '',
+        duracao_meses:    parseInt(document.getElementById('wizDuracaoEstudo')?.value) || 0,
+        custo_mensalidade: parseFloat(document.getElementById('wizCustoMensalidade')?.value) || 0,
+        custo_moradia:    parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0,
+        custo_passagem:   parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0,
+        moeda:            document.getElementById('wizMoedaEstudo')?.value || 'BRL',
+      };
+    } else if (w.type === 'outro') {
+      w.data.ai_generated_fields_json = {
+        categoria:    document.getElementById('wizOutroCategoria')?.value || '',
+        prazo_meses:  parseInt(document.getElementById('wizOutroPrazo')?.value) || 0,
+        detalhes:     document.getElementById('wizOutroDetalhes')?.value || '',
       };
     }
     w.step = 3;
@@ -1547,7 +1636,37 @@ function _wizSomaEstudos() {
 }
 window._wizSomaEstudos = _wizSomaEstudos;
 
-async function saveDream() {
+// ── Campos específicos: Outro Sonho ───────────────────────────────────────
+function _wizFieldsOutro(d) {
+  const meta = typeof d.ai_generated_fields_json === 'object' ? (d.ai_generated_fields_json || {}) : {};
+  return `
+  <div class="drm-wiz-section-title">🌟 Detalhes do Objetivo</div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Categoria do Objetivo</label>
+      <select id="wizOutroCategoria" class="form-input">
+        <option value="">— Selecionar —</option>
+        <option value="eletronico" ${meta.categoria==='eletronico'?'selected':''}>📱 Eletrônico / Gadget</option>
+        <option value="movel" ${meta.categoria==='movel'?'selected':''}>🛋️ Móvel / Decoração</option>
+        <option value="evento" ${meta.categoria==='evento'?'selected':''}>🎉 Evento / Celebração</option>
+        <option value="negocio" ${meta.categoria==='negocio'?'selected':''}>💼 Negócio / Empreendimento</option>
+        <option value="saude" ${meta.categoria==='saude'?'selected':''}>🏥 Saúde / Bem-estar</option>
+        <option value="esporte" ${meta.categoria==='esporte'?'selected':''}>⚽ Esporte / Lazer</option>
+        <option value="reserva" ${meta.categoria==='reserva'?'selected':''}>🏦 Reserva de Emergência</option>
+        <option value="outro" ${meta.categoria==='outro'?'selected':''}>🌟 Outro</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Prazo desejado (meses)</label>
+      <input type="number" id="wizOutroPrazo" class="form-input" placeholder="Ex: 12" min="1" max="600" value="${meta.prazo_meses||''}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Detalhes adicionais</label>
+    <textarea id="wizOutroDetalhes" class="form-input" rows="3" placeholder="Descreva o que você quer alcançar…" style="resize:vertical">${_esc(meta.detalhes||'')}</textarea>
+  </div>`;
+}
+window._wizFieldsOutro = _wizFieldsOutro;
   const w = _drm.wizard;
   if (!w) return;
 

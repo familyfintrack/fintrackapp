@@ -287,11 +287,34 @@ function _onAccModalTypeChange() {
   const cardDates = document.getElementById('accountCardDatesConfig');
   if (cardDates) cardDates.style.display = isCC ? '' : 'none';
 
-  // Card data section (bandeira, limite, emissor)
-  const cardData = document.getElementById('accountCardDataSection');
-  if (cardData) cardData.style.display = isCC ? '' : 'none';
+  // Card data section in banco tab — show/hide cartão section
+  const cardTabSection = document.getElementById('accTabCardSection');
+  if (cardTabSection) cardTabSection.style.display = isCC ? '' : 'none';
+
+  // Show banco tab hint badge when type is cartao_credito
+  const tabBtnBanco = document.getElementById('accTabBtnBanco');
+  if (tabBtnBanco) {
+    tabBtnBanco.innerHTML = isCC
+      ? '🏦 Dados Bancários <span style="background:var(--accent);color:#fff;font-size:.6rem;padding:1px 5px;border-radius:8px;vertical-align:middle">💳</span>'
+      : '🏦 Dados Bancários';
+  }
 }
 window._onAccModalTypeChange = _onAccModalTypeChange;
+
+function _accModalTab(tab) {
+  const panels = ['geral', 'banco'];
+  panels.forEach(p => {
+    const panel = document.getElementById('accTabPanel_' + p) || document.getElementById('accTab' + p.charAt(0).toUpperCase() + p.slice(1));
+    const btn   = document.getElementById('accTabBtn' + p.charAt(0).toUpperCase() + p.slice(1));
+    const active = p === tab;
+    if (panel) panel.style.display = active ? '' : 'none';
+    if (btn) {
+      btn.style.color        = active ? 'var(--accent)' : 'var(--muted)';
+      btn.style.borderBottom = active ? '2px solid var(--accent)' : '2px solid transparent';
+    }
+  });
+}
+window._accModalTab = _accModalTab;
 
 async function openAccountModal(id=''){
   const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
@@ -342,14 +365,17 @@ async function openAccountModal(id=''){
   _setVal('accountIban',         form.iban);
   _setVal('accountRoutingNumber',form.routing_number);
   _setVal('accountSwiftBic',     form.swift_bic);
-  // Cartão
-  const cardDataSec = document.getElementById('accountCardDataSection');
-  if (cardDataSec) cardDataSec.style.display = isCC ? '' : 'none';
+  _setVal('accountNotes',        form.notes);
+  // Cartão — agora na tab Banco
+  const accTabCardSection = document.getElementById('accTabCardSection');
+  if (accTabCardSection) accTabCardSection.style.display = isCC ? '' : 'none';
   _setVal('accountCardBrand',  form.card_brand);
   _setVal('accountCardType',   form.card_type);
   _setVal('accountCardIssuer', form.card_issuer);
   const cardLimitEl = document.getElementById('accountCardLimit');
   if (cardLimitEl) cardLimitEl.value = form.card_limit != null ? form.card_limit : '';
+  // Reset to Geral tab on open
+  _accModalTab('geral');
   // Vincular sonho — popular select com sonhos ativos
   const dreamSel = document.getElementById('accountLinkedDreamId');
   if (dreamSel) {
@@ -404,6 +430,7 @@ async function saveAccount(){
     iban:            _gv('accountIban'),
     routing_number:  _gv('accountRoutingNumber'),
     swift_bic:       _gv('accountSwiftBic'),
+    notes:           _gv('accountNotes') || null,
     // Cartão
     card_brand:   isCC ? (_gv('accountCardBrand')  || null) : null,
     card_type:    isCC ? (_gv('accountCardType')   || null) : null,
