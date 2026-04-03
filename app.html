@@ -1011,10 +1011,6 @@
         <button class="tx-fb-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         </button>
-        <!-- Exportar tabela -->
-        <button class="tx-fb-btn" onclick="showExportMenu(this,'txMainTable','transacoes')" title="Exportar tabela (CSV/XLSX)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
       </div>
 
       <!-- ── Collapsible filters panel (hidden by default) ── -->
@@ -1287,10 +1283,6 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             E-mail
           </button>
-          <button class="rpt-export-btn" onclick="showExportMenu(this,'reportTxTable','relatorio_transacoes')" title="Exportar tabela (CSV/XLSX)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            XLSX
-          </button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="showEmailConfig()" title="Configurar EmailJS" style="font-size:.72rem;opacity:.7">⚙️</button>
         <span id="reportDataInfo" style="font-size:.72rem;color:var(--muted);margin-left:auto"></span>
@@ -1477,12 +1469,6 @@
       <select id="budgetHistCat" onchange="loadBudgetHistory()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:240px">
         <option value="">— Selecionar categoria —</option>
       </select>
-      <div id="budgetHistExportBar" style="display:none;margin-left:auto">
-        <button class="rpt-export-btn" onclick="showExportMenu(this,'budgetHistTable','orcamento_historico')" title="Exportar histórico (CSV/XLSX)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar
-        </button>
-      </div>
     </div>
     <div id="budgetHistContainer" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;min-height:48px">
       <div style="color:var(--muted);font-size:.83rem;padding:16px 12px">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
@@ -4260,10 +4246,6 @@ Se você não solicitou isso, ignore este e-mail.`,
           <option value="">Todos os meses</option>
         </select>
         <span id="auditCount" class="aud-count"></span>
-        <button class="rpt-export-btn" onclick="showExportMenu(this,'auditTableDesktop','auditoria')" title="Exportar auditoria (CSV/XLSX)" style="margin-left:auto">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar
-        </button>
       </div>
 
       <!-- Tabela desktop (≥ 600px) -->
@@ -8821,7 +8803,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/investments.js"></script>
   <script src="js/ai_insights.js"></script>
   <script src="js/help.js"></script>
-  <script src="js/privacy.js"></script>
   <script src="js/orphan.js"></script>
   <script src="js/family_prefs.js"></script>
   <script src="js/wizard.js"></script>
@@ -9147,12 +9128,9 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
-  <script src="js/dreams_kb.js"></script>
   <script src="js/dreams.js"></script>
   <script src="js/agent_engine.js"></script>
-  <script src="js/agent_capabilities.js"></script>
 <script src="js/agent.js"></script>
-  <script src="js/export_grid.js"></script>
 
 <script>
 window.toggleScheduledSection = window.toggleScheduledSection || function(section){
@@ -9708,209 +9686,6 @@ window.openMyProfile = function(...args) {
 /* ── Inline confirm bar ── */
 #agentConfirmBar { display:none; flex-wrap:wrap; gap:6px; align-items:center; }
 #agentConfirmBar.active { display:flex !important; }
-
-/* ═══════════════════════════════════════════════════════
-   export_grid — menu dropdown CSV/XLSX
-   ═══════════════════════════════════════════════════════ */
-.ex-menu {
-  position:fixed; z-index:9999;
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.18);
-  padding:6px; min-width:160px;
-  animation:agentSlideIn .15s ease;
-}
-.ex-menu-item {
-  display:flex; align-items:center; gap:8px;
-  padding:8px 12px; border-radius:7px; cursor:pointer;
-  font-size:.82rem; color:var(--text2); font-family:var(--font-sans);
-  border:none; background:transparent; width:100%; text-align:left;
-  transition:background .12s;
-}
-.ex-menu-item:hover { background:var(--surface2); color:var(--text); }
-.ex-menu-item svg { flex-shrink:0; color:var(--accent); }
-
-/* ═══════════════════════════════════════════════════════
-   agent_capabilities — catálogo e guided form
-   ═══════════════════════════════════════════════════════ */
-.agent-caps-wrap {
-  width:100%; max-width:520px;
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:14px; overflow:hidden;
-  font-size:.82rem;
-}
-.agent-caps-header {
-  display:flex; align-items:center; gap:10px;
-  padding:14px 14px 10px; border-bottom:1px solid var(--border);
-}
-.agent-caps-header-icon { font-size:1.4rem; flex-shrink:0; }
-.agent-caps-title { font-weight:800; color:var(--text); font-size:.9rem; }
-.agent-caps-subtitle { font-size:.71rem; color:var(--muted); margin-top:1px; }
-.agent-caps-close {
-  margin-left:auto; background:var(--surface); border:1px solid var(--border);
-  border-radius:50%; width:26px; height:26px; cursor:pointer;
-  color:var(--muted); display:flex; align-items:center; justify-content:center;
-  font-size:.75rem; flex-shrink:0; transition:all .15s;
-}
-.agent-caps-close:hover { color:var(--text); border-color:var(--text); }
-.agent-caps-search-wrap {
-  display:flex; align-items:center; gap:8px;
-  padding:8px 12px; border-bottom:1px solid var(--border);
-  background:var(--surface);
-}
-.agent-caps-search {
-  flex:1; border:none; background:transparent; outline:none;
-  font-size:.82rem; color:var(--text); font-family:var(--font-sans);
-}
-.agent-caps-search::placeholder { color:var(--muted); }
-.agent-caps-cats {
-  display:flex; gap:5px; padding:8px 12px;
-  overflow-x:auto; border-bottom:1px solid var(--border);
-  scrollbar-width:none;
-}
-.agent-caps-cats::-webkit-scrollbar { display:none; }
-.agent-cats-pill {
-  white-space:nowrap; padding:4px 10px; font-size:.72rem; font-weight:600;
-  border:1px solid var(--border); border-radius:20px; background:var(--surface);
-  color:var(--text2); cursor:pointer; font-family:var(--font-sans);
-  transition:all .15s; flex-shrink:0;
-}
-.agent-cats-pill.active,
-.agent-cats-pill:hover {
-  background:var(--accent); border-color:var(--accent); color:#fff;
-}
-.agent-caps-grid {
-  max-height:320px; overflow-y:auto; padding:8px;
-  display:flex; flex-direction:column; gap:6px;
-}
-.agent-caps-section-header {
-  display:flex; align-items:center; gap:6px; padding:4px 6px 6px;
-  font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
-  color:var(--muted); border-bottom:1px solid var(--border); margin-bottom:4px;
-}
-.agent-caps-section-icon { font-size:.95rem; }
-.agent-caps-section-title { color:var(--text2); }
-.agent-caps-section-desc { font-size:.68rem; color:var(--muted); font-weight:400; margin-left:auto; text-transform:none; letter-spacing:0; display:none; }
-.agent-caps-actions { display:flex; flex-direction:column; gap:3px; }
-.agent-caps-action {
-  display:flex; align-items:center; gap:8px;
-  padding:7px 9px; border-radius:8px; cursor:pointer;
-  border:1px solid transparent; background:transparent;
-  font-family:var(--font-sans); font-size:.8rem; text-align:left;
-  transition:all .14s; width:100%;
-}
-.agent-caps-action:hover {
-  background:var(--surface); border-color:var(--border);
-}
-.agent-caps-action-icon { font-size:.95rem; flex-shrink:0; }
-.agent-caps-action-label { font-weight:600; color:var(--text); font-size:.8rem; }
-.agent-caps-action-desc { font-size:.7rem; color:var(--muted); margin-top:1px; }
-.agent-caps-action-badge {
-  margin-left:auto; font-size:.7rem; padding:2px 6px;
-  border-radius:10px; font-weight:700; flex-shrink:0;
-  background:var(--surface2); color:var(--muted);
-}
-.badge--action { background:rgba(42,96,73,.12); color:var(--accent); }
-.badge--nav { background:rgba(59,130,246,.1); color:#3b82f6; }
-.badge--query { background:rgba(168,85,247,.1); color:#a855f7; }
-.agent-caps-footer {
-  padding:10px 12px; border-top:1px solid var(--border);
-  background:var(--surface);
-}
-.agent-caps-footer-label { font-size:.71rem; color:var(--muted); margin-bottom:6px; }
-.agent-caps-examples { display:flex; gap:5px; flex-wrap:wrap; }
-.agent-caps-example {
-  padding:4px 10px; font-size:.72rem; font-weight:500;
-  border:1px solid var(--border); border-radius:14px;
-  background:transparent; color:var(--text2); cursor:pointer;
-  font-family:var(--font-sans); transition:all .14s;
-}
-.agent-caps-example:hover { border-color:var(--accent); color:var(--accent); }
-
-/* ── Guided form (agf-*) ─────────────────────────────────────────────────── */
-.agf-wrap {
-  width:100%; max-width:480px;
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:14px; overflow:hidden; font-size:.82rem;
-}
-.agf-header {
-  display:flex; align-items:center; gap:10px;
-  padding:12px 14px; border-bottom:1px solid var(--border);
-  background:var(--surface);
-}
-.agf-icon { font-size:1.3rem; flex-shrink:0; }
-.agf-title { font-weight:800; color:var(--text); font-size:.88rem; }
-.agf-subtitle { font-size:.72rem; color:var(--muted); margin-top:1px; }
-.agf-progress { height:3px; background:var(--border); }
-.agf-progress-bar { height:100%; background:var(--accent); transition:width .3s ease; }
-.agf-progress-label { font-size:.69rem; color:var(--muted); padding:4px 14px 0; }
-.agf-fields { display:flex; flex-direction:column; padding:4px 0; }
-.agf-field {
-  display:flex; align-items:flex-start; gap:10px;
-  padding:8px 14px; border-bottom:1px solid var(--border);
-  transition:background .12s;
-}
-.agf-field:last-child { border-bottom:none; }
-.agf-field--active { background:var(--surface); }
-.agf-field--done { opacity:.7; }
-.agf-field--pending { opacity:.5; }
-.agf-field-status { padding-top:2px; flex-shrink:0; width:18px; }
-.agf-status-done {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:16px; height:16px; border-radius:50%;
-  background:var(--accent); color:#fff; font-size:.65rem; font-weight:700;
-}
-.agf-status-active {
-  display:inline-block; width:8px; height:8px; border-radius:50%;
-  background:var(--accent); margin:4px 0 0 4px; animation:agentPulse 1.2s ease-in-out infinite;
-}
-.agf-status-pending {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:16px; height:16px; border-radius:50%;
-  background:var(--border); color:var(--muted); font-size:.65rem;
-}
-.agf-field-label { font-size:.77rem; color:var(--muted); margin-bottom:3px; }
-.agf-required { color:var(--red,#ef4444); margin-left:2px; }
-.agf-field-value { font-size:.82rem; color:var(--text); font-weight:600; }
-.agf-input {
-  width:100%; padding:6px 9px; border:1px solid var(--border);
-  border-radius:7px; background:var(--surface2); color:var(--text);
-  font-family:var(--font-sans); font-size:.82rem; outline:none;
-  transition:border-color .15s; box-sizing:border-box; margin-top:2px;
-}
-.agf-input:focus { border-color:var(--accent); }
-.agf-select {
-  width:100%; padding:6px 9px; border:1px solid var(--border);
-  border-radius:7px; background:var(--surface2); color:var(--text);
-  font-family:var(--font-sans); font-size:.82rem; outline:none;
-  margin-top:2px; cursor:pointer;
-}
-.agf-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
-.agf-chip {
-  padding:4px 10px; font-size:.75rem; font-weight:600;
-  border:1px solid var(--border); border-radius:14px;
-  background:transparent; color:var(--text2); cursor:pointer;
-  font-family:var(--font-sans); transition:all .13s;
-}
-.agf-chip:hover, .agf-chip.selected {
-  background:var(--accent); border-color:var(--accent); color:#fff;
-}
-.agf-buttons {
-  display:flex; gap:6px; padding:10px 14px;
-  border-top:1px solid var(--border); background:var(--surface); flex-wrap:wrap;
-}
-.agf-btn {
-  padding:7px 16px; border-radius:8px; font-size:.8rem; font-weight:700;
-  cursor:pointer; font-family:var(--font-sans); border:1px solid var(--border);
-  transition:all .15s; background:var(--surface2); color:var(--text2);
-}
-.agf-btn--confirm {
-  background:linear-gradient(135deg,#15803d,#16a34a); color:#fff;
-  border:none; box-shadow:0 2px 6px rgba(22,163,74,.3); margin-left:auto;
-}
-.agf-btn--confirm:hover { opacity:.88; transform:translateY(-1px); }
-.agf-btn--skip { color:var(--muted); }
-.agf-btn--cancel { color:var(--muted); font-weight:500; }
-
 </style>
 
 </body>
