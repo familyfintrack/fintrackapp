@@ -133,12 +133,13 @@ function _catSearchId(ctx) {
   return ctx === 'sc' ? 'scCatPickerSearch' : 'catPickerSearch';
 }
 
-function _normalizeCatType(type) {
-  var v = String(type || '').trim().toLowerCase();
-  if (['expense', 'despesa', 'gasto', 'saida', 'saída'].includes(v)) return 'despesa';
-  if (['income', 'receita', 'entrada', 'ganho'].includes(v)) return 'receita';
-  if (['transfer', 'transferencia', 'transferência'].includes(v)) return 'transferencia';
-  return v;
+function _normCatType(v) {
+  var s = String(v || '').trim().toLowerCase();
+  if (!s) return '';
+  if (['expense','despesa','gasto','saida','saída'].includes(s)) return 'despesa';
+  if (['income','receita','entrada','recebimento'].includes(s)) return 'receita';
+  if (['transfer','transferencia','transferência','card_payment','pagamento_cartao','pagamento_cartão'].includes(s)) return 'transferencia';
+  return s;
 }
 
 function buildCatPicker(typeFilter, ctx) {
@@ -152,14 +153,15 @@ function buildCatPicker(typeFilter, ctx) {
     var txType = document.getElementById(c.typeId) ? document.getElementById(c.typeId).value : '';
     if (txType === 'expense') typeFilter = 'despesa';
     else if (txType === 'income') typeFilter = 'receita';
+    else if (txType === 'transfer' || txType === 'card_payment') typeFilter = 'transferencia';
   }
+  typeFilter = _normCatType(typeFilter);
 
-  typeFilter = _normalizeCatType(typeFilter);
   const allCats = (state.categories || []).map(function(cat){
     if (!cat) return cat;
-    return Object.assign({}, cat, { type: _normalizeCatType(cat.type) });
+    return Object.assign({}, cat, { type: _normCatType(cat.type) });
   });
-  const cats = typeFilter ? allCats.filter(function(c){ return _normalizeCatType(c.type) === typeFilter; }) : allCats;
+  const cats = typeFilter ? allCats.filter(function(c){ return _normCatType(c.type) === typeFilter; }) : allCats;
 
   const parents = cats
     .filter(function(c){ return !c.parent_id; })
@@ -257,7 +259,7 @@ function buildCatPicker(typeFilter, ctx) {
     const currentId = document.getElementById(c.inputId) && document.getElementById(c.inputId).value;
     if (currentId) {
       const cat = allCats.find(function(x){ return x.id === currentId; });
-      if (cat && _normalizeCatType(cat.type) !== typeFilter) setCatPickerValue(null, ctx);
+      if (cat && _normCatType(cat.type) !== typeFilter) setCatPickerValue(null, ctx);
     }
   }
 }

@@ -858,7 +858,10 @@ function _scModalEl(id){ return document.getElementById(id); }
 function _scModalSetValue(id, value){ const el = _scModalEl(id); if (el) el.value = value ?? ''; return el; }
 function _scModalSetText(id, text){ const el = _scModalEl(id); if (el) el.textContent = text ?? ''; return el; }
 function _scModalSafe(fn, label){ try { return fn(); } catch (e) { console.warn(`[scheduledModal] ${label || 'non-critical'}:`, e); return null; } }
-function openScheduledModal(id='') {
+async function openScheduledModal(id='') {
+  if (window.DB?.categories?.load && !(window.state?.categories || []).length) {
+    await window.DB.categories.load().catch(() => {});
+  }
   const sc = id ? state.scheduled.find(s=>s.id===id) : null;
   _scModalSetValue('scId', id);
   _scModalSetValue('scDesc', sc?.description || '');

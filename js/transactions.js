@@ -856,11 +856,11 @@ function _txModalSetValue(id, value){ const el = _txModalEl(id); if (el) el.valu
 function _txModalSetText(id, text){ const el = _txModalEl(id); if (el) el.textContent = text ?? ''; return el; }
 function _txModalSafe(fn, label){ try { return fn(); } catch (e) { console.warn(`[txModal] ${label || 'non-critical'}:`, e); return null; } }
 async function openTransactionModal(id=''){
+  if (window.DB?.categories?.load && !(window.state?.categories || []).length) {
+    await window.DB.categories.load().catch(() => {});
+  }
   if (typeof loadFamilyComposition === 'function' && typeof _fmc !== 'undefined' && !_fmc.loaded) {
     await loadFamilyComposition().catch(() => {});
-  }
-  if (window.DB?.categories?.load) {
-    await window.DB.categories.load().catch(() => {});
   }
   _txModalSafe(() => resetTxModal(), 'resetTxModal');
   _txModalSetValue('txDate', new Date().toISOString().slice(0,10));
@@ -877,8 +877,6 @@ async function openTransactionModal(id=''){
     }
   }
   openModal('txModal');
-  _txModalSafe(() => buildCatPicker(null, 'tx'), 'buildCatPicker(open)');
-  setTimeout(function(){ _txModalSafe(() => buildCatPicker(null, 'tx'), 'buildCatPicker(open delayed)'); }, 80);
   _txModalSafe(() => { if (typeof initTxFormMode === 'function') initTxFormMode(); }, 'initTxFormMode');
 }
 function resetTxModal(){
