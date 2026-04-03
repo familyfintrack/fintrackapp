@@ -770,6 +770,28 @@
           <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody id="recentTxBody"><tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando...</td></tr></tbody></table></div>
       </div>
 
+      <!-- Card: Investimentos -->
+      <div id="dashCardInvestments" class="card mb-4" style="display:none">
+        <div class="card-header">
+          <span class="card-title">📈 Carteira de Investimentos</span>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira</button>
+        </div>
+        <div id="dashInvestmentsBody">
+          <div class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando…</div>
+        </div>
+      </div>
+
+      <!-- Card: Sonhos -->
+      <div id="dashCardDreams" class="card mb-4" style="display:none">
+        <div class="card-header">
+          <span class="card-title">🌟 Meus Sonhos</span>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('dreams')">Ver sonhos</button>
+        </div>
+        <div id="dashDreamsBody">
+          <div class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando…</div>
+        </div>
+      </div>
+
       <!-- Modal de customização do dashboard -->
       <div class="modal-overlay" id="dashCustomModal">
         <div class="modal" style="max-width:380px">
@@ -2960,6 +2982,29 @@
               <div id="dbBackupList"><div style="color:var(--muted);font-size:.8rem">Carregando…</div></div>
             </div>
           </div>
+          <!-- Exportação Excel/ZIP — owner only -->
+          <div class="cfg-card" id="exportExcelSection">
+            <div class="cfg-row">
+              <div class="cfg-row-icon" style="background:#f0fdf4">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+              <div class="cfg-row-info">
+                <div class="cfg-row-label">Exportar para Excel (ZIP)</div>
+                <div class="cfg-row-sub">1 planilha por tabela · Somente Owner</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="exportAllExcelZip()" id="exportExcelBtn">⬇️ Exportar</button>
+            </div>
+            <div id="exportExcelProgress" style="display:none;padding:10px 16px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <span id="exportExcelStatus" style="font-size:.78rem;color:var(--muted)">Preparando…</span>
+                <span id="exportExcelPct" style="font-size:.78rem;font-weight:700">0%</span>
+              </div>
+              <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div id="exportExcelBar" style="height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width .3s ease"></div>
+              </div>
+            </div>
+          </div>
+
           <div class="cfg-card" id="normalizeNamesSection" style="display:none">
             <div class="cfg-row">
               <div class="cfg-row-icon" style="background:#f0fdf4">
@@ -6436,7 +6481,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <input type="hidden" id="accountId">
       <div class="form-grid">
         <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
-        <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="onAccountTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
+        <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="_onAccModalTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
         <div class="form-group"><label>Moeda</label><select id="accountCurrency"><option value="BRL">BRL — Real</option><option value="USD">USD — Dólar</option><option value="EUR">EUR — Euro</option><option value="AED">AED — Dirham</option></select></div>
         <div class="form-group full"><label>Grupo</label><select id="accountGroupId"><option value="">— Sem grupo —</option></select></div>
         <!-- Feature 7: conta favorita -->
@@ -6485,6 +6530,52 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
         </div>
+        <!-- Dados bancários — expandíveis -->
+        <div class="form-group full" id="accountBankDataSection">
+          <details id="accountBankDetails" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
+            <summary style="padding:10px 14px;cursor:pointer;font-size:.82rem;font-weight:700;color:var(--text2);user-select:none;list-style:none">
+              🏦 Dados Bancários <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(opcional)</span>
+            </summary>
+            <div style="padding:12px 14px;border-top:1px solid var(--border)">
+              <div class="form-grid" style="gap:10px">
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Banco / Instituição</label><input type="text" id="accountBankName" placeholder="Ex: Itaú, Nubank…"></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Código</label><input type="text" id="accountBankCode" placeholder="Ex: 341" inputmode="numeric"></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Agência</label><input type="text" id="accountAgency" placeholder="Ex: 0001-9"></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Número da Conta</label><input type="text" id="accountNumber" placeholder="Ex: 12345-6"></div>
+                <div class="form-group full" style="margin:0"><label style="font-size:.75rem">IBAN</label><input type="text" id="accountIban" placeholder="Ex: FR7630001007941234567890185" style="font-family:monospace;font-size:.82rem"></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Routing Number (EUA)</label><input type="text" id="accountRoutingNumber" placeholder="9 dígitos ABA" inputmode="numeric"></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">SWIFT / BIC</label><input type="text" id="accountSwiftBic" placeholder="Ex: BNPAFRPPXXX" style="font-family:monospace;font-size:.82rem"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Cartão de crédito — só visível para cartao_credito -->
+        <div class="form-group full" id="accountCardDataSection" style="display:none">
+          <details id="accountCardDetails" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
+            <summary style="padding:10px 14px;cursor:pointer;font-size:.82rem;font-weight:700;color:var(--text2);user-select:none;list-style:none">
+              💳 Detalhes do Cartão <span style="font-size:.72rem;font-weight:400;color:var(--muted)">(opcional)</span>
+            </summary>
+            <div style="padding:12px 14px;border-top:1px solid var(--border)">
+              <div class="form-grid" style="gap:10px">
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Banco Emissor</label><input type="text" id="accountCardIssuer" placeholder="Ex: Itaú, Bradesco…"></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Bandeira</label>
+                  <select id="accountCardBrand"><option value="">— Selecionar —</option><option value="visa">Visa</option><option value="mastercard">Mastercard</option><option value="elo">Elo</option><option value="amex">American Express</option><option value="hipercard">Hipercard</option><option value="dinersclub">Diners Club</option><option value="outro">Outro</option></select></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Categoria</label>
+                  <select id="accountCardType"><option value="">— Selecionar —</option><option value="standard">Standard</option><option value="gold">Gold</option><option value="platinum">Platinum</option><option value="black">Black</option><option value="infinite">Infinite</option></select></div>
+                <div class="form-group" style="margin:0"><label style="font-size:.75rem">Limite Total</label><input type="number" id="accountCardLimit" placeholder="0,00" min="0" step="0.01" inputmode="decimal"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Vincular a sonho -->
+        <div class="form-group full" id="accountDreamLinkSection">
+          <label style="font-size:.82rem;font-weight:600;color:var(--text2)">🌟 Vincular a Sonho</label>
+          <select id="accountLinkedDreamId"><option value="">— Nenhum —</option></select>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Associe esta conta ao progresso de um sonho.</div>
+        </div>
+
         <div class="form-group"><label id="accountBalanceLabel">Saldo Inicial</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button><input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('accountBalance')" onkeydown="_amtFieldKeydown('accountBalance', event)" onblur="_amtFieldBlur('accountBalance')" onfocus="_amtFieldFocus('accountBalance')"></div><div style="font-size:.72rem;color:var(--muted);margin-top:4px">Este é o saldo de abertura. O saldo atual é calculado automaticamente com base nas transações.</div></div>
         <div class="form-group full">
           <label style="display:flex;align-items:center;justify-content:space-between">
