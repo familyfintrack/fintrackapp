@@ -133,18 +133,12 @@ function _agentWelcome() {
     ? AgentEngine.QuickReplies.render(page)
     : '';
 
-  const _hasCaps = typeof agentShowCapabilities === 'function';
-  const _capsBtn = _hasCaps
-    ? `<button onclick="agentShowCapabilities()" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(42,96,73,.12),rgba(42,96,73,.06));border:1px solid rgba(42,96,73,.3);border-radius:10px;padding:8px 12px;cursor:pointer;font-family:var(--font-sans);font-size:.79rem;font-weight:600;color:var(--accent);width:100%;text-align:left;transition:all .15s" onmouseover="this.style.background='rgba(42,96,73,.18)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(42,96,73,.12),rgba(42,96,73,.06))'"><span style="font-size:1rem">✨</span><div style="flex:1"><div style="font-weight:700">Saiba o que posso fazer</div><div style="font-size:.71rem;color:var(--muted);font-weight:400;margin-top:1px">Ver todos os atalhos e funcionalidades</div></div><span style="color:var(--muted);font-size:.8rem">→</span></button>`
-    : '';
-
   const welcomeHtml = `
 <div style="display:flex;flex-direction:column;gap:10px">
   <div>
     👋 Olá! Sou o <strong>FinTrack Copiloto</strong>.<br>
     <span style="font-size:.8rem;color:var(--muted)">Posso criar transações, responder sobre suas finanças e ajudar com o app.</span>
   </div>
-  ${_capsBtn}
   <div style="display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)">
     <div>💸 <em>"Crie despesa de R$80 no Supermercado"</em></div>
     <div>📊 <em>"Quanto gastei este mês?"</em></div>

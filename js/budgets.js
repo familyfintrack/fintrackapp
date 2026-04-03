@@ -420,13 +420,10 @@ async function loadBudgetHistory() {
       ${overCount > 0 ? `<span class="text-red">⚠️ <strong>${overCount}</strong> meses estourados</span>` : '<span class="text-green">✅ Nunca estourou</span>'}
     </div>` : '';
 
-  container.innerHTML = `${summaryHtml}<div class="table-wrap"><table id="budgetHistTable">
+  container.innerHTML = `${summaryHtml}<div class="table-wrap"><table>
     <thead><tr><th>Mês</th><th>Orçamento</th><th>Gasto</th><th>Progresso</th><th>Saldo</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
-  // Mostrar botão de exportar quando há dados
-  const _expBar = document.getElementById('budgetHistExportBar');
-  if (_expBar) _expBar.style.display = withBudget ? 'flex' : 'none';
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────
