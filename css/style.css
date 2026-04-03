@@ -23172,3 +23172,313 @@ tr.payee-row[onclick] { cursor: pointer; }
   .sup-group-date-sub { display: none; } /* muito pouco espaço no mobile */
   .sup-group-dow--special { font-size: .85rem; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   LOGIN SCREEN — Grid quadriculado + Orbs (mesma linguagem da landing)
+   Fonte única de verdade: reutilizar exatamente as mesmas cores/proporções
+   do .hgrid e .hbg da landing page (index.html)
+══════════════════════════════════════════════════════════════════ */
+
+/* Grid quadriculado — idêntico ao .hgrid da landing */
+.login-hgrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(125,194,66,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Orbs — mesma linguagem dos .o1/.o2/.o3 da landing */
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: login-orb-drift 20s ease-in-out infinite alternate;
+}
+.login-orb1 {
+  width: 480px; height: 480px;
+  background: rgba(45,106,68,.22);
+  top: -140px; left: -100px;
+  animation-duration: 24s;
+}
+.login-orb2 {
+  width: 360px; height: 360px;
+  background: rgba(125,194,66,.08);
+  bottom: -60px; right: -80px;
+  animation-duration: 18s;
+  animation-direction: alternate-reverse;
+}
+.login-orb3 {
+  width: 240px; height: 240px;
+  background: rgba(26,61,39,.18);
+  top: 42%; left: 55%;
+  animation-duration: 20s;
+}
+@keyframes login-orb-drift {
+  0%   { transform: translate(0,0); }
+  100% { transform: translate(28px,-22px); }
+}
+
+/* Card do login — assegura que fique acima do fundo */
+.login-card { position: relative; z-index: 1; }
+
+/* ── Inputs fintech modernos ── */
+.login-card-a input[type="email"],
+.login-card-a input[type="password"],
+.login-card-a input[type="text"],
+.login-input {
+  width: 100%;
+  padding: 12px 16px !important;
+  border: 1.5px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  font-size: .9rem !important;
+  font-family: var(--font-sans) !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  background: #ffffff !important;
+  color: #1a1714 !important;
+  transition: border-color .18s, box-shadow .18s !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04) !important;
+}
+.login-card-a input[type="email"]:focus,
+.login-card-a input[type="password"]:focus,
+.login-card-a input[type="text"]:focus,
+.login-input:focus {
+  border-color: #2a6049 !important;
+  box-shadow: 0 0 0 3px rgba(42,96,73,.12), 0 1px 3px rgba(0,0,0,.04) !important;
+  background: #ffffff !important;
+}
+
+/* Labels dos campos */
+.login-card-a .form-group label,
+#loginPanelPassword label {
+  font-size: .78rem !important;
+  font-weight: 700 !important;
+  color: #374151 !important;
+  letter-spacing: .01em;
+  margin-bottom: 6px !important;
+  display: block !important;
+}
+
+/* Botão Entrar */
+.login-btn,
+#loginBtn {
+  width: 100%;
+  padding: 13px !important;
+  background: linear-gradient(135deg, #1e5c42, #2a6049) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: .95rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  font-family: var(--font-sans) !important;
+  letter-spacing: .01em;
+  box-shadow: 0 4px 16px rgba(30,92,66,.28) !important;
+  transition: background .18s, box-shadow .18s, transform .12s !important;
+}
+.login-btn:hover,
+#loginBtn:hover {
+  background: linear-gradient(135deg, #16493a, #1e5c42) !important;
+  box-shadow: 0 6px 24px rgba(30,92,66,.38) !important;
+  transform: translateY(-1px) !important;
+}
+.login-btn:active,
+#loginBtn:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px rgba(30,92,66,.2) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DARK MODE — Toggle + Variáveis + Topbar
+══════════════════════════════════════════════════════════════════ */
+
+/* Variáveis dark mode — aplicadas via body.dark ou html.dark */
+body.dark, html.dark body {
+  --bg: #0f1a12;
+  --bg2: #162219;
+  --surface: #1c2e20;
+  --surface2: #233627;
+  --border: #2d4433;
+  --border2: #3a5540;
+  --text: #e8f0eb;
+  --text2: #b8ccbf;
+  --muted: #7a9e86;
+  --muted2: #5a7a65;
+  --accent-lt: rgba(42,96,73,.25);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,.24), 0 2px 12px rgba(0,0,0,.16);
+  --shadow: 0 4px 24px rgba(0,0,0,.32), 0 1px 4px rgba(0,0,0,.20);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,.48), 0 4px 16px rgba(0,0,0,.28);
+}
+
+body.dark {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Topbar em dark mode: manter fundo verde escuro com contraste correto */
+body.dark .topbar {
+  background: linear-gradient(135deg, #0a2d1a 0%, #0f4023 52%, #165c33 100%);
+  border-bottom-color: rgba(255,255,255,.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,.36);
+}
+
+/* Topbar em light mode — já ok com verde escuro, mas garantir contraste */
+.topbar {
+  color: #ffffff;
+}
+.topbar .hamburger { color: rgba(255,255,255,.8); }
+.topbar .hamburger:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+/* Superfícies em dark mode */
+body.dark .modal,
+body.dark .modal-overlay > .modal { background: var(--surface); border: 1px solid var(--border); }
+body.dark .cfg-card { background: var(--surface2); border-color: var(--border); }
+body.dark .table-wrap { background: var(--surface); border-color: var(--border); }
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text);
+}
+body.dark input::placeholder,
+body.dark textarea::placeholder { color: var(--muted); }
+
+/* Cards e painéis */
+body.dark .card,
+body.dark .stat-card,
+body.dark .acc-card { background: var(--surface); border-color: var(--border); }
+
+/* Sidebar — já é verde escuro, ajuste sutil */
+body.dark .sidebar {
+  background: linear-gradient(160deg, #071a0f 0%, #10321c 60%, #081509 100%);
+}
+
+/* Botão dark mode toggle no menu do usuário */
+.dark-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--text);
+  border-radius: 8px;
+  text-align: left;
+  transition: background .12s;
+  font-family: var(--font-sans);
+}
+.dark-mode-toggle:hover { background: var(--bg2); }
+.dark-mode-toggle-track {
+  width: 36px; height: 20px;
+  border-radius: 100px;
+  background: var(--border2);
+  position: relative;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+body.dark .dark-mode-toggle-track { background: var(--accent); }
+.dark-mode-toggle-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 3px; left: 3px;
+  transition: transform .2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+body.dark .dark-mode-toggle-thumb { transform: translateX(16px); }
+
+/* ══════════════════════════════════════════════════════════════════
+   2FA — Tela de verificação de código
+══════════════════════════════════════════════════════════════════ */
+
+#twoFaArea {
+  display: none;
+}
+
+.twofa-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1714;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.twofa-sub {
+  font-size: .82rem;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+.twofa-code-input {
+  width: 100%;
+  padding: 16px !important;
+  font-size: 1.6rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .32em !important;
+  text-align: center !important;
+  border: 2px solid #e5e7eb !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  color: #1a1714 !important;
+  outline: none !important;
+  transition: border-color .18s, box-shadow .18s !important;
+  font-family: 'Courier New', monospace !important;
+  box-sizing: border-box !important;
+}
+.twofa-code-input:focus {
+  border-color: #2a6049 !important;
+  box-shadow: 0 0 0 3px rgba(42,96,73,.14) !important;
+}
+.twofa-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.twofa-trust-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.twofa-trust-row label {
+  font-size: .8rem;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+}
+.twofa-resend {
+  background: none;
+  border: none;
+  color: #2a6049;
+  font-size: .8rem;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: underline;
+  font-family: var(--font-sans);
+  padding: 4px 0;
+}
+.twofa-back {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: .78rem;
+  cursor: pointer;
+  text-align: center;
+  font-family: var(--font-sans);
+  padding: 4px 0;
+}
+
