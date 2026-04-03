@@ -23482,3 +23482,30 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(16px); }
   padding: 4px 0;
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   AGENTE — Chips de capacidades (guia "O que posso fazer")
+══════════════════════════════════════════════════════════════════ */
+.agent-cap-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: .8rem;
+  font-family: var(--font-sans);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  font-weight: 500;
+}
+.agent-cap-chip:hover {
+  background: var(--accent-lt);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.agent-chip--highlight {
+  font-weight: 700;
+}
