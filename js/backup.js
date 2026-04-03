@@ -1264,3 +1264,143 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   EXPORTAÇÃO EXCEL + ZIP — Owner only
+   Gera 1 planilha .xlsx por tabela principal e compacta em ZIP
+   Usa SheetJS (xlsx) via CDN e JSZip via CDN
+══════════════════════════════════════════════════════════════════ */
+
+async function exportAllExcelZip() {
+  // Verificar permissão: apenas owner
+  if (currentUser?.role !== 'owner' && currentUser?.role !== 'admin') {
+    toast('Apenas o Owner pode exportar todos os dados.', 'error');
+    return;
+  }
+
+  const btn      = document.getElementById('exportExcelBtn');
+  const progress = document.getElementById('exportExcelProgress');
+  const status   = document.getElementById('exportExcelStatus');
+  const pctEl    = document.getElementById('exportExcelPct');
+  const barEl    = document.getElementById('exportExcelBar');
+
+  const setProgress = (pct, msg) => {
+    if (barEl)   barEl.style.width = pct + '%';
+    if (pctEl)   pctEl.textContent = pct + '%';
+    if (status)  status.textContent = msg;
+  };
+
+  if (btn)      { btn.disabled = true; btn.textContent = '⏳ Exportando…'; }
+  if (progress) progress.style.display = '';
+  setProgress(0, 'Carregando dependências…');
+
+  try {
+    // 1. Carregar SheetJS e JSZip dinamicamente
+    if (!window.XLSX) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    if (!window.JSZip) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+
+    setProgress(5, 'Iniciando exportação…');
+
+    // 2. Definir tabelas a exportar
+    const TABLES = [
+      { key: 'transactions',          label: 'Transações',          select: '*, payees(name), categories(name,type), accounts(name,currency)' },
+      { key: 'accounts',              label: 'Contas',              select: '*' },
+      { key: 'categories',            label: 'Categorias',          select: '*' },
+      { key: 'payees',                label: 'Beneficiários',       select: '*' },
+      { key: 'budgets',               label: 'Orçamentos',          select: '*, categories(name)' },
+      { key: 'scheduled_transactions',label: 'Programados',         select: '*' },
+      { key: 'investment_positions',  label: 'Investimentos',       select: '*' },
+      { key: 'investment_transactions',label:'Movim. Investimentos',select: '*' },
+      { key: 'debts',                 label: 'Dívidas',             select: '*' },
+      { key: 'dreams',                label: 'Sonhos',              select: '*' },
+    ];
+
+    const zip = new JSZip();
+    const familyName = (currentUser?.families?.find(f => f.id === currentUser?.family_id)?.name || 'familia')
+      .replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const dateStr = new Date().toISOString().slice(0,10);
+
+    for (let i = 0; i < TABLES.length; i++) {
+      const t = TABLES[i];
+      const pct = Math.round(5 + (i / TABLES.length) * 90);
+      setProgress(pct, `Exportando ${t.label}…`);
+
+      try {
+        const { data, error } = await famQ(
+          sb.from(t.key).select(t.select)
+        ).order('created_at', { ascending: false }).limit(50000);
+
+        if (error) { console.warn(`[export] ${t.key}:`, error.message); continue; }
+        if (!data?.length) continue;
+
+        // Aplanar objetos aninhados (ex: payees.name → payee_name)
+        const flat = data.map(row => {
+          const r = {};
+          for (const [k, v] of Object.entries(row)) {
+            if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+              for (const [sk, sv] of Object.entries(v)) {
+                r[`${k}_${sk}`] = sv;
+              }
+            } else if (Array.isArray(v)) {
+              r[k] = v.join(', ');
+            } else {
+              r[k] = v;
+            }
+          }
+          return r;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(flat);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, t.label.slice(0, 31));
+        const xlsxBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+        zip.file(`${t.label}.xlsx`, xlsxBuffer);
+      } catch(tErr) {
+        console.warn(`[export] ${t.key} erro:`, tErr.message);
+      }
+    }
+
+    setProgress(97, 'Compactando ZIP…');
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+
+    setProgress(100, '✅ Exportação concluída!');
+
+    // 3. Download automático
+    const url  = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href     = url;
+    link.download = `FinTrack_${familyName}_${dateStr}.zip`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast('✅ Exportação concluída!', 'success');
+
+    setTimeout(() => {
+      if (progress) progress.style.display = 'none';
+      setProgress(0, '');
+    }, 3000);
+
+  } catch(e) {
+    setProgress(0, '');
+    if (progress) progress.style.display = 'none';
+    toast('Erro na exportação: ' + (e.message || e), 'error');
+    console.error('[exportAllExcelZip]', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Exportar'; }
+  }
+}
+window.exportAllExcelZip = exportAllExcelZip;

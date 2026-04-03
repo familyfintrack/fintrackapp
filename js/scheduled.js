@@ -1311,6 +1311,72 @@ async function saveScheduled() {
     })(),
   };
 
+  // ── Duplicate check for new scheduled transactions ──────────────────────
+  if (!id) {
+    try {
+      const _scAmount   = data.amount;
+      const _scPayeeId  = data.payee_id;
+      const _scCatId    = data.category_id;
+      const _scDesc     = data.description;
+      const _scAccId    = data.account_id;
+      const _scFreq     = data.frequency;
+
+      if (_scAccId && _scAmount) {
+        const { data: existing } = await famQ(
+          sb.from('scheduled_transactions')
+            .select('id,description,amount,payee_id,category_id,frequency')
+        ).eq('account_id', _scAccId)
+          .eq('status', 'active')
+          .gte('amount', _scAmount - 0.01)
+          .lte('amount', _scAmount + 0.01)
+          .limit(5);
+
+        if (existing && existing.length > 0) {
+          // Regra forte: valor + conta + payee + categoria + descrição
+          const strongMatch = existing.find(e =>
+            (!_scPayeeId || !e.payee_id || e.payee_id === _scPayeeId) &&
+            (!_scCatId   || !e.category_id || e.category_id === _scCatId) &&
+            (!_scDesc    || !e.description || e.description.toLowerCase() === _scDesc.toLowerCase())
+          );
+          // Regra parcial: valor + conta + frequência
+          const partialMatch = !strongMatch && existing.find(e => e.frequency === _scFreq);
+
+          if (strongMatch || partialMatch) {
+            const amtFmt = typeof fmt === 'function' ? fmt(Math.abs(_scAmount)) : Math.abs(_scAmount).toFixed(2);
+            const payeeName = document.getElementById('scPayeeName')?.value?.trim() || '—';
+            const catLabel  = document.getElementById('scCatPickerLabel')?.textContent?.replace(/^—.*—$/, '').trim() || '—';
+            const freqLabel = _scFreq;
+
+            // Reutilizar _txDupConfirm se disponível, senão modal inline
+            let confirmed = false;
+            if (typeof _txDupConfirm === 'function') {
+              confirmed = await _txDupConfirm({
+                payeeName: strongMatch ? payeeName : null,
+                catLabel:  strongMatch ? catLabel  : null,
+                amtFmt,
+                dateLabel: data.start_date,
+                level: strongMatch ? 'strong' : 'partial',
+                message: strongMatch
+                  ? 'Já existe uma transação programada com os mesmos dados (valor, conta, beneficiário e categoria).'
+                  : `Já existe uma transação programada com o mesmo valor nesta conta (frequência: ${freqLabel}).`
+              });
+            } else {
+              confirmed = confirm(
+                strongMatch
+                  ? `⚠️ Já existe uma transação programada similar (${amtFmt} para ${payeeName}). Deseja criar mesmo assim?`
+                  : `⚠️ Já existe uma transação programada com valor ${amtFmt} nesta conta. Deseja criar mesmo assim?`
+              );
+            }
+            if (!confirmed) return;
+          }
+        }
+      }
+    } catch(dupErr) {
+      console.debug('[sc-dup-check]', dupErr.message); // non-fatal
+    }
+  }
+  // ── End duplicate check ───────────────────────────────────────────────────
+
   if(!data.account_id) { toast('Selecione a conta', 'error'); return; }
   if(!isScTransfer && !data.payee_id) {
     toast('Beneficiário / Fonte é obrigatório.','error');

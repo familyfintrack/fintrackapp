@@ -13,9 +13,17 @@ const ASSET_TYPES = [
   { value: 'acao_us',    label: 'Ação US',       emoji: '🇺🇸', hint: 'Ex: AAPL, GOOGL'    },
   { value: 'etf_us',     label: 'ETF US',        emoji: '📈', hint: 'Ex: SPY, QQQ'        },
   { value: 'bdr',        label: 'BDR',           emoji: '🌐', hint: 'Ex: AAPL34, AMZO34'  },
+  { value: 'fundo',      label: 'Fundo',         emoji: '🏦', hint: 'Fundo CDB/IPCA/CDI'  },
   { value: 'crypto',     label: 'Criptomoeda',   emoji: '₿',  hint: 'Ex: BTC, ETH'        },
   { value: 'renda_fixa', label: 'Renda Fixa',    emoji: '💰', hint: 'CDB, LCI, Tesouro'   },
   { value: 'outro',      label: 'Outro',         emoji: '📌', hint: 'Qualquer ativo'       },
+];
+
+// Corretoras conhecidas — combo com "Outro" para entrada livre
+const KNOWN_BROKERS = [
+  'XP Investimentos', 'Clear', 'Rico', 'BTG Pactual', 'Itaú', 'Bradesco',
+  'Banco do Brasil', 'Santander', 'Caixa', 'NuInvest (Easynvest)', 'Avenue',
+  'Inter Invest', 'Toro Investimentos', 'Warren', 'Órama', 'Modal', 'Outro',
 ];
 
 // Module state
@@ -553,9 +561,46 @@ function openInvTransactionModal(accountId = null, positionId = null) {
             ⚠️ Saldo em caixa insuficiente para esta compra.
           </div>
         </div>
+        <div class="form-group">
+          <label>Corretora</label>
+          <select id="invTxBroker" onchange="_invOnBrokerChange()">
+            <option value="">— Selecionar —</option>
+          </select>
+        </div>
+        <div class="form-group" id="invTxBrokerOtherGroup" style="display:none">
+          <label>Nome da Corretora</label>
+          <input type="text" id="invTxBrokerOther" placeholder="Nome da corretora…">
+        </div>
+        <div class="form-group full" id="invFundoPanel" style="display:none">
+          <div style="background:linear-gradient(135deg,rgba(30,92,66,.08),rgba(42,96,73,.05));border:1px solid rgba(42,96,73,.2);border-radius:10px;padding:12px 14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:.8rem;font-weight:700;color:var(--accent)">🤖 Enriquecer com IA</div>
+              <button type="button" onclick="_invEnrichFundoAI()" id="invFundoAiBtn"
+                style="font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid var(--accent);background:var(--accent-lt);color:var(--accent);cursor:pointer;font-family:var(--font-sans)">
+                🔍 Identificar Fundo
+              </button>
+            </div>
+            <div id="invFundoAiResult" style="font-size:.78rem;color:var(--muted);line-height:1.55">
+              Informe o código do ativo (ex: KDIF11, HGBS11) e clique em Identificar Fundo para buscar dados via IA.
+            </div>
+            <div id="invFundoIndexador" style="display:none;margin-top:8px">
+              <label style="font-size:.75rem;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">Indexador</label>
+              <select id="invFundoIndexadorSel" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.83rem;background:var(--surface);color:var(--text)">
+                <option value="">— Selecionar —</option>
+                <option value="CDI">CDI</option>
+                <option value="IPCA">IPCA</option>
+                <option value="IGP-M">IGP-M</option>
+                <option value="Selic">Selic</option>
+                <option value="INPC">INPC</option>
+                <option value="Prefixado">Prefixado</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div class="form-group full">
           <label>Observação</label>
-          <input type="text" id="invTxNotes" placeholder="Corretora, estratégia…">
+          <input type="text" id="invTxNotes" placeholder="Estratégia, notas…">
         </div>
       </div>
       <div id="invTxError" style="display:none;color:var(--red);font-size:.8rem;margin-top:8px;
@@ -570,11 +615,127 @@ function openInvTransactionModal(accountId = null, positionId = null) {
   </div>`;
 
   document.body.appendChild(modal);
-  // chart rendered in detail modal only
+  // Populate broker select
+  const brokerSel = document.getElementById('invTxBroker');
+  if (brokerSel) {
+    KNOWN_BROKERS.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      brokerSel.appendChild(opt);
+    });
+    // Prefill from position notes if it contains a known broker
+    if (pos?.notes) {
+      const found = KNOWN_BROKERS.find(b => pos.notes.toLowerCase().includes(b.toLowerCase()));
+      if (found) brokerSel.value = found;
+    }
+  }
   if (accountId) document.getElementById('invTxAccount').value = accountId;
   if (pos) {
-    document.getElementById('invTxAssetType').value = pos.asset_type || 'outro';
+    const assetType = pos.asset_type || 'outro';
+    document.getElementById('invTxAssetType').value = assetType;
+    _invToggleFundoPanel(assetType);
   }
+  // Wire assetType change to show/hide fundo panel
+  document.getElementById('invTxAssetType')?.addEventListener('change', function() {
+    _invToggleFundoPanel(this.value);
+  });
+}
+
+// ── Toggle fundo enrichment panel ──
+function _invToggleFundoPanel(assetType) {
+  const panel = document.getElementById('invFundoPanel');
+  if (panel) panel.style.display = (assetType === 'fundo') ? '' : 'none';
+}
+
+// ── Broker "Outro" toggle ──
+function _invOnBrokerChange() {
+  const sel = document.getElementById('invTxBroker');
+  const otherGrp = document.getElementById('invTxBrokerOtherGroup');
+  if (otherGrp) otherGrp.style.display = sel?.value === 'Outro' ? '' : 'none';
+}
+window._invOnBrokerChange = _invOnBrokerChange;
+
+// ── Enriquecer fundo com Gemini ──
+async function _invEnrichFundoAI() {
+  const ticker = document.getElementById('invTxTicker')?.value?.trim()?.toUpperCase();
+  const btn    = document.getElementById('invFundoAiBtn');
+  const result = document.getElementById('invFundoAiResult');
+  const indexPanel = document.getElementById('invFundoIndexador');
+
+  if (!ticker) { toast('Informe o código do ativo primeiro', 'warning'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando…'; }
+  if (result) result.textContent = '🔍 Consultando IA…';
+
+  try {
+    const key = typeof _invGetGeminiKey === 'function' ? await _invGetGeminiKey() : null;
+    if (!key) throw new Error('Chave Gemini não configurada. Configure em Configurações → IA.');
+
+    const prompt = `Você é um especialista em investimentos brasileiros.
+Dado o código de ativo "${ticker}", identifique:
+1. Nome completo do fundo/ativo
+2. Tipo (FII, Fundo de Investimento, ETF, CDB, etc.)
+3. Indexador principal se for pós-fixado (CDI, IPCA, IGP-M, Selic, Prefixado, ou N/A)
+4. Breve descrição (1 frase)
+5. Gestora/Administradora (se conhecida)
+
+Responda APENAS em JSON no formato:
+{"name":"","type":"","indexador":"CDI|IPCA|IGP-M|Selic|Prefixado|N/A","description":"","gestora":""}`;
+
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    if (!resp.ok) throw new Error('Gemini API: ' + resp.status);
+    const raw = await resp.json();
+    const text = raw.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(clean);
+
+    // Preencher campos do formulário
+    if (data.name) {
+      const nameEl = document.getElementById('invTxName');
+      if (nameEl && !nameEl.value) nameEl.value = data.name;
+    }
+
+    // Mostrar resultado
+    if (result) {
+      result.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div><strong>${esc(data.name || ticker)}</strong></div>
+          ${data.type        ? `<div style="color:var(--muted)">📋 ${esc(data.type)}</div>` : ''}
+          ${data.gestora     ? `<div style="color:var(--muted)">🏦 ${esc(data.gestora)}</div>` : ''}
+          ${data.description ? `<div style="color:var(--muted);font-style:italic">${esc(data.description)}</div>` : ''}
+        </div>`;
+    }
+
+    // Pré-selecionar indexador
+    if (data.indexador && data.indexador !== 'N/A') {
+      if (indexPanel) indexPanel.style.display = '';
+      const sel = document.getElementById('invFundoIndexadorSel');
+      if (sel) {
+        const match = Array.from(sel.options).find(o => o.value === data.indexador);
+        if (match) sel.value = data.indexador;
+      }
+    }
+
+  } catch(e) {
+    if (result) result.textContent = '⚠️ ' + (e.message || 'Erro ao consultar IA');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 Identificar Fundo'; }
+  }
+}
+window._invEnrichFundoAI = _invEnrichFundoAI;
+
+// Helper para buscar chave Gemini
+async function _invGetGeminiKey() {
+  if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache?.gemini_key) {
+    return _appSettingsCache.gemini_key;
+  }
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key','gemini_key').maybeSingle();
+    return data?.value || null;
+  } catch(_) { return null; }
 }
 
 function _invSetTxType(type) {
@@ -619,7 +780,13 @@ async function saveInvTransaction() {
   const name    = document.getElementById('invTxName').value.trim();
   const qtyRaw  = parseFloat(document.getElementById('invTxQty').value.replace(',','.'));
   const priceRaw= parseFloat(document.getElementById('invTxPrice').value.replace(',','.'));
-  const notes   = document.getElementById('invTxNotes').value.trim();
+  const notesRaw  = document.getElementById('invTxNotes').value.trim();
+  const brokerSel = document.getElementById('invTxBroker')?.value || '';
+  const brokerOth = document.getElementById('invTxBrokerOther')?.value?.trim() || '';
+  const broker    = brokerSel === 'Outro' ? brokerOth : brokerSel;
+  const indexador = document.getElementById('invFundoIndexadorSel')?.value || '';
+  const notes     = [notesRaw, broker ? `Corretora: ${broker}` : '', indexador ? `Indexador: ${indexador}` : '']
+    .filter(Boolean).join(' · ') || '';
   const posId   = document.getElementById('invTxPositionId').value;
 
   if (errEl) errEl.style.display = 'none';
@@ -674,13 +841,18 @@ async function saveInvTransaction() {
       newAvgCost = oldCost; // avg_cost stays the same on sells
     }
 
-    const { error: updErr } = await sb.from('investment_positions').update({
+    const posUpdatePayload = {
       quantity:   newQty,
       avg_cost:   newAvgCost,
       name:       name || position.name || ticker,
       asset_type: assetT || position.asset_type,
       updated_at: new Date().toISOString(),
-    }).eq('id', position.id);
+    };
+    // Persistir corretora nas notas da posição (sem sobrescrever se já existir)
+    if (broker && !position.notes?.includes(broker)) {
+      posUpdatePayload.notes = [position.notes, `Corretora: ${broker}`].filter(Boolean).join(' · ');
+    }
+    const { error: updErr } = await sb.from('investment_positions').update(posUpdatePayload).eq('id', position.id);
     if (updErr) throw updErr;
 
     // 3. Create financial transaction (debit for buy, credit for sell)
@@ -829,7 +1001,7 @@ async function openInvPositionDetail(positionId) {
       ${txRows ? `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
         <thead><tr style="background:var(--surface2)">
           <th style="padding:6px 8px;text-align:left">Data</th>
-          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th>
+          <th>Tipo</th><th>Qtd</th><th>Preço</th><th>Total</th><th></th>
         </tr></thead>
         <tbody>${txRows}</tbody>
       </table>` : '<div style="color:var(--muted);font-size:.82rem">Nenhuma movimentação registrada.</div>'}
@@ -1155,6 +1327,80 @@ function _renderInvGainLossChart(pos, history) {
 // ══════════════════════════════════════════════════════════════════════════════
 // EXCLUIR POSIÇÃO DE INVESTIMENTO
 // ══════════════════════════════════════════════════════════════════════════════
+// ── Excluir transação de investimento ──────────────────────────────────────
+async function deleteInvTransaction(txId, positionId) {
+  if (!confirm('Excluir esta movimentação? O saldo e o custo médio da posição serão recalculados.')) return;
+
+  try {
+    // Buscar a transação de investimento
+    const invTx = _inv.transactions.find(t => t.id === txId);
+    if (!invTx) throw new Error('Movimentação não encontrada em cache.');
+
+    const pos = _inv.positions.find(p => p.id === positionId);
+    if (!pos) throw new Error('Posição não encontrada.');
+
+    // Recalcular qty e avg_cost sem esta transação
+    const remaining = _inv.transactions.filter(t =>
+      t.position_id === positionId && t.id !== txId
+    );
+
+    let recalcQty = 0;
+    let recalcCost = 0;
+    let totalCostValue = 0;
+
+    // Replay das transações restantes em ordem cronológica
+    remaining
+      .slice()
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      .forEach(t => {
+        if (t.type === 'buy') {
+          const newQty = recalcQty + t.quantity;
+          recalcCost = newQty > 0
+            ? (recalcQty * recalcCost + t.quantity * t.unit_price) / newQty
+            : t.unit_price;
+          recalcQty = newQty;
+        } else {
+          recalcQty = Math.max(0, recalcQty - t.quantity);
+          // avg_cost unchanged on sells
+        }
+      });
+
+    // Excluir investment_transaction
+    const { error: invTxErr } = await sb.from('investment_transactions').delete().eq('id', txId);
+    if (invTxErr) throw invTxErr;
+
+    // Excluir transactions financeira vinculada (se existir)
+    if (invTx.tx_id) {
+      await sb.from('transactions').delete().eq('id', invTx.tx_id).catch(() => {});
+    }
+
+    // Atualizar position
+    const { error: posErr } = await sb.from('investment_positions').update({
+      quantity:   recalcQty,
+      avg_cost:   recalcCost,
+      updated_at: new Date().toISOString(),
+    }).eq('id', positionId);
+    if (posErr) throw posErr;
+
+    toast('✓ Movimentação excluída e posição recalculada', 'success');
+
+    // Recarregar e re-renderizar
+    await loadInvestments(true);
+    DB.accounts.bust();
+    await DB.accounts.load(true);
+    _invAugmentAccountBalances();
+    _renderInvestmentsPage();
+
+    // Reabrir detail modal se estava aberto
+    closeModal('invDetailModal');
+    setTimeout(() => openInvPositionDetail(positionId), 300);
+
+  } catch(e) {
+    toast('Erro ao excluir: ' + (e.message || e), 'error');
+  }
+}
+window.deleteInvTransaction = deleteInvTransaction;
+
 async function deleteInvPosition(positionId) {
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) { toast('Posição não encontrada', 'error'); return; }

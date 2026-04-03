@@ -929,6 +929,8 @@ function _wizStep2() {
   if (type === 'viagem') specificFields = _wizFieldsViagem(d);
   else if (type === 'automovel') specificFields = _wizFieldsAutomovel(d);
   else if (type === 'imovel') specificFields = _wizFieldsImovel(d);
+  else if (type === 'cirurgia_plastica') specificFields = _wizFieldsCirurgia(d);
+  else if (type === 'estudos') specificFields = _wizFieldsEstudos(d);
 
   return `
   <div class="drm-wiz-step2">
@@ -1181,6 +1183,23 @@ async function wizardAiSuggestItems() {
     extra.subtipo  = document.getElementById('wizSubtipo')?.value || '';
     extra.cidade   = document.getElementById('wizCidade')?.value || '';
     extra.tipo_compra = document.getElementById('wizTipoCompra')?.value || 'avista';
+  } else if (type === 'cirurgia_plastica') {
+    extra.tipo_cirurgia = document.getElementById('wizTipoCirurgia')?.value || '';
+    extra.medico        = document.getElementById('wizMedico')?.value || '';
+    extra.clinica       = document.getElementById('wizClinica')?.value || '';
+    extra.protese       = document.getElementById('wizProtese')?.value || '';
+    extra.custo_anestesia = parseFloat(document.getElementById('wizCustoAnestesia')?.value) || 0;
+    extra.custo_hospital  = parseFloat(document.getElementById('wizCustoHospital')?.value) || 0;
+    extra.custo_exames    = parseFloat(document.getElementById('wizCustoExames')?.value) || 0;
+  } else if (type === 'estudos') {
+    extra.tipo_estudo   = document.getElementById('wizTipoEstudo')?.value || '';
+    extra.instituicao   = document.getElementById('wizInstituicao')?.value || '';
+    extra.pais          = document.getElementById('wizPaisEstudo')?.value || '';
+    extra.duracao_meses = parseInt(document.getElementById('wizDuracaoEstudo')?.value) || 0;
+    extra.custo_mensalidade = parseFloat(document.getElementById('wizCustoMensalidade')?.value) || 0;
+    extra.custo_moradia = parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0;
+    extra.custo_passagem = parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0;
+    extra.moeda         = document.getElementById('wizMoedaEstudo')?.value || 'BRL';
   }
 
   const prompt = `Você é um planejador financeiro. Sugira componentes de custo para o sonho abaixo.
@@ -1372,6 +1391,162 @@ function wizardBack() {
 window.wizardBack = wizardBack;
 
 /* ── Save dream ───────────────────────────────────────────────────── */
+// ── Campos específicos: Cirurgia Plástica ────────────────────────────────
+function _wizFieldsCirurgia(d) {
+  const meta = typeof d.ai_generated_fields_json === 'object' ? (d.ai_generated_fields_json || {}) : {};
+  return `
+  <div class="drm-wiz-section-title">💉 Detalhes da Cirurgia</div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Tipo de Cirurgia</label>
+      <select id="wizTipoCirurgia" class="form-input">
+        <option value="">— Selecionar —</option>
+        <option value="rinoplastia" ${meta.tipo_cirurgia==='rinoplastia'?'selected':''}>Rinoplastia</option>
+        <option value="mastoplastia" ${meta.tipo_cirurgia==='mastoplastia'?'selected':''}>Mastoplastia (implante)</option>
+        <option value="lipoaspiracao" ${meta.tipo_cirurgia==='lipoaspiracao'?'selected':''}>Lipoaspiração</option>
+        <option value="abdominoplastia" ${meta.tipo_cirurgia==='abdominoplastia'?'selected':''}>Abdominoplastia</option>
+        <option value="bichectomia" ${meta.tipo_cirurgia==='bichectomia'?'selected':''}>Bichectomia</option>
+        <option value="otoplastia" ${meta.tipo_cirurgia==='otoplastia'?'selected':''}>Otoplastia</option>
+        <option value="blefaroplastia" ${meta.tipo_cirurgia==='blefaroplastia'?'selected':''}>Blefaroplastia</option>
+        <option value="ritidoplastia" ${meta.tipo_cirurgia==='ritidoplastia'?'selected':''}>Ritidoplastia (face)</option>
+        <option value="outro" ${meta.tipo_cirurgia==='outro'?'selected':''}>Outro</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Médico / Cirurgião</label>
+      <input type="text" id="wizMedico" class="form-input" placeholder="Dr(a). Nome" value="${_esc(meta.medico||'')}">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Clínica / Hospital</label>
+      <input type="text" id="wizClinica" class="form-input" placeholder="Nome da clínica" value="${_esc(meta.clinica||'')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Prótese / Implante</label>
+      <input type="text" id="wizProtese" class="form-input" placeholder="Marca e tamanho (ex: 300cc)" value="${_esc(meta.protese||'')}">
+    </div>
+  </div>
+  <div class="drm-wiz-section-title" style="margin-top:10px">💰 Detalhamento de Custos</div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Honorários do médico (R$)</label>
+      <input type="number" id="wizCustoMedico" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_medico||''}" oninput="_wizSomaCirurgia()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Anestesia (R$)</label>
+      <input type="number" id="wizCustoAnestesia" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_anestesia||''}" oninput="_wizSomaCirurgia()">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Hospital / Clínica (R$)</label>
+      <input type="number" id="wizCustoHospital" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_hospital||''}" oninput="_wizSomaCirurgia()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Exames pré-op (R$)</label>
+      <input type="number" id="wizCustoExames" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_exames||''}" oninput="_wizSomaCirurgia()">
+    </div>
+  </div>
+  <div style="margin-top:6px;padding:8px 12px;background:var(--accent-lt);border-radius:8px;font-size:.8rem;color:var(--accent);font-weight:600" id="wizCirurgiaTotal" style="display:none"></div>`;
+}
+
+function _wizSomaCirurgia() {
+  const ids = ['wizCustoMedico','wizCustoAnestesia','wizCustoHospital','wizCustoExames'];
+  const total = ids.reduce((s,id) => s + (parseFloat(document.getElementById(id)?.value)||0), 0);
+  const el = document.getElementById('wizCirurgiaTotal');
+  if (el && total > 0) {
+    el.textContent = '💰 Total estimado: ' + (typeof fmt === 'function' ? fmt(total) : 'R$ ' + total.toFixed(2));
+    el.style.display = '';
+    // Sugerir preenchimento do valor total do sonho
+    const amtEl = document.getElementById('wizAmount');
+    if (amtEl && !amtEl.value) amtEl.value = total.toFixed(2);
+  }
+}
+window._wizSomaCirurgia = _wizSomaCirurgia;
+
+// ── Campos específicos: Estudos ───────────────────────────────────────────
+function _wizFieldsEstudos(d) {
+  const meta = typeof d.ai_generated_fields_json === 'object' ? (d.ai_generated_fields_json || {}) : {};
+  return `
+  <div class="drm-wiz-section-title">🎓 Detalhes dos Estudos</div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Tipo de Estudo</label>
+      <select id="wizTipoEstudo" class="form-input">
+        <option value="">— Selecionar —</option>
+        <option value="graduacao" ${meta.tipo_estudo==='graduacao'?'selected':''}>Graduação</option>
+        <option value="pos_graduacao" ${meta.tipo_estudo==='pos_graduacao'?'selected':''}>Pós-graduação / MBA</option>
+        <option value="mestrado" ${meta.tipo_estudo==='mestrado'?'selected':''}>Mestrado</option>
+        <option value="doutorado" ${meta.tipo_estudo==='doutorado'?'selected':''}>Doutorado</option>
+        <option value="intercambio" ${meta.tipo_estudo==='intercambio'?'selected':''}>Intercâmbio</option>
+        <option value="curso_tecnico" ${meta.tipo_estudo==='curso_tecnico'?'selected':''}>Curso Técnico</option>
+        <option value="idiomas" ${meta.tipo_estudo==='idiomas'?'selected':''}>Idiomas</option>
+        <option value="outro" ${meta.tipo_estudo==='outro'?'selected':''}>Outro</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Instituição</label>
+      <input type="text" id="wizInstituicao" class="form-input" placeholder="Ex: USP, FGV, MIT…" value="${_esc(meta.instituicao||'')}">
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">País</label>
+      <input type="text" id="wizPaisEstudo" class="form-input" placeholder="Ex: Brasil, EUA, Portugal" value="${_esc(meta.pais||'')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Moeda</label>
+      <select id="wizMoedaEstudo" class="form-input">
+        <option value="BRL" ${(meta.moeda||'BRL')==='BRL'?'selected':''}>BRL — Real</option>
+        <option value="USD" ${meta.moeda==='USD'?'selected':''}>USD — Dólar</option>
+        <option value="EUR" ${meta.moeda==='EUR'?'selected':''}>EUR — Euro</option>
+        <option value="GBP" ${meta.moeda==='GBP'?'selected':''}>GBP — Libra</option>
+        <option value="CAD" ${meta.moeda==='CAD'?'selected':''}>CAD — Dólar Canadense</option>
+      </select>
+    </div>
+  </div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Duração (meses)</label>
+      <input type="number" id="wizDuracaoEstudo" class="form-input" placeholder="Ex: 24" min="1" max="120" value="${meta.duracao_meses||''}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mensalidade</label>
+      <input type="number" id="wizCustoMensalidade" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_mensalidade||''}" oninput="_wizSomaEstudos()">
+    </div>
+  </div>
+  <div class="drm-wiz-section-title" style="margin-top:10px">✈️ Custos Adicionais</div>
+  <div class="drm-form-row">
+    <div class="form-group">
+      <label class="form-label">Moradia (por mês)</label>
+      <input type="number" id="wizCustoMoradia" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_moradia||''}" oninput="_wizSomaEstudos()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Passagem (total)</label>
+      <input type="number" id="wizCustoPassagem" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_passagem||''}" oninput="_wizSomaEstudos()">
+    </div>
+  </div>
+  <div style="margin-top:6px;padding:8px 12px;background:var(--accent-lt);border-radius:8px;font-size:.8rem;color:var(--accent);font-weight:600" id="wizEstudosTotal"></div>`;
+}
+
+function _wizSomaEstudos() {
+  const meses       = parseInt(document.getElementById('wizDuracaoEstudo')?.value) || 1;
+  const mensalidade = parseFloat(document.getElementById('wizCustoMensalidade')?.value) || 0;
+  const moradia     = parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0;
+  const passagem    = parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0;
+  const total = (mensalidade + moradia) * meses + passagem;
+  const el = document.getElementById('wizEstudosTotal');
+  if (el) {
+    el.textContent = total > 0
+      ? '💰 Total estimado: ' + (typeof fmt === 'function' ? fmt(total) : 'R$ ' + total.toFixed(2)) + ` (${meses} meses)`
+      : '';
+    const amtEl = document.getElementById('wizAmount');
+    if (amtEl && !amtEl.value && total > 0) amtEl.value = total.toFixed(2);
+  }
+}
+window._wizSomaEstudos = _wizSomaEstudos;
+
 async function saveDream() {
   const w = _drm.wizard;
   if (!w) return;

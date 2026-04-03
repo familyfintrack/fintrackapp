@@ -274,8 +274,27 @@ function accountTypeLabel(t){
   return{corrente:'Conta Corrente',poupanca:'Poupança',cartao_credito:'Cartão de Crédito',investimento:'Investimentos',dinheiro:'Dinheiro',outros:'Outros'}[t]||t;
 }
 
+// Chamado ao mudar o tipo de conta no MODAL (não navega para transações)
+function _onAccModalTypeChange() {
+  const type  = document.getElementById('accountType')?.value || '';
+  const isCC  = type === 'cartao_credito';
+
+  // IOF config
+  const iofCfg = document.getElementById('accountIofConfig');
+  if (iofCfg) iofCfg.style.display = isCC ? '' : 'none';
+
+  // Card dates config
+  const cardDates = document.getElementById('accountCardDatesConfig');
+  if (cardDates) cardDates.style.display = isCC ? '' : 'none';
+
+  // Card data section (bandeira, limite, emissor)
+  const cardData = document.getElementById('accountCardDataSection');
+  if (cardData) cardData.style.display = isCC ? '' : 'none';
+}
+window._onAccModalTypeChange = _onAccModalTypeChange;
+
 async function openAccountModal(id=''){
-  const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null};
+  const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
   if(id){
     const a=state.accounts.find(x=>x.id===id);
     if(a){Object.assign(form,a);form.initial_balance=parseFloat(a.initial_balance)||0;}
@@ -314,6 +333,40 @@ async function openAccountModal(id=''){
   if(bpdEl) bpdEl.value=form.best_purchase_day||'';
   const ddEl=document.getElementById('accountDueDay');
   if(ddEl) ddEl.value=form.due_day||'';
+  // Novos campos bancários
+  const _setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  _setVal('accountBankName',     form.bank_name);
+  _setVal('accountBankCode',     form.bank_code);
+  _setVal('accountAgency',       form.agency);
+  _setVal('accountNumber',       form.account_number);
+  _setVal('accountIban',         form.iban);
+  _setVal('accountRoutingNumber',form.routing_number);
+  _setVal('accountSwiftBic',     form.swift_bic);
+  // Cartão
+  const cardDataSec = document.getElementById('accountCardDataSection');
+  if (cardDataSec) cardDataSec.style.display = isCC ? '' : 'none';
+  _setVal('accountCardBrand',  form.card_brand);
+  _setVal('accountCardType',   form.card_type);
+  _setVal('accountCardIssuer', form.card_issuer);
+  const cardLimitEl = document.getElementById('accountCardLimit');
+  if (cardLimitEl) cardLimitEl.value = form.card_limit != null ? form.card_limit : '';
+  // Vincular sonho — popular select com sonhos ativos
+  const dreamSel = document.getElementById('accountLinkedDreamId');
+  if (dreamSel) {
+    dreamSel.innerHTML = '<option value="">— Nenhum —</option>';
+    try {
+      const { data: dreams } = await famQ(
+        sb.from('dreams').select('id,title,dream_type').eq('status','active').order('title')
+      );
+      (dreams || []).forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = (_dreamTypeEmoji?.(d.dream_type)||'🌟') + ' ' + (d.title || d.id);
+        dreamSel.appendChild(opt);
+      });
+    } catch(_) {}
+    dreamSel.value = form.linked_dream_id || '';
+  }
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
   openModal('accountModal');
 }
@@ -329,6 +382,7 @@ async function saveAccount(){
   const favEl=document.getElementById('accountIsFavorite');
   const bpdEl=document.getElementById('accountBestPurchaseDay');
   const ddEl=document.getElementById('accountDueDay');
+  const _gv = id => (document.getElementById(id)?.value || '').trim() || null;
   const data={
     name:document.getElementById('accountName').value.trim(),
     type:document.getElementById('accountType').value,
@@ -342,6 +396,21 @@ async function saveAccount(){
     is_favorite: favEl ? !!favEl.checked : false,
     best_purchase_day: isCC&&bpdEl&&bpdEl.value ? (parseInt(bpdEl.value)||null) : null,
     due_day: isCC&&ddEl&&ddEl.value ? (parseInt(ddEl.value)||null) : null,
+    // Dados bancários
+    bank_name:       _gv('accountBankName'),
+    bank_code:       _gv('accountBankCode'),
+    agency:          _gv('accountAgency'),
+    account_number:  _gv('accountNumber'),
+    iban:            _gv('accountIban'),
+    routing_number:  _gv('accountRoutingNumber'),
+    swift_bic:       _gv('accountSwiftBic'),
+    // Cartão
+    card_brand:   isCC ? (_gv('accountCardBrand')  || null) : null,
+    card_type:    isCC ? (_gv('accountCardType')   || null) : null,
+    card_issuer:  isCC ? (_gv('accountCardIssuer') || null) : null,
+    card_limit:   isCC ? (parseFloat(document.getElementById('accountCardLimit')?.value) || null) : null,
+    // Vincular sonho
+    linked_dream_id: _gv('accountLinkedDreamId') || null,
     updated_at:new Date().toISOString()
   };
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}

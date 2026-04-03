@@ -1374,37 +1374,56 @@ function updateFxPreview() {
 }
 
 // ── Duplicate confirmation dialog ────────────────────────────────────────────
-async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel }) {
+async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel, level = 'strong', message = null }) {
   return new Promise(resolve => {
+    const isStrong = level === 'strong';
+    const headerBg = isStrong
+      ? 'linear-gradient(135deg,#b45309,#d97706)'
+      : 'linear-gradient(135deg,#1e5ba8,#2563eb)';
+    const headerIcon = isStrong ? '⚠️' : '🔍';
+    const headerTitle = isStrong ? 'Possível transação duplicada' : 'Lançamento similar encontrado';
+    const headerSub   = isStrong ? 'Dados idênticos — confirme antes de salvar' : 'Valor e data já existem nesta conta';
+    const btnColor    = isStrong ? 'var(--amber,#d97706)' : 'var(--blue,#2563eb)';
+    const btnLabel    = isStrong ? '⚠️ Lançar mesmo assim' : 'Confirmar lançamento';
+
+    const fieldsHtml = isStrong && payeeName
+      ? `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;font-size:.83rem">
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 12px;color:var(--text2)">
+            ${payeeName ? `<span style="color:var(--muted);font-weight:600">Beneficiário</span><span>${esc(payeeName)}</span>` : ''}
+            ${catLabel  ? `<span style="color:var(--muted);font-weight:600">Categoria</span><span>${esc(catLabel)}</span>` : ''}
+            <span style="color:var(--muted);font-weight:600">Valor</span><span style="font-weight:700;color:var(--text)">${esc(amtFmt)}</span>
+            <span style="color:var(--muted);font-weight:600">Data</span><span>${esc(dateLabel)}</span>
+          </div>
+        </div>`
+      : `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;font-size:.83rem">
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 12px;color:var(--text2)">
+            <span style="color:var(--muted);font-weight:600">Valor</span><span style="font-weight:700;color:var(--text)">${esc(amtFmt)}</span>
+            <span style="color:var(--muted);font-weight:600">Data</span><span>${esc(dateLabel)}</span>
+          </div>
+        </div>`;
+
     const d = document.createElement('div');
-    d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:19999;display:flex;align-items:center;justify-content:center;padding:24px';
+    d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:19999;display:flex;align-items:center;justify-content:center;padding:24px';
     d.innerHTML = `
       <div style="background:var(--surface);border-radius:var(--r-lg);padding:0;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.35);overflow:hidden">
-        <div style="background:linear-gradient(135deg,#b45309,#d97706);padding:18px 20px;display:flex;align-items:center;gap:12px">
-          <span style="font-size:1.6rem">⚠️</span>
+        <div style="background:${headerBg};padding:18px 20px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:1.6rem">${headerIcon}</span>
           <div>
-            <div style="color:#fff;font-size:.95rem;font-weight:800;line-height:1.2">Possível transação duplicada</div>
-            <div style="color:rgba(255,255,255,.75);font-size:.75rem;margin-top:2px">Já existe um lançamento com os mesmos dados</div>
+            <div style="color:#fff;font-size:.92rem;font-weight:800;line-height:1.2">${headerTitle}</div>
+            <div style="color:rgba(255,255,255,.75);font-size:.72rem;margin-top:2px">${headerSub}</div>
           </div>
         </div>
-        <div style="padding:20px">
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:16px;font-size:.84rem">
-            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;color:var(--text2)">
-              <span style="color:var(--muted);font-weight:600">Beneficiário</span><span>${esc(payeeName)}</span>
-              <span style="color:var(--muted);font-weight:600">Categoria</span><span>${esc(catLabel)}</span>
-              <span style="color:var(--muted);font-weight:600">Valor</span><span style="font-weight:700;color:var(--text)">${esc(amtFmt)}</span>
-              <span style="color:var(--muted);font-weight:600">Data</span><span>${esc(dateLabel)}</span>
-            </div>
-          </div>
-          <div style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
-            Um lançamento com os mesmos dados já existe. Tem certeza que deseja registrar novamente?
+        <div style="padding:18px 20px">
+          ${fieldsHtml}
+          <div style="font-size:.81rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+            ${message || 'Deseja registrar mesmo assim?'}
           </div>
           <div style="display:flex;gap:10px">
-            <button id="_dupNo2" style="flex:1;padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--font-sans);font-size:.9rem;font-weight:600;cursor:pointer">
+            <button id="_dupNo2" style="flex:1;padding:12px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--font-sans);font-size:.88rem;font-weight:600;cursor:pointer">
               Cancelar
             </button>
-            <button id="_dupYes2" style="flex:1;padding:12px;border-radius:var(--r-sm);border:none;background:var(--amber,#d97706);color:#fff;font-family:var(--font-sans);font-size:.9rem;font-weight:700;cursor:pointer">
-              Lançar mesmo assim
+            <button id="_dupYes2" style="flex:1;padding:12px;border-radius:var(--r-sm);border:none;background:${btnColor};color:#fff;font-family:var(--font-sans);font-size:.88rem;font-weight:700;cursor:pointer">
+              ${btnLabel}
             </button>
           </div>
         </div>
@@ -1459,13 +1478,25 @@ async function saveTransaction(){
           });
 
           if (match) {
-            // Build human-readable summary of the duplicate
+            // REGRA FORTE — 5 campos batem: valor + data + conta + payee + categoria + descrição
             const payeeName = document.getElementById('txPayeeName')?.value?.trim() || '—';
             const catLabel  = document.getElementById('catPickerLabel')?.textContent?.replace(/^—.*—$/, '').trim() || '—';
-            const amtFmt    = typeof fmt === 'function' ? fmt(_storedAmt) : _storedAmt.toFixed(2);
+            const amtFmt    = typeof fmt === 'function' ? fmt(Math.abs(_storedAmt)) : Math.abs(_storedAmt).toFixed(2);
             const dateLabel = _date;
-
-            const confirmed = await _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel });
+            const confirmed = await _txDupConfirm({
+              payeeName, catLabel, amtFmt, dateLabel,
+              level: 'strong',
+              message: 'Já existe um lançamento com os mesmos dados (valor, data, conta, beneficiário e categoria).'
+            });
+            if (!confirmed) return;
+          } else if (existing && existing.length > 0) {
+            // REGRA PARCIAL — só valor + data + conta batem (sem payee/cat match)
+            const amtFmt = typeof fmt === 'function' ? fmt(Math.abs(_storedAmt)) : Math.abs(_storedAmt).toFixed(2);
+            const confirmed = await _txDupConfirm({
+              payeeName: null, catLabel: null, amtFmt, dateLabel: _date,
+              level: 'partial',
+              message: 'Já existe um lançamento com o mesmo valor e data nesta conta. Pode ser uma duplicata acidental.'
+            });
             if (!confirmed) return;
           }
         }

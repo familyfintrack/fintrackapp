@@ -288,6 +288,9 @@ async function loadDashboard(){
   if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
   _renderDashForecast().catch(()=>{});
   await loadDashboardAutoRunSummary();
+  // Carregar cards opcionais (investments + dreams) se habilitados
+  _loadDashInvestmentsCard().catch(() => {});
+  _loadDashDreamsCard().catch(() => {});
 
   // Render account balances grouped by account group
   (function renderAccountBalances() {
@@ -839,12 +842,14 @@ const _DASH_PREFS_KEY = () =>
   `dash_prefs_${typeof currentUser !== 'undefined' && currentUser?.id ? currentUser.id : 'default'}`;
 
 const _DASH_CARDS = [
-  { id: 'accounts',   label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'   },
-  { id: 'charts',     label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'     },
-  { id: 'favcats',    label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'    },
-  { id: 'upcoming',   label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'   },
-  { id: 'forecast90', label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90' },
-  { id: 'recent',     label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'     },
+  { id: 'accounts',     label: 'Saldo por Conta',           icon: '🏦', sub: 'Saldo atual de cada conta',                 el: 'dashCardAccounts'     },
+  { id: 'charts',       label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'       },
+  { id: 'favcats',      label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'      },
+  { id: 'upcoming',     label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'     },
+  { id: 'forecast90',   label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90'   },
+  { id: 'recent',       label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'       },
+  { id: 'investments',  label: 'Carteira de Investimentos', icon: '📊', sub: 'Resumo e distribuição da carteira',         el: 'dashCardInvestments', optional: true },
+  { id: 'dreams',       label: 'Meus Sonhos',               icon: '🌟', sub: 'Progresso dos seus sonhos financeiros',     el: 'dashCardDreams',      optional: true },
 ];
 
 function _dashGetPrefs() {
@@ -1813,14 +1818,41 @@ async function _openPatrimonioModal() {
   const accs = Array.isArray(state.accounts) ? state.accounts : [];
   if (!accs.length) return;
 
-  // ── Match KPI calculation exactly ────────────────────────────────────────
-  // Account total: investment accounts use _totalPortfolioBalance if available
-  const accountTotal = accs.reduce((s, a) => {
-    const bal = (a.type === 'investimento' && a._totalPortfolioBalance != null)
-      ? a._totalPortfolioBalance
-      : (parseFloat(a.balance) || 0);
-    return s + toBRL(bal, a.currency || 'BRL');
+  // ══════════════════════════════════════════════════════════════════
+  // ATIVOS — contas + investimentos detalhados
+  // ══════════════════════════════════════════════════════════════════
+
+  // Separar contas por tipo
+  const accsLiquid  = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
+  const accsInvest  = accs.filter(a => a.type === 'investimento');
+  const accsCard    = accs.filter(a => a.type === 'cartao_credito');
+
+  // Saldo líquido (corrente + poupança + dinheiro + outros)
+  const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+
+  // Investimentos — usar _totalPortfolioBalance (preço de mercado) quando disponível
+  const invTotal = accsInvest.reduce((s,a) => {
+    const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
+    return s + toBRL(bal, a.currency||'BRL');
   }, 0);
+
+  // Investimentos por tipo (usando posições do módulo de investimentos)
+  const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
+  const invByType = {};
+  invPositions.forEach(p => {
+    const k = p.asset_type || 'outro';
+    if (!invByType[k]) invByType[k] = { positions: [], total: 0 };
+    const mv = (typeof _invMarketValue === 'function') ? _invMarketValue(p) : (+(p.quantity||0) * (+(p.current_price||p.avg_cost||0)));
+    invByType[k].positions.push({ ...p, _mv: mv });
+    invByType[k].total += mv;
+  });
+
+  // Total de ativos
+  const accountTotal = liquidTotal + invTotal;
+
+  // ══════════════════════════════════════════════════════════════════
+  // PASSIVOS — dívidas ativas
+  // ══════════════════════════════════════════════════════════════════
 
   // Debts: same query as KPI
   let debtTotal = 0;
@@ -1844,54 +1876,193 @@ async function _openPatrimonioModal() {
     byCurrency[cur].push(a);
   });
 
+  // ── Helpers de formatação ──
+  const _pct = (val, total) => total !== 0 ? Math.abs(val / total * 100).toFixed(1) : '0.0';
+  const _barHtml = (pct, color) =>
+    `<div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
+      <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:2px;transition:width .4s ease"></div>
+    </div>`;
+  const _rowHtml = (icon, name, sub, val, valBRL, cur, color, onclick, pct, barColor) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--surface2);cursor:${onclick?'pointer':'default'};transition:background .12s"
+      ${onclick ? `onclick="${onclick}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'"` : ''}>
+      <div style="width:30px;height:30px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
+        ${sub ? `<div style="font-size:.68rem;color:var(--muted)">${esc(sub)}</div>` : ''}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${val<0?'var(--red)':'var(--text)'}">${fmt(val,cur)}</div>
+        ${cur!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">${dashFmt(valBRL,'BRL')}</div>`:''}
+        ${pct!==null?`<div style="font-size:.65rem;color:var(--muted)">${pct}%</div>`:''}
+      </div>
+    </div>
+    ${barColor && pct!==null ? _barHtml(pct,barColor) : ''}`;
+
+  // Tipo de ativo label
+  const _invTypeLabel = {
+    acao_br:'Ações BR', fii:'FII', etf_br:'ETF BR', acao_us:'Ações US', etf_us:'ETF US',
+    bdr:'BDR', fundo:'Fundos', crypto:'Cripto', renda_fixa:'Renda Fixa', outro:'Outros'
+  };
+  const _invTypeEmoji = {
+    acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
+    bdr:'🌐', fundo:'🏦', crypto:'₿', renda_fixa:'💰', outro:'📌'
+  };
+
   let content = `
     <div style="padding:20px 22px 24px">
+      <!-- Cabeçalho -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Total</div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Líquido</div>
           <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Ativos: ${dashFmt(accountTotal,'BRL')} · Passivos: ${dashFmt(debtTotal,'BRL')}</div>
         </div>
         <button onclick="closeModal('patrimonioModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+
+      <!-- ── ATIVOS ────────────────────────────────────────────────── -->
+      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);padding:4px 0 8px;border-bottom:1.5px solid var(--accent);margin-bottom:12px">
+        📈 ATIVOS — ${dashFmt(accountTotal,'BRL')}
+      </div>
+
+      <!-- Contas líquidas -->`;
+
+  if (accsLiquid.length) {
+    content += `
+      <div style="margin-bottom:14px">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Contas</div>
+        <div style="display:flex;flex-direction:column;gap:4px">`;
+    accsLiquid.sort((a,b)=>Math.abs(b.balance||0)-Math.abs(a.balance||0)).forEach(a => {
+      const bal    = parseFloat(a.balance)||0;
+      const balBRL = toBRL(bal, a.currency||'BRL');
+      const pct    = _pct(balBRL, accountTotal);
+      content += _rowHtml(
+        _dashRenderIcon(a.icon, a.color, 16), a.name,
+        accountTypeLabel?.(a.type)||a.type, bal, balBRL,
+        a.currency||'BRL', a.color||'var(--accent)',
+        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
+        pct, a.color||'var(--accent)'
+      );
+    });
+    content += `</div>
+        <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
+          <span style="font-weight:700;color:var(--text)">${dashFmt(liquidTotal,'BRL')}</span>
+        </div>
       </div>`;
+  }
+
+  // Investimentos por tipo
+  if (accsInvest.length) {
+    content += `
+      <div style="margin-bottom:14px">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📊 Investimentos</div>`;
+
+    if (Object.keys(invByType).length > 0) {
+      // Breakdown por tipo de ativo
+      content += `<div style="display:flex;flex-direction:column;gap:4px">`;
+      Object.entries(invByType)
+        .sort(([,a],[,b]) => b.total - a.total)
+        .forEach(([k, grp]) => {
+          const pct = _pct(grp.total, accountTotal);
+          const typeLabel = (_invTypeLabel[k]||k);
+          const typeEmoji = (_invTypeEmoji[k]||'📌');
+          const color = '#1e5ba8';
+          // Linha do tipo (expansível)
+          content += `
+            <details style="background:var(--surface2);border-radius:9px;overflow:hidden">
+              <summary style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;list-style:none">
+                <div style="width:30px;height:30px;border-radius:8px;background:#1e5ba822;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">${typeEmoji}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.82rem;font-weight:700;color:var(--text)">${typeLabel}</div>
+                  <div style="font-size:.68rem;color:var(--muted)">${grp.positions.length} ativo${grp.positions.length!==1?'s':''}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--text)">${dashFmt(grp.total,'BRL')}</div>
+                  <div style="font-size:.65rem;color:var(--muted)">${pct}%</div>
+                </div>
+              </summary>
+              <div style="padding:0 10px 8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:3px;margin-top:4px">
+                ${grp.positions.map(p => {
+                  const mv = p._mv || 0;
+                  const pnl = mv - (+(p.quantity||0) * (+(p.avg_cost||0)));
+                  const pnlPct = p.avg_cost ? (pnl / (+(p.quantity||0) * (+(p.avg_cost||0))) * 100) : 0;
+                  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+                    <div style="flex:1;min-width:0">
+                      <span style="font-size:.8rem;font-weight:700;color:var(--text)">${esc(p.ticker)}</span>
+                      <span style="font-size:.7rem;color:var(--muted);margin-left:5px">${esc(p.name||'')}</span>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0">
+                      <div style="font-size:.8rem;font-weight:700">${dashFmt(mv,'BRL')}</div>
+                      <div style="font-size:.65rem;color:${pnl>=0?'var(--accent)':'var(--red)'}">${pnl>=0?'+':''}${dashFmt(pnl,'BRL')} (${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%)</div>
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </details>`;
+          content += _barHtml(pct, color);
+        });
+      content += `</div>`;
+    } else {
+      // Sem posições — mostrar contas de investimento
+      content += `<div style="display:flex;flex-direction:column;gap:4px">`;
+      accsInvest.forEach(a => {
+        const bal    = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
+        const balBRL = toBRL(bal, a.currency||'BRL');
+        content += _rowHtml(
+          _dashRenderIcon(a.icon, a.color, 16), a.name, 'Investimentos',
+          bal, balBRL, a.currency||'BRL', a.color||'#1e5ba8',
+          `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
+          _pct(balBRL,accountTotal), a.color||'#1e5ba8'
+        );
+      });
+      content += `</div>`;
+    }
+
+    content += `
+        <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
+          <span style="font-weight:700;color:var(--text)">${dashFmt(invTotal,'BRL')}</span>
+        </div>
+      </div>`;
+  }
 
   Object.entries(byCurrency).forEach(([cur, group]) => {
-    const groupTotal = group.reduce((s,a) => s + (parseFloat(a.balance)||0), 0);
-    const groupTotalBRL = group.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, cur), 0);
-    content += `
-      <div style="margin-bottom:16px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">${cur}</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    group.sort((a,b)=>(Math.abs(b.balance||0)-Math.abs(a.balance||0))).forEach(a => {
-      const bal = parseFloat(a.balance)||0;
-      const pct = groupTotalBRL !== 0 ? Math.abs(toBRL(bal,cur)/totalBRL*100) : 0;
-      const isNeg = bal < 0;
-      content += `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--surface2);cursor:pointer;transition:background .12s"
-          onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
-          onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'">
-          <div style="width:30px;height:30px;border-radius:8px;background:${a.color||'var(--accent)'}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,16)}</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${accountTypeLabel?.(a.type)||a.type||''}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${isNeg?'var(--red)':'var(--text)'}">${fmt(bal,cur)}</div>
-            ${cur!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">${dashFmt(toBRL(bal,cur),'BRL')}</div>`:''}
-            <div style="font-size:.65rem;color:var(--muted)">${pct.toFixed(1)}% do total</div>
-          </div>
-        </div>
-        <div style="height:3px;border-radius:2px;background:var(--border);margin:0 10px;overflow:hidden">
-          <div style="height:100%;width:${Math.min(pct,100)}%;background:${a.color||'var(--accent)'};border-radius:2px;transition:width .4s ease"></div>
-        </div>`;
-    });
-    content += `
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:6px 10px 0;font-size:.75rem;color:var(--muted)">
-          <span>${group.length} conta${group.length!==1?'s':''}</span>
-          <span style="font-weight:700;color:var(--text)">${fmt(groupTotal,cur)}${cur!=='BRL'?` (${dashFmt(groupTotalBRL,'BRL')})`:''}</span>
-        </div>
-      </div>`;
+    // Mantido apenas como fallback para casos não cobertos acima
+    return;
   });
+
+  // Ocultar bloco antigo de byCurrency (substituído pelo novo)
+  // Apenas cartões de crédito como passivo de consumo (saldo devedor)
+  if (accsCard.length) {
+    const cardDebt = accsCard.reduce((s,a) => {
+      const bal = parseFloat(a.balance)||0;
+      return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
+    }, 0);
+    if (cardDebt > 0) {
+      content += `
+        <div style="margin-bottom:14px">
+          <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Faturas em Aberto</div>
+          <div style="display:flex;flex-direction:column;gap:4px">`;
+      accsCard.filter(a => (parseFloat(a.balance)||0) < 0).forEach(a => {
+        const bal = parseFloat(a.balance)||0;
+        content += _rowHtml(
+          _dashRenderIcon(a.icon,a.color,16), a.name, 'Fatura em aberto',
+          bal, toBRL(Math.abs(bal), a.currency||'BRL'),
+          a.currency||'BRL', '#dc2626',
+          `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
+          null, null
+        );
+      });
+      content += `</div></div>`;
+    }
+  }
+
+  // ── PASSIVOS ─────────────────────────────────────────────────────────────
+  if (debtTotal > 0 || accsCard.some(a => (parseFloat(a.balance)||0) < 0)) {
+    content += `
+      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1.5px solid var(--red,#dc2626);margin:16px 0 12px">
+        📉 PASSIVOS — −${dashFmt(debtTotal,'BRL')}
+      </div>`;
+  }
 
   // ── Debts section ──────────────────────────────────────────────────────
   if (debts.length) {
@@ -1948,3 +2119,232 @@ async function _openPatrimonioModal() {
   openModal('patrimonioModal');
 }
 window._openPatrimonioModal = _openPatrimonioModal;
+
+/* ══════════════════════════════════════════════════════════════════
+   DASHBOARD — Card de Investimentos
+══════════════════════════════════════════════════════════════════ */
+
+async function _loadDashInvestmentsCard() {
+  const card = document.getElementById('dashCardInvestments');
+  const body = document.getElementById('dashInvestmentsBody');
+  if (!card || !body) return;
+
+  // Verificar se o módulo está habilitado e o card está visível nas prefs
+  const prefs = _dashGetPrefs();
+  const invEnabled = typeof invTotalPortfolioValue !== 'undefined' ||
+    (typeof _inv !== 'undefined' && _inv.positions?.length >= 0);
+
+  if (!invEnabled || prefs['investments'] === false) {
+    card.style.display = 'none';
+    return;
+  }
+
+  // Verificar feature flag de investimentos
+  try {
+    const famIdVal = typeof famId === 'function' ? famId() : null;
+    if (famIdVal) {
+      const lsKey = 'investments_enabled_' + famIdVal;
+      const lsVal = localStorage.getItem(lsKey);
+      if (lsVal === 'false') { card.style.display = 'none'; return; }
+    }
+  } catch(_) {}
+
+  card.style.display = '';
+  body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando carteira…</div>';
+
+  try {
+    // Garantir que investimentos estão carregados
+    if (typeof loadInvestments === 'function' && typeof _inv !== 'undefined' && !_inv.loaded) {
+      await loadInvestments();
+    }
+
+    const positions = (typeof _inv !== 'undefined') ? (_inv.positions || []) : [];
+    const totalMV   = (typeof invTotalPortfolioValue === 'function') ? invTotalPortfolioValue() : 0;
+
+    if (!positions.length) {
+      body.innerHTML = `
+        <div style="text-align:center;padding:24px 16px;color:var(--muted)">
+          <div style="font-size:2rem;margin-bottom:8px">📊</div>
+          <div style="font-size:.83rem;font-weight:600">Nenhuma posição registrada</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('investments')">Registrar investimento</button>
+        </div>`;
+      return;
+    }
+
+    // Agrupamento por tipo
+    const byType = {};
+    positions.forEach(p => {
+      const k = p.asset_type || 'outro';
+      if (!byType[k]) byType[k] = { total: 0, count: 0 };
+      const mv = (typeof _invMarketValue === 'function') ? _invMarketValue(p) : (+(p.quantity||0) * (+(p.current_price||p.avg_cost||0)));
+      byType[k].total += mv;
+      byType[k].count++;
+    });
+
+    const typeEmoji = { acao_br:'🇧🇷',fii:'🏢',etf_br:'📊',acao_us:'🇺🇸',etf_us:'📈',bdr:'🌐',fundo:'🏦',crypto:'₿',renda_fixa:'💰',outro:'📌' };
+    const typeLabel = { acao_br:'Ações BR',fii:'FII',etf_br:'ETF BR',acao_us:'Ações US',etf_us:'ETF US',bdr:'BDR',fundo:'Fundos',crypto:'Cripto',renda_fixa:'Renda Fixa',outro:'Outros' };
+
+    // KPI total + retorno
+    const totalCost = positions.reduce((s,p) => s + (+(p.quantity||0) * (+(p.avg_cost||0))), 0);
+    const pnl       = totalMV - totalCost;
+    const pnlPct    = totalCost > 0 ? (pnl / totalCost * 100) : 0;
+
+    let html = `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor de mercado</div>
+          <div style="font-size:1.4rem;font-weight:800;font-family:var(--font-serif);color:var(--accent)">${dashFmt(totalMV,'BRL')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Resultado</div>
+          <div style="font-size:1rem;font-weight:700;color:${pnl>=0?'var(--accent)':'var(--red)'}">
+            ${pnl>=0?'+':''}${dashFmt(pnl,'BRL')} (${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%)
+          </div>
+        </div>
+      </div>`;
+
+    // Barras de distribuição por tipo
+    html += `<div style="padding:12px 16px">`;
+    const sorted = Object.entries(byType).sort(([,a],[,b]) => b.total - a.total);
+    sorted.forEach(([k, grp]) => {
+      const pct = totalMV > 0 ? (grp.total / totalMV * 100) : 0;
+      html += `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:.9rem;flex-shrink:0">${typeEmoji[k]||'📌'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:.78rem;font-weight:600;color:var(--text)">${typeLabel[k]||k}</span>
+              <span style="font-size:.75rem;color:var(--muted)">${dashFmt(grp.total,'BRL')} · ${pct.toFixed(1)}%</span>
+            </div>
+            <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${Math.min(pct,100)}%;background:var(--accent);border-radius:3px;transition:width .4s ease"></div>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += `<div style="text-align:center;margin-top:8px">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira completa →</button>
+    </div></div>`;
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;font-size:.8rem">⚠️ Erro ao carregar: ${esc(e.message)}</div>`;
+  }
+}
+window._loadDashInvestmentsCard = _loadDashInvestmentsCard;
+
+/* ══════════════════════════════════════════════════════════════════
+   DASHBOARD — Card de Sonhos
+══════════════════════════════════════════════════════════════════ */
+
+async function _loadDashDreamsCard() {
+  const card = document.getElementById('dashCardDreams');
+  const body = document.getElementById('dashDreamsBody');
+  if (!card || !body) return;
+
+  const prefs = _dashGetPrefs();
+  if (prefs['dreams'] === false) { card.style.display = 'none'; return; }
+
+  // Verificar se o módulo Sonhos está habilitado
+  try {
+    const famIdVal = typeof famId === 'function' ? famId() : null;
+    if (famIdVal) {
+      const lsVal = localStorage.getItem('dreams_enabled_' + famIdVal);
+      if (lsVal === 'false') { card.style.display = 'none'; return; }
+    }
+  } catch(_) {}
+
+  card.style.display = '';
+  body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando sonhos…</div>';
+
+  try {
+    // Carregar sonhos se não estiver no cache
+    let dreams = [];
+    if (typeof _drm !== 'undefined' && _drm.dreams?.length) {
+      dreams = _drm.dreams.filter(d => d.status === 'active');
+    } else {
+      const { data } = await famQ(
+        sb.from('dreams').select('*, dream_contributions(amount)').eq('status','active').order('priority').limit(5)
+      );
+      dreams = data || [];
+    }
+
+    if (!dreams.length) {
+      body.innerHTML = `
+        <div style="text-align:center;padding:24px 16px;color:var(--muted)">
+          <div style="font-size:2rem;margin-bottom:8px">🌟</div>
+          <div style="font-size:.83rem;font-weight:600">Nenhum sonho ativo</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('dreams')">Criar meu primeiro sonho</button>
+        </div>`;
+      return;
+    }
+
+    const _dreamEmoji = { viagem:'✈️', automovel:'🚗', imovel:'🏠', cirurgia_plastica:'💉', estudos:'🎓', outro:'🌟' };
+
+    // Total acumulado / total meta
+    const totalMeta  = dreams.reduce((s,d) => s + (+(d.target_amount)||0), 0);
+    const totalAcum  = dreams.reduce((s,d) => {
+      const contribs = Array.isArray(d.dream_contributions) ? d.dream_contributions : (d._contributions || []);
+      return s + contribs.reduce((cs, c) => cs + (+(c.amount)||0), 0);
+    }, 0);
+    const totalPct   = totalMeta > 0 ? Math.min(totalAcum / totalMeta * 100, 100) : 0;
+
+    let html = `
+      <div style="padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">${dreams.length} sonho${dreams.length!==1?'s':''} ativo${dreams.length!==1?'s':''}</div>
+          <div style="font-size:1rem;font-weight:800;font-family:var(--font-serif);color:var(--accent)">${dashFmt(totalAcum,'BRL')} de ${dashFmt(totalMeta,'BRL')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:3px">${totalPct.toFixed(0)}% concluído</div>
+          <div style="width:80px;height:6px;border-radius:3px;background:var(--border);overflow:hidden">
+            <div style="height:100%;width:${totalPct.toFixed(1)}%;background:var(--accent);border-radius:3px;transition:width .6s ease"></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:10px 16px;display:flex;flex-direction:column;gap:8px">`;
+
+    dreams.slice(0, 4).forEach(d => {
+      const contribs = Array.isArray(d.dream_contributions) ? d.dream_contributions : (d._contributions || []);
+      const acum   = contribs.reduce((s,c) => s + (+(c.amount)||0), 0);
+      const meta   = +(d.target_amount) || 0;
+      const pct    = meta > 0 ? Math.min(acum / meta * 100, 100) : 0;
+      const emoji  = _dreamEmoji[d.dream_type] || '🌟';
+      const prioColor = d.priority === 1 ? 'var(--red)' : d.priority === 2 ? 'var(--amber)' : 'var(--muted)';
+
+      html += `
+        <div style="cursor:pointer" onclick="navigate('dreams')"
+          onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:.9rem">${emoji}</span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.title||'—')}</span>
+                <span style="font-size:.72rem;color:var(--muted);flex-shrink:0;margin-left:6px">${pct.toFixed(0)}%</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted)">
+                <span>${dashFmt(acum,'BRL')} / ${dashFmt(meta,'BRL')}</span>
+                <span style="color:${prioColor}">P${d.priority||1}</span>
+              </div>
+            </div>
+          </div>
+          <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+            <div style="height:100%;width:${pct.toFixed(1)}%;background:var(--accent);border-radius:2px;transition:width .5s ease"></div>
+          </div>
+        </div>`;
+    });
+
+    if (dreams.length > 4) {
+      html += `<div style="font-size:.75rem;color:var(--muted);text-align:center;padding-top:4px">+ ${dreams.length - 4} sonho${dreams.length-4!==1?'s':''}</div>`;
+    }
+
+    html += `<div style="text-align:center;margin-top:4px">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('dreams')">Ver todos os sonhos →</button>
+    </div></div>`;
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;font-size:.8rem">⚠️ Erro ao carregar: ${esc(e.message)}</div>`;
+  }
+}
+window._loadDashDreamsCard = _loadDashDreamsCard;
