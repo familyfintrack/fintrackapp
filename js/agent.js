@@ -133,35 +133,63 @@ function _agentWelcome() {
   const hour  = new Date().getHours();
   const page  = window.state?.currentPage || 'dashboard';
 
-  // Greeting contextual por hora
-  const greet = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const greet = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   const nameHtml = name ? `, <strong>${name}</strong>` : '';
 
-  // Sugestão contextual pela página atual
   const pageSuggestions = {
-    dashboard:    [['💸','Lançar despesa','criar despesa de R$50'],['📊','Ver gastos do mês','quanto gastei este mês?'],['📅','Próximos vencimentos','quais programados vencem esta semana?'],['🔮','Previsão 30 dias','previsão próximos 30 dias']],
+    dashboard:    [['💸','Lançar despesa','criar despesa'],['📊','Gastos do mês','quanto gastei este mês?'],['💰','Saldo total','qual meu saldo total?'],['🔮','Previsão','previsão próximos 30 dias']],
     transactions: [['➕','Nova despesa','criar despesa de R$100'],['💚','Nova receita','criar receita de R$2000 salário'],['🔄','Transferência','criar transferência entre contas'],['🏷️','Por categoria','maiores categorias de gasto']],
-    accounts:     [['🏦','Ver saldos','qual meu saldo total?'],['➕','Nova conta','criar nova conta'],['💳','Cartões','saldo dos cartões de crédito'],['💱','Câmbio','cotação dólar hoje']],
-    reports:      [['📈','Resumo mensal','resumo financeiro deste mês'],['📉','Tendência','tendência de gastos últimos 3 meses'],['🏷️','Por categoria','maiores categorias de gasto'],['💡','Análise','analise minhas finanças']],
-    investments:  [['📊','Carteira','resumo da carteira de investimentos'],['📈','Rentabilidade','rentabilidade dos investimentos'],['➕','Compra','registrar compra de ativo'],['💰','Aportar','fazer aporte']],
-    dreams:       [['🌟','Meus sonhos','quais são meus sonhos?'],['➕','Novo sonho','criar um novo sonho financeiro'],['📊','Progresso','progresso dos meus sonhos'],['💰','Aportar','adicionar contribuição ao sonho']],
+    accounts:     [['🏦','Ver saldos','qual meu saldo total?'],['📊','Resumo contas','resumo de todas as contas'],['💳','Cartões','saldo dos cartões de crédito'],['💱','Câmbio','cotação do dólar']],
+    reports:      [['📈','Resumo mensal','resumo financeiro deste mês'],['📉','Tendência','tendência de gastos 3 meses'],['🏷️','Top categorias','maiores categorias de gasto'],['💡','Análise IA','analise minhas finanças']],
+    budgets:      [['🎯','Orçamentos','quais orçamentos estão estourados?'],['📊','Restante','qual meu orçamento restante?'],['➕','Criar orçamento','criar orçamento'],['📅','Por mês','orçamento deste mês']],
+    scheduled:    [['📅','Vencimentos','quais programados vencem esta semana?'],['➕','Criar programado','criar transação programada mensal'],['⏸️','Pausar','pausar um programado'],['📊','Resumo','resumo dos programados ativos']],
+    investments:  [['📊','Carteira','resumo da carteira de investimentos'],['📈','Rentabilidade','rentabilidade dos meus investimentos'],['➕','Registrar','registrar compra de ativo'],['🏦','Por tipo','distribuição da carteira']],
+    dreams:       [['🌟','Meus sonhos','quais são meus sonhos?'],['➕','Criar sonho','criar um novo sonho financeiro'],['📊','Progresso','progresso dos meus sonhos'],['💰','Contribuir','adicionar contribuição ao sonho']],
+    debts:        [['💳','Ver dívidas','resumo das minhas dívidas'],['📅','Vencimentos','dívidas vencendo este mês'],['💰','Pagar','registrar pagamento de dívida'],['📊','Total','total de dívidas']],
   };
   const suggestions = pageSuggestions[page] || pageSuggestions.dashboard;
 
-  // Insight contextual rápido
-  const accs = window.state?.accounts || [];
-  const negAccs = accs.filter(a => Number(a.balance) < 0);
-  const insightHtml = negAccs.length
-    ? `<div class="agent-welcome-alert">⚠️ ${negAccs.length === 1 ? `Conta <strong>${negAccs[0].name}</strong> está negativa` : `${negAccs.length} contas estão negativas`}</div>`
-    : '';
+  // Contextual insight
+  const accs     = window.state?.accounts || [];
+  const sched    = window.state?.scheduled || [];
+  const budgets  = window.state?.budgets || [];
+  const negAccs  = accs.filter(a => Number(a.balance) < 0);
+  const overBudg = budgets.filter(b => Number(b.spent||0) >= Number(b.amount||0));
+  const upcomingSched = sched.filter(s => {
+    if ((s.status||'active') !== 'active') return false;
+    const d = new Date(s.start_date||'');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = (d - today) / 86400000;
+    return diff >= 0 && diff <= 7;
+  });
+
+  let insightHtml = '';
+  if (negAccs.length) {
+    insightHtml = `<div class="agent-welcome-insight agent-welcome-insight--warn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      ${negAccs.length === 1 ? `<strong>${negAccs[0].name}</strong> está negativa` : `<strong>${negAccs.length} contas</strong> estão negativas`}
+    </div>`;
+  } else if (overBudg.length) {
+    insightHtml = `<div class="agent-welcome-insight agent-welcome-insight--warn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <strong>${overBudg.length} orçamento${overBudg.length>1?'s':''}</strong> estourado${overBudg.length>1?'s':''}
+    </div>`;
+  } else if (upcomingSched.length) {
+    insightHtml = `<div class="agent-welcome-insight agent-welcome-insight--info">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <strong>${upcomingSched.length} programado${upcomingSched.length>1?'s':''}</strong> vencem esta semana
+    </div>`;
+  }
 
   const html = `
 <div class="agent-welcome">
-  <div class="agent-welcome-greeting">
-    <div class="agent-welcome-emoji">✨</div>
-    <div>
+  <div class="agent-welcome-header">
+    <div class="agent-welcome-avatar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round"><path d="M12 2L13.7 8.3L20 10L13.7 11.7L12 18L10.3 11.7L4 10L10.3 8.3L12 2Z"/></svg>
+    </div>
+    <div class="agent-welcome-body">
       <div class="agent-welcome-title">${greet}${nameHtml}!</div>
-      <div class="agent-welcome-sub">Sou seu assistente financeiro pessoal. Posso lançar transações, responder consultas e ajudar com o app.</div>
+      <div class="agent-welcome-sub">Assistente financeiro pessoal · Lança transações · Responde consultas · Ajuda com o app</div>
     </div>
   </div>
   ${insightHtml}
@@ -172,10 +200,10 @@ function _agentWelcome() {
       <span class="agent-welcome-card-label">${label}</span>
     </button>`).join('')}
   </div>
-  <div class="agent-welcome-hint">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-    Digite naturalmente — entendo contexto, datas relativas e nomes aproximados.
-  </div>
+  <button class="agent-welcome-more" onclick="agentShowCapabilities()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Ver todas as capacidades
+  </button>
 </div>`.trim();
 
   _agentAppendStructured('assistant', html, `${greet}${name ? ', ' + name : ''}! Sou o FinTrack Agente.`);
@@ -1881,6 +1909,7 @@ function _agentRenderMessage(role, text) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
 
+  // Date separator
   if (dateStr !== _agentLastMsgDate) {
     _agentLastMsgDate = dateStr;
     const sep = document.createElement('div');
@@ -1897,24 +1926,34 @@ function _agentRenderMessage(role, text) {
 
   if (role === 'user') {
     const userName = ((window.currentUser && window.currentUser.name) || 'Você').split(' ')[0];
+    const initials = userName.charAt(0).toUpperCase();
     msg.innerHTML =
-      '<div class="agent-msg-meta agent-msg-meta--user">' +
-        '<span class="agent-msg-time">' + timeStr + '</span>' +
-        '<span class="agent-msg-name">' + userName + '</span>' +
+      '<div class="agent-msg-user-wrap">' +
+        '<div class="agent-bubble agent-bubble--user">' +
+          '<div class="agent-text">' + safeHtml + '</div>' +
+        '</div>' +
+        '<div class="agent-msg-user-meta">' +
+          '<div class="agent-user-avatar">' + initials + '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="agent-bubble"><div class="agent-text">' + safeHtml + '</div></div>';
+      '<div class="agent-msg-time agent-msg-time--user">' + timeStr + '</div>';
   } else {
     msg.innerHTML =
-      '<div class="agent-msg-meta">' +
-        '<div class="agent-msg-avatar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L13.5 7.5L19 9L13.5 10.5L12 16L10.5 10.5L5 9L10.5 7.5Z"/></svg></div>' +
-        '<span class="agent-msg-name">FinTrack Agent</span>' +
-        '<span class="agent-msg-time">' + timeStr + '</span>' +
+      '<div class="agent-msg-bot-wrap">' +
+        '<div class="agent-bot-avatar">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L13.5 7.5L19 9L13.5 10.5L12 16L10.5 10.5L5 9L10.5 7.5Z"/></svg>' +
+        '</div>' +
+        '<div class="agent-bubble agent-bubble--bot">' +
+          '<div class="agent-text">' + safeHtml + '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="agent-bubble"><div class="agent-text">' + safeHtml + '</div></div>';
+      '<div class="agent-msg-time agent-msg-time--bot">' + timeStr + ' · FinTrack Agent</div>';
   }
 
   feed.appendChild(msg);
-  requestAnimationFrame(function() { feed.scrollTop = feed.scrollHeight; });
+  requestAnimationFrame(function() {
+    feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+  });
 }
 
 function _agentMarkdown(text) {
@@ -2036,22 +2075,236 @@ window._agentToggleMic = _agentToggleMic;
 
 function _agentSetLoading(on) {
   _agent.loading = on;
-  var btn = document.getElementById('agentSendBtn');
+  var btn      = document.getElementById('agentSendBtn');
   var statusEl = document.getElementById('agentStatusText');
-  if (btn) btn.disabled = on;
-  if (statusEl) statusEl.textContent = on ? 'Processando…' : 'Pronto para ajudar';
+  var inputEl  = document.getElementById('agentInput');
+  if (btn)      btn.disabled = on;
+  if (inputEl)  inputEl.disabled = on;
+  if (statusEl) statusEl.textContent = on ? 'Pensando…' : 'Pronto para ajudar';
+
   document.querySelectorAll('.agent-loading').forEach(function(el) { el.remove(); });
   if (!on) return;
+
   var feed = document.getElementById('agentFeed');
   if (!feed) return;
   var el = document.createElement('div');
   el.className = 'agent-msg agent-msg--assistant agent-loading';
   el.innerHTML =
-    '<div class="agent-msg-meta">' +
-      '<div class="agent-msg-avatar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L13.5 7.5L19 9L13.5 10.5L12 16L10.5 10.5L5 9L10.5 7.5Z"/></svg></div>' +
-      '<span class="agent-msg-name">FinTrack Agent</span>' +
-    '</div>' +
-    '<div class="agent-bubble"><div class="agent-typing"><span></span><span></span><span></span></div></div>';
+    '<div class="agent-msg-bot-wrap">' +
+      '<div class="agent-bot-avatar">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L13.5 7.5L19 9L13.5 10.5L12 16L10.5 10.5L5 9L10.5 7.5Z"/></svg>' +
+      '</div>' +
+      '<div class="agent-bubble agent-bubble--bot agent-typing-bubble">' +
+        '<div class="agent-typing"><span></span><span></span><span></span></div>' +
+      '</div>' +
+    '</div>';
   feed.appendChild(el);
-  requestAnimationFrame(function() { feed.scrollTop = feed.scrollHeight; });
+  requestAnimationFrame(function() { feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' }); });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENT UI ENHANCEMENTS v5 — Streaming, Rich Cards, Smart Replies
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Streaming text renderer ────────────────────────────────────────────────
+async function _agentStreamText(text, targetEl, delayMs = 8) {
+  if (!targetEl) return;
+  targetEl.innerHTML = '';
+  const words = text.split(' ');
+  for (let i = 0; i < words.length; i++) {
+    await new Promise(r => setTimeout(r, delayMs));
+    targetEl.innerHTML = _agentMarkdown(words.slice(0, i + 1).join(' '));
+    const feed = document.getElementById('agentFeed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  }
+}
+
+// ── Rich finance response card ─────────────────────────────────────────────
+function _agentRenderRichFinanceCard(data) {
+  const {
+    title, icon, kpis = [], items = [], actions = [], note, variant = 'neutral'
+  } = data;
+
+  const variantColors = {
+    positive: 'var(--accent)',
+    negative: 'var(--red,#dc2626)',
+    warning:  '#f59e0b',
+    neutral:  'var(--text2)',
+  };
+  const color = variantColors[variant] || variantColors.neutral;
+
+  const kpiHtml = kpis.length ? `
+    <div class="agent-card-kpis">
+      ${kpis.map(k => `
+        <div class="agent-card-kpi">
+          <div class="agent-card-kpi-label">${k.label}</div>
+          <div class="agent-card-kpi-value" style="color:${k.color || color}">${k.value}</div>
+          ${k.sub ? `<div class="agent-card-kpi-sub">${k.sub}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>` : '';
+
+  const itemsHtml = items.length ? `
+    <div class="agent-card-items">
+      ${items.map(it => `
+        <div class="agent-card-item">
+          <span class="agent-card-item-label">${it.icon ? it.icon + ' ' : ''}${it.label}</span>
+          <span class="agent-card-item-value" style="color:${it.color || 'var(--text)'}">${it.value}</span>
+          ${it.bar !== undefined ? `<div class="agent-card-item-bar"><div style="width:${Math.min(it.bar,100)}%;background:${it.color||'var(--accent)'}"></div></div>` : ''}
+        </div>
+      `).join('')}
+    </div>` : '';
+
+  const actionsHtml = actions.length ? `
+    <div class="agent-card-actions">
+      ${actions.map(a => `
+        <button class="agent-card-action-btn" onclick="${a.onclick.replace(/"/g, '&quot;')}">
+          ${a.icon ? a.icon + ' ' : ''}${a.label}
+        </button>
+      `).join('')}
+    </div>` : '';
+
+  const noteHtml = note ? `<div class="agent-card-note">${note}</div>` : '';
+
+  return `
+<div class="agent-rich-card">
+  <div class="agent-card-header">
+    ${icon ? `<span class="agent-card-header-icon">${icon}</span>` : ''}
+    <span class="agent-card-header-title">${title}</span>
+  </div>
+  ${kpiHtml}
+  ${itemsHtml}
+  ${actionsHtml}
+  ${noteHtml}
+</div>`;
+}
+
+// ── Render finance balance as rich card ────────────────────────────────────
+function _agentRenderBalanceCard() {
+  const accs   = window.state?.accounts || [];
+  const toBrl  = (v, cur) => typeof toBRL === 'function' ? toBRL(v, cur) : Number(v);
+  const fmtV   = (v, cur) => typeof fmt === 'function' ? fmt(v, cur || 'BRL') : `R$ ${Number(v).toFixed(2)}`;
+  const total  = accs.reduce((s, a) => s + toBrl(Number(a.balance)||0, a.currency||'BRL'), 0);
+  const favs   = accs.filter(a => a.is_favorite);
+  const negAccs = accs.filter(a => Number(a.balance) < 0);
+
+  const items = (favs.length ? favs : accs).slice(0, 6).map(a => {
+    const bal = Number(a.balance)||0;
+    const brlBal = toBrl(bal, a.currency||'BRL');
+    return {
+      icon: a.icon?.startsWith('emoji-') ? a.icon.replace('emoji-','') : '🏦',
+      label: a.name,
+      value: fmtV(bal, a.currency),
+      color: bal < 0 ? 'var(--red,#dc2626)' : 'var(--accent)',
+    };
+  });
+
+  const card = _agentRenderRichFinanceCard({
+    title: 'Saldo das Contas',
+    icon: '🏦',
+    variant: total < 0 ? 'negative' : 'positive',
+    kpis: [
+      { label: 'Total (BRL)', value: fmtV(total), color: total < 0 ? 'var(--red,#dc2626)' : 'var(--accent)' },
+      { label: 'Contas', value: accs.length + (negAccs.length ? ` (${negAccs.length} neg.)` : ''), color: negAccs.length ? '#f59e0b' : 'var(--text2)' },
+    ],
+    items,
+    actions: [
+      { icon: '🏦', label: 'Ver contas', onclick: "navigate('accounts');toggleAgent()" },
+      { icon: '➕', label: 'Nova transação', onclick: "openTransactionModal();toggleAgent()" },
+    ],
+    note: negAccs.length ? `⚠️ ${negAccs.map(a => a.name).join(', ')} ${negAccs.length === 1 ? 'está negativa' : 'estão negativas'}` : null,
+  });
+
+  _agentAppendStructured('assistant', card, `Saldo total: ${fmtV(total)}`);
+}
+window._agentRenderBalanceCard = _agentRenderBalanceCard;
+
+// ── Override _agentAnswerBalance to use rich card ─────────────────────────
+function _agentAnswerBalance() { _agentRenderBalanceCard(); }
+
+// ── Smart quick replies by page ────────────────────────────────────────────
+const _AGENT_PAGE_CHIPS = {
+  dashboard: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '📊 Gastos do mês',     c: 'quanto gastei este mês?' },
+    { l: '💰 Saldo total',       c: 'qual meu saldo total?' },
+    { l: '➕ Lançar despesa',    c: 'criar despesa' },
+    { l: '📅 Vencimentos',       c: 'quais programados vencem esta semana?' },
+    { l: '🔮 Previsão 30 dias',  c: 'previsão próximos 30 dias' },
+  ],
+  transactions: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '➕ Nova despesa',      c: 'criar despesa' },
+    { l: '💚 Nova receita',      c: 'criar receita' },
+    { l: '🔄 Transferência',     c: 'criar transferência entre contas' },
+    { l: '🏷️ Por categoria',     c: 'maiores categorias de gasto este mês' },
+    { l: '📊 Resumo mensal',     c: 'resumo financeiro deste mês' },
+  ],
+  accounts: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '🏦 Saldo das contas',  c: 'qual meu saldo total?' },
+    { l: '➕ Nova conta',        c: 'criar nova conta poupança' },
+    { l: '💳 Cartões',           c: 'saldo dos cartões de crédito' },
+    { l: '📊 Extrato',           c: 'resumo financeiro deste mês' },
+  ],
+  investments: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '📊 Minha carteira',    c: 'resumo da carteira de investimentos' },
+    { l: '📈 Rentabilidade',     c: 'qual a rentabilidade dos meus investimentos?' },
+    { l: '➕ Registrar compra',  c: 'registrar compra de ativo' },
+  ],
+  scheduled: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '📅 Vencimentos',       c: 'quais programados vencem esta semana?' },
+    { l: '➕ Novo programado',   c: 'criar transação programada mensal de aluguel R$1500' },
+    { l: '📊 Resumo',            c: 'resumo dos programados ativos' },
+  ],
+  dreams: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '🌟 Meus sonhos',       c: 'quais são meus sonhos financeiros?' },
+    { l: '➕ Criar sonho',       c: 'criar um novo sonho financeiro' },
+    { l: '📊 Progresso',         c: 'progresso dos meus sonhos' },
+  ],
+  budgets: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '🎯 Orçamentos',        c: 'quais orçamentos estão estourados?' },
+    { l: '📊 Restante',          c: 'qual meu orçamento restante em alimentação?' },
+    { l: '➕ Criar orçamento',   c: 'criar orçamento' },
+  ],
+  reports: [
+    { l: '💡 O que posso fazer', c: null, fn: 'agentShowCapabilities()' },
+    { l: '📈 Resumo mensal',     c: 'resumo financeiro deste mês' },
+    { l: '📉 Tendência',         c: 'tendência de gastos últimos 3 meses' },
+    { l: '🏷️ Por categoria',     c: 'maiores categorias de gasto' },
+    { l: '💡 Análise IA',        c: 'analise minhas finanças' },
+  ],
+};
+
+function _agentRenderSmartChips() {
+  const bar = document.getElementById('agentQuickBar');
+  if (!bar) return;
+  const page = (window.state && window.state.currentPage) || 'dashboard';
+  const chips = _AGENT_PAGE_CHIPS[page] || _AGENT_PAGE_CHIPS.dashboard;
+  bar.innerHTML = chips.map(ch => {
+    const onclick = ch.fn
+      ? `onclick="${ch.fn}"`
+      : `onclick="agentSuggest('${(ch.c || '').replace(/'/g, "&#39;")}')"`;
+    const highlight = !ch.c ? ' agent-chip--highlight' : '';
+    return `<button class="agent-chip${highlight}" ${onclick}>${ch.l}</button>`;
+  }).join('');
+}
+window._agentRenderSmartChips = _agentRenderSmartChips;
+
+// Hook into page navigation
+const _origAgentNav = window.navigate;
+if (typeof _origAgentNav === 'function') {
+  window.navigate = function(page) {
+    _origAgentNav(page);
+    setTimeout(_agentRenderSmartChips, 100);
+    setTimeout(_agentUpdateContextBar, 100);
+  };
+}
+
+// ── Override _agentRefreshQuickReplies to use smart chips ─────────────────
+function _agentRefreshQuickReplies() { _agentRenderSmartChips(); }
+window._agentRefreshQuickReplies = _agentRefreshQuickReplies;
