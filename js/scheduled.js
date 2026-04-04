@@ -1710,7 +1710,7 @@ async function runScheduledAutoRegister() {
       try{ await showAutoRegisterNotification(createdItems); }catch(e){}
 
       await loadScheduled(); // refresh occurrences
-      await loadAccounts();  // refresh balances (pending excluded now)
+      await loadAccounts(true);  // force refresh balances (pending excluded now)
       try{await recalcAccountBalances();}catch(_e){}
       if(state.currentPage==='transactions') loadTransactions();
       if(state.currentPage==='dashboard') loadDashboard();

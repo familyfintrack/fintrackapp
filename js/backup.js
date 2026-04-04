@@ -679,10 +679,12 @@ async function _restoreBackupData(d, statusEl, options = {}) {
 }
 
 async function _reloadAfterRestore() {
+  // Bust TTL cache — dados restaurados devem ser relidos do banco
+  if (typeof DB !== 'undefined' && typeof DB.bustAll === 'function') DB.bustAll();
   const tasks = [];
-  if (typeof loadAccounts === 'function') tasks.push(loadAccounts());
-  if (typeof loadCategories === 'function') tasks.push(loadCategories());
-  if (typeof loadPayees === 'function') tasks.push(loadPayees());
+  if (typeof loadAccounts === 'function') tasks.push(loadAccounts(true));
+  if (typeof loadCategories === 'function') tasks.push(loadCategories(true));
+  if (typeof loadPayees === 'function') tasks.push(loadPayees(true));
   if (typeof loadTransactions === 'function') tasks.push(loadTransactions());
   if (typeof loadBudgets === 'function') tasks.push(loadBudgets());
   if (typeof loadScheduled === 'function') tasks.push(loadScheduled());

@@ -650,13 +650,17 @@ function toggleLoginPwd() {
 }
 
 // ── Login ──
+let _loginInProgress = false;
+
 async function doLogin() {
+  if (_loginInProgress) return;
+  _loginInProgress = true;
   const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPassword').value;
   const errEl    = document.getElementById('loginError');
   const btn      = document.getElementById('loginBtn');
   errEl.style.display = 'none';
-  if (!email || !password) { showLoginErr('Preencha e-mail e senha.'); return; }
+  if (!email || !password) { showLoginErr('Preencha e-mail e senha.'); _loginInProgress = false; return; }
 
   btn.disabled = true; btn.textContent = 'Verificando...';
   try {
@@ -695,6 +699,7 @@ async function doLogin() {
     if (appUser?.must_change_pwd) {
       document.getElementById('loginFormArea').style.display = 'none';
       document.getElementById('changePwdArea').style.display = '';
+      _loginInProgress = false;
       return;
     }
 
@@ -710,19 +715,11 @@ async function doLogin() {
       if (appUserFull && !_is2FATrusted(appUserFull.id)) {
         // Interromper login normal — iniciar fluxo 2FA
         await _initiate2FA(authData, appUserFull);
+        _loginInProgress = false; // 2FA flow takes over; permitir novo clique se usuário cancela
         return; // onLoginSuccess() será chamado após verificação do código
       }
     }
 
-    // Upgrade legacy SHA-256 hash to PBKDF2 transparently on login
-    try {
-      const { data: _pwRow } = await sb.from('app_users')
-        .select('id,password_hash').eq('email', email).maybeSingle();
-      if (_pwRow?.password_hash && !_pwRow.password_hash.startsWith('pbkdf2:')) {
-        const _newHash = await hashPassword(password);
-        await sb.from('app_users').update({ password_hash: _newHash }).eq('id', _pwRow.id);
-      }
-    } catch(_) {}
     // Upgrade legacy SHA-256 hash to PBKDF2 transparently on login
     try {
       const { data: _pwRow } = await sb.from('app_users')
@@ -748,6 +745,7 @@ async function doLogin() {
     showLoginErr('Erro: ' + (e?.message || e));
   } finally {
     btn.disabled = false; btn.textContent = 'Entrar';
+    _loginInProgress = false;
   }
 }
 function showLoginErr(msg) {
@@ -969,7 +967,27 @@ async function onLoginSuccess() {
 function _registerMagicLinkGate() {
   if (!sb) return;
   sb.auth.onAuthStateChange(async (event, session) => {
+
+    // ── Sessão encerrada ou token inválido → redirecionar para login ────────
+    // Cobre: logout remoto, expiração de refresh token, revogação de sessão.
+    // Só age se o app já estava aberto (loginScreen oculto = usuário logado).
+    if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+      const loginScreen = document.getElementById('loginScreen');
+      const appAlreadyOpen = !loginScreen || loginScreen.style.display === 'none';
+      if (appAlreadyOpen) {
+        currentUser = null;
+        try { closeAllModals?.(); } catch(_) {}
+        showLoginScreen();
+        showLoginFormArea();
+        showLoginErr('Sua sessão expirou. Por favor, faça login novamente.');
+      }
+      return;
+    }
+
     if (event !== 'SIGNED_IN' || !session?.user?.email) return;
+
+    // Do NOT interfere if doLogin() is already handling this auth event
+    if (_loginInProgress) return;
 
     // Do NOT interfere if the recovery password form is visible
     const recoveryArea = document.getElementById('recoveryPwdArea');

@@ -356,6 +356,17 @@ async function openAccountModal(id=''){
   _setVal('accountIban',         form.iban);
   _setVal('accountRoutingNumber',form.routing_number);
   _setVal('accountSwiftBic',     form.swift_bic);
+  // Abrir painel de dados bancários automaticamente se já houver dados preenchidos
+  const bankDetails = document.getElementById('accountBankDetails');
+  if (bankDetails) {
+    const hasBankData = form.bank_name || form.bank_code || form.agency ||
+                        form.account_number || form.iban || form.routing_number || form.swift_bic;
+    if (hasBankData) bankDetails.setAttribute('open', '');
+    else bankDetails.removeAttribute('open');
+  }
+  // Observações
+  const notesEl = document.getElementById('accountNotes');
+  if (notesEl) notesEl.value = form.notes || '';
   // Cartão
   const cardDataSec = document.getElementById('accountCardDataSection');
   if (cardDataSec) cardDataSec.style.display = isCC ? '' : 'none';
@@ -429,6 +440,8 @@ async function saveAccount(){
     card_limit:   isCC ? (parseFloat(document.getElementById('accountCardLimit')?.value) || null) : null,
     // Vincular sonho
     linked_dream_id: _gv('accountLinkedDreamId') || null,
+    // Observações
+    notes: (document.getElementById('accountNotes')?.value || '').trim() || null,
     updated_at:new Date().toISOString()
   };
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}

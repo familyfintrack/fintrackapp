@@ -52,7 +52,9 @@ const _accounts = {
     if (!force && _fresh('accounts') && state.accounts.length) return;
     return _once('accounts', () => _wrap('Carregando contas…', async () => {
       const cols = 'id,name,type,currency,color,icon,initial_balance,group_id,family_id,' +
-                   'active,is_favorite,best_purchase_day,due_day,iof_rate,is_brazilian';
+                   'active,is_favorite,best_purchase_day,due_day,iof_rate,is_brazilian,' +
+                   'bank_name,bank_code,agency,account_number,iban,routing_number,swift_bic,' +
+                   'card_brand,card_type,card_issuer,card_limit,linked_dream_id,notes';
       const [ar, gr] = await Promise.all([
         famQ(sb.from('accounts').select(cols).eq('active', true)).order('name'),
         famQ(sb.from('account_groups').select('id,name,emoji,color,currency')).order('name'),

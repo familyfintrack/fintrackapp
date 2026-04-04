@@ -1085,7 +1085,7 @@ async function commitImport() {
         if (error) importLogMsg('err', `Conta "${acc.name}": ${error.message}`);
         else importLogMsg('ok', `✓ Conta "${acc.name}" criada`);
       }
-      await loadAccounts();
+      await loadAccounts(true);
       if(typeof populateSelects==='function') populateSelects();
     }
 
@@ -1102,7 +1102,7 @@ async function commitImport() {
         if (data) pIds[cat.name.toLowerCase()] = data.id;
         else if (error) importLogMsg('err', `Cat "${cat.name}": ${error.message}`);
       }
-      await loadCategories();
+      await loadCategories(true);
       (state.categories||[]).forEach(c => { if (!c.parent_id) pIds[c.name.toLowerCase()] = c.id; });
       // Then: sub-categories
       for (const cat of toC.filter(c => c.parentName)) {
@@ -1114,7 +1114,7 @@ async function commitImport() {
         if (error) importLogMsg('err', `SubCat "${cat.name}": ${error.message}`);
       }
       importLogMsg('ok', `✓ ${toC.length} categorias criadas`);
-      await loadCategories();
+      await loadCategories(true);
     }
 
     // 3. Create payees (batch)
@@ -1127,14 +1127,14 @@ async function commitImport() {
         if (error) importLogMsg('err', `Payees batch ${i}: ${error.message}`);
       }
       importLogMsg('ok', `✓ ${toC.length} beneficiários criados`);
-      await loadPayees();
+      await loadPayees(true);
     }
 
     // 3b. Auto-create payees referenced in transactions but not yet in DB
     //     (covers sec==='transactions' only, and description-based payees from bank exports)
     if (sec === 'all' || sec === 'transactions') {
       setImportProgress(50, 'Verificando beneficiários...');
-      await loadPayees(); // refresh before check
+      await loadPayees(true); // refresh before check
       const exPay = new Set((state.payees||[]).map(p => p.name.toLowerCase()));
       const txPayees = new Map(); // name.lower → original name
       for (const tx of s.transactions) {
@@ -1152,7 +1152,7 @@ async function commitImport() {
           const { error } = await sb.from('payees').insert(batch);
           if (error) importLogMsg('warn', `Payees auto-create: ${error.message}`);
         }
-        await loadPayees();
+        await loadPayees(true);
         importLogMsg('ok', `✓ ${newPayees.length} beneficiário(s) criado(s) automaticamente`);
       }
     }
@@ -1174,7 +1174,7 @@ async function commitImport() {
           if (error) importLogMsg('warn', `Saldo "${pa.name}": ${error.message}`);
         }
       }
-      await loadAccounts();
+      await loadAccounts(true);
       importLogMsg('ok', '✓ Saldos sincronizados');
     }
 
@@ -1193,8 +1193,10 @@ async function commitImport() {
 }
 
 async function commitTransactions(txList) {
+  // Bust TTL cache first — garante dados frescos após o import
+  if (typeof DB !== 'undefined' && typeof DB.bustAll === 'function') DB.bustAll();
   // Reload fresh data for ID lookups
-  await Promise.all([loadAccounts(), loadCategories(), loadPayees()]);
+  await Promise.all([loadAccounts(true), loadCategories(true), loadPayees(true)]);
 
   const accMap = {}, catMap = {}, payMap = {};
   (state.accounts||[]).forEach(a   => accMap[a.name.toLowerCase()] = a);
