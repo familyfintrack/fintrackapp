@@ -668,13 +668,15 @@ body.sidebar-open .fab{
   .sb-close{display:flex;}
   .bottom-nav{display:block;}.fab{display:flex;}.hamburger{display:flex;}
   #globalAddBtn{display:none;}
-  /* Esconder botões administrativos da topbar no mobile — eles ficam na sidebar */
-  #importNav,
-  #auditNavTopbar,
-  #telemetryNavTopbar,
-  #settingsNavTopbar { display: none !important; }
-  /* Manter apenas agent e feedback na topbar mobile */
-  .topbar-quick-actions { gap: 4px; margin-right: 0; }
+  /* Esconder botões admin da topbar no mobile — ficam na sidebar */
+  /* Reforço via style.css (inline <style> no HTML tem a versão definitiva) */
+  #importNav       { display: none !important; }
+  #auditNavTopbar  { display: none !important; }
+  #telemetryNavTopbar { display: none !important; }
+  #settingsNavTopbar  { display: none !important; }
+  /* Topbar quick-actions mais compacta no mobile */
+  #topbarQuickActions,
+  .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
   .content{padding:16px;padding-bottom:calc(var(--bottom-h) + 104px + env(safe-area-inset-bottom));}
   .grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}
   .account-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
