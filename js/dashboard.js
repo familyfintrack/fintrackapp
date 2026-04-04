@@ -375,12 +375,22 @@ async function loadDashboard(){
         </div>`;
       };
 
+      // Desktop: type groups rendered as parallel columns
+      // Mobile/tablet: stacked vertically (default)
+      const _hasMultipleGroups = [favCC, favCheck, favOthers].filter(g => g.length).length > 1;
       const favHtml = (favCC.length || favCheck.length || favOthers.length)
-        ? _favTypeSep(favCC, 'Cartão de Crédito') +
-          (favCC.length && (favCheck.length || favOthers.length) ? '<div class="dash-fav-type-divider"></div>' : '') +
-          _favTypeSep(favCheck, 'Contas Correntes / Poupança') +
-          (favOthers.length ? '<div class="dash-fav-type-divider"></div>' : '') +
-          _favTypeSep(favOthers, 'Outros')
+        ? (_hasMultipleGroups
+            ? `<div class="dash-fav-columns">${
+                [
+                  _favTypeSep(favCC, 'Cartão de Crédito'),
+                  _favTypeSep(favCheck, 'Corrente / Poupança'),
+                  _favTypeSep(favOthers, 'Outros')
+                ].filter(Boolean).join('')
+              }</div>`
+            : _favTypeSep(favCC, 'Cartão de Crédito') +
+              _favTypeSep(favCheck, 'Corrente / Poupança') +
+              _favTypeSep(favOthers, 'Outros')
+          )
         : `<div class="dash-favs-grid">${favs.map(rowHtml).join('')}</div>`;
 
       html += `<div class="dash-favs-section">${favHtml}</div>`;

@@ -1306,7 +1306,8 @@ async function wizardAiSuggestItems() {
     extra.prazo_meses = parseInt(document.getElementById('wizOutroPrazo')?.value) || 0;
     extra.detalhes  = document.getElementById('wizOutroDetalhes')?.value || '';
   }
-Tipo: ${type}
+
+  const prompt = `Tipo: ${type}
 Título: ${title}
 Valor total: R$ ${amount}
 Contexto: ${JSON.stringify(extra)}
@@ -1321,7 +1322,7 @@ Retorne APENAS JSON sem markdown:
 
 Regras:
 - Sugira 6-12 componentes relevantes para o tipo "${type}"
-- A soma dos valores deve ser próxima ao valor total: R$ ${amount}
+- A soma dos valores deve ser próxima ao valor total: R$ \${amount}
 - Valores em BRL, realistas para o Brasil em 2025`;
 
   try {
@@ -1709,6 +1710,8 @@ function _wizFieldsOutro(d) {
   </div>`;
 }
 window._wizFieldsOutro = _wizFieldsOutro;
+
+async function saveDream() {
   const w = _drm.wizard;
   if (!w) return;
 

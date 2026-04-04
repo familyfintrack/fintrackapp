@@ -259,7 +259,8 @@ function agentShowCapabilities() {
         '<div class="agent-cap-section-title">' + s.title + '</div>' +
         '<div class="agent-cap-chips">' +
           s.items.map(function(it) {
-            return '<button class="agent-cap-chip" onclick="agentSuggest('' + it[1].replace(/'/g,"&#39;") + '')">' + it[0] + '</button>';
+            var cmd = it[1].replace(/'/g,"&#39;");
+            return '<button class="agent-cap-chip" onclick="agentSuggest(\'' + cmd + '\')">' + it[0] + '</button>';
           }).join('') +
         '</div>' +
       '</div>';

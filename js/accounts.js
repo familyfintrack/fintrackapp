@@ -283,7 +283,7 @@ function filterAccounts(type){
 }
 
 function accountTypeLabel(t){
-  return{corrente:'Conta Corrente',poupanca:'Poupança',cartao_credito:'Cartão de Crédito',investimento:'Investimentos',dinheiro:'Dinheiro',outros:'Outros'}[t]||t;
+  return{corrente:'Corrente',poupanca:'Poupança',cartao_credito:'Crédito',investimento:'Investimentos',dinheiro:'Dinheiro',outros:'Outros'}[t]||t;
 }
 
 // Chamado ao mudar o tipo de conta no MODAL (não navega para transações)
