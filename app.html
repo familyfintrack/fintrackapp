@@ -261,20 +261,19 @@
    mas ambos têm !important, então source order é decisivo.
    Colocar aqui garante que este bloco venha DEPOIS e vença.
 ══════════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
-  /* Esconder admin-only e utilitários da topbar no mobile */
-  #importNav       { display: none !important; }
-  #auditNavTopbar  { display: none !important; }
-  /* telemetry e settings já estão acima sem media query, mas reforçar */
+@media (max-width: 1024px) {
+  /* Hide admin-only topbar buttons on mobile + tablet (iPad)
+     These buttons live in the sidebar on smaller screens.
+     On desktop (>1024px) they remain visible in topbar. */
+  #importNav          { display: none !important; }
+  #auditNavTopbar     { display: none !important; }
   #telemetryNavTopbar { display: none !important; }
   #settingsNavTopbar  { display: none !important; }
-  /* Ajustar gap da quick-actions sem os botões extras */
   .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
-  /* Garantir que topbar-actions não transborde */
   .topbar-actions {
     overflow: hidden !important;
     flex-shrink: 0 !important;
-    max-width: calc(100vw - 110px) !important;
+    max-width: calc(100vw - 120px) !important;
   }
 }
 </style>
@@ -5011,21 +5010,35 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div><!-- /mainApp -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <div id="loginScreen" class="login-screen-shell login-bg-opt1" style="display:flex;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
+  <div id="loginScreen" class="lgn-screen" style="display:flex;position:fixed;inset:0;z-index:9999">
 
-    <!-- Background visual — mesma linguagem da landing page -->
-    <!-- Grid quadriculado (hgrid pattern da landing) -->
-    <div class="login-hgrid"></div>
-    <!-- Orbs suaves (mesma linguagem das landing orbs) -->
-    <div class="login-orb login-orb1"></div>
-    <div class="login-orb login-orb2"></div>
-    <div class="login-orb login-orb3"></div>
-
-    <div class="login-card login-card-a" style="width:100%;max-width:620px">
-      <div style="text-align:center;margin-bottom:28px">
-        <img id="loginLogoImg" src="logo_glow_soft.png" alt="Logo"  style="width:598px;max-width:90vw;height:auto;object-fit:contain;margin-bottom:12px">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
+    <!-- Left panel: branding (hidden on mobile) -->
+    <div class="lgn-brand-panel">
+      <div class="lgn-brand-grid"></div>
+      <div class="lgn-brand-orb lgn-brand-orb1"></div>
+      <div class="lgn-brand-orb lgn-brand-orb2"></div>
+      <div class="lgn-brand-content">
+        <img src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-brand-logo">
+        <div class="lgn-brand-title">Family FinTrack</div>
+        <div class="lgn-brand-sub" data-i18n="auth.tagline">Família inteligente, finanças sob controle</div>
+        <div class="lgn-brand-features">
+          <div class="lgn-brand-feat"><span>📊</span> Dashboard financeiro completo</div>
+          <div class="lgn-brand-feat"><span>🤖</span> Agente IA integrado</div>
+          <div class="lgn-brand-feat"><span>🔐</span> Dados seguros e privados</div>
+          <div class="lgn-brand-feat"><span>👨‍👩‍👧</span> Gestão familiar colaborativa</div>
+        </div>
       </div>
+    </div>
+
+    <!-- Right panel: form -->
+    <div class="lgn-form-panel">
+      <div class="lgn-form-inner">
+        <!-- Mobile logo (only shown on small screens) -->
+        <div class="lgn-mobile-logo">
+          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Logo" style="height:60px;object-fit:contain">
+        </div>
+        <div class="lgn-form-title">Bem-vindo de volta</div>
+        <div class="lgn-form-sub">Entre com sua conta para continuar</div>
       <div id="loginFormArea">
 
 
@@ -5243,9 +5256,10 @@ Se você não solicitou isso, ignore este e-mail.`,
           <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
         </button>
         <div id="changePwdError" style="margin-top:10px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
-      </div>
-    </div>
-  </div>
+      </div><!-- end changePwdArea -->
+        </div><!-- end lgn-form-inner -->
+      </div><!-- end lgn-form-panel -->
+    </div><!-- end lgn-screen -->
 
   <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
   <!-- ══ ADMIN USER MANAGEMENT MODAL — Modern tabs ═══════════════════════ -->
@@ -9831,6 +9845,7 @@ window.openMyProfile = function(...args) {
   position: fixed;
   bottom: 0; right: 0;
   z-index: 99990;
+  display: none; /* controlled by JS - toggleAgent sets display:flex */
   flex-direction: column;
   width: min(440px, 100vw);
   height: min(660px, 92dvh);
