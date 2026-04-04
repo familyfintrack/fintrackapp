@@ -296,9 +296,40 @@ function _accountOptions(accounts, placeholder) {
 // populateSelects is defined in reports.js (always loaded).
 // _accountOptions and _buildCategoryFilterOptions are helpers used by it.
 
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
+function openModal(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(id==='accountModal'){
+    el.style.display='flex';
+    requestAnimationFrame(()=>el.classList.add('open'));
+    return;
+  }
+  el.classList.add('open');
+}
+function closeModal(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('open');
+  if(id==='accountModal'){
+    const hide=()=>{
+      if(!el.classList.contains('open')) el.style.display='none';
+      el.removeEventListener('transitionend', hide);
+    };
+    el.addEventListener('transitionend', hide);
+    setTimeout(hide, 260);
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{
+    if(e.target===el) closeModal(el.id);
+  });
+});
+document.addEventListener('DOMContentLoaded', ()=>{
+  const accountModal=document.getElementById('accountModal');
+  if(accountModal && !accountModal.classList.contains('open')){
+    accountModal.style.display='none';
+  }
+});
 
 function toast(msg,type='info'){
   // Auto-translate if message exists as direct-text key in i18n builtin
