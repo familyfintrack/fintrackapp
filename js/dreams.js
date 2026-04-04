@@ -26,12 +26,16 @@ async function isDreamsEnabled() {
   if (!fid) return false;
 
   // 1. New system: family_preferences.module_dreams
-  if (typeof isModuleEnabled === 'function') {
+  // Always await getFamilyPreferences() to ensure _fpCache is populated
+  if (typeof getFamilyPreferences === 'function') {
     try {
-      // Ensure prefs are loaded first
-      if (typeof getFamilyPreferences === 'function') await getFamilyPreferences();
-      const enabled = isModuleEnabled('dreams');
-      if (enabled) return true;
+      await getFamilyPreferences(); // populates _fpCache
+      if (typeof isModuleEnabled === 'function') {
+        const enabled = isModuleEnabled('dreams');
+        if (enabled) return true;
+        // If explicitly false in new system, trust it
+        // (but only if cache is populated — isModuleEnabled returns false when not loaded)
+      }
     } catch(_) {}
   }
 
@@ -39,11 +43,16 @@ async function isDreamsEnabled() {
   const cacheKey = 'dreams_enabled_' + fid;
   if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache)
     return !!window._familyFeaturesCache[cacheKey];
-  const raw = await getAppSetting(cacheKey, false);
-  const enabled = raw === true || raw === 'true';
-  window._familyFeaturesCache = window._familyFeaturesCache || {};
-  window._familyFeaturesCache[cacheKey] = enabled;
-  return enabled;
+
+  try {
+    const raw = await getAppSetting(cacheKey, false);
+    const enabled = raw === true || raw === 'true';
+    window._familyFeaturesCache = window._familyFeaturesCache || {};
+    window._familyFeaturesCache[cacheKey] = enabled;
+    return enabled;
+  } catch(_) {
+    return false;
+  }
 }
 
 async function applyDreamsFeature() {
@@ -60,8 +69,20 @@ async function applyDreamsFeature() {
   if (pageEl) pageEl.style.display = on ? '' : 'none';
   if (typeof _syncModulesSection === 'function') _syncModulesSection();
   if (on && !_drm.loaded) await loadDreams().catch(() => {});
+
+  // If module is ON, ensure nav item is always visible even if hidden by other code
+  if (on && navEl && navEl.style.display === 'none') {
+    navEl.style.display = '';
+  }
 }
 window.applyDreamsFeature = applyDreamsFeature;
+
+// Re-apply after a short delay to catch any race with bootApp / family prefs load
+function _applyDreamsFeatureDelayed() {
+  setTimeout(() => applyDreamsFeature().catch(() => {}), 1500);
+  setTimeout(() => applyDreamsFeature().catch(() => {}), 4000);
+}
+window._applyDreamsFeatureDelayed = _applyDreamsFeatureDelayed;
 
 async function toggleFamilyDreams(familyId, enabled) {
   // Save to legacy system

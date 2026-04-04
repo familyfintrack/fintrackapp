@@ -623,6 +623,8 @@ async function bootApp(){
   if (typeof applyAiInsightsFeature === 'function') applyAiInsightsFeature().catch(() => {});
   if (typeof applyDebtsFeature === 'function') applyDebtsFeature().catch(() => {});
   if (typeof applyDreamsFeature === 'function') applyDreamsFeature().catch(() => {});
+  // Retry dreams after family prefs guaranteed loaded (race condition fix)
+  if (typeof _applyDreamsFeatureDelayed === 'function') _applyDreamsFeatureDelayed();
   // Setup wizard — shows for new users until accounts + categories + transactions exist
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
 }
