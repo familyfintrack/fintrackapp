@@ -338,7 +338,7 @@ async function loadDashboard(){
             <button class="dash-fav-card__btn"
               onclick="_openFavAccountModal('${a.id}')"
               title="Informações da conta">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-1 4h2v6h-2v-6z"/></svg>
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM9 9a1 1 0 0 0 0 2v3a1 1 0 0 0 2 0V9a1 1 0 0 0-1-1H9z" clip-rule="evenodd"/></svg>
             </button>
             <button class="dash-fav-card__btn"
               onclick="openConsolidateModal('${a.id}')"
@@ -882,8 +882,8 @@ function _dashGetPrefs() {
     const raw = localStorage.getItem(_DASH_PREFS_KEY());
     if (raw) return JSON.parse(raw);
   } catch (_e) {}
-  // Defaults: tudo visível
-  return Object.fromEntries(_DASH_CARDS.map(c => [c.id, true]));
+  // Defaults: mandatory cards on, optional cards off (user activates via ⚙️)
+  return Object.fromEntries(_DASH_CARDS.map(c => [c.id, !c.optional]));
 }
 
 async function _dashSavePrefs(prefs) {
@@ -1013,7 +1013,7 @@ function _dashCustomSave() {
   const prefs = { ...existingPrefs };
   _DASH_CARDS.forEach(c => {
     const btn = document.querySelector(`.dash-toggle-switch[data-card="${c.id}"]`);
-    prefs[c.id] = btn ? btn.classList.contains('on') : true;
+    prefs[c.id] = btn ? btn.classList.contains('on') : !c.optional;
   });
   // Save card order if user reordered
   if (_dashCustomPendingOrder) {
@@ -1023,6 +1023,11 @@ function _dashCustomSave() {
   _dashSavePrefs(prefs);
   _dashApplyPrefs(prefs);
   if (prefs.favcats !== false) _renderDashFavCategories(_lastDashIncome, _lastDashExpense);
+  // Reload optional cards that were just switched ON (content would still say "Carregando…")
+  if (prefs.budgets     !== false && existingPrefs.budgets     === false) _loadDashBudgetsCard().catch(()=>{});
+  if (prefs.investments !== false && existingPrefs.investments === false) _loadDashInvestmentsCard().catch(()=>{});
+  if (prefs.dreams      !== false && existingPrefs.dreams      === false) _loadDashDreamsCard().catch(()=>{});
+  if (prefs.forecast90  !== false && existingPrefs.forecast90  === false) _renderDashForecast().catch(()=>{});
   closeModal('dashCustomModal');
   toast('Preferências do dashboard salvas!', 'success');
 }
@@ -1662,6 +1667,8 @@ async function _renderDashForecast() {
     return {
       type: 'scatter',
       label: '_marker_' + a.id,  // prefix so legend filter can hide these
+      xAxisID: 'x',
+      yAxisID: 'y',
       data: pts,
       backgroundColor: pts.map(p =>
         p._isMixed  ? '#f59e0b' :   // amber  — both real + scheduled
@@ -2571,23 +2578,20 @@ async function _loadDashBudgetsCard() {
     const now = new Date();
     const y   = now.getFullYear();
     const m   = String(now.getMonth() + 1).padStart(2, '0');
-    const monthStr = `${y}-${m}-01`;
+    const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
 
-    // Fetch current month budgets with category info
-    const { data: budgets, error: be } = await famQ(
-      sb.from('budgets')
-        .select('id,amount,category_id,notes,categories(id,name,icon,color)')
-    ).or(`month.eq.${monthStr},budget_type.eq.annual`).eq('status', 'active').catch(() => ({ data: null, error: null }));
+    // Fetch all budgets and filter client-side (compatible with all schema versions)
+    const { data: allBudgets } = await famQ(
+      sb.from('budgets').select('id,amount,category_id,budget_type,month,year,categories(id,name,icon,color)')
+    ).order('amount', { ascending: false });
 
-    // Fallback: try without status filter (old schema)
-    let bRows = budgets;
-    if (!bRows) {
-      const { data: b2 } = await famQ(
-        sb.from('budgets').select('id,amount,category_id,categories(id,name,icon,color)')
-      ).gte('month', monthStr).lte('month', monthStr);
-      bRows = b2;
-    }
-    if (!bRows?.length) {
+    const bRows = (allBudgets || []).filter(b => {
+      if (b.budget_type === 'annual') return b.year === y;
+      const bMonth = (b.month || '').slice(0, 7);
+      return bMonth === `${y}-${m}`;
+    });
+
+    if (!bRows.length) {
       body.innerHTML = `
         <div style="text-align:center;padding:20px 16px;color:var(--muted)">
           <div style="font-size:1.8rem;margin-bottom:6px">🎯</div>
@@ -2597,15 +2601,19 @@ async function _loadDashBudgetsCard() {
       return;
     }
 
-    // Fetch spending per category this month
+    // Fetch spending per category this month (with brl_amount for multi-currency accuracy)
     const { data: txRows } = await famQ(
-      sb.from('transactions').select('category_id,amount')
-    ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-31`).lt('amount', 0).eq('status', 'confirmed');
+      sb.from('transactions').select('category_id,amount,brl_amount,currency')
+    ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-${String(lastDay).padStart(2,'0')}`).lt('amount', 0).eq('status', 'confirmed');
 
     const spentBycat = {};
     (txRows || []).forEach(t => {
       if (!t.category_id) return;
-      spentBycat[t.category_id] = (spentBycat[t.category_id] || 0) + Math.abs(parseFloat(t.amount) || 0);
+      // Use brl_amount if available, otherwise convert via toBRL
+      const amtBRL = t.brl_amount != null
+        ? Math.abs(t.brl_amount)
+        : (typeof toBRL === 'function' ? toBRL(Math.abs(parseFloat(t.amount)||0), t.currency||'BRL') : Math.abs(parseFloat(t.amount)||0));
+      spentBycat[t.category_id] = (spentBycat[t.category_id] || 0) + amtBRL;
     });
 
     // Sort: most exceeded first, then by % used desc

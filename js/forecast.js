@@ -462,6 +462,8 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
     return {
       type: 'scatter',
       label: '_marker_' + a.id,
+      xAxisID: 'x',
+      yAxisID: 'y',
       data: pts,
       backgroundColor: pts.map(p =>
         p._isMixed ? '#f59e0b' :
