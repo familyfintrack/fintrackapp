@@ -1,31 +1,20 @@
-/* ===== FIX: isolamento real do accountModal ===== */
+/* ===== FIX DEFINITIVO: isolamento REAL do accountModal ===== */
 
+/* Estado fechado */
 #accountModal {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  display: none;
 }
 
+/* Estado aberto */
 #accountModal.open {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  display: flex;
 }
 
-/* Garante que o conteúdo não seja renderizado fora do container */
+/* Reset de qualquer transform residual */
 #accountModal .acc-modal-sheet {
   transform: translateY(100%);
-  contain: layout paint style;
-  overflow: hidden;
 }
 
 #accountModal.open .acc-modal-sheet {
   transform: translateY(0);
-}
-
-/* BLOQUEIO DEFINITIVO do vazamento (Safari fix) */
-#accountModal:not(.open) .acc-modal-footer,
-#accountModal:not(.open) .acc-modal-header,
-#accountModal:not(.open) .acc-modal-sheet {
-  visibility: hidden;
 }
