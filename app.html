@@ -5943,7 +5943,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div class="sc-section-grid">
 
           <!-- Email -->
-          <div class="sc-channel-card">
+          <div class="sc-channel-card" id="scNotifyEmailRow" data-notif-channel="email">
             <label class="sc-channel-header" style="cursor:pointer">
               <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
               <div>
@@ -6482,11 +6482,44 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-<div class="modal-overlay" id="accountModal">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-header"><span class="modal-title" id="accountModalTitle">Nova Conta</span><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
-    <div class="modal-body">
+<div class="modal-overlay" id="accountModal" onclick="if(event.target===this)closeModal('accountModal')">
+  <div class="acc-modal-sheet">
+    <div class="modal-handle"></div>
+
+    <!-- ── Hero header (padrão mfm2) ── -->
+    <div class="acc-modal-hero">
+      <div class="acc-modal-hero-glow"></div>
+      <div class="acc-modal-hero-inner">
+        <div id="accModalHeroIcon" style="font-size:1.8rem;line-height:1;min-width:40px;text-align:center">🏦</div>
+        <div style="flex:1;min-width:0">
+          <div class="acc-modal-hero-title" id="accountModalTitle">Nova Conta</div>
+          <div class="acc-modal-hero-sub" id="accModalHeroSub">Preencha as informações da conta</div>
+        </div>
+        <button class="acc-modal-close-btn" onclick="closeModal('accountModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Tab bar (padrão mfm-tab-bar) ── -->
+    <div class="mfm-tab-bar">
+      <button class="mfm-tab active" id="accTabBtnGeral" onclick="_accModalTab('geral')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Geral
+      </button>
+      <button class="mfm-tab" id="accTabBtnBanco" onclick="_accModalTab('banco')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Dados Bancários
+      </button>
+    </div>
+
+    <!-- ── Body ── -->
+    <div class="acc-modal-body">
       <input type="hidden" id="accountId">
+
+      <!-- PANE: Geral -->
+      <div class="mfm-pane active" id="accTabGeral">
+        <input type="hidden" id="accountId">
       <div class="form-grid">
         <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
         <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="_onAccModalTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
@@ -6633,10 +6666,11 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
     </div>
+      </div>
       </div><!-- end accTabGeral -->
 
-      <!-- TAB: Dados Bancários -->
-      <div id="accTabBanco" class="acc-tab-panel" style="display:none">
+      <!-- PANE: Dados Bancários -->
+      <div class="mfm-pane" id="accTabBanco">
         <div class="form-grid" style="padding-top:4px">
 
           <!-- Conta bancária -->
@@ -6680,10 +6714,16 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
 
         </div>
+      </div>
       </div><!-- end accTabBanco -->
 
-    </div><!-- end modal-body -->
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
+    </div><!-- end acc-modal-body -->
+
+    <!-- ── Footer ── -->
+    <div class="acc-modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAccount()">Salvar</button>
+    </div>
   </div>
 </div>
 
