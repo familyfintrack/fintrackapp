@@ -301,6 +301,7 @@ function openModal(id){
   if(!el) return;
   if(id==='accountModal'){
     el.style.display='flex';
+    el.setAttribute('aria-hidden','false');
     requestAnimationFrame(()=>el.classList.add('open'));
     return;
   }
@@ -311,25 +312,13 @@ function closeModal(id){
   if(!el) return;
   el.classList.remove('open');
   if(id==='accountModal'){
-    const hide=()=>{
-      if(!el.classList.contains('open')) el.style.display='none';
-      el.removeEventListener('transitionend', hide);
-    };
-    el.addEventListener('transitionend', hide);
-    setTimeout(hide, 260);
+    el.setAttribute('aria-hidden','true');
+    window.setTimeout(()=>{
+      if(!el.classList.contains('open')) el.style.display='';
+    },240);
   }
 }
-document.querySelectorAll('.modal-overlay').forEach(el=>{
-  el.addEventListener('click',e=>{
-    if(e.target===el) closeModal(el.id);
-  });
-});
-document.addEventListener('DOMContentLoaded', ()=>{
-  const accountModal=document.getElementById('accountModal');
-  if(accountModal && !accountModal.classList.contains('open')){
-    accountModal.style.display='none';
-  }
-});
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el && typeof closeModal==='function') closeModal(el.id);});});
 
 function toast(msg,type='info'){
   // Auto-translate if message exists as direct-text key in i18n builtin

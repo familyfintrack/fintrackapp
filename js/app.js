@@ -493,7 +493,7 @@ function getAppBaseUrl() {
   return origin + base;
 }
 
-const DEFAULT_LOGO_URL='logo.jpg';
+const DEFAULT_LOGO_URL='logo_glow_soft.png';
 let APP_LOGO_URL=DEFAULT_LOGO_URL;
 function setAppLogo(url){
   // Defensive: avoid accidentally assigning a Promise/thenable to img.src
