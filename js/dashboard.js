@@ -327,17 +327,26 @@ async function loadDashboard(){
           <div class="dash-fav-card__top">
             <div class="dash-fav-card__icon">${_dashRenderIcon(a.icon,a.color,20)}</div>
             <span class="dash-fav-card__type">${esc(_typeLabel)}</span>
-            <button class="dash-fav-card__detail-btn"
-              onclick="event.stopPropagation();openAccountDetailPanel('${a.id}')"
-              title="Ver detalhes da conta"
-              style="margin-left:auto;background:rgba(255,255,255,.15);border:none;border-radius:6px;padding:3px 7px;cursor:pointer;font-size:.7rem;color:rgba(255,255,255,.85);font-weight:600;transition:all .15s;line-height:1;backdrop-filter:blur(4px)"
-              onmouseover="this.style.background='rgba(255,255,255,.28)'"
-              onmouseout="this.style.background='rgba(255,255,255,.15)'">⋯</button>
           </div>
           <div class="dash-fav-card__name">${esc(a.name)}</div>
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
           ${_confLine}
           ${_brlLine}
+          <div class="dash-fav-card__spacer"></div>
+          <div class="dash-fav-card__actions" onclick="event.stopPropagation()">
+            <button class="dash-fav-card__btn"
+              onclick="openAccountDetailPanel('${a.id}')"
+              title="Detalhes da conta">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Detalhes
+            </button>
+            <button class="dash-fav-card__btn"
+              onclick="openConsolidateModal('${a.id}')"
+              title="Consolidar saldo">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Consolidar
+            </button>
+          </div>
           <div class="dash-fav-card__shine"></div>
         </div>`;
       }
