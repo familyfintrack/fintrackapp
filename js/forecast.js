@@ -374,78 +374,211 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
   if (!canvas || typeof Chart === 'undefined') return;
   _destroyForecastChart();
 
-  const dates = [];
+  // Build ALL daily dates (full resolution — no sampling)
+  const allDates = [];
   let cur = new Date(fromStr + 'T12:00:00');
   const end = new Date(toStr + 'T12:00:00');
   while (cur <= end) {
-    dates.push(cur.toISOString().slice(0,10));
+    allDates.push(cur.toISOString().slice(0,10));
     cur.setDate(cur.getDate()+1);
   }
-  if (!dates.length) return;
-
-  // Build set of dates that have transactions (for point rendering)
-  const datesWithTx = new Set(allItems.map(t => t.date));
-
-  const step = dates.length > 90 ? 7 : 1;
-  const sampledDates = dates.filter((_,i) => i%step===0);
-  if (!sampledDates.includes(toStr)) sampledDates.push(toStr);
+  if (!allDates.length) return;
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
+  const weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
-  const datasets = accounts.slice(0,6).map((a,idx) => {
-    const txsForAcc   = allItems.filter(t => t.account_id===a.id);
-    const realSum     = txsForAcc.filter(t=>!t.isScheduled).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-    const baseBal     = (parseFloat(a.balance)||0) - realSum;
-    const color       = (a.color && a.color!=='var(--accent)') ? a.color : COLORS[idx%COLORS.length];
+  // Pre-index items by account and date for fast lookup
+  const byAccDate = {};
+  allItems.forEach(t => {
+    const key = `${t.account_id}|${t.date}`;
+    if (!byAccDate[key]) byAccDate[key] = [];
+    byAccDate[key].push(t);
+  });
 
-    // Per-date tx set for this account
-    const accDatesWithTx = new Set(txsForAcc.map(t => t.date));
+  // Build daily balance + activity map
+  const dailyData = {};
+  allDates.forEach(d => { dailyData[d] = { txs: [], scheduled: [] }; });
+  allItems.forEach(t => {
+    if (!dailyData[t.date]) return;
+    if (t.isScheduled) dailyData[t.date].scheduled.push(t);
+    else               dailyData[t.date].txs.push(t);
+  });
+
+  // ── Line datasets (one per account, scalar y[], no points) ───────────────
+  const lineDatasets = accounts.slice(0, 6).map((a, idx) => {
+    const color     = (a.color && a.color !== 'var(--accent)') ? a.color : COLORS[idx % COLORS.length];
+    const txsForAcc = allItems.filter(t => t.account_id === a.id);
+    const realSum   = txsForAcc.filter(t => !t.isScheduled).reduce((s,t) => s + (parseFloat(t.amount)||0), 0);
+    let running     = (parseFloat(a.balance)||0) - realSum;
+
+    const yData = allDates.map(d => {
+      const dayItems = txsForAcc.filter(t => t.date === d);
+      dayItems.forEach(t => { running += (parseFloat(t.amount)||0); });
+      return +running.toFixed(2);
+    });
 
     return {
       label: a.name,
-      data: sampledDates.map(d => {
-        const sumUpTo = txsForAcc.filter(t=>t.date<=d).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-        return { x:d, y:+(baseBal+sumUpTo).toFixed(2) };
-      }),
-      borderColor: color, backgroundColor: color+'18',
-      fill:false, tension:0.3, borderWidth:2,
-      // Show point only on dates with transactions; size depends on range
-      pointRadius: sampledDates.map(d => {
-        if (!accDatesWithTx.has(d)) return 0;
-        return sampledDates.length > 60 ? 3 : 5;
-      }),
-      pointHoverRadius: sampledDates.map(d => accDatesWithTx.has(d) ? 7 : 3),
+      data: yData,
+      borderColor: color,
+      backgroundColor: color + '15',
+      fill: idx === 0 && accounts.length === 1,
+      tension: 0.3,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      pointHitRadius: 14,
       pointBackgroundColor: color,
       pointBorderColor: '#fff',
       pointBorderWidth: 1.5,
+      _accountId: a.id,
+      _color: color,
     };
   });
 
+  // ── Scatter marker datasets (one per account, active days only) ──────────
+  const markerDatasets = accounts.slice(0, 6).map((a, idx) => {
+    const color     = lineDatasets[idx]._color;
+    const txsForAcc = allItems.filter(t => t.account_id === a.id);
+    const realSum   = txsForAcc.filter(t => !t.isScheduled).reduce((s,t) => s + (parseFloat(t.amount)||0), 0);
+    let running     = (parseFloat(a.balance)||0) - realSum;
+
+    const pts = [];
+    allDates.forEach((d, i) => {
+      const dayItems = txsForAcc.filter(t => t.date === d);
+      dayItems.forEach(t => { running += (parseFloat(t.amount)||0); });
+      const hasReal  = dayItems.some(t => !t.isScheduled);
+      const hasSched = dayItems.some(t => t.isScheduled);
+      if (!hasReal && !hasSched) return;
+      pts.push({
+        x: i,
+        y: +running.toFixed(2),
+        _date: d,
+        _isSched: hasSched && !hasReal,
+        _isMixed: hasReal && hasSched,
+      });
+    });
+
+    return {
+      type: 'scatter',
+      label: '_marker_' + a.id,
+      data: pts,
+      backgroundColor: pts.map(p =>
+        p._isMixed ? '#f59e0b' :
+        p._isSched ? '#1d4ed8' :
+        color
+      ),
+      borderColor: '#fff',
+      borderWidth: 1.5,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      pointStyle: pts.map(p => p._isSched ? 'triangle' : 'circle'),
+      showLine: false,
+    };
+  });
+
+  const datasets = [...lineDatasets, ...markerDatasets];
+
+  // ── Annotations ───────────────────────────────────────────────────────────
+  const todayIdx = allDates.indexOf(new Date().toISOString().slice(0,10));
+  const annotations = {
+    zeroLine: {
+      type:'line', yMin:0, yMax:0,
+      borderColor:'rgba(220,38,38,0.5)', borderWidth:1.5, borderDash:[5,3],
+    },
+  };
+  if (todayIdx >= 0) {
+    annotations.todayLine = {
+      type:'line', xMin:todayIdx, xMax:todayIdx,
+      borderColor:'rgba(42,122,74,0.55)', borderWidth:2, borderDash:[4,3],
+      label:{ content:'Hoje', display:true, position:'start',
+              font:{size:9,weight:'700'}, color:'#2a6049',
+              backgroundColor:'rgba(42,122,74,0.08)', padding:{x:4,y:2}, borderRadius:3 },
+    };
+  }
+  // Weekly guides
+  allDates.forEach((d, i) => {
+    if (i === 0) return;
+    if (new Date(d+'T12:00').getDay() === 1) {
+      annotations['wk_'+i] = {
+        type:'line', xMin:i, xMax:i,
+        borderColor:'rgba(125,194,66,0.07)', borderWidth:1,
+      };
+    }
+  });
+
   forecastChartInstance = new Chart(canvas, {
-    type:'line',
-    data:{ datasets },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      interaction:{ mode:'nearest', intersect:true },
-      plugins:{
-        legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:11} } },
-        tooltip:{
-          callbacks:{
-            title: ctx => {
-              const d = ctx[0]?.label || '';
-              const txsOnDay = allItems.filter(t => t.date === d);
-              return txsOnDay.length
-                ? `${d}  ·  ${txsOnDay.length} transação${txsOnDay.length>1?'ões':''}`
-                : d;
-            },
-            label: ctx=>`${ctx.dataset.label}: ${_fcFmt(ctx.parsed.y)}`,
-          }
+    type: 'line',
+    data: { labels: allDates, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 12, font: { size: 11 },
+            filter: item => !item.text.startsWith('_marker_'),
+          },
         },
+        tooltip: {
+          backgroundColor: 'rgba(10,30,18,0.93)',
+          titleColor: '#f4f8f2',
+          bodyColor: '#d1fae5',
+          borderColor: 'rgba(125,194,66,0.3)',
+          borderWidth: 1,
+          padding: { x:11, y:9 },
+          callbacks: {
+            title(items) {
+              const d = items[0]?.label || '';
+              if (!d) return '';
+              const [y,m,day] = d.split('-');
+              const wd  = weekdays[new Date(d+'T12:00').getDay()];
+              const dd  = dailyData[d];
+              const nR  = (dd?.txs||[]).length;
+              const nS  = (dd?.scheduled||[]).length;
+              const parts = [];
+              if (nR)  parts.push(`${nR} lançamento${nR>1?'s':''}`);
+              if (nS)  parts.push(`${nS} programado${nS>1?'s':''}`);
+              return `${wd}, ${day}/${m}/${y}` + (parts.length ? `  ·  ${parts.join(' + ')}` : '');
+            },
+            label(ctx) {
+              if (ctx.dataset.label?.startsWith('_marker_')) return null;
+              const bal = ctx.parsed.y;
+              if (bal == null) return '';
+              const acc = lineDatasets[ctx.datasetIndex];
+              return `  ${ctx.dataset.label}: ${_fcFmt(bal)}`;
+            },
+            afterBody(items) {
+              const d   = items[0]?.label || '';
+              const dd  = dailyData[d];
+              if (!dd) return [];
+              const all = [...(dd.txs||[]), ...(dd.scheduled||[])];
+              if (!all.length) return [];
+              const lines = [''];
+              all.slice(0, 6).forEach(t => {
+                const neg   = Number(t.amount) < 0;
+                const sign  = neg ? '−' : '+';
+                const amt   = _fcFmt(Math.abs(Number(t.amount)));
+                const desc  = (t.description || t.payees?.name || '—').slice(0, 22);
+                const tag   = t.isScheduled ? ' ▲' : '';
+                const cat   = t.categories?.icon ? t.categories.icon + ' ' : '';
+                lines.push(`  ${sign}${amt}  ${cat}${desc}${tag}`);
+              });
+              if (all.length > 6) lines.push(`  … e mais ${all.length - 6}`);
+              lines.push('');
+              lines.push('  👆 Clique para detalhes');
+              return lines;
+            },
+          },
+        },
+        annotation: { annotations },
       },
       onClick(evt, elements) {
         if (!elements.length) return;
         const idx  = elements[0].index;
-        const date = sampledDates[idx];
+        const date = allDates[idx];
         if (!date) return;
         const txsOnDay = allItems.filter(t => t.date === date);
         if (!txsOnDay.length) return;
@@ -458,16 +591,53 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
       },
       onHover(evt, elements) {
         const hasTx = elements.some(el => {
-          const d = sampledDates[el.index];
+          const d = allDates[el.index];
           return d && allItems.some(t => t.date === d);
         });
         evt.native.target.style.cursor = (hasTx || elements.length) ? 'pointer' : 'default';
       },
-      scales:{
-        x:{ type:'category', ticks:{ maxTicksLimit:10, color:'#8c8278', font:{size:10} }, grid:{color:'#e8e4de33'} },
-        y:{ ticks:{ callback:v=>_fcFmt(v), color:'#8c8278', font:{size:10} },
-            grid:{ color:ctx=>ctx.tick?.value===0?'rgba(220,38,38,0.5)':'#e8e4de33',
-                   lineWidth:ctx=>ctx.tick?.value===0?2:1 } },
+      scales: {
+        x: {
+          type: 'category',
+          ticks: {
+            color: '#8c8278',
+            font: { size: 10 },
+            maxRotation: 0,
+            callback(val, idx) {
+              const d = allDates[idx];
+              if (!d) return '';
+              const [,m,day] = d.split('-');
+              const dow = new Date(d+'T12:00').getDay();
+              if (idx === 0 || idx === allDates.length - 1) return `${day}/${m}`;
+              if (dow === 1) return `${day}/${m}`;
+              return '';
+            },
+          },
+          grid: {
+            color: ctx => {
+              const d = allDates[ctx.index];
+              if (!d) return '#e8e4de18';
+              return new Date(d+'T12:00').getDay() === 1
+                ? 'rgba(125,194,66,0.09)' : '#e8e4de18';
+            },
+            lineWidth: ctx => {
+              const d = allDates[ctx.index];
+              return d && new Date(d+'T12:00').getDay() === 1 ? 1.5 : 0.5;
+            },
+          },
+        },
+        y: {
+          ticks: {
+            callback: v => _fcFmt(v),
+            color: '#8c8278',
+            font: { size: 10 },
+            maxTicksLimit: 6,
+          },
+          grid: {
+            color:      ctx => ctx.tick?.value === 0 ? 'rgba(220,38,38,0.45)' : '#e8e4de22',
+            lineWidth:  ctx => ctx.tick?.value === 0 ? 1.5 : 1,
+          },
+        },
       },
     },
   });
