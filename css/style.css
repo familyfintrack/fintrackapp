@@ -258,7 +258,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;border-radius:var(--r-sm);color:var(--muted);flex-shrink:0;}
 .hamburger:hover{background:var(--bg2);color:var(--text);}
 .topbar-title{font-family:var(--font-serif);font-size:1.15rem;font-weight:500;color:#ffffff;letter-spacing:-.01em;display:none!important;}
-.topbar-actions{display:flex;gap:8px;align-items:center;}
+.topbar-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;overflow:hidden;max-width:calc(100vw - 120px);}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);font-family:var(--font-sans);font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;border:none;white-space:nowrap;}
@@ -668,6 +668,13 @@ body.sidebar-open .fab{
   .sb-close{display:flex;}
   .bottom-nav{display:block;}.fab{display:flex;}.hamburger{display:flex;}
   #globalAddBtn{display:none;}
+  /* Esconder botões administrativos da topbar no mobile — eles ficam na sidebar */
+  #importNav,
+  #auditNavTopbar,
+  #telemetryNavTopbar,
+  #settingsNavTopbar { display: none !important; }
+  /* Manter apenas agent e feedback na topbar mobile */
+  .topbar-quick-actions { gap: 4px; margin-right: 0; }
   .content{padding:16px;padding-bottom:calc(var(--bottom-h) + 104px + env(safe-area-inset-bottom));}
   .grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}
   .account-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
