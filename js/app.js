@@ -765,7 +765,13 @@ function clearFamilyScopedUI() {
   try { closeSidebar?.(); } catch(e) {}
   try { closeUserMenu?.(); } catch(e) {}
   try {
-    document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+      try {
+        el.classList.remove('open');
+        el.setAttribute('aria-hidden', 'true');
+        if ((el.style.display || '').trim() === 'flex') el.style.removeProperty('display');
+      } catch(_) {}
+    });
   } catch(e) {}
 
   _resetFamilyScopedForms();

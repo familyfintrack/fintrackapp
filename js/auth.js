@@ -469,6 +469,14 @@ function showLoginScreen() {
   if (sidebar) sidebar.style.display = 'none';
   if (sidebarOverlay) sidebarOverlay.style.display = 'none';
 
+  try {
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+      el.classList.remove('open');
+      el.setAttribute('aria-hidden', 'true');
+      if ((el.style.display || '').trim() === 'flex') el.style.removeProperty('display');
+    });
+  } catch(_) {}
+
   const ls = document.getElementById('loginScreen');
   if (ls) {
     ls.style.display = 'flex';
@@ -480,7 +488,7 @@ function showLoginScreen() {
       const logoFromCache = (typeof _appSettingsCache !== 'undefined' && _appSettingsCache && _appSettingsCache['app_logo_url']) ? _appSettingsCache['app_logo_url'] : '';
       setAppLogo(logoFromCache);
     } else if (img) {
-      img.src = 'logo_glow_soft.png';
+      img.src = (APP_LOGO_URL||DEFAULT_LOGO_URL);
     }
     // Load remembered credentials
     const saved = _loadRememberedCredentials();
@@ -1634,27 +1642,27 @@ async function doLogout() {
   localStorage.removeItem('ft_session_token');
   localStorage.removeItem('ft_user_id');
   currentUser = null;
+  // Reset charts
   Object.values(state.chartInstances||{}).forEach(c => c?.destroy?.());
   state.chartInstances = {};
-
-  document.querySelectorAll('.modal-overlay.open').forEach(el => {
-    try {
-      if (typeof closeModal === 'function') closeModal(el.id);
-      else el.classList.remove('open');
-    } catch(_) { el.classList.remove('open'); }
-  });
+  // Close any open modals/overlays before showing login
   document.querySelectorAll('.modal-overlay').forEach(el => {
-    el.classList.remove('open');
-    el.removeAttribute('aria-hidden');
-    if (el.id === 'accountModal') el.style.display = '';
+    try {
+      el.classList.remove('open');
+      el.setAttribute('aria-hidden', 'true');
+      if ((el.style.display || '').trim()) el.style.removeProperty('display');
+    } catch(_) {}
   });
-
+  document.querySelectorAll('.modal-backdrop').forEach(el => {
+    try { el.style.display = 'none'; } catch(_) {}
+  });
+  // Clear login form for security
   const emailEl = document.getElementById('loginEmail');
   const passEl = document.getElementById('loginPassword');
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
-
-  showLoginScreen();
+  // Reload the page for a completely clean state
+  window.location.reload();
 }
 
 // ── Clear App Cache ──
