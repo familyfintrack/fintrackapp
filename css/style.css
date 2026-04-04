@@ -7268,13 +7268,14 @@ tr.tx-row-new td:first-child {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 10px;
+  align-items: stretch; /* all cards same height per row */
 }
 
 .dash-fav-card {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  padding: 11px 14px 13px;
+  padding: 11px 14px 10px;
   cursor: pointer;
   background:
     linear-gradient(
@@ -7289,6 +7290,10 @@ tr.tx-row-new td:first-child {
     0 1px 3px rgba(0,0,0,.18);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /* Flex column so actions pin to the bottom regardless of content */
+  display: flex;
+  flex-direction: column;
+  min-height: 148px;
 }
 
 .dash-fav-card:hover {
@@ -7331,7 +7336,7 @@ tr.tx-row-new td:first-child {
 .dash-fav-card__top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
@@ -7427,6 +7432,51 @@ tr.tx-row-new td:first-child {
   white-space: nowrap;
 }
 
+/* Spacer pushes action buttons to the bottom */
+.dash-fav-card__spacer {
+  flex: 1;
+  min-height: 8px;
+}
+
+/* Action buttons row — always at the bottom of every card */
+.dash-fav-card__actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.dash-fav-card__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 4px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 7px;
+  background: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.9);
+  font-size: .65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dash-fav-card__btn:hover {
+  background: rgba(255,255,255,.26);
+  border-color: rgba(255,255,255,.4);
+}
+
+.dash-fav-card__btn:active {
+  background: rgba(255,255,255,.35);
+  transform: scale(.96);
+}
+
 /* Mobile: 2-col on small screens, 1-col on very small */
 @media (max-width: 480px) {
   .dash-favs-grid {
@@ -7434,10 +7484,12 @@ tr.tx-row-new td:first-child {
     gap: 10px;
   }
   .dash-fav-card {
-    padding: 13px 14px 15px;
+    padding: 11px 12px 10px;
+    min-height: 152px;
   }
-  .dash-fav-card__balance { font-size: 1.1rem; }
-  .dash-fav-card__icon { width: 30px; height: 30px; border-radius: 8px; }
+  .dash-fav-card__balance { font-size: 1rem; }
+  .dash-fav-card__icon { width: 28px; height: 28px; border-radius: 8px; }
+  .dash-fav-card__btn { font-size: .6rem; padding: 5px 3px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -22518,7 +22570,8 @@ tr.payee-row[onclick] { cursor: pointer; }
     gap: 10px;
   }
   .dash-fav-card {
-    padding: 11px 14px 13px;
+    padding: 11px 14px 10px;
+    min-height: 152px;
   }
   .dash-fav-card__balance {
     font-size: 1.2rem;
