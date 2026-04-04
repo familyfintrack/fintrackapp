@@ -7266,15 +7266,15 @@ tr.tx-row-new td:first-child {
 
 .dash-favs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
 }
 
 .dash-fav-card {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
-  padding: 16px 18px 18px;
+  border-radius: 12px;
+  padding: 11px 14px 13px;
   cursor: pointer;
   background:
     linear-gradient(
@@ -7332,7 +7332,7 @@ tr.tx-row-new td:first-child {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 /* Icon pill */
@@ -7340,9 +7340,9 @@ tr.tx-row-new td:first-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   background: rgba(255,255,255,.18);
   flex-shrink: 0;
 }
@@ -7382,7 +7382,7 @@ tr.tx-row-new td:first-child {
 }
 
 .dash-fav-card__balance {
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   font-weight: 700;
   font-family: var(--font-serif, monospace);
   font-variant-numeric: tabular-nums;
@@ -22452,22 +22452,54 @@ tr.payee-row[onclick] { cursor: pointer; }
   margin: 12px 0 14px;
 }
 
+/* ── Desktop: type groups as parallel columns ─────────────────── */
+.dash-fav-columns {
+  display: flex;
+  flex-direction: column;  /* mobile: stack */
+  gap: 16px;
+}
+.dash-fav-columns .dash-fav-type-group {
+  margin-bottom: 0;
+}
+/* Desktop only: side-by-side columns */
+@media (min-width: 1025px) {
+  .dash-fav-columns {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .dash-fav-columns .dash-fav-type-group {
+    flex: 1;
+    min-width: 0;
+  }
+  /* Each group's grid stacks vertically on desktop */
+  .dash-fav-columns .dash-favs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
 /* Desktop: wider grid for fav cards */
-@media (min-width: 1024px) {
-  .dash-favs-grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 14px;
+@media (min-width: 1025px) {
+  /* Non-column layout: larger grid */
+  .dash-favs-section > .dash-favs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+  }
+  /* Column layout cards: compact */
+  .dash-fav-columns .dash-favs-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
   }
   .dash-fav-card {
-    padding: 18px 20px 20px;
+    padding: 11px 14px 13px;
   }
   .dash-fav-card__balance {
-    font-size: 1.45rem;
+    font-size: 1.2rem;
   }
   .dash-fav-card__icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 11px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
   }
 }
 
@@ -22475,7 +22507,10 @@ tr.payee-row[onclick] { cursor: pointer; }
 @media (max-width: 480px) {
   .dash-favs-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px;
+    gap: 8px;
+  }
+  .dash-fav-card {
+    padding: 9px 11px 10px;
   }
 }
 
@@ -23853,13 +23888,31 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   margin: auto auto 0;
   display: flex;
   flex-direction: column;
-  max-height: 93vh;
+  max-height: 93dvh;
+  max-height: min(93dvh, calc(100dvh - env(safe-area-inset-top, 0px)));
   overflow: hidden;
   box-shadow: 0 -8px 40px rgba(0,0,0,.22);
   animation: mfm2FadeIn .25s ease both;
 }
 @media (min-width: 600px) {
-  .acc-modal-sheet { border-radius: 20px; margin: auto; }
+  .acc-modal-sheet {
+    border-radius: 20px;
+    margin: auto;
+    max-height: 90dvh;
+    /* iPad landscape: ensure footer is always reachable */
+    max-height: min(90dvh, calc(100dvh - 40px));
+  }
+}
+
+/* iPad landscape specific */
+@media (min-width: 768px) and (orientation: landscape) {
+  .acc-modal-sheet {
+    max-height: 88dvh;
+    max-width: 620px;
+  }
+  .acc-modal-body {
+    padding: 12px 20px;
+  }
 }
 
 /* Hero */
@@ -23912,6 +23965,8 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   overflow-x: hidden;
   padding: 16px 20px;
   -webkit-overflow-scrolling: touch;
+  /* Ensure body scrolls and footer stays visible */
+  min-height: 0;
 }
 
 /* Footer */
@@ -23920,6 +23975,7 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   gap: 10px;
   justify-content: flex-end;
   padding: 12px 20px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   border-top: 1px solid var(--border);
   background: var(--surface);
   flex-shrink: 0;
