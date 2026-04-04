@@ -288,7 +288,8 @@ async function loadDashboard(){
   if(typeof _renderDashFavCategories==='function') await _renderDashFavCategories(income, expense);
   _renderDashForecast().catch(()=>{});
   await loadDashboardAutoRunSummary();
-  // Carregar cards opcionais (investments + dreams) se habilitados
+  // Carregar cards opcionais (budgets + investments + dreams) se habilitados
+  _loadDashBudgetsCard().catch(() => {});
   _loadDashInvestmentsCard().catch(() => {});
   _loadDashDreamsCard().catch(() => {});
 
@@ -335,9 +336,9 @@ async function loadDashboard(){
           <div class="dash-fav-card__spacer"></div>
           <div class="dash-fav-card__actions" onclick="event.stopPropagation()">
             <button class="dash-fav-card__btn"
-              onclick="openAccountDetailPanel('${a.id}')"
-              title="Detalhes da conta">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              onclick="_openFavAccountModal('${a.id}')"
+              title="Informações da conta">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-1 4h2v6h-2v-6z"/></svg>
             </button>
             <button class="dash-fav-card__btn"
               onclick="openConsolidateModal('${a.id}')"
@@ -871,7 +872,8 @@ const _DASH_CARDS = [
   { id: 'upcoming',     label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'     },
   { id: 'forecast90',   label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90'   },
   { id: 'recent',       label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'       },
-  { id: 'investments',  label: 'Carteira de Investimentos', icon: '📊', sub: 'Resumo e distribuição da carteira',         el: 'dashCardInvestments', optional: true },
+  { id: 'budgets',      label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Progresso dos orçamentos mensais',          el: 'dashCardBudgets',     optional: true },
+  { id: 'investments',  label: 'Carteira de Investimentos', icon: '📈', sub: 'Resumo e distribuição da carteira',         el: 'dashCardInvestments', optional: true },
   { id: 'dreams',       label: 'Meus Sonhos',               icon: '🌟', sub: 'Progresso dos seus sonhos financeiros',     el: 'dashCardDreams',      optional: true },
 ];
 
@@ -1378,6 +1380,113 @@ async function renderDashboardUpcoming(memberIds = null) {
 }
 
 // Navigate to transactions page with category + month pre-filtered
+// ── Favorite account info modal ───────────────────────────────────────────
+function _openFavAccountModal(accountId) {
+  const a = (state.accounts || []).find(x => x.id === accountId);
+  if (!a) { toast('Conta não encontrada', 'error'); return; }
+
+  const typeLabel  = (typeof accountTypeLabel === 'function' ? accountTypeLabel(a.type) : '') || a.type || '';
+  const balColor   = (parseFloat(a.balance)||0) < 0 ? 'var(--red,#dc2626)' : 'var(--accent)';
+  const color      = a.color || '#2a6049';
+
+  // Bank / card info lines
+  const bankInfo  = [
+    a.bank_name,
+    a.bank_code   && `Cód. ${a.bank_code}`,
+    a.agency      && `Ag. ${a.agency}`,
+    a.account_number && `CC ${a.account_number}`,
+  ].filter(Boolean).join(' · ');
+  const ibanLine  = a.iban ? `IBAN: ${a.iban}` : (a.routing_number ? `Routing: ${a.routing_number}` : '');
+  const swiftLine = a.swift_bic ? `SWIFT/BIC: ${a.swift_bic}` : '';
+  const cardInfo  = a.type === 'cartao_credito'
+    ? [a.card_issuer, a.card_brand, a.card_type, a.card_limit && `Limite: ${fmt(a.card_limit)}`].filter(Boolean).join(' · ')
+    : '';
+  const dueLine   = a.due_day ? `Dia ${a.due_day}` : '';
+  const bestLine  = a.best_purchase_day ? `Melhor compra: dia ${a.best_purchase_day}` : '';
+  const groupName = (() => { const g = (state.groups||[]).find(x=>x.id===a.group_id); return g ? g.name : ''; })();
+
+  // Build info rows helper
+  const row = (label, val, mono) => val
+    ? `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:.78rem;color:var(--muted);white-space:nowrap">${label}</span>
+        <span style="font-size:.8rem;font-weight:600;color:var(--text);text-align:right${mono?';font-family:monospace':''}">${esc(val)}</span>
+      </div>`
+    : '';
+
+  const brlLine = a.currency !== 'BRL'
+    ? `<div style="font-size:.78rem;color:rgba(255,255,255,.65);margin-top:2px">≈ ${dashFmt(toBRL ? toBRL(a.balance,a.currency) : a.balance,'BRL')} BRL</div>`
+    : '';
+
+  const confBal  = a.confirmed_balance;
+  const hasPend  = confBal !== undefined && Math.abs(confBal - (parseFloat(a.balance)||0)) > 0.001;
+  const confLine = hasPend
+    ? `<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:3px">Confirmado: ${fmt(confBal,a.currency)}</div>`
+    : '';
+
+  const content = `
+    <!-- Hero -->
+    <div style="background:linear-gradient(135deg,${color}dd,${color}99);padding:18px 20px 16px;border-radius:12px 12px 0 0;position:relative;overflow:hidden">
+      <div style="position:absolute;right:-20px;bottom:-20px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${typeof _dashRenderIcon === 'function' ? _dashRenderIcon(a.icon,a.color,20) : '🏦'}
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</div>
+          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.65);margin-top:1px">${esc(typeLabel)}</div>
+        </div>
+        <button onclick="closeModal('favAccModal')"
+          style="margin-left:auto;flex-shrink:0;background:rgba(255,255,255,.15);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;color:#fff;font-size:.85rem;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+      <div style="font-size:1.55rem;font-weight:800;font-family:var(--font-serif,monospace);color:${(parseFloat(a.balance)||0)<0?'#fca5a5':'#fff'}">${fmt(a.balance,a.currency)}</div>
+      ${brlLine}
+      ${confLine}
+    </div>
+
+    <!-- Body -->
+    <div style="padding:14px 20px 20px">
+      <div style="display:flex;flex-direction:column;gap:0">
+        ${groupName  ? row('Grupo',       groupName)                        : ''}
+        ${a.currency !== 'BRL' ? row('Moeda', a.currency)                  : ''}
+        ${bankInfo   ? row('Banco',       bankInfo)                         : ''}
+        ${cardInfo   ? row('Cartão',      cardInfo)                         : ''}
+        ${ibanLine   ? row('IBAN / Routing', ibanLine, true)                : ''}
+        ${swiftLine  ? row('SWIFT/BIC',   swiftLine, true)                  : ''}
+        ${dueLine    ? row('Vencimento',  dueLine)                          : ''}
+        ${bestLine   ? row('Melhor compra', bestLine.replace('Melhor compra: ','')) : ''}
+      </div>
+      ${a.notes ? `<div style="margin-top:10px;padding:9px 11px;background:var(--surface2);border-radius:8px;font-size:.8rem;color:var(--text2);line-height:1.5">${esc(a.notes)}</div>` : ''}
+
+      <!-- Actions -->
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="closeModal('favAccModal');goToAccountTransactions('${a.id}')"
+          style="flex:1;padding:9px 0;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);font-size:.8rem;font-weight:700;color:var(--text2);cursor:pointer;transition:background .15s"
+          onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'">
+          📋 Ver Transações
+        </button>
+        <button onclick="closeModal('favAccModal');openAccountModal('${a.id}')"
+          style="flex:1;padding:9px 0;border-radius:9px;border:none;background:${color};font-size:.8rem;font-weight:700;color:#fff;cursor:pointer;opacity:.9;transition:opacity .15s"
+          onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.9'">
+          ✏️ Editar Conta
+        </button>
+      </div>
+    </div>`;
+
+  // Reuse or create modal
+  let modal = document.getElementById('favAccModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'favAccModal';
+    modal.className = 'modal-overlay';
+    modal.onclick = e => { if (e.target === modal) closeModal('favAccModal'); };
+    modal.innerHTML = '<div class="modal" style="max-width:400px;padding:0;overflow:hidden"><div class="modal-handle"></div><div id="favAccModalBody"></div></div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('favAccModalBody').innerHTML = content;
+  openModal('favAccModal');
+}
+window._openFavAccountModal = _openFavAccountModal;
+
 // ── Dashboard Forecast 90d ─────────────────────────────────────────────────
 let _dashForecastChart = null;
 let _dashForecastTimer = null;
@@ -2443,8 +2552,185 @@ async function _openPatrimonioModal() {
 window._openPatrimonioModal = _openPatrimonioModal;
 
 /* ══════════════════════════════════════════════════════════════════
+   DASHBOARD — Card de Orçamentos
+══════════════════════════════════════════════════════════════════ */
+
+let _dashBudgetChart = null;
+
+async function _loadDashBudgetsCard() {
+  const card = document.getElementById('dashCardBudgets');
+  const body = document.getElementById('dashBudgetsBody');
+  if (!card || !body) return;
+
+  const prefs = _dashGetPrefs();
+  if (prefs['budgets'] === false) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando orçamentos…</div>';
+
+  try {
+    const now = new Date();
+    const y   = now.getFullYear();
+    const m   = String(now.getMonth() + 1).padStart(2, '0');
+    const monthStr = `${y}-${m}-01`;
+
+    // Fetch current month budgets with category info
+    const { data: budgets, error: be } = await famQ(
+      sb.from('budgets')
+        .select('id,amount,category_id,notes,categories(id,name,icon,color)')
+    ).or(`month.eq.${monthStr},budget_type.eq.annual`).eq('status', 'active').catch(() => ({ data: null, error: null }));
+
+    // Fallback: try without status filter (old schema)
+    let bRows = budgets;
+    if (!bRows) {
+      const { data: b2 } = await famQ(
+        sb.from('budgets').select('id,amount,category_id,categories(id,name,icon,color)')
+      ).gte('month', monthStr).lte('month', monthStr);
+      bRows = b2;
+    }
+    if (!bRows?.length) {
+      body.innerHTML = `
+        <div style="text-align:center;padding:20px 16px;color:var(--muted)">
+          <div style="font-size:1.8rem;margin-bottom:6px">🎯</div>
+          <div style="font-size:.83rem;font-weight:600">Nenhum orçamento para este mês</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('budgets')">Criar orçamento</button>
+        </div>`;
+      return;
+    }
+
+    // Fetch spending per category this month
+    const { data: txRows } = await famQ(
+      sb.from('transactions').select('category_id,amount')
+    ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-31`).lt('amount', 0).eq('status', 'confirmed');
+
+    const spentBycat = {};
+    (txRows || []).forEach(t => {
+      if (!t.category_id) return;
+      spentBycat[t.category_id] = (spentBycat[t.category_id] || 0) + Math.abs(parseFloat(t.amount) || 0);
+    });
+
+    // Sort: most exceeded first, then by % used desc
+    const enriched = bRows.map(b => {
+      const limit   = parseFloat(b.amount) || 0;
+      const spent   = spentBycat[b.category_id] || 0;
+      const pct     = limit > 0 ? (spent / limit) * 100 : 0;
+      const over    = spent > limit;
+      return { ...b, limit, spent, pct, over };
+    }).sort((a, b) => (b.over - a.over) || (b.pct - a.pct));
+
+    const totalLimit  = enriched.reduce((s, b) => s + b.limit, 0);
+    const totalSpent  = enriched.reduce((s, b) => s + b.spent, 0);
+    const overallPct  = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
+    const overCount   = enriched.filter(b => b.over).length;
+
+    // Donut chart data
+    const chartLabels = enriched.slice(0, 8).map(b => b.categories?.name || 'Sem categoria');
+    const chartSpent  = enriched.slice(0, 8).map(b => b.spent);
+    const chartColors = enriched.slice(0, 8).map((b, i) => {
+      const base = b.categories?.color || ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669','#d97706','#0891b2'][i % 8];
+      return b.over ? '#dc2626' : base;
+    });
+
+    // Build HTML
+    let html = `
+      <!-- KPI summary -->
+      <div style="display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
+          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Gasto</div>
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${totalSpent>totalLimit?'var(--red)':'var(--text)'}">${dashFmt(totalSpent,'BRL')}</div>
+          <div style="font-size:.68rem;color:var(--muted)">de ${dashFmt(totalLimit,'BRL')}</div>
+        </div>
+        <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
+          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Uso geral</div>
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${overallPct>=90?'var(--red)':overallPct>=70?'#b45309':'var(--accent)'}">${overallPct.toFixed(0)}%</div>
+          <div style="font-size:.68rem;color:var(--muted)">do orçamento total</div>
+        </div>
+        <div style="flex:1;padding:12px 16px">
+          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Estourados</div>
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${overCount>0?'var(--red)':'var(--accent)'}">${overCount}</div>
+          <div style="font-size:.68rem;color:var(--muted)">de ${enriched.length} categoria${enriched.length!==1?'s':''}</div>
+        </div>
+      </div>
+
+      <!-- Chart + bars side-by-side on wider screens -->
+      <div style="display:flex;gap:0;align-items:flex-start">
+        <div style="flex:0 0 120px;padding:12px 8px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <canvas id="dashBudgetDonut" width="100" height="100" style="max-width:100px;max-height:100px"></canvas>
+          <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:2px">por categoria</div>
+        </div>
+        <div style="flex:1;padding:10px 14px 10px 6px;display:flex;flex-direction:column;gap:7px">`;
+
+    enriched.slice(0, 6).forEach(b => {
+      const icon    = b.categories?.icon || '📦';
+      const name    = b.categories?.name || 'Sem categoria';
+      const color   = b.over ? '#dc2626' : (b.categories?.color || 'var(--accent)');
+      const barPct  = Math.min(b.pct, 100);
+      const overage = b.over ? `+${dashFmt(b.spent - b.limit,'BRL')}` : '';
+      html += `
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
+                <span>${icon}</span>${esc(name)}${b.over?'<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px;margin-left:3px">+${esc(overage)}</span>':''}
+              </span>
+              <span style="font-size:.7rem;color:${b.pct>=90?'var(--red)':'var(--muted)'};white-space:nowrap">${b.pct.toFixed(0)}%</span>
+            </div>
+            <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${barPct}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:2px">
+              <span style="font-size:.62rem;color:var(--muted)">${dashFmt(b.spent,'BRL')}</span>
+              <span style="font-size:.62rem;color:var(--muted)">${dashFmt(b.limit,'BRL')}</span>
+            </div>
+          </div>`;
+    });
+
+    if (enriched.length > 6) {
+      html += `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:4px 0">… e mais ${enriched.length - 6} categoria${enriched.length-6!==1?'s':''}</div>`;
+    }
+
+    html += `
+        </div>
+      </div>
+      <div style="padding:6px 14px 10px;text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver orçamentos completos →</button>
+      </div>`;
+
+    body.innerHTML = html;
+
+    // Render donut chart
+    const donutCanvas = document.getElementById('dashBudgetDonut');
+    if (donutCanvas && typeof Chart !== 'undefined' && chartSpent.some(v => v > 0)) {
+      if (_dashBudgetChart) { try { _dashBudgetChart.destroy(); } catch(_) {} }
+      _dashBudgetChart = new Chart(donutCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: chartLabels,
+          datasets: [{ data: chartSpent, backgroundColor: chartColors, borderColor: 'var(--surface)', borderWidth: 2 }],
+        },
+        options: {
+          responsive: false,
+          cutout: '62%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${dashFmt(ctx.parsed,'BRL')}`,
+              },
+            },
+          },
+        },
+      });
+    }
+  } catch(e) {
+    body.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;font-size:.8rem">⚠️ ${esc(e.message)}</div>`;
+  }
+}
+window._loadDashBudgetsCard = _loadDashBudgetsCard;
+
+/* ══════════════════════════════════════════════════════════════════
    DASHBOARD — Card de Investimentos
 ══════════════════════════════════════════════════════════════════ */
+
+let _dashInvChart = null;
 
 async function _loadDashInvestmentsCard() {
   const card = document.getElementById('dashCardInvestments');
@@ -2517,30 +2803,77 @@ async function _loadDashInvestmentsCard() {
         </div>
       </div>`;
 
-    // Barras de distribuição por tipo
-    html += `<div style="padding:12px 16px">`;
-    const sorted = Object.entries(byType).sort(([,a],[,b]) => b.total - a.total);
-    sorted.forEach(([k, grp]) => {
-      const pct = totalMV > 0 ? (grp.total / totalMV * 100) : 0;
+    // Chart + bars layout
+    const sortedTypes = Object.entries(byType).sort(([,a],[,b]) => b.total - a.total);
+    const typeColors  = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669','#d97706','#0891b2','#be185d','#0369a1'];
+
+    html += `
+      <div style="display:flex;gap:0;align-items:flex-start">
+        <div style="flex:0 0 120px;padding:12px 8px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <canvas id="dashInvDonut" width="100" height="100" style="max-width:100px;max-height:100px"></canvas>
+          <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:2px">por tipo</div>
+        </div>
+        <div style="flex:1;padding:10px 14px 8px 6px;display:flex;flex-direction:column;gap:7px">`;
+
+    sortedTypes.slice(0, 6).forEach(([k, grp], i) => {
+      const pct   = totalMV > 0 ? (grp.total / totalMV * 100) : 0;
+      const color = typeColors[i % typeColors.length];
       html += `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <span style="font-size:.9rem;flex-shrink:0">${typeEmoji[k]||'📌'}</span>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-              <span style="font-size:.78rem;font-weight:600;color:var(--text)">${typeLabel[k]||k}</span>
-              <span style="font-size:.75rem;color:var(--muted)">${dashFmt(grp.total,'BRL')} · ${pct.toFixed(1)}%</span>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
+                <span>${typeEmoji[k]||'📌'}</span>${typeLabel[k]||k}
+              </span>
+              <span style="font-size:.7rem;color:var(--muted);white-space:nowrap">${pct.toFixed(1)}%</span>
             </div>
             <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
-              <div style="height:100%;width:${Math.min(pct,100)}%;background:var(--accent);border-radius:3px;transition:width .4s ease"></div>
+              <div style="height:100%;width:${Math.min(pct,100)}%;background:${color};border-radius:3px;transition:width .4s ease"></div>
             </div>
-          </div>
-        </div>`;
+            <div style="display:flex;justify-content:space-between;margin-top:2px">
+              <span style="font-size:.62rem;color:var(--muted)">${grp.count} ativo${grp.count!==1?'s':''}</span>
+              <span style="font-size:.62rem;color:var(--muted)">${dashFmt(grp.total,'BRL')}</span>
+            </div>
+          </div>`;
     });
-    html += `<div style="text-align:center;margin-top:8px">
-      <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira completa →</button>
-    </div></div>`;
+
+    html += `
+        </div>
+      </div>
+      <div style="padding:6px 14px 10px;text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira completa →</button>
+      </div>`;
 
     body.innerHTML = html;
+
+    // Render donut
+    const invCanvas = document.getElementById('dashInvDonut');
+    if (invCanvas && typeof Chart !== 'undefined' && sortedTypes.length) {
+      if (_dashInvChart) { try { _dashInvChart.destroy(); } catch(_) {} }
+      _dashInvChart = new Chart(invCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: sortedTypes.slice(0,6).map(([k]) => typeLabel[k]||k),
+          datasets: [{
+            data: sortedTypes.slice(0,6).map(([,g]) => g.total),
+            backgroundColor: sortedTypes.slice(0,6).map((_,i) => typeColors[i%typeColors.length]),
+            borderColor: 'var(--surface)',
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: false,
+          cutout: '62%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${dashFmt(ctx.parsed,'BRL')}`,
+              },
+            },
+          },
+        },
+      });
+    }
   } catch(e) {
     body.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;font-size:.8rem">⚠️ Erro ao carregar: ${esc(e.message)}</div>`;
   }
