@@ -253,6 +253,30 @@
 #settingsNavTopbar.admin-visible {
   display: flex !important;
 }
+
+/* ══ MOBILE TOPBAR — ocultar botões administrativos ══════════════
+   Esta regra DEVE ficar neste <style> inline (depois de .topbar-icon-btn { display:flex !important })
+   para ganhar na cascata. Mesma especificidade + !important = source order decide.
+   IDs (#importNav) têm especificidade maior que classes (.topbar-icon-btn),
+   mas ambos têm !important, então source order é decisivo.
+   Colocar aqui garante que este bloco venha DEPOIS e vença.
+══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Esconder admin-only e utilitários da topbar no mobile */
+  #importNav       { display: none !important; }
+  #auditNavTopbar  { display: none !important; }
+  /* telemetry e settings já estão acima sem media query, mas reforçar */
+  #telemetryNavTopbar { display: none !important; }
+  #settingsNavTopbar  { display: none !important; }
+  /* Ajustar gap da quick-actions sem os botões extras */
+  .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
+  /* Garantir que topbar-actions não transborde */
+  .topbar-actions {
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    max-width: calc(100vw - 110px) !important;
+  }
+}
 </style>
 </head>
 <body class="app-shell">
@@ -592,7 +616,7 @@
       </div>
       
 
-      <div class="topbar-quick-actions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
+      <div class="topbar-quick-actions" id="topbarQuickActions" style="display:flex;align-items:center;gap:6px;margin-right:6px">
         <!-- Importar -->
         <button class="topbar-icon-btn" id="importNav"       data-nav="import" onclick="navigate('import')" title="Importar">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
