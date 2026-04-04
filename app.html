@@ -286,7 +286,7 @@
 <div class="auth-screen" id="authScreen" style="display:none">
   <div class="auth-card">
     <div class="auth-logo">
-      <img id="authLogoImg" src="logo_glow_soft.png" alt="FinTrack" width="1200" height="520" decoding="async" fetchpriority="high" style="max-width:200px;width:100%;height:auto;object-fit:contain" onerror="this.style.display='none'">
+      <img id="authLogoImg" src="logo.jpg" alt="FinTrack" width="1200" height="520" decoding="async" fetchpriority="high" style="max-width:200px;width:100%;height:auto;object-fit:contain" onerror="this.style.display='none'">
     </div>
     <div class="auth-title">Family FinTrack</div>
     <div class="auth-sub" id="authSubtitle">Família inteligente, Finanças sob controle</div>
@@ -404,6 +404,37 @@
   </div>
 </div>
 
+<div class="pin-screen" id="pinScreen" style="display:none">
+  <div class="pin-card">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:2.2rem;margin-bottom:6px">🔐</div>
+      <div class="pin-title">Family FinTrack</div>
+      <div class="pin-subtitle">Digite o Masterpin para acessar</div>
+    </div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+      <div class="pin-dot" id="pd4"></div>
+      <div class="pin-dot" id="pd5"></div>
+    </div>
+    <div class="pin-keypad" id="pinKeypad">
+      <button class="pin-key" onclick="pinKey(1)">1</button>
+      <button class="pin-key" onclick="pinKey(2)">2</button>
+      <button class="pin-key" onclick="pinKey(3)">3</button>
+      <button class="pin-key" onclick="pinKey(4)">4</button>
+      <button class="pin-key" onclick="pinKey(5)">5</button>
+      <button class="pin-key" onclick="pinKey(6)">6</button>
+      <button class="pin-key" onclick="pinKey(7)">7</button>
+      <button class="pin-key" onclick="pinKey(8)">8</button>
+      <button class="pin-key" onclick="pinKey(9)">9</button>
+      <button class="pin-key zero" onclick="pinKey(0)">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="pin-error-msg" id="pinErrorMsg"></div>
+  </div>
+</div>
 
 <!-- SUPABASE SETUP -->
 <div class="setup-screen" id="setupScreen" style="display:none">
@@ -429,7 +460,7 @@
   <div class="sb-header">
     <div class="sb-logo-wrap">
       <img id="sidebarLogoImg"
-           src="logo_glow_soft.png"
+           src="logo.jpg"
            alt="Family FinTrack"
            class="sb-logo-img"
            style="width:100%;height:100%;object-fit:contain;display:block;filter:brightness(0) invert(1)">
@@ -5002,46 +5033,40 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- Right panel: form -->
     <div class="lgn-form-panel">
       <div class="lgn-form-inner">
-        <!-- Mobile logo (only shown on small screens) -->
-        <div class="lgn-mobile-logo">
-          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Logo" style="height:60px;object-fit:contain">
+        <!-- Logo — always visible, bigger on desktop via CSS -->
+        <div class="lgn-logo-wrap">
+          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
         </div>
         <div class="lgn-form-title">Bem-vindo de volta</div>
         <div class="lgn-form-sub">Entre com sua conta para continuar</div>
       <div id="loginFormArea">
 
-
-
-        <!-- Password login panel — Fintech redesign -->
+        <!-- Password login panel -->
         <div id="loginPanelPassword">
           <div class="lgn-field-group">
             <label class="lgn-label" data-i18n="auth.label_email">E-mail</label>
-            <div class="lgn-input-wrap">
-              <svg class="lgn-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              <input type="email" id="loginEmail" class="lgn-input" placeholder="seu@email.com" autocomplete="email"
-                onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
-            </div>
+            <input type="email" id="loginEmail" class="lgn-input" placeholder="seu@email.com" autocomplete="email"
+              onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
           </div>
           <div class="lgn-field-group">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div class="lgn-field-row">
               <label class="lgn-label" data-i18n="auth.label_password">Senha</label>
-              <button onclick="showForgotPwdForm()" class="lgn-link" data-i18n="auth.forgot_password">Esqueci minha senha</button>
+              <button onclick="showForgotPwdForm()" class="lgn-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
             </div>
             <div class="lgn-input-wrap">
-              <svg class="lgn-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <input type="password" id="loginPassword" class="lgn-input" placeholder="••••••••" autocomplete="current-password"
-                onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:44px">
+              <input type="password" id="loginPassword" class="lgn-input lgn-input--pwd" placeholder="••••••••" autocomplete="current-password"
+                onkeydown="if(event.key==='Enter')doLogin()">
               <button onclick="toggleLoginPwd()" class="lgn-pwd-toggle" title="Mostrar/ocultar senha">
-                <svg id="loginPwdEyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="loginPwdEyeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </button>
             </div>
           </div>
-          <div style="display:flex;align-items:center;margin-bottom:20px;gap:9px">
+          <div class="lgn-remember-row">
             <div class="lgn-checkbox-wrap">
               <input type="checkbox" id="rememberMe" class="lgn-checkbox">
               <div class="lgn-checkbox-custom"></div>
             </div>
-            <label for="rememberMe" class="lgn-checkbox-label" data-i18n="auth.remember_me">Salvar meu usuário neste dispositivo</label>
+            <label for="rememberMe" class="lgn-checkbox-label" data-i18n="auth.remember_me">Lembrar neste dispositivo</label>
           </div>
           <button onclick="doLogin()" id="loginBtn" class="lgn-btn-primary">
             <span data-i18n="auth.btn_enter">Entrar</span>
@@ -5064,7 +5089,6 @@ Se você não solicitou isso, ignore este e-mail.`,
             onmouseover="this.style.background='#2a6049';this.style.color='#fff'"
             onmouseout="this.style.background='transparent';this.style.color='#2a6049'"
             data-i18n="auth.request_access">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
             Solicitar acesso
           </button>
         </div>
@@ -5072,7 +5096,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- ══ 2FA VERIFICATION AREA ══ -->
       <div id="twoFaArea" style="display:none">
-        <div class="twofa-title">🔐 Verificação em Dois Fatores</div>
+        <div class="twofa-title">Verificação em Dois Fatores</div>
         <div class="twofa-sub" id="twoFaSub">
           Enviamos um código de 6 dígitos para o seu e-mail.<br>
           Insira-o abaixo para continuar.
@@ -5085,7 +5109,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div class="twofa-actions">
           <button onclick="doVerify2FA()" id="twoFaVerifyBtn"
             style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit">
-            ✓ Verificar
+            Verificar
           </button>
           <div class="twofa-trust-row">
             <input type="checkbox" id="twoFaTrust" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
@@ -5103,7 +5127,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- Forgot password form -->
       <div id="forgotPwdArea" style="display:none">
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:8px">🔑 Recuperar Senha</div>
+        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:8px">Recuperar Senha</div>
         <div style="font-size:.82rem;color:#6b7280;text-align:center;margin-bottom:20px">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
         <div class="form-group" style="margin-bottom:20px">
           <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
@@ -5125,8 +5149,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <!-- Password recovery form (shown after clicking reset link from email) -->
       <div id="recoveryPwdArea" style="display:none">
         <div style="text-align:center;margin-bottom:16px">
-          <div style="font-size:2rem;margin-bottom:8px">🔐</div>
-          <div style="font-size:1rem;font-weight:700;color:#1e5c42">Definir Nova Senha</div>
+          <div style="font-size:1rem;font-weight:700;color:#1e5c42;margin-bottom:8px">Definir Nova Senha</div>
           <div style="font-size:.8rem;color:#6b7280;margin-top:4px">Escolha uma senha segura para sua conta.</div>
         </div>
         <div class="form-group" style="margin-bottom:12px">
@@ -5152,7 +5175,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- Register form -->
       <div id="registerFormArea" style="display:none">
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:16px">📝 Solicitar Acesso</div>
+        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:16px">Solicitar Acesso</div>
         <div class="form-group" style="margin-bottom:12px">
           <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nome completo</label>
           <input type="text" id="regName" placeholder="Seu nome"
@@ -5179,7 +5202,7 @@ Se você não solicitou isso, ignore este e-mail.`,
            >
         </div>
         <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">🌐 <span data-i18n="settings.language">Idioma preferido</span></label>
+          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block"><span data-i18n="settings.language">Idioma preferido</span></label>
           <select id="regLanguage"
             style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box;background:#fff">
             <option value="pt">🇧🇷 Português</option>
@@ -5200,15 +5223,14 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- Pending approval screen -->
       <div id="pendingApprovalArea" style="display:none;text-align:center">
-        <div style="font-size:2.5rem;margin-bottom:12px">⏳</div>
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;margin-bottom:8px">Aguardando aprovação</div>
+        <div style="font-size:1rem;font-weight:700;color:#1e5c42;margin-bottom:12px">Aguardando aprovação</div>
         <div style="font-size:.82rem;color:#6b7280;margin-bottom:20px">Sua solicitação foi enviada. Um administrador precisa aprovar seu acesso antes que você possa entrar.</div>
         <button onclick="showLoginFormArea()" style="background:none;border:1.5px solid #2a6049;color:#2a6049;padding:10px 24px;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer">Voltar ao login</button>
       </div>
       <!-- Change password form (shown on first login) -->
       <div id="changePwdArea" style="display:none">
         <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.82rem;color:#92400e">
-          🔐 Por segurança, defina uma nova senha no seu primeiro acesso.
+          Por segurança, defina uma nova senha no seu primeiro acesso.
         </div>
         <div class="form-group" style="margin-bottom:12px">
           <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nova Senha</label>
