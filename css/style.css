@@ -24008,6 +24008,45 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   flex-shrink: 0;
 }
 
+
+/* Account modal: evitar repaint lateral do footer no iOS/Safari */
+#accountModal:not(.open) {
+  display: none;
+}
+#accountModal.open {
+  display: flex;
+}
+
+.acc-modal-actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.acc-modal-actions-bar .btn {
+  min-width: 120px;
+}
+
+/* Footer legado removido do fluxo neste modal específico */
+#accountModal .acc-modal-footer {
+  display: none !important;
+}
+
+@media (max-width: 599px) {
+  .acc-modal-actions-bar {
+    justify-content: stretch;
+  }
+  .acc-modal-actions-bar .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
 /* Icon preview inside hero */
 #accModalHeroIcon {
   width: 42px; height: 42px;
@@ -24097,32 +24136,4 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   color: var(--muted);
   font-style: italic;
   line-height: 1.4;
-}
-
-
-/* ===== PATCH: account modal leak guard + robust mobile login ===== */
-#accountModal {
-  display: none;
-}
-#accountModal.open {
-  display: flex;
-}
-#accountModal .acc-modal-sheet {
-  transform: translateY(24px);
-  transition: transform .22s cubic-bezier(.4,0,.2,1);
-}
-#accountModal.open .acc-modal-sheet {
-  transform: translateY(0);
-}
-
-@media (max-width: 899px), (hover: none) and (pointer: coarse), (orientation: portrait) {
-  #loginScreen .lgn-brand-panel {
-    display: none !important;
-    width: 0 !important;
-    padding: 0 !important;
-  }
-  #loginScreen .lgn-form-panel {
-    width: 100% !important;
-    flex: 1 1 auto;
-  }
 }
