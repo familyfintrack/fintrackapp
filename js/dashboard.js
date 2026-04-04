@@ -1024,10 +1024,12 @@ function _dashCustomSave() {
   _dashApplyPrefs(prefs);
   if (prefs.favcats !== false) _renderDashFavCategories(_lastDashIncome, _lastDashExpense);
   // Reload optional cards that were just switched ON (content would still say "Carregando…")
-  if (prefs.budgets     !== false && existingPrefs.budgets     === false) _loadDashBudgetsCard().catch(()=>{});
-  if (prefs.investments !== false && existingPrefs.investments === false) _loadDashInvestmentsCard().catch(()=>{});
-  if (prefs.dreams      !== false && existingPrefs.dreams      === false) _loadDashDreamsCard().catch(()=>{});
-  if (prefs.forecast90  !== false && existingPrefs.forecast90  === false) _renderDashForecast().catch(()=>{});
+  // Treat undefined as the card's default: optional=false, mandatory=true
+  const _wasOff = (id, optional) => { const v = existingPrefs[id]; return v === false || (v === undefined && optional); };
+  if (prefs.budgets     !== false && _wasOff('budgets',     true))  _loadDashBudgetsCard().catch(()=>{});
+  if (prefs.investments !== false && _wasOff('investments', true))  _loadDashInvestmentsCard().catch(()=>{});
+  if (prefs.dreams      !== false && _wasOff('dreams',      true))  _loadDashDreamsCard().catch(()=>{});
+  if (prefs.forecast90  !== false && _wasOff('forecast90',  false)) _renderDashForecast().catch(()=>{});
   closeModal('dashCustomModal');
   toast('Preferências do dashboard salvas!', 'success');
 }
@@ -1487,7 +1489,8 @@ function _openFavAccountModal(accountId) {
     modal.innerHTML = '<div class="modal" style="max-width:400px;padding:0;overflow:hidden"><div class="modal-handle"></div><div id="favAccModalBody"></div></div>';
     document.body.appendChild(modal);
   }
-  document.getElementById('favAccModalBody').innerHTML = content;
+  const _favBody = document.getElementById('favAccModalBody');
+  if (_favBody) _favBody.innerHTML = content;
   openModal('favAccModal');
 }
 window._openFavAccountModal = _openFavAccountModal;
@@ -1755,6 +1758,7 @@ async function _renderDashForecast() {
           borderColor: 'rgba(125,194,66,0.35)',
           borderWidth: 1,
           padding: { x: 12, y: 10 },
+          filter: item => !item.dataset.label?.startsWith('_marker_'),
           callbacks: {
             // ── Title: data formatada + dia da semana + contagem de transações ──
             title(items) {
@@ -1878,7 +1882,9 @@ async function _renderDashForecast() {
       },
       onClick(evt, elements) {
         if (!elements.length) return;
-        const idx  = elements[0].index;
+        // Skip if click landed on a scatter marker — find first line dataset element
+        const el = elements.find(e => !datasets[e.datasetIndex]?.label?.startsWith('_marker_')) || elements[0];
+        const idx  = el.index;
         const date = allDates[idx];
         if (date) _dashForecastDrill(date, _fcDailyData[date]);
       },
@@ -2586,7 +2592,8 @@ async function _loadDashBudgetsCard() {
     ).order('amount', { ascending: false });
 
     const bRows = (allBudgets || []).filter(b => {
-      if (b.budget_type === 'annual') return b.year === y;
+      // year column may come as string or number depending on DB driver
+      if (b.budget_type === 'annual') return String(b.year) === String(y);
       const bMonth = (b.month || '').slice(0, 7);
       return bMonth === `${y}-${m}`;
     });
@@ -2601,25 +2608,41 @@ async function _loadDashBudgetsCard() {
       return;
     }
 
-    // Fetch spending per category this month (with brl_amount for multi-currency accuracy)
-    const { data: txRows } = await famQ(
+    const hasAnnual = bRows.some(b => b.budget_type === 'annual');
+
+    // Fetch spending: current month for monthly budgets; YTD for annual budgets
+    // We run two queries in parallel when annual budgets exist
+    const txMonthQ = famQ(
       sb.from('transactions').select('category_id,amount,brl_amount,currency')
     ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-${String(lastDay).padStart(2,'0')}`).lt('amount', 0).eq('status', 'confirmed');
 
-    const spentBycat = {};
-    (txRows || []).forEach(t => {
-      if (!t.category_id) return;
-      // Use brl_amount if available, otherwise convert via toBRL
-      const amtBRL = t.brl_amount != null
-        ? Math.abs(t.brl_amount)
-        : (typeof toBRL === 'function' ? toBRL(Math.abs(parseFloat(t.amount)||0), t.currency||'BRL') : Math.abs(parseFloat(t.amount)||0));
-      spentBycat[t.category_id] = (spentBycat[t.category_id] || 0) + amtBRL;
-    });
+    const txYtdQ = hasAnnual
+      ? famQ(sb.from('transactions').select('category_id,amount,brl_amount,currency'))
+          .gte('date', `${y}-01-01`).lte('date', `${y}-12-31`).lt('amount', 0).eq('status', 'confirmed')
+      : Promise.resolve({ data: [] });
+
+    const [{ data: txMonth }, { data: txYtd }] = await Promise.all([txMonthQ, txYtdQ]);
+
+    const _sumBycat = (rows) => {
+      const map = {};
+      (rows || []).forEach(t => {
+        if (!t.category_id) return;
+        const amtBRL = t.brl_amount != null
+          ? Math.abs(t.brl_amount)
+          : (typeof toBRL === 'function' ? toBRL(Math.abs(parseFloat(t.amount)||0), t.currency||'BRL') : Math.abs(parseFloat(t.amount)||0));
+        map[t.category_id] = (map[t.category_id] || 0) + amtBRL;
+      });
+      return map;
+    };
+    const spentMonthBycat = _sumBycat(txMonth);
+    const spentYtdBycat   = hasAnnual ? _sumBycat(txYtd) : spentMonthBycat;
 
     // Sort: most exceeded first, then by % used desc
+    // Annual budgets use YTD spending; monthly use current-month spending
     const enriched = bRows.map(b => {
       const limit   = parseFloat(b.amount) || 0;
-      const spent   = spentBycat[b.category_id] || 0;
+      const spentMap = b.budget_type === 'annual' ? spentYtdBycat : spentMonthBycat;
+      const spent   = spentMap[b.category_id] || 0;
       const pct     = limit > 0 ? (spent / limit) * 100 : 0;
       const over    = spent > limit;
       return { ...b, limit, spent, pct, over };
@@ -2650,7 +2673,7 @@ async function _loadDashBudgetsCard() {
         <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
           <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Uso geral</div>
           <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${overallPct>=90?'var(--red)':overallPct>=70?'#b45309':'var(--accent)'}">${overallPct.toFixed(0)}%</div>
-          <div style="font-size:.68rem;color:var(--muted)">do orçamento total</div>
+          <div style="font-size:.68rem;color:var(--muted)">${hasAnnual?'incl. YTD':'do mês'}</div>
         </div>
         <div style="flex:1;padding:12px 16px">
           <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Estourados</div>
@@ -2677,7 +2700,7 @@ async function _loadDashBudgetsCard() {
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
               <span style="font-size:.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
-                <span>${icon}</span>${esc(name)}${b.over?'<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px;margin-left:3px">+${esc(overage)}</span>':''}
+                <span>${icon}</span>${esc(name)}${b.budget_type==='annual'?'<span style="font-size:.58rem;background:rgba(29,78,216,.1);color:#1d4ed8;border-radius:4px;padding:1px 4px;margin-left:3px">YTD</span>':''}${b.over?'<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px;margin-left:2px">${esc(overage)}</span>':''}
               </span>
               <span style="font-size:.7rem;color:${b.pct>=90?'var(--red)':'var(--muted)'};white-space:nowrap">${b.pct.toFixed(0)}%</span>
             </div>
@@ -2702,12 +2725,13 @@ async function _loadDashBudgetsCard() {
         <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver orçamentos completos →</button>
       </div>`;
 
+    // Destroy previous chart BEFORE replacing innerHTML (avoids "canvas in use" error)
+    if (_dashBudgetChart) { try { _dashBudgetChart.destroy(); } catch(_) {} _dashBudgetChart = null; }
     body.innerHTML = html;
 
     // Render donut chart
     const donutCanvas = document.getElementById('dashBudgetDonut');
     if (donutCanvas && typeof Chart !== 'undefined' && chartSpent.some(v => v > 0)) {
-      if (_dashBudgetChart) { try { _dashBudgetChart.destroy(); } catch(_) {} }
       _dashBudgetChart = new Chart(donutCanvas, {
         type: 'doughnut',
         data: {
@@ -2851,12 +2875,13 @@ async function _loadDashInvestmentsCard() {
         <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira completa →</button>
       </div>`;
 
+    // Destroy previous chart BEFORE replacing innerHTML
+    if (_dashInvChart) { try { _dashInvChart.destroy(); } catch(_) {} _dashInvChart = null; }
     body.innerHTML = html;
 
     // Render donut
     const invCanvas = document.getElementById('dashInvDonut');
     if (invCanvas && typeof Chart !== 'undefined' && sortedTypes.length) {
-      if (_dashInvChart) { try { _dashInvChart.destroy(); } catch(_) {} }
       _dashInvChart = new Chart(invCanvas, {
         type: 'doughnut',
         data: {

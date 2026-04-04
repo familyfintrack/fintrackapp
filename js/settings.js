@@ -2958,11 +2958,11 @@ function _toggle2FAPanel(enabled) {
 
 // ── Carregar estado 2FA atual no modal de perfil ──
 function _load2FAIntoProfile() {
-  if (!currentUser) return;
-  // Buscar do banco para ter o estado mais recente
+  if (!currentUser?.email) return;
+  // Always query by email — currentUser.id is auth.uid, NOT app_users.id
   sb.from('app_users')
     .select('two_fa_enabled, two_fa_channel, telegram_chat_id, email')
-    .eq('id', currentUser.app_user_id || currentUser.id)
+    .eq('email', currentUser.email)
     .maybeSingle()
     .then(({ data }) => {
       if (!data) return;

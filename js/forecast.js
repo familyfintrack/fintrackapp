@@ -531,6 +531,7 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
           borderColor: 'rgba(125,194,66,0.3)',
           borderWidth: 1,
           padding: { x:11, y:9 },
+          filter: item => !item.dataset.label?.startsWith('_marker_'),
           callbacks: {
             title(items) {
               const d = items[0]?.label || '';
@@ -579,7 +580,9 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
       },
       onClick(evt, elements) {
         if (!elements.length) return;
-        const idx  = elements[0].index;
+        // Skip scatter marker elements — use first line dataset element
+        const el   = elements.find(e => !datasets[e.datasetIndex]?.label?.startsWith('_marker_')) || elements[0];
+        const idx  = el.index;
         const date = allDates[idx];
         if (!date) return;
         const txsOnDay = allItems.filter(t => t.date === date);

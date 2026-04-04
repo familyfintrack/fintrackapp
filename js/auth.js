@@ -665,7 +665,7 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Verificando...';
   try {
     if (!sb && typeof ensureSupabaseClient === 'function') sb = ensureSupabaseClient();
-    if (!sb) { showLoginErr('Sem conexão com o servidor. Verifique a configuração.'); btn.disabled = false; btn.textContent = 'Entrar'; return; }
+    if (!sb) { showLoginErr('Sem conexão com o servidor. Verifique a configuração.'); btn.disabled = false; btn.textContent = 'Entrar'; _loginInProgress = false; return; }
     const { data: authData, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
       const msg = (error.message || '').toLowerCase().includes('confirm')
@@ -1549,7 +1549,14 @@ async function saveMyProfile() {
                        || notifyTxEmail   !== !!(currentUser?.notify_tx_email)
                        || notifyTxWa      !== !!(currentUser?.notify_tx_wa)
                        || notifyTxTg      !== !!(currentUser?.notify_tx_tg);
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged && !notifyChanged) {
+
+  // 2FA state — detect change to avoid skipping when it's the only thing modified
+  const twoFaEnabled  = !!(document.getElementById('myProfile2faEnabled')?.checked);
+  const twoFaChannel  = document.getElementById('twoFaChanTelegram')?.checked ? 'telegram' : 'email';
+  const twoFaChanged  = twoFaEnabled !== !!(currentUser?.two_fa_enabled)
+                     || twoFaChannel !== (currentUser?.two_fa_channel || 'email');
+
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged && !notifyChanged && !twoFaChanged) {
     closeModal('myProfileModal');
     return;
   }
@@ -1629,6 +1636,9 @@ async function saveMyProfile() {
     if (appRow) {
       try {
         if (typeof _save2FASettings === 'function') await _save2FASettings(appRow.id);
+        // Sync currentUser so future change-detection works correctly
+        currentUser.two_fa_enabled = twoFaEnabled;
+        currentUser.two_fa_channel = twoFaChannel;
       } catch(e2fa) {
         console.warn('[2FA save]', e2fa.message);
       }
