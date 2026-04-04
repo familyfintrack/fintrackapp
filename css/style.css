@@ -1,15 +1,24 @@
-/* ===== FIX FINAL: remove footer lateral do accountModal ===== */
+/* ===== FIX FINAL DEFINITIVO ===== */
 
-#accountModal .acc-modal-footer {
+/* REMOVE COMPLETAMENTE O MODAL DO DOM VISUAL */
+#accountModal {
   display: none !important;
 }
 
-#accountModal .acc-modal-sheet {
-  display: block;
-  width: 100%;
-  max-width: 100%;
+/* Só existe quando aberto */
+#accountModal.open {
+  display: flex !important;
 }
 
-#accountModal:not(.open){
+/* Garante que o conteúdo não vaze nem seja pintado */
+#accountModal .acc-modal-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  transform: none !important;
+}
+
+/* Remove QUALQUER resquício lateral */
+#accountModal .acc-modal-footer {
   display: none !important;
 }
