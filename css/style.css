@@ -7441,40 +7441,37 @@ tr.tx-row-new td:first-child {
 /* Action buttons row — always at the bottom of every card */
 .dash-fav-card__actions {
   display: flex;
-  gap: 5px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: flex-end;
   position: relative;
   z-index: 1;
 }
 
 .dash-fav-card__btn {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 5px 4px;
-  border: 1px solid rgba(255,255,255,.22);
-  border-radius: 7px;
-  background: rgba(255,255,255,.12);
-  color: rgba(255,255,255,.9);
-  font-size: .65rem;
-  font-weight: 700;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255,255,255,.14);
+  color: rgba(255,255,255,.75);
   cursor: pointer;
-  transition: background .15s, border-color .15s;
-  backdrop-filter: blur(4px);
-  white-space: nowrap;
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
 .dash-fav-card__btn:hover {
-  background: rgba(255,255,255,.26);
-  border-color: rgba(255,255,255,.4);
+  background: rgba(255,255,255,.28);
+  color: #fff;
 }
 
 .dash-fav-card__btn:active {
-  background: rgba(255,255,255,.35);
-  transform: scale(.96);
+  background: rgba(255,255,255,.38);
+  transform: scale(.92);
 }
 
 /* Mobile: 2-col on small screens, 1-col on very small */
@@ -7489,7 +7486,6 @@ tr.tx-row-new td:first-child {
   }
   .dash-fav-card__balance { font-size: 1rem; }
   .dash-fav-card__icon { width: 28px; height: 28px; border-radius: 8px; }
-  .dash-fav-card__btn { font-size: .6rem; padding: 5px 3px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
