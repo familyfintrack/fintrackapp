@@ -656,7 +656,7 @@ body.sidebar-open .fab{
 
 /* RESPONSIVE */
 @media(max-width:1024px){.grid-4:not(#page-dashboard .grid-4){grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:768px){
+@media(max-width:1024px){
   html{font-size:14px;}
   /* Garantir que todos os elementos scrolláveis sejam reconhecidos pelo iOS */
   *{-webkit-tap-highlight-color:transparent;}
@@ -668,13 +668,11 @@ body.sidebar-open .fab{
   .sb-close{display:flex;}
   .bottom-nav{display:block;}.fab{display:flex;}.hamburger{display:flex;}
   #globalAddBtn{display:none;}
-  /* Esconder botões admin da topbar no mobile — ficam na sidebar */
-  /* Reforço via style.css (inline <style> no HTML tem a versão definitiva) */
-  #importNav       { display: none !important; }
-  #auditNavTopbar  { display: none !important; }
+  /* Hide admin topbar buttons on mobile — they live in sidebar */
+  #importNav          { display: none !important; }
+  #auditNavTopbar     { display: none !important; }
   #telemetryNavTopbar { display: none !important; }
   #settingsNavTopbar  { display: none !important; }
-  /* Topbar quick-actions mais compacta no mobile */
   #topbarQuickActions,
   .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
   .content{padding:16px;padding-bottom:calc(var(--bottom-h) + 104px + env(safe-area-inset-bottom));}
@@ -19061,27 +19059,140 @@ section[data-page="transactions"] .content {
 
 /* Card — mesma sombra dramática da versão anterior */
 /* ══════════════════════════════════════════════════════════════════
-   LOGIN — Modern Fintech Redesign
+   LOGIN — Two-Panel Fintech Redesign
 ══════════════════════════════════════════════════════════════════ */
-.login-card-a {
-  background: rgba(255,255,255,.96);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border-radius: 24px;
-  padding: 40px 36px 36px;
-  box-shadow:
-    0 2px 0 rgba(255,255,255,.12) inset,
-    0 40px 100px rgba(0,0,0,.55),
-    0 8px 32px rgba(0,0,0,.30),
-    0 0 0 1px rgba(255,255,255,.10);
-  position: relative;
-  z-index: 2;
-  animation: loginCardIn .5s cubic-bezier(.22,1,.36,1) both;
+
+/* ── Screen container ── */
+.lgn-screen {
+  background: #071a0f;
+  overflow: hidden;
 }
 
-@keyframes loginCardIn {
-  from { opacity: 0; transform: translateY(28px) scale(.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
+/* ── Left brand panel ── */
+.lgn-brand-panel {
+  display: none; /* hidden on mobile */
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #061510 0%, #0c3d1e 50%, #071a0f 100%);
+  width: 420px;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+}
+@media (min-width: 900px) {
+  .lgn-brand-panel { display: flex; }
+}
+.lgn-brand-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(125,194,66,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+.lgn-brand-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.lgn-brand-orb1 {
+  width: 340px; height: 340px;
+  background: rgba(42,96,73,.32);
+  top: -80px; left: -60px;
+}
+.lgn-brand-orb2 {
+  width: 260px; height: 260px;
+  background: rgba(125,194,66,.09);
+  bottom: -40px; right: -50px;
+}
+.lgn-brand-content {
+  position: relative; z-index: 1;
+  text-align: center;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 20px;
+}
+.lgn-brand-logo {
+  height: 90px; object-fit: contain;
+  filter: drop-shadow(0 4px 24px rgba(42,96,73,.5));
+}
+.lgn-brand-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #f0fdf4;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+  font-family: var(--font-serif, Georgia, serif);
+}
+.lgn-brand-sub {
+  font-size: .82rem;
+  color: rgba(216,254,229,.55);
+  font-weight: 500;
+  max-width: 260px;
+  line-height: 1.5;
+}
+.lgn-brand-features {
+  display: flex; flex-direction: column;
+  gap: 10px; text-align: left;
+  width: 100%; max-width: 280px;
+  margin-top: 8px;
+}
+.lgn-brand-feat {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .82rem;
+  color: rgba(216,254,229,.75);
+  font-weight: 500;
+  padding: 8px 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+.lgn-brand-feat span { font-size: 1.1rem; flex-shrink: 0; }
+
+/* ── Right form panel ── */
+.lgn-form-panel {
+  flex: 1;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 32px 24px;
+}
+.lgn-form-inner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Mobile logo ── */
+.lgn-mobile-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+@media (min-width: 900px) {
+  .lgn-mobile-logo { display: none; }
+}
+
+/* ── Form header ── */
+.lgn-form-title {
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -.02em;
+  margin-bottom: 6px;
+}
+.lgn-form-sub {
+  font-size: .85rem;
+  color: #6b7280;
+  margin-bottom: 28px;
 }
 
 /* ── Field groups ── */
@@ -19099,45 +19210,41 @@ section[data-page="transactions"] .content {
   letter-spacing: .01em;
 }
 
-/* ── Input wrapper with icon ── */
+/* ── Input wrapper ── */
 .lgn-input-wrap {
   position: relative;
   display: flex;
   align-items: center;
 }
-
 .lgn-input-icon {
   position: absolute;
   left: 13px;
   color: #9ca3af;
   pointer-events: none;
   flex-shrink: 0;
-  transition: color .2s;
+  transition: color .18s;
 }
 
 /* ── Input ── */
 .lgn-input {
   width: 100%;
-  padding: 12px 14px 12px 40px;
+  padding: 13px 14px 13px 42px;
   border: 1.5px solid #e5e7eb;
   border-radius: 12px;
   font-size: .92rem;
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
-  background: #fafafa;
+  background: #f9fafb;
   color: #111827;
-  transition: border-color .2s, box-shadow .2s, background .2s;
+  transition: border-color .18s, box-shadow .18s, background .18s;
 }
 .lgn-input:focus {
   border-color: #2a6049;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(42,96,73,.10), 0 1px 4px rgba(42,96,73,.08);
+  box-shadow: 0 0 0 4px rgba(42,96,73,.10);
 }
-.lgn-input:focus + .lgn-input-icon,
-.lgn-input-wrap:focus-within .lgn-input-icon {
-  color: #2a6049;
-}
+.lgn-input-wrap:focus-within .lgn-input-icon { color: #2a6049; }
 
 /* ── Password toggle ── */
 .lgn-pwd-toggle {
@@ -19151,12 +19258,11 @@ section[data-page="transactions"] .content {
   border-radius: 6px;
   line-height: 1;
   transition: color .15s, background .15s;
-  display: flex;
-  align-items: center;
+  display: flex; align-items: center;
 }
 .lgn-pwd-toggle:hover { color: #2a6049; background: rgba(42,96,73,.08); }
 
-/* ── Forgot / link style ── */
+/* ── Forgot link ── */
 .lgn-link {
   background: none;
   border: none;
@@ -19166,30 +19272,23 @@ section[data-page="transactions"] .content {
   cursor: pointer;
   padding: 0;
   font-family: inherit;
-  text-decoration: none;
   transition: opacity .15s;
 }
-.lgn-link:hover { opacity: .7; text-decoration: underline; }
+.lgn-link:hover { opacity: .65; text-decoration: underline; }
 
-/* ── Custom checkbox ── */
+/* ── Remember me checkbox ── */
 .lgn-checkbox-wrap {
   position: relative;
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
 }
 .lgn-checkbox {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  margin: 0;
-  z-index: 1;
+  position: absolute; opacity: 0;
+  width: 100%; height: 100%;
+  cursor: pointer; margin: 0; z-index: 1;
 }
 .lgn-checkbox-custom {
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
   border: 2px solid #d1d5db;
   border-radius: 5px;
   background: #fff;
@@ -19205,19 +19304,15 @@ section[data-page="transactions"] .content {
   background-size: 11px;
 }
 .lgn-checkbox-label {
-  font-size: .8rem;
-  color: #6b7280;
-  cursor: pointer;
-  user-select: none;
-  line-height: 1.4;
+  font-size: .8rem; color: #6b7280;
+  cursor: pointer; user-select: none; line-height: 1.4;
 }
 
 /* ── Primary button ── */
 .lgn-btn-primary {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #1a5038 0%, #2a6049 50%, #1e7a50 100%);
-  background-size: 200% 100%;
+  background: linear-gradient(135deg, #0f4a25 0%, #1a6b3c 50%, #2a7a50 100%);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -19226,69 +19321,84 @@ section[data-page="transactions"] .content {
   cursor: pointer;
   font-family: inherit;
   letter-spacing: .01em;
-  transition: all .2s;
-  box-shadow: 0 4px 16px rgba(42,96,73,.35), 0 1px 4px rgba(0,0,0,.15);
+  box-shadow: 0 4px 16px rgba(26,107,60,.35), 0 1px 4px rgba(0,0,0,.15);
   position: relative;
   overflow: hidden;
+  transition: transform .18s, box-shadow .18s;
 }
-.lgn-btn-primary::after {
+.lgn-btn-primary::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,.12) 0%, transparent 60%);
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.14) 0%, transparent 55%);
   pointer-events: none;
 }
 .lgn-btn-primary:hover {
-  background-position: right;
-  box-shadow: 0 6px 24px rgba(42,96,73,.45), 0 2px 8px rgba(0,0,0,.18);
+  box-shadow: 0 6px 24px rgba(26,107,60,.45), 0 2px 8px rgba(0,0,0,.18);
   transform: translateY(-1px);
 }
-.lgn-btn-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(42,96,73,.30);
+.lgn-btn-primary:active { transform: translateY(0); }
+
+/* ── Divider ── */
+.lgn-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0;
+  color: #9ca3af; font-size: .74rem;
+}
+.lgn-divider::before, .lgn-divider::after {
+  content: ''; flex: 1; height: 1px; background: #e5e7eb;
 }
 
-/* ── Focus ring on icon ── */
-.lgn-input-wrap:focus-within .lgn-input-icon { color: #2a6049; }
-
-/* Mobile */
-@media (max-width: 480px) {
-  #loginScreen {
-    padding: 12px !important;
-    align-items: flex-start !important;
-    padding-top: max(env(safe-area-inset-top, 0px), 16px) !important;
-    overflow-y: auto !important;
-  }
-  .login-card-a {
-    padding: 24px 18px 28px;
-    border-radius: 20px;
-    width: 100%;
-    max-width: 100% !important;
-    margin-top: 8px;
-  }
-  #loginLogoImg {
-    width: 320px !important;
-  }
-  #loginBtn, #magicLinkBtn, #forgotPwdBtn, #recoveryPwdBtn {
-    padding: 15px !important;
-    font-size: 1rem !important;
-    border-radius: 12px !important;
-    min-height: 52px;
-  }
-  .lgn-btn-primary { padding: 15px; font-size: 1rem; }
-}
-
-@media (max-width: 360px) {
-  .login-card-a { padding: 18px 12px 22px; }
-  #loginLogoImg { width: 240px !important; }
-}
-
-/* Inputs dark-mode safe (login is always light) */
-#loginScreen .lgn-input { color: #111827 !important; background: #fafafa !important; }
+/* ── Keep login always light ── */
+.lgn-form-panel,
+.lgn-form-inner,
+#loginScreen .lgn-input,
+#loginScreen .lgn-label,
+#loginScreen input { color: #111827 !important; }
+#loginScreen .lgn-input { background: #f9fafb !important; }
 #loginScreen .lgn-input:focus { background: #fff !important; }
-#loginScreen .lgn-label { color: #374151 !important; }
 
+/* ── Animations ── */
+@keyframes lgnFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lgn-form-inner { animation: lgnFadeUp .45s cubic-bezier(.22,1,.36,1) both; }
+.lgn-brand-content { animation: lgnFadeUp .6s .1s cubic-bezier(.22,1,.36,1) both; }
 
+/* ── Login hgrid/orbs for backward compat (mobile bg) ── */
+.login-hgrid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(125,194,66,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+.login-orb { position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0; }
+.login-orb1 { width:480px;height:480px;background:rgba(45,106,68,.22);top:-140px;left:-100px;animation:login-orb-drift 24s ease-in-out infinite alternate; }
+.login-orb2 { width:360px;height:360px;background:rgba(125,194,66,.08);bottom:-60px;right:-80px;animation:login-orb-drift 18s ease-in-out infinite alternate-reverse; }
+.login-orb3 { width:240px;height:240px;background:rgba(26,61,39,.18);top:42%;left:55%;animation:login-orb-drift 20s ease-in-out infinite alternate; }
+@keyframes login-orb-drift { 0%{transform:translate(0,0)} 100%{transform:translate(28px,-22px)} }
+
+/* ── Mobile responsive ── */
+@media (max-width: 899px) {
+  .lgn-form-panel {
+    background: linear-gradient(160deg, #071a0f 0%, #0c3d1e 40%, #071a0f 100%);
+    padding: 24px 20px;
+  }
+  .lgn-form-inner {
+    background: rgba(255,255,255,.97);
+    border-radius: 24px;
+    padding: 28px 24px 32px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.08);
+    max-width: 100%;
+  }
+  .lgn-form-title { font-size: 1.3rem; }
+}
+@media (max-width: 480px) {
+  .lgn-form-panel { padding: 16px 12px; align-items: flex-start; overflow-y: auto; }
+  .lgn-form-inner { margin-top: 8px; padding: 22px 18px 26px; border-radius: 20px; }
+}
 
 
 /* ══ TX List — Timeline enhancements (Opção A) ═══════════════════════════ */
