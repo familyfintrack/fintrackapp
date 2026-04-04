@@ -1500,48 +1500,77 @@ async function _renderDashForecast() {
     else         _fcDailyData[t.date].totalOut += Math.abs(amt);
   });
 
-  // ── Datasets: one line per account, full daily resolution ────────────────
-  const datasets = accounts.slice(0,6).map((a, idx) => {
+  // ── Datasets: line per account (scalar y) + scatter overlays for markers ─
+  // IMPORTANT: use data.labels + scalar y[] — NOT {x,y} objects — so that
+  // per-point arrays (pointRadius, pointBackgroundColor, pointStyle) stay
+  // correctly index-aligned with Chart.js v4 category scale.
+  const lineDatasets = accounts.slice(0, 6).map((a, idx) => {
     const color = a.color || COLORS[idx % COLORS.length];
     return {
       label: a.name,
-      data: allDates.map(d => ({ x: d, y: _fcDailyData[d].balances[a.id] ?? null })),
+      data: allDates.map(d => _fcDailyData[d].balances[a.id] ?? null),
       borderColor: color,
       backgroundColor: color + '12',
       fill: idx === 0 && accounts.length === 1,
       tension: 0.3,
       borderWidth: 2,
-      // Visible point only on days with activity
-      pointRadius: allDates.map(d => {
-        const dd = _fcDailyData[d];
-        const hasAct = dd.txs.some(t => t.account_id === a.id) || dd.scheduled.some(t => t.account_id === a.id);
-        return hasAct ? 5 : 0;
-      }),
-      pointHoverRadius: 7,
-      pointBackgroundColor: allDates.map(d => {
-        const dd = _fcDailyData[d];
-        const hasSched = dd.scheduled.some(t => t.account_id === a.id);
-        const hasReal  = dd.txs.some(t => t.account_id === a.id);
-        if (hasReal && hasSched) return '#f59e0b'; // mixed: amber
-        if (hasSched) return '#1d4ed8';            // scheduled only: blue
-        return color;                               // real: account color
-      }),
+      pointRadius: 0,        // hidden — markers drawn by scatter datasets below
+      pointHoverRadius: 5,
+      pointHitRadius: 12,    // large hit area so hover still triggers tooltip
+      pointBackgroundColor: color,
       pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      pointStyle: allDates.map(d => {
-        const dd = _fcDailyData[d];
-        const hasSched = dd.scheduled.some(t => t.account_id === a.id);
-        return hasSched ? 'triangle' : 'circle';
-      }),
+      pointBorderWidth: 1.5,
     };
   });
 
+  // Scatter marker datasets — one per account, only active days
+  // These sit on top of the line and show circles/triangles with correct color
+  const markerDatasets = accounts.slice(0, 6).map((a, idx) => {
+    const color = a.color || COLORS[idx % COLORS.length];
+    const pts = [];
+    allDates.forEach((d, i) => {
+      const dd       = _fcDailyData[d];
+      const hasReal  = dd.txs.some(t => t.account_id === a.id);
+      const hasSched = dd.scheduled.some(t => t.account_id === a.id);
+      if (!hasReal && !hasSched) return;
+      const bal = _fcDailyData[d].balances[a.id];
+      if (bal == null) return;
+      pts.push({
+        x: i,                // category scale uses index as x for scatter
+        y: bal,
+        _date: d,
+        _isSched: hasSched && !hasReal,
+        _isMixed: hasReal && hasSched,
+      });
+    });
+    return {
+      type: 'scatter',
+      label: '_marker_' + a.id,  // prefix so legend filter can hide these
+      data: pts,
+      backgroundColor: pts.map(p =>
+        p._isMixed  ? '#f59e0b' :   // amber  — both real + scheduled
+        p._isSched  ? '#1d4ed8' :   // blue   — scheduled only
+        color                        // account color — real tx only
+      ),
+      borderColor: '#fff',
+      borderWidth: 2,
+      pointRadius: 6,
+      pointHoverRadius: 9,
+      pointStyle: pts.map(p => p._isSched ? 'triangle' : 'circle'),
+      showLine: false,
+    };
+  });
+
+  const datasets = [...lineDatasets, ...markerDatasets];
+
   // ── Annotations ───────────────────────────────────────────────────────────
-  const allVals = datasets.flatMap(ds => ds.data.map(p => p.y).filter(v => v != null));
+  const allVals = lineDatasets.flatMap(ds => ds.data.filter(v => v != null));
   const minVal  = allVals.length ? Math.min(...allVals) : 0;
   const maxVal  = allVals.length ? Math.max(...allVals) : 0;
   const minDate = allDates.find(d => Object.values(_fcDailyData[d].balances).some(v => v === minVal));
   const maxDate = allDates.find(d => Object.values(_fcDailyData[d].balances).some(v => v === maxVal));
+  const minIdx  = minDate ? allDates.indexOf(minDate) : -1;
+  const maxIdx  = maxDate ? allDates.indexOf(maxDate) : -1;
 
   // Weekly vertical guides for readability
   const weekGuides = {};
@@ -1565,13 +1594,13 @@ async function _renderDashForecast() {
       label:{ content:'Hoje', display:true, position:'start', font:{size:9,weight:'700'}, color:'#2a6049', backgroundColor:'rgba(42,122,74,0.08)', padding:{x:4,y:2}, borderRadius:3 },
     },
   };
-  if (minDate) annotations.minPt = { type:'point', xValue:minDate, yValue:minVal, radius:6, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
-  if (maxDate) annotations.maxPt = { type:'point', xValue:maxDate, yValue:maxVal, radius:6, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
+  if (minIdx >= 0) annotations.minPt = { type:'point', xValue:minIdx, yValue:minVal, radius:6, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
+  if (maxIdx >= 0) annotations.maxPt = { type:'point', xValue:maxIdx, yValue:maxVal, radius:6, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
 
   // ── Chart instance ────────────────────────────────────────────────────────
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
-    data: { datasets },
+    data: { labels: allDates, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -1581,15 +1610,18 @@ async function _renderDashForecast() {
           position: 'bottom',
           labels: {
             boxWidth: 10, font: { size: 10 },
+            filter: item => !item.text.startsWith('_marker_'),
             generateLabels(chart) {
-              return chart.data.datasets.map((ds, i) => ({
-                text: ds.label,
-                fillStyle: ds.borderColor,
-                strokeStyle: ds.borderColor,
-                lineWidth: 2,
-                hidden: !chart.isDatasetVisible(i),
-                datasetIndex: i,
-              }));
+              return chart.data.datasets
+                .filter(ds => !ds.label.startsWith('_marker_'))
+                .map((ds, i) => ({
+                  text: ds.label,
+                  fillStyle: ds.borderColor,
+                  strokeStyle: ds.borderColor,
+                  lineWidth: 2,
+                  hidden: !chart.isDatasetVisible(i),
+                  datasetIndex: i,
+                }));
             },
           },
         },
@@ -1618,13 +1650,14 @@ async function _renderDashForecast() {
             },
             // ── Body: saldo projetado por conta ──────────────────────────────
             label(ctx) {
+              // skip marker scatter datasets (they appear in tooltip as duplicate)
+              if (ctx.dataset.label?.startsWith('_marker_')) return null;
               const d   = ctx.label || '';
-              const acc = accounts[ctx.datasetIndex];
+              const acc = accounts[ctx.datasetIndex]; // lineDatasets are first, index matches
               const bal = ctx.parsed.y;
               if (bal == null) return '';
               const balFmt = fmt(bal, acc?.currency || 'BRL');
               const dd = _fcDailyData[d];
-              // check if this account has activity today
               const hasTx    = (dd?.txs||[]).some(t => t.account_id === acc?.id);
               const hasSched = (dd?.scheduled||[]).some(t => t.account_id === acc?.id);
               const tag = hasTx && hasSched ? ' ●▲' : hasTx ? ' ●' : hasSched ? ' ▲' : '';
@@ -2097,7 +2130,13 @@ async function _openPatrimonioModal() {
   });
 
   // ── Helpers de formatação ──
-  const _pct = (val, total) => total !== 0 ? Math.abs(val / total * 100).toFixed(1) : '0.0';
+  // totalBRL = patrimônio líquido (ativos − passivos) — base para todos os percentuais
+  // Usamos Math.abs(accountTotal) como base das barras de ativos para que a soma chegue a 100%
+  // nas seções de ativo, e mostramos passivos como % do total de ativos (proporção real do passivo)
+  const _pctOfAssets   = (val) => accountTotal !== 0 ? Math.abs(val / accountTotal * 100).toFixed(1) : '0.0';
+  const _pctOfNet      = (val) => Math.abs(totalBRL) > 0.01 ? (val / Math.abs(totalBRL) * 100).toFixed(1) : '0.0';
+  // Mantém compatibilidade com chamadas existentes — usa assets como base para ativos
+  const _pct = (val, base) => (base || accountTotal) !== 0 ? Math.abs(val / (base || accountTotal) * 100).toFixed(1) : '0.0';
   const _barHtml = (pct, color) =>
     `<div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
       <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:2px;transition:width .4s ease"></div>
@@ -2250,78 +2289,134 @@ async function _openPatrimonioModal() {
     return;
   });
 
-  // Ocultar bloco antigo de byCurrency (substituído pelo novo)
-  // Apenas cartões de crédito como passivo de consumo (saldo devedor)
-  if (accsCard.length) {
-    const cardDebt = accsCard.reduce((s,a) => {
-      const bal = parseFloat(a.balance)||0;
-      return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
-    }, 0);
-    if (cardDebt > 0) {
+  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
+  const cardDebt = accsCard.reduce((s,a) => {
+    const bal = parseFloat(a.balance)||0;
+    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
+  }, 0);
+  const totalPassivos = debtTotal + cardDebt;
+
+  // ── PASSIVOS ─────────────────────────────────────────────────────────────
+  if (totalPassivos > 0) {
+    const passivosPct = _pct(totalPassivos, accountTotal);
+    content += `
+      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1.5px solid var(--red,#dc2626);margin:16px 0 12px;display:flex;align-items:center;justify-content:space-between">
+        <span>📉 PASSIVOS</span>
+        <span style="font-size:.72rem;font-weight:700">−${dashFmt(totalPassivos,'BRL')} <span style="font-weight:400;opacity:.7">(${passivosPct}% dos ativos)</span></span>
+      </div>`;
+
+    // ── Faturas de cartão de crédito ─────────────────────────────────────
+    const cardDebtAccs = accsCard.filter(a => (parseFloat(a.balance)||0) < 0);
+    if (cardDebtAccs.length) {
       content += `
-        <div style="margin-bottom:14px">
+        <div style="margin-bottom:12px">
           <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Faturas em Aberto</div>
           <div style="display:flex;flex-direction:column;gap:4px">`;
-      accsCard.filter(a => (parseFloat(a.balance)||0) < 0).forEach(a => {
-        const bal = parseFloat(a.balance)||0;
-        content += _rowHtml(
-          _dashRenderIcon(a.icon,a.color,16), a.name, 'Fatura em aberto',
-          bal, toBRL(Math.abs(bal), a.currency||'BRL'),
-          a.currency||'BRL', '#dc2626',
-          `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
-          null, null
-        );
+      cardDebtAccs.forEach(a => {
+        const bal    = Math.abs(parseFloat(a.balance)||0);
+        const balBRL = toBRL(bal, a.currency||'BRL');
+        const pct    = _pct(balBRL, accountTotal);
+        content += `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1);cursor:pointer"
+            onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
+            onmouseover="this.style.background='rgba(220,38,38,.08)'" onmouseout="this.style.background='rgba(220,38,38,.04)'">
+            <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,16)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
+              <div style="font-size:.68rem;color:var(--muted)">Fatura em aberto · ${pct}% dos ativos</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, a.currency||'BRL')}</div>
+              ${a.currency&&a.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
+            </div>
+          </div>
+          <div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(+pct,100)}%;background:#dc2626;border-radius:2px;transition:width .4s ease"></div>
+          </div>`;
       });
-      content += `</div></div>`;
+      content += `
+          <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem">
+            <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(cardDebt,'BRL')}</span>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // ── Dívidas do módulo ─────────────────────────────────────────────────
+    if (debts.length) {
+      content += `
+        <div style="margin-bottom:12px">
+          <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">🏦 Dívidas Ativas</div>
+          <div style="display:flex;flex-direction:column;gap:4px">`;
+      debts.forEach(d => {
+        const bal    = parseFloat(d.current_balance ?? d.original_amount) || 0;
+        const balBRL = toBRL(bal, d.currency || 'BRL');
+        const pct    = _pct(balBRL, accountTotal);
+        const progPct = d.original_amount
+          ? Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100).toFixed(0)
+          : null;
+        content += `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
+            <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
+              <div style="font-size:.68rem;color:var(--muted)">Dívida ativa · ${pct}% dos ativos${progPct ? ` · ${progPct}% quitado` : ''}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
+              ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
+            </div>
+          </div>
+          <div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(+pct,100)}%;background:#dc2626;border-radius:2px;transition:width .4s ease"></div>
+          </div>`;
+      });
+      content += `
+          <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem">
+            <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(debtTotal,'BRL')}</span>
+          </div>
+        </div>
+      </div>`;
     }
   }
 
-  // ── PASSIVOS ─────────────────────────────────────────────────────────────
-  if (debtTotal > 0 || accsCard.some(a => (parseFloat(a.balance)||0) < 0)) {
-    content += `
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1.5px solid var(--red,#dc2626);margin:16px 0 12px">
-        📉 PASSIVOS — −${dashFmt(debtTotal,'BRL')}
-      </div>`;
-  }
-
-  // ── Debts section ──────────────────────────────────────────────────────
-  if (debts.length) {
-    content += `
-      <div style="margin-bottom:16px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px">Dívidas Ativas (deduzidas)</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    debts.forEach(d => {
-      const bal = parseFloat(d.current_balance ?? d.original_amount) || 0;
-      const balBRL = toBRL(bal, d.currency || 'BRL');
-      content += `
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
-          <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💳</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
-            <div style="font-size:.68rem;color:var(--muted)">Dívida ativa</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
-            ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
-          </div>
-        </div>`;
-    });
-    content += `
-        </div>
-        <div style="display:flex;justify-content:flex-end;padding:6px 10px 0;font-size:.75rem">
-          <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(debtTotal,'BRL')}</span>
-        </div>
-      </div>`;
-  }
-
-  // ── Net total line ──────────────────────────────────────────────────────
-  if (debts.length) {
-    content += `
-      <div style="border-top:2px solid var(--border);margin-top:8px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+  // ── Net worth summary (sempre visível) ────────────────────────────────────
+  const alavancagem = accountTotal > 0 ? (totalPassivos / accountTotal * 100).toFixed(1) : '0.0';
+  content += `
+    <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="font-size:.8rem;font-weight:700;color:var(--text)">Patrimônio Líquido</div>
-        <div style="font-size:1.1rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-      </div>`;
-  }
+        <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red,#dc2626)'}">
+          ${dashFmt(totalBRL,'BRL')}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="background:rgba(42,96,73,.08);border-radius:8px;padding:7px 10px;text-align:center">
+          <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Ativos</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--accent)">+${dashFmt(accountTotal,'BRL')}</div>
+        </div>
+        <div style="background:rgba(220,38,38,.07);border-radius:8px;padding:7px 10px;text-align:center">
+          <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Passivos</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--red,#dc2626)">−${dashFmt(totalPassivos,'BRL')}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:7px 10px;text-align:center">
+          <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Endividamento</div>
+          <div style="font-size:.82rem;font-weight:700;color:${+alavancagem>50?'var(--red,#dc2626)':+alavancagem>20?'#b45309':'var(--text2)'}">
+            ${alavancagem}%
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="height:8px;border-radius:4px;overflow:hidden;display:flex;gap:1px">
+          <div style="flex:${accountTotal};background:var(--accent);border-radius:4px 0 0 4px;min-width:${totalPassivos>0?'4px':'100%'}"></div>
+          ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:var(--red,#dc2626);border-radius:0 4px 4px 0;min-width:4px"></div>` : ''}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted);margin-top:3px">
+          <span>● Ativos ${_pct(accountTotal,accountTotal+totalPassivos)}%</span>
+          ${totalPassivos>0?`<span>● Passivos ${_pct(totalPassivos,accountTotal+totalPassivos)}%</span>`:''}
+        </div>
+      </div>
+    </div>`;
 
   content += '</div>';
 
