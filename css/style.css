@@ -24098,3 +24098,34 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   font-style: italic;
   line-height: 1.4;
 }
+
+
+
+/* === FIX: Prevent accountModal footer leak on iOS/Safari === */
+#accountModal {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#accountModal.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#accountModal .acc-modal-sheet {
+  transform: translateY(100%);
+  contain: layout paint style;
+  overflow: hidden;
+}
+
+#accountModal.open .acc-modal-sheet {
+  transform: translateY(0);
+}
+
+#accountModal:not(.open) .acc-modal-footer,
+#accountModal:not(.open) .acc-modal-header,
+#accountModal:not(.open) .acc-modal-sheet {
+  visibility: hidden;
+}
