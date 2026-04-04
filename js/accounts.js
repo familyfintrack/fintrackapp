@@ -314,16 +314,15 @@ function _onAccModalTypeChange() {
 window._onAccModalTypeChange = _onAccModalTypeChange;
 
 function _accModalTab(tab) {
-  const panels = ['geral', 'banco'];
-  panels.forEach(p => {
-    const panel = document.getElementById('accTabPanel_' + p) || document.getElementById('accTab' + p.charAt(0).toUpperCase() + p.slice(1));
-    const btn   = document.getElementById('accTabBtn' + p.charAt(0).toUpperCase() + p.slice(1));
-    const active = p === tab;
-    if (panel) panel.style.display = active ? '' : 'none';
-    if (btn) {
-      btn.style.color        = active ? 'var(--accent)' : 'var(--muted)';
-      btn.style.borderBottom = active ? '2px solid var(--accent)' : '2px solid transparent';
-    }
+  // Use mfm-pane active class pattern (same as family mgmt modal)
+  ['geral', 'banco'].forEach(p => {
+    const panelId = 'accTab' + p.charAt(0).toUpperCase() + p.slice(1);
+    const btnId   = 'accTabBtn' + p.charAt(0).toUpperCase() + p.slice(1);
+    const panel   = document.getElementById(panelId);
+    const btn     = document.getElementById(btnId);
+    const active  = (p === tab);
+    if (panel) panel.classList.toggle('active', active);
+    if (btn)   btn.classList.toggle('active', active);
   });
 }
 window._accModalTab = _accModalTab;
@@ -341,7 +340,23 @@ async function openAccountModal(id=''){
   setAmtField('accountBalance', form.initial_balance);
   document.getElementById('accountIcon').value=form.icon||'';
   document.getElementById('accountColor').value=form.color||'#2a6049';
-  document.getElementById('accountModalTitle').textContent=id?'Editar Conta':'Nova Conta';
+
+  // Update hero header
+  const heroTitle = document.getElementById('accountModalTitle');
+  const heroSub   = document.getElementById('accModalHeroSub');
+  const heroIcon  = document.getElementById('accModalHeroIcon');
+  if (heroTitle) heroTitle.textContent = id ? 'Editar Conta' : 'Nova Conta';
+  if (heroSub)   heroSub.textContent   = id ? (form.name || 'Atualize os dados da conta') : 'Preencha as informações da conta';
+  if (heroIcon) {
+    const iconVal = form.icon || '';
+    if (iconVal.startsWith('emoji-')) {
+      heroIcon.textContent = iconVal.replace('emoji-','');
+    } else if (iconVal) {
+      heroIcon.innerHTML = `<span style="font-size:1.1rem">${iconVal}</span>`;
+    } else {
+      heroIcon.textContent = '🏦';
+    }
+  }
   const gSel=document.getElementById('accountGroupId');
   if(gSel){
     if(!state.groups||!state.groups.length){try{await loadGroups();}catch(_e){}}

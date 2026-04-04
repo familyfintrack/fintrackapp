@@ -24,6 +24,18 @@ const _drm = {
 async function isDreamsEnabled() {
   const fid = famId();
   if (!fid) return false;
+
+  // 1. New system: family_preferences.module_dreams
+  if (typeof isModuleEnabled === 'function') {
+    try {
+      // Ensure prefs are loaded first
+      if (typeof getFamilyPreferences === 'function') await getFamilyPreferences();
+      const enabled = isModuleEnabled('dreams');
+      if (enabled) return true;
+    } catch(_) {}
+  }
+
+  // 2. Legacy system: app_settings key 'dreams_enabled_<famId>'
   const cacheKey = 'dreams_enabled_' + fid;
   if (window._familyFeaturesCache && cacheKey in window._familyFeaturesCache)
     return !!window._familyFeaturesCache[cacheKey];
@@ -52,9 +64,18 @@ async function applyDreamsFeature() {
 window.applyDreamsFeature = applyDreamsFeature;
 
 async function toggleFamilyDreams(familyId, enabled) {
+  // Save to legacy system
   await saveAppSetting('dreams_enabled_' + familyId, enabled);
   window._familyFeaturesCache = window._familyFeaturesCache || {};
   window._familyFeaturesCache['dreams_enabled_' + familyId] = enabled;
+
+  // Sync to new family_preferences system
+  if (typeof updateFamilyPreferences === 'function') {
+    try {
+      await updateFamilyPreferences({ modules: { dreams: enabled } });
+    } catch(_) {}
+  }
+
   applyDreamsFeature().catch(() => {});
   toast(enabled ? '✓ Sonhos ativado' : 'Sonhos desativado', 'success');
 }

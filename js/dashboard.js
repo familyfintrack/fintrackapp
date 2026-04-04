@@ -940,16 +940,26 @@ function _getDashCardOrder(prefs) {
 function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
-  list.innerHTML = order.map((c, idx) => `
+
+  // Filter optional cards based on module availability
+  const visibleCards = order.filter(c => {
+    if (!c.optional) return true;
+    if (c.id === 'investments' && typeof isModuleEnabled === 'function') return isModuleEnabled('investments');
+    if (c.id === 'dreams'      && typeof isModuleEnabled === 'function') return isModuleEnabled('dreams');
+    return true;
+  });
+
+  list.innerHTML = visibleCards.map((c, idx) => `
     <div class="dash-custom-toggle" data-card-id="${c.id}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
       <span class="dash-custom-toggle-icon">${c.icon}</span>
       <div style="flex:1;min-width:0">
         <div class="dash-custom-toggle-label">${c.label}</div>
         <div class="dash-custom-toggle-sub" style="font-size:.72rem;color:var(--muted)">${c.sub}</div>
+        ${c.optional ? '<span style="font-size:.65rem;background:var(--accent-lt);color:var(--accent);padding:1px 6px;border-radius:8px;font-weight:700">opcional</span>' : ''}
       </div>
       <div class="dash-reorder-btns">
         <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',-1)" title="Mover para cima" ${idx===0?'disabled style="opacity:.3"':''}>▲</button>
-        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',+1)" title="Mover para baixo" ${idx===order.length-1?'disabled style="opacity:.3"':''}>▼</button>
+        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',+1)" title="Mover para baixo" ${idx===visibleCards.length-1?'disabled style="opacity:.3"':''}>▼</button>
       </div>
       <button class="dash-toggle-switch ${prefs[c.id]!==false?'on':''}" data-card="${c.id}"
         onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-toggle'))"></button>
@@ -2135,25 +2145,17 @@ async function _loadDashInvestmentsCard() {
   const body = document.getElementById('dashInvestmentsBody');
   if (!card || !body) return;
 
-  // Verificar se o módulo está habilitado e o card está visível nas prefs
   const prefs = _dashGetPrefs();
-  const invEnabled = typeof invTotalPortfolioValue !== 'undefined' ||
-    (typeof _inv !== 'undefined' && _inv.positions?.length >= 0);
 
-  if (!invEnabled || prefs['investments'] === false) {
+  // Verificar se módulo investments está habilitado para a família
+  const modEnabled = (typeof isModuleEnabled === 'function')
+    ? isModuleEnabled('investments')
+    : (typeof _inv !== 'undefined');
+
+  if (!modEnabled || prefs['investments'] === false) {
     card.style.display = 'none';
     return;
   }
-
-  // Verificar feature flag de investimentos
-  try {
-    const famIdVal = typeof famId === 'function' ? famId() : null;
-    if (famIdVal) {
-      const lsKey = 'investments_enabled_' + famIdVal;
-      const lsVal = localStorage.getItem(lsKey);
-      if (lsVal === 'false') { card.style.display = 'none'; return; }
-    }
-  } catch(_) {}
 
   card.style.display = '';
   body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando carteira…</div>';
@@ -2249,18 +2251,14 @@ async function _loadDashDreamsCard() {
   if (!card || !body) return;
 
   const prefs = _dashGetPrefs();
-  if (prefs['dreams'] === false) { card.style.display = 'none'; return; }
 
-  // Verificar se o módulo Sonhos está habilitado
-  try {
-    const famIdVal = typeof famId === 'function' ? famId() : null;
-    if (famIdVal) {
-      const lsVal = localStorage.getItem('dreams_enabled_' + famIdVal);
-      if (lsVal === 'false') { card.style.display = 'none'; return; }
-    }
-  } catch(_) {}
+  // Verificar se módulo dreams está habilitado para a família
+  const modEnabled = (typeof isModuleEnabled === 'function')
+    ? isModuleEnabled('dreams')
+    : true; // fallback: mostrar se não puder verificar
 
-  card.style.display = '';
+  if (!modEnabled || prefs['dreams'] === false) { card.style.display = 'none'; return; }
+
   body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando sonhos…</div>';
 
   try {
