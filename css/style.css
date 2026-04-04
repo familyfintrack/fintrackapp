@@ -427,49 +427,10 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 .empty-state p{font-size:.875rem;}
 
 /* MODALS */
-.modal-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(26,23,20,.4);
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  z-index:1000;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  transition:opacity .22s, visibility 0s linear .22s;
-  backdrop-filter:blur(2px);
-  -webkit-backdrop-filter:blur(2px);
-}
-
-.modal-overlay.open{
-  opacity:1;
-  visibility:visible;
-  pointer-events:all;
-  transition:opacity .22s, visibility 0s linear 0s;
-}
-
-.modal{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--r-lg) var(--r-lg) 0 0;
-  width:100%;
-  max-height:92vh;
-  max-height:92dvh;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-y;
-  box-shadow:var(--shadow-lg);
-  transform:translateY(100%);
-  transition:transform .28s cubic-bezier(.4,0,.2,1);
-}
-
-.modal-overlay.open .modal{
-  transform:translateY(0);
-}
-
-
+.modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:flex;align-items:flex-end;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+.modal-overlay.open .modal{transform:translateY(0);}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:100px;margin:10px auto 0;}
 .modal-header{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1;}
 .modal-title{font-family:var(--font-serif);font-size:1.1rem;font-weight:500;}
@@ -19098,227 +19059,191 @@ section[data-page="transactions"] .content {
 
 /* Card — mesma sombra dramática da versão anterior */
 /* ══════════════════════════════════════════════════════════════════
-   LOGIN — Two-Panel Fintech Redesign
+   LOGIN — Clean Modern Two-Panel Design
 ══════════════════════════════════════════════════════════════════ */
 
-/* ── Screen container ── */
+/* ── Screen ── */
 .lgn-screen {
-  background: #071a0f;
+  background: #f5f7f5;
   overflow: hidden;
 }
 
-/* ── Left brand panel ── */
+/* ── Left brand panel (desktop ≥900px) ── */
 .lgn-brand-panel {
-  display: none; /* hidden on mobile */
+  display: none;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(160deg, #061510 0%, #0c3d1e 50%, #071a0f 100%);
+  background: linear-gradient(170deg, #071510 0%, #0d3d1f 55%, #071510 100%);
   width: 420px;
   flex-shrink: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 40px;
+  padding: 56px 48px;
 }
 @media (min-width: 900px) {
   .lgn-brand-panel { display: flex; }
 }
+
+/* Subtle grid texture */
 .lgn-brand-grid {
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; pointer-events: none;
   background-image:
-    linear-gradient(rgba(125,194,66,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125,194,66,.06) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
+    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 52px 52px;
 }
-.lgn-brand-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-}
-.lgn-brand-orb1 {
-  width: 340px; height: 340px;
-  background: rgba(42,96,73,.32);
-  top: -80px; left: -60px;
-}
-.lgn-brand-orb2 {
-  width: 260px; height: 260px;
-  background: rgba(125,194,66,.09);
-  bottom: -40px; right: -50px;
-}
+/* Glow orbs */
+.lgn-brand-orb { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; }
+.lgn-brand-orb1 { width: 360px; height: 360px; background: rgba(34,120,70,.28); top: -80px; left: -80px; }
+.lgn-brand-orb2 { width: 280px; height: 280px; background: rgba(100,180,80,.07); bottom: -60px; right: -60px; }
+
+/* Brand content */
 .lgn-brand-content {
   position: relative; z-index: 1;
-  text-align: center;
   display: flex; flex-direction: column;
-  align-items: center; gap: 20px;
+  align-items: center; gap: 24px;
 }
 .lgn-brand-logo {
-  height: 90px; object-fit: contain;
-  filter: drop-shadow(0 4px 24px rgba(42,96,73,.5));
+  height: 110px; object-fit: contain;
+  filter: drop-shadow(0 6px 32px rgba(34,120,70,.45));
 }
 .lgn-brand-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: #f0fdf4;
-  letter-spacing: -.02em;
-  line-height: 1.15;
+  font-size: 1.55rem; font-weight: 800;
+  color: #f0fdf4; letter-spacing: -.025em;
+  line-height: 1.15; text-align: center;
   font-family: var(--font-serif, Georgia, serif);
 }
 .lgn-brand-sub {
-  font-size: .82rem;
-  color: rgba(216,254,229,.55);
-  font-weight: 500;
-  max-width: 260px;
-  line-height: 1.5;
+  font-size: .8rem; color: rgba(216,254,229,.45);
+  font-weight: 400; max-width: 260px;
+  line-height: 1.6; text-align: center;
 }
 .lgn-brand-features {
   display: flex; flex-direction: column;
-  gap: 10px; text-align: left;
-  width: 100%; max-width: 280px;
-  margin-top: 8px;
+  gap: 9px; width: 100%; max-width: 280px;
 }
 .lgn-brand-feat {
-  display: flex; align-items: center; gap: 10px;
-  font-size: .82rem;
-  color: rgba(216,254,229,.75);
-  font-weight: 500;
-  padding: 8px 14px;
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 11px;
+  font-size: .81rem; color: rgba(216,254,229,.7);
+  font-weight: 500; padding: 9px 14px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
   border-radius: 10px;
-  backdrop-filter: blur(8px);
 }
-.lgn-brand-feat span { font-size: 1.1rem; flex-shrink: 0; }
+.lgn-brand-feat span { font-size: 1rem; flex-shrink: 0; }
 
 /* ── Right form panel ── */
 .lgn-form-panel {
   flex: 1;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 32px 24px;
+  background: #ffffff;
+  display: flex; align-items: center; justify-content: center;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 40px 28px;
 }
 .lgn-form-inner {
-  width: 100%;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column;
+  animation: lgnFadeUp .4s cubic-bezier(.22,1,.36,1) both;
 }
 
-/* ── Mobile logo ── */
-.lgn-mobile-logo {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 24px;
+/* ── Logo (always visible, hidden on desktop when brand panel shows) ── */
+.lgn-logo-wrap {
+  display: flex; justify-content: center;
+  margin-bottom: 32px;
+}
+.lgn-logo-img {
+  height: 120px; object-fit: contain;
+  filter: drop-shadow(0 4px 20px rgba(34,120,70,.18));
 }
 @media (min-width: 900px) {
-  .lgn-mobile-logo { display: none; }
+  /* Hide form logo on desktop since brand panel has it */
+  .lgn-logo-wrap { display: none; }
 }
 
-/* ── Form header ── */
+/* ── Form headings ── */
 .lgn-form-title {
-  font-size: 1.55rem;
-  font-weight: 800;
-  color: #111827;
-  letter-spacing: -.02em;
-  margin-bottom: 6px;
+  font-size: 1.6rem; font-weight: 800;
+  color: #0f1a12; letter-spacing: -.03em;
+  margin-bottom: 6px; line-height: 1.15;
 }
 .lgn-form-sub {
-  font-size: .85rem;
-  color: #6b7280;
-  margin-bottom: 28px;
+  font-size: .85rem; color: #8a9690;
+  margin-bottom: 32px; line-height: 1.5;
 }
 
-/* ── Field groups ── */
-.lgn-field-group {
-  margin-bottom: 18px;
+/* ── Field group ── */
+.lgn-field-group { margin-bottom: 20px; }
+
+/* ── Label row (label + forgot link) ── */
+.lgn-field-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
 /* ── Label ── */
 .lgn-label {
   display: block;
-  font-size: .78rem;
-  font-weight: 700;
-  color: #374151;
-  margin-bottom: 7px;
-  letter-spacing: .01em;
+  font-size: .76rem; font-weight: 700;
+  color: #374151; letter-spacing: .01em;
+  margin-bottom: 8px;
 }
-
-/* ── Input wrapper ── */
-.lgn-input-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.lgn-input-icon {
-  position: absolute;
-  left: 13px;
-  color: #9ca3af;
-  pointer-events: none;
-  flex-shrink: 0;
-  transition: color .18s;
-}
+.lgn-field-row .lgn-label { margin-bottom: 0; }
 
 /* ── Input ── */
+.lgn-input-wrap { position: relative; display: flex; align-items: center; }
+.lgn-input-icon { display: none; } /* Always hidden — no icons */
+
 .lgn-input {
   width: 100%;
-  padding: 13px 14px 13px 42px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: .92rem;
-  font-family: inherit;
-  outline: none;
-  box-sizing: border-box;
-  background: #f9fafb;
-  color: #111827;
+  padding: 13px 16px;
+  border: 1.5px solid #e4e9e4;
+  border-radius: 10px;
+  font-size: .92rem; font-family: inherit;
+  outline: none; box-sizing: border-box;
+  background: #fafbfa; color: #111827;
   transition: border-color .18s, box-shadow .18s, background .18s;
+  -webkit-appearance: none;
 }
 .lgn-input:focus {
-  border-color: #2a6049;
+  border-color: #2a7a50;
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(42,96,73,.10);
+  box-shadow: 0 0 0 3px rgba(42,122,80,.10);
 }
-.lgn-input-wrap:focus-within .lgn-input-icon { color: #2a6049; }
+.lgn-input::placeholder { color: #b0bab0; }
+
+/* Password input — space for toggle button */
+.lgn-input--pwd { padding-right: 44px; }
 
 /* ── Password toggle ── */
 .lgn-pwd-toggle {
-  position: absolute;
-  right: 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9ca3af;
-  padding: 4px;
-  border-radius: 6px;
-  line-height: 1;
-  transition: color .15s, background .15s;
+  position: absolute; right: 12px;
+  background: none; border: none;
+  cursor: pointer; color: #aab5aa;
+  padding: 4px; border-radius: 6px;
   display: flex; align-items: center;
+  transition: color .15s;
 }
-.lgn-pwd-toggle:hover { color: #2a6049; background: rgba(42,96,73,.08); }
+.lgn-pwd-toggle:hover { color: #2a7a50; }
 
 /* ── Forgot link ── */
 .lgn-link {
-  background: none;
-  border: none;
-  color: #2a6049;
-  font-size: .76rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
+  background: none; border: none;
+  color: #2a7a50; font-size: .76rem;
+  font-weight: 600; cursor: pointer;
+  padding: 0; font-family: inherit;
   transition: opacity .15s;
 }
 .lgn-link:hover { opacity: .65; text-decoration: underline; }
 
-/* ── Remember me checkbox ── */
+/* ── Remember me row ── */
+.lgn-remember-row {
+  display: flex; align-items: center;
+  gap: 9px; margin-bottom: 24px;
+}
 .lgn-checkbox-wrap {
-  position: relative;
-  flex-shrink: 0;
+  position: relative; flex-shrink: 0;
   width: 18px; height: 18px;
 }
 .lgn-checkbox {
@@ -19329,116 +19254,179 @@ section[data-page="transactions"] .content {
 .lgn-checkbox-custom {
   width: 18px; height: 18px;
   border: 2px solid #d1d5db;
-  border-radius: 5px;
-  background: #fff;
-  transition: all .18s;
-  pointer-events: none;
+  border-radius: 5px; background: #fff;
+  transition: all .18s; pointer-events: none;
 }
 .lgn-checkbox:checked ~ .lgn-checkbox-custom {
-  background: #2a6049;
-  border-color: #2a6049;
+  background: #2a7a50; border-color: #2a7a50;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='10' viewBox='0 0 12 10'%3E%3Cpolyline points='1.5,5 4.5,8 10.5,1.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 11px;
+  background-repeat: no-repeat; background-position: center; background-size: 11px;
 }
 .lgn-checkbox-label {
-  font-size: .8rem; color: #6b7280;
+  font-size: .79rem; color: #6b7280;
   cursor: pointer; user-select: none; line-height: 1.4;
 }
 
 /* ── Primary button ── */
 .lgn-btn-primary {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #0f4a25 0%, #1a6b3c 50%, #2a7a50 100%);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: .95rem;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: .01em;
-  box-shadow: 0 4px 16px rgba(26,107,60,.35), 0 1px 4px rgba(0,0,0,.15);
-  position: relative;
-  overflow: hidden;
-  transition: transform .18s, box-shadow .18s;
-}
-.lgn-btn-primary::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,.14) 0%, transparent 55%);
-  pointer-events: none;
+  width: 100%; padding: 14px;
+  background: #1a6b3c;
+  color: #fff; border: none;
+  border-radius: 10px; font-size: .95rem;
+  font-weight: 700; cursor: pointer;
+  font-family: inherit; letter-spacing: .01em;
+  transition: background .18s, transform .15s, box-shadow .18s;
+  box-shadow: 0 2px 8px rgba(26,107,60,.25);
+  -webkit-appearance: none;
 }
 .lgn-btn-primary:hover {
-  box-shadow: 0 6px 24px rgba(26,107,60,.45), 0 2px 8px rgba(0,0,0,.18);
+  background: #155c32;
+  box-shadow: 0 4px 16px rgba(26,107,60,.35);
   transform: translateY(-1px);
 }
-.lgn-btn-primary:active { transform: translateY(0); }
+.lgn-btn-primary:active { transform: translateY(0); background: #0f4a25; }
 
-/* ── Divider ── */
-.lgn-divider {
-  display: flex; align-items: center; gap: 12px;
-  margin: 20px 0;
-  color: #9ca3af; font-size: .74rem;
-}
-.lgn-divider::before, .lgn-divider::after {
-  content: ''; flex: 1; height: 1px; background: #e5e7eb;
-}
-
-/* ── Keep login always light ── */
-.lgn-form-panel,
-.lgn-form-inner,
-#loginScreen .lgn-input,
-#loginScreen .lgn-label,
-#loginScreen input { color: #111827 !important; }
-#loginScreen .lgn-input { background: #f9fafb !important; }
-#loginScreen .lgn-input:focus { background: #fff !important; }
-
-/* ── Animations ── */
-@keyframes lgnFadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.lgn-form-inner { animation: lgnFadeUp .45s cubic-bezier(.22,1,.36,1) both; }
-.lgn-brand-content { animation: lgnFadeUp .6s .1s cubic-bezier(.22,1,.36,1) both; }
-
-/* ── Login hgrid/orbs for backward compat (mobile bg) ── */
-.login-hgrid {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(125,194,66,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125,194,66,.07) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none; z-index: 0;
-}
-.login-orb { position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0; }
-.login-orb1 { width:480px;height:480px;background:rgba(45,106,68,.22);top:-140px;left:-100px;animation:login-orb-drift 24s ease-in-out infinite alternate; }
-.login-orb2 { width:360px;height:360px;background:rgba(125,194,66,.08);bottom:-60px;right:-80px;animation:login-orb-drift 18s ease-in-out infinite alternate-reverse; }
-.login-orb3 { width:240px;height:240px;background:rgba(26,61,39,.18);top:42%;left:55%;animation:login-orb-drift 20s ease-in-out infinite alternate; }
-@keyframes login-orb-drift { 0%{transform:translate(0,0)} 100%{transform:translate(28px,-22px)} }
-
-/* ── Mobile responsive ── */
+/* ── Mobile: green background with white card ── */
 @media (max-width: 899px) {
   .lgn-form-panel {
-    background: linear-gradient(160deg, #071a0f 0%, #0c3d1e 40%, #071a0f 100%);
-    padding: 24px 20px;
+    background: linear-gradient(160deg, #071510 0%, #0d3d1f 45%, #071510 100%);
+    padding: 28px 20px;
+    align-items: flex-start;
+    padding-top: max(32px, env(safe-area-inset-top, 0px));
   }
   .lgn-form-inner {
-    background: rgba(255,255,255,.97);
-    border-radius: 24px;
-    padding: 28px 24px 32px;
-    box-shadow: 0 30px 80px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.08);
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 22px 32px;
     max-width: 100%;
+    box-shadow: 0 24px 64px rgba(0,0,0,.35);
   }
-  .lgn-form-title { font-size: 1.3rem; }
+  .lgn-logo-wrap { display: flex; margin-bottom: 24px; }
+  .lgn-logo-img { height: 80px; }
+  .lgn-form-title { font-size: 1.35rem; }
+  .lgn-form-sub { margin-bottom: 24px; }
 }
 @media (max-width: 480px) {
-  .lgn-form-panel { padding: 16px 12px; align-items: flex-start; overflow-y: auto; }
-  .lgn-form-inner { margin-top: 8px; padding: 22px 18px 26px; border-radius: 20px; }
+  .lgn-form-panel { padding: 16px 12px; }
+  .lgn-form-inner { padding: 22px 18px 26px; }
+  .lgn-logo-img { height: 70px; }
 }
 
+/* ── Light mode lock-in ── */
+#loginScreen .lgn-input,
+#loginScreen input {
+  color: #111827 !important;
+  background: #fafbfa !important;
+}
+#loginScreen .lgn-input:focus { background: #fff !important; }
+#loginScreen .lgn-label,
+#loginScreen label { color: #374151 !important; }
+
+/* ── Sub-form headings (forgot, register, etc.) ── */
+.lgn-subform-title {
+  font-size: 1.1rem; font-weight: 700;
+  color: #0f1a12; text-align: center;
+  margin-bottom: 6px;
+}
+.lgn-subform-sub {
+  font-size: .82rem; color: #8a9690;
+  text-align: center; margin-bottom: 22px;
+  line-height: 1.55;
+}
+
+/* ── Shared sub-form inputs (forgotPwd, register, etc.) ── */
+#loginScreen .form-group input,
+#loginScreen .form-group select,
+#loginScreen #forgotPwdEmail,
+#loginScreen #recoveryPwd1,
+#loginScreen #recoveryPwd2,
+#loginScreen #regName,
+#loginScreen #regEmail,
+#loginScreen #regPassword,
+#loginScreen #regPassword2,
+#loginScreen #regLanguage,
+#loginScreen #newPwd1,
+#loginScreen #newPwd2 {
+  width: 100% !important;
+  padding: 13px 16px !important;
+  border: 1.5px solid #e4e9e4 !important;
+  border-radius: 10px !important;
+  font-size: .9rem !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  background: #fafbfa !important;
+  color: #111827 !important;
+  font-family: inherit !important;
+  transition: border-color .18s, box-shadow .18s !important;
+  -webkit-appearance: none !important;
+}
+#loginScreen .form-group input:focus,
+#loginScreen .form-group select:focus,
+#loginScreen #forgotPwdEmail:focus,
+#loginScreen #recoveryPwd1:focus,
+#loginScreen #recoveryPwd2:focus,
+#loginScreen #regName:focus,
+#loginScreen #regEmail:focus,
+#loginScreen #regPassword:focus,
+#loginScreen #regPassword2:focus,
+#loginScreen #regLanguage:focus,
+#loginScreen #newPwd1:focus,
+#loginScreen #newPwd2:focus {
+  border-color: #2a7a50 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(42,122,80,.10) !important;
+}
+#loginScreen .form-group label {
+  font-size: .76rem !important;
+  font-weight: 700 !important;
+  color: #374151 !important;
+  margin-bottom: 7px !important;
+  display: block !important;
+  letter-spacing: .01em !important;
+}
+
+/* ── Sub-form buttons ── */
+#loginScreen #forgotPwdBtn,
+#loginScreen #recoveryPwdBtn,
+#loginScreen #regBtn,
+#loginScreen button[onclick="doChangePwd()"] {
+  background: #1a6b3c !important;
+  border-radius: 10px !important;
+  font-size: .93rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(26,107,60,.22) !important;
+  transition: background .18s, transform .15s !important;
+}
+#loginScreen #forgotPwdBtn:hover,
+#loginScreen #recoveryPwdBtn:hover,
+#loginScreen #regBtn:hover,
+#loginScreen button[onclick="doChangePwd()"]:hover {
+  background: #155c32 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── "Solicitar acesso" button ── */
+#loginRequestAccessBtn {
+  border-color: #2a7a50 !important;
+  color: #2a7a50 !important;
+  border-radius: 8px !important;
+  font-size: .8rem !important;
+}
+#loginRequestAccessBtn:hover {
+  background: #2a7a50 !important;
+  color: #fff !important;
+}
+
+/* ── Animation ── */
+@keyframes lgnFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lgn-brand-content { animation: lgnFadeUp .5s .1s cubic-bezier(.22,1,.36,1) both; }
+
+/* ── Legacy compat ── */
+.login-hgrid, .login-orb, .login-card-a,
+.login-bg-opt1, .login-screen-shell { display: none; }
 
 /* ══ TX List — Timeline enhancements (Opção A) ═══════════════════════════ */
 
