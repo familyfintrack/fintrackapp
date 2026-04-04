@@ -23722,3 +23722,96 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
 .agent-chip--highlight {
   font-weight: 700;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ACCOUNT MODAL — Redesign seguindo padrão mfm2-sheet
+══════════════════════════════════════════════════════════════════ */
+.acc-modal-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 560px;
+  margin: auto auto 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 93vh;
+  overflow: hidden;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.22);
+  animation: mfm2FadeIn .25s ease both;
+}
+@media (min-width: 600px) {
+  .acc-modal-sheet { border-radius: 20px; margin: auto; }
+}
+
+/* Hero */
+.acc-modal-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(145deg, #091d10 0%, #0d2318 60%, #0a1f13 100%);
+  padding: 18px 20px 0;
+  flex-shrink: 0;
+}
+.acc-modal-hero-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 80% at 85% -10%, rgba(42,96,73,.5) 0%, transparent 65%);
+}
+.acc-modal-hero-inner {
+  position: relative; z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+.acc-modal-hero-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.acc-modal-hero-sub {
+  font-size: .72rem;
+  color: rgba(255,255,255,.5);
+  margin-top: 2px;
+}
+.acc-modal-close-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.65);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+  flex-shrink: 0;
+}
+.acc-modal-close-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+/* Body */
+.acc-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Footer */
+.acc-modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+/* Icon preview inside hero */
+#accModalHeroIcon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
