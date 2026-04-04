@@ -622,7 +622,7 @@
         </button>
         <!-- Sair: movido para menu do usuario -->
       </div>
-<button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()" title="Nova Transação" aria-label="Nova Transação">+</button>
+      <button class="btn btn-primary btn-sm" id="globalAddBtn" onclick="openTransactionModal()" title="Nova Transação" aria-label="Nova Transação">+</button>
     </div>
   </header>
 
@@ -4999,7 +4999,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
     <div class="login-card login-card-a" style="width:100%;max-width:620px">
       <div style="text-align:center;margin-bottom:28px">
-        <img id="loginLogoImg" src="logo.jpg" alt="Logo"  style="width:598px;max-width:90vw;height:auto;object-fit:contain;margin-bottom:12px">
+        <img id="loginLogoImg" src="logo_glow_soft.png" alt="Logo"  style="width:598px;max-width:90vw;height:auto;object-fit:contain;margin-bottom:12px">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af" data-i18n="auth.tagline">Família inteligente,  Finanças sob controle</div>
       </div>
       <div id="loginFormArea">
@@ -5943,7 +5943,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div class="sc-section-grid">
 
           <!-- Email -->
-          <div class="sc-channel-card">
+          <div class="sc-channel-card" id="scNotifyEmailRow" data-notif-channel="email">
             <label class="sc-channel-header" style="cursor:pointer">
               <input type="checkbox" id="scNotifyEmail" style="width:16px;height:16px;cursor:pointer" onchange="toggleScheduledEmailDetails(this.checked)">
               <div>
@@ -6482,11 +6482,44 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-<div class="modal-overlay" id="accountModal">
-  <div class="modal"><div class="modal-handle"></div>
-    <div class="modal-header"><span class="modal-title" id="accountModalTitle">Nova Conta</span><button class="modal-close" onclick="closeModal('accountModal')">✕</button></div>
-    <div class="modal-body">
+<div class="modal-overlay" id="accountModal" onclick="if(event.target===this)closeModal('accountModal')">
+  <div class="acc-modal-sheet">
+    <div class="modal-handle"></div>
+
+    <!-- ── Hero header (padrão mfm2) ── -->
+    <div class="acc-modal-hero">
+      <div class="acc-modal-hero-glow"></div>
+      <div class="acc-modal-hero-inner">
+        <div id="accModalHeroIcon" style="font-size:1.8rem;line-height:1;min-width:40px;text-align:center">🏦</div>
+        <div style="flex:1;min-width:0">
+          <div class="acc-modal-hero-title" id="accountModalTitle">Nova Conta</div>
+          <div class="acc-modal-hero-sub" id="accModalHeroSub">Preencha as informações da conta</div>
+        </div>
+        <button class="acc-modal-close-btn" onclick="closeModal('accountModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Tab bar (padrão mfm-tab-bar) ── -->
+    <div class="mfm-tab-bar">
+      <button class="mfm-tab active" id="accTabBtnGeral" onclick="_accModalTab('geral')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Geral
+      </button>
+      <button class="mfm-tab" id="accTabBtnBanco" onclick="_accModalTab('banco')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Dados Bancários
+      </button>
+    </div>
+
+    <!-- ── Body ── -->
+    <div class="acc-modal-body">
       <input type="hidden" id="accountId">
+
+      <!-- PANE: Geral -->
+      <div class="mfm-pane active" id="accTabGeral">
+        <input type="hidden" id="accountId">
       <div class="form-grid">
         <div class="form-group full"><label>Nome da Conta *</label><input type="text" id="accountName" placeholder="Ex: Itaú Corrente"></div>
         <div class="form-group"><label>Tipo *</label><select id="accountType" onchange="_onAccModalTypeChange()"><option value="corrente">Conta Corrente</option><option value="poupanca">Poupança</option><option value="cartao_credito">Cartão de Crédito</option><option value="investimento">Investimentos</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select></div>
@@ -6633,10 +6666,11 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
     </div>
+      </div>
       </div><!-- end accTabGeral -->
 
-      <!-- TAB: Dados Bancários -->
-      <div id="accTabBanco" class="acc-tab-panel" style="display:none">
+      <!-- PANE: Dados Bancários -->
+      <div class="mfm-pane" id="accTabBanco">
         <div class="form-grid" style="padding-top:4px">
 
           <!-- Conta bancária -->
@@ -6680,10 +6714,16 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
 
         </div>
+      </div>
       </div><!-- end accTabBanco -->
 
-    </div><!-- end modal-body -->
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button><button class="btn btn-primary" onclick="saveAccount()">Salvar</button></div>
+    </div><!-- end acc-modal-body -->
+
+    <!-- ── Footer ── -->
+    <div class="acc-modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAccount()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -7706,19 +7746,19 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div id="myProfileNotifyOnTxChannels" style="display:none;margin-top:12px">
               <div style="font-size:.75rem;font-weight:600;color:var(--text2);margin-bottom:8px">Enviar via:</div>
               <div style="display:flex;flex-direction:column;gap:8px">
-                <label class="prof-notif-channel-row">
+                <label class="prof-notif-channel-row" id="profNotifyTxEmailRow" data-notif-channel="email">
                   <input type="checkbox" id="myProfileNotifyTxEmail">
                   <span class="prof-notif-channel-icon">✉️</span>
                   <span class="prof-notif-channel-label">E-mail</span>
                   <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa e-mail do perfil)</span>
                 </label>
-                <label class="prof-notif-channel-row">
+                <label class="prof-notif-channel-row" id="profNotifyTxWaRow" data-notif-channel="whatsapp">
                   <input type="checkbox" id="myProfileNotifyTxWa">
                   <span class="prof-notif-channel-icon">💬</span>
                   <span class="prof-notif-channel-label">WhatsApp</span>
                   <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa número abaixo)</span>
                 </label>
-                <label class="prof-notif-channel-row">
+                <label class="prof-notif-channel-row" id="profNotifyTxTgRow" data-notif-channel="telegram">
                   <input type="checkbox" id="myProfileNotifyTxTg">
                   <span class="prof-notif-channel-icon">✈️</span>
                   <span class="prof-notif-channel-label">Telegram</span>
@@ -7731,7 +7771,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <!-- Canais padrão -->
           <div class="prof-section-label">🔔 Canais padrão</div>
           <div style="display:grid;grid-template-columns:1fr;gap:12px">
-            <div class="form-group" style="margin-bottom:0">
+            <div class="form-group" style="margin-bottom:0" id="myProfileWhatsappRow">
               <label style="font-size:.78rem">WhatsApp padrão</label>
               <div style="display:flex;gap:8px;align-items:center">
                 <input type="tel" id="myProfileWhatsappNumber" placeholder="5511999999999" style="flex:1">
@@ -7739,7 +7779,7 @@ Se você não solicitou isso, ignore este e-mail.`,
               </div>
               <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Pré-preenchido ao habilitar notificação por WhatsApp em Programados.</div>
             </div>
-            <div class="form-group" style="margin-bottom:0">
+            <div class="form-group" style="margin-bottom:0" id="myProfileTelegramRow">
               <label style="font-size:.78rem">Telegram padrão (Chat ID)</label>
               <div style="display:flex;gap:8px;align-items:center">
                 <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976" style="flex:1">
@@ -9652,254 +9692,635 @@ window.openMyProfile = function(...args) {
   })();
   </script>
 
-<!-- ══ AGENT PANEL ══════════════════════════════════════════════════════════ -->
-<div id="agentPanel" style="display:none;position:fixed;bottom:0;right:0;z-index:99990;
-  flex-direction:column;width:min(420px,100vw);height:min(620px,90dvh);
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:16px 16px 0 0;
-  box-shadow:0 -12px 48px rgba(5,34,20,.22),0 -4px 16px rgba(22,163,74,.12);
-  font-family:var(--font-sans);overflow:hidden">
+<!-- ══ AGENT PANEL — FinTrack Copiloto Pro ═══════════════════════════════ -->
+<div id="agentPanel" class="agent-panel" style="display:none">
 
-  <!-- Header -->
-  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;flex-shrink:0;
-    background:linear-gradient(135deg,#0f5132 0%,#166534 45%,#16a34a 100%);
-    border-bottom:1px solid rgba(134,239,172,.20);position:relative;overflow:hidden">
-    <!-- Decorative shine -->
-    <div style="position:absolute;top:-20px;right:30px;width:80px;height:80px;
-      border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none"></div>
-    <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.15);
-      border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;
-      flex-shrink:0;backdrop-filter:blur(8px)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="#86efac" stroke="none"/></svg>
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:.9rem;font-weight:800;color:#f0fdf4;letter-spacing:-.01em">FinTrack Agent</div>
-      <div style="display:flex;align-items:center;gap:5px;margin-top:1px">
-        <span style="width:6px;height:6px;border-radius:50%;background:#4ade80;
-          box-shadow:0 0 6px #4ade80;flex-shrink:0;animation:agentPulse 2s ease-in-out infinite"></span>
-        <span style="font-size:.65rem;color:rgba(240,253,244,.75)">Online · Finanças · Ajuda · Ações</span>
+  <!-- ── Header ── -->
+  <div class="agent-header">
+    <div class="agent-header-glow"></div>
+    <div class="agent-header-left">
+      <div class="agent-header-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L13.7 8.3L20 10L13.7 11.7L12 18L10.3 11.7L4 10L10.3 8.3L12 2Z"/>
+          <path d="M19.5 15.5L20.5 18.5L23 19.5L20.5 20.5L19.5 23L18.5 20.5L16 19.5L18.5 18.5Z" opacity=".7"/>
+        </svg>
+      </div>
+      <div>
+        <div class="agent-header-title">FinTrack Agent</div>
+        <div class="agent-header-status">
+          <span class="agent-status-dot"></span>
+          <span id="agentStatusText">Pronto para ajudar</span>
+        </div>
       </div>
     </div>
-    <button onclick="toggleAgent()"
-      style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.20);color:#f0fdf4;
-             width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:.75rem;
-             display:flex;align-items:center;justify-content:center;flex-shrink:0;
-             transition:background .15s">✕</button>
+    <div class="agent-header-actions">
+      <button onclick="_agentToggleFullscreen()" id="agentFullscreenBtn" class="agent-hbtn" title="Tela cheia">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+      <button onclick="_agentClearHistory()" class="agent-hbtn" title="Limpar conversa">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+      <button onclick="toggleAgent()" class="agent-hbtn agent-hbtn--close" title="Fechar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
   </div>
 
-  <!-- Quick suggestions — preenchidas dinamicamente por _agentRefreshQuickReplies() -->
-  <div id="agentQuickBar" style="padding:8px 12px;border-bottom:1px solid var(--border);
-    display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;background:var(--surface2)">
-    <button onclick="agentShowCapabilities()" class="agent-chip agent-chip--highlight"
-      style="background:linear-gradient(135deg,rgba(22,163,74,.15),rgba(15,81,50,.12));border-color:rgba(22,163,74,.35);white-space:nowrap;flex-shrink:0">
-      💡 O que posso fazer
-    </button>
-    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos</button>
-    <button onclick="agentSuggest('qual meu saldo total?')" class="agent-chip">💳 Saldo</button>
-    <button onclick="agentSuggest('criar despesa')" class="agent-chip">➕ Despesa</button>
-    <button onclick="agentSuggest('criar receita')" class="agent-chip">💰 Receita</button>
+  <!-- ── Context bar — página atual ── -->
+  <div id="agentContextBar" class="agent-context-bar">
+    <span id="agentContextPage" class="agent-context-page">📊 Dashboard</span>
+    <span class="agent-context-sep">·</span>
+    <span id="agentContextHint" class="agent-context-hint">Pergunte sobre seus dados ou peça uma ação</span>
+  </div>
+
+  <!-- ── Quick chips ── -->
+  <div id="agentQuickBar" class="agent-quick-bar">
+    <button onclick="agentShowCapabilities()" class="agent-chip agent-chip--highlight">💡 O que posso fazer</button>
+    <button onclick="agentSuggest('Quanto gastei este mês?')" class="agent-chip">📊 Gastos do mês</button>
+    <button onclick="agentSuggest('qual meu saldo total?')" class="agent-chip">💰 Saldo</button>
+    <button onclick="agentSuggest('criar despesa')" class="agent-chip">➕ Lançar despesa</button>
+    <button onclick="agentSuggest('criar receita')" class="agent-chip">💚 Lançar receita</button>
     <button onclick="agentSuggest('resumo financeiro deste mês')" class="agent-chip">📈 Resumo</button>
     <button onclick="agentSuggest('previsão próximos 30 dias')" class="agent-chip">🔮 Previsão</button>
+    <button onclick="agentSuggest('quais programados vencem esta semana?')" class="agent-chip">📅 Vencimentos</button>
     <button onclick="agentSuggest('Como adicionar uma conta?')" class="agent-chip">❓ Ajuda</button>
   </div>
 
-  <!-- Feed -->
-  <div id="agentFeed" style="flex:1;overflow-y:auto;padding:12px 14px;
-    display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth"></div>
+  <!-- ── Feed de mensagens ── -->
+  <div id="agentFeed" class="agent-feed"></div>
 
-  <!-- Loading indicator (hidden) -->
-  <div id="agentLoading" style="display:none"></div>
+  <!-- ── Inline hints ── -->
+  <div id="agentInlineHints" class="agent-inline-hints" style="display:none"></div>
 
-  <!-- Input bar -->
-  <div style="padding:10px 12px;border-top:1px solid var(--border);
-    display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:var(--surface)">
-    <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-      <!-- Inline autocomplete hints (populados por JS) -->
-      <div id="agentInlineHints" style="display:none;flex-wrap:wrap;gap:5px"></div>
-      <!-- Confirm/cancel bar (mostrado quando há ação pendente) -->
-      <div id="agentConfirmBar" style="display:none;gap:6px;align-items:center">
-        <button class="agent-action-btn agent-action-btn--primary" onclick="agentSend_confirm()">✓ Confirmar</button>
-        <button class="agent-action-btn agent-action-btn--secondary" onclick="agentSend_cancel()">✗ Cancelar</button>
-      </div>
-      <textarea id="agentInput" rows="1" onkeydown="agentKeydown(event)"
-        placeholder="Ex: Crie uma despesa de R$50 na Padaria…"
-        style="padding:9px 12px;font-family:var(--font-sans);font-size:.84rem;
-               border:1.5px solid var(--border);border-radius:10px;background:var(--surface2);
-               color:var(--text);resize:none;outline:none;line-height:1.4;
-               max-height:100px;overflow-y:auto;transition:border-color .15s;width:100%;box-sizing:border-box"
-        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
-        onfocus="this.style.borderColor='#16a34a'"
-        onblur="this.style.borderColor='var(--border)'"></textarea>
+  <!-- ── Confirm bar ── -->
+  <div id="agentConfirmBar" class="agent-confirm-bar" style="display:none">
+    <span class="agent-confirm-label">⚡ Ação pronta para executar</span>
+    <div class="agent-confirm-btns">
+      <button class="agent-action-btn agent-action-btn--primary" onclick="agentSend_confirm()">✓ Confirmar</button>
+      <button class="agent-action-btn agent-action-btn--secondary" onclick="agentSend_cancel()">✗ Cancelar</button>
     </div>
-    <button id="agentSendBtn" onclick="agentSend()"
-      style="background:linear-gradient(135deg,#15803d,#16a34a);border:none;color:#fff;
-             width:38px;height:38px;border-radius:10px;cursor:pointer;flex-shrink:0;
-             display:flex;align-items:center;justify-content:center;
-             box-shadow:0 2px 8px rgba(22,163,74,.35);
-             transition:opacity .15s,transform .15s"
-      onmouseover="this.style.opacity='.88';this.style.transform='translateY(-1px)'"
-      onmouseout="this.style.opacity='1';this.style.transform=''">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="22" y1="2" x2="11" y2="13"/>
-        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-      </svg>
-    </button>
+  </div>
+
+  <!-- ── Input bar ── -->
+  <div class="agent-input-bar">
+    <div class="agent-input-wrap">
+      <textarea id="agentInput" class="agent-input" rows="1"
+        onkeydown="agentKeydown(event)"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';_agentRenderInlineSuggestions(this.value)"
+        onfocus="_agentOnInputFocus()"
+        onblur="_agentOnInputBlur()"
+        placeholder="Pergunte ou peça uma ação…"></textarea>
+      <div id="agentInputPlaceholder" class="agent-input-placeholder" onclick="document.getElementById('agentInput').focus()">
+        <span class="agent-placeholder-text">Pergunte ou peça uma ação…</span>
+        <span class="agent-placeholder-hint">Enter para enviar · Shift+Enter para nova linha</span>
+      </div>
+    </div>
+    <div class="agent-send-btns">
+      <button id="agentMicBtn" class="agent-mic-btn" onclick="_agentToggleMic()" title="Ditado por voz">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+      <button id="agentSendBtn" class="agent-send-btn" onclick="agentSend()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
   </div>
 </div>
 
 <style>
-/* ── Agent panel CSS — FinTrack Copiloto v3 ─────────────────────────────── */
-@keyframes agentPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-@keyframes agentDot { 0%,60%,100%{opacity:.2;transform:scale(.8)} 30%{opacity:1;transform:scale(1)} }
-@keyframes agentSlideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-@keyframes agentStarSpin { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(18deg) scale(1.15)} 100%{transform:rotate(0deg) scale(1)} }
-/* Pulso sutil no ícone da estrela do agente */
-.topbar-agent-btn svg { animation: agentStarSpin 3.5s ease-in-out infinite; }
-.topbar-agent-btn:hover svg { animation: agentStarSpin .5s ease-in-out 1; }
+/* ══════════════════════════════════════════════════════════════════
+   AGENT PANEL — FinTrack Copiloto Pro
+══════════════════════════════════════════════════════════════════ */
 
-.agent-msg { display:flex; flex-direction:column; max-width:94%; animation:agentSlideIn .18s ease; }
-.agent-msg--user { align-self:flex-end; }
-.agent-msg--assistant { align-self:flex-start; }
-.agent-bubble { display:flex; align-items:flex-start; gap:8px; }
-.agent-avatar {
-  width:28px;height:28px;border-radius:8px;
-  background:linear-gradient(135deg,#0f5132,#16a34a);
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
+/* ── Keyframes ── */
+@keyframes agentPulse    { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,222,128,.4)} 50%{opacity:.8;box-shadow:0 0 0 5px rgba(74,222,128,0)} }
+@keyframes agentDot      { 0%,60%,100%{opacity:.25;transform:translateY(0)} 30%{opacity:1;transform:translateY(-4px)} }
+@keyframes agentSlideIn  { from{opacity:0;transform:translateY(8px) scale(.99)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes agentFadeIn   { from{opacity:0} to{opacity:1} }
+@keyframes agentStarSpin { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(18deg) scale(1.15)} 100%{transform:rotate(0deg) scale(1)} }
+@keyframes agentMicPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5)} 50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
+@keyframes agentPanelIn  { from{opacity:0;transform:translateY(20px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+/* ── Panel ── */
+.agent-panel {
+  position: fixed;
+  bottom: 0; right: 0;
+  z-index: 99990;
+  flex-direction: column;
+  width: min(440px, 100vw);
+  height: min(640px, 92dvh);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  box-shadow:
+    0 -16px 60px rgba(5,34,20,.28),
+    0 -4px 20px rgba(22,163,74,.14),
+    0 0 0 1px rgba(22,163,74,.06) inset;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  animation: agentPanelIn .3s cubic-bezier(.22,1,.36,1) both;
+  display: flex;
 }
-.agent-avatar svg { display:block; }
+.agent-panel.fullscreen {
+  width: 100vw; height: 100dvh;
+  border-radius: 0; bottom: 0; right: 0;
+}
+@media (min-width: 600px) {
+  .agent-panel { border-radius: 20px; bottom: 20px; right: 20px; }
+  .agent-panel.fullscreen { bottom: 0; right: 0; border-radius: 0; }
+}
+
+/* ── Header ── */
+.agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #071c0f 0%, #0f4a24 50%, #145d2e 100%);
+  border-bottom: 1px solid rgba(134,239,172,.15);
+  position: relative;
+  overflow: hidden;
+}
+.agent-header-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60% 100% at 80% -10%, rgba(34,197,94,.18) 0%, transparent 60%);
+}
+.agent-header-left {
+  display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; flex: 1; min-width: 0;
+}
+.agent-header-logo {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(134,239,172,.25);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.agent-header-title {
+  font-size: .88rem; font-weight: 800;
+  color: #f0fdf4; letter-spacing: -.01em;
+}
+.agent-header-status {
+  display: flex; align-items: center; gap: 5px; margin-top: 2px;
+}
+.agent-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #4ade80;
+  animation: agentPulse 2.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+#agentStatusText {
+  font-size: .63rem; color: rgba(240,253,244,.65); font-weight: 500;
+}
+.agent-header-actions {
+  display: flex; align-items: center; gap: 4px; position: relative; z-index: 1;
+}
+.agent-hbtn {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(240,253,244,.7);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.agent-hbtn:hover { background: rgba(255,255,255,.18); color: #fff; }
+.agent-hbtn--close:hover { background: rgba(220,38,38,.3); border-color: rgba(220,38,38,.4); }
+
+/* ── Context bar ── */
+.agent-context-bar {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.agent-context-page {
+  font-size: .7rem; font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-lt);
+  padding: 2px 8px; border-radius: 20px;
+  white-space: nowrap;
+}
+.agent-context-sep { color: var(--border2); font-size: .7rem; }
+.agent-context-hint {
+  font-size: .7rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Quick bar ── */
+.agent-quick-bar {
+  display: flex; gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  background: var(--surface);
+}
+.agent-quick-bar::-webkit-scrollbar { display: none; }
+
+/* ── Feed ── */
+.agent-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+.agent-feed::-webkit-scrollbar { width: 4px; }
+.agent-feed::-webkit-scrollbar-track { background: transparent; }
+.agent-feed::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── Messages ── */
+.agent-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 88%;
+  animation: agentSlideIn .2s cubic-bezier(.22,1,.36,1) both;
+}
+.agent-msg--user { align-self: flex-end; }
+.agent-msg--assistant { align-self: flex-start; max-width: 95%; }
+
+/* Message meta */
+.agent-msg-meta {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 5px;
+}
+.agent-msg-meta--user { justify-content: flex-end; }
+.agent-msg-avatar {
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #0a2d1a, #166534);
+  border: 1px solid rgba(74,222,128,.25);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.agent-msg-name {
+  font-size: .67rem; font-weight: 700;
+  color: var(--muted);
+}
+.agent-msg-time {
+  font-size: .63rem;
+  color: var(--muted);
+  opacity: .7;
+}
+
+/* Bubble */
+.agent-bubble {
+  position: relative;
+}
 .agent-text {
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:4px 12px 12px 12px;
-  padding:9px 12px; font-size:.82rem; color:var(--text); line-height:1.6;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px 14px 14px 14px;
+  padding: 10px 13px;
+  font-size: .83rem;
+  color: var(--text);
+  line-height: 1.62;
+  word-break: break-word;
 }
 .agent-text code {
-  background:var(--bg2); border-radius:4px; padding:1px 5px;
-  font-family:monospace; font-size:.78rem;
+  background: var(--bg2); border-radius: 4px;
+  padding: 1px 5px; font-family: monospace; font-size: .78rem;
+  color: var(--accent);
 }
+.agent-text strong { color: var(--text); font-weight: 700; }
+.agent-text a { color: var(--accent); text-decoration: underline; }
+
+/* User bubble */
 .agent-msg--user .agent-text {
-  background:linear-gradient(135deg,#15803d,#16a34a);
-  color:#fff; border:none; border-radius:12px 4px 12px 12px;
+  background: linear-gradient(135deg, #166534, #16a34a);
+  color: #fff;
+  border: none;
+  border-radius: 14px 4px 14px 14px;
+  box-shadow: 0 2px 10px rgba(22,163,74,.25);
 }
+.agent-msg--user .agent-text strong { color: #fff; }
+
+/* Typing indicator */
 .agent-typing {
-  display:flex; gap:4px; align-items:center; padding:10px 14px;
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:4px 12px 12px 12px;
+  display: flex; gap: 5px; align-items: center;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px 14px 14px 14px;
 }
 .agent-typing span {
-  width:6px; height:6px; border-radius:50%;
-  background:var(--accent); display:inline-block;
-  animation:agentDot .9s ease-in-out infinite;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  animation: agentDot 1.2s ease-in-out infinite;
 }
-.agent-typing span:nth-child(2) { animation-delay:.2s; }
-.agent-typing span:nth-child(3) { animation-delay:.4s; }
+.agent-typing span:nth-child(2) { animation-delay: .2s; }
+.agent-typing span:nth-child(3) { animation-delay: .4s; }
 
-/* ── Chips base ── */
+/* ── Date separator ── */
+.agent-date-sep {
+  display: flex; align-items: center; gap: 10px;
+  margin: 4px 0;
+}
+.agent-date-sep-line { flex: 1; height: 1px; background: var(--border); }
+.agent-date-sep-text {
+  font-size: .63rem; color: var(--muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+}
+
+/* ── Inline hints ── */
+.agent-inline-hints {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  animation: agentFadeIn .15s ease;
+}
+
+/* ── Confirm bar ── */
+.agent-confirm-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(251,191,36,.08);
+  border-top: 1px solid rgba(251,191,36,.2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.agent-confirm-label {
+  font-size: .75rem; font-weight: 600;
+  color: #fbbf24;
+}
+.agent-confirm-btns { display: flex; gap: 6px; }
+
+/* ── Input bar ── */
+.agent-input-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.agent-input-wrap {
+  flex: 1;
+  position: relative;
+}
+.agent-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-family: var(--font-sans);
+  font-size: .84rem;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+  color: var(--text);
+  resize: none;
+  outline: none;
+  line-height: 1.45;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color .2s, box-shadow .2s;
+  box-sizing: border-box;
+  display: block;
+}
+.agent-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,.1);
+}
+.agent-input::placeholder { color: transparent; }
+
+/* Custom placeholder overlay */
+.agent-input-placeholder {
+  position: absolute;
+  top: 10px; left: 14px;
+  pointer-events: none;
+  display: flex; flex-direction: column; gap: 1px;
+  transition: opacity .15s;
+}
+.agent-input:focus ~ .agent-input-placeholder,
+.agent-input:not(:placeholder-shown) ~ .agent-input-placeholder { opacity: 0; }
+.agent-placeholder-text {
+  font-size: .83rem; color: var(--muted); line-height: 1.45;
+}
+.agent-placeholder-hint {
+  font-size: .65rem; color: var(--muted); opacity: .6;
+}
+
+/* Send buttons */
+.agent-send-btns {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.agent-mic-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.agent-mic-btn:hover { border-color: var(--accent); color: var(--accent); }
+.agent-mic-btn.recording {
+  background: rgba(239,68,68,.1);
+  border-color: #ef4444;
+  color: #ef4444;
+  animation: agentMicPulse 1s ease-in-out infinite;
+}
+.agent-send-btn {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #15803d, #16a34a);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(22,163,74,.35);
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.agent-send-btn:hover { opacity: .88; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(22,163,74,.4); }
+.agent-send-btn:active { transform: translateY(0); }
+.agent-send-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* ── Chips ── */
 .agent-chip {
-  white-space:nowrap; padding:5px 11px; font-size:.71rem; font-weight:600;
-  border:1px solid var(--border); border-radius:20px; background:var(--surface);
-  color:var(--text2); cursor:pointer; font-family:var(--font-sans);
-  transition:all .15s; flex-shrink:0;
+  white-space: nowrap;
+  padding: 5px 12px;
+  font-size: .72rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all .15s;
+  flex-shrink: 0;
 }
-.agent-chip:hover { border-color:var(--accent); background:rgba(22,163,74,.1); color:var(--accent); }
-.agent-chip--confirm { border-color:#16a34a; background:rgba(22,163,74,.15); color:#16a34a; }
-.agent-chip--confirm:hover { background:#16a34a; color:#fff; }
-.agent-chip--alt { border-color:var(--border); color:var(--muted); }
+.agent-chip:hover {
+  border-color: var(--accent);
+  background: rgba(22,163,74,.08);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.agent-chip--highlight {
+  border-color: rgba(22,163,74,.4);
+  background: rgba(22,163,74,.08);
+  color: var(--accent);
+}
+.agent-chip--highlight:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
 .agent-quick-chip {
-  white-space:nowrap; padding:4px 10px; font-size:.69rem; font-weight:600;
-  border:1px solid var(--border); border-radius:16px; background:transparent;
-  color:var(--text2); cursor:pointer; font-family:var(--font-sans);
-  transition:all .15s; flex-shrink:0;
+  white-space: nowrap; padding: 4px 10px; font-size: .7rem; font-weight: 600;
+  border: 1px solid var(--border); border-radius: 16px; background: transparent;
+  color: var(--text2); cursor: pointer; font-family: var(--font-sans);
+  transition: all .15s; flex-shrink: 0;
 }
-.agent-quick-chip:hover { border-color:var(--accent); color:var(--accent); }
-
-/* ── Guided card ── */
-.agent-guided-card {
-  background:var(--surface2); border:1px solid var(--border);
-  border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;
-  font-size:.82rem; width:100%; box-sizing:border-box;
-}
-.agent-guided-header {
-  display:flex; align-items:flex-start; gap:10px;
-}
-.agent-guided-icon { font-size:1.4rem; flex-shrink:0; line-height:1; }
-.agent-guided-title { font-weight:700; color:var(--text); font-size:.88rem; }
-.agent-guided-subtitle { font-size:.74rem; color:var(--muted); margin-top:2px; }
-.agent-guided-progress {
-  margin-left:auto; width:48px; height:4px;
-  background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; margin-top:6px;
-}
-.agent-guided-progress-bar {
-  height:100%; background:var(--accent); border-radius:2px;
-  transition:width .3s ease;
-}
-
-/* ── Guided fields ── */
-.agent-guided-fields { display:flex; flex-direction:column; gap:0; }
-.agent-guided-field {
-  display:flex; justify-content:space-between; align-items:center; gap:12px;
-  padding:5px 0; border-bottom:1px dashed rgba(255,255,255,.07);
-}
-.agent-guided-field:last-child { border-bottom:none; }
-.agent-guided-field-label { color:var(--muted); font-size:.77rem; }
-.agent-guided-field-value { font-size:.8rem; color:var(--text); font-weight:500; text-align:right; }
-.agent-guided-field--missing .agent-guided-field-label { color:#fbbf24; }
-.agent-guided-field--missing .agent-guided-field-value { color:#fde68a; font-weight:700; }
-.agent-guided-empty { color:var(--muted); font-style:italic; font-weight:400; }
-
-/* ── Chips groups (guided) ── */
-.agent-guided-chips-section { display:flex; flex-direction:column; gap:8px; }
-.agent-chips-group { display:flex; flex-direction:column; gap:5px; }
-.agent-chips-label { font-size:.73rem; color:var(--muted); font-weight:600; }
-.agent-chips-row { display:flex; flex-wrap:wrap; gap:5px; }
-.agent-chips-confirm {
-  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-  background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.25);
-  border-radius:8px; padding:6px 10px;
-}
-.agent-chips-confirm-text { font-size:.77rem; color:var(--text2); }
-.agent-guided-hint { font-size:.72rem; color:var(--muted); font-style:italic; }
-
-/* ── Confidence badge ── */
-.agent-conf-badge {
-  display:inline-flex; align-items:center; justify-content:center;
-  width:14px; height:14px; border-radius:50%; background:#fbbf24;
-  color:#000; font-size:.58rem; font-weight:700;
-  margin-left:4px; vertical-align:middle;
-}
-
-/* ── Response cards ── */
-.agent-response { border-radius:10px; padding:10px 13px; font-size:.82rem; line-height:1.6; }
-.agent-response--success { background:rgba(22,163,74,.1); border:1px solid rgba(22,163,74,.3); }
-.agent-response--error { background:rgba(220,38,38,.08); border:1px solid rgba(220,38,38,.25); }
-.agent-response--confirm { background:rgba(37,99,235,.08); border:1px solid rgba(37,99,235,.25); }
-.agent-response--neutral { background:var(--surface2); border:1px solid var(--border); }
-.agent-response-text { color:var(--text); margin-bottom:6px; }
-.agent-response-detail { font-size:.78rem; color:var(--muted); margin-bottom:8px; }
-.agent-response-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.agent-quick-chip:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── Action buttons ── */
 .agent-action-btn {
-  padding:6px 14px; font-size:.77rem; font-weight:600; border-radius:8px;
-  cursor:pointer; border:1px solid var(--border); font-family:var(--font-sans);
-  transition:all .15s; background:var(--surface);color:var(--text2);
+  padding: 6px 14px; font-size: .77rem; font-weight: 600; border-radius: 8px;
+  cursor: pointer; border: 1.5px solid var(--border); font-family: var(--font-sans);
+  transition: all .15s; background: var(--surface); color: var(--text2);
 }
 .agent-action-btn--primary {
-  background:linear-gradient(135deg,#15803d,#16a34a); color:#fff; border:none;
-  box-shadow:0 2px 6px rgba(22,163,74,.3);
+  background: linear-gradient(135deg, #15803d, #16a34a);
+  color: #fff; border: none;
+  box-shadow: 0 2px 8px rgba(22,163,74,.3);
 }
-.agent-action-btn--primary:hover { opacity:.88; transform:translateY(-1px); }
-.agent-action-btn--secondary { color:var(--muted); }
-.agent-action-btn--secondary:hover { border-color:var(--muted); color:var(--text); }
+.agent-action-btn--primary:hover { opacity: .88; transform: translateY(-1px); }
+.agent-action-btn--secondary { color: var(--muted); }
+.agent-action-btn--secondary:hover { border-color: var(--muted); color: var(--text); }
 
-/* ── Quick replies row ── */
-.agent-quick-replies {
-  display:flex; flex-wrap:wrap; gap:5px; padding:4px 0;
+/* ── Rich result cards ── */
+.agent-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: .82rem;
+  margin-top: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
+.agent-card-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 13px;
+  background: rgba(22,163,74,.06);
+  border-bottom: 1px solid var(--border);
+  font-weight: 700; font-size: .8rem;
+}
+.agent-card-body { padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; }
+.agent-card-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  font-size: .8rem;
+}
+.agent-card-row:last-child { border-bottom: none; }
+.agent-card-label { color: var(--muted); }
+.agent-card-value { font-weight: 600; color: var(--text); }
+.agent-card-value--pos { color: var(--accent); }
+.agent-card-value--neg { color: var(--red, #dc2626); }
+.agent-card-actions {
+  display: flex; gap: 6px; padding: 8px 13px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.agent-card-btn {
+  padding: 5px 12px; font-size: .73rem; font-weight: 600;
+  border-radius: 7px; cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text2);
+  font-family: var(--font-sans); transition: all .15s;
+}
+.agent-card-btn:hover { border-color: var(--accent); color: var(--accent); }
+.agent-card-btn--primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.agent-card-btn--primary:hover { opacity: .88; }
 
-/* ── Inline confirm bar ── */
-#agentConfirmBar { display:none; flex-wrap:wrap; gap:6px; align-items:center; }
-#agentConfirmBar.active { display:flex !important; }
+/* ── Response status cards ── */
+.agent-response { border-radius: 10px; padding: 10px 13px; font-size: .82rem; line-height: 1.6; }
+.agent-response--success { background: rgba(22,163,74,.1); border: 1px solid rgba(22,163,74,.25); }
+.agent-response--error   { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.22); }
+.agent-response--confirm { background: rgba(37,99,235,.08); border: 1px solid rgba(37,99,235,.22); }
+.agent-response--neutral { background: var(--surface2); border: 1px solid var(--border); }
+.agent-response--warn    { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); }
+.agent-response-text { color: var(--text); margin-bottom: 6px; }
+.agent-response-detail { font-size: .77rem; color: var(--muted); margin-bottom: 8px; }
+.agent-response-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+/* ── Guided card ── */
+.agent-guided-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+  font-size: .82rem; width: 100%; box-sizing: border-box;
+}
+.agent-guided-header { display: flex; align-items: flex-start; gap: 10px; }
+.agent-guided-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; }
+.agent-guided-title { font-weight: 700; color: var(--text); font-size: .88rem; }
+.agent-guided-subtitle { font-size: .74rem; color: var(--muted); margin-top: 2px; }
+.agent-guided-progress { margin-left: auto; width: 48px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; margin-top: 6px; }
+.agent-guided-progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s ease; }
+.agent-guided-fields { display: flex; flex-direction: column; gap: 0; }
+.agent-guided-field { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,.07); }
+.agent-guided-field:last-child { border-bottom: none; }
+.agent-guided-field-label { color: var(--muted); font-size: .77rem; }
+.agent-guided-field-value { font-size: .8rem; color: var(--text); font-weight: 500; text-align: right; }
+.agent-guided-field--missing .agent-guided-field-label { color: #fbbf24; }
+.agent-guided-field--missing .agent-guided-field-value { color: #fde68a; font-weight: 700; }
+.agent-guided-empty { color: var(--muted); font-style: italic; font-weight: 400; }
+.agent-guided-chips-section { display: flex; flex-direction: column; gap: 8px; }
+.agent-chips-group { display: flex; flex-direction: column; gap: 5px; }
+.agent-chips-label { font-size: .73rem; color: var(--muted); font-weight: 600; }
+.agent-chips-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.agent-chips-confirm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25); border-radius: 8px; padding: 6px 10px; }
+.agent-chips-confirm-text { font-size: .77rem; color: var(--text2); }
+.agent-guided-hint { font-size: .72rem; color: var(--muted); font-style: italic; }
+.agent-conf-badge { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #fbbf24; color: #000; font-size: .58rem; font-weight: 700; margin-left: 4px; vertical-align: middle; }
+
+/* ── Capability grid ── */
+.agent-cap-section { margin-bottom: 14px; }
+.agent-cap-section-title {
+  font-size: .7rem; font-weight: 800; color: var(--accent);
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px;
+  display: flex; align-items: center; gap: 6px;
+}
+.agent-cap-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.agent-cap-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.agent-cap-chip {
+  padding: 6px 12px; font-size: .75rem; font-weight: 600;
+  border: 1.5px solid var(--border); border-radius: 20px;
+  background: var(--surface); color: var(--text2);
+  cursor: pointer; font-family: var(--font-sans); transition: all .15s;
+  text-align: left;
+}
+.agent-cap-chip:hover { border-color: var(--accent); background: rgba(22,163,74,.08); color: var(--accent); transform: translateY(-1px); }
+
+/* ── Topbar button animation ── */
+.topbar-agent-btn svg { animation: agentStarSpin 4s ease-in-out infinite; }
+.topbar-agent-btn:hover svg { animation-duration: .5s; }
+
+/* ── Dark mode refinements ── */
+body.dark .agent-panel { background: var(--surface); border-color: var(--border); }
+body.dark .agent-text { background: var(--surface2); }
+body.dark .agent-context-bar { background: var(--surface2); }
+
+/* ── Scrollbar ── */
+#agentConfirmBar.active { display: flex !important; }
 </style>
 
 </body>
