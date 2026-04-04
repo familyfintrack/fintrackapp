@@ -1374,6 +1374,10 @@ async function renderDashboardUpcoming(memberIds = null) {
 // ── Dashboard Forecast 90d ─────────────────────────────────────────────────
 let _dashForecastChart = null;
 let _dashForecastTimer = null;
+// Store daily data for tooltip + drill-down (shared between chart and modal)
+let _fcDailyData   = {};   // date → { balances:{accId→val}, txs:[], scheduled:[] }
+let _fcAllAccounts = [];   // accounts used in this render
+let _fcAllDates    = [];   // full 91-day date array
 
 function _initDashForecastAccountSelect() {
   if (typeof _fcPickerBuild !== 'function') return;
@@ -1398,10 +1402,9 @@ async function _renderDashForecast() {
   const canvas = document.getElementById('dashForecastChart');
   if (!canvas) return;
 
-  // Destroy previous chart
   if (_dashForecastChart) { try { _dashForecastChart.destroy(); } catch(_) {} _dashForecastChart = null; }
 
-  // Date range: today → today + 90 days
+  // Date range: today → today + 90 days (ALL days, daily resolution)
   const fromDate = new Date();
   const toDate   = new Date();
   toDate.setDate(toDate.getDate() + 90);
@@ -1410,13 +1413,13 @@ async function _renderDashForecast() {
 
   // Fetch real transactions in period
   let q = famQ(sb.from('transactions')
-    .select('id,date,description,amount,currency,brl_amount,account_id,is_transfer,categories(name,color,icon),payees(name),accounts!transactions_account_id_fkey(id,name,color,currency,icon,type,balance)')
+    .select('id,date,description,amount,currency,brl_amount,account_id,is_transfer,status,categories(name,color,icon),payees(name),accounts!transactions_account_id_fkey(id,name,color,currency,icon,type,balance)')
     .gte('date', fromStr).lte('date', toStr).order('date'));
   if (accIds.length === 1) q = q.eq('account_id', accIds[0]);
   else if (accIds.length > 1) q = q.in('account_id', accIds);
   const { data: txData } = await q;
 
-  // Build scheduled items using same logic as forecast.js
+  // Build scheduled items
   let scheduledItems = [];
   if (includeScheduled && state.scheduled?.length) {
     const schToProcess = accIds.length
@@ -1434,43 +1437,24 @@ async function _renderDashForecast() {
           const originAmount = sc.type === 'income' ? baseAmt : -baseAmt;
           if (originAmount !== 0) {
             const accMeta = (state.accounts || []).find(a => a.id === sc.account_id);
-            scheduledItems.push({
-              date,
-              description: sc.description || '',
-              amount: originAmount,
-              account_id: sc.account_id,
-              currency: sc.currency || accMeta?.currency || 'BRL',
-              categories: sc.categories || null,
-              payees: sc.payees || null,
-              accounts: accMeta || null,
-              isScheduled: true
-            });
+            scheduledItems.push({ date, description: sc.description || '', amount: originAmount, account_id: sc.account_id, currency: sc.currency || accMeta?.currency || 'BRL', categories: sc.categories || null, payees: sc.payees || null, accounts: accMeta || null, isScheduled: true });
           }
         }
         if (isTransfer && sc.transfer_to_account_id && (!accIds.length || accIds.includes(sc.transfer_to_account_id))) {
           const accMeta = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
-          scheduledItems.push({
-            date,
-            description: sc.description || '',
-            amount: Math.abs(parseFloat(sc.amount)||0),
-            account_id: sc.transfer_to_account_id,
-            currency: accMeta?.currency || 'BRL',
-            categories: sc.categories || null,
-            payees: null,
-            accounts: accMeta || null,
-            isScheduled: true
-          });
+          scheduledItems.push({ date, description: sc.description || '', amount: Math.abs(parseFloat(sc.amount)||0), account_id: sc.transfer_to_account_id, currency: accMeta?.currency || 'BRL', categories: null, payees: null, accounts: accMeta || null, isScheduled: true });
         }
       });
     });
   }
 
   const allItems = [...(txData||[]), ...scheduledItems].sort((a,b)=>a.date.localeCompare(b.date));
-
   const accountIds = [...new Set(allItems.map(t=>t.account_id))].filter(Boolean);
   const accounts = accIds.length
     ? (state.accounts||[]).filter(a=>accIds.includes(a.id))
     : (state.accounts||[]).filter(a=>accountIds.includes(a.id));
+
+  _fcAllAccounts = accounts;
 
   if (!accounts.length) {
     const summary = document.getElementById('dashForecastSummary');
@@ -1478,76 +1462,113 @@ async function _renderDashForecast() {
     return;
   }
 
-  // Build daily dates (sampled weekly for display clarity)
-  const dates = [];
-  let cur = new Date(fromStr+'T12:00');
-  const end = new Date(toStr+'T12:00');
-  while (cur <= end) { dates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
-  const step = 7; // weekly samples for 90d
-  const sampled = dates.filter((_,i)=>i%step===0);
-  if (!sampled.includes(toStr)) sampled.push(toStr);
+  // Build full daily date array (91 points)
+  const allDates = [];
+  let cur = new Date(fromStr + 'T12:00');
+  const end = new Date(toStr + 'T12:00');
+  while (cur <= end) { allDates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  _fcAllDates = allDates;
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
 
-  // Build set of dates with transactions per account (for point markers)
-  const datesWithTxByAcc = {};
+  // ── Build _fcDailyData: cumulative balance + transactions per day ─────────
+  _fcDailyData = {};
+  allDates.forEach(d => { _fcDailyData[d] = { balances: {}, txs: [], scheduled: [], totalIn: 0, totalOut: 0 }; });
+
   accounts.forEach(a => {
-    datesWithTxByAcc[a.id] = new Set(allItems.filter(t => t.account_id===a.id).map(t => t.date));
+    const txAcc = allItems.filter(t => t.account_id === a.id);
+    const realSumAll = txAcc.filter(t => !t.isScheduled).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
+    let running = (parseFloat(a.balance)||0) - realSumAll;
+    allDates.forEach(d => {
+      const dayItems = txAcc.filter(t => t.date === d);
+      dayItems.forEach(t => { running += (parseFloat(t.amount)||0); });
+      _fcDailyData[d].balances[a.id] = +running.toFixed(2);
+    });
   });
 
-  const datasets = accounts.slice(0,6).map((a,idx)=>{
-    const txAcc = allItems.filter(t=>t.account_id===a.id);
-    const realSum = txAcc.filter(t=>!t.isScheduled).reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-    const baseBal = (parseFloat(a.balance)||0) - realSum;
-    const color = a.color || COLORS[idx%COLORS.length];
-    const accTxDates = datesWithTxByAcc[a.id];
+  // Populate txs + scheduled + daily totals
+  allItems.forEach(t => {
+    if (!_fcDailyData[t.date]) return;
+    const enriched = { ...t, accounts: t.accounts || (state.accounts||[]).find(a=>a.id===t.account_id)||null };
+    const amt = parseFloat(t.amount) || 0;
+    if (t.isScheduled) {
+      _fcDailyData[t.date].scheduled.push(enriched);
+    } else {
+      _fcDailyData[t.date].txs.push(enriched);
+    }
+    if (amt > 0) _fcDailyData[t.date].totalIn  += amt;
+    else         _fcDailyData[t.date].totalOut += Math.abs(amt);
+  });
+
+  // ── Datasets: one line per account, full daily resolution ────────────────
+  const datasets = accounts.slice(0,6).map((a, idx) => {
+    const color = a.color || COLORS[idx % COLORS.length];
     return {
       label: a.name,
-      data: sampled.map(d=>({
-        x: d,
-        y: +(baseBal + txAcc.filter(t=>t.date<=d).reduce((s,t)=>s+(parseFloat(t.amount)||0),0)).toFixed(2)
-      })),
+      data: allDates.map(d => ({ x: d, y: _fcDailyData[d].balances[a.id] ?? null })),
       borderColor: color,
-      backgroundColor: color+'18',
-      fill: false,
-      tension: 0.35,
+      backgroundColor: color + '12',
+      fill: idx === 0 && accounts.length === 1,
+      tension: 0.3,
       borderWidth: 2,
-      pointRadius: sampled.map(d => accTxDates.has(d) ? 4 : 0),
-      pointHoverRadius: sampled.map(d => accTxDates.has(d) ? 7 : 3),
-      pointBackgroundColor: color,
+      // Visible point only on days with activity
+      pointRadius: allDates.map(d => {
+        const dd = _fcDailyData[d];
+        const hasAct = dd.txs.some(t => t.account_id === a.id) || dd.scheduled.some(t => t.account_id === a.id);
+        return hasAct ? 5 : 0;
+      }),
+      pointHoverRadius: 7,
+      pointBackgroundColor: allDates.map(d => {
+        const dd = _fcDailyData[d];
+        const hasSched = dd.scheduled.some(t => t.account_id === a.id);
+        const hasReal  = dd.txs.some(t => t.account_id === a.id);
+        if (hasReal && hasSched) return '#f59e0b'; // mixed: amber
+        if (hasSched) return '#1d4ed8';            // scheduled only: blue
+        return color;                               // real: account color
+      }),
       pointBorderColor: '#fff',
-      pointBorderWidth: 1.5,
+      pointBorderWidth: 2,
+      pointStyle: allDates.map(d => {
+        const dd = _fcDailyData[d];
+        const hasSched = dd.scheduled.some(t => t.account_id === a.id);
+        return hasSched ? 'triangle' : 'circle';
+      }),
     };
   });
 
-  // Find global min/max for annotations
-  const allVals = datasets.flatMap(ds=>ds.data.map(p=>p.y));
-  const minVal = allVals.length ? Math.min(...allVals) : 0;
-  const maxVal = allVals.length ? Math.max(...allVals) : 0;
-  const minPt  = datasets[0]?.data.find(p=>p.y===minVal);
-  const maxPt  = datasets[0]?.data.find(p=>p.y===maxVal);
+  // ── Annotations ───────────────────────────────────────────────────────────
+  const allVals = datasets.flatMap(ds => ds.data.map(p => p.y).filter(v => v != null));
+  const minVal  = allVals.length ? Math.min(...allVals) : 0;
+  const maxVal  = allVals.length ? Math.max(...allVals) : 0;
+  const minDate = allDates.find(d => Object.values(_fcDailyData[d].balances).some(v => v === minVal));
+  const maxDate = allDates.find(d => Object.values(_fcDailyData[d].balances).some(v => v === maxVal));
+
+  // Weekly vertical guides for readability
+  const weekGuides = {};
+  allDates.forEach((d, i) => {
+    if (i === 0) return;
+    const dow = new Date(d + 'T12:00').getDay();
+    if (dow === 1) { // Monday
+      weekGuides['wk_' + d] = {
+        type: 'line', xMin: d, xMax: d,
+        borderColor: 'rgba(125,194,66,0.08)', borderWidth: 1,
+      };
+    }
+  });
 
   const annotations = {
-    zeroLine: {
-      type: 'line', yMin: 0, yMax: 0,
-      borderColor: 'rgba(220,38,38,0.5)', borderWidth: 1.5, borderDash: [4,3],
+    ...weekGuides,
+    zeroLine: { type:'line', yMin:0, yMax:0, borderColor:'rgba(220,38,38,0.4)', borderWidth:1.5, borderDash:[5,3] },
+    todayLine: {
+      type:'line', xMin:fromStr, xMax:fromStr,
+      borderColor:'rgba(42,122,74,0.6)', borderWidth:2, borderDash:[4,3],
+      label:{ content:'Hoje', display:true, position:'start', font:{size:9,weight:'700'}, color:'#2a6049', backgroundColor:'rgba(42,122,74,0.08)', padding:{x:4,y:2}, borderRadius:3 },
     },
   };
-  if (minPt) annotations.minPt = { type:'point', xValue:minPt.x, yValue:minVal, radius:5, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
-  if (maxPt) annotations.maxPt = { type:'point', xValue:maxPt.x, yValue:maxVal, radius:5, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
+  if (minDate) annotations.minPt = { type:'point', xValue:minDate, yValue:minVal, radius:6, backgroundColor:'#dc2626', borderColor:'#fff', borderWidth:2 };
+  if (maxDate) annotations.maxPt = { type:'point', xValue:maxDate, yValue:maxVal, radius:6, backgroundColor:'#16a34a', borderColor:'#fff', borderWidth:2 };
 
-  // Build tx-by-label map for drill-down using the actual dashboard dataset
-  const _fcLabels = datasets[0]?.data?.map(d => d.x) || [];
-  const _fcTxByLabel = _fcLabels.reduce((acc, label) => {
-    acc[label] = allItems
-      .filter(item => item.date === label)
-      .map(item => ({
-        ...item,
-        accounts: item.accounts || (state.accounts || []).find(a => a.id === item.account_id) || null,
-      }));
-    return acc;
-  }, {});
-
+  // ── Chart instance ────────────────────────────────────────────────────────
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
     data: { datasets },
@@ -1556,271 +1577,442 @@ async function _renderDashForecast() {
       maintainAspectRatio: false,
       interaction: { mode:'index', intersect:false },
       plugins: {
-        legend: { position:'bottom', labels:{ boxWidth:10, font:{ size:10 } } },
-        tooltip: { callbacks: { label: ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 10, font: { size: 10 },
+            generateLabels(chart) {
+              return chart.data.datasets.map((ds, i) => ({
+                text: ds.label,
+                fillStyle: ds.borderColor,
+                strokeStyle: ds.borderColor,
+                lineWidth: 2,
+                hidden: !chart.isDatasetVisible(i),
+                datasetIndex: i,
+              }));
+            },
+          },
+        },
+        tooltip: {
+          backgroundColor: 'rgba(10,30,18,0.95)',
+          titleColor: '#f4f8f2',
+          bodyColor: '#d1fae5',
+          borderColor: 'rgba(125,194,66,0.35)',
+          borderWidth: 1,
+          padding: { x: 12, y: 10 },
+          callbacks: {
+            // ── Title: data formatada + dia da semana + contagem de transações ──
+            title(items) {
+              const d = items[0]?.label || '';
+              if (!d) return '';
+              const [y, m, day] = d.split('-');
+              const weekdays = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+              const wd = weekdays[new Date(d + 'T12:00').getDay()];
+              const dd = _fcDailyData[d];
+              const nReal  = (dd?.txs||[]).length;
+              const nSched = (dd?.scheduled||[]).length;
+              const parts  = [];
+              if (nReal)  parts.push(`${nReal} lançamento${nReal>1?'s':''}`);
+              if (nSched) parts.push(`${nSched} programado${nSched>1?'s':''}`);
+              return `${wd}, ${day}/${m}/${y}` + (parts.length ? `  ·  ${parts.join(' + ')}` : '');
+            },
+            // ── Body: saldo projetado por conta ──────────────────────────────
+            label(ctx) {
+              const d   = ctx.label || '';
+              const acc = accounts[ctx.datasetIndex];
+              const bal = ctx.parsed.y;
+              if (bal == null) return '';
+              const balFmt = fmt(bal, acc?.currency || 'BRL');
+              const dd = _fcDailyData[d];
+              // check if this account has activity today
+              const hasTx    = (dd?.txs||[]).some(t => t.account_id === acc?.id);
+              const hasSched = (dd?.scheduled||[]).some(t => t.account_id === acc?.id);
+              const tag = hasTx && hasSched ? ' ●▲' : hasTx ? ' ●' : hasSched ? ' ▲' : '';
+              return `  ${acc?.name || ctx.dataset.label}: ${balFmt}${tag}`;
+            },
+            // ── After body: fluxo diário + lista de transações do dia ─────────
+            afterBody(items) {
+              const d  = items[0]?.label || '';
+              const dd = _fcDailyData[d];
+              if (!dd) return [];
+              const allDayItems = [...(dd.txs||[]), ...(dd.scheduled||[])];
+              const lines = [];
+
+              // Net flow summary
+              if (dd.totalIn > 0 || dd.totalOut > 0) {
+                lines.push('');
+                lines.push(`  ↑ Entradas: +${fmt(dd.totalIn)}    ↓ Saídas: −${fmt(dd.totalOut)}`);
+                const net = dd.totalIn - dd.totalOut;
+                lines.push(`  Net do dia: ${net >= 0 ? '+' : '−'}${fmt(Math.abs(net))}`);
+              }
+
+              // List up to 6 transactions
+              if (allDayItems.length) {
+                lines.push('');
+                allDayItems.slice(0, 6).forEach(t => {
+                  const neg    = Number(t.amount) < 0;
+                  const sign   = neg ? '−' : '+';
+                  const amtStr = fmt(Math.abs(Number(t.amount)), t.currency || 'BRL');
+                  const label  = (t.description || t.payees?.name || '—').slice(0, 24);
+                  const sched  = t.isScheduled ? ' ▲' : '';
+                  const cat    = t.categories?.icon ? t.categories.icon + ' ' : '';
+                  lines.push(`  ${sign}${amtStr}  ${cat}${label}${sched}`);
+                });
+                if (allDayItems.length > 6) {
+                  lines.push(`  … e mais ${allDayItems.length - 6} transaç${allDayItems.length - 6 > 1 ? 'ões' : 'ão'}`);
+                }
+              }
+
+              lines.push('');
+              lines.push('  👆 Clique para detalhes completos');
+              return lines;
+            },
+          },
+        },
         annotation: { annotations },
       },
       scales: {
-        x: { type:'category', ticks:{ maxTicksLimit:8, color:'#8c8278', font:{size:10} }, grid:{ color:'#e8e4de33' } },
-        y: { ticks:{ callback:v=>fmt(v), color:'#8c8278', font:{size:10} }, grid:{ color: ctx=>ctx.tick.value===0?'rgba(220,38,38,0.2)':'#e8e4de33' } },
+        x: {
+          type: 'category',
+          ticks: {
+            color: '#8c8278',
+            font: { size: 10 },
+            maxRotation: 0,
+            // Daily markers: show every day but only label every ~9 days
+            callback(val, idx) {
+              const d = allDates[idx];
+              if (!d) return '';
+              const [, m, day] = d.split('-');
+              // Mark every day (short tick via major/minor not available in category scale;
+              // we show labels at ~weekly intervals, dots for every day via pointRadius)
+              const dow = new Date(d + 'T12:00').getDay();
+              if (idx === 0) return `${day}/${m}`;           // always show first
+              if (idx === allDates.length - 1) return `${day}/${m}`; // always show last
+              if (dow === 1) return `${day}/${m}`;           // every Monday
+              return '';
+            },
+          },
+          grid: {
+            color: ctx => {
+              const d = allDates[ctx.index];
+              if (!d) return '#e8e4de18';
+              const dow = new Date(d + 'T12:00').getDay();
+              if (dow === 1) return 'rgba(125,194,66,0.10)'; // monday grid line
+              return '#e8e4de18';
+            },
+            lineWidth: ctx => {
+              const d = allDates[ctx.index];
+              if (!d) return 1;
+              return new Date(d + 'T12:00').getDay() === 1 ? 1.5 : 0.5;
+            },
+          },
+        },
+        y: {
+          ticks: {
+            callback: v => fmt(v),
+            color: '#8c8278',
+            font: { size: 10 },
+            maxTicksLimit: 6,
+          },
+          grid: {
+            color: ctx => ctx.tick.value === 0 ? 'rgba(220,38,38,0.20)' : '#e8e4de18',
+            lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1,
+          },
+        },
       },
       onClick(evt, elements) {
         if (!elements.length) return;
-        const idx   = elements[0].index;
-        const label = _fcLabels[idx] || '';
-        const txs   = _fcTxByLabel[label] || [];
-        if (label) _dashForecastDrill(label, txs);
+        const idx  = elements[0].index;
+        const date = allDates[idx];
+        if (date) _dashForecastDrill(date, _fcDailyData[date]);
       },
       onHover(evt, elements) {
-        const hasTx = elements.some(el => (_fcTxByLabel[_fcLabels[el.index]] || []).length > 0);
-        evt.native.target.style.cursor = (hasTx || elements.length) ? 'pointer' : 'default';
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
       },
     },
   });
 
-  // Summary row: final balance per account
+  // ── Summary row: today balance + 90-day projected balance + delta ─────────
   const summary = document.getElementById('dashForecastSummary');
   if (summary) {
-    const today = new Date().toISOString().slice(0,10);
-    summary.innerHTML = accounts.slice(0,6).map((a,idx)=>{
-      const ds = datasets[idx];
-      const finalY = ds?.data[ds.data.length-1]?.y ?? 0;
-      const isNeg = finalY < 0;
-      const color = a.color || COLORS[idx%COLORS.length];
+    const lastDate = allDates[allDates.length - 1];
+    summary.innerHTML = accounts.slice(0,6).map((a, idx) => {
+      const finalBal = _fcDailyData[lastDate]?.balances[a.id] ?? 0;
+      const todayBal = _fcDailyData[fromStr]?.balances[a.id] ?? (parseFloat(a.balance)||0);
+      const delta    = finalBal - todayBal;
+      const isNeg    = finalBal < 0;
+      const color    = a.color || COLORS[idx % COLORS.length];
+      const deltaStr = (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta), a.currency);
+      const deltaClr = delta >= 0 ? 'var(--accent)' : 'var(--red,#c0392b)';
       return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
         <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
-        <span style="color:var(--text2)">${esc(a.name)}:</span>
-        <strong style="color:${isNeg?'var(--red)':'var(--accent)'}">${fmt(finalY,a.currency)}</strong>
+        <span style="color:var(--text2);font-size:.78rem">${esc(a.name)}</span>
+        <strong style="color:${isNeg?'var(--red,#c0392b)':'var(--accent)'};font-size:.78rem">${fmt(finalBal, a.currency)}</strong>
+        <span style="font-size:.7rem;color:${deltaClr};opacity:.8">(${deltaStr})</span>
       </span>`;
     }).join('');
   }
 }
 
 
-function _dashDrillToTx(categoryId, month) {
-  state.txFilter = state.txFilter || {};
-  state.txFilter.month      = month || '';
-  state.txFilter.categoryId = categoryId || '';
-  state.txFilter.type       = '';
-  state.txFilter.search     = '';
-  state.txFilter.status     = '';
-  state.txPage = 0;
-  navigate('transactions');
-  // Sync filter UI after navigation
-  requestAnimationFrame(() => {
-    const mEl = document.getElementById('txMonth');
-    const cEl = document.getElementById('txCategoryFilter');
-    if (mEl) mEl.value = state.txFilter.month;
-    if (cEl) cEl.value = state.txFilter.categoryId;
-    loadTransactions();
-  });
-}
-
-// ── Category chart type toggle ────────────────────────────────────────────
-let _catChartType = 'bar';     // default: bar chart
-let _dashCatMode  = 'expense'; // 'expense' | 'income'
-
-// Dashboard category mode toggle (expense/income)
-function _setDashCatMode(mode) {
-  _dashCatMode = mode;
-  const expBtn = document.getElementById('dashCatModeExp');
-  const incBtn = document.getElementById('dashCatModeInc');
-  if (expBtn) expBtn.classList.toggle('active', mode === 'expense');
-  if (incBtn) incBtn.classList.toggle('active', mode === 'income');
-  const titleEl = document.getElementById('dashCatChartTitle');
-  if (titleEl) titleEl.textContent = 'Distribuição por Categoria';
-  // Re-render using cached data
-  _renderDashCatWithMode();
-}
-window._setDashCatMode = _setDashCatMode;
-
-function _renderDashCatWithMode() {
-  // Switch _catChartEntries to whichever mode is active, then re-render
-  if (_dashCatMode === 'income') {
-    _catChartEntries = window._catChartIncEntriesRaw || [];
-  } else {
-    _catChartEntries = window._catChartExpEntriesRaw || [];
-  }
-  if (!_catChartEntries.length) return;
-  // Destroy existing chart cleanly
-  const existing = state.chartInstances?.['categoryChart'];
-  if (existing) { try { existing.destroy(); } catch(_){} delete state.chartInstances['categoryChart']; }
-  closeCatDetail();
-  if (_catChartType === 'bar') _renderCatChartBar();
-  else _renderCatChartDoughnut();
-}
-
-function _setCatChartType(type) {
-  _catChartType = type;
-  // Sync toggle button visuals
-  const pie  = document.getElementById('catChartTypePie');
-  const bar2 = document.getElementById('catChartTypeBar');
-  if (pie)  { pie.classList.toggle('active',  type === 'doughnut'); pie.style.background=''; pie.style.color=''; }
-  if (bar2) { bar2.classList.toggle('active', type === 'bar');      bar2.style.background=''; bar2.style.color=''; }
-
-  // Persist preference
-  try { _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {}); } catch(_) {}
-
-  // Guard: no data yet — nothing to render
-  if (!_catChartEntries.length) return;
-
-  // Destroy current chart cleanly before switching type
-  const existing = state.chartInstances?.['categoryChart'];
-  if (existing) { try { existing.destroy(); } catch(_) {} delete state.chartInstances['categoryChart']; }
-
-  // Reset detail panel
-  const detailEl = document.getElementById('catChartDetail');
-  const backBtn  = document.getElementById('catDetailBackBtn');
-  if (detailEl) detailEl.style.display = 'none';
-  if (backBtn)  backBtn.style.display  = 'none';
-
-  if (type === 'bar') {
-    _renderCatChartBar();
-  } else {
-    _renderCatChartDoughnut();
-  }
-}
-
-function _renderCatChartDoughnut() {
-  const canvas = document.getElementById('categoryChart');
-  if (!canvas) return;
-  // Reset wrapper so doughnut uses its natural aspect ratio
-  const wrap = document.getElementById('catChartWrap');
-  if (wrap) { wrap.style.height = ''; }
-  canvas.setAttribute('height', '200');
-  canvas.style.height = '';
-  renderChart('categoryChart', 'doughnut',
-    _catChartEntries.map(e => e.name),
-    [{ data: _catChartEntries.map(e => e.total), backgroundColor: _catChartEntries.map(e => e.color), borderWidth: 2, borderColor: '#fff', hoverOffset: 8, hoverBorderWidth: 3 }],
-    {
-      onClick(event, elements) { if (elements.length) openCatDetail(elements[0].index); },
-      onHover(event, elements) { const c = event.native?.target; if (c) c.style.cursor = elements.length ? 'pointer' : 'default'; },
-    }
-  );
-}
-
-function _renderCatChartBar() {
-  const canvas = document.getElementById('categoryChart');
-  if (!canvas || !_catChartEntries.length) return;
-  // Destroy existing
-  const existing = state.chartInstances['categoryChart'];
-  if (existing) { try { existing.destroy(); } catch(e) {} delete state.chartInstances['categoryChart']; }
-  // Set explicit height on the wrapper — required for maintainAspectRatio:false
-  const barH = Math.max(200, _catChartEntries.length * 36 + 48);
-  const wrap = document.getElementById('catChartWrap');
-  if (wrap) { wrap.style.height = barH + 'px'; wrap.style.overflowX = 'hidden'; }
-  canvas.removeAttribute('height');
-  canvas.style.height = barH + 'px';
-  canvas.style.maxWidth = '100%';
-  const chart = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: _catChartEntries.map(e => e.name),
-      datasets: [{
-        data: _catChartEntries.map(e => e.total),
-        backgroundColor: _catChartEntries.map(e => e.color + 'cc'),
-        borderColor:     _catChartEntries.map(e => e.color),
-        borderWidth: 1.5,
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => fmt(ctx.parsed.x) } }
-      },
-      scales: {
-        x: { ticks: { callback: v => fmt(v), color: '#8c8278', font: { size: 10 } }, grid: { color: '#e8e4de44' } },
-        y: { ticks: { color: '#8c8278', font: { size: 11 } }, grid: { display: false } }
-      },
-      onClick(event, elements) { if (elements.length) openCatDetail(elements[0].index); },
-      onHover(event, elements) { const c = event.native?.target; if (c) c.style.cursor = elements.length ? 'pointer' : 'default'; },
-    }
-  });
-  state.chartInstances['categoryChart'] = chart;
-}
-
-
-// === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
-}
-
-
-// === Navigate to forecast report on chart click ===
 function attachForecastNavigation(chartInstance, labelsArr, txByLabel) {
   if (!chartInstance) return;
   chartInstance.options.onClick = function(evt, elements) {
-    if (elements && elements.length && labelsArr && txByLabel) {
-      const idx   = elements[0].index;
-      const label = labelsArr[idx];
-      const txs   = txByLabel[label] || [];
-      if (txs.length) {
-        // Show inline drill panel on dashboard
-        _dashForecastDrill(label, txs);
-        return;
-      }
+    if (elements?.length && labelsArr) {
+      const date = labelsArr[elements[0].index];
+      if (date) _dashForecastDrill(date, _fcDailyData[date]);
     }
-    // Default: navigate to forecast report
-    navigate('reports');
-    setTimeout(() => {
-      if (typeof setReportView === 'function') setReportView('forecast');
-    }, 300);
-  };
-  chartInstance.options.onHover = function(evt, elements) {
-    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
   };
   chartInstance.update();
 }
 
-function _dashForecastDrill(label, txs) {
-  // Use modal popup instead of inline panel
-  _showForecastDrillModal(label, txs);
+function _dashForecastDrill(date, dayData) {
+  _showForecastDrillModal(date, dayData || _fcDailyData[date] || {});
 }
 
-function _showForecastDrillModal(label, txs) {
-  const total = txs.reduce((s,t) => s + Math.abs(Number(t.amount)||0), 0);
+// ── Forecast drill-down modal ─────────────────────────────────────────────
+function _showForecastDrillModal(date, dayData) {
+  const txs       = dayData?.txs       || [];
+  const scheduled = dayData?.scheduled || [];
+  const balances  = dayData?.balances  || {};
+  const allItems  = [...txs, ...scheduled];
+
+  const [y, m, d] = (date || '').split('-');
+  const dateLabel  = d && m && y ? `${d}/${m}/${y}` : date;
+  const weekdays   = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const weekday    = date ? weekdays[new Date(date + 'T12:00').getDay()] : '';
+  const isToday    = date === new Date().toISOString().slice(0,10);
+  const isPast     = date < new Date().toISOString().slice(0,10);
+
+  // ── Estatísticas do dia ───────────────────────────────────────────────────
+  const totalIn   = allItems.filter(t => Number(t.amount) > 0).reduce((s,t)=>s+Number(t.amount),0);
+  const totalOut  = allItems.filter(t => Number(t.amount) < 0).reduce((s,t)=>s+Math.abs(Number(t.amount)),0);
+  const netFlow   = totalIn - totalOut;
+  const nReal     = txs.length;
+  const nSched    = scheduled.length;
+
+  // Breakdown por categoria
+  const catTotals = {};
+  allItems.forEach(t => {
+    const key  = t.categories?.name || (Number(t.amount)>0 ? 'Receitas' : 'Outros');
+    const icon = t.categories?.icon || (Number(t.amount)>0 ? '💰' : '📦');
+    const col  = t.categories?.color || (Number(t.amount)>0 ? '#16a34a' : '#6b7280');
+    if (!catTotals[key]) catTotals[key] = { icon, color: col, totalIn:0, totalOut:0, count:0 };
+    if (Number(t.amount) > 0) catTotals[key].totalIn  += Number(t.amount);
+    else                      catTotals[key].totalOut += Math.abs(Number(t.amount));
+    catTotals[key].count++;
+  });
+  const catRows = Object.entries(catTotals)
+    .sort((a,b) => (b[1].totalIn + b[1].totalOut) - (a[1].totalIn + a[1].totalOut))
+    .slice(0, 6);
+
+  // ── Saldo das contas neste dia ────────────────────────────────────────────
+  const balCards = _fcAllAccounts.filter(a => balances[a.id] !== undefined).map(a => {
+    const bal     = balances[a.id];
+    const isNeg   = bal < 0;
+    const color   = a.color || '#2a6049';
+    const todayBal= _fcDailyData[_fcAllDates[0]]?.balances[a.id] ?? bal;
+    const delta   = bal - todayBal;
+    const deltaFmt= (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta), a.currency);
+    const deltaClr= delta >= 0 ? 'var(--accent)' : 'var(--red,#c0392b)';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid ${color}">
+        <span style="font-size:1.2rem;flex-shrink:0">${a.icon||'🏦'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</div>
+          <div style="font-size:.67rem;color:var(--muted);margin-top:1px">Saldo projetado${isPast?' (real)':''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.9rem;font-weight:800;color:${isNeg?'var(--red,#c0392b)':'var(--accent)'}">
+            ${fmt(bal, a.currency)}
+          </div>
+          ${!isToday && delta !== 0 ? `<div style="font-size:.65rem;color:${deltaClr};margin-top:1px">${deltaFmt} vs hoje</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  // ── Lista de transações ───────────────────────────────────────────────────
+  const txRows = allItems.length
+    ? allItems.map(t => {
+        const isNeg   = Number(t.amount) < 0;
+        const catIcon = t.categories?.icon || (isNeg ? '📦' : '💰');
+        const catClr  = t.categories?.color || (isNeg ? '#6b7280' : '#16a34a');
+        const payee   = t.payees?.name || '';
+        const desc    = t.description || payee || '—';
+        const accName = t.accounts?.name || (state.accounts||[]).find(a=>a.id===t.account_id)?.name || '';
+        const accClr  = t.accounts?.color || (state.accounts||[]).find(a=>a.id===t.account_id)?.color || '#2a6049';
+        const amt     = Math.abs(Number(t.amount));
+        const cur     = t.currency || t.accounts?.currency || 'BRL';
+        const isPend  = (t.status || 'confirmed') === 'pending';
+
+        const tags = [];
+        if (t.isScheduled) tags.push(`<span style="font-size:.6rem;padding:1px 6px;border-radius:4px;background:rgba(29,78,216,.12);color:#1d4ed8;font-weight:600">▲ Programado</span>`);
+        if (isPend)        tags.push(`<span style="font-size:.6rem;padding:1px 6px;border-radius:4px;background:rgba(180,83,9,.12);color:#b45309;font-weight:600">Pendente</span>`);
+        if (t.categories?.name) tags.push(`<span style="font-size:.6rem;padding:1px 6px;border-radius:4px;background:${catClr}18;color:${catClr}">${catIcon} ${esc(t.categories.name)}</span>`);
+
+        return `
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 11px;background:var(--surface2);border-radius:10px;border-left:2.5px solid ${isNeg?'var(--red,#c0392b)':'var(--accent)'}">
+            <span style="font-size:1.15rem;flex-shrink:0;margin-top:1px">${catIcon}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(desc)}</div>
+              ${accName ? `<div style="font-size:.68rem;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:3px"><span style="width:5px;height:5px;border-radius:50%;background:${accClr};flex-shrink:0"></span>${esc(accName)}</div>` : ''}
+              ${tags.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">${tags.join('')}</div>` : ''}
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <span style="font-size:.9rem;font-weight:800;color:${isNeg?'var(--red,#c0392b)':'var(--accent)'}">
+                ${isNeg?'−':'+'}${fmt(amt, cur)}
+              </span>
+            </div>
+          </div>`;
+      }).join('')
+    : `<div style="padding:24px 10px;text-align:center;color:var(--muted);font-size:.83rem">
+         📭 Nenhuma movimentação neste dia.
+       </div>`;
+
+  // ── Breakdown por categoria ───────────────────────────────────────────────
+  const maxCatVal = Math.max(...catRows.map(([, v]) => v.totalIn + v.totalOut), 1);
+  const catSection = catRows.length ? `
+    <div style="margin-top:18px">
+      <div style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Por categoria</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${catRows.map(([cat, {icon, color, totalIn: tIn, totalOut: tOut, count}]) => {
+          const total = tIn + tOut;
+          const pct   = Math.round((total / maxCatVal) * 100);
+          const isInc = tIn > tOut;
+          return `
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.9rem;flex-shrink:0">${icon}</span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+                <span style="font-size:.75rem;color:var(--text2);font-weight:600">${esc(cat)}</span>
+                <span style="font-size:.72rem;font-weight:700;color:${isInc?'var(--accent)':'var(--red,#c0392b)'}">${isInc?'+':'-'}${fmt(total)}</span>
+              </div>
+              <div style="height:3px;border-radius:2px;background:var(--border)">
+                <div style="height:100%;border-radius:2px;background:${color || (isInc?'var(--accent)':'var(--red,#c0392b)')};width:${pct}%;transition:width .3s"></div>
+              </div>
+            </div>
+            <span style="font-size:.65rem;color:var(--muted);flex-shrink:0">${count}x</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // ── Estatísticas de tendência (vs dia anterior e vs mesma semana) ─────────
+  const dayIdx   = _fcAllDates.indexOf(date);
+  const prevDate = dayIdx > 0 ? _fcAllDates[dayIdx - 1] : null;
+  const prev7    = dayIdx >= 7 ? _fcAllDates[dayIdx - 7] : null;
+  let trendHtml  = '';
+  if (prevDate || prev7) {
+    const prevBal = prevDate ? Object.values(_fcDailyData[prevDate]?.balances||{}).reduce((s,v)=>s+v,0) : null;
+    const curBal  = Object.values(balances).reduce((s,v)=>s+v,0);
+    const prev7Bal= prev7 ? Object.values(_fcDailyData[prev7]?.balances||{}).reduce((s,v)=>s+v,0) : null;
+    const d1Delta = prevBal != null ? curBal - prevBal : null;
+    const d7Delta = prev7Bal != null ? curBal - prev7Bal : null;
+    const pill = (val, label) => val == null ? '' : `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface2);border-radius:8px">
+        <span style="font-size:.72rem;color:var(--muted)">${label}</span>
+        <span style="font-size:.76rem;font-weight:700;color:${val>=0?'var(--accent)':'var(--red,#c0392b)'}">
+          ${val>=0?'+':'−'}${fmt(Math.abs(val))}
+        </span>
+      </div>`;
+    trendHtml = `
+      <div style="margin-top:18px">
+        <div style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Tendência do saldo total</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${pill(d1Delta, 'vs dia anterior')}
+          ${pill(d7Delta, 'vs semana passada')}
+        </div>
+      </div>`;
+  }
+
+  // ── Badge de tipo do dia ──────────────────────────────────────────────────
+  const dayBadge = isToday
+    ? `<span style="font-size:.65rem;padding:2px 8px;border-radius:20px;background:rgba(42,96,73,.15);color:#2a6049;font-weight:700">Hoje</span>`
+    : isPast
+    ? `<span style="font-size:.65rem;padding:2px 8px;border-radius:20px;background:var(--surface3,var(--surface2));color:var(--muted);font-weight:600">Passado</span>`
+    : `<span style="font-size:.65rem;padding:2px 8px;border-radius:20px;background:rgba(29,78,216,.1);color:#1d4ed8;font-weight:600">Futuro</span>`;
+
+  // ── Navegação entre dias ──────────────────────────────────────────────────
+  const prevDateNav = dayIdx > 0 ? _fcAllDates[dayIdx - 1] : null;
+  const nextDateNav = dayIdx < _fcAllDates.length - 1 ? _fcAllDates[dayIdx + 1] : null;
+  const navBtn = (d, label, dir) => d
+    ? `<button onclick="_dashForecastDrill('${d}', _fcDailyData['${d}'])"
+         style="display:flex;align-items:center;gap:4px;font-size:.72rem;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">
+         ${dir === 'prev' ? '←' : ''} ${label} ${dir === 'next' ? '→' : ''}
+       </button>`
+    : `<span></span>`;
+
+  // ── HTML do modal ─────────────────────────────────────────────────────────
   const content = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div>
-        <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(label)}</div>
-        <div style="font-size:.72rem;color:var(--muted)">${txs.length} transação${txs.length!==1?'ões':''} · ${fmt(total)}</div>
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:8px">
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+          <span style="font-size:1.05rem;font-weight:800;color:var(--text)">${weekday}</span>
+          ${dayBadge}
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${dateLabel}
+          ${nReal || nSched ? `· <strong style="color:var(--text2)">${nReal} lançamento${nReal!==1?'s':''}</strong>${nSched ? ` + <strong style="color:#1d4ed8">${nSched} programado${nSched!==1?'s':''}</strong>` : ''}` : ''}
+        </div>
       </div>
       <button onclick="closeModal('forecastDrillModal')"
-        style="background:none;border:1px solid var(--border);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:.75rem;color:var(--muted)">
-        Fechar
-      </button>
+        style="background:none;border:1px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer;font-size:.75rem;color:var(--muted);flex-shrink:0">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
-      ${txs.length ? txs.map(t => {
-        const isNeg = Number(t.amount) < 0;
-        const meta = [t.date || '', t.accounts?.name ? esc(t.accounts.name) : '', t.isScheduled ? 'Programado' : 'Lançado'].filter(Boolean).join(' · ');
-        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}${t.isScheduled ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>' : ''}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${meta}</div>
-          </div>
-          <span style="font-size:.82rem;font-weight:700;color:${isNeg?'var(--red,#c0392b)':'var(--green,#2a7a4a)'}">
-            ${isNeg?'−':'+'}${fmt(Math.abs(Number(t.amount)||0), t.currency || t.accounts?.currency || 'BRL')}
-          </span>
-        </div>`;
-      }).join('') : `<div style="padding:18px 10px;text-align:center;color:var(--muted)">Nenhuma transação ou programado encontrado para este dia.</div>`}
+
+    <!-- Stats bar -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px">
+      <div style="background:rgba(42,122,74,.1);border:1px solid rgba(42,122,74,.15);border-radius:10px;padding:9px 10px;text-align:center">
+        <div style="font-size:.65rem;color:var(--muted);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Entradas</div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--accent)">+${fmt(totalIn)}</div>
+      </div>
+      <div style="background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.15);border-radius:10px;padding:9px 10px;text-align:center">
+        <div style="font-size:.65rem;color:var(--muted);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Saídas</div>
+        <div style="font-size:.92rem;font-weight:800;color:var(--red,#c0392b)">−${fmt(totalOut)}</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 10px;text-align:center">
+        <div style="font-size:.65rem;color:var(--muted);margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Net do dia</div>
+        <div style="font-size:.92rem;font-weight:800;color:${netFlow>=0?'var(--accent)':'var(--red,#c0392b)'}">
+          ${netFlow>=0?'+':'−'}${fmt(Math.abs(netFlow))}
+        </div>
+      </div>
+    </div>
+
+    <!-- Saldo das contas -->
+    ${balCards ? `
+    <div style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Saldo projetado das contas</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">${balCards}</div>` : ''}
+
+    <!-- Transações do dia -->
+    <div style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+      Transações${allItems.length ? ` (${allItems.length})` : ''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;padding-right:2px">
+      ${txRows}
+    </div>
+
+    ${catSection}
+    ${trendHtml}
+
+    <!-- Footer: navegação + ação -->
+    <div style="margin-top:18px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px">
+        ${navBtn(prevDateNav, 'Anterior', 'prev')}
+        ${navBtn(nextDateNav, 'Próximo', 'next')}
+      </div>
+      <button onclick="navigate('reports');setTimeout(()=>typeof setReportView==='function'&&setReportView('forecast'),300);closeModal('forecastDrillModal')"
+        style="font-size:.72rem;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">
+        📊 Previsão completa
+      </button>
     </div>`;
-  // Inject into modal
+
+  // ── Criar / reusar modal ──────────────────────────────────────────────────
   let modal = document.getElementById('forecastDrillModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'forecastDrillModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('forecastDrillModal'); };
-    modal.innerHTML = '<div class="modal" style="max-width:520px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:16px 18px"></div></div>';
+    modal.innerHTML = '<div class="modal" style="max-width:540px;max-height:90dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:18px 18px 22px"></div></div>';
     document.body.appendChild(modal);
   }
   document.getElementById('forecastDrillModalBody').innerHTML = content;
@@ -1828,6 +2020,8 @@ function _showForecastDrillModal(label, txs) {
 }
 window._dashForecastDrill = _dashForecastDrill;
 window._showForecastDrillModal = _showForecastDrillModal;
+
+
 
 function toggleSupGroup(date) {
   const body  = document.getElementById('supGroup-' + date);
