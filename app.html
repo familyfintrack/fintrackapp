@@ -6718,10 +6718,10 @@ Se você não solicitou isso, ignore este e-mail.`,
 
     </div><!-- end acc-modal-body -->
 
-    <!-- ── Footer ── -->
-    <div class="acc-modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('accountModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveAccount()">Salvar</button>
+    <!-- ── Actions (static, fora do footer inferior para evitar repaint lateral no iOS) ── -->
+    <div class="acc-modal-actions-bar">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('accountModal')">Cancelar</button>
+      <button class="btn btn-primary" type="button" onclick="saveAccount()">Salvar</button>
     </div>
   </div>
 </div>
