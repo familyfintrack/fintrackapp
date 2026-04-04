@@ -1003,8 +1003,11 @@ async function notifyOnTransaction(tx, sc = null) {
 
     const promises = [];
 
+    // Verificar canais ativos pelo admin (respeita configurações do painel)
+    const _chEnabled = (ch) => typeof isNotifChannelEnabled === 'function' ? isNotifChannelEnabled(ch) : true;
+
     // Email
-    if (user.notify_tx_email && user.email) {
+    if (user.notify_tx_email && user.email && _chEnabled('email')) {
       const tplId = (typeof EMAILJS_CONFIG !== 'undefined') ? (EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId) : null;
       if (tplId && EMAILJS_CONFIG.serviceId && EMAILJS_CONFIG.publicKey) {
         const htmlContent = `
@@ -1035,7 +1038,7 @@ async function notifyOnTransaction(tx, sc = null) {
     }
 
     // WhatsApp
-    if (user.notify_tx_wa && user.whatsapp_number) {
+    if (user.notify_tx_wa && user.whatsapp_number && _chEnabled('whatsapp')) {
       const number = String(user.whatsapp_number).replace(/\D+/g, '');
       if (number) {
         promises.push((async () => {
@@ -1050,7 +1053,7 @@ async function notifyOnTransaction(tx, sc = null) {
     }
 
     // Telegram
-    if (user.notify_tx_tg) {
+    if (user.notify_tx_tg && _chEnabled('telegram')) {
       const chatId = String(user.telegram_chat_id || '').trim();
       if (chatId) {
         promises.push((async () => {

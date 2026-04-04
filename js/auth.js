@@ -1322,6 +1322,12 @@ function openMyProfile() {
 
   openModal('myProfileModal');
   setTimeout(() => document.getElementById('myProfilePwd1')?.focus(), 200);
+  // Apply notification channel visibility (respects admin settings)
+  if (typeof loadNotifChannelSettings === 'function') {
+    loadNotifChannelSettings().catch(() => {});
+  } else if (typeof _applyNotifChannelVisibility === 'function') {
+    _applyNotifChannelVisibility();
+  }
 }
 
 function previewMyProfileAvatar(input) {

@@ -991,6 +991,9 @@ function openScheduledModal(id='') {
   openModal('scheduledModal');
   if (typeof initScFormMode === "function") initScFormMode();
   if (typeof initScFormMode === 'function') initScFormMode();
+  // Apply admin notification channel visibility
+  if (typeof loadNotifChannelSettings === 'function') loadNotifChannelSettings().catch(() => {});
+  else if (typeof _applyNotifChannelVisibility === 'function') _applyNotifChannelVisibility();
   // Scroll modal body to top on every open
   requestAnimationFrame(() => {
     const body = document.querySelector('#scheduledModal .modal-body');

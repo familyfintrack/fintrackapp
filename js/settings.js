@@ -2893,23 +2893,45 @@ function _applyNotifChannelVisibility() {
   const whatsappOn = isNotifChannelEnabled('whatsapp');
   const telegramOn = isNotifChannelEnabled('telegram');
 
-  // Seções de notificação em Programados
-  const emailSec    = document.getElementById('scNotifyEmailRow')    || document.querySelector('[data-notif-channel="email"]');
-  const whatsappSec = document.getElementById('scNotifyWhatsappRow') || document.querySelector('[data-notif-channel="whatsapp"]');
-  const telegramSec = document.getElementById('scNotifyTelegramRow') || document.querySelector('[data-notif-channel="telegram"]');
+  // ── Programados: linhas de canal ──
+  const sel = (id, attr) => document.getElementById(id) || document.querySelector(`[${attr}]`);
+  const emailSec    = sel('scNotifyEmailRow',    'data-notif-channel="email"');
+  const whatsappSec = sel('scNotifyWhatsappRow', 'data-notif-channel="whatsapp"');
+  const telegramSec = sel('scNotifyTelegramRow', 'data-notif-channel="telegram"');
   if (emailSec)    emailSec.style.display    = emailOn    ? '' : 'none';
   if (whatsappSec) whatsappSec.style.display = whatsappOn ? '' : 'none';
   if (telegramSec) telegramSec.style.display = telegramOn ? '' : 'none';
 
-  // Perfil: campos de contato
+  // ── Perfil: linhas de canal nas notificações de transação ──
+  const profEmailRow = document.getElementById('profNotifyTxEmailRow');
+  const profWaRow    = document.getElementById('profNotifyTxWaRow');
+  const profTgRow    = document.getElementById('profNotifyTxTgRow');
+  if (profEmailRow) profEmailRow.style.display = emailOn    ? '' : 'none';
+  if (profWaRow)    profWaRow.style.display    = whatsappOn ? '' : 'none';
+  if (profTgRow)    profTgRow.style.display    = telegramOn ? '' : 'none';
+
+  // Se channel desativado, também desmarcar o checkbox (não salvar — apenas UI)
+  if (!emailOn    && profEmailRow) { const c = document.getElementById('myProfileNotifyTxEmail'); if (c) c.checked = false; }
+  if (!whatsappOn && profWaRow)    { const c = document.getElementById('myProfileNotifyTxWa');   if (c) c.checked = false; }
+  if (!telegramOn && profTgRow)    { const c = document.getElementById('myProfileNotifyTxTg');   if (c) c.checked = false; }
+
+  // ── Perfil: campos de contato (WA number, Telegram Chat ID) ──
   const waProfileRow = document.getElementById('myProfileWhatsappRow');
   const tgProfileRow = document.getElementById('myProfileTelegramRow');
   if (waProfileRow) waProfileRow.style.display = whatsappOn ? '' : 'none';
   if (tgProfileRow) tgProfileRow.style.display = telegramOn ? '' : 'none';
 
-  // Canal 2FA: esconder Telegram se desativado
+  // ── Canal 2FA: esconder Telegram se desativado ──
   const tgChanLabel = document.getElementById('twoFaChanTgLabel');
   if (tgChanLabel) tgChanLabel.style.display = telegramOn ? '' : 'none';
+
+  // ── Transações: botões de notificação por canal ──
+  // Se canal desativado, esconder opções de notificação em transações
+  document.querySelectorAll('[data-notif-channel]').forEach(el => {
+    const ch = el.dataset.notifChannel;
+    const on = ch === 'email' ? emailOn : ch === 'whatsapp' ? whatsappOn : telegramOn;
+    el.style.display = on ? '' : 'none';
+  });
 }
 
 // Carregar ao navegar para settings
