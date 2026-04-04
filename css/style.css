@@ -7411,12 +7411,12 @@ tr.tx-row-new td:first-child {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: .72rem;
+  font-size: .68rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: rgba(255,255,255,.7);
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: 3px;
+  padding-top: 3px;
   border-top: 1px solid rgba(255,255,255,.12);
 }
 .dash-fav-card__confirmed.neg {
@@ -19035,259 +19035,258 @@ section[data-page="transactions"] .content {
 }
 
 /* Névoa branca espalhada — três elipses sobrepostos */
-.lgn-haze {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 18% 15%,  rgba(255,255,255,.13) 0%, transparent 55%),
-    radial-gradient(ellipse 65% 55% at 82% 88%,  rgba(255,255,255,.10) 0%, transparent 52%),
-    radial-gradient(ellipse 45% 35% at 58% 42%,  rgba(255,255,255,.07) 0%, transparent 50%),
-    radial-gradient(ellipse 55% 40% at 30% 80%,  rgba(255,255,255,.06) 0%, transparent 48%);
-  filter: blur(4px);
-  pointer-events: none;
-}
-
-/* Linha diagonal 1 — mais larga, mais opaca */
-.lgn-line1 {
-  position: absolute;
-  width: 200%;
-  height: 70px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255,255,255,.06) 25%,
-    rgba(255,255,255,.11) 50%,
-    rgba(255,255,255,.06) 75%,
-    transparent 100%
-  );
-  top: 28%;
-  left: -50%;
-  transform: rotate(-12deg);
-  filter: blur(6px);
-  pointer-events: none;
-}
-
-/* Linha diagonal 2 — mais estreita, sutil */
-.lgn-line2 {
-  position: absolute;
-  width: 200%;
-  height: 40px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255,255,255,.04) 30%,
-    rgba(255,255,255,.08) 55%,
-    rgba(255,255,255,.04) 80%,
-    transparent 100%
-  );
-  top: 54%;
-  left: -50%;
-  transform: rotate(-12deg);
-  filter: blur(4px);
-  pointer-events: none;
-}
-
-/* Linha diagonal 3 — tênue, parte superior */
-.lgn-line3 {
-  position: absolute;
-  width: 200%;
-  height: 25px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255,255,255,.03) 35%,
-    rgba(255,255,255,.06) 60%,
-    rgba(255,255,255,.03) 85%,
-    transparent 100%
-  );
-  top: 14%;
-  left: -50%;
-  transform: rotate(-12deg);
-  filter: blur(3px);
-  pointer-events: none;
-}
-
-/* Card — mesma sombra dramática da versão anterior */
 /* ══════════════════════════════════════════════════════════════════
-   LOGIN — Clean Modern Two-Panel Design
+   LOGIN — Redesign Moderno / Family FinTrack
+   Desktop: dois painéis (brand esquerda + form direita)
+   Mobile:  tela verde imersiva + card branco flutuante
 ══════════════════════════════════════════════════════════════════ */
 
-/* ── Screen ── */
-.lgn-screen {
-  background: #f5f7f5;
-  overflow: hidden;
+/* ── Animações ── */
+@keyframes lgnFadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lgnOrbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(12px, -18px) scale(1.04); }
+}
+@keyframes lgnShimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+@keyframes lgnLogoPulse {
+  0%, 100% { filter: drop-shadow(0 0 24px rgba(125,194,66,.45)) drop-shadow(0 0 60px rgba(42,96,73,.3)); }
+  50%       { filter: drop-shadow(0 0 40px rgba(125,194,66,.7)) drop-shadow(0 0 80px rgba(42,96,73,.5)); }
 }
 
-/* ── Left brand panel (desktop ≥900px) ── */
+/* ══ Screen ══ */
+.lgn-screen {
+  background: #071510;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ════════════════════════════════════
+   DESKTOP — Painel Esquerdo (brand)
+   ≥ 900px
+════════════════════════════════════ */
 .lgn-brand-panel {
   display: none;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(170deg, #071510 0%, #0d3d1f 55%, #071510 100%);
-  width: 420px;
+  width: 440px;
   flex-shrink: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 56px 48px;
+  padding: 64px 52px;
+  background: linear-gradient(175deg,
+    #04100c 0%,
+    #0a2215 30%,
+    #0d3320 65%,
+    #071510 100%
+  );
 }
 @media (min-width: 900px) {
   .lgn-brand-panel { display: flex; }
 }
 
-/* Subtle grid texture */
+/* Grid sutil de textura */
 .lgn-brand-grid {
-  position: absolute; inset: 0; pointer-events: none;
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-  background-size: 52px 52px;
+    linear-gradient(rgba(125,194,66,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.04) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
-/* Glow orbs */
-.lgn-brand-orb { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; }
-.lgn-brand-orb1 { width: 360px; height: 360px; background: rgba(34,120,70,.28); top: -80px; left: -80px; }
-.lgn-brand-orb2 { width: 280px; height: 280px; background: rgba(100,180,80,.07); bottom: -60px; right: -60px; }
 
-/* Brand content */
+/* Orbs de glow */
+.lgn-brand-orb {
+  position: absolute; border-radius: 50%;
+  pointer-events: none; z-index: 0;
+}
+.lgn-brand-orb1 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(42,96,73,.4) 0%, transparent 70%);
+  top: -120px; left: -120px;
+  animation: lgnOrbFloat 9s ease-in-out infinite;
+}
+.lgn-brand-orb2 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(125,194,66,.12) 0%, transparent 70%);
+  bottom: -80px; right: -60px;
+  animation: lgnOrbFloat 12s ease-in-out infinite reverse;
+}
+.lgn-brand-orb3 {
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(157,212,95,.08) 0%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  animation: lgnOrbFloat 15s ease-in-out infinite 2s;
+}
+
+/* Conteúdo do painel */
 .lgn-brand-content {
   position: relative; z-index: 1;
   display: flex; flex-direction: column;
-  align-items: center; gap: 24px;
+  align-items: center; gap: 0;
+  animation: lgnFadeUp .6s .15s cubic-bezier(.22,1,.36,1) both;
 }
 .lgn-brand-logo {
-  height: 110px; object-fit: contain;
-  filter: drop-shadow(0 6px 32px rgba(34,120,70,.45));
+  height: 120px; object-fit: contain; margin-bottom: 28px;
+  animation: lgnLogoPulse 4s ease-in-out infinite;
 }
 .lgn-brand-title {
-  font-size: 1.55rem; font-weight: 800;
-  color: #f0fdf4; letter-spacing: -.025em;
-  line-height: 1.15; text-align: center;
+  font-size: 1.6rem; font-weight: 800;
+  color: #f0fdf4; letter-spacing: -.03em;
+  line-height: 1.1; text-align: center;
   font-family: var(--font-serif, Georgia, serif);
+  margin-bottom: 8px;
 }
 .lgn-brand-sub {
-  font-size: .8rem; color: rgba(216,254,229,.45);
+  font-size: .82rem; color: rgba(200,238,160,.5);
   font-weight: 400; max-width: 260px;
-  line-height: 1.6; text-align: center;
+  line-height: 1.65; text-align: center;
+  margin-bottom: 36px;
 }
+
+/* Separador */
+.lgn-brand-divider {
+  width: 40px; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(125,194,66,.5), transparent);
+  margin-bottom: 28px;
+}
+
+/* Features */
 .lgn-brand-features {
   display: flex; flex-direction: column;
-  gap: 9px; width: 100%; max-width: 280px;
+  gap: 8px; width: 100%; max-width: 300px;
 }
 .lgn-brand-feat {
-  display: flex; align-items: center; gap: 11px;
-  font-size: .81rem; color: rgba(216,254,229,.7);
-  font-weight: 500; padding: 9px 14px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.07);
+  display: flex; align-items: center; gap: 12px;
+  font-size: .8rem; color: rgba(200,238,160,.72);
+  font-weight: 500; padding: 10px 14px;
+  background: rgba(125,194,66,.06);
+  border: 1px solid rgba(125,194,66,.10);
   border-radius: 10px;
+  transition: background .2s;
 }
+.lgn-brand-feat:hover { background: rgba(125,194,66,.11); }
 .lgn-brand-feat span { font-size: 1rem; flex-shrink: 0; }
 
-/* ── Right form panel ── */
-.lgn-form-panel {
-  flex: 1;
-  background: #ffffff;
-  display: flex; align-items: center; justify-content: center;
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
-  padding: 40px 28px;
-}
-.lgn-form-inner {
-  width: 100%; max-width: 400px;
-  display: flex; flex-direction: column;
-  animation: lgnFadeUp .4s cubic-bezier(.22,1,.36,1) both;
+/* Badge versão */
+.lgn-brand-version {
+  margin-top: 32px;
+  font-size: .68rem; color: rgba(200,238,160,.28);
+  letter-spacing: .05em; font-weight: 500;
 }
 
-/* ── Logo (always visible, hidden on desktop when brand panel shows) ── */
+/* ════════════════════════════════════
+   PAINEL DO FORMULÁRIO (desktop + mobile)
+════════════════════════════════════ */
+.lgn-form-panel {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: #f8faf8;
+  padding: 48px 32px;
+}
+
+.lgn-form-inner {
+  width: 100%; max-width: 420px;
+  display: flex; flex-direction: column;
+  animation: lgnFadeUp .45s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* Logo no painel de form (mobile only — escondida no desktop) */
 .lgn-logo-wrap {
   display: flex; justify-content: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 .lgn-logo-img {
-  height: 120px; object-fit: contain;
-  filter: drop-shadow(0 4px 20px rgba(34,120,70,.18));
+  height: 100px; object-fit: contain;
+  filter: drop-shadow(0 4px 24px rgba(42,96,73,.28));
+  animation: lgnLogoPulse 4s ease-in-out infinite;
 }
 @media (min-width: 900px) {
-  /* Hide form logo on desktop since brand panel has it */
   .lgn-logo-wrap { display: none; }
 }
 
-/* ── Form headings ── */
+/* Títulos do form */
 .lgn-form-title {
-  font-size: 1.6rem; font-weight: 800;
-  color: #0f1a12; letter-spacing: -.03em;
-  margin-bottom: 6px; line-height: 1.15;
+  font-size: 1.7rem; font-weight: 800;
+  color: #0a1e12; letter-spacing: -.03em;
+  margin-bottom: 4px; line-height: 1.1;
+  font-family: var(--font-serif, Georgia, serif);
 }
 .lgn-form-sub {
-  font-size: .85rem; color: #8a9690;
+  font-size: .85rem; color: #7a9080;
   margin-bottom: 32px; line-height: 1.5;
 }
 
-/* ── Field group ── */
-.lgn-field-group { margin-bottom: 20px; }
-
-/* ── Label row (label + forgot link) ── */
+/* Labels */
+.lgn-field-group { margin-bottom: 18px; }
 .lgn-field-row {
   display: flex; align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 7px;
 }
-
-/* ── Label ── */
 .lgn-label {
   display: block;
-  font-size: .76rem; font-weight: 700;
-  color: #374151; letter-spacing: .01em;
-  margin-bottom: 8px;
+  font-size: .73rem; font-weight: 700;
+  color: #2d4a38; letter-spacing: .025em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
 }
 .lgn-field-row .lgn-label { margin-bottom: 0; }
 
-/* ── Input ── */
+/* Inputs */
 .lgn-input-wrap { position: relative; display: flex; align-items: center; }
-.lgn-input-icon { display: none; } /* Always hidden — no icons */
+.lgn-input-icon { display: none; }
 
 .lgn-input {
   width: 100%;
   padding: 13px 16px;
-  border: 1.5px solid #e4e9e4;
-  border-radius: 10px;
-  font-size: .92rem; font-family: inherit;
+  border: 1.5px solid #d4e0d4;
+  border-radius: 12px;
+  font-size: .93rem; font-family: inherit;
   outline: none; box-sizing: border-box;
-  background: #fafbfa; color: #111827;
+  background: #fff; color: #0a1e12;
   transition: border-color .18s, box-shadow .18s, background .18s;
   -webkit-appearance: none;
 }
 .lgn-input:focus {
-  border-color: #2a7a50;
+  border-color: #2a6049;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(42,122,80,.10);
+  box-shadow: 0 0 0 4px rgba(42,96,73,.10);
 }
-.lgn-input::placeholder { color: #b0bab0; }
+.lgn-input::placeholder { color: #b8c8bc; }
+.lgn-input--pwd { padding-right: 46px; }
 
-/* Password input — space for toggle button */
-.lgn-input--pwd { padding-right: 44px; }
-
-/* ── Password toggle ── */
+/* Toggle de senha */
 .lgn-pwd-toggle {
-  position: absolute; right: 12px;
+  position: absolute; right: 13px;
   background: none; border: none;
-  cursor: pointer; color: #aab5aa;
+  cursor: pointer; color: #9ab0a0;
   padding: 4px; border-radius: 6px;
   display: flex; align-items: center;
   transition: color .15s;
 }
-.lgn-pwd-toggle:hover { color: #2a7a50; }
+.lgn-pwd-toggle:hover { color: #2a6049; }
 
-/* ── Forgot link ── */
+/* Forgot link */
 .lgn-link {
   background: none; border: none;
-  color: #2a7a50; font-size: .76rem;
+  color: #2a6049; font-size: .74rem;
   font-weight: 600; cursor: pointer;
   padding: 0; font-family: inherit;
   transition: opacity .15s;
 }
-.lgn-link:hover { opacity: .65; text-decoration: underline; }
+.lgn-link:hover { opacity: .6; text-decoration: underline; }
 
-/* ── Remember me row ── */
+/* Remember me */
 .lgn-remember-row {
   display: flex; align-items: center;
-  gap: 9px; margin-bottom: 24px;
+  gap: 9px; margin-bottom: 22px;
 }
 .lgn-checkbox-wrap {
   position: relative; flex-shrink: 0;
@@ -19300,179 +19299,283 @@ section[data-page="transactions"] .content {
 }
 .lgn-checkbox-custom {
   width: 18px; height: 18px;
-  border: 2px solid #d1d5db;
+  border: 2px solid #c8d8c8;
   border-radius: 5px; background: #fff;
   transition: all .18s; pointer-events: none;
 }
 .lgn-checkbox:checked ~ .lgn-checkbox-custom {
-  background: #2a7a50; border-color: #2a7a50;
+  background: #2a6049; border-color: #2a6049;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='10' viewBox='0 0 12 10'%3E%3Cpolyline points='1.5,5 4.5,8 10.5,1.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center; background-size: 11px;
 }
 .lgn-checkbox-label {
-  font-size: .79rem; color: #6b7280;
+  font-size: .78rem; color: #7a9080;
   cursor: pointer; user-select: none; line-height: 1.4;
 }
 
-/* ── Primary button ── */
+/* Botão primário */
 .lgn-btn-primary {
-  width: 100%; padding: 14px;
-  background: #1a6b3c;
+  width: 100%; padding: 15px;
+  background: linear-gradient(135deg, #1e5c42 0%, #2a6049 60%, #235234 100%);
   color: #fff; border: none;
-  border-radius: 10px; font-size: .95rem;
+  border-radius: 12px; font-size: .96rem;
   font-weight: 700; cursor: pointer;
-  font-family: inherit; letter-spacing: .01em;
-  transition: background .18s, transform .15s, box-shadow .18s;
-  box-shadow: 0 2px 8px rgba(26,107,60,.25);
+  font-family: inherit; letter-spacing: .015em;
+  transition: all .2s;
+  box-shadow: 0 4px 20px rgba(42,96,73,.3), 0 1px 3px rgba(42,96,73,.2);
   -webkit-appearance: none;
+  position: relative; overflow: hidden;
+}
+.lgn-btn-primary::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.12) 0%, transparent 60%);
+  border-radius: inherit; pointer-events: none;
 }
 .lgn-btn-primary:hover {
-  background: #155c32;
-  box-shadow: 0 4px 16px rgba(26,107,60,.35);
+  background: linear-gradient(135deg, #235234 0%, #1e5c42 60%, #163d2b 100%);
+  box-shadow: 0 8px 28px rgba(42,96,73,.4), 0 2px 6px rgba(42,96,73,.25);
   transform: translateY(-1px);
 }
-.lgn-btn-primary:active { transform: translateY(0); background: #0f4a25; }
+.lgn-btn-primary:active {
+  transform: translateY(0) scale(.985);
+  box-shadow: 0 2px 8px rgba(42,96,73,.25);
+}
 
-/* ── Mobile: green background with white card ── */
+/* Error */
+#loginError {
+  margin-top: 12px;
+  color: #dc2626; font-size: .8rem;
+  text-align: center;
+}
+
+/* ════════════════════════════════════
+   MOBILE — Experiência imersiva
+   < 900px: tela verde escura + card branco
+════════════════════════════════════ */
 @media (max-width: 899px) {
+  .lgn-screen {
+    background: linear-gradient(170deg,
+      #04100c 0%,
+      #0a2215 35%,
+      #0d3320 65%,
+      #071510 100%
+    );
+  }
+
+  /* Painéis */
+  .lgn-brand-panel { display: none !important; }
   .lgn-form-panel {
-    background: linear-gradient(160deg, #071510 0%, #0d3d1f 45%, #071510 100%);
-    padding: 28px 20px;
-    align-items: flex-start;
-    padding-top: max(32px, env(safe-area-inset-top, 0px));
+    background: transparent;
+    align-items: flex-end;
+    justify-content: stretch;
+    padding: 0;
+    flex-direction: column;
+    padding-top: max(28px, env(safe-area-inset-top, 0px));
   }
+
+  /* Logo mobile — flutuante acima do card */
+  .lgn-logo-wrap {
+    display: flex !important;
+    justify-content: center;
+    margin-bottom: 0;
+    padding: 24px 20px 20px;
+    flex-shrink: 0;
+  }
+  .lgn-logo-img {
+    height: 88px;
+    animation: lgnLogoPulse 4s ease-in-out infinite;
+  }
+
+  /* Card branco que sobe da parte inferior */
   .lgn-form-inner {
+    flex: 1;
     background: #fff;
-    border-radius: 20px;
-    padding: 28px 22px 32px;
+    border-radius: 28px 28px 0 0;
+    padding: 32px 24px max(32px, env(safe-area-inset-bottom, 16px));
     max-width: 100%;
-    box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    box-shadow: 0 -24px 64px rgba(0,0,0,.35);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    animation: none;
   }
-  .lgn-logo-wrap { display: flex; margin-bottom: 24px; }
-  .lgn-logo-img { height: 80px; }
-  .lgn-form-title { font-size: 1.35rem; }
-  .lgn-form-sub { margin-bottom: 24px; }
-}
-@media (max-width: 480px) {
-  .lgn-form-panel { padding: 16px 12px; }
-  .lgn-form-inner { padding: 22px 18px 26px; }
-  .lgn-logo-img { height: 70px; }
+
+  /* Pull handle indicator */
+  .lgn-form-inner::before {
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: #e0e8e0;
+    border-radius: 2px;
+    margin: 0 auto 24px;
+  }
+
+  .lgn-form-title { font-size: 1.45rem; margin-bottom: 4px; }
+  .lgn-form-sub { font-size: .82rem; margin-bottom: 24px; }
+  .lgn-input { font-size: .91rem; padding: 13px 15px; }
+  .lgn-btn-primary { padding: 15px; font-size: .94rem; }
 }
 
-/* ── Light mode lock-in ── */
+/* Tela muito pequena (≤ 380px) */
+@media (max-width: 380px) {
+  .lgn-logo-img { height: 72px; }
+  .lgn-form-inner { padding: 28px 18px max(24px, env(safe-area-inset-bottom, 12px)); }
+  .lgn-form-title { font-size: 1.3rem; }
+}
+
+/* ── Lock-in de cores (overrides dark-mode do sistema) ── */
 #loginScreen .lgn-input,
-#loginScreen input {
-  color: #111827 !important;
-  background: #fafbfa !important;
+#loginScreen input:not([type="checkbox"]) {
+  color: #0a1e12 !important;
+  background: #fff !important;
+  -webkit-text-fill-color: #0a1e12 !important;
 }
 #loginScreen .lgn-input:focus { background: #fff !important; }
 #loginScreen .lgn-label,
-#loginScreen label { color: #374151 !important; }
+#loginScreen label { color: #2d4a38 !important; }
+#loginScreen .lgn-form-inner { color: #0a1e12; }
 
-/* ── Sub-form headings (forgot, register, etc.) ── */
+/* ── Sub-form headings (forgot, register, recovery, etc.) ── */
 .lgn-subform-title {
-  font-size: 1.1rem; font-weight: 700;
-  color: #0f1a12; text-align: center;
+  font-size: 1.15rem; font-weight: 800;
+  color: #0a1e12; text-align: center;
   margin-bottom: 6px;
+  font-family: var(--font-serif, Georgia, serif);
 }
 .lgn-subform-sub {
-  font-size: .82rem; color: #8a9690;
-  text-align: center; margin-bottom: 22px;
+  font-size: .82rem; color: #7a9080;
+  text-align: center; margin-bottom: 24px;
   line-height: 1.55;
 }
 
-/* ── Shared sub-form inputs (forgotPwd, register, etc.) ── */
-#loginScreen .form-group input,
-#loginScreen .form-group select,
-#loginScreen #forgotPwdEmail,
-#loginScreen #recoveryPwd1,
-#loginScreen #recoveryPwd2,
-#loginScreen #regName,
-#loginScreen #regEmail,
-#loginScreen #regPassword,
-#loginScreen #regPassword2,
-#loginScreen #regLanguage,
-#loginScreen #newPwd1,
-#loginScreen #newPwd2 {
-  width: 100% !important;
-  padding: 13px 16px !important;
-  border: 1.5px solid #e4e9e4 !important;
-  border-radius: 10px !important;
-  font-size: .9rem !important;
-  outline: none !important;
-  box-sizing: border-box !important;
-  background: #fafbfa !important;
-  color: #111827 !important;
-  font-family: inherit !important;
-  transition: border-color .18s, box-shadow .18s !important;
-  -webkit-appearance: none !important;
-}
-#loginScreen .form-group input:focus,
-#loginScreen .form-group select:focus,
-#loginScreen #forgotPwdEmail:focus,
-#loginScreen #recoveryPwd1:focus,
-#loginScreen #recoveryPwd2:focus,
-#loginScreen #regName:focus,
-#loginScreen #regEmail:focus,
-#loginScreen #regPassword:focus,
-#loginScreen #regPassword2:focus,
-#loginScreen #regLanguage:focus,
-#loginScreen #newPwd1:focus,
-#loginScreen #newPwd2:focus {
-  border-color: #2a7a50 !important;
+/* Inputs dos sub-forms */
+#loginScreen #forgotPwdArea input,
+#loginScreen #registerFormArea input,
+#loginScreen #registerFormArea select,
+#loginScreen #recoveryPwdArea input,
+#loginScreen #changePwdArea input {
+  width: 100%; padding: 13px 16px;
+  border: 1.5px solid #d4e0d4 !important;
+  border-radius: 12px !important;
+  font-size: .92rem; font-family: inherit;
+  outline: none; box-sizing: border-box;
   background: #fff !important;
-  box-shadow: 0 0 0 3px rgba(42,122,80,.10) !important;
+  color: #0a1e12 !important;
+  transition: border-color .18s, box-shadow .18s;
+  -webkit-appearance: none;
+  margin-bottom: 0;
 }
-#loginScreen .form-group label {
-  font-size: .76rem !important;
-  font-weight: 700 !important;
-  color: #374151 !important;
-  margin-bottom: 7px !important;
-  display: block !important;
-  letter-spacing: .01em !important;
-}
-
-/* ── Sub-form buttons ── */
-#loginScreen #forgotPwdBtn,
-#loginScreen #recoveryPwdBtn,
-#loginScreen #regBtn,
-#loginScreen button[onclick="doChangePwd()"] {
-  background: #1a6b3c !important;
-  border-radius: 10px !important;
-  font-size: .93rem !important;
-  font-weight: 700 !important;
-  box-shadow: 0 2px 8px rgba(26,107,60,.22) !important;
-  transition: background .18s, transform .15s !important;
-}
-#loginScreen #forgotPwdBtn:hover,
-#loginScreen #recoveryPwdBtn:hover,
-#loginScreen #regBtn:hover,
-#loginScreen button[onclick="doChangePwd()"]:hover {
-  background: #155c32 !important;
-  transform: translateY(-1px) !important;
+#loginScreen #forgotPwdArea input:focus,
+#loginScreen #registerFormArea input:focus,
+#loginScreen #registerFormArea select:focus,
+#loginScreen #recoveryPwdArea input:focus,
+#loginScreen #changePwdArea input:focus {
+  border-color: #2a6049 !important;
+  box-shadow: 0 0 0 4px rgba(42,96,73,.10) !important;
 }
 
-/* ── "Solicitar acesso" button ── */
-#loginRequestAccessBtn {
-  border-color: #2a7a50 !important;
-  color: #2a7a50 !important;
-  border-radius: 8px !important;
-  font-size: .8rem !important;
-}
-#loginRequestAccessBtn:hover {
-  background: #2a7a50 !important;
-  color: #fff !important;
+/* Labels dos sub-forms */
+#loginScreen #forgotPwdArea label,
+#loginScreen #registerFormArea label,
+#loginScreen #recoveryPwdArea label,
+#loginScreen #changePwdArea label {
+  font-size: .73rem !important; font-weight: 700 !important;
+  color: #2d4a38 !important; letter-spacing: .025em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 6px !important; display: block !important;
 }
 
-/* ── Animation ── */
-@keyframes lgnFadeUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Botões dos sub-forms */
+#loginScreen #forgotPwdArea button[id$="Btn"],
+#loginScreen #registerFormArea button[id$="Btn"],
+#loginScreen #recoveryPwdArea button[id$="Btn"],
+#loginScreen #changePwdArea button {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(42,96,73,.3) !important;
 }
-.lgn-brand-content { animation: lgnFadeUp .5s .1s cubic-bezier(.22,1,.36,1) both; }
 
-/* ── Legacy compat ── */
+/* Botão "Voltar" dos sub-forms */
+#loginScreen .lgn-back-btn,
+#loginScreen button[onclick*="showLoginFormArea"] {
+  background: none !important; border: none !important;
+  color: #7a9080 !important; font-size: .8rem !important;
+  cursor: pointer !important; text-decoration: none !important;
+  font-family: inherit !important; padding: 6px 0 !important;
+}
+#loginScreen button[onclick*="showLoginFormArea"]:hover { color: #2a6049 !important; }
+
+/* Alerta first-login */
+#loginScreen .lgn-first-login-alert {
+  background: rgba(251,191,36,.12);
+  border: 1px solid rgba(251,191,36,.35);
+  border-radius: 10px;
+  padding: 11px 14px; margin-bottom: 16px;
+  font-size: .81rem; color: #7c5a00; line-height: 1.5;
+}
+
+/* ── Decorative particles (desktop brand panel only) ── */
+.lgn-brand-particle {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  background: rgba(125,194,66,.15);
+}
+
+/* 2FA */
+.twofa-title {
+  font-size: 1.15rem; font-weight: 800;
+  color: #0a1e12; text-align: center;
+  margin-bottom: 6px;
+  font-family: var(--font-serif, Georgia, serif);
+}
+.twofa-sub {
+  font-size: .82rem; color: #7a9080;
+  text-align: center; margin-bottom: 24px;
+  line-height: 1.55;
+}
+.twofa-code-input {
+  width: 100%; text-align: center;
+  font-size: 2rem; font-weight: 800;
+  letter-spacing: .35em; font-variant-numeric: tabular-nums;
+  padding: 16px; border: 1.5px solid #d4e0d4;
+  border-radius: 12px; outline: none;
+  background: #fff; color: #0a1e12;
+  transition: border-color .18s, box-shadow .18s;
+  margin-bottom: 20px; box-sizing: border-box;
+  font-family: var(--font-serif, Georgia, monospace);
+}
+.twofa-code-input:focus {
+  border-color: #2a6049;
+  box-shadow: 0 0 0 4px rgba(42,96,73,.10);
+}
+.twofa-actions { display: flex; flex-direction: column; gap: 10px; }
+.twofa-trust-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .78rem; color: #7a9080;
+  padding: 4px 0;
+}
+.twofa-resend {
+  background: none; border: none;
+  color: #2a6049; font-size: .82rem;
+  font-weight: 600; cursor: pointer;
+  text-align: center; padding: 4px;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+.twofa-resend:hover { opacity: .65; text-decoration: underline; }
+.twofa-back {
+  background: none; border: none;
+  color: #9ab0a0; font-size: .8rem;
+  cursor: pointer; text-align: center;
+  padding: 4px; font-family: inherit;
+  transition: color .15s;
+}
+.twofa-back:hover { color: #2a6049; }
+
+/* Legacy compat */
 .login-hgrid, .login-orb, .login-card-a,
+.login-bg-opt1, .login-screen-shell,
+.lgn-haze, .lgn-line1, .lgn-line2, .lgn-line3 { display: none !important; }
+
+
 .login-bg-opt1, .login-screen-shell { display: none; }
 
 /* ══ TX List — Timeline enhancements (Opção A) ═══════════════════════════ */
