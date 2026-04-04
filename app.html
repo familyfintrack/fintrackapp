@@ -4998,16 +4998,19 @@ Se você não solicitou isso, ignore este e-mail.`,
       <div class="lgn-brand-grid"></div>
       <div class="lgn-brand-orb lgn-brand-orb1"></div>
       <div class="lgn-brand-orb lgn-brand-orb2"></div>
+      <div class="lgn-brand-orb lgn-brand-orb3"></div>
       <div class="lgn-brand-content">
         <img src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-brand-logo">
         <div class="lgn-brand-title">Family FinTrack</div>
         <div class="lgn-brand-sub" data-i18n="auth.tagline">Família inteligente, finanças sob controle</div>
+        <div class="lgn-brand-divider"></div>
         <div class="lgn-brand-features">
           <div class="lgn-brand-feat"><span>📊</span> Dashboard financeiro completo</div>
           <div class="lgn-brand-feat"><span>🤖</span> Agente IA integrado</div>
           <div class="lgn-brand-feat"><span>🔐</span> Dados seguros e privados</div>
           <div class="lgn-brand-feat"><span>👨‍👩‍👧</span> Gestão familiar colaborativa</div>
         </div>
+        <div class="lgn-brand-version">Family FinTrack</div>
       </div>
     </div>
 
@@ -5108,47 +5111,37 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- Forgot password form -->
       <div id="forgotPwdArea" style="display:none">
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:8px">Recuperar Senha</div>
-        <div style="font-size:.82rem;color:#6b7280;text-align:center;margin-bottom:20px">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
-          <input type="email" id="forgotPwdEmail" placeholder="seu@email.com"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-           
+        <div class="lgn-subform-title">Recuperar Senha</div>
+        <div class="lgn-subform-sub">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">E-mail</label>
+          <input type="email" id="forgotPwdEmail" class="lgn-input" placeholder="seu@email.com"
             onkeydown="if(event.key==='Enter')doForgotPwd()">
         </div>
-        <button onclick="doForgotPwd()" id="forgotPwdBtn"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
+        <button onclick="doForgotPwd()" id="forgotPwdBtn" class="lgn-btn-primary">
           <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
         </button>
         <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
-        <div style="text-align:center;margin-top:14px">
-          <button onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
         </div>
       </div>
 
       <!-- Password recovery form (shown after clicking reset link from email) -->
       <div id="recoveryPwdArea" style="display:none">
-        <div style="text-align:center;margin-bottom:16px">
-          <div style="font-size:1rem;font-weight:700;color:#1e5c42;margin-bottom:8px">Definir Nova Senha</div>
-          <div style="font-size:.8rem;color:#6b7280;margin-top:4px">Escolha uma senha segura para sua conta.</div>
-        </div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nova senha</label>
-          <input type="password" id="recoveryPwd1" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-           
+        <div class="lgn-subform-title">Definir Nova Senha</div>
+        <div class="lgn-subform-sub">Escolha uma senha segura para sua conta.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nova Senha</label>
+          <input type="password" id="recoveryPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
             onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
         </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Confirmar senha</label>
-          <input type="password" id="recoveryPwd2" placeholder="Repita a nova senha" autocomplete="new-password"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-           
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="recoveryPwd2" class="lgn-input" placeholder="Repita a nova senha" autocomplete="new-password"
             onkeydown="if(event.key==='Enter')doRecoveryPwd()">
         </div>
-        <button onclick="doRecoveryPwd()" id="recoveryPwdBtn"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
+        <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="lgn-btn-primary">
           <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
         </button>
         <div id="recoveryPwdError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
@@ -5156,75 +5149,64 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- Register form -->
       <div id="registerFormArea" style="display:none">
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;text-align:center;margin-bottom:16px">Solicitar Acesso</div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nome completo</label>
-          <input type="text" id="regName" placeholder="Seu nome"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-           >
+        <div class="lgn-subform-title">Solicitar Acesso</div>
+        <div class="lgn-subform-sub">Preencha os dados abaixo. Um administrador aprovará seu acesso.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nome completo</label>
+          <input type="text" id="regName" class="lgn-input" placeholder="Seu nome">
         </div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">E-mail</label>
-          <input type="email" id="regEmail" placeholder="seu@email.com"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-           >
+        <div class="lgn-field-group">
+          <label class="lgn-label">E-mail</label>
+          <input type="email" id="regEmail" class="lgn-input" placeholder="seu@email.com">
         </div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Senha (mín. 8 chars)</label>
-          <input type="password" id="regPassword" placeholder="••••••••"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-           >
+        <div class="lgn-field-group">
+          <label class="lgn-label">Senha (mín. 8 caracteres)</label>
+          <input type="password" id="regPassword" class="lgn-input" placeholder="••••••••" autocomplete="new-password">
         </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Confirmar Senha</label>
-          <input type="password" id="regPassword2" placeholder="••••••••"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box"
-            onkeydown="if(event.key==='Enter')doRegister()"
-           >
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="regPassword2" class="lgn-input" placeholder="••••••••" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doRegister()">
         </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block"><span data-i18n="settings.language">Idioma preferido</span></label>
-          <select id="regLanguage"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box;background:#fff">
+        <div class="lgn-field-group">
+          <label class="lgn-label"><span data-i18n="settings.language">Idioma preferido</span></label>
+          <select id="regLanguage" class="lgn-input" style="cursor:pointer">
             <option value="pt">🇧🇷 Português</option>
             <option value="en">🇺🇸 English</option>
             <option value="es">🇪🇸 Español</option>
             <option value="fr">🇫🇷 Français</option>
           </select>
         </div>
-        <button onclick="doRegister()" id="regBtn"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
+        <button onclick="doRegister()" id="regBtn" class="lgn-btn-primary">
           <span data-i18n="register.btn_submit">Enviar Solicitação</span>
         </button>
         <div id="regError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
-        <div style="text-align:center;margin-top:14px">
-          <button onclick="showLoginFormArea()" style="background:none;border:none;color:#6b7280;font-size:.8rem;cursor:pointer;text-decoration:underline">← Voltar ao login</button>
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
         </div>
       </div>
 
       <!-- Pending approval screen -->
       <div id="pendingApprovalArea" style="display:none;text-align:center">
-        <div style="font-size:1rem;font-weight:700;color:#1e5c42;margin-bottom:12px">Aguardando aprovação</div>
-        <div style="font-size:.82rem;color:#6b7280;margin-bottom:20px">Sua solicitação foi enviada. Um administrador precisa aprovar seu acesso antes que você possa entrar.</div>
-        <button onclick="showLoginFormArea()" style="background:none;border:1.5px solid #2a6049;color:#2a6049;padding:10px 24px;border-radius:10px;font-size:.9rem;font-weight:600;cursor:pointer">Voltar ao login</button>
+        <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+        <div class="lgn-subform-title">Aguardando aprovação</div>
+        <div class="lgn-subform-sub">Sua solicitação foi enviada. Um administrador precisa aprovar seu acesso antes que você possa entrar.</div>
+        <button onclick="showLoginFormArea()" class="lgn-btn-primary">Voltar ao login</button>
       </div>
       <!-- Change password form (shown on first login) -->
       <div id="changePwdArea" style="display:none">
-        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.82rem;color:#92400e">
-          Por segurança, defina uma nova senha no seu primeiro acesso.
+        <div class="lgn-subform-title">Definir Senha</div>
+        <div class="lgn-subform-sub">Por segurança, escolha uma nova senha no seu primeiro acesso.</div>
+        <div class="lgn-first-login-alert">🔐 Esta é uma exigência de segurança para novos usuários.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nova Senha</label>
+          <input type="password" id="newPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
         </div>
-        <div class="form-group" style="margin-bottom:12px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Nova Senha</label>
-          <input type="password" id="newPwd1" placeholder="Mínimo 8 caracteres"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box">
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="newPwd2" class="lgn-input" placeholder="Repita a senha" autocomplete="new-password">
         </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label style="font-size:.8rem;font-weight:600;color:#374151;margin-bottom:4px;display:block">Confirmar Senha</label>
-          <input type="password" id="newPwd2" placeholder="Repita a senha"
-            style="width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.9rem;outline:none;box-sizing:border-box">
-        </div>
-        <button onclick="doChangePwd()"
-          style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit">
+        <button onclick="doChangePwd()" class="lgn-btn-primary">
           <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
         </button>
         <div id="changePwdError" style="margin-top:10px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
