@@ -7275,7 +7275,7 @@ tr.tx-row-new td:first-child {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  padding: 9px 13px 8px;
+  padding: 8px 12px 7px;
   cursor: pointer;
   background:
     linear-gradient(
@@ -7292,7 +7292,7 @@ tr.tx-row-new td:first-child {
   user-select: none;
   display: flex;
   flex-direction: column;
-  min-height: 118px;
+  min-height: 108px;
 }
 
 .dash-fav-card:hover {
@@ -7344,9 +7344,9 @@ tr.tx-row-new td:first-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   background: rgba(255,255,255,.18);
   flex-shrink: 0;
 }
@@ -7480,11 +7480,11 @@ tr.tx-row-new td:first-child {
     gap: 10px;
   }
   .dash-fav-card {
-    padding: 9px 11px 8px;
-    min-height: 118px;
+    padding: 8px 10px 7px;
+    min-height: 108px;
   }
-  .dash-fav-card__balance { font-size: .95rem; }
-  .dash-fav-card__icon { width: 26px; height: 26px; border-radius: 7px; }
+  .dash-fav-card__balance { font-size: .92rem; }
+  .dash-fav-card__icon { width: 22px; height: 22px; border-radius: 6px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -22565,11 +22565,11 @@ tr.payee-row[onclick] { cursor: pointer; }
     gap: 10px;
   }
   .dash-fav-card {
-    padding: 9px 14px 8px;
-    min-height: 122px;
+    padding: 8px 13px 7px;
+    min-height: 110px;
   }
   .dash-fav-card__balance {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
   }
   .dash-fav-card__icon {
     width: 28px;
