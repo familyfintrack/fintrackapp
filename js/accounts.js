@@ -395,18 +395,17 @@ async function openAccountModal(id=''){
     } catch(_) {}
     dreamSel.value = form.linked_dream_id || '';
   }
-  openModal('accountModal');
-  // acmSwitchTab DEVE ser chamado APÓS openModal para garantir que o overlay
-  // já recebeu .open (pointer-events:all) antes de manipular os panes.
-  // 80ms é suficiente para a transição de opacity (.22s) iniciar e o CSS render.
   setTimeout(() => {
     syncIconPickerToValue(form.icon||'', form.color||'#2a6049');
     acmSwitchTab(window._acmOpenOnTab || 'basic');
     window._acmOpenOnTab = null;
     acmLivePreview();
+  }, 50);
+  openModal('accountModal');
+  setTimeout(() => {
     const body = document.querySelector('#accountModal .acm-body');
     if (body) body.scrollTop = 0;
-  }, 80);
+  }, 30);
 }
 
 async function saveAccount(){
