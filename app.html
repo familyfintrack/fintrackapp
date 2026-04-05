@@ -276,6 +276,9 @@
     max-width: calc(100vw - 120px) !important;
   }
 }
+
+/* tap-highlight removido globalmente — não afeta scroll */
+* { -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body class="app-shell">
@@ -7529,6 +7532,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/scheduled.js"></script>
   <script src="js/attachments.js"></script>
   <script src="js/iof.js"></script>
+  <script src="js/date.js"></script>
   <script src="js/forecast.js"></script>
   <script src="js/email.js"></script>
   <script src="js/import.js"></script>
@@ -9517,7 +9521,9 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
+  <script src="js/dreams_kb.js"></script>
   <script src="js/dreams.js"></script>
+  <script src="js/agent_capabilities.js"></script>
   <script src="js/agent_engine.js"></script>
 <script>
 // ── Defensive stubs — prevent ReferenceError if agent.js hasn't loaded yet ──
