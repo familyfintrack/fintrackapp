@@ -104,7 +104,6 @@ function _drillOpenModal(opts) {
     modal = document.createElement('div');
     modal.id = 'rptDrillModal';
     modal.className = 'modal-overlay';
-    modal.style.display = 'none'; // iOS Safari fix: evita <select> fantasma
     modal.onclick = e => { if (e.target === modal) closeModal('rptDrillModal'); };
     modal.innerHTML = `<div class="modal" style="max-width:520px;max-height:82dvh;overflow:hidden;display:flex;flex-direction:column;padding:0">
       <div class="modal-handle"></div>

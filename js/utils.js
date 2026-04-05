@@ -299,20 +299,13 @@ function _accountOptions(accounts, placeholder) {
 function _setModalState(el, isOpen){
   if (!el) return;
   if (isOpen) {
-    // Remover display:none antes de adicionar .open para permitir a transição
-    el.style.removeProperty('display');
-    // Forçar reflow para a transição de opacity funcionar
-    void el.offsetHeight;
+    // CSS já define display:none por padrão e display:flex em .open
+    // Apenas adicionar a classe — o CSS cuida do resto
     el.classList.add('open');
     el.setAttribute('aria-hidden', 'false');
   } else {
     el.classList.remove('open');
     el.setAttribute('aria-hidden', 'true');
-    // CRÍTICO: usar display:none ao fechar — não apenas opacity:0.
-    // iOS Safari ativa <select> dentro de elementos com pointer-events:none
-    // quando o usuário toca na coordenada onde o elemento estaria visível.
-    // display:none remove completamente do hit-testing do browser.
-    el.style.display = 'none';
   }
 }
 function openModal(id){ _setModalState(document.getElementById(id), true); }
@@ -320,13 +313,7 @@ function closeModal(id){ _setModalState(document.getElementById(id), false); }
 function closeAllModals(){
   document.querySelectorAll('.modal-overlay').forEach(el => _setModalState(el, false));
 }
-// Inicializar: todos os modal-overlays fecham com display:none para evitar
-// o bug do iOS Safari que ativa <select> em elementos com opacity:0
 document.querySelectorAll('.modal-overlay').forEach(el=>{
-  // Aplicar display:none imediatamente se não estiver aberto
-  if (!el.classList.contains('open')) {
-    el.style.display = 'none';
-  }
   el.addEventListener('click', e => { if (e.target === el) _setModalState(el, false); });
 });
 

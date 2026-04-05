@@ -1309,7 +1309,6 @@ async function openDebtTransactionLauncher() {
   if (!modal) {
     modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.style.display = 'none'; // iOS Safari fix: evita <select> fantasma
     modal.id = 'debtTxLauncherModal';
     modal.innerHTML = `
       <div class="modal" style="max-width:420px">
