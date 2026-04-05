@@ -324,121 +324,46 @@ function _renderDreamCard(d) {
   const months  = _dreamMonthsLeft(d);
   const monthly = _dreamMonthlySaving(d);
   const items   = _drm.items[d.id] || [];
+  const totalItems = items.reduce((s, it) => s + (parseFloat(it.estimated_amount) || 0), 0);
   const privacy = state.privacyMode;
-  const isPaused    = d.status === 'paused';
-  const isAchieved  = d.status === 'achieved';
-  const isCancelled = d.status === 'cancelled';
 
-  // Per-type color palette
-  const _typeTheme = {
-    viagem:            { from: '#3b82f6', to: '#6366f1', glow: 'rgba(59,130,246,.35)',  badge: 'rgba(59,130,246,.15)',  badgeBorder: 'rgba(59,130,246,.3)'  },
-    automovel:         { from: '#f97316', to: '#ef4444', glow: 'rgba(249,115,22,.35)',  badge: 'rgba(249,115,22,.15)',  badgeBorder: 'rgba(249,115,22,.3)'  },
-    imovel:            { from: '#22c55e', to: '#10b981', glow: 'rgba(34,197,94,.35)',   badge: 'rgba(34,197,94,.15)',   badgeBorder: 'rgba(34,197,94,.3)'   },
-    cirurgia_plastica: { from: '#ec4899', to: '#f43f5e', glow: 'rgba(236,72,153,.35)',  badge: 'rgba(236,72,153,.15)',  badgeBorder: 'rgba(236,72,153,.3)'  },
-    estudos:           { from: '#f59e0b', to: '#f97316', glow: 'rgba(245,158,11,.35)',  badge: 'rgba(245,158,11,.15)',  badgeBorder: 'rgba(245,158,11,.3)'  },
-    outro:             { from: '#8b5cf6', to: '#6366f1', glow: 'rgba(139,92,246,.35)',  badge: 'rgba(139,92,246,.15)',  badgeBorder: 'rgba(139,92,246,.3)'  },
-  };
-  const theme = _typeTheme[d.dream_type] || _typeTheme.outro;
-  const pctClamped = Math.min(Math.round(pct), 100);
-
-  // Radial SVG progress ring
-  const R = 28, C = 2 * Math.PI * R;
-  const dash = (pctClamped / 100) * C;
-  const ringColor = isAchieved ? '#27ae60' : isPaused ? '#94a3b8' : theme.from;
-  const ring = `<svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-    <circle cx="36" cy="36" r="${R}" stroke="rgba(255,255,255,.15)" stroke-width="5"/>
-    <circle cx="36" cy="36" r="${R}" stroke="${ringColor}" stroke-width="5"
-      stroke-dasharray="${dash.toFixed(1)} ${(C - dash).toFixed(1)}"
-      stroke-dashoffset="${(C * 0.25).toFixed(1)}"
-      stroke-linecap="round" transform="rotate(-90 36 36)"/>
-    <text x="36" y="40" text-anchor="middle" font-size="12" font-weight="800"
-      fill="${isAchieved?'#27ae60':isPaused?'#94a3b8':'#fff'}" font-family="Georgia,serif">${isAchieved?'🏆':`${pctClamped}%`}</text>
-  </svg>`;
-
-  // Status badge
-  const statusStyle = `background:${
-    isAchieved  ? 'rgba(39,174,96,.18)' :
-    isPaused    ? 'rgba(148,163,184,.15)' :
-    isCancelled ? 'rgba(239,68,68,.12)' :
-    theme.badge};border:1px solid ${
-    isAchieved  ? 'rgba(39,174,96,.35)' :
-    isPaused    ? 'rgba(148,163,184,.28)' :
-    isCancelled ? 'rgba(239,68,68,.25)' :
-    theme.badgeBorder};color:${
-    isAchieved  ? '#27ae60' :
-    isPaused    ? '#94a3b8' :
-    isCancelled ? '#ef4444' :
-    theme.from}`;
-
-  // Target date formatted
-  const dateStr = d.target_date
-    ? new Date(d.target_date).toLocaleDateString('pt-BR', { month:'short', year:'numeric' })
-    : null;
-
-  // Months left chip text
-  const monthsChip = months !== null
-    ? (months <= 0 ? 'Este mês!' : `${months} ${months === 1 ? 'mês' : 'meses'}`)
-    : null;
+  const progressColor = pct >= 100 ? '#27ae60' : pct >= 60 ? 'var(--accent)' : pct >= 30 ? 'var(--warning, #f39c12)' : 'var(--danger, #e74c3c)';
 
   return `
-  <div class="drm-card drm-card--${d.dream_type}${isPaused?' drm-card--paused':''}${isAchieved?' drm-card--achieved':''}" onclick="openDreamDetail('${d.id}')">
-    <!-- ── Hero gradient ── -->
-    <div class="drm-card-hero" style="--drm-from:${theme.from};--drm-to:${theme.to};--drm-glow:${theme.glow}">
-      <div class="drm-card-hero__glow"></div>
-      <div class="drm-card-hero__inner">
-        <!-- Left: emoji + info -->
-        <div class="drm-card-hero__left">
-          <div class="drm-card-hero__emoji">${_dreamTypeEmoji(d.dream_type)}</div>
-          <div class="drm-card-hero__text">
-            <div class="drm-card-hero__title">${_esc(d.title)}</div>
-            <div class="drm-card-hero__type">${_dreamTypeLabel(d.dream_type).replace(/^[^ ]+ /,'')}</div>
-          </div>
-        </div>
-        <!-- Right: radial ring -->
-        <div class="drm-card-hero__ring">${ring}</div>
+  <div class="drm-card drm-card--${d.dream_type}" onclick="openDreamDetail('${d.id}')">
+    <div class="drm-card-header">
+      <div class="drm-card-icon">${_dreamTypeEmoji(d.dream_type)}</div>
+      <div class="drm-card-info">
+        <div class="drm-card-title">${_esc(d.title)}</div>
+        <div class="drm-card-type">${_dreamTypeLabel(d.dream_type)}</div>
       </div>
-      <!-- Status badge overlay -->
-      <div class="drm-card-hero__badge" style="${statusStyle}">${_dreamStatusLabel(d.status)}</div>
+      <div class="drm-card-status" style="color:${_dreamStatusColor(d.status)}">${_dreamStatusLabel(d.status)}</div>
     </div>
 
-    <!-- ── Body ── -->
-    <div class="drm-card-body">
-      <!-- Progress numbers -->
-      <div class="drm-card-progress-row">
-        <div class="drm-card-progress-num">
-          <span class="drm-card-progress-num__val ${privacy?'privacy-blur':''}">${privacy ? '•••' : _fmtCurrency(acc, d.currency)}</span>
-          <span class="drm-card-progress-num__label">acumulado</span>
-        </div>
-        <div class="drm-card-progress-divider"></div>
-        <div class="drm-card-progress-num drm-card-progress-num--target">
-          <span class="drm-card-progress-num__val ${privacy?'privacy-blur':''}">${privacy ? '•••' : _fmtCurrency(target, d.currency)}</span>
-          <span class="drm-card-progress-num__label">meta</span>
-        </div>
+    <div class="drm-card-progress-wrap">
+      <div class="drm-card-progress-bar">
+        <div class="drm-card-progress-fill" style="width:${pct}%;background:${progressColor}"></div>
       </div>
-
-      <!-- Linear progress bar -->
-      <div class="drm-card-bar">
-        <div class="drm-card-bar__fill" style="width:${pctClamped}%;background:linear-gradient(90deg,${theme.from},${theme.to})"></div>
+      <div class="drm-card-progress-labels">
+        <span>${privacy ? '••••' : _fmtCurrency(acc, d.currency)}</span>
+        <span style="font-weight:700;color:${progressColor}">${Math.round(pct)}%</span>
+        <span>${privacy ? '••••' : _fmtCurrency(target, d.currency)}</span>
       </div>
+    </div>
 
-      <!-- Meta chips -->
-      <div class="drm-card-chips">
-        ${monthsChip ? `<span class="drm-chip"><span class="drm-chip__icon">📅</span>${monthsChip}</span>` : ''}
-        ${dateStr    ? `<span class="drm-chip"><span class="drm-chip__icon">🎯</span>${dateStr}</span>` : ''}
-        ${monthly !== null && monthly > 0 && !privacy ? `<span class="drm-chip drm-chip--accent" style="--chip-color:${theme.from}"><span class="drm-chip__icon">💰</span>${_fmtCurrency(monthly, d.currency)}/mês</span>` : ''}
-        ${items.length ? `<span class="drm-chip"><span class="drm-chip__icon">📦</span>${items.length} componente${items.length!==1?'s':''}</span>` : ''}
-      </div>
+    <div class="drm-card-meta">
+      ${months !== null ? `<span class="drm-meta-chip">📅 ${months > 0 ? months + ' meses' : 'Este mês!'}</span>` : ''}
+      ${monthly !== null && monthly > 0 && !privacy ? `<span class="drm-meta-chip accent">💰 ${_fmtCurrency(monthly, d.currency)}/mês</span>` : ''}
+      ${items.length ? `<span class="drm-meta-chip">${items.length} componentes</span>` : ''}
+      ${d.target_date ? `<span class="drm-meta-chip">🎯 ${new Date(d.target_date).toLocaleDateString('pt-BR', {month:'short',year:'numeric'})}</span>` : ''}
+    </div>
 
-      ${d.description ? `<div class="drm-card-desc">${_esc(d.description).slice(0,80)}${d.description.length > 80 ? '…' : ''}</div>` : ''}
+    ${d.description ? `<div class="drm-card-desc">${_esc(d.description).slice(0,90)}${d.description.length > 90 ? '…' : ''}</div>` : ''}
 
-      <!-- Actions -->
-      <div class="drm-card-actions" onclick="event.stopPropagation()">
-        <button class="drm-action-btn drm-action-btn--primary" style="--btn-color:${theme.from}" onclick="openDreamDetail('${d.id}')">Ver detalhes</button>
-        <button class="drm-action-btn drm-action-btn--ghost" onclick="openContributeModal('${d.id}')">+ Aporte</button>
-        <button class="drm-action-btn drm-action-btn--icon" onclick="openDreamMenu('${d.id}', event)" title="Mais opções">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-        </button>
-      </div>
+    <div class="drm-card-actions" onclick="event.stopPropagation()">
+      <button class="drm-action-btn" onclick="openDreamDetail('${d.id}')">Ver detalhes</button>
+      <button class="drm-action-btn" onclick="openContributeModal('${d.id}')">+ Aporte</button>
+      <button class="drm-action-btn drm-action-btn--icon" onclick="openDreamMenu('${d.id}', event)" title="Mais opções">⋯</button>
     </div>
   </div>`;
 }

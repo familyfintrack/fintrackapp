@@ -1891,55 +1891,7 @@ async function _renderDashForecast() {
     },
   });
 
-  // ── KPI pills: total in / total out / net 90d across all accounts ─────────
-  const kpisEl = document.getElementById('dashForecastKpis');
-  if (kpisEl) {
-    let totalIn90 = 0, totalOut90 = 0;
-    allDates.forEach(d => {
-      totalIn90  += _fcDailyData[d].totalIn  || 0;
-      totalOut90 += _fcDailyData[d].totalOut || 0;
-    });
-    const net90    = totalIn90 - totalOut90;
-    const net90Pos = net90 >= 0;
-    const lastDate = allDates[allDates.length - 1];
-    const totalFinalBal = accounts.reduce((s,a) =>
-      s + (toBRL ? toBRL(_fcDailyData[lastDate]?.balances[a.id]??0, a.currency||'BRL') : (_fcDailyData[lastDate]?.balances[a.id]??0)), 0);
-    const totalTodayBal = accounts.reduce((s,a) =>
-      s + (toBRL ? toBRL(_fcDailyData[fromStr]?.balances[a.id]??(parseFloat(a.balance)||0), a.currency||'BRL') : (_fcDailyData[fromStr]?.balances[a.id]??(parseFloat(a.balance)||0))), 0);
-    const totalDelta = totalFinalBal - totalTodayBal;
-
-    kpisEl.innerHTML = `
-      <div class="dfc-kpi">
-        <div class="dfc-kpi__top">
-          <span class="dfc-kpi__icon dfc-kpi__icon--in">↑</span>
-          <span class="dfc-kpi__label">Entradas</span>
-        </div>
-        <span class="dfc-kpi__val dfc-kpi__val--pos">${fmt(totalIn90)}</span>
-      </div>
-      <div class="dfc-kpi">
-        <div class="dfc-kpi__top">
-          <span class="dfc-kpi__icon dfc-kpi__icon--out">↓</span>
-          <span class="dfc-kpi__label">Saídas</span>
-        </div>
-        <span class="dfc-kpi__val dfc-kpi__val--neg">${fmt(totalOut90)}</span>
-      </div>
-      <div class="dfc-kpi">
-        <div class="dfc-kpi__top">
-          <span class="dfc-kpi__icon ${net90Pos?'dfc-kpi__icon--net-pos':'dfc-kpi__icon--net-neg'}">≈</span>
-          <span class="dfc-kpi__label">Fluxo 90d</span>
-        </div>
-        <span class="dfc-kpi__val ${net90Pos?'dfc-kpi__val--pos':'dfc-kpi__val--neg'}">${net90Pos?'+':'−'}${fmt(Math.abs(net90))}</span>
-      </div>
-      <div class="dfc-kpi dfc-kpi--hide-sm">
-        <div class="dfc-kpi__top">
-          <span class="dfc-kpi__icon ${totalDelta>=0?'dfc-kpi__icon--net-pos':'dfc-kpi__icon--net-neg'}">⟶</span>
-          <span class="dfc-kpi__label">Saldo final</span>
-        </div>
-        <span class="dfc-kpi__val ${totalDelta>=0?'dfc-kpi__val--pos':'dfc-kpi__val--neg'}">${totalDelta>=0?'+':'−'}${fmt(Math.abs(totalDelta))}</span>
-      </div>`;
-  }
-
-  // ── Account projection footer: card per account ─────────────────────────
+  // ── Summary row: today balance + 90-day projected balance + delta ─────────
   const summary = document.getElementById('dashForecastSummary');
   if (summary) {
     const lastDate = allDates[allDates.length - 1];
@@ -1949,20 +1901,14 @@ async function _renderDashForecast() {
       const delta    = finalBal - todayBal;
       const isNeg    = finalBal < 0;
       const color    = a.color || COLORS[idx % COLORS.length];
-      const deltaPos = delta >= 0;
-      const pct      = todayBal !== 0 ? Math.abs(delta / todayBal * 100).toFixed(0) : null;
-      return `
-        <div class="dfc-acc-chip" style="--acc-clr:${color}">
-          <div class="dfc-acc-chip__dot" style="background:${color}"></div>
-          <div class="dfc-acc-chip__body">
-            <span class="dfc-acc-chip__name">${esc(a.name)}</span>
-            <span class="dfc-acc-chip__val ${isNeg?'neg':''}">${fmt(finalBal, a.currency)}</span>
-          </div>
-          <div class="dfc-acc-chip__delta ${deltaPos?'pos':'neg'}">
-            <span class="dfc-acc-chip__delta-val">${deltaPos?'▲':'▼'} ${fmt(Math.abs(delta), a.currency)}</span>
-            ${pct ? `<span class="dfc-acc-chip__delta-pct">${pct}% em 90d</span>` : ''}
-          </div>
-        </div>`;
+      const deltaStr = (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta), a.currency);
+      const deltaClr = delta >= 0 ? 'var(--accent)' : 'var(--red,#c0392b)';
+      return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
+        <span style="color:var(--text2);font-size:.78rem">${esc(a.name)}</span>
+        <strong style="color:${isNeg?'var(--red,#c0392b)':'var(--accent)'};font-size:.78rem">${fmt(finalBal, a.currency)}</strong>
+        <span style="font-size:.7rem;color:${deltaClr};opacity:.8">(${deltaStr})</span>
+      </span>`;
     }).join('');
   }
 }
@@ -2252,7 +2198,7 @@ async function _openPatrimonioModal() {
   if (!accs.length) return;
 
   // ══════════════════════════════════════════════════════════════════
-  // ATIVOS — espelha exactamente o cálculo do KPI (db.js loadKPIs)
+  // ATIVOS — contas + investimentos detalhados
   // ══════════════════════════════════════════════════════════════════
 
   // Separar contas por tipo
@@ -2269,13 +2215,6 @@ async function _openPatrimonioModal() {
     return s + toBRL(bal, a.currency||'BRL');
   }, 0);
 
-  // Cartões com SALDO POSITIVO (crédito disponível / pagamento em excesso) = ativo
-  // Cartões com saldo NEGATIVO = passivo (fatura em aberto)
-  const accsCardPositive = accsCard.filter(a => (parseFloat(a.balance)||0) > 0);
-  const accsCardDebt     = accsCard.filter(a => (parseFloat(a.balance)||0) < 0);
-  const cardPositiveTotal = accsCardPositive.reduce((s,a) =>
-    s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-
   // Investimentos por tipo (usando posições do módulo de investimentos)
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
   const invByType = {};
@@ -2287,43 +2226,48 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // Total de ativos (KPI-aligned: inclui cartões positivos)
-  // Nota: KPI usa state.accounts.reduce com todos os tipos incluindo cartão,
-  // onde cartão negativo já entra negativo automaticamente. Replicamos isso aqui.
-  const accountTotal = accs.reduce((s, a) => {
-    const bal = (a.type === 'investimento' && a._totalPortfolioBalance != null)
-      ? a._totalPortfolioBalance
-      : (parseFloat(a.balance) || 0);
-    return s + toBRL(bal, a.currency || 'BRL');
-  }, 0);
-
-  // Separar o que é "ativo bruto" para barras (sem cartões negativos, que são passivos)
-  const assetGross = liquidTotal + invTotal + cardPositiveTotal;
+  // Total de ativos
+  const accountTotal = liquidTotal + invTotal;
 
   // ══════════════════════════════════════════════════════════════════
-  // PASSIVOS — dívidas ativas (query idêntica ao KPI)
+  // PASSIVOS — dívidas ativas
   // ══════════════════════════════════════════════════════════════════
+
+  // Debts: same query as KPI
   let debtTotal = 0;
   let debts = [];
   try {
-    const { data: debtsData, error: debtErr } = await famQ(
-      sb.from('debts').select('id,name,current_balance,original_amount,currency,status,creditor_payee_id')
-        .eq('status', 'active')
-    ).order('current_balance', { ascending: false });
+    // Fetch active debts — try with status filter first, fall back to all debts
+    let { data: debtsData, error: debtErr } = await famQ(
+      sb.from('debts').select('id,description,current_balance,original_amount,currency,status')
+    ).order('created_at', { ascending: false });
     if (debtErr) throw debtErr;
-    debts = debtsData || [];
+    // Filter to active/open debts client-side (handles schemas without status column)
+    debts = (debtsData || []).filter(d => !d.status || d.status === 'active' || d.status === 'open');
     debtTotal = debts.reduce((s,d) =>
       s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
   } catch(e) {
     console.warn('[patrimônio] debts query failed:', e?.message || e);
   }
 
-  // totalBRL = patrimônio líquido — idêntico ao KPI
   const totalBRL = accountTotal - debtTotal;
 
-  // ── Helpers de formatação ──────────────────────────────────────
-  const _pct = (val, base) => (base || assetGross) !== 0
-    ? Math.abs(val / (base || assetGross) * 100).toFixed(1) : '0.0';
+  // Group accounts by currency
+  const byCurrency = {};
+  accs.forEach(a => {
+    const cur = a.currency || 'BRL';
+    if (!byCurrency[cur]) byCurrency[cur] = [];
+    byCurrency[cur].push(a);
+  });
+
+  // ── Helpers de formatação ──
+  // totalBRL = patrimônio líquido (ativos − passivos) — base para todos os percentuais
+  // Usamos Math.abs(accountTotal) como base das barras de ativos para que a soma chegue a 100%
+  // nas seções de ativo, e mostramos passivos como % do total de ativos (proporção real do passivo)
+  const _pctOfAssets   = (val) => accountTotal !== 0 ? Math.abs(val / accountTotal * 100).toFixed(1) : '0.0';
+  const _pctOfNet      = (val) => Math.abs(totalBRL) > 0.01 ? (val / Math.abs(totalBRL) * 100).toFixed(1) : '0.0';
+  // Mantém compatibilidade com chamadas existentes — usa assets como base para ativos
+  const _pct = (val, base) => (base || accountTotal) !== 0 ? Math.abs(val / (base || accountTotal) * 100).toFixed(1) : '0.0';
   const _barHtml = (pct, color) =>
     `<div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
       <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:2px;transition:width .4s ease"></div>
@@ -2334,7 +2278,7 @@ async function _openPatrimonioModal() {
       <div style="width:30px;height:30px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
-        ${sub ? `<div style="font-size:.68rem;color:var(--muted)">${sub}</div>` : ''}
+        ${sub ? `<div style="font-size:.68rem;color:var(--muted)">${esc(sub)}</div>` : ''}
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${val<0?'var(--red)':'var(--text)'}">${fmt(val,cur)}</div>
@@ -2361,29 +2305,27 @@ async function _openPatrimonioModal() {
         <div>
           <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Líquido</div>
           <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">
-            Ativos: ${dashFmt(assetGross,'BRL')}
-            ${debtTotal > 0 ? ` · Passivos: ${dashFmt(debtTotal + Math.abs(accsCardDebt.reduce((s,a)=>s+toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL'),0)),'BRL')}` : ''}
-          </div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Ativos: ${dashFmt(accountTotal,'BRL')} · Passivos: ${dashFmt(debtTotal,'BRL')}</div>
         </div>
         <button onclick="closeModal('patrimonioModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
       </div>
 
       <!-- ── ATIVOS ────────────────────────────────────────────────── -->
       <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);padding:4px 0 8px;border-bottom:1.5px solid var(--accent);margin-bottom:12px">
-        📈 ATIVOS — ${dashFmt(assetGross,'BRL')}
-      </div>`;
+        📈 ATIVOS — ${dashFmt(accountTotal,'BRL')}
+      </div>
 
-  // ── Contas líquidas ─────────────────────────────────────────────
+      <!-- Contas líquidas -->`;
+
   if (accsLiquid.length) {
     content += `
       <div style="margin-bottom:14px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">🏦 Contas</div>
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Contas</div>
         <div style="display:flex;flex-direction:column;gap:4px">`;
     accsLiquid.sort((a,b)=>Math.abs(b.balance||0)-Math.abs(a.balance||0)).forEach(a => {
       const bal    = parseFloat(a.balance)||0;
       const balBRL = toBRL(bal, a.currency||'BRL');
-      const pct    = _pct(balBRL, assetGross);
+      const pct    = _pct(balBRL, accountTotal);
       content += _rowHtml(
         _dashRenderIcon(a.icon, a.color, 16), a.name,
         accountTypeLabel?.(a.type)||a.type, bal, balBRL,
@@ -2394,26 +2336,28 @@ async function _openPatrimonioModal() {
     });
     content += `</div>
         <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
-          Subtotal: <span style="font-weight:700;color:var(--text);margin-left:4px">${dashFmt(liquidTotal,'BRL')}</span>
+          <span style="font-weight:700;color:var(--text)">${dashFmt(liquidTotal,'BRL')}</span>
         </div>
       </div>`;
   }
 
-  // ── Investimentos ───────────────────────────────────────────────
+  // Investimentos por tipo
   if (accsInvest.length) {
     content += `
       <div style="margin-bottom:14px">
         <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📊 Investimentos</div>`;
 
     if (Object.keys(invByType).length > 0) {
+      // Breakdown por tipo de ativo
       content += `<div style="display:flex;flex-direction:column;gap:4px">`;
       Object.entries(invByType)
         .sort(([,a],[,b]) => b.total - a.total)
         .forEach(([k, grp]) => {
-          const pct = _pct(grp.total, assetGross);
+          const pct = _pct(grp.total, accountTotal);
           const typeLabel = (_invTypeLabel[k]||k);
           const typeEmoji = (_invTypeEmoji[k]||'📌');
           const color = '#1e5ba8';
+          // Linha do tipo (expansível)
           content += `
             <details style="background:var(--surface2);border-radius:9px;overflow:hidden">
               <summary style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;list-style:none">
@@ -2424,15 +2368,14 @@ async function _openPatrimonioModal() {
                 </div>
                 <div style="text-align:right;flex-shrink:0">
                   <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--text)">${dashFmt(grp.total,'BRL')}</div>
-                  <div style="font-size:.65rem;color:var(--muted)">${pct}% do ativo</div>
+                  <div style="font-size:.65rem;color:var(--muted)">${pct}%</div>
                 </div>
               </summary>
               <div style="padding:0 10px 8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:3px;margin-top:4px">
                 ${grp.positions.map(p => {
                   const mv = p._mv || 0;
-                  const cost = (+(p.quantity||0) * (+(p.avg_cost||0)));
-                  const pnl = mv - cost;
-                  const pnlPct = cost > 0 ? (pnl / cost * 100) : 0;
+                  const pnl = mv - (+(p.quantity||0) * (+(p.avg_cost||0)));
+                  const pnlPct = p.avg_cost ? (pnl / (+(p.quantity||0) * (+(p.avg_cost||0))) * 100) : 0;
                   return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
                     <div style="flex:1;min-width:0">
                       <span style="font-size:.8rem;font-weight:700;color:var(--text)">${esc(p.ticker)}</span>
@@ -2450,7 +2393,7 @@ async function _openPatrimonioModal() {
         });
       content += `</div>`;
     } else {
-      // Sem posições — mostrar contas de investimento como fallback
+      // Sem posições — mostrar contas de investimento
       content += `<div style="display:flex;flex-direction:column;gap:4px">`;
       accsInvest.forEach(a => {
         const bal    = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
@@ -2459,64 +2402,51 @@ async function _openPatrimonioModal() {
           _dashRenderIcon(a.icon, a.color, 16), a.name, 'Investimentos',
           bal, balBRL, a.currency||'BRL', a.color||'#1e5ba8',
           `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
-          _pct(balBRL,assetGross), a.color||'#1e5ba8'
+          _pct(balBRL,accountTotal), a.color||'#1e5ba8'
         );
       });
       content += `</div>`;
     }
+
     content += `
         <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
-          Subtotal: <span style="font-weight:700;color:var(--text);margin-left:4px">${dashFmt(invTotal,'BRL')}</span>
+          <span style="font-weight:700;color:var(--text)">${dashFmt(invTotal,'BRL')}</span>
         </div>
       </div>`;
   }
 
-  // ── Cartões com saldo positivo (ativo) ─────────────────────────
-  if (accsCardPositive.length) {
-    content += `
-      <div style="margin-bottom:14px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Cartões (saldo positivo)</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    accsCardPositive.forEach(a => {
-      const bal    = parseFloat(a.balance)||0;
-      const balBRL = toBRL(bal, a.currency||'BRL');
-      content += _rowHtml(
-        _dashRenderIcon(a.icon, a.color, 16), a.name, 'Saldo a favor',
-        bal, balBRL, a.currency||'BRL', a.color||'#2a6049',
-        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
-        _pct(balBRL, assetGross), a.color||'#2a6049'
-      );
-    });
-    content += `</div>
-        <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
-          Subtotal: <span style="font-weight:700;color:var(--accent);margin-left:4px">${dashFmt(cardPositiveTotal,'BRL')}</span>
-        </div>
-      </div>`;
-  }
+  Object.entries(byCurrency).forEach(([cur, group]) => {
+    // Mantido apenas como fallback para casos não cobertos acima
+    return;
+  });
 
-  // ── PASSIVOS ─────────────────────────────────────────────────────
-  const cardDebt = accsCardDebt.reduce((s,a) =>
-    s + toBRL(Math.abs(parseFloat(a.balance)||0), a.currency||'BRL'), 0);
+  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
+  const cardDebt = accsCard.reduce((s,a) => {
+    const bal = parseFloat(a.balance)||0;
+    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
+  }, 0);
   const totalPassivos = debtTotal + cardDebt;
 
-  if (totalPassivos > 0.01) {
-    const passivosPct = assetGross > 0 ? (totalPassivos / assetGross * 100).toFixed(1) : '0.0';
+  // ── PASSIVOS ─────────────────────────────────────────────────────────────
+  if (totalPassivos > 0) {
+    const passivosPct = _pct(totalPassivos, accountTotal);
     content += `
       <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1.5px solid var(--red,#dc2626);margin:16px 0 12px;display:flex;align-items:center;justify-content:space-between">
         <span>📉 PASSIVOS</span>
         <span style="font-size:.72rem;font-weight:700">−${dashFmt(totalPassivos,'BRL')} <span style="font-weight:400;opacity:.7">(${passivosPct}% dos ativos)</span></span>
       </div>`;
 
-    // Faturas de cartão de crédito em aberto
-    if (accsCardDebt.length) {
+    // ── Faturas de cartão de crédito ─────────────────────────────────────
+    const cardDebtAccs = accsCard.filter(a => (parseFloat(a.balance)||0) < 0);
+    if (cardDebtAccs.length) {
       content += `
         <div style="margin-bottom:12px">
           <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Faturas em Aberto</div>
           <div style="display:flex;flex-direction:column;gap:4px">`;
-      accsCardDebt.forEach(a => {
+      cardDebtAccs.forEach(a => {
         const bal    = Math.abs(parseFloat(a.balance)||0);
         const balBRL = toBRL(bal, a.currency||'BRL');
-        const pct    = assetGross > 0 ? (balBRL/assetGross*100).toFixed(1) : '0.0';
+        const pct    = _pct(balBRL, accountTotal);
         content += `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1);cursor:pointer"
             onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
@@ -2537,12 +2467,13 @@ async function _openPatrimonioModal() {
       });
       content += `
           <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem">
-            Subtotal: <span style="font-weight:700;color:var(--red,#dc2626);margin-left:4px">−${dashFmt(cardDebt,'BRL')}</span>
+            <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(cardDebt,'BRL')}</span>
           </div>
-        </div>`;
+        </div>
+      </div>`;
     }
 
-    // Dívidas do módulo
+    // ── Dívidas do módulo ─────────────────────────────────────────────────
     if (debts.length) {
       content += `
         <div style="margin-bottom:12px">
@@ -2551,7 +2482,7 @@ async function _openPatrimonioModal() {
       debts.forEach(d => {
         const bal    = parseFloat(d.current_balance ?? d.original_amount) || 0;
         const balBRL = toBRL(bal, d.currency || 'BRL');
-        const pct    = assetGross > 0 ? (balBRL/assetGross*100).toFixed(1) : '0.0';
+        const pct    = _pct(balBRL, accountTotal);
         const progPct = d.original_amount
           ? Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100).toFixed(0)
           : null;
@@ -2559,7 +2490,7 @@ async function _openPatrimonioModal() {
           <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
             <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
               <div style="font-size:.68rem;color:var(--muted)">Dívida ativa · ${pct}% dos ativos${progPct ? ` · ${progPct}% quitado` : ''}</div>
             </div>
             <div style="text-align:right;flex-shrink:0">
@@ -2573,28 +2504,31 @@ async function _openPatrimonioModal() {
       });
       content += `
           <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem">
-            Subtotal: <span style="font-weight:700;color:var(--red,#dc2626);margin-left:4px">−${dashFmt(debtTotal,'BRL')}</span>
+            <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(debtTotal,'BRL')}</span>
           </div>
-        </div>`;
+        </div>
+      </div>`;
     }
   }
 
-  // ── Resumo final ──────────────────────────────────────────────────
-  const alavancagem = assetGross > 0 ? (totalPassivos / assetGross * 100).toFixed(1) : '0.0';
+  // ── Net worth summary (sempre visível) ────────────────────────────────────
+  const alavancagem = accountTotal > 0 ? (totalPassivos / accountTotal * 100).toFixed(1) : '0.0';
   content += `
     <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="font-size:.8rem;font-weight:700;color:var(--text)">Patrimônio Líquido</div>
-        <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red,#dc2626)'}">${dashFmt(totalBRL,'BRL')}</div>
+        <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red,#dc2626)'}">
+          ${dashFmt(totalBRL,'BRL')}
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
         <div style="background:rgba(42,96,73,.08);border-radius:8px;padding:7px 10px;text-align:center">
           <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Ativos</div>
-          <div style="font-size:.82rem;font-weight:700;color:var(--accent)">+${dashFmt(assetGross,'BRL')}</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--accent)">+${dashFmt(accountTotal,'BRL')}</div>
         </div>
         <div style="background:rgba(220,38,38,.07);border-radius:8px;padding:7px 10px;text-align:center">
           <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Passivos</div>
-          <div style="font-size:.82rem;font-weight:700;color:var(--red,#dc2626)">${totalPassivos>0?'−':''}${dashFmt(totalPassivos,'BRL')}</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--red,#dc2626)">−${dashFmt(totalPassivos,'BRL')}</div>
         </div>
         <div style="background:var(--surface2);border-radius:8px;padding:7px 10px;text-align:center">
           <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Endividamento</div>
@@ -2605,12 +2539,12 @@ async function _openPatrimonioModal() {
       </div>
       <div style="margin-top:10px">
         <div style="height:8px;border-radius:4px;overflow:hidden;display:flex;gap:1px">
-          <div style="flex:${Math.max(assetGross,0.01)};background:var(--accent);border-radius:4px 0 0 4px;min-width:${totalPassivos>0.01?'4px':'100%'}"></div>
-          ${totalPassivos > 0.01 ? `<div style="flex:${totalPassivos};background:var(--red,#dc2626);border-radius:0 4px 4px 0;min-width:4px"></div>` : ''}
+          <div style="flex:${accountTotal};background:var(--accent);border-radius:4px 0 0 4px;min-width:${totalPassivos>0?'4px':'100%'}"></div>
+          ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:var(--red,#dc2626);border-radius:0 4px 4px 0;min-width:4px"></div>` : ''}
         </div>
         <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted);margin-top:3px">
-          <span>● Ativos ${assetGross > 0 ? (assetGross/(assetGross+totalPassivos)*100).toFixed(0) : 100}%</span>
-          ${totalPassivos>0.01?`<span>● Passivos ${(totalPassivos/(assetGross+totalPassivos)*100).toFixed(0)}%</span>`:''}
+          <span>● Ativos ${_pct(accountTotal,accountTotal+totalPassivos)}%</span>
+          ${totalPassivos>0?`<span>● Passivos ${_pct(totalPassivos,accountTotal+totalPassivos)}%</span>`:''}
         </div>
       </div>
     </div>`;
@@ -2624,13 +2558,13 @@ async function _openPatrimonioModal() {
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:82dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
+    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
     document.body.appendChild(modal);
   }
   document.getElementById('patrimonioModalBody').innerHTML = content;
   openModal('patrimonioModal');
 }
-  
+window._openPatrimonioModal = _openPatrimonioModal;
 
 /* ══════════════════════════════════════════════════════════════════
    DASHBOARD — Card de Orçamentos

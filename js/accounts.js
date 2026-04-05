@@ -287,78 +287,6 @@ function accountTypeLabel(t){
 }
 
 // Chamado ao mudar o tipo de conta no MODAL (não navega para transações)
-// ── Account Modal: Tab switcher ───────────────────────────────────
-function _accTab(btn, tabId) {
-  // Update tab buttons
-  document.querySelectorAll('#accountModal .acc-tab').forEach(t => {
-    t.classList.toggle('active', t === btn);
-    t.setAttribute('aria-selected', t === btn ? 'true' : 'false');
-  });
-  // Show/hide panes
-  document.querySelectorAll('#accountModal .acc-tab-pane').forEach(p => {
-    p.style.display = p.id === tabId ? '' : 'none';
-    p.classList.toggle('active', p.id === tabId);
-  });
-  // Cartão tab: show/hide hint based on type
-  if (tabId === 'tab-card') {
-    const isCC = document.getElementById('accountType')?.value === 'cartao_credito';
-    const dataSection = document.getElementById('accountCardDataSection');
-    const hint = document.getElementById('accCardTabHint');
-    if (dataSection) dataSection.style.display = isCC ? '' : 'none';
-    if (hint)        hint.style.display        = isCC ? 'none' : '';
-  }
-}
-window._accTab = _accTab;
-
-// ── Account Modal: live preview updater ──────────────────────────
-function _accUpdatePreview() {
-  const name    = document.getElementById('accountName')?.value || 'Nome da Conta';
-  const type    = document.getElementById('accountType')?.value || 'corrente';
-  const color   = document.getElementById('accountColor')?.value || '#2a6049';
-  const isFav   = document.getElementById('accountIsFavorite')?.checked;
-  const bal     = getAmtField('accountBalance');
-  const cur     = document.getElementById('accountCurrency')?.value || 'BRL';
-
-  // Type label
-  const typeLabels = {
-    corrente:'Conta Corrente', poupanca:'Poupança',
-    cartao_credito:'Cartão de Crédito', investimento:'Investimentos',
-    dinheiro:'Dinheiro', outros:'Outros'
-  };
-
-  // Update preview card
-  const card = document.getElementById('accPreviewCard');
-  if (card) card.style.setProperty('--prev-clr', color);
-
-  const pName = document.getElementById('accPreviewName');
-  if (pName) pName.textContent = name || 'Nome da Conta';
-
-  const pType = document.getElementById('accPreviewType');
-  if (pType) pType.textContent = typeLabels[type] || type;
-
-  const pBal = document.getElementById('accPreviewBalance');
-  if (pBal) {
-    if (typeof fmt === 'function') {
-      pBal.textContent = fmt(bal || 0, cur);
-    } else {
-      pBal.textContent = (bal || 0).toLocaleString('pt-BR', {style:'currency', currency: cur === 'BRL' ? 'BRL' : 'USD'});
-    }
-    pBal.className = 'acc-preview-card__balance' + (bal < 0 ? ' neg' : '');
-  }
-
-  const pFav = document.getElementById('accPreviewFav');
-  if (pFav) pFav.style.display = isFav ? '' : 'none';
-
-  // Also update hero icon
-  const heroIcon = document.getElementById('accModalHeroIcon');
-  const iconPrev = document.getElementById('accountIconPreview');
-  if (heroIcon && iconPrev) {
-    const pIcon = document.getElementById('accPreviewIcon');
-    if (pIcon) pIcon.innerHTML = heroIcon.innerHTML || '🏦';
-  }
-}
-window._accUpdatePreview = _accUpdatePreview;
-
 function _onAccModalTypeChange() {
   const type  = document.getElementById('accountType')?.value || '';
   const isCC  = type === 'cartao_credito';
@@ -371,13 +299,9 @@ function _onAccModalTypeChange() {
   const cardDates = document.getElementById('accountCardDatesConfig');
   if (cardDates) cardDates.style.display = isCC ? '' : 'none';
 
-  // Card data section (if card tab visible)
+  // Card data section (bandeira, limite, emissor)
   const cardData = document.getElementById('accountCardDataSection');
   if (cardData) cardData.style.display = isCC ? '' : 'none';
-  const cardHint = document.getElementById('accCardTabHint');
-  if (cardHint) cardHint.style.display = isCC ? 'none' : '';
-
-  _accUpdatePreview();
 }
 window._onAccModalTypeChange = _onAccModalTypeChange;
 
@@ -469,11 +393,6 @@ async function openAccountModal(id=''){
     dreamSel.value = form.linked_dream_id || '';
   }
   setTimeout(()=>syncIconPickerToValue(form.icon||'',form.color||'#2a6049'),50);
-  // Reset to first tab
-  const firstTab = document.querySelector('#accountModal .acc-tab');
-  if (firstTab) _accTab(firstTab, 'tab-basic');
-  // Trigger preview update
-  setTimeout(_accUpdatePreview, 30);
   openModal('accountModal');
   setTimeout(() => {
     const body = document.querySelector('#accountModal .acc-modal-body');

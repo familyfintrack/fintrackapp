@@ -90,17 +90,9 @@ function selectAccountIcon(el) {
   const iconColor = el.dataset.color;
   document.getElementById('accountIcon').value = iconKey;
   if(iconColor) document.getElementById('accountColor').value = iconColor;
-  // Update small preview in icon tab
+  // Update preview
   const preview = document.getElementById('accountIconPreview');
-  if(preview) preview.innerHTML = renderIconEl(iconKey, iconColor, 28);
-  // Update hero icon wrap
-  const heroIcon = document.getElementById('accModalHeroIcon');
-  if(heroIcon) heroIcon.innerHTML = renderIconEl(iconKey, iconColor, 22);
-  // Update live preview card icon
-  const prevIcon = document.getElementById('accPreviewIcon');
-  if(prevIcon) prevIcon.innerHTML = renderIconEl(iconKey, iconColor, 18);
-  // Trigger full preview refresh (color etc.)
-  if(typeof _accUpdatePreview === 'function') _accUpdatePreview();
+  preview.innerHTML = renderIconEl(iconKey, iconColor, 28);
 }
 
 function syncIconPickerToValue(iconKey, color) {
