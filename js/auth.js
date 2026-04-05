@@ -682,7 +682,7 @@ async function doLogin() {
 
     // Gate: check app_users approval status before entering the app
     const { data: appUser } = await sb
-      .from('app_users').select('approved,active,must_change_pwd').eq('email', email).maybeSingle();
+      .from('app_users').select('approved,active,must_change_pwd,two_fa_enabled').eq('email', email).maybeSingle();
 
     if (appUser && !appUser.approved) {
       await sb.auth.signOut();
@@ -4417,12 +4417,23 @@ function _get2FATrustExpiry(userId) {
 
 // ── Envia código por email via EmailJS ──
 async function _send2FAByEmail(email, code, name) {
-  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) {
-    console.warn('[2FA] EmailJS não configurado');
-    return;
+  // Use same config resolution as _sendInviteEmail (fetches from app_settings with hardcoded fallbacks)
+  let serviceId, publicKey, tplId;
+  try {
+    const { autoCheckConfig } = await _getAutoCheckConfig();
+    serviceId = autoCheckConfig?.emailServiceId  || EMAILJS_CONFIG.serviceId  || 'service_8e4rkde';
+    publicKey = autoCheckConfig?.emailPublicKey  || EMAILJS_CONFIG.publicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
+    tplId     = autoCheckConfig?.emailTemplateId || EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId || 'template_fla7gdi';
+  } catch(_) {
+    serviceId = EMAILJS_CONFIG.serviceId;
+    publicKey = EMAILJS_CONFIG.publicKey;
+    tplId     = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
   }
-  const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
-  if (!tplId) return;
+
+  if (!serviceId || !publicKey || !tplId) {
+    console.warn('[2FA] EmailJS não configurado — serviceId:', serviceId, 'publicKey:', !!publicKey);
+    throw new Error('EmailJS não configurado. Configure em Configurações → E-mail.');
+  }
 
   const body = `
 <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">
@@ -4442,14 +4453,15 @@ async function _send2FAByEmail(email, code, name) {
 </div></div>`;
 
   try {
-    emailjs.init(EMAILJS_CONFIG.publicKey);
-    await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
+    emailjs.init(publicKey);
+    // Pass publicKey as 4th arg (same pattern as _sendInviteEmail which works)
+    await emailjs.send(serviceId, tplId, {
       to_email:       email,
       report_subject: '[Family FinTrack] Seu código de verificação: ' + code,
       Subject:        '[Family FinTrack] Código de verificação',
       month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
-    });
+    }, publicKey);
   } catch(e) {
     console.warn('[2FA] send email:', e.message);
     throw e;
@@ -4458,16 +4470,29 @@ async function _send2FAByEmail(email, code, name) {
 
 // ── Envia código por Telegram ──
 async function _send2FAByTelegram(chatId, code) {
+  const msg = `🔐 <b>Family FinTrack — Verificação</b>
+
+Seu código de acesso: <code>${code}</code>
+
+⏱ Válido por 10 minutos.
+
+Se você não tentou fazer login, ignore esta mensagem.`;
   try {
-    const msg = `🔐 *Family FinTrack — Verificação*
-
-Seu código: *${code}*
-
-Válido por 10 minutos.`;
+    // Prefer _sendTelegramWithFallback (auto_register.js) — uses local bot token + Edge Function fallback
+    if (typeof _sendTelegramWithFallback === 'function') {
+      await _sendTelegramWithFallback(chatId, msg, { notification_type: '2fa_code' });
+      return;
+    }
+    // Fallback: try direct API with bot token
+    if (typeof _sendTelegramDirect === 'function') {
+      await _sendTelegramDirect(chatId, msg);
+      return;
+    }
+    // Last resort: Edge Function
     const { data, error } = await sb.functions.invoke('send-telegram', {
-      body: { chat_id: chatId, message: msg }
+      body: { chat_id: String(chatId), message: msg }
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message || JSON.stringify(error));
   } catch(e) {
     console.warn('[2FA] send telegram:', e.message);
     throw e;
