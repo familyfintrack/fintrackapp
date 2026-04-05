@@ -22998,126 +22998,256 @@ tr.payee-row[onclick] { cursor: pointer; }
 .drm-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
-/* ── Dream card ──────────────────────────────────────────────────── */
+/* ── Dream card shell ─────────────────────────────────────────────── */
 .drm-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px 18px 14px;
+  border-radius: 18px;
   cursor: pointer;
-  transition: transform .18s, box-shadow .18s, border-color .18s;
+  transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.drm-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.07);
+}
+.drm-card:active { transform: translateY(-1px) scale(.99); }
+.drm-card--paused   { opacity: .82; }
+.drm-card--achieved { border-color: rgba(39,174,96,.3); }
+
+/* ── Hero gradient section ────────────────────────────────────────── */
+.drm-card-hero {
   position: relative;
   overflow: hidden;
+  background: linear-gradient(145deg, var(--drm-from, #8b5cf6), var(--drm-to, #6366f1));
+  padding: 16px 16px 14px;
+  flex-shrink: 0;
 }
-.drm-card::before {
+.drm-card-hero__glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 80% 100% at 110% -10%, var(--drm-glow, rgba(139,92,246,.4)) 0%, transparent 60%);
+}
+/* Decorative circle */
+.drm-card-hero::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  border-radius: 16px 16px 0 0;
+  right: -20px; bottom: -30px;
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  pointer-events: none;
 }
-.drm-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,.10); border-color: var(--accent); }
-.drm-card--viagem::before    { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-.drm-card--automovel::before { background: linear-gradient(90deg, #f97316, #fb923c); }
-.drm-card--imovel::before    { background: linear-gradient(90deg, #22c55e, #4ade80); }
-
-.drm-card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-.drm-card-icon {
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.35rem; flex-shrink: 0;
-  background: var(--surface2);
-  border: 1px solid var(--border);
+.drm-card-hero__inner {
+  position: relative; z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.drm-card--viagem .drm-card-icon    { background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.2); }
-.drm-card--automovel .drm-card-icon { background: rgba(249,115,22,.1); border-color: rgba(249,115,22,.2); }
-.drm-card--imovel .drm-card-icon    { background: rgba(34,197,94,.1);  border-color: rgba(34,197,94,.2); }
-.drm-card-info { flex: 1; min-width: 0; }
-.drm-card-title {
-  font-size: .93rem;
-  font-weight: 700;
-  color: var(--text);
+.drm-card-hero__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.drm-card-hero__emoji {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.25));
+}
+.drm-card-hero__text { min-width: 0; }
+.drm-card-hero__title {
+  font-size: .92rem;
+  font-weight: 800;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 6px rgba(0,0,0,.25);
+  line-height: 1.2;
   margin-bottom: 3px;
 }
-.drm-card-type { font-size: .7rem; color: var(--muted); font-weight: 500; }
-.drm-card-status {
-  font-size: .65rem;
+.drm-card-hero__type {
+  font-size: .62rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: rgba(255,255,255,.6);
+}
+.drm-card-hero__ring {
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.2));
+}
+.drm-card-hero__badge {
+  position: relative; z-index: 1;
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+/* ── Card body ────────────────────────────────────────────────────── */
+.drm-card-body {
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+/* Progress numbers row */
+.drm-card-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.drm-card-progress-num {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.drm-card-progress-num--target { text-align: right; }
+.drm-card-progress-num__val {
+  font-size: .88rem;
+  font-weight: 800;
+  font-family: var(--font-serif, monospace);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -.02em;
+}
+.drm-card-progress-num__label {
+  font-size: .6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.drm-card-progress-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 14px;
+  flex-shrink: 0;
+}
+
+/* Slim progress bar */
+.drm-card-bar {
+  height: 5px;
+  background: var(--surface2);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.drm-card-bar__fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width .6s cubic-bezier(.34,1.56,.64,1);
+  min-width: 3px;
+}
+
+/* Chips */
+.drm-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.drm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .65rem;
+  font-weight: 600;
   padding: 3px 8px;
   border-radius: 20px;
   background: var(--surface2);
   border: 1px solid var(--border);
-}
-
-/* ── Progress bar ────────────────────────────────────────────────── */
-.drm-card-progress-wrap { margin-bottom: 12px; }
-.drm-card-progress-bar {
-  height: 8px;
-  background: var(--surface2);
-  border-radius: 100px;
-  overflow: hidden;
-  margin-bottom: 6px;
-}
-.drm-card-progress-fill { height: 100%; border-radius: 100px; transition: width .5s cubic-bezier(.4,0,.2,1); }
-.drm-card-progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: .68rem;
-  color: var(--muted);
-  font-weight: 500;
-}
-
-/* ── Meta chips ──────────────────────────────────────────────────── */
-.drm-card-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
-.drm-meta-chip {
-  font-size: .66rem;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 20px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
   color: var(--text2);
+  white-space: nowrap;
 }
-.drm-meta-chip.accent {
-  background: rgba(var(--accent-rgb, 22,107,79), .10);
-  color: var(--accent);
-  border-color: rgba(var(--accent-rgb, 22,107,79), .20);
+.drm-chip__icon { font-size: .7rem; }
+.drm-chip--accent {
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 12%, transparent);
+  border-color: color-mix(in srgb, var(--chip-color, var(--accent)) 28%, transparent);
+  color: var(--chip-color, var(--accent));
 }
 
-.drm-card-desc { font-size: .75rem; color: var(--muted); line-height: 1.45; margin-bottom: 14px; }
+.drm-card-desc {
+  font-size: .74rem;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 
-/* ── Card actions ────────────────────────────────────────────────── */
+/* ── Card actions ─────────────────────────────────────────────────── */
 .drm-card-actions {
   display: flex;
   gap: 6px;
-  margin-top: 10px;
-  padding-top: 12px;
+  margin-top: auto;
+  padding-top: 10px;
   border-top: 1px solid var(--border);
 }
 .drm-action-btn {
   flex: 1;
-  padding: 7px 10px;
+  padding: 8px 10px;
   font-size: .74rem;
-  font-weight: 600;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface2);
-  color: var(--text2);
+  font-weight: 700;
+  border-radius: 9px;
   cursor: pointer;
   transition: all .15s;
   text-align: center;
+  font-family: inherit;
+  letter-spacing: .01em;
 }
-.drm-action-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
-.drm-action-btn--icon { flex: 0 0 auto; padding: 7px 12px; }
+.drm-action-btn--primary {
+  background: color-mix(in srgb, var(--btn-color, var(--accent)) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--btn-color, var(--accent)) 30%, transparent);
+  color: var(--btn-color, var(--accent));
+}
+.drm-action-btn--primary:hover {
+  background: var(--btn-color, var(--accent));
+  border-color: var(--btn-color, var(--accent));
+  color: #fff;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--btn-color, var(--accent)) 35%, transparent);
+}
+.drm-action-btn--ghost {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.drm-action-btn--ghost:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.drm-action-btn--icon {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+}
+.drm-action-btn--icon:hover { background: var(--surface2); color: var(--text); border-color: var(--text2); }
+
+/* Privacy blur helper */
+.privacy-blur { filter: blur(6px); user-select: none; }
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .drm-cards-grid { grid-template-columns: 1fr; gap: 12px; }
+  .drm-card-hero { padding: 14px 14px 12px; }
+  .drm-card-hero__title { font-size: .88rem; }
+  .drm-card-body { padding: 12px 14px 10px; gap: 9px; }
+}
 
 /* ── Empty state ─────────────────────────────────────────────────── */
 .drm-empty {
