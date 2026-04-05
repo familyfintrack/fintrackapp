@@ -6586,3 +6586,56 @@ function _showFinancialHealthNotif(data) {
   document.body.appendChild(popup);
   setTimeout(() => popup?.remove(), data.level === 'danger' ? 30000 : 15000);
 }
+
+// ── Expor funções públicas no window ─────────────────────────────────────────
+// Necessário para onclick inline no HTML e chamadas de outros módulos JS.
+// auth.js usa funções locais entre si via closure — window é necessário apenas
+// para chamadas externas ao escopo do script.
+window.doLogin               = doLogin;
+window.doLogout              = doLogout;
+window.doRegister            = doRegister;
+window.doForgotPwd           = doForgotPwd;
+window.doChangePwd           = doChangePwd;
+window.doChangeMyPwd         = doChangeMyPwd;
+window.doRecoveryPwd         = doRecoveryPwd;
+window.doVerify2FA           = doVerify2FA;
+window.doApproveUser         = doApproveUser;
+window.doResetUserPwd        = doResetUserPwd;
+window.resend2FACode         = resend2FACode;
+window.showLoginScreen       = showLoginScreen;
+window.hideLoginScreen       = hideLoginScreen;
+window.showLoginFormArea     = showLoginFormArea;
+window.showRegisterForm      = showRegisterForm;
+window.showForgotPwdForm     = showForgotPwdForm;
+window.showChangeMyPwd       = showChangeMyPwd;
+window.toggleLoginPwd        = toggleLoginPwd;
+window.openMyProfile         = openMyProfile;
+window.saveMyProfile         = saveMyProfile;
+window.openUserAdmin         = openUserAdmin;
+window.saveUser              = saveUser;
+window.showNewUserForm       = showNewUserForm;
+window.switchUATab           = switchUATab;
+window.removeUserAvatar      = removeUserAvatar;
+window.removeMyProfileAvatar = removeMyProfileAvatar;
+window.closeUserMenu         = closeUserMenu;
+window.toggleUserMenu        = toggleUserMenu;
+window.toggleDarkMode        = toggleDarkMode;
+window.clearAppCache         = clearAppCache;
+window.saveFamily            = saveFamily;
+window.showFamilyForm        = showFamilyForm;
+window.mfmAddExisting        = mfmAddExisting;
+window.mfmCreateNewFamily    = mfmCreateNewFamily;
+window.mfmInvite             = mfmInvite;
+window.mfmSwitchAddTab       = mfmSwitchAddTab;
+window.mfmToggleAddPanel     = mfmToggleAddPanel;
+window.famId                 = famId;
+window.famQ                  = famQ;
+window.initSbAdmin           = initSbAdmin;
+window.tryRestoreSession     = tryRestoreSession;
+window.updateUserUI          = updateUserUI;
+window.getPeriodColor        = getPeriodColor;
+window._familyDisplayName    = _familyDisplayName;
+window._applyAccessRequestVisibility = _applyAccessRequestVisibility;
+window._registerMagicLinkGate = _registerMagicLinkGate;
+window._save2FASettings      = _save2FASettings;
+window._showRecoveryPwdForm  = _showRecoveryPwdForm;
