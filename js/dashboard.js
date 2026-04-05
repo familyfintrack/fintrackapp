@@ -2255,7 +2255,15 @@ async function _openPatrimonioModal() {
     console.warn('[patrimônio] debts query failed:', e?.message || e);
   }
 
-  const totalBRL = accountTotal - debtTotal;
+  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
+  // DEVE ser calculado aqui — antes de totalBRL e antes do template literal do cabeçalho
+  const cardDebt = accsCard.reduce((s,a) => {
+    const bal = parseFloat(a.balance)||0;
+    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
+  }, 0);
+  const totalPassivos = debtTotal + cardDebt;
+
+  const totalBRL = accountTotal - totalPassivos;
 
   // Group accounts by currency
   const byCurrency = {};
@@ -2447,13 +2455,6 @@ async function _openPatrimonioModal() {
     // Mantido apenas como fallback para casos não cobertos acima
     return;
   });
-
-  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
-  const cardDebt = accsCard.reduce((s,a) => {
-    const bal = parseFloat(a.balance)||0;
-    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
-  }, 0);
-  const totalPassivos = debtTotal + cardDebt;
 
   // ── PASSIVOS ─────────────────────────────────────────────────────────────
   if (totalPassivos > 0) {
