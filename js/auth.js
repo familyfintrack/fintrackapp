@@ -4610,10 +4610,16 @@ function _show2FAScreen() {
   if (area) area.style.display = '';
 
   const codeInput = document.getElementById('twoFaCode');
-  if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+  if (codeInput) { codeInput.value = ''; setTimeout(() => codeInput.focus(), 80); }
 
   const errEl = document.getElementById('twoFaError');
   if (errEl) errEl.style.display = 'none';
+
+  // Scroll the form panel back to top so 2FA is fully visible (critical on mobile)
+  const panel = document.querySelector('.lgn-form-inner');
+  if (panel) panel.scrollTop = 0;
+  const formPanel = document.querySelector('.lgn-form-panel');
+  if (formPanel) formPanel.scrollTop = 0;
 }
 
 // ── Verificar código inserido pelo usuário ──

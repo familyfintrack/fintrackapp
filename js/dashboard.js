@@ -1891,7 +1891,55 @@ async function _renderDashForecast() {
     },
   });
 
-  // ── Summary row: today balance + 90-day projected balance + delta ─────────
+  // ── KPI pills: total in / total out / net 90d across all accounts ─────────
+  const kpisEl = document.getElementById('dashForecastKpis');
+  if (kpisEl) {
+    let totalIn90 = 0, totalOut90 = 0;
+    allDates.forEach(d => {
+      totalIn90  += _fcDailyData[d].totalIn  || 0;
+      totalOut90 += _fcDailyData[d].totalOut || 0;
+    });
+    const net90    = totalIn90 - totalOut90;
+    const net90Pos = net90 >= 0;
+    const lastDate = allDates[allDates.length - 1];
+    const totalFinalBal = accounts.reduce((s,a) =>
+      s + (toBRL ? toBRL(_fcDailyData[lastDate]?.balances[a.id]??0, a.currency||'BRL') : (_fcDailyData[lastDate]?.balances[a.id]??0)), 0);
+    const totalTodayBal = accounts.reduce((s,a) =>
+      s + (toBRL ? toBRL(_fcDailyData[fromStr]?.balances[a.id]??(parseFloat(a.balance)||0), a.currency||'BRL') : (_fcDailyData[fromStr]?.balances[a.id]??(parseFloat(a.balance)||0))), 0);
+    const totalDelta = totalFinalBal - totalTodayBal;
+
+    kpisEl.innerHTML = `
+      <div class="dfc-kpi">
+        <div class="dfc-kpi__top">
+          <span class="dfc-kpi__icon dfc-kpi__icon--in">↑</span>
+          <span class="dfc-kpi__label">Entradas</span>
+        </div>
+        <span class="dfc-kpi__val dfc-kpi__val--pos">${fmt(totalIn90)}</span>
+      </div>
+      <div class="dfc-kpi">
+        <div class="dfc-kpi__top">
+          <span class="dfc-kpi__icon dfc-kpi__icon--out">↓</span>
+          <span class="dfc-kpi__label">Saídas</span>
+        </div>
+        <span class="dfc-kpi__val dfc-kpi__val--neg">${fmt(totalOut90)}</span>
+      </div>
+      <div class="dfc-kpi">
+        <div class="dfc-kpi__top">
+          <span class="dfc-kpi__icon ${net90Pos?'dfc-kpi__icon--net-pos':'dfc-kpi__icon--net-neg'}">≈</span>
+          <span class="dfc-kpi__label">Fluxo 90d</span>
+        </div>
+        <span class="dfc-kpi__val ${net90Pos?'dfc-kpi__val--pos':'dfc-kpi__val--neg'}">${net90Pos?'+':'−'}${fmt(Math.abs(net90))}</span>
+      </div>
+      <div class="dfc-kpi dfc-kpi--hide-sm">
+        <div class="dfc-kpi__top">
+          <span class="dfc-kpi__icon ${totalDelta>=0?'dfc-kpi__icon--net-pos':'dfc-kpi__icon--net-neg'}">⟶</span>
+          <span class="dfc-kpi__label">Saldo final</span>
+        </div>
+        <span class="dfc-kpi__val ${totalDelta>=0?'dfc-kpi__val--pos':'dfc-kpi__val--neg'}">${totalDelta>=0?'+':'−'}${fmt(Math.abs(totalDelta))}</span>
+      </div>`;
+  }
+
+  // ── Account projection footer: card per account ─────────────────────────
   const summary = document.getElementById('dashForecastSummary');
   if (summary) {
     const lastDate = allDates[allDates.length - 1];
@@ -1901,14 +1949,20 @@ async function _renderDashForecast() {
       const delta    = finalBal - todayBal;
       const isNeg    = finalBal < 0;
       const color    = a.color || COLORS[idx % COLORS.length];
-      const deltaStr = (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta), a.currency);
-      const deltaClr = delta >= 0 ? 'var(--accent)' : 'var(--red,#c0392b)';
-      return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
-        <span style="color:var(--text2);font-size:.78rem">${esc(a.name)}</span>
-        <strong style="color:${isNeg?'var(--red,#c0392b)':'var(--accent)'};font-size:.78rem">${fmt(finalBal, a.currency)}</strong>
-        <span style="font-size:.7rem;color:${deltaClr};opacity:.8">(${deltaStr})</span>
-      </span>`;
+      const deltaPos = delta >= 0;
+      const pct      = todayBal !== 0 ? Math.abs(delta / todayBal * 100).toFixed(0) : null;
+      return `
+        <div class="dfc-acc-chip" style="--acc-clr:${color}">
+          <div class="dfc-acc-chip__dot" style="background:${color}"></div>
+          <div class="dfc-acc-chip__body">
+            <span class="dfc-acc-chip__name">${esc(a.name)}</span>
+            <span class="dfc-acc-chip__val ${isNeg?'neg':''}">${fmt(finalBal, a.currency)}</span>
+          </div>
+          <div class="dfc-acc-chip__delta ${deltaPos?'pos':'neg'}">
+            <span class="dfc-acc-chip__delta-val">${deltaPos?'▲':'▼'} ${fmt(Math.abs(delta), a.currency)}</span>
+            ${pct ? `<span class="dfc-acc-chip__delta-pct">${pct}% em 90d</span>` : ''}
+          </div>
+        </div>`;
     }).join('');
   }
 }
