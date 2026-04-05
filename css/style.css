@@ -271,7 +271,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 .btn-icon:hover{border-color:var(--border2);color:var(--text2);background:var(--bg);}
 
 /* CONTENT */
-.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;padding-bottom:max(24px,env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;touch-action:pan-y;height:0;min-height:0;scroll-behavior:smooth;overscroll-behavior-y:contain;}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;padding-bottom:max(24px,env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;touch-action:pan-y;height:0;min-height:0;}
 .page{display:none;}
 .page.active{display:block;}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
@@ -429,7 +429,7 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 /* MODALS */
 .modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:flex;align-items:flex-end;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
 .modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);overscroll-behavior-y:contain;scroll-behavior:smooth;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:100px;margin:10px auto 0;}
 .modal-header{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1;}
@@ -2233,51 +2233,9 @@ textarea{
   font-size:16px;
 }
 
-/* ── Scroll fluido global ─────────────────────────────────────────────── */
-html, body {
+/* melhorar comportamento de scroll no mobile */
+html, body{
   overscroll-behavior: none;
-}
-
-/* Content principal: scroll com momentum e deceleration nativa */
-.content {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
-}
-
-/* Modais: momentum scroll no iOS + contenção de bounce */
-.modal,
-.acm-body,
-.modal-overlay > .modal {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  scroll-behavior: smooth;
-}
-
-/* Tabs horizontais: scroll suave sem bounce lateral */
-.tab-bar,
-.acm-tabs,
-.pill-tabs,
-.filter-tabs {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-}
-
-/* Listas longas dentro de cards e seções */
-.tx-list,
-.account-list,
-.scheduled-list,
-.budget-list,
-.reports-list {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-}
-
-/* Remover delay de 300ms em tap em elementos interativos no iOS */
-a, button, [onclick], input, select, textarea, label {
-  touch-action: manipulation;
 }
 
 /* =====================================================
@@ -24530,8 +24488,6 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   padding: 0;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  scroll-behavior: smooth;
 }
 
 /* ── Panes ── */
@@ -24544,13 +24500,6 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   display: block;
   pointer-events: auto; /* restore interactivity when visible */
   animation: acmPaneFade .18s ease both;
-}
-/* Garantia extra: inputs/selects/textareas dentro do pane ativo são sempre interativos */
-.acm-pane.active input,
-.acm-pane.active select,
-.acm-pane.active textarea,
-.acm-pane.active button {
-  pointer-events: auto;
 }
 @keyframes acmPaneFade {
   from { opacity: 0; }
