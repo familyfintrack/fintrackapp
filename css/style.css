@@ -6519,12 +6519,14 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* Mobile: single column, hide bottom panels, show detail only when .visible */
 @media (max-width: 900px) {
   .sc-cal-desktop-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
+    overflow: hidden;
+    max-width: 100%;
   }
-  .sc-cal-left  { grid-column: 1; grid-row: auto; }
-  .sc-cal-right { grid-column: 1; grid-row: auto; position: static; max-height: none; overflow-y: visible; }
-  .sc-cal-bottom { grid-column: 1; grid-row: auto; }
+  .sc-cal-left  { grid-column: 1; grid-row: auto; overflow: hidden; min-width: 0; }
+  .sc-cal-right { grid-column: 1; grid-row: auto; position: static; max-height: none; overflow-y: visible; min-width: 0; }
+  .sc-cal-bottom { grid-column: 1; grid-row: auto; overflow: hidden; min-width: 0; }
   #scCalDetail { display: none !important; }
   #scCalDetail.visible { display: block !important; }
   .sc-cal-upcoming-panel,
@@ -6534,7 +6536,10 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* ── Shared grid layout ─────────────────────────────────────────── */
 .sc-cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));  /* minmax(0,1fr) prevents overflow */
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* ── Day-of-week header ─────────────────────────────────────────── */
@@ -6625,6 +6630,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .sc-cal-day-total-row {
   font-size: .65rem; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
 }
 .sc-cal-day-total-row.debit  { color: var(--red); }
 .sc-cal-day-total-row.credit { color: var(--green); }
@@ -6683,8 +6689,10 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* ── Responsive: mobile ─────────────────────────────────────────── */
 @media (max-width: 640px) {
   .sc-cal-day {
-    min-height: 64px;
+    min-height: 56px;
     padding: 4px 3px 3px;
+    overflow: hidden;        /* prevent cell content from expanding the grid */
+    min-width: 0;
   }
   .sc-cal-day-num {
     font-size: .72rem;
@@ -6695,14 +6703,30 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     color: #fff !important;
   }
   .sc-cal-day-dot { width: 6px; height: 6px; }
-  .sc-cal-dots { gap: 2px; margin-bottom: 3px; }
-  .sc-cal-day-totals { display: none; }  /* hide values on tiny screens, show in detail */
-  .sc-cal-month-label { font-size: .95rem; }
-  .sc-cal-dow { font-size: .65rem; padding: 8px 0; }
+  .sc-cal-dots { gap: 2px; margin-bottom: 3px; overflow: hidden; max-width: 100%; }
+  .sc-cal-day-totals { display: none !important; }  /* shown in detail panel instead */
+  .sc-cal-month-label { font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-cal-dow { font-size: .63rem; padding: 7px 0; letter-spacing: 0; }
+  /* Nav: prevent "Hoje" button from pushing beyond viewport */
+  .sc-cal-nav { flex-wrap: nowrap; overflow: hidden; gap: 6px; }
+  .sc-cal-today-btn { padding: 5px 10px; font-size: .74rem; }
+  /* Detail panel: tighter padding, no overflow */
+  .sc-cal-detail { padding: 10px 12px !important; overflow: hidden !important; }
+  .sc-cal-detail-item { overflow: hidden !important; min-width: 0 !important; }
+  .sc-cal-detail-amt {
+    max-width: 36%;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex-shrink: 1 !important;
+    font-size: .88rem;
+  }
+  .sc-cal-detail-mid { min-width: 0 !important; overflow: hidden !important; }
 }
 @media (max-width: 380px) {
-  .sc-cal-day { min-height: 52px; }
+  .sc-cal-day { min-height: 46px; }
   .sc-cal-day-dot { width: 5px; height: 5px; }
+  .sc-cal-dow { font-size: .58rem; }
 }
 
 /* ── New transaction highlight ──────────────────────────────────────
@@ -7955,7 +7979,8 @@ tr.tx-row-new td:first-child {
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-  flex-shrink: 0;
+  flex-shrink: 0;   /* desktop: don't shrink */
+  min-width: 0;     /* allow content to be bounded */
 }
 
 .sup-amt {
@@ -21416,6 +21441,11 @@ tr.payee-row[onclick] { cursor: pointer; }
   .sc-mobile-kpis    { display: none !important; } /* substituído pelo novo row2 */
   .sc-kpi-strip      { display: none !important; }
 
+  /* ═══════════════════════════════════════════════════════════════
+     OVERFLOW MOBILE — contenção em cascata
+     Causa raiz: elementos com flex-shrink:0 sem max-width, ou
+     padding sem box-sizing, excedem 100vw em iOS Safari.
+     ═══════════════════════════════════════════════════════════════ */
   #page-scheduled {
     overflow-x: hidden !important;
     max-width: 100vw !important;
@@ -21423,10 +21453,118 @@ tr.payee-row[onclick] { cursor: pointer; }
     box-sizing: border-box !important;
     padding-bottom: 20px;
   }
-  /* Bloquear overflow em TODOS os descendentes diretos da página */
+
+  /* Contenção universal: TODOS os descendentes respeitam 100% do pai */
+  #page-scheduled *,
+  #page-scheduled *::before,
+  #page-scheduled *::after {
+    box-sizing: border-box !important;
+    min-width: 0;         /* permite flex children encolherem abaixo do conteúdo */
+  }
+
+  /* Bloquear overflow em descendentes diretos */
   #page-scheduled > * {
     max-width: 100% !important;
-    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ── Calendário: grade ── */
+  .sc-cal-wrap,
+  .sc-cal-grid,
+  .sc-cal-header-grid,
+  .sc-cal-days-grid {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+
+  /* ── Célula do calendário: conteúdo nunca expande a célula ── */
+  .sc-cal-day {
+    overflow: hidden !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  /* Ocultar totais dentro da célula em mobile (o painel de detalhe os mostra) */
+  .sc-cal-day-totals  { display: none !important; }
+  /* Dots não devem quebrar a célula */
+  .sc-cal-dots        { overflow: hidden !important; max-width: 100% !important; flex-wrap: nowrap !important; }
+  .sc-cal-day-dot     { flex-shrink: 0 !important; }
+
+  /* ── Navegação do calendário ── */
+  .sc-cal-nav {
+    overflow: hidden !important;
+    max-width: 100% !important;
+  }
+  .sc-cal-month-label {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+  }
+
+  /* ── Painel de detalhe do dia ── */
+  .sc-cal-detail {
+    padding: 12px 14px !important;
+    overflow: hidden !important;
+    max-width: 100% !important;
+  }
+  .sc-cal-detail-item {
+    overflow: hidden !important;
+    max-width: 100% !important;
+  }
+  /* Valor no detalhe: truncar se muito longo */
+  .sc-cal-detail-amt {
+    max-width: 38% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex-shrink: 1 !important;
+  }
+  /* Descrição e meta já têm ellipsis — garantir min-width:0 */
+  .sc-cal-detail-mid  { min-width: 0 !important; overflow: hidden !important; }
+  .sc-cal-detail-desc { max-width: 100% !important; }
+  .sc-cal-detail-meta { max-width: 100% !important; }
+
+  /* ── Painel "Próximos": itens ── */
+  .sup-item {
+    overflow: hidden !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .sup-body {
+    overflow: hidden !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .sup-right {
+    flex-shrink: 1 !important;
+    max-width: 42% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .sup-amt {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .sup-actions {
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Cards de programados ── */
+  .sc-card,
+  .sc-card-header,
+  .sc-card-body {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Filtros mobile ── */
+  .sc-mobile-filters,
+  .sc-mf-inner {
+    max-width: 100% !important;
+    overflow: hidden !important;
   }
 
   /* ════════════════════════════════
@@ -22058,16 +22196,23 @@ tr.payee-row[onclick] { cursor: pointer; }
 /* ── Telas muito pequenas (≤375px) ───────────────────────────────────────── */
 @media (max-width: 375px) {
   .sc-mh-view-btn { font-size: .67rem; padding: 7px 3px; }
-  .sc-mh-new-btn  { padding: 0 12px; font-size: .78rem; height: 40px; }
-  .sc-mh-kpi span { font-size: .76rem; }
+  .sc-mh-new-btn  { padding: 0 10px; font-size: .76rem; height: 38px; }
+  .sc-mh-kpi span { font-size: .72rem; }
   #page-scheduled .sc-card-row { padding: 10px 10px 9px !important; gap: 8px !important; }
   #page-scheduled .sc-card-icon { width: 34px !important; height: 34px !important; }
-  #page-scheduled .sc-card-amt { font-size: .88rem !important; }
-  #page-scheduled .sc-card-end { max-width: 36% !important; }
-  #page-scheduled .sc-reg-btn { height: 38px !important; font-size: .76rem !important; }
-  #page-scheduled .sc-icon-btn { width: 33px !important; height: 33px !important; }
-  .sup-item { padding: 9px 10px !important; }
-  .sup-register-btn { height: 28px !important; padding: 0 9px !important; }
+  #page-scheduled .sc-card-amt { font-size: .84rem !important; max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+  #page-scheduled .sc-card-end { max-width: 34% !important; overflow: hidden !important; }
+  #page-scheduled .sc-card-mid { min-width: 0 !important; overflow: hidden !important; }
+  #page-scheduled .sc-reg-btn { height: 36px !important; font-size: .74rem !important; }
+  #page-scheduled .sc-icon-btn { width: 32px !important; height: 32px !important; }
+  .sup-item { padding: 8px 10px !important; overflow: hidden !important; max-width: 100% !important; }
+  .sup-register-btn { height: 28px !important; padding: 0 8px !important; }
+  .sup-right { max-width: 38% !important; }
+  .sup-amt   { font-size: .82rem !important; }
+  .sc-cal-day { padding: 3px 2px 2px !important; }
+  .sc-cal-day-num { font-size: .65rem !important; width: 18px !important; height: 18px !important; }
+  .sc-cal-dow { font-size: .6rem !important; padding: 6px 0 !important; letter-spacing: 0 !important; }
+  .sc-cal-month-label { font-size: .88rem !important; }
   .sup-ignore-btn { width: 28px !important; height: 28px !important; }
 }
 
