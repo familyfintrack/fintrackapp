@@ -6069,6 +6069,7 @@ function _openWaitlistInviteModal(wlId, name, email) {
     m = document.createElement('div');
     m.id = 'wlInviteModal';
     m.className = 'modal-overlay';
+    m.style.display = 'none'; // iOS Safari fix
     m.innerHTML = `
       <div class="modal" style="max-width:480px">
         <div class="modal-header">
