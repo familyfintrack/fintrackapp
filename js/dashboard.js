@@ -960,13 +960,10 @@ function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
 
-  // Filter optional cards based on module availability
-  const visibleCards = order.filter(c => {
-    if (!c.optional) return true;
-    if (c.id === 'investments' && typeof isModuleEnabled === 'function') return isModuleEnabled('investments');
-    if (c.id === 'dreams'      && typeof isModuleEnabled === 'function') return isModuleEnabled('dreams');
-    return true;
-  });
+  // Always show all optional cards in the customize panel.
+  // Module availability is checked inside each card's loader — not here.
+  // Hiding cards from this list would prevent users from ever activating them.
+  const visibleCards = order;
 
   list.innerHTML = visibleCards.map((c, idx) => `
     <div class="dash-custom-toggle" data-card-id="${c.id}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
@@ -2240,13 +2237,18 @@ async function _openPatrimonioModal() {
   let debtTotal = 0;
   let debts = [];
   try {
-    const { data: debtsData } = await famQ(
-      sb.from('debts').select('id,description,current_balance,original_amount,currency,status').eq('status', 'active')
-    );
-    debts = debtsData || [];
+    // Fetch active debts — try with status filter first, fall back to all debts
+    let { data: debtsData, error: debtErr } = await famQ(
+      sb.from('debts').select('id,description,current_balance,original_amount,currency,status')
+    ).order('created_at', { ascending: false });
+    if (debtErr) throw debtErr;
+    // Filter to active/open debts client-side (handles schemas without status column)
+    debts = (debtsData || []).filter(d => !d.status || d.status === 'active' || d.status === 'open');
     debtTotal = debts.reduce((s,d) =>
       s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
-  } catch(_) {}
+  } catch(e) {
+    console.warn('[patrimônio] debts query failed:', e?.message || e);
+  }
 
   const totalBRL = accountTotal - debtTotal;
 
@@ -2776,12 +2778,19 @@ async function _loadDashInvestmentsCard() {
     ? isModuleEnabled('investments')
     : (typeof _inv !== 'undefined');
 
-  if (!modEnabled || prefs['investments'] === false) {
-    card.style.display = 'none';
-    return;
-  }
+  if (prefs['investments'] === false) { card.style.display = 'none'; return; }
 
   card.style.display = '';
+
+  if (!modEnabled) {
+    body.innerHTML = `<div style="text-align:center;padding:24px 16px;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:8px">📈</div>
+      <div style="font-size:.83rem;font-weight:600;color:var(--text2);margin-bottom:6px">Módulo de Investimentos</div>
+      <div style="font-size:.78rem;line-height:1.5;margin-bottom:14px">Ative este módulo nas configurações da família para acompanhar sua carteira.</div>
+      <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Configurar módulo →</button>
+    </div>`;
+    return;
+  }
   body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando carteira…</div>';
 
   try {
@@ -2927,9 +2936,19 @@ async function _loadDashDreamsCard() {
   // Verificar se módulo dreams está habilitado para a família
   const modEnabled = (typeof isModuleEnabled === 'function')
     ? isModuleEnabled('dreams')
-    : true; // fallback: mostrar se não puder verificar
+    : true;
 
-  if (!modEnabled || prefs['dreams'] === false) { card.style.display = 'none'; return; }
+  if (prefs['dreams'] === false) { card.style.display = 'none'; return; }
+
+  if (!modEnabled) {
+    body.innerHTML = `<div style="text-align:center;padding:24px 16px;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:8px">🌟</div>
+      <div style="font-size:.83rem;font-weight:600;color:var(--text2);margin-bottom:6px">Módulo de Sonhos</div>
+      <div style="font-size:.78rem;line-height:1.5;margin-bottom:14px">Ative este módulo nas configurações da família para acompanhar seus sonhos financeiros.</div>
+      <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Configurar módulo →</button>
+    </div>`;
+    return;
+  }
 
   body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando sonhos…</div>';
 

@@ -2954,6 +2954,11 @@ if (typeof window.cfgShowPane === 'function') {
 function _toggle2FAPanel(enabled) {
   const panel = document.getElementById('myProfile2faPanel');
   if (panel) panel.style.display = enabled ? '' : 'none';
+  // Show test section when enabling, hide when disabling
+  const testSection = document.getElementById('profile2faSection');
+  if (testSection) testSection.style.display = enabled ? '' : 'none';
+  // Remove stale confirm box when toggling off
+  if (!enabled) document.getElementById('twoFaSetupConfirmBox')?.remove();
 }
 
 // ── Carregar estado 2FA atual no modal de perfil ──
@@ -2973,6 +2978,18 @@ function _load2FAIntoProfile() {
       const chk = document.getElementById('myProfile2faEnabled');
       if (chk) chk.checked = enabled;
       _toggle2FAPanel(enabled);
+      // If already enabled, hide the test section (already verified)
+      // If just enabling now (panel toggled manually), test section stays visible
+      const testSection = document.getElementById('profile2faSection');
+      if (testSection && enabled) {
+        // Show hint about re-testing being optional
+        const statusEl = document.getElementById('profile2faStatus');
+        if (statusEl) {
+          statusEl.textContent = '✓ 2FA já ativo. Clique em "Testar 2FA" para revalidar o canal.';
+          statusEl.style.color = '#16a34a';
+          statusEl.style.display = '';
+        }
+      }
 
       const chanEl = document.getElementById(channel === 'telegram' ? 'twoFaChanTelegram' : 'twoFaChanEmail');
       if (chanEl) chanEl.checked = true;

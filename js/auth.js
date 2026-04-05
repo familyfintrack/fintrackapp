@@ -1633,14 +1633,28 @@ async function saveMyProfile() {
     }
 
     // 1b. 2FA settings
-    if (appRow) {
-      try {
-        if (typeof _save2FASettings === 'function') await _save2FASettings(appRow.id);
-        // Sync currentUser so future change-detection works correctly
-        currentUser.two_fa_enabled = twoFaEnabled;
-        currentUser.two_fa_channel = twoFaChannel;
-      } catch(e2fa) {
-        console.warn('[2FA save]', e2fa.message);
+    // Enabling 2FA: _confirm2FASetup() saves to DB after a successful test.
+    // _window._2faSetupVerified flag is set by _confirm2FASetup to signal it's done.
+    // Disabling or channel-only change: save directly (no test required).
+    if (appRow && twoFaChanged) {
+      if (twoFaEnabled && !currentUser?.two_fa_enabled) {
+        // Enabling for the first time — only allow save if test was passed
+        if (!window._2faSetupVerified) {
+          if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Salvar'; }
+          toast('⚠️ Clique em "Testar 2FA" para verificar o canal antes de ativar.', 'warning');
+          return;
+        }
+        // _confirm2FASetup already saved; just clear the flag
+        window._2faSetupVerified = false;
+      } else {
+        // Disabling or changing channel — save directly
+        try {
+          await _save2FASettings(appRow.id);
+          currentUser.two_fa_enabled = twoFaEnabled;
+          currentUser.two_fa_channel = twoFaChannel;
+        } catch(e2fa) {
+          console.warn('[2FA save]', e2fa.message);
+        }
       }
     }
 
@@ -4173,6 +4187,143 @@ function _gen2FACode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+// ── Salva configurações de 2FA no banco ──
+// Chamado pelo saveMyProfile() após teste bem-sucedido
+async function _save2FASettings(appUserId) {
+  const enabled = !!(document.getElementById('myProfile2faEnabled')?.checked);
+  const channel = document.getElementById('twoFaChanTelegram')?.checked ? 'telegram' : 'email';
+  const { error } = await sb.from('app_users')
+    .update({ two_fa_enabled: enabled, two_fa_channel: channel })
+    .eq('id', appUserId);
+  if (error) throw new Error('Erro ao salvar 2FA: ' + error.message);
+}
+
+// ── Disparar teste de 2FA durante setup (profile) ──
+// Envia código e exibe modal de confirmação; só habilita se usuário confirmar
+async function _test2FASetup() {
+  const btn = document.getElementById('profile2faTestBtn');
+  const statusEl = document.getElementById('profile2faStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  if (statusEl) statusEl.style.display = 'none';
+
+  try {
+    const channel  = document.getElementById('twoFaChanTelegram')?.checked ? 'telegram' : 'email';
+    const email    = currentUser?.email || '';
+    const name     = currentUser?.name  || '';
+    const tgChatId = currentUser?.telegram_chat_id || null;
+    const { data: appRow } = await sb.from('app_users').select('id').eq('email', email).maybeSingle();
+    if (!appRow) throw new Error('Usuário não encontrado.');
+
+    const code = _gen2FACode();
+    await _store2FACode(appRow.id, code);
+
+    let sent = false;
+    if (channel === 'telegram' && tgChatId) {
+      try { await _send2FAByTelegram(tgChatId, code); sent = true; } catch(_e) {}
+    }
+    if (!sent) {
+      await _send2FAByEmail(email, code, name); sent = true;
+    }
+
+    // Show inline confirmation UI
+    _show2FASetupConfirm(appRow.id, channel);
+
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '✗ ' + (e.message || e); statusEl.style.color = '#dc2626'; statusEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📨 Testar 2FA'; }
+  }
+}
+
+// ── UI de confirmação do teste 2FA no perfil ──
+function _show2FASetupConfirm(appUserId, channel) {
+  const ch = channel === 'telegram' ? 'Telegram' : 'e-mail';
+  const html = `
+    <div id="twoFaSetupConfirmBox" style="background:rgba(42,96,73,.08);border:1.5px solid rgba(42,96,73,.25);border-radius:12px;padding:14px 16px;margin-top:12px">
+      <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:8px">
+        📲 Código enviado para o seu ${ch}
+      </div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px">
+        Digite o código de 6 dígitos para confirmar que o canal está funcionando:
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="twoFaSetupCode" maxlength="6" inputmode="numeric"
+          placeholder="000000"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+          style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:1.1rem;text-align:center;letter-spacing:.22em;font-family:monospace;outline:none;background:var(--surface);color:var(--text)">
+        <button onclick="_confirm2FASetup('${appUserId}')"
+          style="padding:10px 16px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap">
+          ✓ Confirmar
+        </button>
+      </div>
+      <div id="twoFaSetupConfirmError" style="font-size:.75rem;color:#dc2626;margin-top:6px;display:none"></div>
+    </div>`;
+
+  // Remove previous confirm box if any
+  document.getElementById('twoFaSetupConfirmBox')?.remove();
+
+  const container = document.getElementById('profile2faSection') || document.getElementById('myProfileModal');
+  if (container) container.insertAdjacentHTML('beforeend', html);
+}
+
+// ── Confirmar código de teste — só então salva 2FA no DB ──
+async function _confirm2FASetup(appUserId) {
+  const code   = (document.getElementById('twoFaSetupCode')?.value || '').trim();
+  const errEl  = document.getElementById('twoFaSetupConfirmError');
+  const statusEl = document.getElementById('profile2faStatus');
+  if (errEl) errEl.style.display = 'none';
+
+  if (!code || code.length !== 6) {
+    if (errEl) { errEl.textContent = 'Digite o código de 6 dígitos.'; errEl.style.display = ''; }
+    return;
+  }
+
+  try {
+    const { data: codeRow } = await sb.from('two_fa_codes')
+      .select('id,code,used,expires_at').eq('user_id', appUserId)
+      .eq('used', false).order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+    if (!codeRow || new Date(codeRow.expires_at) < new Date()) {
+      if (errEl) { errEl.textContent = 'Código expirado. Clique em "Testar 2FA" novamente.'; errEl.style.display = ''; }
+      return;
+    }
+    if (codeRow.code !== code) {
+      if (errEl) { errEl.textContent = 'Código incorreto. Tente novamente.'; errEl.style.display = ''; }
+      return;
+    }
+
+    // Mark used
+    await sb.from('two_fa_codes').update({ used: true }).eq('id', codeRow.id);
+
+    // Save 2FA to DB — test was successful
+    const enabled = !!(document.getElementById('myProfile2faEnabled')?.checked);
+    const channel = document.getElementById('twoFaChanTelegram')?.checked ? 'telegram' : 'email';
+    const { error } = await sb.from('app_users')
+      .update({ two_fa_enabled: enabled, two_fa_channel: channel })
+      .eq('id', appUserId);
+    if (error) throw error;
+
+    currentUser.two_fa_enabled = enabled;
+    currentUser.two_fa_channel = channel;
+    // Signal to saveMyProfile that test was completed — safe to proceed
+    window._2faSetupVerified = true;
+
+    // Remove confirm box and show success
+    document.getElementById('twoFaSetupConfirmBox')?.remove();
+    if (statusEl) {
+      statusEl.textContent = '✓ 2FA verificado e ativado com sucesso!';
+      statusEl.style.color = '#16a34a';
+      statusEl.style.display = '';
+      setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 5000);
+    }
+    toast('✅ Autenticação em dois fatores ativada!', 'success');
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
+  }
+}
+window._test2FASetup    = _test2FASetup;
+window._confirm2FASetup = _confirm2FASetup;
+
 // ── Chave de trusted device para este usuário ──
 function _2faTrustKey(userId) {
   return 'ft_2fa_trust_' + userId;
@@ -4191,9 +4342,26 @@ function _is2FATrusted(userId) {
 // ── Salva trusted device por 30 dias ──
 function _set2FATrusted(userId) {
   try {
-    const until = Date.now() + 30 * 24 * 60 * 60 * 1000;
-    localStorage.setItem(_2faTrustKey(userId), JSON.stringify({ until }));
+    const now   = Date.now();
+    const until = now + 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(_2faTrustKey(userId), JSON.stringify({
+      until,
+      since: now,
+      // ISO string for UI display
+      expiresAt: new Date(until).toISOString(),
+    }));
   } catch(_) {}
+}
+
+// ── Retorna data de expiração do dispositivo confiável (para UI) ──
+function _get2FATrustExpiry(userId) {
+  try {
+    const raw = localStorage.getItem(_2faTrustKey(userId));
+    if (!raw) return null;
+    const { until, expiresAt } = JSON.parse(raw);
+    if (Date.now() >= until) return null; // expired
+    return expiresAt || new Date(until).toISOString();
+  } catch(_) { return null; }
 }
 
 // ── Envia código por email via EmailJS ──
