@@ -4591,7 +4591,7 @@ function _show2FAScreen() {
   }
 
   const area = document.getElementById('twoFaArea');
-  if (area) area.style.display = '';
+  if (area) area.style.display = 'block';
 
   const codeInput = document.getElementById('twoFaCode');
   if (codeInput) {

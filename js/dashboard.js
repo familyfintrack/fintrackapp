@@ -2194,31 +2194,43 @@ window.toggleSupGroup = toggleSupGroup;
 
 // ── Modal: Composição do Patrimônio Total ─────────────────────────────────
 async function _openPatrimonioModal() {
-  const accs = Array.isArray(state.accounts) ? state.accounts : [];
-  if (!accs.length) return;
+  // Garantir que state.accounts está populado — tentar recarregar se necessário
+  let accs = Array.isArray(state.accounts) ? state.accounts : [];
+  if (!accs.length) {
+    try { await DB.accounts.load(); accs = state.accounts || []; } catch(_) {}
+  }
+  if (!accs.length) { toast('Nenhuma conta encontrada', 'info'); return; }
 
   // ══════════════════════════════════════════════════════════════════
-  // ATIVOS — contas + investimentos detalhados
+  // CÁLCULO IDÊNTICO ao loadKPIs (db.js) — garante que total bate com dashboard
   // ══════════════════════════════════════════════════════════════════
 
-  // Separar contas por tipo
+  // Separar contas por tipo para exibição detalhada
   const accsLiquid  = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
   const accsInvest  = accs.filter(a => a.type === 'investimento');
   const accsCard    = accs.filter(a => a.type === 'cartao_credito');
 
-  // Saldo líquido (corrente + poupança + dinheiro + outros — exceto CC e investimento)
+  // ── ATIVOS ─────────────────────────────────────────────────────────
+  // Saldo de contas líquidas (corrente + poupança + dinheiro + outros)
   const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Investimentos — usar market value (_totalPortfolioBalance) quando disponível
+  // Investimentos — market value quando disponível (igual ao KPI)
   const invTotal = accsInvest.reduce((s,a) => {
     const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
     return s + toBRL(bal, a.currency||'BRL');
   }, 0);
 
-  // Cartões de crédito — saldo já pode ser negativo (fatura em aberto)
-  const cardLiquidTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+  // Cartões de crédito — saldo entra integral (positivo OU negativo), igual ao KPI
+  const cardTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Investimentos por tipo (usando posições do módulo de investimentos)
+  // Total de contas = soma de TODOS os saldos (idêntico ao accountTotal do KPI)
+  const accountTotal = liquidTotal + invTotal + cardTotal;
+
+  // Separar CC positivos/negativos só para exibição visual
+  const cardPositive = Math.max(0, cardTotal);
+  const cardDebt     = Math.abs(Math.min(0, cardTotal));
+
+  // Posições de investimento por tipo (para breakdown visual)
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
   const invByType = {};
   invPositions.forEach(p => {
@@ -2229,25 +2241,16 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // Total de ativos BRUTOS (sem subtrair passivos)
-  // Cartões de crédito POSITIVOS somam como ativo; negativos (fatura) são passivo
-  const cardPositive = Math.max(0, cardLiquidTotal);  // CC com saldo positivo → ativo
-  const accountTotal = liquidTotal + invTotal + cardPositive;
-
-  // ══════════════════════════════════════════════════════════════════
-  // PASSIVOS — dívidas ativas
-  // ══════════════════════════════════════════════════════════════════
-
-  // Debts: same query as KPI
+  // ── PASSIVOS — dívidas ativas (idêntico ao KPI) ────────────────────
   let debtTotal = 0;
   let debts = [];
   try {
-    // Fetch active debts — try with status filter first, fall back to all debts
-    let { data: debtsData, error: debtErr } = await famQ(
-      sb.from('debts').select('id,description,current_balance,original_amount,currency,status')
-    ).order('created_at', { ascending: false });
+    // Busca idêntica ao loadKPIs: status='active' primeiro, fallback sem filtro
+    const { data: debtsData, error: debtErr } = await famQ(
+      sb.from('debts').select('id,description,creditor_name,current_balance,original_amount,currency,status,due_date,interest_rate')
+    ).order('current_balance', { ascending: false });
     if (debtErr) throw debtErr;
-    // Filter to active/open debts client-side (handles schemas without status column)
+    // Filtro client-side igual ao KPI (trata schema sem coluna status)
     debts = (debtsData || []).filter(d => !d.status || d.status === 'active' || d.status === 'open');
     debtTotal = debts.reduce((s,d) =>
       s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
@@ -2255,6 +2258,12 @@ async function _openPatrimonioModal() {
     console.warn('[patrimônio] debts query failed:', e?.message || e);
   }
 
+  // Total de passivos = dívidas + faturas CC em aberto (idêntico ao KPI)
+  const totalPassivos = debtTotal + cardDebt;
+
+  // Patrimônio líquido = accountTotal (todos os saldos) - debtTotal
+  // NOTA: cardDebt já está embutido no accountTotal como negativo,
+  // então: totalBRL = accountTotal - debtTotal  (igual ao KPI: accountTotal - debtTotal)
   const totalBRL = accountTotal - debtTotal;
 
   // Group accounts by currency
@@ -2447,13 +2456,6 @@ async function _openPatrimonioModal() {
     // Mantido apenas como fallback para casos não cobertos acima
     return;
   });
-
-  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
-  const cardDebt = accsCard.reduce((s,a) => {
-    const bal = parseFloat(a.balance)||0;
-    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
-  }, 0);
-  const totalPassivos = debtTotal + cardDebt;
 
   // ── PASSIVOS ─────────────────────────────────────────────────────────────
   if (totalPassivos > 0) {
