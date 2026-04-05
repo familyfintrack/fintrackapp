@@ -1001,6 +1001,11 @@ async function openInvPositionDetail(positionId) {
     <div class="modal-header">
       <span class="modal-title">${t.emoji} ${esc(pos.ticker)} — ${esc(pos.name || pos.ticker)}</span>
       <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="openEditInvPosition('${positionId}')"
+          style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:var(--accent);background:rgba(42,96,73,.08);border:1px solid rgba(42,96,73,.2);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .2s"
+          onmouseover="this.style.background='rgba(42,96,73,.15)'" onmouseout="this.style.background='rgba(42,96,73,.08)'">
+          ✏️ Editar
+        </button>
         <button onclick="deleteInvPosition('${positionId}')"
           style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:var(--danger,#dc2626);background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .2s"
           onmouseover="this.style.background='rgba(220,38,38,.15)'" onmouseout="this.style.background='rgba(220,38,38,.08)'">
@@ -1445,6 +1450,259 @@ async function deleteInvTransaction(txId, positionId) {
   }
 }
 window.deleteInvTransaction = deleteInvTransaction;
+
+// ── Edit investment position (ticker, name, type, broker, indexador, notes, avg_cost, quantity) ──
+function openEditInvPosition(positionId) {
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) { toast('Posição não encontrada', 'error'); return; }
+
+  document.getElementById('invEditModal')?.remove();
+
+  const t = _invAssetType(pos.asset_type);
+
+  // Parse broker from notes (stored as "Corretora: XP" in notes field)
+  let notesClean = pos.notes || '';
+  let brokerFromNotes = '';
+  const brokerMatch = notesClean.match(/Corretora:\s*([^·\n]+)/);
+  if (brokerMatch) {
+    brokerFromNotes = brokerMatch[1].trim();
+    notesClean = notesClean.replace(/·?\s*Corretora:\s*[^·\n]+/g, '').trim();
+  }
+  let indexadorFromNotes = '';
+  const idxMatch = notesClean.match(/Indexador:\s*([^·\n]+)/);
+  if (idxMatch) {
+    indexadorFromNotes = idxMatch[1].trim();
+    notesClean = notesClean.replace(/·?\s*Indexador:\s*[^·\n]+/g, '').trim();
+  }
+  notesClean = notesClean.trim();
+
+  // Broker selector options
+  const brokerOpts = KNOWN_BROKERS.map(b =>
+    `<option value="${b}" ${b === brokerFromNotes ? 'selected' : ''}>${b}</option>`
+  ).join('');
+
+  // Asset type options
+  const typeOpts = ASSET_TYPES.map(at =>
+    `<option value="${at.value}" ${at.value === pos.asset_type ? 'selected' : ''}>${at.emoji} ${at.label}</option>`
+  ).join('');
+
+  // Indexador options (for fundo/renda_fixa)
+  const INDEXADORES = ['CDI', 'IPCA', 'IGP-M', 'Selic', 'Prefixado', 'N/A'];
+  const idxOpts = INDEXADORES.map(i =>
+    `<option value="${i}" ${i === indexadorFromNotes ? 'selected' : ''}>${i}</option>`
+  ).join('');
+
+  const showIndexador = ['fundo', 'renda_fixa'].includes(pos.asset_type);
+  const isKnownBroker = KNOWN_BROKERS.includes(brokerFromNotes);
+  const brokerVal = isKnownBroker ? brokerFromNotes : (brokerFromNotes ? 'Outro' : '');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'invEditModal';
+  modal.style.zIndex = '10020';
+  modal.onclick = e => { if (e.target === modal) closeModal('invEditModal'); };
+  modal.innerHTML = `
+  <div class="modal" style="max-width:500px" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar Posição — ${esc(pos.ticker)}</span>
+      <button class="modal-close" onclick="closeModal('invEditModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="invEditPosId" value="${pos.id}">
+
+      <div class="form-grid">
+        <!-- Ticker -->
+        <div class="form-group">
+          <label>Ticker / Código *</label>
+          <input type="text" id="invEditTicker" value="${esc(pos.ticker)}"
+            placeholder="Ex: PETR4, AAPL, BTC"
+            style="text-transform:uppercase"
+            oninput="this.value=this.value.toUpperCase()">
+        </div>
+
+        <!-- Asset type -->
+        <div class="form-group">
+          <label>Tipo de Ativo *</label>
+          <select id="invEditAssetType" onchange="_invEditOnTypeChange(this.value)">${typeOpts}</select>
+        </div>
+
+        <!-- Name -->
+        <div class="form-group full">
+          <label>Nome / Descrição</label>
+          <input type="text" id="invEditName" value="${esc(pos.name || '')}"
+            placeholder="Ex: Petrobras PN, Apple Inc., Bitcoin">
+        </div>
+
+        <!-- Account (read-only display) -->
+        <div class="form-group">
+          <label>Conta de Investimentos</label>
+          <input type="text" value="${esc((_invAccounts().find(a => a.id === pos.account_id) || {}).name || '—')}"
+            disabled style="opacity:.65;cursor:not-allowed">
+          <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Para mover entre contas, use Excluir e recadastre.</div>
+        </div>
+
+        <!-- Currency -->
+        <div class="form-group">
+          <label>Moeda</label>
+          <select id="invEditCurrency">
+            <option value="BRL" ${pos.currency==='BRL'?'selected':''}>🇧🇷 BRL</option>
+            <option value="USD" ${pos.currency==='USD'?'selected':''}>🇺🇸 USD</option>
+            <option value="EUR" ${pos.currency==='EUR'?'selected':''}>🇪🇺 EUR</option>
+          </select>
+        </div>
+
+        <!-- Avg cost override -->
+        <div class="form-group">
+          <label>Custo Médio (por unidade)</label>
+          <input type="text" id="invEditAvgCost" value="${pos.avg_cost ? (+(pos.avg_cost)).toFixed(4) : ''}"
+            placeholder="0,0000" inputmode="decimal"
+            title="Edite o custo médio manualmente se necessário">
+          <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Calculado automaticamente pelas movimentações. Editar aqui sobrescreve.</div>
+        </div>
+
+        <!-- Quantity override -->
+        <div class="form-group">
+          <label>Quantidade</label>
+          <input type="text" id="invEditQty" value="${pos.quantity ? (+(pos.quantity)).toFixed(6).replace(/\.?0+$/, '') : ''}"
+            placeholder="0" inputmode="decimal"
+            title="Edite a quantidade se necessário">
+          <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Calculado automaticamente pelas movimentações. Editar aqui sobrescreve.</div>
+        </div>
+
+        <!-- Broker -->
+        <div class="form-group">
+          <label>Corretora</label>
+          <select id="invEditBrokerSel" onchange="_invEditBrokerChange()">
+            <option value="">— Nenhuma —</option>
+            ${brokerOpts}
+          </select>
+        </div>
+        <div class="form-group" id="invEditBrokerOtherWrap" style="${brokerVal==='Outro'?'':'display:none'}">
+          <label>Corretora (outro)</label>
+          <input type="text" id="invEditBrokerOther" value="${brokerVal === 'Outro' ? brokerFromNotes : ''}"
+            placeholder="Nome da corretora">
+        </div>
+
+        <!-- Indexador (fundo/renda_fixa) -->
+        <div class="form-group" id="invEditIndexadorWrap" style="${showIndexador?'':'display:none'}">
+          <label>Indexador</label>
+          <select id="invEditIndexador">
+            <option value="">— Nenhum —</option>
+            ${idxOpts}
+          </select>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group full">
+          <label>Observações</label>
+          <textarea id="invEditNotes" rows="2" placeholder="Anotações livres…"
+            style="resize:vertical">${notesClean}</textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" onclick="closeModal('invEditModal')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEditInvPosition()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar alterações
+        </button>
+      </div>
+    </div>
+  </div>`;
+
+  // Set broker select to correct initial value
+  const bSel = modal.querySelector('#invEditBrokerSel');
+  if (bSel) bSel.value = brokerVal;
+
+  document.body.appendChild(modal);
+}
+window.openEditInvPosition = openEditInvPosition;
+
+// Helper: show/hide Other broker field
+function _invEditBrokerChange() {
+  const sel = document.getElementById('invEditBrokerSel');
+  const wrap = document.getElementById('invEditBrokerOtherWrap');
+  if (wrap) wrap.style.display = (sel?.value === 'Outro') ? '' : 'none';
+}
+window._invEditBrokerChange = _invEditBrokerChange;
+
+// Helper: show/hide Indexador based on asset type
+function _invEditOnTypeChange(val) {
+  const wrap = document.getElementById('invEditIndexadorWrap');
+  if (wrap) wrap.style.display = ['fundo','renda_fixa'].includes(val) ? '' : 'none';
+}
+window._invEditOnTypeChange = _invEditOnTypeChange;
+
+async function saveEditInvPosition() {
+  const posId = document.getElementById('invEditPosId')?.value;
+  if (!posId) return;
+
+  const pos = _inv.positions.find(p => p.id === posId);
+  if (!pos) { toast('Posição não encontrada', 'error'); return; }
+
+  const ticker    = (document.getElementById('invEditTicker')?.value || '').trim().toUpperCase();
+  const name      = (document.getElementById('invEditName')?.value || '').trim();
+  const assetType = document.getElementById('invEditAssetType')?.value || pos.asset_type;
+  const currency  = document.getElementById('invEditCurrency')?.value || pos.currency;
+
+  if (!ticker) { toast('Informe o ticker da posição', 'error'); return; }
+
+  // Avg cost — only update if user changed it
+  const avgCostRaw = (document.getElementById('invEditAvgCost')?.value || '').replace(',', '.').trim();
+  const avgCost    = avgCostRaw ? (parseFloat(avgCostRaw) || null) : null;
+
+  // Quantity — only update if user changed it
+  const qtyRaw  = (document.getElementById('invEditQty')?.value || '').replace(',', '.').trim();
+  const qty     = qtyRaw ? (parseFloat(qtyRaw) || null) : null;
+
+  // Broker
+  const brokerSel   = document.getElementById('invEditBrokerSel')?.value || '';
+  const brokerOther = (document.getElementById('invEditBrokerOther')?.value || '').trim();
+  const broker      = brokerSel === 'Outro' ? brokerOther : (brokerSel || '');
+
+  // Indexador
+  const indexador = document.getElementById('invEditIndexador')?.value || '';
+
+  // Notes: reassemble with broker + indexador tags
+  const notesBase = (document.getElementById('invEditNotes')?.value || '').trim();
+  const notesParts = [
+    notesBase,
+    broker      ? `Corretora: ${broker}`     : '',
+    indexador   ? `Indexador: ${indexador}`  : '',
+  ].filter(Boolean);
+  const notes = notesParts.join(' · ') || null;
+
+  const payload = {
+    ticker,
+    name:       name || null,
+    asset_type: assetType,
+    currency,
+    notes,
+    updated_at: new Date().toISOString(),
+  };
+  if (avgCost !== null) payload.avg_cost = avgCost;
+  if (qty     !== null) payload.quantity  = qty;
+
+  try {
+    const { error } = await sb
+      .from('investment_positions')
+      .update(payload)
+      .eq('id', posId);
+    if (error) throw error;
+
+    toast(`✓ Posição ${ticker} atualizada!`, 'success');
+    closeModal('invEditModal');
+
+    // Refresh data and re-open detail
+    await loadInvestments(true);
+    _renderInvestmentsPage();
+    setTimeout(() => openInvPositionDetail(posId), 250);
+  } catch(e) {
+    toast('Erro ao salvar: ' + (e.message || e), 'error');
+  }
+}
+window.saveEditInvPosition = saveEditInvPosition;
 
 async function deleteInvPosition(positionId) {
   const pos = _inv.positions.find(p => p.id === positionId);

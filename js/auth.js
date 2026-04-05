@@ -4530,22 +4530,39 @@ async function _send2FAByEmail(email, code, name) {
   }
 }
 
-// ── Envia código por Telegram ──
+// ── Envia código 2FA por Telegram ─────────────────────────────────────────
+// Usa o MESMO mecanismo que notificações de transações (auto_register.js):
+//   1. Bot API direto (token em localStorage / app_settings) — sem Edge Function
+//   2. Edge Function 'send-scheduled-telegram' como fallback
+// parse_mode HTML, consistente com _sendTelegramDirect
 async function _send2FAByTelegram(chatId, code) {
-  try {
-    const msg = `🔐 *Family FinTrack — Verificação*
+  if (!chatId) throw new Error('chat_id não informado — vincule seu Telegram em Perfil → Configurações.');
 
-Seu código: *${code}*
+  const msg =
+    `🔐 <b>Family FinTrack — Verificação em 2 Fatores</b>\n\n` +
+    `Seu código de acesso:\n\n` +
+    `<code>${code}</code>\n\n` +
+    `⏱ Válido por <b>10 minutos</b>.\n` +
+    `Se você não tentou fazer login, ignore esta mensagem.`;
 
-Válido por 10 minutos.`;
-    const { data, error } = await sb.functions.invoke('send-telegram', {
-      body: { chat_id: chatId, message: msg }
-    });
-    if (error) throw new Error(error.message);
-  } catch(e) {
-    console.warn('[2FA] send telegram:', e.message);
-    throw e;
+  // Caminho 1 — infra compartilhada de auto_register.js (Bot API direto + fallback Edge Function)
+  if (typeof window._sendTelegramWithFallback === 'function') {
+    await window._sendTelegramWithFallback(chatId, msg);
+    console.info('[2FA] Telegram OK via _sendTelegramWithFallback');
+    return;
   }
+
+  // Caminho 2 — auto_register ainda não carregou; tenta Edge Function 'send-scheduled-telegram'
+  console.warn('[2FA] _sendTelegramWithFallback não disponível ainda, usando Edge Function direta');
+  if (sb && typeof sb.functions?.invoke === 'function') {
+    const { error } = await sb.functions.invoke('send-scheduled-telegram', {
+      body: { chat_id: chatId, message: msg },
+    });
+    if (error) throw new Error(error.message || JSON.stringify(error));
+    return;
+  }
+
+  throw new Error('Nenhum método de envio Telegram disponível. Configure o bot token em Configurações → Conexão.');
 }
 
 // ── Persiste código na tabela two_fa_codes ──
