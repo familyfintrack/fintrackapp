@@ -5028,24 +5028,14 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- Centered layout: hero top + card bottom -->
     <div class="lgn-center">
 
-      <!-- Hero / brand panel (also used as split-theme left panel) -->
-      <div class="lgn-hero" id="lgnHeroPanel">
+      <!-- Hero -->
+      <div class="lgn-hero">
         <div class="lgn-hero__logo-wrap">
           <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-hero__logo">
         </div>
-        <div class="lgn-hero__title">Family<br><span class="lgn-hero__title-accent">FinTrack</span></div>
-        <div class="lgn-hero__sub">Controle financeiro inteligente para toda a família</div>
-        <!-- Split theme features (hidden in other themes via CSS) -->
-        <div class="lgn-hero-feats">
-          <div class="lgn-hero-feat"><span>📊</span> Dashboard financeiro completo</div>
-          <div class="lgn-hero-feat"><span>🤖</span> Agente IA integrado</div>
-          <div class="lgn-hero-feat"><span>🔐</span> Dados seguros e privados</div>
-          <div class="lgn-hero-feat"><span>👨‍👩‍👧</span> Gestão familiar colaborativa</div>
-        </div>
+        <div class="lgn-hero__sub">Família Inteligente, Finanças sob controle</div>
       </div>
 
-      <!-- Card wrapper (flex container in split theme; display:contents otherwise) -->
-      <div class="lgn-card-wrap">
       <!-- Form card -->
       <div class="lgn-card">
 
@@ -5238,36 +5228,8 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
 
       </div><!-- end lgn-card -->
-      </div><!-- end lgn-card-wrap -->
     </div><!-- end lgn-center -->
 
-    <!-- ── Theme picker (bottom-right floating) ── -->
-    <div class="lgn-theme-picker" id="lgnThemePicker">
-      <div class="lgn-theme-picker__panel" id="lgnThemePanel">
-        <div class="lgn-theme-picker__label">Tema visual</div>
-        <button class="lgn-theme-opt active" data-theme="immersive" onclick="_lgnSetTheme('immersive',this)">
-          <span class="lgn-theme-opt__dot" style="background:radial-gradient(circle,#7dc242,#2a6049)"></span>
-          Full Immersive
-        </button>
-        <button class="lgn-theme-opt" data-theme="minimal" onclick="_lgnSetTheme('minimal',this)">
-          <span class="lgn-theme-opt__dot" style="background:rgba(255,255,255,.2)"></span>
-          Dark Minimal
-        </button>
-        <button class="lgn-theme-opt" data-theme="split" onclick="_lgnSetTheme('split',this)">
-          <span class="lgn-theme-opt__dot" style="background:linear-gradient(90deg,#1a5038 50%,#f4f7f4 50%)"></span>
-          Split Painel
-        </button>
-        <button class="lgn-theme-opt" data-theme="light" onclick="_lgnSetTheme('light',this)">
-          <span class="lgn-theme-opt__dot" style="background:#f4f7f4;border-color:rgba(42,96,73,.3)"></span>
-          Light Clean
-        </button>
-        <button class="lgn-theme-opt" data-theme="fintech" onclick="_lgnSetTheme('fintech',this)">
-          <span class="lgn-theme-opt__dot" style="background:radial-gradient(circle,#a8e63c,#163c28)"></span>
-          Fintech Bold
-        </button>
-      </div>
-      <button class="lgn-theme-picker__toggle" onclick="_lgnToggleThemePicker()" title="Mudar tema do login">🎨</button>
-    </div>
   </div><!-- end lgn-screen -->
 
   <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
