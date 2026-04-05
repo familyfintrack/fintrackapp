@@ -2241,21 +2241,33 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // ── PASSIVOS — dívidas ativas (idêntico ao KPI) ────────────────────
+  // ── PASSIVOS — dívidas ativas ─────────────────────────────────────────────
+  // Schema correto: name (não description), creditor:payees!fkey(name) para credor
+  // status válidos: active|settled|suspended|renegotiated|archived (sem 'open')
   let debtTotal = 0;
   let debts = [];
   try {
-    // Busca idêntica ao loadKPIs: status='active' primeiro, fallback sem filtro
     const { data: debtsData, error: debtErr } = await famQ(
-      sb.from('debts').select('id,description,creditor_name,current_balance,original_amount,currency,status,due_date,interest_rate')
-    ).order('current_balance', { ascending: false });
+      sb.from('debts').select(
+        'id,name,current_balance,original_amount,currency,status,start_date,fixed_rate,adjustment_type,periodicity,notes,' +
+        'creditor:payees!debts_creditor_payee_id_fkey(id,name)'
+      )
+    ).eq('status', 'active').order('current_balance', { ascending: false });
     if (debtErr) throw debtErr;
-    // Filtro client-side igual ao KPI (trata schema sem coluna status)
-    debts = (debtsData || []).filter(d => !d.status || d.status === 'active' || d.status === 'open');
+    debts = debtsData || [];
     debtTotal = debts.reduce((s,d) =>
       s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
   } catch(e) {
     console.warn('[patrimônio] debts query failed:', e?.message || e);
+    // fallback: tentar sem join (schema mais simples)
+    try {
+      const { data: debtsSimple } = await famQ(
+        sb.from('debts').select('id,name,current_balance,original_amount,currency,status')
+      ).eq('status','active');
+      debts = debtsSimple || [];
+      debtTotal = debts.reduce((s,d) =>
+        s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
+    } catch(_) {}
   }
 
   // Total de passivos = dívidas + faturas CC em aberto (idêntico ao KPI)
@@ -2505,31 +2517,42 @@ async function _openPatrimonioModal() {
 
     // ── Dívidas do módulo ─────────────────────────────────────────────────
     if (debts.length) {
+      const _adjLabel = { fixed:'Fixo', selic:'SELIC', ipca:'IPCA', igpm:'IGP-M', cdi:'CDI', poupanca:'Poupança', custom:'Personalizado' };
       content += `
         <div style="margin-bottom:12px">
           <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">🏦 Dívidas Ativas</div>
           <div style="display:flex;flex-direction:column;gap:4px">`;
       debts.forEach(d => {
-        const bal    = parseFloat(d.current_balance ?? d.original_amount) || 0;
-        const balBRL = toBRL(bal, d.currency || 'BRL');
-        const pct    = _pct(balBRL, accountTotal);
-        const progPct = d.original_amount
-          ? Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100).toFixed(0)
+        const bal       = parseFloat(d.current_balance ?? d.original_amount) || 0;
+        const balBRL    = toBRL(bal, d.currency || 'BRL');
+        const origBRL   = toBRL(parseFloat(d.original_amount)||0, d.currency||'BRL');
+        const pct       = _pct(balBRL, accountTotal);
+        const progPct   = d.original_amount && +d.original_amount > 0
+          ? Math.max(0, Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100)).toFixed(0)
           : null;
+        const credName  = d.creditor?.name || '';
+        const adjLabel  = _adjLabel[d.adjustment_type] || d.adjustment_type || '';
+        const rateLabel = d.fixed_rate ? `${(+d.fixed_rate).toFixed(2)}% a.m.` : '';
+        const subtitle  = [credName, adjLabel, rateLabel].filter(Boolean).join(' · ');
         content += `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
             <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
-              <div style="font-size:.68rem;color:var(--muted)">Dívida ativa · ${pct}% dos ativos${progPct ? ` · ${progPct}% quitado` : ''}</div>
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
+              ${subtitle ? `<div style="font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subtitle)}</div>` : ''}
+              ${progPct !== null ? `
+              <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+                <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
+                  <div style="height:100%;width:${progPct}%;background:var(--accent);border-radius:2px"></div>
+                </div>
+                <span style="font-size:.62rem;color:var(--muted);flex-shrink:0">${progPct}% quitado</span>
+              </div>` : ''}
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
               ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
+              <div style="font-size:.62rem;color:var(--muted)">${pct}% dos ativos</div>
             </div>
-          </div>
-          <div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
-            <div style="height:100%;width:${Math.min(+pct,100)}%;background:#dc2626;border-radius:2px;transition:width .4s ease"></div>
           </div>`;
       });
       content += `
