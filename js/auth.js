@@ -1445,8 +1445,8 @@ async function testMyProfileNotification(channel) {
     return;
   }
 
-  const waInput = document.getElementById('myProfileWhatsappNumber');
-  const tgInput = document.getElementById('myProfileTelegramChatId');
+  const waInput  = document.getElementById('myProfileWhatsappNumber');
+  const tgInput  = document.getElementById('myProfileTelegramChatId');
   const rawValue = normalizedChannel === 'whatsapp'
     ? String(waInput?.value || currentUser?.whatsapp_number || '').replace(/\D+/g, '')
     : String(tgInput?.value || currentUser?.telegram_chat_id || '').trim();
@@ -1465,40 +1465,36 @@ async function testMyProfileNotification(channel) {
   _setMyProfileTestButtonState(normalizedChannel, true);
 
   try {
-    const body = normalizedChannel === 'whatsapp'
-      ? {
-          channel: 'whatsapp',
-          recipient: rawValue,
-          user_name: profileName,
-          user_email: String(currentUser?.email || '').trim(),
-        }
-      : {
-          channel: 'telegram',
-          chat_id: rawValue,
-          user_name: profileName,
-          user_email: String(currentUser?.email || '').trim(),
-        };
+    // ── Telegram: usa _sendTelegramWithFallback direto (bot token local + Edge Function como fallback)
+    // Mesmo mecanismo das notificações de transações — não depende de Edge Function dedicada
+    if (normalizedChannel === 'telegram') {
+      if (typeof _sendTelegramWithFallback !== 'function') {
+        throw new Error('Módulo Telegram não carregado. Verifique se auto_register.js está na página.');
+      }
+      const safeName = profileName.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+      const msg = '🔔 <b>Family FinTrack — Teste de notificação</b>\n\n' +
+        'Olá, <b>' + safeName + '</b>!\n\n' +
+        '✅ Seu Telegram está corretamente configurado.\n' +
+        'Você receberá notificações e códigos 2FA por este canal.';
+      await _sendTelegramWithFallback(rawValue, msg, { notification_type: 'profile_test' });
+      toast('✅ Mensagem de teste enviada para o Telegram!', 'success');
+      return;
+    }
 
+    // ── WhatsApp: mantém Edge Function (não há SDK direto disponível no cliente)
+    const body = {
+      channel: 'whatsapp',
+      recipient: rawValue,
+      user_name: profileName,
+      user_email: String(currentUser?.email || '').trim(),
+    };
     const { data, error } = await sb.functions.invoke('send-profile-notification-test', { body });
-
-    if (error) {
-      throw new Error(error.message || 'Falha ao chamar a Edge Function');
-    }
+    if (error) throw new Error(error.message || 'Falha ao chamar a Edge Function');
     if (data?.ok === false) {
-      throw new Error(
-        data?.description ||
-        data?.error ||
-        data?.details?.description ||
-        'Falha ao enviar mensagem de teste.'
-      );
+      throw new Error(data?.description || data?.error || data?.details?.description || 'Falha ao enviar mensagem de teste.');
     }
+    toast('Mensagem de teste enviada para o WhatsApp.', 'success');
 
-    toast(
-      normalizedChannel === 'whatsapp'
-        ? 'Mensagem de teste enviada para o WhatsApp.'
-        : 'Mensagem de teste enviada para o Telegram.',
-      'success'
-    );
   } catch (e) {
     console.warn('[profile] test notification error:', e?.message || e);
     toast('Erro ao enviar teste: ' + (e?.message || e), 'error');
@@ -3083,10 +3079,10 @@ async function inviteToFamily(familyId, familyName) {
 
 async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl, role) {
   try {
-    const { autoCheckConfig } = await _getAutoCheckConfig();
-    const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
-    const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
-    const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
+    // Usa EMAILJS_CONFIG diretamente — mesmo padrão das demais funções de email
+    const serviceId  = EMAILJS_CONFIG.serviceId;
+    const publicKey  = EMAILJS_CONFIG.publicKey;
+    const templateId = EMAILJS_CONFIG.templateId || EMAILJS_CONFIG.scheduledTemplateId;
     const appUrl     = inviteUrl || (typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname));
 
     const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador', editor:'Editor' }[role] || role || 'Usuário';
@@ -4212,13 +4208,34 @@ async function _test2FASetup() {
     const channel  = document.getElementById('twoFaChanTelegram')?.checked ? 'telegram' : 'email';
     const email    = currentUser?.email || '';
     const name     = currentUser?.name  || '';
-    const tgChatId = currentUser?.telegram_chat_id || null;
+
+    // Ler telegram_chat_id: campo do formulário tem prioridade (pode ter sido editado mas não salvo),
+    // depois currentUser, depois busca fresca no banco
+    let tgChatId = String(
+      document.getElementById('myProfileTelegramChatId')?.value ||
+      currentUser?.telegram_chat_id ||
+      ''
+    ).trim() || null;
 
     if (!email) throw new Error('Usuário não autenticado. Faça login novamente.');
 
+    // Buscar id do app_user (e telegram_chat_id atualizado do banco caso não tenha no formulário)
     const { data: appRow } = await sb
-      .from('app_users').select('id').eq('email', email).maybeSingle();
+      .from('app_users').select('id, telegram_chat_id').eq('email', email).maybeSingle();
     if (!appRow) throw new Error('Usuário não encontrado na base de dados.');
+
+    // Usar chat_id do banco se formulário e currentUser estiverem vazios
+    if (!tgChatId && appRow.telegram_chat_id) {
+      tgChatId = String(appRow.telegram_chat_id).trim() || null;
+    }
+
+    // Validar canal Telegram antes de tentar enviar
+    if (channel === 'telegram' && !tgChatId) {
+      throw new Error(
+        'Chat ID do Telegram não configurado. ' +
+        'Configure o Chat ID em Meu Perfil → aba Notificações → campo Telegram Chat ID e salve antes de ativar 2FA por Telegram.'
+      );
+    }
 
     const code = _gen2FACode();
 
@@ -4417,86 +4434,90 @@ function _get2FATrustExpiry(userId) {
 
 // ── Envia código por email via EmailJS ──
 async function _send2FAByEmail(email, code, name) {
-  // Use same config resolution as _sendInviteEmail (fetches from app_settings with hardcoded fallbacks)
-  let serviceId, publicKey, tplId;
-  try {
-    const { autoCheckConfig } = await _getAutoCheckConfig();
-    serviceId = autoCheckConfig?.emailServiceId  || EMAILJS_CONFIG.serviceId  || 'service_8e4rkde';
-    publicKey = autoCheckConfig?.emailPublicKey  || EMAILJS_CONFIG.publicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
-    tplId     = autoCheckConfig?.emailTemplateId || EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId || 'template_fla7gdi';
-  } catch(_) {
-    serviceId = EMAILJS_CONFIG.serviceId;
-    publicKey = EMAILJS_CONFIG.publicKey;
-    tplId     = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
-  }
+  // Usa EMAILJS_CONFIG diretamente — mesmo padrão de _sendNotifyAdminNewRegistration e _sendApprovalEmail
+  // Prioridade: templateId padrão (campos report_subject + report_content) > scheduledTemplateId
+  const serviceId = EMAILJS_CONFIG.serviceId;
+  const publicKey = EMAILJS_CONFIG.publicKey;
+  const tplId     = EMAILJS_CONFIG.templateId || EMAILJS_CONFIG.scheduledTemplateId;
 
   if (!serviceId || !publicKey || !tplId) {
-    console.warn('[2FA] EmailJS não configurado — serviceId:', serviceId, 'publicKey:', !!publicKey);
-    throw new Error('EmailJS não configurado. Configure em Configurações → E-mail.');
+    console.warn('[2FA] EmailJS não configurado — serviceId:', serviceId, 'publicKey:', !!publicKey, 'tplId:', tplId);
+    throw new Error('EmailJS não configurado. Configure em Configurações → E-mail → Credenciais EmailJS.');
   }
 
-  const body = `
-<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">
-<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">
-<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:20px 28px">
-  <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">Family FinTrack</div>
-  <div style="font-size:20px;font-weight:700;color:#fff">🔐 Código de verificação</div>
-</div>
-<div style="padding:24px 28px">
-  <p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6">Olá${name ? ', ' + name : ''}! Use o código abaixo para acessar o Family FinTrack:</p>
-  <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px">
-    <div style="font-size:36px;font-weight:900;letter-spacing:.28em;color:#1e5c42;font-family:'Courier New',monospace">${code}</div>
-    <div style="font-size:12px;color:#6b7280;margin-top:8px">Válido por 10 minutos</div>
-  </div>
-  <p style="font-size:12px;color:#9ca3af;margin:0">Se você não tentou fazer login, ignore este e-mail.</p>
-</div>
-</div></div>`;
+  const nameStr = name ? ', ' + name : '';
+  const now     = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  const body = '<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">' +
+    '<div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #e6e8f0;border-radius:12px;overflow:hidden">' +
+    '<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:20px 28px">' +
+    '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">Family FinTrack</div>' +
+    '<div style="font-size:20px;font-weight:700;color:#fff">&#128274; C&oacute;digo de verifica&ccedil;&atilde;o</div>' +
+    '</div>' +
+    '<div style="padding:24px 28px">' +
+    '<p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6">Ol&aacute;' + nameStr + '! Use o c&oacute;digo abaixo para acessar o Family FinTrack:</p>' +
+    '<div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px">' +
+    '<div style="font-size:36px;font-weight:900;letter-spacing:.28em;color:#1e5c42;font-family:\'Courier New\',monospace">' + code + '</div>' +
+    '<div style="font-size:12px;color:#6b7280;margin-top:8px">V&aacute;lido por 10 minutos</div>' +
+    '</div>' +
+    '<p style="font-size:12px;color:#9ca3af;margin:0">Se voc&ecirc; n&atilde;o tentou fazer login, ignore este e-mail.</p>' +
+    '</div>' +
+    '</div></div>';
 
   try {
     emailjs.init(publicKey);
-    // Pass publicKey as 4th arg (same pattern as _sendInviteEmail which works)
     await emailjs.send(serviceId, tplId, {
       to_email:       email,
-      report_subject: '[Family FinTrack] Seu código de verificação: ' + code,
-      Subject:        '[Family FinTrack] Código de verificação',
-      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_subject: '[Family FinTrack] Seu código de verificação 2FA: ' + code,
+      Subject:        '[Family FinTrack] Código de verificação 2FA',
+      month_year:     now,
       report_content: body,
     }, publicKey);
+    console.info('[2FA] Email enviado para:', email);
   } catch(e) {
-    console.warn('[2FA] send email:', e.message);
-    throw e;
+    console.warn('[2FA] send email falhou:', e.text || e.message || e);
+    // Extrair mensagem legível do erro EmailJS (e.text é o campo padrão da lib)
+    throw new Error(e.text || e.message || 'Falha ao enviar e-mail de verificação');
   }
 }
 
 // ── Envia código por Telegram ──
 async function _send2FAByTelegram(chatId, code) {
-  const msg = `🔐 <b>Family FinTrack — Verificação</b>
-
-Seu código de acesso: <code>${code}</code>
-
-⏱ Válido por 10 minutos.
-
-Se você não tentou fazer login, ignore esta mensagem.`;
-  try {
-    // Prefer _sendTelegramWithFallback (auto_register.js) — uses local bot token + Edge Function fallback
-    if (typeof _sendTelegramWithFallback === 'function') {
-      await _sendTelegramWithFallback(chatId, msg, { notification_type: '2fa_code' });
-      return;
-    }
-    // Fallback: try direct API with bot token
-    if (typeof _sendTelegramDirect === 'function') {
-      await _sendTelegramDirect(chatId, msg);
-      return;
-    }
-    // Last resort: Edge Function
-    const { data, error } = await sb.functions.invoke('send-telegram', {
-      body: { chat_id: String(chatId), message: msg }
-    });
-    if (error) throw new Error(error.message || JSON.stringify(error));
-  } catch(e) {
-    console.warn('[2FA] send telegram:', e.message);
-    throw e;
+  const chatIdStr = String(chatId || '').trim();
+  if (!chatIdStr) {
+    throw new Error('Chat ID do Telegram não configurado. Configure em Meu Perfil → Notificações → Telegram.');
   }
+
+  const msg = '🔐 <b>Family FinTrack — Verificação 2FA</b>\n\n' +
+    'Seu código de acesso: <code>' + code + '</code>\n\n' +
+    '⏱ Válido por 10 minutos.\n\n' +
+    'Se você não tentou fazer login, ignore esta mensagem.';
+
+  // Usa _sendTelegramWithFallback de auto_register.js — mesmo mecanismo das notificações de tx
+  if (typeof _sendTelegramWithFallback === 'function') {
+    try {
+      await _sendTelegramWithFallback(chatIdStr, msg, { notification_type: '2fa_code' });
+      console.info('[2FA] Telegram enviado para chat_id:', chatIdStr);
+      return;
+    } catch(e) {
+      console.warn('[2FA] _sendTelegramWithFallback falhou:', e.message);
+      throw new Error('Falha ao enviar pelo Telegram: ' + (e.message || e));
+    }
+  }
+
+  // Fallback direto — não deveria acontecer se auto_register.js estiver carregado
+  if (typeof _sendTelegramDirect === 'function') {
+    try {
+      await _sendTelegramDirect(chatIdStr, msg);
+      console.info('[2FA] Telegram enviado via _sendTelegramDirect');
+      return;
+    } catch(e) {
+      console.warn('[2FA] _sendTelegramDirect falhou:', e.message);
+      throw new Error('Falha ao enviar pelo Telegram: ' + (e.message || e));
+    }
+  }
+
+  throw new Error('Módulo Telegram não disponível. Verifique se auto_register.js está carregado.');
 }
 
 // ── Persiste código na tabela two_fa_codes ──
