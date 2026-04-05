@@ -147,7 +147,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   {
     const { data: byUid } = await sb
       .from('app_users')
-      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, ui_settings')
+      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
       .eq('auth_uid', user.id)
       .maybeSingle();
     appUserRow = byUid || null;
@@ -159,7 +159,7 @@ async function _loadCurrentUserContext(authCtx = null) {
       // otherwise rely on app_users_own_row policy which also allows email match
       const { data: byEmail } = await sb
         .from('app_users')
-        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, ui_settings')
+        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
         .eq('email', user.email)
         .maybeSingle();
       appUserRow = byEmail || null;
@@ -311,9 +311,10 @@ async function _loadCurrentUserContext(authCtx = null) {
     ...caps
   };
 
-  // Apply dark mode from server preference (ui_settings.dark_mode) — authoritative
+  // Apply dark mode from server preference (ui_settings.dark_mode)
+  // ui_settings column may not exist yet — handle gracefully
   try {
-    const _ui = currentUser.ui_settings;
+    const _ui = appUserRow?.ui_settings;
     if (_ui && typeof _ui === 'object' && 'dark_mode' in _ui) {
       _applyDarkMode(!!_ui.dark_mode);
     }
@@ -4177,38 +4178,48 @@ async function toggleDarkMode() {
 }
 
 // Salva a preferência em app_users.ui_settings (JSONB)
+// NOTA: só funciona se a coluna ui_settings existir em app_users.
+// Execute a migration SQL abaixo se necessário:
+// ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS ui_settings jsonb NOT NULL DEFAULT '{}';
 async function _saveDarkModeToServer(isDark) {
   if (!sb || !currentUser?.app_user_id) return;
   try {
     // Ler ui_settings atual para não sobrescrever outros campos
-    const { data: row } = await sb
+    const { data: row, error: selErr } = await sb
       .from('app_users')
       .select('ui_settings')
       .eq('id', currentUser.app_user_id)
       .maybeSingle();
+    // Column may not exist yet — skip silently
+    if (selErr) return;
     const existing = (row?.ui_settings && typeof row.ui_settings === 'object') ? row.ui_settings : {};
     const updated  = { ...existing, dark_mode: isDark };
-    await sb.from('app_users')
+    const { error: updErr } = await sb.from('app_users')
       .update({ ui_settings: updated })
       .eq('id', currentUser.app_user_id);
-    if (currentUser) currentUser._dark_mode = isDark;
-  } catch(_) { /* non-blocking */ }
+    if (!updErr && currentUser) currentUser.ui_settings = updated;
+  } catch(_) { /* non-blocking — column may not exist */ }
 }
 
 // Aplica dark mode a partir do servidor (chamada após login bem-sucedido)
 async function _syncDarkModeFromServer() {
   if (!sb || !currentUser?.app_user_id) return;
   try {
-    const { data: row } = await sb
+    const { data: row, error: selErr } = await sb
       .from('app_users')
       .select('ui_settings')
       .eq('id', currentUser.app_user_id)
       .maybeSingle();
+    // If column doesn't exist, fall back to localStorage silently
+    if (selErr) {
+      const saved = localStorage.getItem('ft_dark_mode');
+      if (saved !== null) _applyDarkMode(saved === '1');
+      return;
+    }
     const ui = row?.ui_settings;
     if (ui && typeof ui === 'object' && 'dark_mode' in ui) {
-      const serverDark = !!ui.dark_mode;
       // Servidor é autoritativo — sobrescreve localStorage
-      _applyDarkMode(serverDark);
+      _applyDarkMode(!!ui.dark_mode);
       return;
     }
   } catch(_) {}
