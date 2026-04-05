@@ -1014,7 +1014,7 @@ function _registerMagicLinkGate() {
     try {
       const { data: appUser } = await sb
         .from('app_users')
-        .select('approved,active,must_change_pwd')
+        .select('approved,active,must_change_pwd,two_fa_enabled')
         .eq('email', email)
         .maybeSingle();
 
@@ -1037,6 +1037,21 @@ function _registerMagicLinkGate() {
         document.getElementById('loginFormArea').style.display = 'none';
         document.getElementById('changePwdArea').style.display = '';
         return;
+      }
+
+      // ── 2FA check for magic-link / session-restore flow ──
+      if (appUser?.two_fa_enabled) {
+        const { data: appUserFull } = await sb
+          .from('app_users')
+          .select('id, email, name, two_fa_channel, telegram_chat_id')
+          .eq('email', email)
+          .maybeSingle();
+        if (appUserFull && !_is2FATrusted(appUserFull.id)) {
+          // Show login screen so 2FA panel is visible
+          showLoginFormArea();
+          await _initiate2FA({ session, user: session.user }, appUserFull);
+          return;
+        }
       }
 
       // All good — proceed into the app
