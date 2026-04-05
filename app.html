@@ -276,19 +276,6 @@
     max-width: calc(100vw - 120px) !important;
   }
 }
-
-/* ── Touch responsiveness: elimina delay 300ms em iOS/Android ────────── */
-* { -webkit-tap-highlight-color: transparent; }
-a, button, [onclick], input[type="button"], input[type="submit"],
-label, .stat-card, .nav-item, .acm-tab, .pill-tab, .filter-chip,
-.tx-row, .account-row, .budget-row, .card-clickable {
-  touch-action: manipulation;
-}
-/* Scroll suave nos containers principais quando JS não pode ajudar */
-#mainContent, .content, .acm-body, .modal, .sidebar-body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-}
 </style>
 </head>
 <body class="app-shell">
@@ -7542,7 +7529,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/scheduled.js"></script>
   <script src="js/attachments.js"></script>
   <script src="js/iof.js"></script>
-  <script src="js/date.js"></script>
   <script src="js/forecast.js"></script>
   <script src="js/email.js"></script>
   <script src="js/import.js"></script>
@@ -9531,9 +9517,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
-  <script src="js/dreams_kb.js"></script>
   <script src="js/dreams.js"></script>
-  <script src="js/agent_capabilities.js"></script>
   <script src="js/agent_engine.js"></script>
 <script>
 // ── Defensive stubs — prevent ReferenceError if agent.js hasn't loaded yet ──
