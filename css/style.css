@@ -19039,6 +19039,7 @@ section[data-page="transactions"] .content {
    LOGIN — Redesign Moderno / Family FinTrack
    Desktop: dois painéis (brand esquerda + form direita)
    Mobile:  tela verde imersiva + card branco flutuante
+   Fundo: grade quadriculada verde (mesma linguagem da landing page)
 ══════════════════════════════════════════════════════════════════ */
 
 /* ── Animações ── */
@@ -19059,12 +19060,32 @@ section[data-page="transactions"] .content {
   50%       { filter: drop-shadow(0 0 40px rgba(125,194,66,.7)) drop-shadow(0 0 80px rgba(42,96,73,.5)); }
 }
 
-/* ══ Screen ══ */
+/* ══ Screen — fundo verde escuro + grade quadriculada (landing page pattern) ══ */
 .lgn-screen {
-  background: #071510;
   overflow: hidden;
   display: flex;
+  position: relative;
+  background:
+    radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.28) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 80% at 90% 75%, rgba(26,61,39,.22) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 35% at 50% -5%, rgba(125,194,66,.06) 0%, transparent 55%),
+    #071510;
+  background-attachment: fixed;
 }
+/* Grade quadriculada idêntica ao .hgrid da landing page */
+.lgn-screen::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(125,194,66,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.028) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: lgnGridFade 14s ease-in-out infinite alternate;
+}
+@keyframes lgnGridFade { from { opacity: .7; } to { opacity: 1; } }
+/* Garante que painéis ficam acima da grade quadriculada */
+.lgn-brand-panel { position: relative; z-index: 1; }
+.lgn-form-panel  { position: relative; z-index: 1; }
 
 /* ════════════════════════════════════
    DESKTOP — Painel Esquerdo (brand)
@@ -19355,12 +19376,11 @@ section[data-page="transactions"] .content {
 ════════════════════════════════════ */
 @media (max-width: 899px) {
   .lgn-screen {
-    background: linear-gradient(170deg,
-      #04100c 0%,
-      #0a2215 35%,
-      #0d3320 65%,
-      #071510 100%
-    );
+    /* Mobile: same dark green + grid (::before pseudo-element is inherited) */
+    background:
+      radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.3) 0%, transparent 58%),
+      radial-gradient(ellipse 70% 80% at 90% 85%, rgba(26,61,39,.25) 0%, transparent 55%),
+      #04100c;
   }
 
   /* Painéis */
