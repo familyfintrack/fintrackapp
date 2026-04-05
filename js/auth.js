@@ -4152,6 +4152,54 @@ async function ensureMasterAdmin() {
    app_users.ui_settings = persistente entre dispositivos
 ══════════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════════════════
+   LOGIN THEME SWITCHER
+   5 themes: immersive | minimal | split | light | fintech
+   Persisted in localStorage('ft_login_theme')
+══════════════════════════════════════════════════════════════════ */
+
+const _LGN_THEME_KEY = 'ft_login_theme';
+const _LGN_THEMES    = ['immersive','minimal','split','light','fintech'];
+
+function _lgnApplyTheme(theme) {
+  if (!_LGN_THEMES.includes(theme)) theme = 'immersive';
+  const screen = document.getElementById('loginScreen');
+  if (!screen) return;
+  // Set data-login-theme on the screen container
+  if (theme === 'immersive') {
+    screen.removeAttribute('data-login-theme');
+  } else {
+    screen.setAttribute('data-login-theme', theme);
+  }
+  // Sync picker buttons active state
+  document.querySelectorAll('.lgn-theme-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === theme);
+  });
+}
+
+function _lgnSetTheme(theme, btn) {
+  _lgnApplyTheme(theme);
+  try { localStorage.setItem(_LGN_THEME_KEY, theme); } catch(_) {}
+  // Close picker after selection
+  const panel = document.getElementById('lgnThemePanel');
+  if (panel) panel.classList.remove('open');
+}
+window._lgnSetTheme = _lgnSetTheme;
+
+function _lgnToggleThemePicker() {
+  const panel = document.getElementById('lgnThemePanel');
+  if (panel) panel.classList.toggle('open');
+}
+window._lgnToggleThemePicker = _lgnToggleThemePicker;
+
+// Apply saved login theme immediately at page load (before any login interaction)
+(function _initLoginTheme() {
+  try {
+    const saved = localStorage.getItem(_LGN_THEME_KEY);
+    if (saved) _lgnApplyTheme(saved);
+  } catch(_) {}
+})();
+
 function _applyDarkMode(isDark) {
   if (isDark) {
     document.body.classList.add('dark');
@@ -4313,12 +4361,29 @@ async function _test2FASetup() {
     if (insertErr) throw new Error('Erro ao registrar código: ' + insertErr.message);
 
     // Send code — verify it was actually sent before showing confirmation UI
+    // Telegram: usa _send2FAByTelegram (mesma infra que notificações de transação)
+    //   → Bot API direto (token localStorage/app_settings) → Edge Function fallback
+    // Email: via EmailJS como fallback (somente se canal for 'email')
     let sent = false;
     let sendErr = '';
 
-    if (channel === 'telegram' && tgChatId) {
-      try { await _send2FAByTelegram(tgChatId, code); sent = true; }
-      catch(e) { sendErr = e.message || 'Falha no Telegram'; }
+    if (channel === 'telegram') {
+      if (!tgChatId) {
+        throw new Error(
+          'Chat ID do Telegram não configurado. ' +
+          'Vá em Configurações → Conexão, vincule seu Telegram e salve antes de testar.'
+        );
+      }
+      // _send2FAByTelegram usa window._sendTelegramWithFallback (auto_register.js):
+      //  1. Bot API direto (token em localStorage/app_settings)
+      //  2. Edge Function 'send-scheduled-telegram' como fallback
+      try {
+        await _send2FAByTelegram(tgChatId, code);
+        sent = true;
+      } catch(e) {
+        // Expõe o erro real do Telegram (token inválido, chat_id errado, etc.)
+        throw new Error('Falha ao enviar pelo Telegram: ' + (e.message || e));
+      }
     }
 
     if (!sent) {
