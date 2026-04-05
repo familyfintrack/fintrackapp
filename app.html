@@ -9363,6 +9363,22 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/debts.js"></script>
   <script src="js/dreams.js"></script>
   <script src="js/agent_engine.js"></script>
+<script>
+// ── Defensive stubs — prevent ReferenceError if agent.js hasn't loaded yet ──
+// agent.js is the last script; on slow connections the agent panel's inline
+// event handlers (onblur, onfocus, oninput) can fire before it finishes loading.
+(function() {
+  var _noop = function() {};
+  var _agentFns = [
+    'toggleAgent','_agentToggleFullscreen','_agentClearHistory',
+    'agentShowCapabilities','agentSuggest','agentSend_confirm','agentSend_cancel',
+    'agentKeydown','_agentRenderInlineSuggestions','_agentOnInputFocus','_agentOnInputBlur'
+  ];
+  _agentFns.forEach(function(fn) {
+    if (typeof window[fn] === 'undefined') window[fn] = _noop;
+  });
+})();
+</script>
 <script src="js/agent.js"></script>
 
 <script>
