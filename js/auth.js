@@ -681,8 +681,9 @@ async function doLogin() {
     else _clearRememberedCredentials();
 
     // Gate: check app_users approval status before entering the app
+    // NOTE: two_fa_enabled MUST be included here — it is checked below for 2FA flow
     const { data: appUser } = await sb
-      .from('app_users').select('approved,active,must_change_pwd').eq('email', email).maybeSingle();
+      .from('app_users').select('approved,active,must_change_pwd,two_fa_enabled').eq('email', email).maybeSingle();
 
     if (appUser && !appUser.approved) {
       await sb.auth.signOut();
