@@ -307,8 +307,18 @@ async function _loadCurrentUserContext(authCtx = null) {
     notify_tx_email:      !!appUserRow?.notify_tx_email,
     notify_tx_wa:         !!appUserRow?.notify_tx_wa,
     notify_tx_tg:         !!appUserRow?.notify_tx_tg,
+    ui_settings:          appUserRow?.ui_settings || {},
     ...caps
   };
+
+  // Apply dark mode from server preference (ui_settings.dark_mode)
+  // ui_settings column may not exist yet — handle gracefully
+  try {
+    const _ui = appUserRow?.ui_settings;
+    if (_ui && typeof _ui === 'object' && 'dark_mode' in _ui) {
+      _applyDarkMode(!!_ui.dark_mode);
+    }
+  } catch(_) {}
 
   // Apply user language preference from DB (preferred_language column)
   // DB is authoritative — it was saved by saveMyProfile() / quickSetLang()
@@ -681,8 +691,9 @@ async function doLogin() {
     else _clearRememberedCredentials();
 
     // Gate: check app_users approval status before entering the app
+    // NOTE: two_fa_enabled MUST be included here — it is checked below for 2FA flow
     const { data: appUser } = await sb
-      .from('app_users').select('approved,active,must_change_pwd').eq('email', email).maybeSingle();
+      .from('app_users').select('approved,active,must_change_pwd,two_fa_enabled').eq('email', email).maybeSingle();
 
     if (appUser && !appUser.approved) {
       await sb.auth.signOut();
@@ -958,6 +969,8 @@ async function onLoginSuccess() {
     }
   }
   await bootApp();
+  // Sincronizar dark mode do servidor (cross-device) — após boot para ter currentUser pronto
+  _syncDarkModeFromServer().catch(() => {});
   if (!platformInfo.isWindows && typeof Cursor !== 'undefined') Cursor.hide();
 }
 
@@ -4134,7 +4147,9 @@ async function ensureMasterAdmin() {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   DARK MODE — Toggle com persistência em localStorage
+   DARK MODE — Toggle com persistência dupla: localStorage + servidor
+   localStorage = imediata (evita flash ao recarregar)
+   app_users.ui_settings = persistente entre dispositivos
 ══════════════════════════════════════════════════════════════════ */
 
 function _applyDarkMode(isDark) {
@@ -4150,15 +4165,74 @@ function _applyDarkMode(isDark) {
   const label = document.getElementById('darkModeLabel');
   if (icon)  icon.textContent  = isDark ? '☀️' : '🌙';
   if (label) label.textContent = isDark ? 'Modo Claro' : 'Modo Escuro';
+  // Persistir localmente (evita flash na próxima abertura)
   try { localStorage.setItem('ft_dark_mode', isDark ? '1' : '0'); } catch(_) {}
 }
 
-function toggleDarkMode() {
+async function toggleDarkMode() {
   const isDark = document.body.classList.contains('dark');
-  _applyDarkMode(!isDark);
+  const newDark = !isDark;
+  _applyDarkMode(newDark);
+  // Persistir no servidor (cross-device) — fire-and-forget
+  _saveDarkModeToServer(newDark).catch(() => {});
 }
 
-// Aplicar dark mode salvo ao carregar
+// Salva a preferência em app_users.ui_settings (JSONB)
+// NOTA: só funciona se a coluna ui_settings existir em app_users.
+// Execute a migration SQL abaixo se necessário:
+// ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS ui_settings jsonb NOT NULL DEFAULT '{}';
+async function _saveDarkModeToServer(isDark) {
+  if (!sb || !currentUser?.app_user_id) return;
+  try {
+    // Ler ui_settings atual para não sobrescrever outros campos
+    const { data: row, error: selErr } = await sb
+      .from('app_users')
+      .select('ui_settings')
+      .eq('id', currentUser.app_user_id)
+      .maybeSingle();
+    // Column may not exist yet — skip silently
+    if (selErr) return;
+    const existing = (row?.ui_settings && typeof row.ui_settings === 'object') ? row.ui_settings : {};
+    const updated  = { ...existing, dark_mode: isDark };
+    const { error: updErr } = await sb.from('app_users')
+      .update({ ui_settings: updated })
+      .eq('id', currentUser.app_user_id);
+    if (!updErr && currentUser) currentUser.ui_settings = updated;
+  } catch(_) { /* non-blocking — column may not exist */ }
+}
+
+// Aplica dark mode a partir do servidor (chamada após login bem-sucedido)
+async function _syncDarkModeFromServer() {
+  if (!sb || !currentUser?.app_user_id) return;
+  try {
+    const { data: row, error: selErr } = await sb
+      .from('app_users')
+      .select('ui_settings')
+      .eq('id', currentUser.app_user_id)
+      .maybeSingle();
+    // If column doesn't exist, fall back to localStorage silently
+    if (selErr) {
+      const saved = localStorage.getItem('ft_dark_mode');
+      if (saved !== null) _applyDarkMode(saved === '1');
+      return;
+    }
+    const ui = row?.ui_settings;
+    if (ui && typeof ui === 'object' && 'dark_mode' in ui) {
+      // Servidor é autoritativo — sobrescreve localStorage
+      _applyDarkMode(!!ui.dark_mode);
+      return;
+    }
+  } catch(_) {}
+  // Fallback: localStorage (para compatibilidade com versões anteriores)
+  try {
+    const saved = localStorage.getItem('ft_dark_mode');
+    if (saved !== null) _applyDarkMode(saved === '1');
+  } catch(_) {}
+}
+window._syncDarkModeFromServer = _syncDarkModeFromServer;
+
+// Aplicar dark mode salvo LOCALMENTE ao carregar a página (antes do login)
+// Isso evita o flash branco enquanto o JS da app ainda não carregou
 (function _initDarkMode() {
   try {
     const saved = localStorage.getItem('ft_dark_mode');
@@ -4547,10 +4621,16 @@ function _show2FAScreen() {
   if (area) area.style.display = '';
 
   const codeInput = document.getElementById('twoFaCode');
-  if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+  if (codeInput) { codeInput.value = ''; setTimeout(() => codeInput.focus(), 80); }
 
   const errEl = document.getElementById('twoFaError');
   if (errEl) errEl.style.display = 'none';
+
+  // Scroll the form panel back to top so 2FA is fully visible (critical on mobile)
+  const panel = document.querySelector('.lgn-form-inner');
+  if (panel) panel.scrollTop = 0;
+  const formPanel = document.querySelector('.lgn-form-panel');
+  if (formPanel) formPanel.scrollTop = 0;
 }
 
 // ── Verificar código inserido pelo usuário ──

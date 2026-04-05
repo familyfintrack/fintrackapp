@@ -1101,3 +1101,9 @@ window.sendScheduledTelegramNotification = sendScheduledTelegramNotification;
 window.sendScheduledNotification         = typeof sendScheduledNotification === 'function'
   ? sendScheduledNotification : (window.sendScheduledNotification || null);
 window.runScheduledUpcomingNotifications = runScheduledUpcomingNotifications;
+
+// Export Telegram infrastructure for cross-module use (e.g. 2FA in auth.js)
+window._sendTelegramWithFallback = _sendTelegramWithFallback;
+window._sendTelegramDirect       = _sendTelegramDirect;
+window.getTelegramBotToken       = getTelegramBotToken;
+window.ensureTelegramBotToken    = ensureTelegramBotToken;
