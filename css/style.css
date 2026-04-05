@@ -21313,22 +21313,20 @@ tr.payee-row[onclick] { cursor: pointer; }
     overflow: hidden !important;
   }
   #page-scheduled .sc-card-icon {
-    flex: 0 0 38px !important;
-    width: 38px !important;
-    min-width: 38px !important;
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
   }
   #page-scheduled .sc-card-mid {
-    flex: 1 1 auto !important;
+    flex: 1 1 0% !important;   /* 0% base prevents min-content bloat */
     min-width: 0 !important;
     overflow: hidden !important;
+    max-width: 100% !important;
   }
-  #page-scheduled .sc-card-end {
-    flex: 0 0 auto !important;
-    max-width: 38% !important;
-    min-width: 0 !important;
-    align-items: flex-end !important;
-    overflow: hidden !important;
-  }
+
   #page-scheduled .sc-card-amt {
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -22058,30 +22056,57 @@ tr.payee-row[onclick] { cursor: pointer; }
     flex-direction: column;
     gap: 3px;
   }
+  /* Card itself: enforce hard boundary */
+  #page-scheduled .sc-card {
+    overflow: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
   #page-scheduled .sc-card-title2 {
-    font-size: .88rem !important;
+    font-size: .86rem !important;
     font-weight: 700 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     color: var(--text);
+    max-width: 100% !important;
   }
   #page-scheduled .sc-card-meta {
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
-    gap: 4px !important;
+    gap: 3px !important;
     row-gap: 2px !important;
-    overflow: hidden;
-    max-height: 36px;
+    overflow: hidden !important;
+    max-height: 38px !important; /* allow 2 rows of tiny chips */
+    width: 100% !important;
   }
+  /* Meta text: account + payee truncates */
   #page-scheduled .sc-card-meta-text {
-    font-size: .68rem;
+    font-size: .67rem;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100px;
+    max-width: 90px;
+    flex-shrink: 1;
+  }
+  /* Member chips: smaller on mobile, allow wrap */
+  #page-scheduled .sc-member-chips {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    max-height: 20px !important; /* single row only */
+  }
+  #page-scheduled .sc-member-chip {
+    font-size: .6rem !important;
+    padding: 1px 5px !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0;
   }
   #page-scheduled .sc-freq-pill {
     font-size: .6rem !important;
@@ -22095,18 +22120,25 @@ tr.payee-row[onclick] { cursor: pointer; }
     flex-shrink: 0;
   }
   #page-scheduled .sc-card-end {
+    flex: 0 0 auto !important;
     flex-shrink: 0 !important;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
-    max-width: 38% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 3px !important;
+    max-width: 36% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
   }
   #page-scheduled .sc-card-amt {
-    font-size: .95rem !important;
+    font-size: .9rem !important;
     font-weight: 800 !important;
-    white-space: nowrap;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
     font-variant-numeric: tabular-nums;
+    display: block !important;
   }
   #page-scheduled .sc-card-badges {
     display: flex;
@@ -22138,6 +22170,10 @@ tr.payee-row[onclick] { cursor: pointer; }
     padding: 9px 11px 11px !important;
     border-top: 1px solid var(--border) !important;
     background: var(--bg2) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   /* Botão registrar: preenchido, grande */
   #page-scheduled .sc-reg-btn {
