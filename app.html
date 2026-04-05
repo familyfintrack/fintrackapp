@@ -721,56 +721,30 @@
       </div>
 
       <!-- Previsão de Caixa 90 dias -->
-      <!-- ══ PREVISÃO 90 DIAS ══ -->
-      <div id="dashCardForecast90" class="dfc-card">
-
-        <!-- Hero header -->
-        <div class="dfc-hero">
-          <div class="dfc-hero__glow"></div>
-          <div class="dfc-hero__inner">
-            <div class="dfc-hero__left">
-              <div class="dfc-hero__icon-wrap">📈</div>
-              <div>
-                <div class="dfc-hero__title">Previsão de Caixa</div>
-                <div class="dfc-hero__sub">
-                  Próximos <strong>90 dias</strong>
-                  <span class="dfc-hero__sub-dot"></span>
-                  <span>Lançamentos + Programados</span>
-                </div>
-              </div>
+      <div id="dashCardForecast90" class="card mb-4">
+        <div class="card-header fc-forecast-header">
+          <span class="card-title">📈 Previsão de Caixa (90 dias)</span>
+          <div class="fc-forecast-controls">
+            <div class="fc-acct-picker" id="dashForecastAcctPicker">
+              <button type="button" class="fc-acct-btn fc-acct-btn--sm"
+                onclick="_fcPickerToggle('dashForecastAcctPicker')">
+                <span id="dashForecastAcctLabel">Todas</span>
+                <span class="fc-acct-caret">▼</span>
+              </button>
+              <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
             </div>
-            <!-- Controls row -->
-            <div class="dfc-controls">
-              <div class="fc-acct-picker" id="dashForecastAcctPicker">
-                <button type="button" class="dfc-pill-btn"
-                  onclick="_fcPickerToggle('dashForecastAcctPicker')">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                  <span id="dashForecastAcctLabel">Todas</span>
-                  <span class="dfc-pill-caret">▾</span>
-                </button>
-                <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
-              </div>
-              <label class="dfc-toggle-wrap">
-                <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()"
-                  class="dfc-toggle-input">
-                <span class="dfc-toggle-track"></span>
-                <span class="dfc-toggle-label">Programados</span>
-              </label>
-            </div>
+            <label class="fc-forecast-check">
+              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()"
+                style="width:13px;height:13px;accent-color:var(--accent)">
+              Incluir programados
+            </label>
           </div>
-          <!-- KPI summary grid (filled by JS) -->
-          <div id="dashForecastKpis" class="dfc-kpis"></div>
         </div>
-
-        <!-- Chart area -->
-        <div class="dfc-chart-wrap">
+        <div style="position:relative;height:180px;margin-top:4px">
           <canvas id="dashForecastChart"></canvas>
-          <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
+      <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
         </div>
-
-        <!-- Account projections footer (filled by JS) -->
-        <div id="dashForecastSummary" class="dfc-summary"></div>
-
+        <div id="dashForecastSummary" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 0 2px 0;font-size:.78rem"></div>
       </div>
 
       <!-- Últimas transações -->
@@ -5016,21 +4990,19 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div><!-- /content -->
 </div><!-- /mainApp -->
 
-  <!-- ═══════════ LOGIN SCREEN — Full Immersive ═══════════ -->
+  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
   <div id="loginScreen" class="lgn-screen" style="display:flex;position:fixed;inset:0;z-index:9999">
 
-    <!-- Animated background -->
-    <div class="lgn-orb lgn-orb1"></div>
-    <div class="lgn-orb lgn-orb2"></div>
-    <div class="lgn-orb lgn-orb3"></div>
-    <div class="lgn-grid"></div>
-
-    <!-- ══ DESKTOP BRAND PANEL (left, hidden on mobile) ══ -->
+    <!-- Left panel: branding (hidden on mobile) -->
     <div class="lgn-brand-panel">
+      <div class="lgn-brand-grid"></div>
+      <div class="lgn-brand-orb lgn-brand-orb1"></div>
+      <div class="lgn-brand-orb lgn-brand-orb2"></div>
+      <div class="lgn-brand-orb lgn-brand-orb3"></div>
       <div class="lgn-brand-content">
         <img src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-brand-logo">
         <div class="lgn-brand-title">Family FinTrack</div>
-        <div class="lgn-brand-subtitle">Família inteligente, finanças sob controle</div>
+        <div class="lgn-brand-sub" data-i18n="auth.tagline">Família inteligente, finanças sob controle</div>
         <div class="lgn-brand-divider"></div>
         <div class="lgn-brand-features">
           <div class="lgn-brand-feat"><span>📊</span> Dashboard financeiro completo</div>
@@ -5038,218 +5010,212 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="lgn-brand-feat"><span>🔐</span> Dados seguros e privados</div>
           <div class="lgn-brand-feat"><span>👨‍👩‍👧</span> Gestão familiar colaborativa</div>
         </div>
-        <div class="lgn-brand-version">Family FinTrack · v16</div>
+        <div class="lgn-brand-version">Family FinTrack</div>
       </div>
     </div>
 
-    <!-- ══ FORM PANEL (right on desktop, full screen on mobile) ══ -->
+    <!-- Right panel: form -->
     <div class="lgn-form-panel">
-    <div class="lgn-center">
-
-      <!-- Hero: mobile only — hidden ≥900px via CSS -->
-      <div class="lgn-hero">
-        <div class="lgn-hero__logo-wrap">
-          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-hero__logo">
+      <div class="lgn-form-inner">
+        <!-- Logo — always visible, bigger on desktop via CSS -->
+        <div class="lgn-logo-wrap">
+          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
         </div>
-        <div class="lgn-hero__sub">Família Inteligente, Finanças sob controle</div>
-      </div>
-
-      <!-- Form card -->
-      <div class="lgn-card">
-
         <div class="lgn-form-title">Bem-vindo de volta</div>
         <div class="lgn-form-sub">Entre com sua conta para continuar</div>
+      <div id="loginFormArea">
 
-        <div id="loginFormArea">
-          <div id="loginPanelPassword">
-            <div class="lgn-field-group">
-              <label class="lgn-label" data-i18n="auth.label_email">E-mail</label>
-              <input type="email" id="loginEmail" class="lgn-input" placeholder="seu@email.com" autocomplete="email"
-                onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
-            </div>
-            <div class="lgn-field-group">
-              <div class="lgn-field-row">
-                <label class="lgn-label" data-i18n="auth.label_password">Senha</label>
-                <button onclick="showForgotPwdForm()" class="lgn-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
-              </div>
-              <div class="lgn-input-wrap">
-                <input type="password" id="loginPassword" class="lgn-input lgn-input--pwd" placeholder="••••••••" autocomplete="current-password"
-                  onkeydown="if(event.key==='Enter')doLogin()">
-                <button onclick="toggleLoginPwd()" class="lgn-pwd-toggle" title="Mostrar/ocultar senha">
-                  <svg id="loginPwdEyeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-            </div>
-            <div class="lgn-remember-row">
-              <div class="lgn-checkbox-wrap">
-                <input type="checkbox" id="rememberMe" class="lgn-checkbox">
-                <div class="lgn-checkbox-custom"></div>
-              </div>
-              <label for="rememberMe" class="lgn-checkbox-label" data-i18n="auth.remember_me">Lembrar neste dispositivo</label>
-            </div>
-            <button onclick="doLogin()" id="loginBtn" class="lgn-btn-primary">
-              <span data-i18n="auth.btn_enter">Entrar</span>
-            </button>
+        <!-- Password login panel -->
+        <div id="loginPanelPassword">
+          <div class="lgn-field-group">
+            <label class="lgn-label" data-i18n="auth.label_email">E-mail</label>
+            <input type="email" id="loginEmail" class="lgn-input" placeholder="seu@email.com" autocomplete="email"
+              onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
           </div>
-
-          <div id="loginError" style="margin-top:12px;color:#f87171;font-size:.8rem;text-align:center;display:none"></div>
-          <div id="loginRequestAccessWrap" style="text-align:center;margin-top:14px;font-size:.8rem;display:none">
-            <span style="color:rgba(200,238,160,.4)" data-i18n="auth.no_account">Não tem conta?</span>
-            <button id="loginRequestAccessBtn" onclick="showRegisterForm()"
-              style="display:inline-flex;align-items:center;gap:5px;
-                     padding:6px 16px;border-radius:20px;margin-left:6px;
-                     border:1.5px solid rgba(125,194,66,.4);
-                     background:rgba(125,194,66,.08);
-                     color:#7dc242;font-weight:700;cursor:pointer;
-                     font-size:.78rem;font-family:inherit;
-                     transition:all .18s;letter-spacing:.02em"
-              onmouseover="this.style.background='rgba(125,194,66,.18)'"
-              onmouseout="this.style.background='rgba(125,194,66,.08)'"
-              data-i18n="auth.request_access">
-              Solicitar acesso
-            </button>
+          <div class="lgn-field-group">
+            <div class="lgn-field-row">
+              <label class="lgn-label" data-i18n="auth.label_password">Senha</label>
+              <button onclick="showForgotPwdForm()" class="lgn-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
+            </div>
+            <div class="lgn-input-wrap">
+              <input type="password" id="loginPassword" class="lgn-input lgn-input--pwd" placeholder="••••••••" autocomplete="current-password"
+                onkeydown="if(event.key==='Enter')doLogin()">
+              <button onclick="toggleLoginPwd()" class="lgn-pwd-toggle" title="Mostrar/ocultar senha">
+                <svg id="loginPwdEyeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
           </div>
+          <div class="lgn-remember-row">
+            <div class="lgn-checkbox-wrap">
+              <input type="checkbox" id="rememberMe" class="lgn-checkbox">
+              <div class="lgn-checkbox-custom"></div>
+            </div>
+            <label for="rememberMe" class="lgn-checkbox-label" data-i18n="auth.remember_me">Lembrar neste dispositivo</label>
+          </div>
+          <button onclick="doLogin()" id="loginBtn" class="lgn-btn-primary">
+            <span data-i18n="auth.btn_enter">Entrar</span>
+          </button>
         </div>
 
-        <!-- ══ 2FA VERIFICATION AREA ══ -->
-        <div id="twoFaArea" style="display:none">
-          <div class="twofa-hero">
-            <div class="twofa-hero__icon">🔐</div>
-            <div class="twofa-title">Verificação em 2 Fatores</div>
-            <div class="twofa-sub" id="twoFaSub">
-              Enviamos um código de 6 dígitos para o seu e-mail.<br>
-              Insira-o abaixo para continuar.
-            </div>
-          </div>
-          <input type="text" id="twoFaCode" class="twofa-code-input"
-            maxlength="6" inputmode="numeric" pattern="[0-9]*"
-            placeholder="• • • • • •"
-            onkeydown="if(event.key==='Enter')doVerify2FA()"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-          <div class="twofa-actions">
-            <button onclick="doVerify2FA()" id="twoFaVerifyBtn" class="lgn-btn-primary">Verificar código</button>
-            <label class="twofa-trust-row">
-              <input type="checkbox" id="twoFaTrust">
-              <span>
-                Confiar neste dispositivo por 30 dias
-                <span id="twoFaTrustExpiry" style="display:none;font-size:.68rem;margin-left:4px"></span>
-              </span>
+        <!-- Magic link: removido -->
+
+        <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+        <div id="loginRequestAccessWrap" style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280;display:none">
+          <span data-i18n="auth.no_account">Não tem conta?</span>
+          <button id="loginRequestAccessBtn" onclick="showRegisterForm()"
+            style="display:inline-flex;align-items:center;gap:6px;
+                   padding:8px 18px;border-radius:24px;
+                   border:1.5px solid #2a6049;
+                   background:transparent;
+                   color:#2a6049;font-weight:700;cursor:pointer;
+                   font-size:.8rem;font-family:inherit;
+                   transition:all .2s;letter-spacing:.02em"
+            onmouseover="this.style.background='#2a6049';this.style.color='#fff'"
+            onmouseout="this.style.background='transparent';this.style.color='#2a6049'"
+            data-i18n="auth.request_access">
+            Solicitar acesso
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ 2FA VERIFICATION AREA ══ -->
+      <div id="twoFaArea" style="display:none">
+        <div class="twofa-title">Verificação em Dois Fatores</div>
+        <div class="twofa-sub" id="twoFaSub">
+          Enviamos um código de 6 dígitos para o seu e-mail.<br>
+          Insira-o abaixo para continuar.
+        </div>
+        <input type="text" id="twoFaCode" class="twofa-code-input"
+          maxlength="6" inputmode="numeric" pattern="[0-9]*"
+          placeholder="000000"
+          onkeydown="if(event.key==='Enter')doVerify2FA()"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <div class="twofa-actions">
+          <button onclick="doVerify2FA()" id="twoFaVerifyBtn" class="lgn-btn-primary">
+            Verificar
+          </button>
+          <div class="twofa-trust-row">
+            <input type="checkbox" id="twoFaTrust" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
+            <label for="twoFaTrust" style="flex:1">
+              Confiar neste dispositivo por 30 dias
+              <span id="twoFaTrustExpiry" style="display:none;font-size:.7rem;color:var(--muted);margin-left:4px"></span>
             </label>
-            <button onclick="resend2FACode()" class="twofa-resend" id="twoFaResendBtn">↺ Reenviar código</button>
-            <button onclick="showLoginFormArea()" class="twofa-back">← Voltar ao login</button>
           </div>
-          <div id="twoFaError" style="margin-top:12px;color:#f87171;font-size:.79rem;text-align:center;display:none"></div>
-        </div>
-
-        <!-- Forgot password -->
-        <div id="forgotPwdArea" style="display:none">
-          <div class="lgn-subform-title">Recuperar Senha</div>
-          <div class="lgn-subform-sub">Informe seu e-mail e enviaremos um link de recuperação.</div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">E-mail</label>
-            <input type="email" id="forgotPwdEmail" class="lgn-input" placeholder="seu@email.com"
-              onkeydown="if(event.key==='Enter')doForgotPwd()">
-          </div>
-          <button onclick="doForgotPwd()" id="forgotPwdBtn" class="lgn-btn-primary">
-            <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
+          <button onclick="resend2FACode()" class="twofa-resend" id="twoFaResendBtn">
+            Reenviar código
           </button>
-          <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
-          <div style="text-align:center;margin-top:14px">
-            <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
-          </div>
-        </div>
-
-        <!-- Password recovery -->
-        <div id="recoveryPwdArea" style="display:none">
-          <div class="lgn-subform-title">Definir Nova Senha</div>
-          <div class="lgn-subform-sub">Escolha uma senha segura para sua conta.</div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Nova Senha</label>
-            <input type="password" id="recoveryPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
-              onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
-          </div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Confirmar Senha</label>
-            <input type="password" id="recoveryPwd2" class="lgn-input" placeholder="Repita a nova senha" autocomplete="new-password"
-              onkeydown="if(event.key==='Enter')doRecoveryPwd()">
-          </div>
-          <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="lgn-btn-primary">
-            <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
+          <button onclick="showLoginFormArea()" class="twofa-back">
+            ← Voltar ao login
           </button>
-          <div id="recoveryPwdError" style="margin-top:12px;color:#f87171;font-size:.8rem;text-align:center;display:none"></div>
         </div>
+        <div id="twoFaError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+      </div>
 
-        <!-- Register form -->
-        <div id="registerFormArea" style="display:none">
-          <div class="lgn-subform-title">Solicitar Acesso</div>
-          <div class="lgn-subform-sub">Preencha os dados. Um administrador aprovará seu acesso.</div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Nome completo</label>
-            <input type="text" id="regName" class="lgn-input" placeholder="Seu nome">
-          </div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">E-mail</label>
-            <input type="email" id="regEmail" class="lgn-input" placeholder="seu@email.com">
-          </div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Senha (mín. 8 caracteres)</label>
-            <input type="password" id="regPassword" class="lgn-input" placeholder="••••••••" autocomplete="new-password">
-          </div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Confirmar Senha</label>
-            <input type="password" id="regPassword2" class="lgn-input" placeholder="••••••••" autocomplete="new-password"
-              onkeydown="if(event.key==='Enter')doRegister()">
-          </div>
-          <div class="lgn-field-group">
-            <label class="lgn-label"><span data-i18n="settings.language">Idioma preferido</span></label>
-            <select id="regLanguage" class="lgn-input" style="cursor:pointer">
-              <option value="pt">🇧🇷 Português</option>
-              <option value="en">🇺🇸 English</option>
-              <option value="es">🇪🇸 Español</option>
-              <option value="fr">🇫🇷 Français</option>
-            </select>
-          </div>
-          <button onclick="doRegister()" id="regBtn" class="lgn-btn-primary">
-            <span data-i18n="register.btn_submit">Enviar Solicitação</span>
-          </button>
-          <div id="regError" style="margin-top:12px;color:#f87171;font-size:.8rem;text-align:center;display:none"></div>
-          <div style="text-align:center;margin-top:14px">
-            <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
-          </div>
+      <!-- Forgot password form -->
+      <div id="forgotPwdArea" style="display:none">
+        <div class="lgn-subform-title">Recuperar Senha</div>
+        <div class="lgn-subform-sub">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">E-mail</label>
+          <input type="email" id="forgotPwdEmail" class="lgn-input" placeholder="seu@email.com"
+            onkeydown="if(event.key==='Enter')doForgotPwd()">
         </div>
-
-        <!-- Pending approval -->
-        <div id="pendingApprovalArea" style="display:none;text-align:center">
-          <div style="font-size:2.2rem;margin-bottom:12px">⏳</div>
-          <div class="lgn-subform-title">Aguardando aprovação</div>
-          <div class="lgn-subform-sub">Sua solicitação foi enviada. Um administrador precisa aprovar seu acesso.</div>
-          <button onclick="showLoginFormArea()" class="lgn-btn-primary">Voltar ao login</button>
+        <button onclick="doForgotPwd()" id="forgotPwdBtn" class="lgn-btn-primary">
+          <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
+        </button>
+        <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
         </div>
+      </div>
 
-        <!-- Change password (first login) -->
-        <div id="changePwdArea" style="display:none">
-          <div class="lgn-subform-title">Definir Senha</div>
-          <div class="lgn-subform-sub">Por segurança, escolha uma nova senha no seu primeiro acesso.</div>
-          <div class="lgn-first-login-alert">🔐 Esta é uma exigência de segurança para novos usuários.</div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Nova Senha</label>
-            <input type="password" id="newPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
-          </div>
-          <div class="lgn-field-group">
-            <label class="lgn-label">Confirmar Senha</label>
-            <input type="password" id="newPwd2" class="lgn-input" placeholder="Repita a senha" autocomplete="new-password">
-          </div>
-          <button onclick="doChangePwd()" class="lgn-btn-primary">
-            <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
-          </button>
-          <div id="changePwdError" style="margin-top:10px;color:#f87171;font-size:.8rem;text-align:center;display:none"></div>
+      <!-- Password recovery form (shown after clicking reset link from email) -->
+      <div id="recoveryPwdArea" style="display:none">
+        <div class="lgn-subform-title">Definir Nova Senha</div>
+        <div class="lgn-subform-sub">Escolha uma senha segura para sua conta.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nova Senha</label>
+          <input type="password" id="recoveryPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
         </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="recoveryPwd2" class="lgn-input" placeholder="Repita a nova senha" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doRecoveryPwd()">
+        </div>
+        <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="lgn-btn-primary">
+          <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
+        </button>
+        <div id="recoveryPwdError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+      </div>
 
-      </div><!-- end lgn-card -->
-    </div><!-- end lgn-center -->
-    </div><!-- end lgn-form-panel -->
+      <!-- Register form -->
+      <div id="registerFormArea" style="display:none">
+        <div class="lgn-subform-title">Solicitar Acesso</div>
+        <div class="lgn-subform-sub">Preencha os dados abaixo. Um administrador aprovará seu acesso.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nome completo</label>
+          <input type="text" id="regName" class="lgn-input" placeholder="Seu nome">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">E-mail</label>
+          <input type="email" id="regEmail" class="lgn-input" placeholder="seu@email.com">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Senha (mín. 8 caracteres)</label>
+          <input type="password" id="regPassword" class="lgn-input" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="regPassword2" class="lgn-input" placeholder="••••••••" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doRegister()">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label"><span data-i18n="settings.language">Idioma preferido</span></label>
+          <select id="regLanguage" class="lgn-input" style="cursor:pointer">
+            <option value="pt">🇧🇷 Português</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="fr">🇫🇷 Français</option>
+          </select>
+        </div>
+        <button onclick="doRegister()" id="regBtn" class="lgn-btn-primary">
+          <span data-i18n="register.btn_submit">Enviar Solicitação</span>
+        </button>
+        <div id="regError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
+        </div>
+      </div>
 
-  </div><!-- end lgn-screen -->
+      <!-- Pending approval screen -->
+      <div id="pendingApprovalArea" style="display:none;text-align:center">
+        <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+        <div class="lgn-subform-title">Aguardando aprovação</div>
+        <div class="lgn-subform-sub">Sua solicitação foi enviada. Um administrador precisa aprovar seu acesso antes que você possa entrar.</div>
+        <button onclick="showLoginFormArea()" class="lgn-btn-primary">Voltar ao login</button>
+      </div>
+      <!-- Change password form (shown on first login) -->
+      <div id="changePwdArea" style="display:none">
+        <div class="lgn-subform-title">Definir Senha</div>
+        <div class="lgn-subform-sub">Por segurança, escolha uma nova senha no seu primeiro acesso.</div>
+        <div class="lgn-first-login-alert">🔐 Esta é uma exigência de segurança para novos usuários.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nova Senha</label>
+          <input type="password" id="newPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="newPwd2" class="lgn-input" placeholder="Repita a senha" autocomplete="new-password">
+        </div>
+        <button onclick="doChangePwd()" class="lgn-btn-primary">
+          <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
+        </button>
+        <div id="changePwdError" style="margin-top:10px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+      </div><!-- end changePwdArea -->
+        </div><!-- end lgn-form-inner -->
+      </div><!-- end lgn-form-panel -->
+    </div><!-- end lgn-screen -->
 
   <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
   <!-- ══ ADMIN USER MANAGEMENT MODAL — Modern tabs ═══════════════════════ -->
@@ -6511,389 +6477,384 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div>
 
 <div class="modal-overlay" id="accountModal" onclick="if(event.target===this)closeModal('accountModal')">
-  <div class="acc-modal-sheet account-editor-sheet" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle" onclick="event.stopPropagation()">
+  <div class="acm-sheet" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle" onclick="event.stopPropagation()">
 
-    <!-- ══ HERO ══ -->
-    <div class="acc-modal-hero">
-      <div class="acc-modal-hero-glow"></div>
-      <div class="acc-modal-hero-inner">
-        <div id="accModalHeroIcon" class="acc-modal-hero-icon-wrap">🏦</div>
-        <div style="min-width:0;flex:1">
-          <div class="acc-modal-hero-title" id="accountModalTitle">Nova Conta</div>
-          <div class="acc-modal-hero-sub" id="accountModalSub">Configure os dados da conta e salve.</div>
+    <!-- ── HERO: preview card live ── -->
+    <div class="acm-hero" id="acmHero">
+      <div class="acm-hero-bg" id="acmHeroBg"></div>
+      <div class="acm-hero-grid"></div>
+      <div class="acm-hero-inner">
+        <div class="acm-preview-card" id="acmPreviewCard">
+          <div class="acm-preview-icon" id="acmPreviewIcon">🏦</div>
+          <div class="acm-preview-info">
+            <div class="acm-preview-name" id="acmPreviewName">Nova Conta</div>
+            <div class="acm-preview-type" id="acmPreviewType">Conta Corrente</div>
+          </div>
+          <div class="acm-preview-balance" id="acmPreviewBalance">R$ 0,00</div>
         </div>
-        <button class="acc-modal-close-btn" type="button" onclick="closeModal('accountModal')" aria-label="Fechar">✕</button>
-      </div>
-      <!-- Tab bar dentro do hero -->
-      <div class="acc-tab-bar" role="tablist">
-        <button class="acc-tab active" role="tab" aria-selected="true"  onclick="_accTab(this,'tab-basic')"  data-tab="tab-basic">Básico <span class="acc-tab-req" title="Obrigatório">✱</span></button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-icon')"   data-tab="tab-icon">Ícone</button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-bank')"   data-tab="tab-bank">Bancário</button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-card')"   data-tab="tab-card">Cartão</button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-extra')"  data-tab="tab-extra">Extra</button>
+        <div class="acm-hero-title-row">
+          <div>
+            <div class="acm-hero-title" id="accountModalTitle">Nova Conta</div>
+            <div class="acm-hero-sub" id="accountModalSub">Preencha os dados e salve.</div>
+          </div>
+          <button class="acm-close-btn" type="button" onclick="closeModal('accountModal')" aria-label="Fechar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- ══ BODY (scrollable) ══ -->
-    <div class="acc-modal-body">
+    <!-- ── TAB NAV ── -->
+    <div class="acm-tabs" id="acmTabs">
+      <button class="acm-tab active" data-tab="basic" onclick="acmSwitchTab('basic')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Básico
+      </button>
+      <button class="acm-tab" data-tab="card" id="acmTabCard" onclick="acmSwitchTab('card')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Cartão
+      </button>
+      <button class="acm-tab" data-tab="bank" onclick="acmSwitchTab('bank')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 22V9M21 22V9M12 2L2 9h20L12 2zM6 22V9M18 22V9M10 22v-5h4v5"/></svg>
+        Bancário
+      </button>
+      <button class="acm-tab" data-tab="extra" onclick="acmSwitchTab('extra')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Mais
+      </button>
+    </div>
+
+    <!-- ── BODY ── -->
+    <div class="acm-body">
       <input type="hidden" id="accountId">
 
-      <!-- ── TAB: Básico ─────────────────────────────────────────── -->
-      <div class="acc-tab-pane active" id="tab-basic">
+      <!-- ════ TAB: BÁSICO ════ -->
+      <div class="acm-pane active" id="acmPane-basic">
 
-        <!-- Required notice -->
-        <div class="acc-required-notice">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Campos obrigatórios desta aba. As outras abas são todas opcionais.
+        <!-- Nome + Ícone numa linha de destaque -->
+        <div class="acm-field-hero-row">
+          <!-- Seletor de ícone + cor -->
+          <div class="acm-icon-selector" id="acmIconSelector" onclick="acmToggleIconPicker()">
+            <div class="acm-icon-preview" id="acmIconSelectorPreview">🏦</div>
+            <svg class="acm-icon-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <!-- Nome -->
+          <div class="acm-field acm-field--flex">
+            <input type="text" id="accountName" class="acm-input" placeholder=" " autocomplete="off"
+              oninput="acmLivePreview()">
+            <label class="acm-label" for="accountName">Nome da conta *</label>
+          </div>
         </div>
 
-        <!-- Live preview card -->
-        <div class="acc-preview-card" id="accPreviewCard" style="--prev-clr:#2a6049">
-          <div class="acc-preview-card__shine"></div>
-          <div class="acc-preview-card__top">
-            <span class="acc-preview-card__icon" id="accPreviewIcon">🏦</span>
-            <span class="acc-preview-card__type" id="accPreviewType">Conta Corrente</span>
+        <!-- Icon picker flyout -->
+        <div class="acm-icon-picker-flyout" id="acmIconPickerFlyout" style="display:none">
+          <div class="acm-icon-picker-tabs">
+            <button class="acm-icon-tab icon-tab active" onclick="showIconGroup(event,'banks-br')">🇧🇷 Bancos BR</button>
+            <button class="acm-icon-tab icon-tab" onclick="showIconGroup(event,'banks-fr')">🇫🇷 Bancos FR</button>
+            <button class="acm-icon-tab icon-tab" onclick="showIconGroup(event,'cards')">💳 Cartões</button>
+            <button class="acm-icon-tab icon-tab" onclick="showIconGroup(event,'generic')">⭐ Outros</button>
           </div>
-          <div class="acc-preview-card__name" id="accPreviewName">Nome da Conta</div>
-          <div class="acc-preview-card__balance" id="accPreviewBalance">R$ 0,00</div>
-          <div class="acc-preview-card__fav" id="accPreviewFav" style="display:none">⭐ Favorita</div>
+          <div class="icon-picker" id="accountIconPicker" style="border:none;padding:0">
+            <div class="icon-grid" id="iconGroup-banks-br">
+              <div class="icon-option" data-icon="itau"        data-color="#FF6600" onclick="selectAccountIcon(this)" title="Itaú"><span class="bank-logo itau-logo">I</span><span class="icon-label">Itaú</span></div>
+              <div class="icon-option" data-icon="inter"       data-color="#FF7A00" onclick="selectAccountIcon(this)" title="Inter"><span class="bank-logo inter-logo">IN</span><span class="icon-label">Inter</span></div>
+              <div class="icon-option" data-icon="bradesco"    data-color="#CC092F" onclick="selectAccountIcon(this)" title="Bradesco"><span class="bank-logo bradesco-logo">B</span><span class="icon-label">Bradesco</span></div>
+              <div class="icon-option" data-icon="nubank"      data-color="#820AD1" onclick="selectAccountIcon(this)" title="Nubank"><span class="bank-logo nubank-logo">N</span><span class="icon-label">Nubank</span></div>
+              <div class="icon-option" data-icon="bb"          data-color="#F5A623" onclick="selectAccountIcon(this)" title="BB"><span class="bank-logo bb-logo">BB</span><span class="icon-label">BB</span></div>
+              <div class="icon-option" data-icon="caixa"       data-color="#005CA9" onclick="selectAccountIcon(this)" title="Caixa"><span class="bank-logo caixa-logo">CE</span><span class="icon-label">Caixa</span></div>
+              <div class="icon-option" data-icon="santander"   data-color="#EC0000" onclick="selectAccountIcon(this)" title="Santander"><span class="bank-logo santander-logo">S</span><span class="icon-label">Santander</span></div>
+              <div class="icon-option" data-icon="xp"          data-color="#000000" onclick="selectAccountIcon(this)" title="XP"><span class="bank-logo xp-logo">XP</span><span class="icon-label">XP</span></div>
+              <div class="icon-option" data-icon="c6"          data-color="#242424" onclick="selectAccountIcon(this)" title="C6"><span class="bank-logo c6-logo">C6</span><span class="icon-label">C6</span></div>
+              <div class="icon-option" data-icon="neon"        data-color="#00D4FF" onclick="selectAccountIcon(this)" title="Neon"><span class="bank-logo" style="background:#00D4FF">Ne</span><span class="icon-label">Neon</span></div>
+              <div class="icon-option" data-icon="next"        data-color="#00AF3F" onclick="selectAccountIcon(this)" title="Next"><span class="bank-logo" style="background:#00AF3F">Nx</span><span class="icon-label">Next</span></div>
+              <div class="icon-option" data-icon="picpay"      data-color="#21C25E" onclick="selectAccountIcon(this)" title="PicPay"><span class="bank-logo" style="background:#21C25E">PP</span><span class="icon-label">PicPay</span></div>
+              <div class="icon-option" data-icon="mercadopago" data-color="#009EE3" onclick="selectAccountIcon(this)" title="Mercado Pago"><span class="bank-logo" style="background:#009EE3">MP</span><span class="icon-label">MP</span></div>
+              <div class="icon-option" data-icon="sicoob"      data-color="#006837" onclick="selectAccountIcon(this)" title="Sicoob"><span class="bank-logo" style="background:#006837;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">SC</span><span class="icon-label">Sicoob</span></div>
+              <div class="icon-option" data-icon="rico"        data-color="#00A86B" onclick="selectAccountIcon(this)" title="Rico"><span class="bank-logo" style="background:#00A86B;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">Rc</span><span class="icon-label">Rico</span></div>
+              <div class="icon-option" data-icon="will"        data-color="#7B2D8B" onclick="selectAccountIcon(this)" title="Will Bank"><span class="bank-logo" style="background:#7B2D8B;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Will</span></div>
+            </div>
+            <div class="icon-grid" id="iconGroup-banks-fr" style="display:none">
+              <div class="icon-option" data-icon="boursobank" data-color="#1A2E5A" onclick="selectAccountIcon(this)" title="Boursobank"><span class="bank-logo boursobank-logo">Bb</span><span class="icon-label">Boursobank</span></div>
+              <div class="icon-option" data-icon="bnp"   data-color="#009B55" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#009B55;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BNP</span><span class="icon-label">BNP</span></div>
+              <div class="icon-option" data-icon="sg"    data-color="#E30613" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#E30613;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">SG</span><span class="icon-label">SG</span></div>
+              <div class="icon-option" data-icon="ca"    data-color="#009A44" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#009A44;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">CA</span><span class="icon-label">Crédit Ag.</span></div>
+              <div class="icon-option" data-icon="lcl"   data-color="#005BAB" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#005BAB;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">LCL</span><span class="icon-label">LCL</span></div>
+              <div class="icon-option" data-icon="revolut" data-color="#0075EB" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#0075EB;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">Rv</span><span class="icon-label">Revolut</span></div>
+              <div class="icon-option" data-icon="n26"   data-color="#3B82F6" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#3B82F6;color:#fff;border-radius:6px;font-weight:700;font-size:.7rem">N26</span><span class="icon-label">N26</span></div>
+              <div class="icon-option" data-icon="wise"  data-color="#9FE870" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#9FE870;color:#163300;border-radius:6px;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Wise</span></div>
+              <div class="icon-option" data-icon="paypal" data-color="#003087" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">PP</span><span class="icon-label">PayPal</span></div>
+            </div>
+            <div class="icon-grid" id="iconGroup-cards" style="display:none">
+              <div class="icon-option" data-icon="visa"       data-color="#1A1F71" onclick="selectAccountIcon(this)"><span class="bank-logo card-visa"><em>VISA</em></span><span class="icon-label">Visa</span></div>
+              <div class="icon-option" data-icon="mastercard" data-color="#EB001B" onclick="selectAccountIcon(this)"><span class="bank-logo card-mc"><span class="mc-left"></span><span class="mc-right"></span></span><span class="icon-label">Mastercard</span></div>
+              <div class="icon-option" data-icon="amex"       data-color="#2E77BC" onclick="selectAccountIcon(this)"><span class="bank-logo card-amex">AMEX</span><span class="icon-label">Amex</span></div>
+              <div class="icon-option" data-icon="elo"        data-color="#000000" onclick="selectAccountIcon(this)"><span class="bank-logo card-elo">elo</span><span class="icon-label">Elo</span></div>
+              <div class="icon-option" data-icon="hipercard"  data-color="#B40019" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#B40019;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">HC</span><span class="icon-label">Hipercard</span></div>
+              <div class="icon-option" data-icon="dinersclub" data-color="#004B87" onclick="selectAccountIcon(this)"><span class="bank-logo" style="background:#004B87;color:#fff;border-radius:50%;font-weight:700;font-size:.6rem">DC</span><span class="icon-label">Diners</span></div>
+            </div>
+            <div class="icon-grid" id="iconGroup-generic" style="display:none">
+              <div class="icon-option" data-icon="emoji-🏦" data-color="#2a6049" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">🏦</span><span class="icon-label">Banco</span></div>
+              <div class="icon-option" data-icon="emoji-💳" data-color="#1A1F71" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">💳</span><span class="icon-label">Cartão</span></div>
+              <div class="icon-option" data-icon="emoji-💰" data-color="#F5A623" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">💰</span><span class="icon-label">Dinheiro</span></div>
+              <div class="icon-option" data-icon="emoji-💵" data-color="#2a7a4a" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">💵</span><span class="icon-label">Notas</span></div>
+              <div class="icon-option" data-icon="emoji-📈" data-color="#1e5ba8" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">📈</span><span class="icon-label">Invest.</span></div>
+              <div class="icon-option" data-icon="emoji-🐷" data-color="#F4A0C0" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">🐷</span><span class="icon-label">Poupança</span></div>
+              <div class="icon-option" data-icon="emoji-🌍" data-color="#1e5ba8" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">🌍</span><span class="icon-label">Intern.</span></div>
+              <div class="icon-option" data-icon="emoji-💱" data-color="#b45309" onclick="selectAccountIcon(this)"><span style="font-size:1.5rem">💱</span><span class="icon-label">Câmbio</span></div>
+            </div>
+          </div>
+          <div class="acm-icon-picker-footer">
+            <span class="acm-icon-picker-sel-label">Selecionado:</span>
+            <span id="accountIconPreview" style="font-size:1.2rem;min-width:24px"></span>
+            <input type="hidden" id="accountIcon">
+            <div class="acm-color-row">
+              <label class="acm-color-label">Cor</label>
+              <input type="color" id="accountColor" value="#2a6049" class="acm-color-input" oninput="acmLivePreview()">
+            </div>
+            <button class="acm-ai-btn" type="button" onclick="accountAiSuggestIcon()">
+              🤖 Sugestão IA
+            </button>
+          </div>
+          <!-- AI suggestions panel -->
+          <div id="accountAiSuggestPanel" style="display:none;margin:0 12px 12px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">
+            <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
+            <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          </div>
         </div>
 
-        <div class="acc-form-section">
-          <div class="form-group full">
-            <label class="acc-field-label">Nome da Conta *</label>
-            <input type="text" id="accountName" class="acc-input" placeholder="Ex: Itaú Corrente"
-              oninput="document.getElementById('accPreviewName').textContent=this.value||'Nome da Conta'">
-          </div>
+        <!-- Grid de campos principais -->
+        <div class="acm-fields-grid">
 
-          <div class="acc-form-row">
-            <div class="form-group">
-              <label class="acc-field-label">Tipo *</label>
-              <select id="accountType" class="acc-input" onchange="_onAccModalTypeChange();_accUpdatePreview()">
-                <option value="corrente">Conta Corrente</option>
-                <option value="poupanca">Poupança</option>
-                <option value="cartao_credito">Cartão de Crédito</option>
-                <option value="investimento">Investimentos</option>
-                <option value="dinheiro">Dinheiro</option>
-                <option value="outros">Outros</option>
+          <!-- Tipo + Moeda -->
+          <div class="acm-field">
+            <label class="acm-field-label">Tipo de conta *</label>
+            <div class="acm-select-wrap">
+              <select id="accountType" class="acm-select" onchange="_onAccModalTypeChange();acmLivePreview()">
+                <option value="corrente">🏦 Conta Corrente</option>
+                <option value="poupanca">🐷 Poupança</option>
+                <option value="cartao_credito">💳 Cartão de Crédito</option>
+                <option value="investimento">📈 Investimentos</option>
+                <option value="dinheiro">💵 Dinheiro / Caixa</option>
+                <option value="outros">📌 Outros</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="acc-field-label">Moeda</label>
-              <select id="accountCurrency" class="acc-input" onchange="_accUpdatePreview()">
+          </div>
+
+          <div class="acm-field">
+            <label class="acm-field-label">Moeda</label>
+            <div class="acm-select-wrap">
+              <select id="accountCurrency" class="acm-select" onchange="acmLivePreview()">
                 <option value="BRL">🇧🇷 BRL — Real</option>
                 <option value="USD">🇺🇸 USD — Dólar</option>
                 <option value="EUR">🇪🇺 EUR — Euro</option>
-                <option value="AED">🇦🇪 AED — Dirham</option>
                 <option value="GBP">🇬🇧 GBP — Libra</option>
+                <option value="AED">🇦🇪 AED — Dirham</option>
                 <option value="CHF">🇨🇭 CHF — Franco</option>
               </select>
             </div>
           </div>
 
-          <div class="form-group full">
-            <label class="acc-field-label">Grupo</label>
-            <select id="accountGroupId" class="acc-input">
-              <option value="">— Sem grupo —</option>
-            </select>
-          </div>
-
-          <div class="form-group full">
-            <label id="accountBalanceLabel" class="acc-field-label">Saldo Inicial</label>
-            <div class="amt-wrap">
-              <button type="button" class="amt-sign-btn" id="accountBalanceSignBtn"
-                onclick="toggleAmtSign('accountBalance');_accUpdatePreview()" aria-label="Alternar sinal">+</button>
-              <input type="text" id="accountBalance" inputmode="numeric" placeholder="0,00"
-                pattern="[0-9.,]*" autocomplete="off"
-                oninput="_amtFieldInput('accountBalance');_accUpdatePreview()"
+          <!-- Saldo inicial -->
+          <div class="acm-field acm-field--full">
+            <label class="acm-field-label" id="accountBalanceLabel">Saldo inicial</label>
+            <div class="acm-amt-wrap">
+              <button type="button" class="acm-sign-btn" id="accountBalanceSignBtn" onclick="toggleAmtSign('accountBalance')" aria-label="Alternar sinal">+</button>
+              <input type="text" id="accountBalance" class="acm-input acm-input--mono" inputmode="numeric"
+                placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
+                oninput="_amtFieldInput('accountBalance');acmLivePreview()"
                 onkeydown="_amtFieldKeydown('accountBalance', event)"
-                onblur="_amtFieldBlur('accountBalance');_accUpdatePreview()"
+                onblur="_amtFieldBlur('accountBalance')"
                 onfocus="_amtFieldFocus('accountBalance')">
             </div>
-            <div class="acc-field-hint">Saldo de abertura. O saldo atual é calculado pelas transações.</div>
+            <div class="acm-hint">Saldo de abertura. O saldo atual é calculado automaticamente pelas transações.</div>
+          </div>
+
+          <!-- Grupo -->
+          <div class="acm-field acm-field--full">
+            <label class="acm-field-label">Grupo</label>
+            <div class="acm-select-wrap">
+              <select id="accountGroupId" class="acm-select">
+                <option value="">— Sem grupo —</option>
+              </select>
+            </div>
           </div>
 
           <!-- Conta favorita -->
-          <div class="form-group full">
-            <div class="acc-toggle-row">
-              <div class="acc-toggle-info">
-                <span class="acc-toggle-label">⭐ Conta Favorita</span>
-                <span class="acc-toggle-hint">Aparece como card de destaque no Dashboard</span>
+          <div class="acm-field acm-field--full">
+            <label class="acm-toggle-row">
+              <div class="acm-toggle-info">
+                <span class="acm-toggle-label">⭐ Conta favorita</span>
+                <span class="acm-toggle-sub">Aparece com destaque no dashboard</span>
               </div>
-              <label class="acc-switch">
-                <input type="checkbox" id="accountIsFavorite"
-                  onchange="_accUpdatePreview();document.getElementById('accPreviewFav').style.display=this.checked?'':'none'">
-                <span class="acc-switch-track"></span>
-              </label>
-            </div>
+              <div class="acm-switch-wrap">
+                <input type="checkbox" id="accountIsFavorite" class="acm-switch-input">
+                <span class="acm-switch"></span>
+              </div>
+            </label>
           </div>
 
-          <!-- Datas do cartão (só cartão_credito) -->
-          <div id="accountCardDatesConfig" style="display:none">
-            <div class="acc-section-card">
-              <div class="acc-section-card__title">💳 Datas do Cartão</div>
-              <div class="acc-form-row">
-                <div class="form-group">
-                  <label class="acc-field-label">Melhor dia de compra</label>
-                  <input type="number" id="accountBestPurchaseDay" class="acc-input" min="1" max="31"
-                    placeholder="Ex: 10" inputmode="numeric">
-                  <div class="acc-field-hint">Dia com maior prazo até vencer</div>
-                </div>
-                <div class="form-group">
-                  <label class="acc-field-label">Dia de vencimento</label>
-                  <input type="number" id="accountDueDay" class="acc-input" min="1" max="31"
-                    placeholder="Ex: 25" inputmode="numeric">
-                  <div class="acc-field-hint">Data do pagamento da fatura</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        </div>
+      </div><!-- /pane-basic -->
 
-          <!-- IOF (só cartão_credito) -->
-          <div id="accountIofConfig" style="display:none">
-            <div class="acc-section-card">
-              <div class="acc-toggle-row">
-                <div class="acc-toggle-info">
-                  <span class="acc-toggle-label">🇧🇷 Cartão Brasileiro</span>
-                  <span class="acc-toggle-hint">Habilita cálculo de IOF em compras internacionais</span>
-                </div>
-                <label class="acc-switch">
-                  <input type="checkbox" id="accountIsBrazilian" onchange="toggleAccountIof()">
-                  <span class="acc-switch-track"></span>
-                </label>
+      <!-- ════ TAB: CARTÃO ════ -->
+      <div class="acm-pane" id="acmPane-card">
+
+        <!-- Datas do cartão -->
+        <div class="acm-section-label">📅 Datas de vencimento</div>
+        <div class="acm-fields-grid">
+          <div class="acm-field">
+            <label class="acm-field-label">Melhor dia de compra</label>
+            <input type="number" id="accountBestPurchaseDay" class="acm-input" min="1" max="31"
+              placeholder="Ex: 10" inputmode="numeric">
+            <div class="acm-hint">Dia com maior prazo até fechar a fatura</div>
+          </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Dia de vencimento</label>
+            <input type="number" id="accountDueDay" class="acm-input" min="1" max="31"
+              placeholder="Ex: 25" inputmode="numeric">
+            <div class="acm-hint">Data de pagamento da fatura mensal</div>
+          </div>
+        </div>
+
+        <!-- IOF -->
+        <div class="acm-section-label" style="margin-top:16px">🌍 IOF Internacional</div>
+        <div class="acm-iof-box" id="accountIofConfig">
+          <label class="acm-toggle-row">
+            <div class="acm-toggle-info">
+              <span class="acm-toggle-label">🇧🇷 Cartão brasileiro</span>
+              <span class="acm-toggle-sub">Habilita cálculo de IOF em compras internacionais</span>
+            </div>
+            <div class="acm-switch-wrap">
+              <input type="checkbox" id="accountIsBrazilian" class="acm-switch-input" onchange="toggleAccountIof()">
+              <span class="acm-switch"></span>
+            </div>
+          </label>
+          <div id="accountIofRateGroup" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="acm-fields-grid" style="grid-template-columns:1fr auto;align-items:end;gap:10px">
+              <div class="acm-field" style="margin:0">
+                <label class="acm-field-label">Taxa IOF em compras internacionais (%)</label>
+                <input type="number" id="accountIofRate" class="acm-input" step="0.01" min="0" max="10" value="3.38" inputmode="decimal">
               </div>
-              <div id="accountIofRateGroup" style="display:none;margin-top:12px">
-                <div class="acc-form-row" style="align-items:center;gap:12px">
-                  <label class="acc-field-label" style="white-space:nowrap;margin:0">IOF sobre compras internacionais</label>
-                  <input type="number" id="accountIofRate" class="acc-input" step="0.01" min="0" max="10"
-                    value="3.38" inputmode="decimal" style="max-width:90px">
-                  <span style="font-size:.78rem;color:var(--muted);white-space:nowrap">%</span>
-                </div>
-              </div>
+              <div style="font-size:.78rem;color:var(--muted);padding-bottom:12px">padrão: 3,38%</div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- ── TAB: Ícone ──────────────────────────────────────────── -->
-      <div class="acc-tab-pane" id="tab-icon" style="display:none">
-        <div class="acc-form-section">
-          <div class="form-group full">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <label class="acc-field-label" style="margin:0">Ícone da Conta</label>
-              <button type="button" onclick="accountAiSuggestIcon()"
-                class="acc-ai-btn">
-                🤖 Sugerir com IA
-              </button>
+        <!-- Detalhes do cartão -->
+        <div class="acm-section-label" style="margin-top:16px">💳 Detalhes do cartão</div>
+        <div class="acm-fields-grid" id="accountCardDataSection">
+          <div class="acm-field">
+            <label class="acm-field-label">Banco emissor</label>
+            <input type="text" id="accountCardIssuer" class="acm-input" placeholder="Ex: Itaú, Bradesco…">
+          </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Bandeira</label>
+            <div class="acm-select-wrap">
+              <select id="accountCardBrand" class="acm-select">
+                <option value="">— Selecionar —</option>
+                <option value="visa">Visa</option>
+                <option value="mastercard">Mastercard</option>
+                <option value="elo">Elo</option>
+                <option value="amex">American Express</option>
+                <option value="hipercard">Hipercard</option>
+                <option value="dinersclub">Diners Club</option>
+                <option value="outro">Outro</option>
+              </select>
             </div>
-            <!-- AI suggestions panel -->
-            <div id="accountAiSuggestPanel" style="display:none;margin-bottom:12px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
-              <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sugestões da IA</div>
-              <div id="accountAiSuggestContent" style="display:flex;gap:8px;flex-wrap:wrap">
-                <div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px">⏳ Buscando…</div>
-              </div>
+          </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Categoria</label>
+            <div class="acm-select-wrap">
+              <select id="accountCardType" class="acm-select">
+                <option value="">— Selecionar —</option>
+                <option value="standard">Standard</option>
+                <option value="gold">Gold</option>
+                <option value="platinum">Platinum</option>
+                <option value="black">Black</option>
+                <option value="infinite">Infinite</option>
+              </select>
             </div>
-            <div class="icon-picker" id="accountIconPicker">
-              <div class="icon-picker-tabs">
-                <button class="icon-tab active" onclick="showIconGroup(event,'banks-br')">🇧🇷 Bancos BR</button>
-                <button class="icon-tab" onclick="showIconGroup(event,'banks-fr')">🇫🇷 Bancos FR</button>
-                <button class="icon-tab" onclick="showIconGroup(event,'cards')">💳 Cartões</button>
-                <button class="icon-tab" onclick="showIconGroup(event,'generic')">⭐ Outros</button>
-              </div>
-              <div class="icon-grid" id="iconGroup-banks-br">
-                <div class="icon-option" data-icon="itau" data-color="#FF6600" onclick="selectAccountIcon(this)" title="Itaú"><span class="bank-logo itau-logo">I</span><span class="icon-label">Itaú</span></div>
-                <div class="icon-option" data-icon="inter" data-color="#FF7A00" onclick="selectAccountIcon(this)" title="Banco Inter"><span class="bank-logo inter-logo">IN</span><span class="icon-label">Inter</span></div>
-                <div class="icon-option" data-icon="bradesco" data-color="#CC092F" onclick="selectAccountIcon(this)" title="Bradesco"><span class="bank-logo bradesco-logo">B</span><span class="icon-label">Bradesco</span></div>
-                <div class="icon-option" data-icon="nubank" data-color="#820AD1" onclick="selectAccountIcon(this)" title="Nubank"><span class="bank-logo nubank-logo">N</span><span class="icon-label">Nubank</span></div>
-                <div class="icon-option" data-icon="bb" data-color="#F5A623" onclick="selectAccountIcon(this)" title="Banco do Brasil"><span class="bank-logo bb-logo">BB</span><span class="icon-label">BB</span></div>
-                <div class="icon-option" data-icon="caixa" data-color="#005CA9" onclick="selectAccountIcon(this)" title="Caixa"><span class="bank-logo caixa-logo">CE</span><span class="icon-label">Caixa</span></div>
-                <div class="icon-option" data-icon="santander" data-color="#EC0000" onclick="selectAccountIcon(this)" title="Santander"><span class="bank-logo santander-logo">S</span><span class="icon-label">Santander</span></div>
-                <div class="icon-option" data-icon="xp" data-color="#000000" onclick="selectAccountIcon(this)" title="XP Investimentos"><span class="bank-logo xp-logo">XP</span><span class="icon-label">XP</span></div>
-                <div class="icon-option" data-icon="c6" data-color="#242424" onclick="selectAccountIcon(this)" title="C6 Bank"><span class="bank-logo c6-logo">C6</span><span class="icon-label">C6</span></div>
-                <div class="icon-option" data-icon="neon" data-color="#00D4FF" onclick="selectAccountIcon(this)" title="Neon"><span class="bank-logo neon-logo" style="background:#00D4FF">Ne</span><span class="icon-label">Neon</span></div>
-                <div class="icon-option" data-icon="next" data-color="#00AF3F" onclick="selectAccountIcon(this)" title="Next"><span class="bank-logo next-logo" style="background:#00AF3F">Nx</span><span class="icon-label">Next</span></div>
-                <div class="icon-option" data-icon="picpay" data-color="#21C25E" onclick="selectAccountIcon(this)" title="PicPay"><span class="bank-logo picpay-logo" style="background:#21C25E">PP</span><span class="icon-label">PicPay</span></div>
-                <div class="icon-option" data-icon="mercadopago" data-color="#009EE3" onclick="selectAccountIcon(this)" title="Mercado Pago"><span class="bank-logo mercadopago-logo" style="background:#009EE3">MP</span><span class="icon-label">Mercado Pago</span></div>
-                <div class="icon-option" data-icon="sicoob" data-color="#006837" onclick="selectAccountIcon(this)" title="Sicoob"><span class="bank-logo" style="background:#006837;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">SC</span><span class="icon-label">Sicoob</span></div>
-                <div class="icon-option" data-icon="rico" data-color="#00A86B" onclick="selectAccountIcon(this)" title="Rico"><span class="bank-logo" style="background:#00A86B;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">Rc</span><span class="icon-label">Rico</span></div>
-                <div class="icon-option" data-icon="will" data-color="#7B2D8B" onclick="selectAccountIcon(this)" title="Will Bank"><span class="bank-logo" style="background:#7B2D8B;color:#fff;border-radius:50%;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Will</span></div>
-              </div>
-              <div class="icon-grid" id="iconGroup-banks-fr" style="display:none">
-                <div class="icon-option" data-icon="boursobank" data-color="#1A2E5A" onclick="selectAccountIcon(this)" title="Boursobank"><span class="bank-logo boursobank-logo">Bb</span><span class="icon-label">Boursobank</span></div>
-                <div class="icon-option" data-icon="bnp" data-color="#009B55" onclick="selectAccountIcon(this)" title="BNP Paribas"><span class="bank-logo" style="background:#009B55;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BNP</span><span class="icon-label">BNP Paribas</span></div>
-                <div class="icon-option" data-icon="sg" data-color="#E30613" onclick="selectAccountIcon(this)" title="Société Générale"><span class="bank-logo" style="background:#E30613;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">SG</span><span class="icon-label">Soc. Gén.</span></div>
-                <div class="icon-option" data-icon="ca" data-color="#009A44" onclick="selectAccountIcon(this)" title="Crédit Agricole"><span class="bank-logo" style="background:#009A44;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">CA</span><span class="icon-label">Crédit Ag.</span></div>
-                <div class="icon-option" data-icon="lcl" data-color="#005BAB" onclick="selectAccountIcon(this)" title="LCL"><span class="bank-logo" style="background:#005BAB;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">LCL</span><span class="icon-label">LCL</span></div>
-                <div class="icon-option" data-icon="laposte" data-color="#FDD000" onclick="selectAccountIcon(this)" title="La Banque Postale"><span class="bank-logo" style="background:#FDD000;color:#333;border-radius:4px;font-weight:700;font-size:.6rem">LP</span><span class="icon-label">La Poste</span></div>
-                <div class="icon-option" data-icon="cic" data-color="#003087" onclick="selectAccountIcon(this)" title="CIC"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:4px;font-weight:700;font-size:.7rem">CIC</span><span class="icon-label">CIC</span></div>
-                <div class="icon-option" data-icon="bred" data-color="#C8102E" onclick="selectAccountIcon(this)" title="BRED"><span class="bank-logo" style="background:#C8102E;color:#fff;border-radius:4px;font-weight:700;font-size:.65rem">BRED</span><span class="icon-label">BRED</span></div>
-                <div class="icon-option" data-icon="revolut" data-color="#0075EB" onclick="selectAccountIcon(this)" title="Revolut"><span class="bank-logo" style="background:#0075EB;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">Rv</span><span class="icon-label">Revolut</span></div>
-                <div class="icon-option" data-icon="n26" data-color="#3B82F6" onclick="selectAccountIcon(this)" title="N26"><span class="bank-logo" style="background:#3B82F6;color:#fff;border-radius:6px;font-weight:700;font-size:.7rem">N26</span><span class="icon-label">N26</span></div>
-                <div class="icon-option" data-icon="wise" data-color="#9FE870" onclick="selectAccountIcon(this)" title="Wise"><span class="bank-logo" style="background:#9FE870;color:#163300;border-radius:6px;font-weight:700;font-size:.65rem">W</span><span class="icon-label">Wise</span></div>
-                <div class="icon-option" data-icon="paypal" data-color="#003087" onclick="selectAccountIcon(this)" title="PayPal"><span class="bank-logo" style="background:#003087;color:#fff;border-radius:6px;font-weight:700;font-size:.65rem">PP</span><span class="icon-label">PayPal</span></div>
-              </div>
-              <div class="icon-grid" id="iconGroup-cards" style="display:none">
-                <div class="icon-option" data-icon="visa" data-color="#1A1F71" onclick="selectAccountIcon(this)" title="Visa"><span class="bank-logo card-visa"><em>VISA</em></span><span class="icon-label">Visa</span></div>
-                <div class="icon-option" data-icon="mastercard" data-color="#EB001B" onclick="selectAccountIcon(this)" title="Mastercard"><span class="bank-logo card-mc"><span class="mc-left"></span><span class="mc-right"></span></span><span class="icon-label">Mastercard</span></div>
-                <div class="icon-option" data-icon="amex" data-color="#2E77BC" onclick="selectAccountIcon(this)" title="American Express"><span class="bank-logo card-amex">AMEX</span><span class="icon-label">Amex</span></div>
-                <div class="icon-option" data-icon="elo" data-color="#000000" onclick="selectAccountIcon(this)" title="Elo"><span class="bank-logo card-elo">elo</span><span class="icon-label">Elo</span></div>
-                <div class="icon-option" data-icon="hipercard" data-color="#B40019" onclick="selectAccountIcon(this)" title="Hipercard"><span class="bank-logo" style="background:#B40019;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">HC</span><span class="icon-label">Hipercard</span></div>
-                <div class="icon-option" data-icon="dinersclub" data-color="#004B87" onclick="selectAccountIcon(this)" title="Diners Club"><span class="bank-logo" style="background:#004B87;color:#fff;border-radius:50%;font-weight:700;font-size:.6rem">DC</span><span class="icon-label">Diners</span></div>
-                <div class="icon-option" data-icon="sams" data-color="#0067A0" onclick="selectAccountIcon(this)" title="Sam's Club"><span class="bank-logo" style="background:#0067A0;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">S</span><span class="icon-label">Sam's</span></div>
-                <div class="icon-option" data-icon="porto" data-color="#005B8E" onclick="selectAccountIcon(this)" title="Porto Seguro"><span class="bank-logo" style="background:#005B8E;color:#fff;border-radius:4px;font-weight:700;font-size:.6rem">PS</span><span class="icon-label">Porto</span></div>
-              </div>
-              <div class="icon-grid" id="iconGroup-generic" style="display:none">
-                <div class="icon-option" data-icon="emoji-🏦" data-color="#2a6049" onclick="selectAccountIcon(this)" title="Banco"><span style="font-size:1.5rem">🏦</span><span class="icon-label">Banco</span></div>
-                <div class="icon-option" data-icon="emoji-💳" data-color="#1A1F71" onclick="selectAccountIcon(this)" title="Cartão"><span style="font-size:1.5rem">💳</span><span class="icon-label">Cartão</span></div>
-                <div class="icon-option" data-icon="emoji-💰" data-color="#F5A623" onclick="selectAccountIcon(this)" title="Dinheiro"><span style="font-size:1.5rem">💰</span><span class="icon-label">Dinheiro</span></div>
-                <div class="icon-option" data-icon="emoji-💵" data-color="#2a7a4a" onclick="selectAccountIcon(this)" title="Notas"><span style="font-size:1.5rem">💵</span><span class="icon-label">Notas</span></div>
-                <div class="icon-option" data-icon="emoji-📈" data-color="#1e5ba8" onclick="selectAccountIcon(this)" title="Investimentos"><span style="font-size:1.5rem">📈</span><span class="icon-label">Invest.</span></div>
-                <div class="icon-option" data-icon="emoji-🐷" data-color="#F4A0C0" onclick="selectAccountIcon(this)" title="Poupança"><span style="font-size:1.5rem">🐷</span><span class="icon-label">Poupança</span></div>
-                <div class="icon-option" data-icon="emoji-🌍" data-color="#1e5ba8" onclick="selectAccountIcon(this)" title="Internacional"><span style="font-size:1.5rem">🌍</span><span class="icon-label">Intern.</span></div>
-                <div class="icon-option" data-icon="emoji-💱" data-color="#b45309" onclick="selectAccountIcon(this)" title="Câmbio"><span style="font-size:1.5rem">💱</span><span class="icon-label">Câmbio</span></div>
-              </div>
-              <!-- Cor personalizada -->
-              <div class="acc-icon-footer">
-                <span class="acc-icon-preview-wrap">
-                  <span style="font-size:.72rem;color:var(--muted)">Selecionado:</span>
-                  <span id="accountIconPreview" style="font-size:1.3rem;min-width:30px"></span>
-                </span>
-                <input type="hidden" id="accountIcon">
-                <label class="acc-color-pick">
-                  <input type="color" id="accountColor" value="#2a6049"
-                    oninput="_accUpdatePreview()"
-                    style="width:32px;height:28px;padding:2px;border-radius:6px;cursor:pointer;border:1px solid var(--border)">
-                  <span style="font-size:.72rem;color:var(--muted)">Cor</span>
-                </label>
-              </div>
-            </div>
+          </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Limite total</label>
+            <input type="number" id="accountCardLimit" class="acm-input acm-input--mono" placeholder="0,00" min="0" step="0.01" inputmode="decimal">
           </div>
         </div>
-      </div>
 
-      <!-- ── TAB: Bancário ───────────────────────────────────────── -->
-      <div class="acc-tab-pane" id="tab-bank" style="display:none">
-        <div class="acc-form-section">
-          <div class="acc-section-header">🏦 Dados Bancários <span class="acc-section-opt">opcional</span></div>
-          <div class="acc-form-row">
-            <div class="form-group">
-              <label class="acc-field-label">Banco / Instituição</label>
-              <input type="text" id="accountBankName" class="acc-input" placeholder="Ex: Itaú, Nubank…">
-            </div>
-            <div class="form-group">
-              <label class="acc-field-label">Código ISPB</label>
-              <input type="text" id="accountBankCode" class="acc-input" placeholder="Ex: 341" inputmode="numeric">
-            </div>
+        <!-- Cartão não selecionado aviso -->
+        <div id="acmCardNotice" class="acm-notice" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Selecione o tipo <strong>Cartão de Crédito</strong> na aba Básico para editar estas configurações.
+        </div>
+      </div><!-- /pane-card -->
+
+      <!-- ════ TAB: BANCÁRIO ════ -->
+      <div class="acm-pane" id="acmPane-bank">
+        <div class="acm-section-label">🏦 Dados bancários <span class="acm-optional-badge">opcional</span></div>
+        <div class="acm-fields-grid">
+          <div class="acm-field">
+            <label class="acm-field-label">Banco / Instituição</label>
+            <input type="text" id="accountBankName" class="acm-input" placeholder="Ex: Itaú, Nubank…">
           </div>
-          <div class="acc-form-row">
-            <div class="form-group">
-              <label class="acc-field-label">Agência</label>
-              <input type="text" id="accountAgency" class="acc-input" placeholder="Ex: 0001-9">
-            </div>
-            <div class="form-group">
-              <label class="acc-field-label">Número da Conta</label>
-              <input type="text" id="accountNumber" class="acc-input" placeholder="Ex: 12345-6">
-            </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Código COMPE</label>
+            <input type="text" id="accountBankCode" class="acm-input" placeholder="Ex: 341" inputmode="numeric">
           </div>
-          <div class="form-group full">
-            <label class="acc-field-label">IBAN</label>
-            <input type="text" id="accountIban" class="acc-input" placeholder="Ex: FR7630001007941234567890185"
-              style="font-family:monospace;font-size:.84rem;letter-spacing:.04em">
+          <div class="acm-field">
+            <label class="acm-field-label">Agência</label>
+            <input type="text" id="accountAgency" class="acm-input" placeholder="Ex: 0001-9">
           </div>
-          <div class="acc-form-row">
-            <div class="form-group">
-              <label class="acc-field-label">Routing Number (EUA)</label>
-              <input type="text" id="accountRoutingNumber" class="acc-input" placeholder="9 dígitos ABA" inputmode="numeric">
-            </div>
-            <div class="form-group">
-              <label class="acc-field-label">SWIFT / BIC</label>
-              <input type="text" id="accountSwiftBic" class="acc-input" placeholder="Ex: BNPAFRPPXXX"
-                style="font-family:monospace;font-size:.84rem;letter-spacing:.04em">
-            </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Número da conta</label>
+            <input type="text" id="accountNumber" class="acm-input" placeholder="Ex: 12345-6">
+          </div>
+          <div class="acm-field acm-field--full">
+            <label class="acm-field-label">IBAN</label>
+            <input type="text" id="accountIban" class="acm-input acm-input--mono" placeholder="Ex: FR7630001007941234567890185">
+          </div>
+          <div class="acm-field">
+            <label class="acm-field-label">Routing Number (EUA)</label>
+            <input type="text" id="accountRoutingNumber" class="acm-input acm-input--mono" placeholder="9 dígitos ABA" inputmode="numeric">
+          </div>
+          <div class="acm-field">
+            <label class="acm-field-label">SWIFT / BIC</label>
+            <input type="text" id="accountSwiftBic" class="acm-input acm-input--mono" placeholder="Ex: BNPAFRPPXXX">
           </div>
         </div>
-      </div>
+      </div><!-- /pane-bank -->
 
-      <!-- ── TAB: Cartão ─────────────────────────────────────────── -->
-      <div class="acc-tab-pane" id="tab-card" style="display:none">
-        <div class="acc-form-section">
-          <div class="acc-section-header">💳 Detalhes do Cartão <span class="acc-section-opt">opcional</span></div>
-          <div id="accountCardDataSection">
-            <div class="acc-form-row">
-              <div class="form-group">
-                <label class="acc-field-label">Banco Emissor</label>
-                <input type="text" id="accountCardIssuer" class="acc-input" placeholder="Ex: Itaú, Bradesco…">
-              </div>
-              <div class="form-group">
-                <label class="acc-field-label">Bandeira</label>
-                <select id="accountCardBrand" class="acc-input">
-                  <option value="">— Selecionar —</option>
-                  <option value="visa">Visa</option>
-                  <option value="mastercard">Mastercard</option>
-                  <option value="elo">Elo</option>
-                  <option value="amex">American Express</option>
-                  <option value="hipercard">Hipercard</option>
-                  <option value="dinersclub">Diners Club</option>
-                  <option value="outro">Outro</option>
-                </select>
-              </div>
-            </div>
-            <div class="acc-form-row">
-              <div class="form-group">
-                <label class="acc-field-label">Categoria</label>
-                <select id="accountCardType" class="acc-input">
-                  <option value="">— Selecionar —</option>
-                  <option value="standard">Standard</option>
-                  <option value="gold">Gold</option>
-                  <option value="platinum">Platinum</option>
-                  <option value="black">Black</option>
-                  <option value="infinite">Infinite</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="acc-field-label">Limite Total</label>
-                <input type="number" id="accountCardLimit" class="acc-input" placeholder="0,00"
-                  min="0" step="0.01" inputmode="decimal">
-              </div>
-            </div>
-          </div>
-          <!-- Aviso se tipo não é cartão -->
-          <div id="accCardTabHint" style="display:none;text-align:center;padding:28px 0;color:var(--muted);font-size:.84rem">
-            💳 Selecione o tipo <strong>Cartão de Crédito</strong> na aba Básico para habilitar estes campos.
-          </div>
-        </div>
-      </div>
+      <!-- ════ TAB: MAIS ════ -->
+      <div class="acm-pane" id="acmPane-extra">
 
-      <!-- ── TAB: Extra ──────────────────────────────────────────── -->
-      <div class="acc-tab-pane" id="tab-extra" style="display:none">
-        <div class="acc-form-section">
-          <!-- Vincular sonho -->
-          <div class="form-group full">
-            <label class="acc-field-label">🌟 Vincular a Sonho</label>
-            <select id="accountLinkedDreamId" class="acc-input">
+        <!-- Vincular a sonho -->
+        <div class="acm-section-label">🌟 Vinculação</div>
+        <div class="acm-field" style="margin-bottom:16px">
+          <label class="acm-field-label">Vincular a um sonho</label>
+          <div class="acm-select-wrap">
+            <select id="accountLinkedDreamId" class="acm-select">
               <option value="">— Nenhum —</option>
             </select>
-            <div class="acc-field-hint">Associe esta conta ao progresso de um sonho.</div>
           </div>
-          <!-- Observações -->
-          <div class="form-group full">
-            <label class="acc-field-label">📝 Observações</label>
-            <textarea id="accountNotes" class="acc-input" rows="4"
-              placeholder="Anotações livres sobre esta conta…"
-              style="resize:vertical;line-height:1.55"></textarea>
-            <div class="acc-field-hint">Visível apenas para você. Ex: finalidade, contatos, contratos.</div>
-          </div>
+          <div class="acm-hint">Associe esta conta ao progresso de um sonho financeiro.</div>
         </div>
-      </div>
 
-    </div><!-- /acc-modal-body -->
+        <!-- Observações -->
+        <div class="acm-section-label" style="margin-top:16px">📝 Observações</div>
+        <div class="acm-field">
+          <textarea id="accountNotes" class="acm-textarea" rows="3"
+            placeholder="Anotações livres sobre esta conta…"></textarea>
+          <div class="acm-hint">Visível apenas para você. Ex: finalidade, contatos, contratos.</div>
+        </div>
+      </div><!-- /pane-extra -->
 
-    <!-- ══ FOOTER ══ -->
-    <div class="acc-modal-footer">
-      <button class="btn btn-ghost" type="button" onclick="closeModal('accountModal')">Cancelar</button>
-      <button class="btn btn-primary" type="button" onclick="saveAccount()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>
-        Salvar Conta
+    </div><!-- /acm-body -->
+
+    <!-- ── FOOTER ── -->
+    <div class="acm-footer">
+      <button class="acm-btn-cancel" type="button" onclick="closeModal('accountModal')">Cancelar</button>
+      <button class="acm-btn-save" type="button" onclick="saveAccount()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Salvar conta
       </button>
     </div>
 
