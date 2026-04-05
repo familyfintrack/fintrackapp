@@ -5091,13 +5091,15 @@ Se você não solicitou isso, ignore este e-mail.`,
           onkeydown="if(event.key==='Enter')doVerify2FA()"
           oninput="this.value=this.value.replace(/[^0-9]/g,'')">
         <div class="twofa-actions">
-          <button onclick="doVerify2FA()" id="twoFaVerifyBtn"
-            style="width:100%;padding:13px;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit">
+          <button onclick="doVerify2FA()" id="twoFaVerifyBtn" class="lgn-btn-primary">
             Verificar
           </button>
           <div class="twofa-trust-row">
             <input type="checkbox" id="twoFaTrust" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
-            <label for="twoFaTrust">Confiar neste dispositivo por 30 dias</label>
+            <label for="twoFaTrust" style="flex:1">
+              Confiar neste dispositivo por 30 dias
+              <span id="twoFaTrustExpiry" style="display:none;font-size:.7rem;color:var(--muted);margin-left:4px"></span>
+            </label>
           </div>
           <button onclick="resend2FACode()" class="twofa-resend" id="twoFaResendBtn">
             Reenviar código
@@ -7573,6 +7575,24 @@ Se você não solicitou isso, ignore este e-mail.`,
               </div>
               <div style="font-size:.73rem;color:var(--muted);margin-top:10px;line-height:1.55">
                 Configure seu Telegram Chat ID em <strong>Notificações → Telegram</strong> para usar este canal.
+              </div>
+
+              <!-- Testar 2FA antes de ativar -->
+              <div id="profile2faSection" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+                <div style="font-size:.78rem;color:var(--text2);margin-bottom:8px;font-weight:600">
+                  🔐 Verificar canal antes de ativar
+                </div>
+                <div style="font-size:.73rem;color:var(--muted);margin-bottom:10px;line-height:1.5">
+                  Clique em <strong>Testar 2FA</strong> para receber um código de verificação.
+                  Você precisará confirmá-lo aqui para ativar a autenticação em dois fatores.
+                </div>
+                <button id="profile2faTestBtn" onclick="_test2FASetup()"
+                  style="padding:9px 18px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent-lt,#e8f2ee);color:var(--accent);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s"
+                  onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+                  onmouseout="this.style.background='var(--accent-lt,#e8f2ee)';this.style.color='var(--accent)'">
+                  📨 Testar 2FA
+                </button>
+                <div id="profile2faStatus" style="font-size:.76rem;margin-top:8px;display:none"></div>
               </div>
             </div>
           </div>
