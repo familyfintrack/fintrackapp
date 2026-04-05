@@ -1835,8 +1835,8 @@ function scMobileToggleFilter() {
   const panel = document.getElementById('scMobileFilters');
   const btn   = document.getElementById('scMobileFilterBtn');
   if (!panel) return;
-  const open = panel.style.display !== 'none';
-  panel.style.display = open ? 'none' : '';
+  const open = panel.style.display === 'block' || (panel.style.display !== 'none' && panel.style.display !== '');
+  panel.style.display = open ? 'none' : 'block';
   if (btn) btn.classList.toggle('active', !open);
   if (!open) {
     // focus search input when opening

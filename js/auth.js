@@ -1780,6 +1780,12 @@ function showLoginFormArea() {
   document.getElementById('loginFormArea').style.display = '';
   document.getElementById('loginError').style.display = 'none';
   document.getElementById('regError').style.display = 'none';
+  // Restaurar elementos de cabeçalho ocultos pelo modo 2FA
+  ['lgn-logo-wrap','lgn-form-title','lgn-form-sub'].forEach(cls => {
+    document.querySelectorAll('.' + cls).forEach(el => { el.style.display = ''; });
+  });
+  const formInner = document.querySelector('.lgn-form-inner');
+  if (formInner) formInner.classList.remove('lgn-2fa-mode');
   focusFieldSafely('loginEmail');
 }
 
@@ -4563,16 +4569,36 @@ async function _initiate2FA(authData, appUserRow) {
 }
 
 function _show2FAScreen() {
-  // Esconder todos os formulários de login
+  // Esconder todos os formulários e elementos de cabeçalho do login
   ['loginFormArea','registerFormArea','pendingApprovalArea',
    'forgotPwdArea','changePwdArea','recoveryPwdArea']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+  // Esconder logo, título e subtítulo para dar espaço ao 2FA
+  ['lgn-logo-wrap','lgn-form-title','lgn-form-sub'].forEach(cls => {
+    document.querySelectorAll('.' + cls).forEach(el => { el.style.display = 'none'; });
+  });
+  // Também esconder pelo id se houver
+  const logoImg = document.getElementById('loginLogoImg');
+  if (logoImg) logoImg.closest('.lgn-logo-wrap')?.style && (logoImg.closest('.lgn-logo-wrap').style.display = 'none');
+
+  // Adicionar classe ao form-inner para reduzir padding
+  const formInner = document.querySelector('.lgn-form-inner');
+  if (formInner) {
+    formInner.classList.add('lgn-2fa-mode');
+    // Scroll to top to ensure 2FA content is visible
+    formInner.scrollTop = 0;
+  }
 
   const area = document.getElementById('twoFaArea');
   if (area) area.style.display = '';
 
   const codeInput = document.getElementById('twoFaCode');
-  if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+  if (codeInput) {
+    codeInput.value = '';
+    // Delay focus to allow layout reflow on iOS
+    setTimeout(() => codeInput.focus(), 150);
+  }
 
   const errEl = document.getElementById('twoFaError');
   if (errEl) errEl.style.display = 'none';
