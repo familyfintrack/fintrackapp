@@ -19493,23 +19493,27 @@ section[data-page="transactions"] .content {
 .lgn-hero {
   display: flex; flex-direction: column;
   align-items: center; text-align: center;
-  padding-bottom: 32px;
+  padding-bottom: 22px;
 }
-.lgn-hero__logo-wrap { margin-bottom: 20px; }
+.lgn-hero__logo-wrap { margin-bottom: 18px; }
 .lgn-hero__logo {
-  height: 100px; object-fit: contain;
+  height: 150px; object-fit: contain;
   animation: lgnLogoPulse 5s ease-in-out infinite;
 }
 .lgn-hero__title {
+  /* kept for split theme — hidden in default immersive layout */
   font-size: 2.6rem; font-weight: 800;
   color: #f0fdf4; letter-spacing: -.06em;
   line-height: .92; font-family: var(--font-serif, Georgia, serif);
   margin-bottom: 12px; text-shadow: 0 2px 24px rgba(0,0,0,.4);
+  display: none; /* removed from default hero — only shown in split */
 }
 .lgn-hero__title-accent { color: #7dc242; }
 .lgn-hero__sub {
-  font-size: .82rem; color: rgba(200,238,160,.42);
-  line-height: 1.65; max-width: 310px; letter-spacing: .01em;
+  font-size: .92rem; font-weight: 500;
+  color: rgba(200,238,160,.55);
+  line-height: 1.5; max-width: 310px; letter-spacing: .04em;
+  text-transform: uppercase; font-size: .75rem;
 }
 
 /* ── Shared: form card ───────────────────────────────────────────── */
@@ -19633,274 +19637,8 @@ section[data-page="transactions"] .content {
     #030906;
 }
 
-/* ════════════════════════════════════════════════
-   THEME 2 — MINIMAL (dark, no hero, centered card)
-   Card glassmorphism over dark green gradient
-════════════════════════════════════════════════ */
-[data-login-theme="minimal"] .lgn-screen {
-  background:
-    radial-gradient(ellipse 120% 80% at 8% 20%, rgba(42,96,73,.32) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 90% at 92% 80%, rgba(20,50,35,.28) 0%, transparent 52%),
-    #050e09;
-}
-[data-login-theme="minimal"] .lgn-hero {
-  padding-bottom: 0;
-}
-[data-login-theme="minimal"] .lgn-hero__title,
-[data-login-theme="minimal"] .lgn-hero__sub {
-  display: none;
-}
-[data-login-theme="minimal"] .lgn-hero__logo {
-  height: 72px; margin-bottom: 0;
-}
-[data-login-theme="minimal"] .lgn-hero__logo-wrap {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
-}
-[data-login-theme="minimal"] .lgn-hero__logo-wrap::after {
-  content: 'Family FinTrack';
-  font-size: 1.3rem; font-weight: 800; color: #f0fdf4;
-  font-family: var(--font-serif, Georgia, serif); letter-spacing: -.04em;
-}
-[data-login-theme="minimal"] .lgn-card {
-  background: rgba(255,255,255,.055);
-  border-color: rgba(255,255,255,.1);
-  box-shadow: 0 28px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
-}
 
-/* ════════════════════════════════════════════════
-   THEME 3 — SPLIT LIGHT
-   Right: pure white form. Left: dark brand panel.
-   Requires extra HTML — applied with JS class swap.
-════════════════════════════════════════════════ */
-[data-login-theme="split"] .lgn-screen {
-  background: #f4f7f4;
-  align-items: stretch;
-  justify-content: stretch;
-}
-[data-login-theme="split"] .lgn-screen::after { display: none; }
-[data-login-theme="split"] .lgn-grid { display: none; }
-[data-login-theme="split"] .lgn-orb  { display: none; }
-[data-login-theme="split"] .lgn-center {
-  max-width: none; width: 100%; height: 100%;
-  flex-direction: row; padding: 0; gap: 0;
-}
-[data-login-theme="split"] .lgn-hero {
-  width: 420px; flex-shrink: 0; min-width: 0;
-  padding: 52px 48px; text-align: left; align-items: flex-start;
-  background: linear-gradient(165deg, #071510 0%, #0e2a1a 55%, #071510 100%);
-  position: relative; overflow: hidden;
-  justify-content: center;
-}
-[data-login-theme="split"] .lgn-hero::after {
-  content: '';
-  position: absolute; top: -100px; right: -100px;
-  width: 350px; height: 350px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(125,194,66,.14) 0%, transparent 65%);
-  pointer-events: none;
-}
-[data-login-theme="split"] .lgn-hero__logo-wrap {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
-}
-[data-login-theme="split"] .lgn-hero__logo {
-  height: 48px; animation: none; margin-bottom: 0;
-  filter: drop-shadow(0 2px 12px rgba(125,194,66,.4));
-}
-[data-login-theme="split"] .lgn-hero__logo-wrap::after {
-  content: 'Family FinTrack';
-  font-size: 1.1rem; font-weight: 800;
-  color: #f0fdf4; font-family: var(--font-serif, Georgia, serif);
-}
-[data-login-theme="split"] .lgn-hero__title {
-  font-size: 1.85rem; line-height: 1.05; margin-bottom: 14px;
-  text-align: left; text-shadow: none;
-}
-[data-login-theme="split"] .lgn-hero__title-accent { color: #7dc242; }
-[data-login-theme="split"] .lgn-hero__sub {
-  font-size: .8rem; max-width: 280px; text-align: left; margin-bottom: 32px;
-}
-[data-login-theme="split"] .lgn-hero-feats {
-  display: flex; flex-direction: column; gap: 8px; width: 100%;
-}
-[data-login-theme="split"] .lgn-hero-feat {
-  display: flex; align-items: center; gap: 10px;
-  font-size: .78rem; color: rgba(200,238,160,.62); padding: 9px 14px;
-  background: rgba(255,255,255,.03); border: 1px solid rgba(125,194,66,.07);
-  border-radius: 10px;
-}
-[data-login-theme="split"] .lgn-card-wrap {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 48px 44px; background: #f4f7f4;
-}
-[data-login-theme="split"] .lgn-card {
-  background: #fff;
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  border: 1px solid #e4ede4; border-radius: 16px;
-  box-shadow: 0 4px 40px rgba(0,0,0,.08); max-width: 380px;
-}
-[data-login-theme="split"] .lgn-card::before { display: none; }
-[data-login-theme="split"] .lgn-form-title { color: #050e07; }
-[data-login-theme="split"] .lgn-form-sub { color: #6b8878; }
-[data-login-theme="split"] .lgn-label { color: #1a3828; }
-[data-login-theme="split"] .lgn-input {
-  background: #fafcfa; border-color: #d8e8d8; color: #050e07;
-}
-[data-login-theme="split"] .lgn-input:focus { border-color: #2a6049; background: #fff; box-shadow: 0 0 0 3px rgba(42,96,73,.10); }
-[data-login-theme="split"] .lgn-input::placeholder { color: #b4cdb4; }
-[data-login-theme="split"] .lgn-link { color: #2a6049; }
-[data-login-theme="split"] .lgn-checkbox-custom { background: #fff; border-color: #bcd4bc; }
-[data-login-theme="split"] .lgn-checkbox-label { color: #6b8878; }
-[data-login-theme="split"] .lgn-btn-primary {
-  background: linear-gradient(150deg, #163c28, #2a6049, #163c28);
-  box-shadow: 0 4px 22px rgba(42,96,73,.35);
-}
-[data-login-theme="split"] #loginError { color: #dc2626; }
 
-/* ════════════════════════════════════════════════
-   THEME 4 — LIGHT CLEAN (white background, minimal)
-   Full white, green accents, professional SaaS
-════════════════════════════════════════════════ */
-[data-login-theme="light"] .lgn-screen {
-  background: #f0f5f1;
-  align-items: center; justify-content: center;
-}
-[data-login-theme="light"] .lgn-screen::after { display: none; }
-[data-login-theme="light"] .lgn-grid {
-  background-image:
-    linear-gradient(rgba(42,96,73,.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(42,96,73,.04) 1px, transparent 1px);
-}
-[data-login-theme="light"] .lgn-orb1 {
-  background: radial-gradient(circle, rgba(125,194,66,.12) 0%, transparent 65%);
-  animation: lgnOrb1 18s ease-in-out infinite;
-}
-[data-login-theme="light"] .lgn-orb2 {
-  background: radial-gradient(circle, rgba(42,96,73,.08) 0%, transparent 65%);
-}
-[data-login-theme="light"] .lgn-orb3 { display: none; }
-[data-login-theme="light"] .lgn-center { max-width: 440px; }
-[data-login-theme="light"] .lgn-hero { padding-bottom: 24px; }
-[data-login-theme="light"] .lgn-hero__logo { height: 68px; animation: none; filter: drop-shadow(0 2px 12px rgba(42,96,73,.2)); }
-[data-login-theme="light"] .lgn-hero__title { color: #071510; text-shadow: none; font-size: 2rem; }
-[data-login-theme="light"] .lgn-hero__title-accent { color: #1a5038; }
-[data-login-theme="light"] .lgn-hero__sub { color: rgba(5,14,9,.4); }
-[data-login-theme="light"] .lgn-card {
-  background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none;
-  border: 1px solid #dce8dc;
-  box-shadow: 0 4px 40px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
-}
-[data-login-theme="light"] .lgn-card::before {
-  background: linear-gradient(90deg, transparent, rgba(42,96,73,.5), rgba(125,194,66,.6), rgba(42,96,73,.5), transparent);
-}
-[data-login-theme="light"] .lgn-form-title { color: #050e07; }
-[data-login-theme="light"] .lgn-form-sub { color: #6b8878; }
-[data-login-theme="light"] .lgn-label { color: #1a3828; }
-[data-login-theme="light"] .lgn-input { background: #fafcfa; border-color: #d8e8d8; color: #050e07; }
-[data-login-theme="light"] .lgn-input:focus { border-color: #2a6049; background: #fff; box-shadow: 0 0 0 3px rgba(42,96,73,.10); }
-[data-login-theme="light"] .lgn-input::placeholder { color: #b4cdb4; }
-[data-login-theme="light"] .lgn-link { color: #2a6049; }
-[data-login-theme="light"] .lgn-pwd-toggle { color: rgba(5,14,9,.3); }
-[data-login-theme="light"] .lgn-checkbox-custom { background: #fff; border-color: #bcd4bc; }
-[data-login-theme="light"] .lgn-checkbox-label { color: #6b8878; }
-[data-login-theme="light"] .lgn-btn-primary {
-  background: linear-gradient(150deg, #163c28, #2a6049, #163c28);
-  box-shadow: 0 4px 22px rgba(42,96,73,.35), inset 0 1px 0 rgba(255,255,255,.1);
-}
-[data-login-theme="light"] #loginError { color: #dc2626; }
-
-/* ════════════════════════════════════════════════
-   THEME 5 — FINTECH BOLD (deep black, green-lime accent)
-   Very startup fintech: black bg, bright gradient btn
-════════════════════════════════════════════════ */
-[data-login-theme="fintech"] .lgn-screen {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(125,194,66,.07) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(42,96,73,.12) 0%, transparent 50%),
-    #060a07;
-}
-[data-login-theme="fintech"] .lgn-orb1 { opacity: .6; }
-[data-login-theme="fintech"] .lgn-orb2 { opacity: .5; }
-[data-login-theme="fintech"] .lgn-hero { padding-bottom: 28px; }
-[data-login-theme="fintech"] .lgn-hero__logo { height: 80px; }
-[data-login-theme="fintech"] .lgn-hero__title { font-size: 2.2rem; letter-spacing: -.05em; }
-[data-login-theme="fintech"] .lgn-hero__title-accent {
-  color: #a8e63c;
-  text-shadow: 0 0 40px rgba(168,230,60,.4);
-}
-[data-login-theme="fintech"] .lgn-hero__sub { color: rgba(200,238,160,.35); font-size: .78rem; }
-[data-login-theme="fintech"] .lgn-card {
-  background: rgba(10,18,12,.9);
-  border: 1px solid rgba(168,230,60,.15);
-  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 32px 80px rgba(0,0,0,.6);
-}
-[data-login-theme="fintech"] .lgn-card::before {
-  background: linear-gradient(90deg, transparent, #a8e63c, #7dc242, #a8e63c, transparent);
-  height: 1px;
-}
-[data-login-theme="fintech"] .lgn-form-title { color: #f0fdf4; }
-[data-login-theme="fintech"] .lgn-form-sub { color: rgba(200,238,160,.3); }
-[data-login-theme="fintech"] .lgn-label { color: rgba(168,230,60,.5); }
-[data-login-theme="fintech"] .lgn-input {
-  background: rgba(168,230,60,.03); border-color: rgba(168,230,60,.12);
-}
-[data-login-theme="fintech"] .lgn-input:focus { border-color: #a8e63c; background: rgba(168,230,60,.05); box-shadow: 0 0 0 3px rgba(168,230,60,.08); }
-[data-login-theme="fintech"] .lgn-link { color: #a8e63c; }
-[data-login-theme="fintech"] .lgn-checkbox-custom { border-color: rgba(168,230,60,.25); background: rgba(168,230,60,.04); }
-[data-login-theme="fintech"] .lgn-checkbox:checked ~ .lgn-checkbox-custom { background: #2a6049; border-color: #a8e63c; }
-[data-login-theme="fintech"] .lgn-checkbox-label { color: rgba(200,238,160,.4); }
-[data-login-theme="fintech"] .lgn-btn-primary {
-  background: linear-gradient(150deg, #a8e63c 0%, #7dc242 40%, #2a6049 100%);
-  box-shadow: 0 0 0 1px rgba(168,230,60,.2), 0 6px 32px rgba(168,230,60,.25);
-}
-[data-login-theme="fintech"] .lgn-btn-primary:hover {
-  box-shadow: 0 0 0 1px rgba(168,230,60,.35), 0 10px 40px rgba(168,230,60,.35);
-}
-
-/* ── Card wrapper — transparent passthrough except in split theme ── */
-.lgn-card-wrap {
-  display: contents; /* no visual effect — children lay out as if wrapper doesn't exist */
-}
-
-/* Hide split-only elements on non-split themes */
-.lgn-hero-feats { display: none; }
-
-/* ── Theme picker widget ─────────────────────────────────────────── */
-.lgn-theme-picker {
-  position: fixed; bottom: 16px; right: 16px; z-index: 10000;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
-}
-.lgn-theme-picker__toggle {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
-  color: rgba(255,255,255,.6); cursor: pointer; font-size: .85rem;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .15s; backdrop-filter: blur(12px);
-}
-.lgn-theme-picker__toggle:hover { background: rgba(125,194,66,.15); color: #7dc242; border-color: rgba(125,194,66,.3); }
-.lgn-theme-picker__panel {
-  background: rgba(10,18,12,.92); backdrop-filter: blur(20px);
-  border: 1px solid rgba(125,194,66,.15); border-radius: 14px;
-  padding: 10px; display: none; flex-direction: column; gap: 4px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.5);
-}
-.lgn-theme-picker__panel.open { display: flex; }
-.lgn-theme-picker__label {
-  font-size: .6rem; font-weight: 700; letter-spacing: .1em;
-  color: rgba(200,238,160,.35); text-transform: uppercase;
-  padding: 2px 8px 6px; white-space: nowrap;
-}
-.lgn-theme-opt {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; border-radius: 9px; cursor: pointer;
-  border: none; background: transparent; font-family: inherit;
-  color: rgba(255,255,255,.55); font-size: .75rem; font-weight: 600;
-  transition: all .14s; white-space: nowrap; text-align: left;
-}
-.lgn-theme-opt:hover { background: rgba(125,194,66,.08); color: rgba(200,238,160,.9); }
-.lgn-theme-opt.active { background: rgba(125,194,66,.12); color: #7dc242; }
-.lgn-theme-opt__dot {
-  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid rgba(255,255,255,.15);
-}
 
 /* ══ LOGIN MOBILE ═════════════════════════════════════════════════ */
 @media (max-width: 899px) {
@@ -19928,7 +19666,7 @@ section[data-page="transactions"] .content {
     padding-top: max(20px, env(safe-area-inset-top, 0px));
     min-height: 180px; max-height: 38dvh;
   }
-  .lgn-hero__logo { height: 80px; }
+  .lgn-hero__logo { height: 130px; }
   .lgn-hero__title { font-size: 2rem; margin-bottom: 8px; }
   .lgn-hero__sub { font-size: .78rem; }
   .lgn-card {
@@ -20004,9 +19742,8 @@ section[data-page="transactions"] .content {
   .lgn-theme-picker { bottom: auto; top: 12px; right: 12px; }
 }
 @media (max-width: 375px) {
-  .lgn-hero__logo { height: 68px; }
-  .lgn-hero__title { font-size: 1.75rem; }
-  .lgn-card { padding: 22px 18px max(22px, env(safe-area-inset-bottom, 12px)); }
+  .lgn-hero__logo { height: 110px; }
+  .lgn-card { padding: 20px 18px max(22px, env(safe-area-inset-bottom, 12px)); }
 }
 
 /* ── 2FA screen inherits card/form styles ────────────────────────── */
