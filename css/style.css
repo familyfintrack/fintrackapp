@@ -7307,35 +7307,34 @@ tr.tx-row-new td:first-child {
 
 .dash-favs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px;
-  align-items: stretch; /* all cards same height per row */
+  align-items: stretch;
 }
 
 .dash-fav-card {
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
-  padding: 8px 12px 6px;
+  border-radius: 14px;
+  padding: 12px 14px 10px;
   cursor: pointer;
   background:
     linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--card-clr, #2a6049) 90%, #000) 0%,
-      color-mix(in srgb, var(--card-clr, #2a6049) 72%, #000) 100%
+      140deg,
+      color-mix(in srgb, var(--card-clr, #2a6049) 88%, #000) 0%,
+      color-mix(in srgb, var(--card-clr, #2a6049) 68%, #000) 100%
     );
   color: #fff;
   transition: transform .18s ease, box-shadow .18s ease;
   box-shadow:
-    0 4px 16px color-mix(in srgb, var(--card-clr, #2a6049) 35%, transparent),
-    0 1px 3px rgba(0,0,0,.18);
+    0 4px 18px color-mix(in srgb, var(--card-clr, #2a6049) 38%, transparent),
+    0 1px 4px rgba(0,0,0,.2),
+    inset 0 1px 0 rgba(255,255,255,.10);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   display: flex;
   flex-direction: column;
-  /* Fixed height: all cards identical regardless of pending line */
-  height: 88px;
-  min-height: unset;
+  min-height: 100px;
 }
 
 .dash-fav-card:hover {
@@ -7378,8 +7377,8 @@ tr.tx-row-new td:first-child {
 .dash-fav-card__top {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 3px;
+  gap: 7px;
+  margin-bottom: 6px;
 }
 
 /* Icon pill */
@@ -7418,7 +7417,7 @@ tr.tx-row-new td:first-child {
 }
 
 .dash-fav-card__name {
-  font-size: .73rem;
+  font-size: .76rem;
   font-weight: 600;
   opacity: .85;
   white-space: nowrap;
@@ -7429,7 +7428,7 @@ tr.tx-row-new td:first-child {
 }
 
 .dash-fav-card__balance {
-  font-size: .93rem;
+  font-size: 1.02rem;
   font-weight: 700;
   font-family: var(--font-serif, monospace);
   font-variant-numeric: tabular-nums;
@@ -7458,7 +7457,7 @@ tr.tx-row-new td:first-child {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: rgba(255,255,255,.62);
-  margin-top: 1px;
+  margin-top: 3px;
 }
 .dash-fav-card__confirmed.neg {
   color: rgba(252,165,165,.8);
@@ -7472,18 +7471,17 @@ tr.tx-row-new td:first-child {
   white-space: nowrap;
 }
 
-/* Spacer — minimal, just fills gap between balance and actions */
+/* Spacer — fills gap between balance and actions */
 .dash-fav-card__spacer {
   flex: 1;
-  min-height: 0;
-  max-height: 6px;
+  min-height: 2px;
 }
 
 /* Action buttons row — always at the bottom of every card */
 .dash-fav-card__actions {
   display: flex;
   gap: 5px;
-  margin-top: 3px;
+  margin-top: 6px;
   justify-content: flex-end;
   position: relative;
   z-index: 1;
@@ -7522,11 +7520,10 @@ tr.tx-row-new td:first-child {
     gap: 10px;
   }
   .dash-fav-card {
-    padding: 8px 10px 7px;
-    height: 88px;
-    min-height: unset;
+    padding: 10px 11px 9px;
+    min-height: 96px;
   }
-  .dash-fav-card__balance { font-size: .92rem; }
+  .dash-fav-card__balance { font-size: .95rem; }
   .dash-fav-card__icon { width: 22px; height: 22px; border-radius: 6px; }
 }
 
@@ -22989,28 +22986,30 @@ tr.payee-row[onclick] { cursor: pointer; }
 /* ══════════════════════════════════════════════════════════════
    DASHBOARD — fav type group headers (uniform with app fmt)
 ══════════════════════════════════════════════════════════════ */
-.dash-fav-type-group { margin-bottom: 4px; }
+.dash-fav-type-group { margin-bottom: 8px; }
 .dash-fav-type-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 2px 10px;
+  padding: 0 2px 8px;
+  margin-bottom: 8px;
+  border-bottom: 1.5px solid var(--border);
 }
 .dash-fav-type-label {
-  font-size: .68rem;
+  font-size: .66rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--muted);
+  letter-spacing: .08em;
+  color: var(--text2);
   display: flex;
   align-items: center;
   gap: 5px;
 }
 .dash-fav-type-total {
-  font-size: .88rem;
+  font-size: .9rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.01em;
+  letter-spacing: -.02em;
 }
 .dash-fav-type-divider {
   height: 1px;
@@ -23022,7 +23021,7 @@ tr.payee-row[onclick] { cursor: pointer; }
 .dash-fav-columns {
   display: flex;
   flex-direction: column;  /* mobile: stack */
-  gap: 16px;
+  gap: 20px;
 }
 .dash-fav-columns .dash-fav-type-group {
   margin-bottom: 0;
@@ -23057,12 +23056,11 @@ tr.payee-row[onclick] { cursor: pointer; }
     gap: 10px;
   }
   .dash-fav-card {
-    padding: 10px 13px 8px;
-    height: 110px;
-    min-height: unset;
+    padding: 14px 16px 12px;
+    min-height: 112px;
   }
   .dash-fav-card__balance {
-    font-size: 1.05rem;
+    font-size: 1.08rem;
   }
   .dash-fav-card__icon {
     width: 28px;
@@ -23075,10 +23073,11 @@ tr.payee-row[onclick] { cursor: pointer; }
 @media (max-width: 480px) {
   .dash-favs-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px;
+    gap: 9px;
   }
   .dash-fav-card {
-    padding: 9px 11px 10px;
+    padding: 10px 12px 9px;
+    min-height: 96px;
   }
 }
 
