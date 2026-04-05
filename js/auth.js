@@ -4157,46 +4157,13 @@ async function ensureMasterAdmin() {
    5 themes: immersive | minimal | split | light | fintech
    Persisted in localStorage('ft_login_theme')
 ══════════════════════════════════════════════════════════════════ */
-
-const _LGN_THEME_KEY = 'ft_login_theme';
-const _LGN_THEMES    = ['immersive','minimal','split','light','fintech'];
-
-function _lgnApplyTheme(theme) {
-  if (!_LGN_THEMES.includes(theme)) theme = 'immersive';
-  const screen = document.getElementById('loginScreen');
-  if (!screen) return;
-  // Set data-login-theme on the screen container
-  if (theme === 'immersive') {
-    screen.removeAttribute('data-login-theme');
-  } else {
-    screen.setAttribute('data-login-theme', theme);
-  }
-  // Sync picker buttons active state
-  document.querySelectorAll('.lgn-theme-opt').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.theme === theme);
-  });
-}
-
-function _lgnSetTheme(theme, btn) {
-  _lgnApplyTheme(theme);
-  try { localStorage.setItem(_LGN_THEME_KEY, theme); } catch(_) {}
-  // Close picker after selection
-  const panel = document.getElementById('lgnThemePanel');
-  if (panel) panel.classList.remove('open');
-}
-window._lgnSetTheme = _lgnSetTheme;
-
-function _lgnToggleThemePicker() {
-  const panel = document.getElementById('lgnThemePanel');
-  if (panel) panel.classList.toggle('open');
-}
-window._lgnToggleThemePicker = _lgnToggleThemePicker;
-
-// Apply saved login theme immediately at page load (before any login interaction)
-(function _initLoginTheme() {
+// Login theme locked to Full Immersive — theme picker removed.
+// Clear any previously saved theme so old users don't see other themes.
+(function _clearLegacyLoginTheme() {
   try {
-    const saved = localStorage.getItem(_LGN_THEME_KEY);
-    if (saved) _lgnApplyTheme(saved);
+    localStorage.removeItem('ft_login_theme');
+    const s = document.getElementById('loginScreen');
+    if (s) s.removeAttribute('data-login-theme');
   } catch(_) {}
 })();
 
@@ -4703,16 +4670,23 @@ function _show2FAScreen() {
   if (area) area.style.display = '';
 
   const codeInput = document.getElementById('twoFaCode');
-  if (codeInput) { codeInput.value = ''; setTimeout(() => codeInput.focus(), 80); }
+  if (codeInput) { codeInput.value = ''; setTimeout(() => codeInput.focus(), 120); }
 
   const errEl = document.getElementById('twoFaError');
   if (errEl) errEl.style.display = 'none';
 
-  // Scroll the form panel back to top so 2FA is fully visible (critical on mobile)
-  const panel = document.querySelector('.lgn-form-inner');
-  if (panel) panel.scrollTop = 0;
-  const formPanel = document.querySelector('.lgn-form-panel');
-  if (formPanel) formPanel.scrollTop = 0;
+  // Scroll to top so 2FA fields are visible — works with new lgn-screen/lgn-card layout
+  try {
+    // The login screen itself scrolls on mobile (overflow-y: auto)
+    const screen = document.getElementById('loginScreen');
+    if (screen) screen.scrollTop = 0;
+    // Also scroll the card in case it has overflow
+    const card = screen?.querySelector?.('.lgn-card');
+    if (card) card.scrollTop = 0;
+    // Legacy fallbacks for any remaining structure
+    const panel = document.querySelector('.lgn-form-inner, .lgn-form-panel');
+    if (panel) panel.scrollTop = 0;
+  } catch(_) {}
 }
 
 // ── Verificar código inserido pelo usuário ──
