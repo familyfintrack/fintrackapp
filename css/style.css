@@ -443,8 +443,9 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 .empty-state p{font-size:.875rem;}
 
 /* MODALS */
-.modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:flex;align-items:flex-end;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
-.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:none;align-items:flex-end;justify-content:center;z-index:1000;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.modal-overlay.open{display:flex;pointer-events:all;animation:modalOverlayIn .22s ease both;}
+@keyframes modalOverlayIn{from{opacity:0}to{opacity:1}}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);overscroll-behavior-y:contain;}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal-handle{width:36px;height:4px;background:var(--border2);border-radius:100px;margin:10px auto 0;}
