@@ -5019,16 +5019,34 @@ Se você não solicitou isso, ignore este e-mail.`,
   <!-- ═══════════ LOGIN SCREEN — Full Immersive ═══════════ -->
   <div id="loginScreen" class="lgn-screen" style="display:flex;position:fixed;inset:0;z-index:9999">
 
-    <!-- Animated background orbs -->
+    <!-- Animated background -->
     <div class="lgn-orb lgn-orb1"></div>
     <div class="lgn-orb lgn-orb2"></div>
     <div class="lgn-orb lgn-orb3"></div>
     <div class="lgn-grid"></div>
 
-    <!-- Centered layout: hero top + card bottom -->
+    <!-- ══ DESKTOP BRAND PANEL (left, hidden on mobile) ══ -->
+    <div class="lgn-brand-panel">
+      <div class="lgn-brand-content">
+        <img src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-brand-logo">
+        <div class="lgn-brand-title">Family FinTrack</div>
+        <div class="lgn-brand-subtitle">Família inteligente, finanças sob controle</div>
+        <div class="lgn-brand-divider"></div>
+        <div class="lgn-brand-features">
+          <div class="lgn-brand-feat"><span>📊</span> Dashboard financeiro completo</div>
+          <div class="lgn-brand-feat"><span>🤖</span> Agente IA integrado</div>
+          <div class="lgn-brand-feat"><span>🔐</span> Dados seguros e privados</div>
+          <div class="lgn-brand-feat"><span>👨‍👩‍👧</span> Gestão familiar colaborativa</div>
+        </div>
+        <div class="lgn-brand-version">Family FinTrack · v16</div>
+      </div>
+    </div>
+
+    <!-- ══ FORM PANEL (right on desktop, full screen on mobile) ══ -->
+    <div class="lgn-form-panel">
     <div class="lgn-center">
 
-      <!-- Hero -->
+      <!-- Hero: mobile only — hidden ≥900px via CSS -->
       <div class="lgn-hero">
         <div class="lgn-hero__logo-wrap">
           <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-hero__logo">
@@ -5229,6 +5247,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       </div><!-- end lgn-card -->
     </div><!-- end lgn-center -->
+    </div><!-- end lgn-form-panel -->
 
   </div><!-- end lgn-screen -->
 
@@ -6507,21 +6526,11 @@ Se você não solicitou isso, ignore este e-mail.`,
       </div>
       <!-- Tab bar dentro do hero -->
       <div class="acc-tab-bar" role="tablist">
-        <button class="acc-tab active" role="tab" aria-selected="true"  onclick="_accTab(this,'tab-basic')"  data-tab="tab-basic">
-          🏦 Básico <span class="acc-tab-req" title="Obrigatório">✱</span>
-        </button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-icon')"   data-tab="tab-icon">
-          🎨 Ícone <span class="acc-tab-opt">opt</span>
-        </button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-bank')"   data-tab="tab-bank">
-          🏛️ Bancário <span class="acc-tab-opt">opt</span>
-        </button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-card')"   data-tab="tab-card">
-          💳 Cartão <span class="acc-tab-opt">opt</span>
-        </button>
-        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-extra')"  data-tab="tab-extra">
-          ✨ Extra <span class="acc-tab-opt">opt</span>
-        </button>
+        <button class="acc-tab active" role="tab" aria-selected="true"  onclick="_accTab(this,'tab-basic')"  data-tab="tab-basic">Básico <span class="acc-tab-req" title="Obrigatório">✱</span></button>
+        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-icon')"   data-tab="tab-icon">Ícone</button>
+        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-bank')"   data-tab="tab-bank">Bancário</button>
+        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-card')"   data-tab="tab-card">Cartão</button>
+        <button class="acc-tab"        role="tab" aria-selected="false" onclick="_accTab(this,'tab-extra')"  data-tab="tab-extra">Extra</button>
       </div>
     </div>
 
