@@ -4201,35 +4201,86 @@ async function _save2FASettings(appUserId) {
 // ── Disparar teste de 2FA durante setup (profile) ──
 // Envia código e exibe modal de confirmação; só habilita se usuário confirmar
 async function _test2FASetup() {
-  const btn = document.getElementById('profile2faTestBtn');
+  const btn      = document.getElementById('profile2faTestBtn');
   const statusEl = document.getElementById('profile2faStatus');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
   if (statusEl) statusEl.style.display = 'none';
+  // Remove any stale confirm box
+  document.getElementById('twoFaSetupConfirmBox')?.remove();
 
   try {
     const channel  = document.getElementById('twoFaChanTelegram')?.checked ? 'telegram' : 'email';
     const email    = currentUser?.email || '';
     const name     = currentUser?.name  || '';
     const tgChatId = currentUser?.telegram_chat_id || null;
-    const { data: appRow } = await sb.from('app_users').select('id').eq('email', email).maybeSingle();
-    if (!appRow) throw new Error('Usuário não encontrado.');
+
+    if (!email) throw new Error('Usuário não autenticado. Faça login novamente.');
+
+    const { data: appRow } = await sb
+      .from('app_users').select('id').eq('email', email).maybeSingle();
+    if (!appRow) throw new Error('Usuário não encontrado na base de dados.');
 
     const code = _gen2FACode();
-    await _store2FACode(appRow.id, code);
 
+    // Store code — pass channel explicitly instead of relying on _2fa.channel (which is null here)
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    try {
+      // Invalidate previous codes
+      await sb.from('two_fa_codes').update({ used: true })
+        .eq('user_id', appRow.id).eq('used', false);
+    } catch(_) {}
+    const { error: insertErr } = await sb.from('two_fa_codes').insert({
+      user_id:    appRow.id,
+      code:       code,
+      channel:    channel,
+      used:       false,
+      expires_at: expiresAt,
+    });
+    if (insertErr) throw new Error('Erro ao registrar código: ' + insertErr.message);
+
+    // Send code — verify it was actually sent before showing confirmation UI
     let sent = false;
+    let sendErr = '';
+
     if (channel === 'telegram' && tgChatId) {
-      try { await _send2FAByTelegram(tgChatId, code); sent = true; } catch(_e) {}
-    }
-    if (!sent) {
-      await _send2FAByEmail(email, code, name); sent = true;
+      try { await _send2FAByTelegram(tgChatId, code); sent = true; }
+      catch(e) { sendErr = e.message || 'Falha no Telegram'; }
     }
 
-    // Show inline confirmation UI
+    if (!sent) {
+      // Email — check config first
+      if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) {
+        throw new Error(
+          'EmailJS não configurado. Configure o EmailJS em Configurações → E-mail ' +
+          'para usar o canal de e-mail.'
+        );
+      }
+      try {
+        await _send2FAByEmail(email, code, name);
+        sent = true;
+      } catch(e) {
+        sendErr = e.message || 'Falha no envio de e-mail';
+      }
+    }
+
+    if (!sent) throw new Error('Não foi possível enviar o código: ' + sendErr);
+
+    // Show confirmation UI
     _show2FASetupConfirm(appRow.id, channel);
 
+    if (statusEl) {
+      const dest = channel === 'telegram' ? 'Telegram' : email;
+      statusEl.textContent = `✓ Código enviado para ${dest}. Digite abaixo para confirmar.`;
+      statusEl.style.color = '#16a34a';
+      statusEl.style.display = '';
+    }
+
   } catch(e) {
-    if (statusEl) { statusEl.textContent = '✗ ' + (e.message || e); statusEl.style.color = '#dc2626'; statusEl.style.display = ''; }
+    if (statusEl) {
+      statusEl.textContent = '✗ ' + (e.message || e);
+      statusEl.style.color = '#dc2626';
+      statusEl.style.display = '';
+    }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '📨 Testar 2FA'; }
   }

@@ -2025,7 +2025,8 @@ function _agentOnInputBlur() {
   if (ph) ph.style.opacity = (input && input.value) ? '0' : '1';
 }
 window._agentOnInputFocus = _agentOnInputFocus;
-window._agentOnInputBlur  = _agentOnInputBlur;
+window._agentOnInputBlur              = _agentOnInputBlur;
+window._agentRenderInlineSuggestions  = _agentRenderInlineSuggestions;
 
 // ── Voice mic ─────────────────────────────────────────────────────────────
 var _agentRecognition = null;
