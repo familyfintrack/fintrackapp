@@ -6181,17 +6181,31 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
 .forecast-tx-row td { padding:7px 10px; vertical-align:middle; }
 .forecast-date-cell {
-  width:24px;
-  padding: 4px 3px 4px 3px;
+  width: 10%;
+  min-width: 62px;
+  max-width: 90px;
+  padding: 4px 6px;
   color: var(--muted);
   vertical-align: middle;
   border-right: 1px solid var(--border);
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+  white-space: nowrap;
 }
 .forecast-head-date {
-  width: 24px;
-  min-width: 24px;
-  max-width: 24px;
+  width: 10%;
+  min-width: 62px;
+  max-width: 90px;
+  position: sticky;
+  left: 0;
+  background: var(--surface2);
+  z-index: 2;
 }
+col.forecast-col-date   { width: 10%; min-width: 62px; }
+col.forecast-col-amount { width: 18%; min-width: 90px; }
+col.forecast-col-desc   { width: auto; }
 .forecast-date-main { font-size:.75rem; line-height:1.15; font-weight:600; white-space:nowrap; }
 
 /* Forecast category icon in date column */
@@ -6248,7 +6262,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 @media (max-width: 640px) {
   .forecast-tx-row td { padding:5px 6px; }
-  .forecast-date-cell { width:24px; padding:5px 6px; border-right:none; }
+  .forecast-date-cell { width:10%; min-width:62px; padding:5px 6px; border-right:none; }
   .forecast-amount-cell { width:auto !important; font-size:.8rem; }
   .forecast-balance-head,
   .forecast-balance-cell {
@@ -6258,7 +6272,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
     padding:0 !important;
     overflow:hidden !important;
   }
-  .forecast-table-wrap table { table-layout:auto !important; }
+  .forecast-table-wrap table { table-layout:fixed !important; }
 }
 
 
@@ -7316,7 +7330,10 @@ tr.tx-row-new td:first-child {
   user-select: none;
   display: flex;
   flex-direction: column;
+  /* Fixed height — all cards same size regardless of content (pending, brl line, etc.) */
+  height: 108px;
   min-height: 108px;
+  max-height: 108px;
 }
 
 .dash-fav-card:hover {
@@ -7410,13 +7427,16 @@ tr.tx-row-new td:first-child {
 }
 
 .dash-fav-card__balance {
-  font-size: 1rem;
+  font-size: .95rem;
   font-weight: 700;
   font-family: var(--font-serif, monospace);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
   line-height: 1.15;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dash-fav-card__balance.neg {
@@ -7435,13 +7455,13 @@ tr.tx-row-new td:first-child {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: .68rem;
+  font-size: .63rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: rgba(255,255,255,.7);
-  margin-top: 3px;
-  padding-top: 3px;
-  border-top: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.65);
+  /* No margin — card has fixed height; this line must not expand it */
+  flex-shrink: 0;
+  line-height: 1.2;
 }
 .dash-fav-card__confirmed.neg {
   color: rgba(252,165,165,.8);
@@ -7505,9 +7525,11 @@ tr.tx-row-new td:first-child {
   }
   .dash-fav-card {
     padding: 8px 10px 7px;
+    height: 108px;
     min-height: 108px;
+    max-height: 108px;
   }
-  .dash-fav-card__balance { font-size: .92rem; }
+  .dash-fav-card__balance { font-size: .88rem; }
   .dash-fav-card__icon { width: 22px; height: 22px; border-radius: 6px; }
 }
 
@@ -9193,7 +9215,7 @@ body.ft-platform-windows .modal-close {
   .forecast-payee     { font-size: .79rem !important; }
 
   /* Date column wider and cleaner */
-  .forecast-date-cell      { width: 24px !important; }
+  .forecast-date-cell      { width: 10% !important; min-width: 62px !important; }
   .forecast-date-main      { font-size: .8rem !important; }
   .forecast-date-flag,
   .forecast-date-today     { font-size: .7rem !important; }
@@ -14473,7 +14495,7 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
   /* Tabela forecast mobile: células mais compactas */
   .forecast-tx-row td { padding: 6px 6px !important; }
-  .forecast-date-cell { width: 24px !important; padding-right: 2px !important; }
+  .forecast-date-cell { width: 10% !important; min-width: 60px !important; padding-right: 2px !important; }
   .forecast-date-main { font-size: .72rem !important; }
   .forecast-title     { font-size: .82rem !important; }
   .forecast-category  { font-size: .69rem !important; }
