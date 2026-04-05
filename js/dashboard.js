@@ -2206,14 +2206,17 @@ async function _openPatrimonioModal() {
   const accsInvest  = accs.filter(a => a.type === 'investimento');
   const accsCard    = accs.filter(a => a.type === 'cartao_credito');
 
-  // Saldo líquido (corrente + poupança + dinheiro + outros)
+  // Saldo líquido (corrente + poupança + dinheiro + outros — exceto CC e investimento)
   const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Investimentos — usar _totalPortfolioBalance (preço de mercado) quando disponível
+  // Investimentos — usar market value (_totalPortfolioBalance) quando disponível
   const invTotal = accsInvest.reduce((s,a) => {
     const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
     return s + toBRL(bal, a.currency||'BRL');
   }, 0);
+
+  // Cartões de crédito — saldo já pode ser negativo (fatura em aberto)
+  const cardLiquidTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
   // Investimentos por tipo (usando posições do módulo de investimentos)
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
@@ -2226,8 +2229,10 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // Total de ativos
-  const accountTotal = liquidTotal + invTotal;
+  // Total de ativos BRUTOS (sem subtrair passivos)
+  // Cartões de crédito POSITIVOS somam como ativo; negativos (fatura) são passivo
+  const cardPositive = Math.max(0, cardLiquidTotal);  // CC com saldo positivo → ativo
+  const accountTotal = liquidTotal + invTotal + cardPositive;
 
   // ══════════════════════════════════════════════════════════════════
   // PASSIVOS — dívidas ativas
@@ -2305,7 +2310,7 @@ async function _openPatrimonioModal() {
         <div>
           <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Líquido</div>
           <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Ativos: ${dashFmt(accountTotal,'BRL')} · Passivos: ${dashFmt(debtTotal,'BRL')}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Ativos: ${dashFmt(accountTotal,'BRL')} · Passivos: ${dashFmt(debtTotal + cardDebt,'BRL')}</div>
         </div>
         <button onclick="closeModal('patrimonioModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
       </div>
@@ -2412,6 +2417,29 @@ async function _openPatrimonioModal() {
         <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
           <span style="font-weight:700;color:var(--text)">${dashFmt(invTotal,'BRL')}</span>
         </div>
+      </div>`;
+  }
+
+  // ── Cartões com saldo positivo (pré-pago / crédito com saldo) ──────────
+  const cardPositiveAccs = accsCard.filter(a => (parseFloat(a.balance)||0) > 0);
+  if (cardPositiveAccs.length) {
+    content += `
+      <div style="margin-bottom:14px">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Cartões com Saldo</div>
+        <div style="display:flex;flex-direction:column;gap:4px">`;
+    cardPositiveAccs.forEach(a => {
+      const bal    = parseFloat(a.balance)||0;
+      const balBRL = toBRL(bal, a.currency||'BRL');
+      const pct    = _pct(balBRL, accountTotal);
+      content += _rowHtml(
+        _dashRenderIcon(a.icon, a.color, 16), a.name,
+        accountTypeLabel?.(a.type)||a.type, bal, balBRL,
+        a.currency||'BRL', a.color||'#1A1F71',
+        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
+        pct, a.color||'#1A1F71'
+      );
+    });
+    content += `</div>
       </div>`;
   }
 
@@ -2773,42 +2801,54 @@ async function _loadDashInvestmentsCard() {
 
   const prefs = _dashGetPrefs();
 
-  // Verificar se módulo investments está habilitado para a família
-  const modEnabled = (typeof isModuleEnabled === 'function')
-    ? isModuleEnabled('investments')
-    : (typeof _inv !== 'undefined');
-
   if (prefs['investments'] === false) { card.style.display = 'none'; return; }
-
   card.style.display = '';
-
-  if (!modEnabled) {
-    body.innerHTML = `<div style="text-align:center;padding:24px 16px;color:var(--muted)">
-      <div style="font-size:2rem;margin-bottom:8px">📈</div>
-      <div style="font-size:.83rem;font-weight:600;color:var(--text2);margin-bottom:6px">Módulo de Investimentos</div>
-      <div style="font-size:.78rem;line-height:1.5;margin-bottom:14px">Ative este módulo nas configurações da família para acompanhar sua carteira.</div>
-      <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Configurar módulo →</button>
-    </div>`;
-    return;
-  }
   body.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px;font-size:.83rem">⏳ Carregando carteira…</div>';
 
   try {
-    // Garantir que investimentos estão carregados
-    if (typeof loadInvestments === 'function' && typeof _inv !== 'undefined' && !_inv.loaded) {
-      await loadInvestments();
+    // Garantir que investimentos estão carregados — força reload se positions vazia
+    if (typeof loadInvestments === 'function') {
+      const needLoad = typeof _inv === 'undefined' || !_inv.loaded || (_inv.positions || []).length === 0;
+      if (needLoad) {
+        try { await loadInvestments(true); } catch(e) { console.warn('[inv card]', e?.message); }
+      }
     }
 
-    const positions = (typeof _inv !== 'undefined') ? (_inv.positions || []) : [];
-    const totalMV   = (typeof invTotalPortfolioValue === 'function') ? invTotalPortfolioValue() : 0;
+    // Fallback: buscar posições direto do banco se _inv ainda vazio
+    let positions = (typeof _inv !== 'undefined') ? (_inv.positions || []) : [];
+    if (!positions.length && sb) {
+      try {
+        const { data: posData } = await famQ(
+          sb.from('investment_positions').select('*')
+        ).order('ticker');
+        positions = (posData || []).filter(p => (+(p.quantity) || 0) > 0);
+      } catch(e) { console.warn('[inv card] direct fetch:', e?.message); }
+    }
+
+    const totalMV = positions.length
+      ? positions.reduce((s, p) => {
+          const price = (p.currency && p.currency !== 'BRL')
+            ? toBRL(+(p.current_price||0), p.currency)
+            : +(p.current_price||0);
+          return s + (+(p.quantity)||0) * price;
+        }, 0)
+      : (typeof invTotalPortfolioValue === 'function' ? invTotalPortfolioValue() : 0);
 
     if (!positions.length) {
-      body.innerHTML = `
-        <div style="text-align:center;padding:24px 16px;color:var(--muted)">
-          <div style="font-size:2rem;margin-bottom:8px">📊</div>
-          <div style="font-size:.83rem;font-weight:600">Nenhuma posição registrada</div>
-          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('investments')">Registrar investimento</button>
-        </div>`;
+      // Check if module is truly disabled or just empty
+      const invModEnabled = (typeof isModuleEnabled === 'function') ? isModuleEnabled('investments') : false;
+      body.innerHTML = invModEnabled
+        ? `<div style="text-align:center;padding:24px 16px;color:var(--muted)">
+            <div style="font-size:2rem;margin-bottom:8px">📊</div>
+            <div style="font-size:.83rem;font-weight:600">Nenhuma posição registrada</div>
+            <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('investments')">Registrar investimento</button>
+          </div>`
+        : `<div style="text-align:center;padding:24px 16px;color:var(--muted)">
+            <div style="font-size:2rem;margin-bottom:8px">📈</div>
+            <div style="font-size:.83rem;font-weight:600;color:var(--text2);margin-bottom:6px">Módulo de Investimentos</div>
+            <div style="font-size:.78rem;line-height:1.5;margin-bottom:14px">Ative este módulo nas configurações da família.</div>
+            <button class="btn btn-ghost btn-sm" onclick="navigate('settings')">Configurar módulo →</button>
+          </div>`;
       return;
     }
 
@@ -2830,16 +2870,35 @@ async function _loadDashInvestmentsCard() {
     const pnl       = totalMV - totalCost;
     const pnlPct    = totalCost > 0 ? (pnl / totalCost * 100) : 0;
 
+    // ── Individual positions by value descending ──
+    const sortedPositions = [...positions]
+      .map(p => {
+        const price = (p.currency && p.currency !== 'BRL')
+          ? toBRL(+(p.current_price||0), p.currency)
+          : +(p.current_price||0);
+        const mv    = (+(p.quantity)||0) * price;
+        const cost  = (+(p.quantity)||0) * (+(p.avg_cost)||0);
+        const pnlP  = mv - cost;
+        const pnlPP = cost > 0 ? (pnlP / cost * 100) : 0;
+        return { ...p, _mv: mv, _cost: cost, _pnl: pnlP, _pnlPct: pnlPP };
+      })
+      .filter(p => p._mv > 0)
+      .sort((a, b) => b._mv - a._mv);
+
     let html = `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px 10px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(30,91,66,.06),transparent)">
         <div>
-          <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Valor de mercado</div>
-          <div style="font-size:1.4rem;font-weight:800;font-family:var(--font-serif);color:var(--accent)">${dashFmt(totalMV,'BRL')}</div>
+          <div style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Valor de mercado</div>
+          <div style="font-size:1.35rem;font-weight:800;font-family:var(--font-serif);color:var(--accent);line-height:1.1">${dashFmt(totalMV,'BRL')}</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${sortedPositions.length} posições</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Resultado</div>
-          <div style="font-size:1rem;font-weight:700;color:${pnl>=0?'var(--accent)':'var(--red)'}">
-            ${pnl>=0?'+':''}${dashFmt(pnl,'BRL')} (${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%)
+          <div style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Resultado total</div>
+          <div style="font-size:.95rem;font-weight:800;color:${pnl>=0?'var(--accent)':'var(--red)'}">
+            ${pnl>=0?'+':''}${dashFmt(pnl,'BRL')}
+          </div>
+          <div style="font-size:.7rem;font-weight:700;color:${pnlPct>=0?'var(--accent)':'var(--red)'}">
+            ${pnlPct>=0?'▲':'▼'} ${Math.abs(pnlPct).toFixed(2)}%
           </div>
         </div>
       </div>`;
@@ -2862,12 +2921,13 @@ async function _loadDashInvestmentsCard() {
       html += `
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-              <span style="font-size:.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
-                <span>${typeEmoji[k]||'📌'}</span>${typeLabel[k]||k}
+              <span style="font-size:.74rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0"></span>
+                ${typeEmoji[k]||'📌'} ${typeLabel[k]||k}
               </span>
-              <span style="font-size:.7rem;color:var(--muted);white-space:nowrap">${pct.toFixed(1)}%</span>
+              <span style="font-size:.72rem;font-weight:700;color:var(--text2);white-space:nowrap">${dashFmt(grp.total,'BRL')} <span style="color:var(--muted);font-weight:400">${pct.toFixed(1)}%</span></span>
             </div>
-            <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+            <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden">
               <div style="height:100%;width:${Math.min(pct,100)}%;background:${color};border-radius:3px;transition:width .4s ease"></div>
             </div>
             <div style="display:flex;justify-content:space-between;margin-top:2px">
@@ -2883,6 +2943,37 @@ async function _loadDashInvestmentsCard() {
       <div style="padding:6px 14px 10px;text-align:right">
         <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira completa →</button>
       </div>`;
+
+    // ── Individual positions list ─────────────────────────────────────
+    if (sortedPositions.length > 0) {
+      html += `
+        <div style="border-top:1px solid var(--border);padding:10px 14px 12px">
+          <div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Posições</div>
+          <div style="display:flex;flex-direction:column;gap:5px">`;
+      sortedPositions.slice(0, 7).forEach(p => {
+        html += `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:var(--bg2);cursor:pointer"
+              onclick="navigate('investments')">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:baseline;gap:5px">
+                  <span style="font-size:.8rem;font-weight:800;color:var(--text)">${esc(p.ticker)}</span>
+                  <span style="font-size:.66rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px">${esc(p.name||'')}</span>
+                </div>
+                <div style="font-size:.63rem;color:var(--muted)">${+(p.quantity)||0} un.</div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:.82rem;font-weight:700;color:var(--text)">${dashFmt(p._mv,'BRL')}</div>
+                <div style="font-size:.64rem;font-weight:700;color:${p._pnl>=0?'var(--accent)':'var(--red)'}">${p._pnl>=0?'+':''}${dashFmt(p._pnl,'BRL')}</div>
+              </div>
+            </div>`;
+      });
+      if (sortedPositions.length > 7) {
+        html += `<div style="text-align:center;padding:5px 0;font-size:.7rem;color:var(--accent);cursor:pointer;font-weight:600" onclick="navigate('investments')">
+          +${sortedPositions.length - 7} posições → ver carteira completa
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
 
     // Destroy previous chart BEFORE replacing innerHTML
     if (_dashInvChart) { try { _dashInvChart.destroy(); } catch(_) {} _dashInvChart = null; }
