@@ -276,6 +276,9 @@
     max-width: calc(100vw - 120px) !important;
   }
 }
+
+/* tap-highlight removido globalmente — não afeta scroll */
+* { -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body class="app-shell">
@@ -644,7 +647,7 @@
       </div>
       <!-- family badge moved to FX bar; dashboard customize moved to page title bar -->
       <div class="grid-4 mb-4">
-        <div class="stat-card" onclick="_openPatrimonioModal()" style="cursor:pointer" title="Ver composição do patrimônio"><div class="stat-accent"></div><div class="stat-label">Patrimônio Total</div><div class="stat-value text-accent" id="statTotal">—</div><div class="stat-sub">📊 Ver composição</div></div>
+        <div class="stat-card" onclick="_openPatrimonioModal()" style="cursor:pointer" title="Ver composição do patrimônio"><div class="stat-accent"></div><div class="stat-label">Patrimônio Total</div><div class="stat-value text-accent" id="statTotal">—</div><div class="stat-sub" style="color:var(--accent);font-weight:600">Ver composição →</div></div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--green)"></div><div class="stat-label">Receitas do Mês</div><div class="stat-value text-green" id="statIncome">—</div><div class="stat-sub">Mês atual</div></div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--red)"></div><div class="stat-label">Despesas do Mês</div><div class="stat-value text-red" id="statExpenses">—</div><div class="stat-sub">Mês atual</div></div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--amber)"></div><div class="stat-label">Saldo do Mês</div><div class="stat-value" id="statBalance">—</div><div class="stat-sub">Receitas − Despesas</div></div>
@@ -4991,7 +4994,7 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div><!-- /mainApp -->
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
-  <div id="loginScreen" class="lgn-screen" style="display:flex;position:fixed;inset:0;z-index:9999">
+  <div id="loginScreen" class="lgn-screen" style="display:none;position:fixed;inset:0;z-index:9999">
 
     <!-- Left panel: branding (hidden on mobile) -->
     <div class="lgn-brand-panel">
@@ -7399,8 +7402,19 @@ Se você não solicitou isso, ignore este e-mail.`,
           <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
             <input type="checkbox" id="budgetAutoReset" checked style="width:16px;height:16px;margin-top:2px;cursor:pointer">
             <div>
-              <div style="font-weight:600;font-size:.88rem">🔄 Resetar a cada mês</div>
+              <div style="font-weight:600;font-size:.88rem">🔄 Recorrente — repete todo mês</div>
               <div style="font-size:.75rem;color:var(--muted);margin-top:2px">O orçamento se repete automaticamente todo mês, contabilizando apenas as transações do período</div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Pausar orçamento (só aparece em edição) -->
+        <div class="form-group full" id="budgetPausedGroup" style="display:none">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="budgetPaused" style="width:16px;height:16px;margin-top:2px;cursor:pointer">
+            <div>
+              <div style="font-weight:600;font-size:.88rem">⏸ Pausar este orçamento</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:2px">Orçamentos pausados ficam em standby — não contam no total e aparecem separados</div>
             </div>
           </label>
         </div>
@@ -7529,6 +7543,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/scheduled.js"></script>
   <script src="js/attachments.js"></script>
   <script src="js/iof.js"></script>
+  <script src="js/date.js"></script>
   <script src="js/forecast.js"></script>
   <script src="js/email.js"></script>
   <script src="js/import.js"></script>
@@ -9517,7 +9532,9 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 
   <script src="js/debts.js"></script>
+  <script src="js/dreams_kb.js"></script>
   <script src="js/dreams.js"></script>
+  <script src="js/agent_capabilities.js"></script>
   <script src="js/agent_engine.js"></script>
 <script>
 // ── Defensive stubs — prevent ReferenceError if agent.js hasn't loaded yet ──
