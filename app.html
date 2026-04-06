@@ -841,25 +841,6 @@
         </div>
       </div>
 
-      <!-- Card: Top Beneficiários e Fontes Pagadoras -->
-      <div id="dashCardTopPayees" class="dcard mb-4" style="display:none">
-        <div class="dcard-header">
-          <div class="dcard-title-wrap">
-            <div class="dcard-icon" style="background:rgba(234,88,12,.1);color:#ea580c">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-            <div>
-              <div class="dcard-title">Top Beneficiários</div>
-              <div class="dcard-sub">Maiores pagamentos do mês e do ano</div>
-            </div>
-          </div>
-          <button class="dcard-link-btn" onclick="navigate('reports')">Ver relatório →</button>
-        </div>
-        <div id="dashTopPayeesBody" class="dcard-body">
-          <div class="dcard-loading">⏳ Carregando…</div>
-        </div>
-      </div>
-
       <!-- Modal de customização do dashboard -->
       <div class="modal-overlay" id="dashCustomModal">
         <div class="modal" style="max-width:380px">
@@ -1277,6 +1258,8 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
             Objetivos
           </button>
+
+        </div>
       </div>
 
       <!-- ── Barra de filtros ── -->
@@ -1548,9 +1531,9 @@
         <span class="module-intro-chip">⚡ Alertas de limite</span>
         <span class="module-intro-chip">👥 Por membro da família</span>
       </div>
-      </div>
     </div>
 
+      </div>
     <!-- Controls bar -->
     <div class="budget-controls-bar">
       <div class="budget-controls-left">
@@ -1615,9 +1598,9 @@
         <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">👥 Por membro</span>
         <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">✨ IA sugere ícone</span>
       </div>
-      </div>
     </div>
 
+      </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
       <button class="btn btn-primary btn-sm" onclick="openObjectiveModal()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -2121,9 +2104,9 @@
           <span class="module-intro-chip">✅ Check em tempo real</span>
           <span class="module-intro-chip">💰 Controle de gastos</span>
         </div>
-        </div>
       </div>
 
+        </div>
       <div class="section-header mb-6">
 
         <button class="btn btn-primary" onclick="openCreateGroceryList()">+ Nova Lista</button>
@@ -2450,10 +2433,9 @@
 
       </div>
 
+
       <!-- ── View: Beneficiários / Fontes Pagadoras ─────────────────────────── -->
       <div id="reportPayeesView" style="display:none">
-
-        <!-- Filtros do relatório de beneficiários -->
         <div class="card mb-3" style="padding:14px 16px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div>
@@ -2481,12 +2463,8 @@
               </select>
             </div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="_rptPayeesLoad()" style="width:100%">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:5px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Gerar Relatório
-          </button>
+          <button class="btn btn-primary btn-sm" onclick="_rptPayeesLoad()" style="width:100%">Gerar Relatório</button>
         </div>
-
         <div id="reportPayeesBody">
           <div style="text-align:center;padding:40px 16px;color:var(--muted)">
             <div style="font-size:2rem;margin-bottom:8px">👥</div>
@@ -2514,10 +2492,7 @@
               <input type="date" id="rptObjTo" class="form-control" style="font-size:.83rem">
             </div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="_rptObjectivesLoad()" style="width:100%">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:5px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Gerar Análise
-          </button>
+          <button class="btn btn-primary btn-sm" onclick="_rptObjectivesLoad()" style="width:100%">Gerar Análise</button>
         </div>
         <div id="reportObjectivesBody">
           <div style="text-align:center;padding:40px 16px;color:var(--muted)">
@@ -3426,9 +3401,9 @@
           <span class="module-intro-chip" style="background:rgba(8,145,178,.08);color:#0369a1">🔗 Vínculos beneficiários</span>
           <span class="module-intro-chip" style="background:rgba(8,145,178,.08);color:#0369a1">🏷️ Categorias e tipos</span>
         </div>
-        </div>
       </div>
 
+        </div>
       <div class="section-header mb-6">
 
         <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
@@ -3646,9 +3621,9 @@
           <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📸 Snapshots históricos</span>
           <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">🔍 Detecção de padrões</span>
         </div>
-        </div>
       </div>
 
+        </div>
       <!-- ── TAB BAR ── -->
       <div class="ai2-tabbar">
         <button class="ai2-tab active" id="aiTab-analysis" onclick="_aiShowTab('analysis')">
@@ -3822,9 +3797,9 @@
           <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">💡 Plano de poupança</span>
           <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🏆 Conquistas</span>
         </div>
-        </div>
       </div>
 
+        </div>
       <div id="dreams-list-container" style="padding:0 0 100px">
         <!-- Rendered by dreams.js renderDreamsPage() -->
         <div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
