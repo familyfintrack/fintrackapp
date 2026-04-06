@@ -767,12 +767,11 @@ function clearFamilyScopedUI() {
   try {
     document.querySelectorAll('.modal-overlay').forEach(el => {
       try {
-        // Blur focused children before aria-hiding to avoid click-blocking browser bug
         const focused = el.querySelector(':focus');
         if (focused) try { focused.blur(); } catch(_) {}
         el.classList.remove('open');
         el.setAttribute('aria-hidden', 'true');
-        try { el.setAttribute('inert', ''); } catch(_) {}
+        // inert NOT used - iOS Safari compatibility
         if ((el.style.display || '').trim() === 'flex') el.style.removeProperty('display');
       } catch(_) {}
     });

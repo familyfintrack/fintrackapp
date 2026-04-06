@@ -301,19 +301,16 @@ function _setModalState(el, isOpen){
   if (isOpen) {
     el.classList.add('open');
     el.removeAttribute('aria-hidden');
-    el.removeAttribute('inert');
   } else {
-    // Blur any focused element inside before hiding — prevents aria-hidden+focus conflict
-    // that blocks ALL click events on the page (browser bug workaround)
+    // Blur focused descendants before aria-hidden to avoid browser warning
+    // that can leave the modal in a partially-blocked state
     try {
       const focused = el.querySelector(':focus');
-      if (focused) focused.blur();
+      if (focused) { focused.blur(); }
     } catch(_) {}
     el.classList.remove('open');
     el.setAttribute('aria-hidden', 'true');
-    // Use inert as well — recommended by WAI-ARIA spec, prevents focus from entering
-    // without the side-effect of blocking page-level pointer events
-    try { el.setAttribute('inert', ''); } catch(_) {}
+    // NOTE: inert intentionally NOT used — causes pointer-event blocking on iOS Safari
   }
 }
 function openModal(id){ _setModalState(document.getElementById(id), true); }

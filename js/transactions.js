@@ -250,6 +250,36 @@ async function loadTransactions(){
     renderTransactions();
   } catch(e) { toast(e.message,'error'); }
 }
+// ── Dream selector helper ────────────────────────────────────────────────────
+async function _populateTxDreamSelect(selectedId = null) {
+  const group = document.getElementById('txDreamGroup');
+  const sel   = document.getElementById('txDreamId');
+  if (!group || !sel) return;
+
+  // Show only when dreams module is enabled
+  const dreamsOn = (typeof isModuleEnabled === 'function') && isModuleEnabled('dreams');
+  group.style.display = dreamsOn ? '' : 'none';
+  if (!dreamsOn) return;
+
+  try {
+    const { data } = await famQ(
+      sb.from('dreams').select('id,title,dream_type').eq('status','active').order('title')
+    );
+    const dreams = data || [];
+    sel.innerHTML = '<option value="">— Nenhum sonho —</option>' +
+      dreams.map(d => {
+        const emoji = { viagem:'✈️', imovel:'🏠', veiculo:'🚗', educacao:'🎓',
+          saude:'💊', negocio:'💼', aposentadoria:'🌅', familia:'👨‍👩‍👧',
+          lazer:'🎉', outro:'🌟' }[d.dream_type] || '🌟';
+        const sel_ = d.id === selectedId ? ' selected' : '';
+        return `<option value="${d.id}"${sel_}>${emoji} ${(d.title||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`;
+      }).join('');
+  } catch(e) {
+    console.warn('[tx dream select]', e.message);
+    group.style.display = 'none';
+  }
+}
+
 // FX endpoint — must be declared before any async function that uses it
 const FX_API_BASE = (typeof window !== 'undefined' && window.FX_API_BASE)
   ? window.FX_API_BASE
@@ -1098,10 +1128,11 @@ async function openTransactionModal(id=''){
         _onTxSourceAccountChange(filteredAccId);
       }
     }
-    // Popular objetivo — nova transação começa sem vínculo
+    // Popular objetivo e sonho — nova transação começa sem vínculo
     if (typeof populateObjectiveSelect === 'function') {
       populateObjectiveSelect('txObjectiveId', null).catch(() => {});
     }
+    _populateTxDreamSelect(null).catch(() => {});
     openModal('txModal');
   if (typeof initTxFormMode === 'function') initTxFormMode();
   }
@@ -1146,9 +1177,11 @@ function resetTxModal(){
   _dismissAiPayeeSuggestion();
   _dismissAiAccountSuggestion();
   _dismissAiMemberSuggestion();
-  // Reset objetivo
+  // Reset objetivo e sonho
   const _objSel = document.getElementById('txObjectiveId');
   if (_objSel) _objSel.value = '';
+  const _drmSel = document.getElementById('txDreamId');
+  if (_drmSel) _drmSel.value = '';
   } catch(e) { console.error('[resetTxModal]', e); }
 }
 async function editTransaction(id){
@@ -1190,10 +1223,11 @@ async function editTransaction(id){
   window._pendingAmortDebtId = null;
   const _dab = document.getElementById('debtAmortizationBanner');
   if (_dab) { _dab.style.display = 'none'; _dab.innerHTML = ''; }
-  // Carregar objetivo vinculado
+  // Carregar objetivo e sonho vinculados
   if (typeof populateObjectiveSelect === 'function') {
     populateObjectiveSelect('txObjectiveId', data.objective_id || null).catch(() => {});
   }
+  _populateTxDreamSelect(data.dream_id || null).catch(() => {});
   openModal('txModal');
   if (typeof initTxFormMode === 'function') initTxFormMode();
 }
@@ -1865,6 +1899,7 @@ async function saveTransaction(){
       return document.getElementById('txFamilyMember')?.value || null;
     })(),
     objective_id: document.getElementById('txObjectiveId')?.value || null,
+    dream_id:     document.getElementById('txDreamId')?.value || null,
   };
   if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
   // Beneficiário obrigatório para não-transferências
@@ -1887,6 +1922,9 @@ async function saveTransaction(){
     }
     return;
   }
+  // Track dream_id to create contribution after save
+  const _txDreamIdSelected = document.getElementById('txDreamId')?.value || null;
+
   let err,txResult;
   if(id){
     ({error:err}=await sb.from('transactions').update(data).eq('id',id));
@@ -1986,6 +2024,26 @@ async function saveTransaction(){
   if (!id && txResult?.id && window._pendingAmortDebtId && typeof postDebtAmortizationEntry === 'function') {
     await postDebtAmortizationEntry(data.amount, data.date, txResult.id).catch(() => {});
   }
+  // Create dream contribution if dream was selected (new transactions only)
+  if (!id && _txDreamIdSelected && savedId) {
+    try {
+      const _drmAmt = Math.abs(parseFloat(data.brl_amount || data.amount) || 0);
+      if (_drmAmt > 0) {
+        await sb.from('dream_contributions').insert({
+          dream_id:   _txDreamIdSelected,
+          family_id:  famId(),
+          amount:     _drmAmt,
+          date:       data.date || new Date().toISOString().slice(0,10),
+          type:       'transaction',
+          notes:      `Vinculado à transação`,
+          created_at: new Date().toISOString(),
+        });
+      }
+    } catch(drmErr) {
+      console.warn('[dream contribution]', drmErr.message);
+    }
+  }
+
   _txSaving = false; // release guard
   toast(id?'✓ Atualizado!':'✓ Transação salva!','success');
   // Notify user on new transaction if enabled
@@ -2498,6 +2556,11 @@ async function openTxDetail(id) {
   if (t.memo)         metaRows.push(['Memo', esc(t.memo)]);
   if (t.tags?.length) metaRows.push(['Tags', t.tags.map(tag => `<span class="badge badge-muted">${esc(tag)}</span>`).join(' ')]);
   if (_objName)       metaRows.push(['🎯 Objetivo', `<span style="font-weight:700;color:var(--accent)">${esc(_objName)}</span>`]);
+  // Dream: resolve from _drm cache if available
+  const _drmName = t.dream_id
+    ? ((typeof _drm !== 'undefined' && _drm.dreams || []).find(d => d.id === t.dream_id)?.title || '🌟 Sonho vinculado')
+    : null;
+  if (_drmName)       metaRows.push(['🌟 Sonho', `<span style="font-weight:700;color:#f59e0b">${esc(_drmName)}</span>`]);
   if (t.family_composition) {
     const m = t.family_composition;
     const age = typeof _fmcCalcAge === 'function' ? _fmcCalcAge(m.birth_date) : null;

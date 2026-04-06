@@ -373,26 +373,30 @@ function _populatePricesCatFilter() {
     cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
-// Retorna o label do estabelecimento: nome do payee vinculado (se houver) + nome do store como legenda
+// Retorna o label do estabelecimento:
+// - Com beneficiário vinculado → mostra APENAS o nome do beneficiário
+// - Sem beneficiário → mostra o nome do estabelecimento (price_stores.name)
 function _storeLabel(s, opts = {}) {
   const payeeName = s.payees?.name;
   const storeName = s.name;
   if (!opts.html) {
-    // texto plano para <option>
-    if (payeeName && payeeName !== storeName) return `${payeeName} · ${storeName}`;
+    // texto plano para <option> — só beneficiário, ou store se não houver
     return payeeName || storeName;
   }
-  // HTML rico para uso em cards/linhas
-  if (payeeName && payeeName !== storeName) {
-    return `${esc(payeeName)} <span style="font-size:.68rem;color:var(--muted)">· ${esc(storeName)}</span>`;
+  // HTML: beneficiário em destaque; nome interno do store como legenda discreta
+  if (payeeName) {
+    const showSub = storeName && storeName !== payeeName;
+    return esc(payeeName) + (showSub
+      ? ` <span style="font-size:.68rem;color:var(--muted)">· ${esc(storeName)}</span>`
+      : '');
   }
-  return esc(payeeName || storeName);
+  return esc(storeName);
 }
 
 function _populatePricesStoreFilter() {
   const sel = document.getElementById('pricesStoreFilter');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Todos os estabelecimentos</option>' +
+  sel.innerHTML = '<option value="">Todos os beneficiários/estabelecimentos</option>' +
     _px.stores.map(s => `<option value="${s.id}">${esc(_storeLabel(s))}</option>`).join('');
 }
 
