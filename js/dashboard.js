@@ -655,7 +655,8 @@ function _catColor(color, idx, usedSet) {
 async function renderCategoryChart(){
   const now=new Date(),y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
   const _txSelect = 'id,date,description,amount,brl_amount,currency,account_id,category_id,categories(id,name,color),payees(name),accounts!transactions_account_id_fkey(name)';
-  const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-31`;
+  const _lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const _dateGte = `${y}-${m}-01`, _dateLte = `${y}-${m}-${String(_lastDay).padStart(2,'0')}`;
 
   // Build expense query (amount < 0)
   const qExp = famQ(sb.from('transactions').select(_txSelect))
@@ -2363,43 +2364,27 @@ window.toggleSupGroup = toggleSupGroup;
 
 // ── Modal: Composição do Patrimônio Total ─────────────────────────────────
 async function _openPatrimonioModal() {
-  // Garantir que state.accounts está populado — tentar recarregar se necessário
   let accs = Array.isArray(state.accounts) ? state.accounts : [];
   if (!accs.length) {
     try { await DB.accounts.load(); accs = state.accounts || []; } catch(_) {}
   }
   if (!accs.length) { toast('Nenhuma conta encontrada', 'info'); return; }
 
-  // ══════════════════════════════════════════════════════════════════
-  // CÁLCULO IDÊNTICO ao loadKPIs (db.js) — garante que total bate com dashboard
-  // ══════════════════════════════════════════════════════════════════
-
-  // Separar contas por tipo para exibição detalhada
+  // ── Calcular totais — idêntico ao KPI ──────────────────────────────────
   const accsLiquid  = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
   const accsInvest  = accs.filter(a => a.type === 'investimento');
   const accsCard    = accs.filter(a => a.type === 'cartao_credito');
 
-  // ── ATIVOS ─────────────────────────────────────────────────────────
-  // Saldo de contas líquidas (corrente + poupança + dinheiro + outros)
   const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-
-  // Investimentos — market value quando disponível (igual ao KPI)
-  const invTotal = accsInvest.reduce((s,a) => {
+  const invTotal    = accsInvest.reduce((s,a) => {
     const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
     return s + toBRL(bal, a.currency||'BRL');
   }, 0);
-
-  // Cartões de crédito — saldo entra integral (positivo OU negativo), igual ao KPI
-  const cardTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-
-  // Total de contas = soma de TODOS os saldos (idêntico ao accountTotal do KPI)
+  const cardTotal   = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
   const accountTotal = liquidTotal + invTotal + cardTotal;
+  const cardDebt    = Math.abs(Math.min(0, cardTotal));
 
-  // Separar CC positivos/negativos só para exibição visual
-  const cardPositive = Math.max(0, cardTotal);
-  const cardDebt     = Math.abs(Math.min(0, cardTotal));
-
-  // Posições de investimento por tipo (para breakdown visual)
+  // Posições de investimento por tipo
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
   const invByType = {};
   invPositions.forEach(p => {
@@ -2410,381 +2395,360 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // ── PASSIVOS — dívidas ativas ─────────────────────────────────────────────
-  // Schema correto: name (não description), creditor:payees!fkey(name) para credor
-  // status válidos: active|settled|suspended|renegotiated|archived (sem 'open')
-  let debtTotal = 0;
-  let debts = [];
+  // Dívidas ativas
+  let debtTotal = 0, debts = [];
   try {
-    const { data: debtsData, error: debtErr } = await famQ(
-      sb.from('debts').select(
-        'id,name,current_balance,original_amount,currency,status,start_date,fixed_rate,adjustment_type,periodicity,notes,' +
-        'creditor:payees!debts_creditor_payee_id_fkey(id,name)'
-      )
-    ).eq('status', 'active').order('current_balance', { ascending: false });
-    if (debtErr) throw debtErr;
-    debts = debtsData || [];
-    debtTotal = debts.reduce((s,d) =>
-      s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
-  } catch(e) {
-    console.warn('[patrimônio] debts query failed:', e?.message || e);
-    // fallback: tentar sem join (schema mais simples)
+    const { data: dd, error: de } = await famQ(
+      sb.from('debts').select('id,name,current_balance,original_amount,currency,status,fixed_rate,adjustment_type,creditor:payees!debts_creditor_payee_id_fkey(id,name)')
+    ).eq('status','active').order('current_balance',{ascending:false});
+    if (de) throw de;
+    debts = dd || [];
+    debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance??d.original_amount)||0, d.currency||'BRL'), 0);
+  } catch(_) {
     try {
-      const { data: debtsSimple } = await famQ(
-        sb.from('debts').select('id,name,current_balance,original_amount,currency,status')
-      ).eq('status','active');
-      debts = debtsSimple || [];
-      debtTotal = debts.reduce((s,d) =>
-        s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
-    } catch(_) {}
+      const { data: ds } = await famQ(sb.from('debts').select('id,name,current_balance,original_amount,currency,status')).eq('status','active');
+      debts = ds || [];
+      debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance??d.original_amount)||0, d.currency||'BRL'), 0);
+    } catch(__) {}
   }
 
-  // Total de passivos = dívidas + faturas CC em aberto (idêntico ao KPI)
   const totalPassivos = debtTotal + cardDebt;
+  const totalBRL      = accountTotal - debtTotal;
+  const ativosBase    = Math.max(accountTotal, 0.01);
 
-  // Patrimônio líquido = accountTotal (todos os saldos) - debtTotal
-  // NOTA: cardDebt já está embutido no accountTotal como negativo,
-  // então: totalBRL = accountTotal - debtTotal  (igual ao KPI: accountTotal - debtTotal)
-  const totalBRL = accountTotal - debtTotal;
+  // ── Helpers ────────────────────────────────────────────────────────────
+  const _pct  = (val, base) => base > 0 ? Math.min(100, Math.abs(val / base * 100)).toFixed(1) : '0.0';
+  const _isFX = (cur) => cur && cur !== 'BRL';
 
-  // Group accounts by currency
-  const byCurrency = {};
-  accs.forEach(a => {
-    const cur = a.currency || 'BRL';
-    if (!byCurrency[cur]) byCurrency[cur] = [];
-    byCurrency[cur].push(a);
-  });
+  const _invTypeLabel = { acao_br:'Ações BR', fii:'FII', etf_br:'ETF BR', acao_us:'Ações US',
+    etf_us:'ETF US', bdr:'BDR', fundo:'Fundos', crypto:'Criptomoeda', renda_fixa:'Renda Fixa', outro:'Outros' };
+  const _invTypeEmoji = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
+    bdr:'🌐', fundo:'🏦', crypto:'₿', renda_fixa:'💰', outro:'📌' };
+  const _adjLabel     = { fixed:'Fixo', selic:'SELIC', ipca:'IPCA', igpm:'IGP-M', cdi:'CDI', poupanca:'Poupança', custom:'Personalizado' };
 
-  // ── Helpers de formatação ──
-  // totalBRL = patrimônio líquido (ativos − passivos) — base para todos os percentuais
-  // Usamos Math.abs(accountTotal) como base das barras de ativos para que a soma chegue a 100%
-  // nas seções de ativo, e mostramos passivos como % do total de ativos (proporção real do passivo)
-  const _pctOfAssets   = (val) => accountTotal !== 0 ? Math.abs(val / accountTotal * 100).toFixed(1) : '0.0';
-  const _pctOfNet      = (val) => Math.abs(totalBRL) > 0.01 ? (val / Math.abs(totalBRL) * 100).toFixed(1) : '0.0';
-  // Mantém compatibilidade com chamadas existentes — usa assets como base para ativos
-  const _pct = (val, base) => (base || accountTotal) !== 0 ? Math.abs(val / (base || accountTotal) * 100).toFixed(1) : '0.0';
-  const _barHtml = (pct, color) =>
-    `<div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
-      <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:2px;transition:width .4s ease"></div>
+  // Barra de progresso proporcional
+  const _bar = (pct, color, h = 3) =>
+    `<div style="height:${h}px;border-radius:${h}px;background:var(--border);margin:3px 12px;overflow:hidden">
+      <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:${h}px;transition:width .45s ease"></div>
     </div>`;
-  const _rowHtml = (icon, name, sub, val, valBRL, cur, color, onclick, pct, barColor) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--surface2);cursor:${onclick?'pointer':'default'};transition:background .12s"
-      ${onclick ? `onclick="${onclick}" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='var(--surface2)'"` : ''}>
-      <div style="width:30px;height:30px;border-radius:8px;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
-        ${sub ? `<div style="font-size:.68rem;color:var(--muted)">${esc(sub)}</div>` : ''}
+
+  // Linha de conta
+  const _accountRow = (a, bal, balBRL, pct, cur, color, onclick) => {
+    const isFX   = _isFX(cur);
+    const isNeg  = balBRL < 0;
+    const dispBal = isFX ? dashFmt(Math.abs(bal), cur) : dashFmt(Math.abs(balBRL), 'BRL');
+    const subBRL  = isFX ? `<span style="font-size:.7rem;color:var(--muted)">= ${dashFmt(Math.abs(balBRL),'BRL')}</span>` : '';
+    return `
+      <div class="pat-account-row" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
+        background:var(--surface2);cursor:${onclick?'pointer':'default'};transition:background .12s;margin-bottom:3px"
+        ${onclick ? `onclick="${onclick}" onmouseover="this.style.background='rgba(0,0,0,.04)'" onmouseout="this.style.background='var(--surface2)'"` : ''}>
+        <div style="width:34px;height:34px;border-radius:9px;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${_dashRenderIcon(a.icon, a.color, 17)}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:.68rem;color:var(--muted)">${(typeof accountTypeLabel==='function'?accountTypeLabel(a.type):a.type)||''}</span>
+            ${isFX ? `<span style="font-size:.65rem;font-weight:700;color:var(--muted);background:rgba(0,0,0,.06);border-radius:4px;padding:1px 5px">${cur}</span>` : ''}
+            ${subBRL}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:${isNeg?'var(--red,#dc2626)':'var(--text)'}">${isNeg?'−':''}${dispBal}</div>
+          <div style="font-size:.65rem;color:var(--muted);margin-top:1px">${pct}% do patrimônio</div>
+        </div>
       </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:${val<0?'var(--red)':'var(--text)'}">${fmt(val,cur)}</div>
-        ${cur!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">${dashFmt(valBRL,'BRL')}</div>`:''}
-        ${pct!==null?`<div style="font-size:.65rem;color:var(--muted)">${pct}%</div>`:''}
+      ${_bar(pct, color || 'var(--accent)')}`;
+  };
+
+  // ── Seção: cabeçalho colapsável ──
+  const _sectionHeader = (id, emoji, title, total, color, extra='') =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 8px;border-bottom:2px solid ${color}22;margin-bottom:10px;cursor:pointer"
+      onclick="document.getElementById('pat-sec-${id}').classList.toggle('pat-collapsed')">
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:.9rem">${emoji}</span>
+        <span style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${color}">${title}</span>
+        ${extra}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:${color}">${dashFmt(total,'BRL')}</span>
+        <span style="font-size:.75rem;color:var(--muted)" id="pat-chev-${id}">▾</span>
+      </div>
+    </div>`;
+
+  // ══════════════════════════════════════════════════════
+  // BUILD HTML
+  // ══════════════════════════════════════════════════════
+  let html = `
+  <style>
+    .pat-collapsed > .pat-body { display:none !important; }
+    .pat-collapsed { }
+  </style>
+  <div style="padding:0 0 24px">
+
+    <!-- ── HERO ─────────────────────────────────────────────────── -->
+    <div style="background:linear-gradient(145deg,#0d3d28,#1a6644,#0f4a31);padding:22px 20px 20px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2280%22 cy=%2220%22 r=%2250%22 fill=%22rgba(255,255,255,.04)%22/><circle cx=%2210%22 cy=%2280%22 r=%2240%22 fill=%22rgba(255,255,255,.03)%22/></svg>') no-repeat center/cover"></div>
+      <div style="position:relative">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px">Patrimônio Líquido</div>
+            <div style="font-size:2rem;font-weight:900;font-family:var(--font-serif);color:#fff;line-height:1">${dashFmt(totalBRL,'BRL')}</div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+          </div>
+          <button onclick="closeModal('patrimonioModal')"
+            style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:34px;height:34px;font-size:.85rem;cursor:pointer;color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;flex-shrink:0;backdrop-filter:blur(4px)">✕</button>
+        </div>
+
+        <!-- Barra ativos vs passivos -->
+        <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;display:flex;gap:1px;margin-bottom:10px">
+          <div style="flex:${Math.max(accountTotal,0)};background:rgba(100,220,140,.85);border-radius:4px 0 0 4px;min-width:4px;transition:flex .5s"></div>
+          ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:rgba(240,80,80,.8);border-radius:0 4px 4px 0;min-width:4px;transition:flex .5s"></div>` : ''}
+        </div>
+
+        <!-- Grid KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px)">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);margin-bottom:3px">Ativos</div>
+            <div style="font-size:.88rem;font-weight:800;color:#7ef5a8">${dashFmt(accountTotal,'BRL')}</div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px)">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);margin-bottom:3px">Passivos</div>
+            <div style="font-size:.88rem;font-weight:800;color:${totalPassivos>0?'#fca5a5':'rgba(255,255,255,.7)'}">−${dashFmt(totalPassivos,'BRL')}</div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px)">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);margin-bottom:3px">Endivid.</div>
+            <div style="font-size:.88rem;font-weight:800;color:${accountTotal>0&&(totalPassivos/accountTotal)>0.5?'#fca5a5':accountTotal>0&&(totalPassivos/accountTotal)>0.2?'#fcd34d':'rgba(255,255,255,.8)'}">
+              ${accountTotal > 0 ? (totalPassivos/accountTotal*100).toFixed(1) : '0.0'}%
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    ${barColor && pct!==null ? _barHtml(pct,barColor) : ''}`;
 
-  // Tipo de ativo label
-  const _invTypeLabel = {
-    acao_br:'Ações BR', fii:'FII', etf_br:'ETF BR', acao_us:'Ações US', etf_us:'ETF US',
-    bdr:'BDR', fundo:'Fundos', crypto:'Cripto', renda_fixa:'Renda Fixa', outro:'Outros'
-  };
-  const _invTypeEmoji = {
-    acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
-    bdr:'🌐', fundo:'🏦', crypto:'₿', renda_fixa:'💰', outro:'📌'
-  };
+    <!-- ── CORPO ──────────────────────────────────────────────────── -->
+    <div style="padding:18px 16px 0">
 
-  let content = `
-    <div style="padding:20px 22px 24px">
-      <!-- Cabeçalho -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <div>
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px">Patrimônio Líquido</div>
-          <div style="font-size:1.8rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red)'}">${dashFmt(totalBRL,'BRL')}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Ativos: ${dashFmt(accountTotal,'BRL')} · Passivos: ${dashFmt(debtTotal + cardDebt,'BRL')}</div>
-        </div>
-        <button onclick="closeModal('patrimonioModal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:.9rem;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center">✕</button>
-      </div>
+      <!-- ═══ CONTAS LÍQUIDAS ════════════════════════════════════════ -->
+      ${accsLiquid.length ? `
+      <div class="pat-section" style="margin-bottom:18px">
+        ${_sectionHeader('liquid','💳','Contas', liquidTotal, '#1a6644')}
+        <div id="pat-sec-liquid" class=""><div class="pat-body">
+          ${accsLiquid.sort((a,b)=>Math.abs(toBRL(parseFloat(b.balance)||0,b.currency||'BRL'))-Math.abs(toBRL(parseFloat(a.balance)||0,a.currency||'BRL'))).map(a => {
+            const bal    = parseFloat(a.balance)||0;
+            const balBRL = toBRL(bal, a.currency||'BRL');
+            return _accountRow(a, bal, balBRL, _pct(Math.abs(balBRL), ativosBase), a.currency||'BRL', a.color||'var(--accent)', `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
+          }).join('')}
+        </div></div>
+      </div>` : ''}
 
-      <!-- ── ATIVOS ────────────────────────────────────────────────── -->
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);padding:4px 0 8px;border-bottom:1.5px solid var(--accent);margin-bottom:12px">
-        📈 ATIVOS — ${dashFmt(accountTotal,'BRL')}
-      </div>
-
-      <!-- Contas líquidas -->`;
-
-  if (accsLiquid.length) {
-    content += `
-      <div style="margin-bottom:14px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Contas</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    accsLiquid.sort((a,b)=>Math.abs(b.balance||0)-Math.abs(a.balance||0)).forEach(a => {
-      const bal    = parseFloat(a.balance)||0;
-      const balBRL = toBRL(bal, a.currency||'BRL');
-      const pct    = _pct(balBRL, accountTotal);
-      content += _rowHtml(
-        _dashRenderIcon(a.icon, a.color, 16), a.name,
-        accountTypeLabel?.(a.type)||a.type, bal, balBRL,
-        a.currency||'BRL', a.color||'var(--accent)',
-        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
-        pct, a.color||'var(--accent)'
-      );
-    });
-    content += `</div>
-        <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
-          <span style="font-weight:700;color:var(--text)">${dashFmt(liquidTotal,'BRL')}</span>
-        </div>
-      </div>`;
-  }
-
-  // Investimentos por tipo
-  if (accsInvest.length) {
-    content += `
-      <div style="margin-bottom:14px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">📊 Investimentos</div>`;
-
-    if (Object.keys(invByType).length > 0) {
-      // Breakdown por tipo de ativo
-      content += `<div style="display:flex;flex-direction:column;gap:4px">`;
-      Object.entries(invByType)
-        .sort(([,a],[,b]) => b.total - a.total)
-        .forEach(([k, grp]) => {
-          const pct = _pct(grp.total, accountTotal);
-          const typeLabel = (_invTypeLabel[k]||k);
-          const typeEmoji = (_invTypeEmoji[k]||'📌');
-          const color = '#1e5ba8';
-          // Linha do tipo (expansível)
-          content += `
-            <details style="background:var(--surface2);border-radius:9px;overflow:hidden">
-              <summary style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;list-style:none">
-                <div style="width:30px;height:30px;border-radius:8px;background:#1e5ba822;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">${typeEmoji}</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:.82rem;font-weight:700;color:var(--text)">${typeLabel}</div>
-                  <div style="font-size:.68rem;color:var(--muted)">${grp.positions.length} ativo${grp.positions.length!==1?'s':''}</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0">
-                  <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--text)">${dashFmt(grp.total,'BRL')}</div>
-                  <div style="font-size:.65rem;color:var(--muted)">${pct}%</div>
-                </div>
-              </summary>
-              <div style="padding:0 10px 8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:3px;margin-top:4px">
-                ${grp.positions.map(p => {
-                  const mv = p._mv || 0;
-                  const pnl = mv - (+(p.quantity||0) * (+(p.avg_cost||0)));
-                  const pnlPct = p.avg_cost ? (pnl / (+(p.quantity||0) * (+(p.avg_cost||0))) * 100) : 0;
-                  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+      <!-- ═══ INVESTIMENTOS ══════════════════════════════════════════ -->
+      ${accsInvest.length ? `
+      <div class="pat-section" style="margin-bottom:18px">
+        ${_sectionHeader('invest','📊','Investimentos', invTotal, '#1e5ba8')}
+        <div id="pat-sec-invest" class=""><div class="pat-body">
+          ${Object.keys(invByType).length > 0 ? `
+            ${Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => {
+              const emoji = _invTypeEmoji[k]||'📌';
+              const label = _invTypeLabel[k]||k;
+              const typePct = _pct(grp.total, ativosBase);
+              return `
+                <details style="border-radius:10px;overflow:hidden;background:var(--surface2);margin-bottom:3px">
+                  <summary style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;list-style:none;-webkit-appearance:none">
+                    <div style="width:34px;height:34px;border-radius:9px;background:#1e5ba822;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">${emoji}</div>
                     <div style="flex:1;min-width:0">
-                      <span style="font-size:.8rem;font-weight:700;color:var(--text)">${esc(p.ticker)}</span>
-                      <span style="font-size:.7rem;color:var(--muted);margin-left:5px">${esc(p.name||'')}</span>
+                      <div style="font-size:.84rem;font-weight:700;color:var(--text)">${label}</div>
+                      <div style="font-size:.68rem;color:var(--muted)">${grp.positions.length} ativo${grp.positions.length!==1?'s':''} · ${typePct}% do patrimônio</div>
                     </div>
                     <div style="text-align:right;flex-shrink:0">
-                      <div style="font-size:.8rem;font-weight:700">${dashFmt(mv,'BRL')}</div>
-                      <div style="font-size:.65rem;color:${pnl>=0?'var(--accent)':'var(--red)'}">${pnl>=0?'+':''}${dashFmt(pnl,'BRL')} (${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%)</div>
+                      <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--text)">${dashFmt(grp.total,'BRL')}</div>
+                      <div style="font-size:.65rem;color:var(--muted);margin-top:1px">▾ expandir</div>
                     </div>
-                  </div>`;
-                }).join('')}
-              </div>
-            </details>`;
-          content += _barHtml(pct, color);
-        });
-      content += `</div>`;
-    } else {
-      // Sem posições — mostrar contas de investimento
-      content += `<div style="display:flex;flex-direction:column;gap:4px">`;
-      accsInvest.forEach(a => {
-        const bal    = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
-        const balBRL = toBRL(bal, a.currency||'BRL');
-        content += _rowHtml(
-          _dashRenderIcon(a.icon, a.color, 16), a.name, 'Investimentos',
-          bal, balBRL, a.currency||'BRL', a.color||'#1e5ba8',
-          `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
-          _pct(balBRL,accountTotal), a.color||'#1e5ba8'
-        );
-      });
-      content += `</div>`;
-    }
+                  </summary>
+                  ${_bar(typePct,'#1e5ba8')}
+                  <div style="padding:4px 12px 10px;border-top:1px solid var(--border)">
+                    ${grp.positions.sort((a,b)=>b._mv-a._mv).map(p => {
+                      const mv      = p._mv || 0;
+                      const cost    = (+(p.quantity||0)) * (+(p.avg_cost||0));
+                      const pnl     = mv - cost;
+                      const pnlPct  = cost > 0 ? (pnl/cost*100) : 0;
+                      const isFX    = _isFX(p.currency);
+                      const cur     = p.currency || 'BRL';
+                      const posPct  = _pct(mv, ativosBase);
+                      return `
+                        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                          <div style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                              <span style="font-size:.84rem;font-weight:800;color:var(--text)">${esc(p.ticker)}</span>
+                              ${isFX?`<span style="font-size:.62rem;font-weight:700;background:rgba(0,0,0,.07);border-radius:4px;padding:1px 5px;color:var(--muted)">${cur}</span>`:''}
+                              <span style="font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${esc(p.name||'')}</span>
+                            </div>
+                            <div style="font-size:.67rem;color:var(--muted);margin-top:2px">${(+(p.quantity||0)).toLocaleString('pt-BR',{maximumFractionDigits:6})} un · PM ${dashFmt(+(p.avg_cost||0),cur)}</div>
+                          </div>
+                          <div style="text-align:right;flex-shrink:0">
+                            <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(mv,'BRL')}</div>
+                            ${isFX?`<div style="font-size:.67rem;color:var(--muted)">${dashFmt(mv/Math.max(toBRL(1,cur),0.0001),cur)} ${cur}</div>`:''}
+                            <div style="font-size:.67rem;color:${pnl>=0?'#16a34a':'#dc2626'};margin-top:1px">${pnl>=0?'▲':'▼'}${Math.abs(pnlPct).toFixed(1)}% ${pnl>=0?'+':''}${dashFmt(pnl,'BRL')}</div>
+                          </div>
+                        </div>`;
+                    }).join('')}
+                    <div style="display:flex;justify-content:flex-end;padding-top:6px">
+                      <span style="font-size:.72rem;font-weight:700;color:#1e5ba8">${dashFmt(grp.total,'BRL')}</span>
+                    </div>
+                  </div>
+                </details>`;
+            }).join('')}
+          ` : `
+            ${accsInvest.map(a => {
+              const bal    = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
+              const balBRL = toBRL(bal, a.currency||'BRL');
+              return _accountRow(a, bal, balBRL, _pct(balBRL,ativosBase), a.currency||'BRL', a.color||'#1e5ba8', `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
+            }).join('')}
+          `}
+        </div></div>
+      </div>` : ''}
 
-    content += `
-        <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem;color:var(--muted)">
-          <span style="font-weight:700;color:var(--text)">${dashFmt(invTotal,'BRL')}</span>
-        </div>
-      </div>`;
-  }
+      <!-- ═══ CARTÕES COM SALDO POSITIVO ════════════════════════════ -->
+      ${accsCard.some(a=>(parseFloat(a.balance)||0)>0) ? `
+      <div class="pat-section" style="margin-bottom:18px">
+        ${_sectionHeader('cards-pos','💳','Cartões com Saldo', Math.max(0,cardTotal), '#0284c7')}
+        <div id="pat-sec-cards-pos" class=""><div class="pat-body">
+          ${accsCard.filter(a=>(parseFloat(a.balance)||0)>0).map(a => {
+            const bal    = parseFloat(a.balance)||0;
+            const balBRL = toBRL(bal, a.currency||'BRL');
+            return _accountRow(a, bal, balBRL, _pct(balBRL,ativosBase), a.currency||'BRL', a.color||'#0284c7', `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
+          }).join('')}
+        </div></div>
+      </div>` : ''}
 
-  // ── Cartões com saldo positivo (pré-pago / crédito com saldo) ──────────
-  const cardPositiveAccs = accsCard.filter(a => (parseFloat(a.balance)||0) > 0);
-  if (cardPositiveAccs.length) {
-    content += `
-      <div style="margin-bottom:14px">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Cartões com Saldo</div>
-        <div style="display:flex;flex-direction:column;gap:4px">`;
-    cardPositiveAccs.forEach(a => {
-      const bal    = parseFloat(a.balance)||0;
-      const balBRL = toBRL(bal, a.currency||'BRL');
-      const pct    = _pct(balBRL, accountTotal);
-      content += _rowHtml(
-        _dashRenderIcon(a.icon, a.color, 16), a.name,
-        accountTypeLabel?.(a.type)||a.type, bal, balBRL,
-        a.currency||'BRL', a.color||'#1A1F71',
-        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`,
-        pct, a.color||'#1A1F71'
-      );
-    });
-    content += `</div>
-      </div>`;
-  }
-
-  Object.entries(byCurrency).forEach(([cur, group]) => {
-    // Mantido apenas como fallback para casos não cobertos acima
-    return;
-  });
-
-  // ── PASSIVOS ─────────────────────────────────────────────────────────────
-  if (totalPassivos > 0) {
-    const passivosPct = _pct(totalPassivos, accountTotal);
-    content += `
-      <div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--red,#dc2626);padding:4px 0 8px;border-bottom:1.5px solid var(--red,#dc2626);margin:16px 0 12px;display:flex;align-items:center;justify-content:space-between">
-        <span>📉 PASSIVOS</span>
-        <span style="font-size:.72rem;font-weight:700">−${dashFmt(totalPassivos,'BRL')} <span style="font-weight:400;opacity:.7">(${passivosPct}% dos ativos)</span></span>
-      </div>`;
-
-    // ── Faturas de cartão de crédito ─────────────────────────────────────
-    const cardDebtAccs = accsCard.filter(a => (parseFloat(a.balance)||0) < 0);
-    if (cardDebtAccs.length) {
-      content += `
-        <div style="margin-bottom:12px">
-          <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">💳 Faturas em Aberto</div>
-          <div style="display:flex;flex-direction:column;gap:4px">`;
-      cardDebtAccs.forEach(a => {
-        const bal    = Math.abs(parseFloat(a.balance)||0);
-        const balBRL = toBRL(bal, a.currency||'BRL');
-        const pct    = _pct(balBRL, accountTotal);
-        content += `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1);cursor:pointer"
-            onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
-            onmouseover="this.style.background='rgba(220,38,38,.08)'" onmouseout="this.style.background='rgba(220,38,38,.04)'">
-            <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,16)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
-              <div style="font-size:.68rem;color:var(--muted)">Fatura em aberto · ${pct}% dos ativos</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, a.currency||'BRL')}</div>
-              ${a.currency&&a.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
-            </div>
+      <!-- ═══ PASSIVOS ═══════════════════════════════════════════════ -->
+      ${totalPassivos > 0 ? `
+      <div style="border-top:1px dashed var(--border);padding-top:16px;margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 8px;border-bottom:2px solid rgba(220,38,38,.25);margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="font-size:.9rem">📉</span>
+            <span style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--red,#dc2626)">Passivos</span>
+            <span style="font-size:.65rem;color:var(--muted);background:rgba(220,38,38,.08);border-radius:4px;padding:2px 6px">${_pct(totalPassivos,ativosBase)}% dos ativos</span>
           </div>
-          <div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
-            <div style="height:100%;width:${Math.min(+pct,100)}%;background:#dc2626;border-radius:2px;transition:width .4s ease"></div>
-          </div>`;
-      });
-      content += `
-          <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem">
-            <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(cardDebt,'BRL')}</span>
-          </div>
+          <span style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(totalPassivos,'BRL')}</span>
         </div>
-      </div>`;
-    }
 
-    // ── Dívidas do módulo ─────────────────────────────────────────────────
-    if (debts.length) {
-      const _adjLabel = { fixed:'Fixo', selic:'SELIC', ipca:'IPCA', igpm:'IGP-M', cdi:'CDI', poupanca:'Poupança', custom:'Personalizado' };
-      content += `
+        <!-- Faturas CC -->
+        ${accsCard.some(a=>(parseFloat(a.balance)||0)<0) ? `
         <div style="margin-bottom:12px">
-          <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">🏦 Dívidas Ativas</div>
-          <div style="display:flex;flex-direction:column;gap:4px">`;
-      debts.forEach(d => {
-        const bal       = parseFloat(d.current_balance ?? d.original_amount) || 0;
-        const balBRL    = toBRL(bal, d.currency || 'BRL');
-        const origBRL   = toBRL(parseFloat(d.original_amount)||0, d.currency||'BRL');
-        const pct       = _pct(balBRL, accountTotal);
-        const progPct   = d.original_amount && +d.original_amount > 0
-          ? Math.max(0, Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100)).toFixed(0)
-          : null;
-        const credName  = d.creditor?.name || '';
-        const adjLabel  = _adjLabel[d.adjustment_type] || d.adjustment_type || '';
-        const rateLabel = d.fixed_rate ? `${(+d.fixed_rate).toFixed(2)}% a.m.` : '';
-        const subtitle  = [credName, adjLabel, rateLabel].filter(Boolean).join(' · ');
-        content += `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
-            <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
-              ${subtitle ? `<div style="font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subtitle)}</div>` : ''}
-              ${progPct !== null ? `
-              <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
-                <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
-                  <div style="height:100%;width:${progPct}%;background:var(--accent);border-radius:2px"></div>
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;padding-left:2px">Faturas em Aberto</div>
+          ${accsCard.filter(a=>(parseFloat(a.balance)||0)<0).map(a => {
+            const bal    = Math.abs(parseFloat(a.balance)||0);
+            const balBRL = toBRL(bal, a.currency||'BRL');
+            const isFX   = _isFX(a.currency||'BRL');
+            const pct    = _pct(balBRL, ativosBase);
+            return `
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.12);cursor:pointer;margin-bottom:3px;transition:background .12s"
+                onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
+                onmouseover="this.style.background='rgba(220,38,38,.1)'" onmouseout="this.style.background='rgba(220,38,38,.05)'">
+                <div style="width:34px;height:34px;border-radius:9px;background:rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,17)}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
+                  <div style="font-size:.67rem;color:var(--muted)">Fatura em aberto${isFX?` · ${a.currency}`:''} · ${pct}% dos ativos</div>
                 </div>
-                <span style="font-size:.62rem;color:var(--muted);flex-shrink:0">${progPct}% quitado</span>
-              </div>` : ''}
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(bal, a.currency||'BRL')}</div>
+                  ${isFX?`<div style="font-size:.67rem;color:var(--muted)">= −${dashFmt(balBRL,'BRL')}</div>`:''}
+                </div>
+              </div>
+              ${_bar(pct,'#dc2626')}`;
+          }).join('')}
+        </div>` : ''}
+
+        <!-- Dívidas -->
+        ${debts.length ? `
+        <div>
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;padding-left:2px">Dívidas Ativas</div>
+          ${debts.map(d => {
+            const bal    = parseFloat(d.current_balance??d.original_amount)||0;
+            const balBRL = toBRL(bal, d.currency||'BRL');
+            const orig   = parseFloat(d.original_amount)||0;
+            const progPct = orig > 0 ? Math.max(0,Math.min(100,((orig-bal)/orig)*100)).toFixed(0) : null;
+            const isFX   = _isFX(d.currency||'BRL');
+            const pct    = _pct(balBRL, ativosBase);
+            const sub    = [d.creditor?.name, _adjLabel[d.adjustment_type], d.fixed_rate?`${(+d.fixed_rate).toFixed(2)}% a.m.`:null].filter(Boolean).join(' · ');
+            return `
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.12);margin-bottom:3px">
+                <div style="width:34px;height:34px;border-radius:9px;background:rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
+                  ${sub?`<div style="font-size:.67rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sub)}</div>`:''}
+                  ${progPct!==null?`
+                  <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
+                    <div style="flex:1;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
+                      <div style="height:100%;width:${progPct}%;background:var(--accent);border-radius:3px;transition:width .4s"></div>
+                    </div>
+                    <span style="font-size:.62rem;color:var(--muted);white-space:nowrap">${progPct}% quitado</span>
+                  </div>`:''}
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(bal,d.currency||'BRL')}</div>
+                  ${isFX?`<div style="font-size:.67rem;color:var(--muted)">= −${dashFmt(balBRL,'BRL')}</div>`:''}
+                  <div style="font-size:.62rem;color:var(--muted)">${pct}% dos ativos</div>
+                </div>
+              </div>
+              ${_bar(pct,'#dc2626')}`;
+          }).join('')}
+        </div>` : ''}
+      </div>` : ''}
+
+      <!-- ═══ RODAPÉ LÍQUIDO ═════════════════════════════════════════ -->
+      <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:.8rem;font-weight:800;color:var(--text)">Patrimônio Líquido Total</span>
+          <span style="font-size:1.2rem;font-weight:900;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red,#dc2626)'}">${dashFmt(totalBRL,'BRL')}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:rgba(26,102,68,.07);border-radius:10px;padding:10px 12px">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Maior ativo</div>
+            ${(() => {
+              const all = [...accsLiquid,...accsInvest,...accsCard.filter(a=>(parseFloat(a.balance)||0)>0)];
+              const top = all.sort((a,b)=>toBRL(Math.abs(parseFloat(b.balance)||0),b.currency||'BRL')-toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL'))[0];
+              if (!top) return `<div style="font-size:.8rem;color:var(--muted)">—</div>`;
+              const brl = toBRL(Math.abs(parseFloat(top.balance)||0),top.currency||'BRL');
+              return `<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(top.name)}</div>
+                      <div style="font-size:.7rem;color:var(--accent);font-weight:700">${dashFmt(brl,'BRL')}</div>`;
+            })()}
+          </div>
+          <div style="background:${totalPassivos>0?'rgba(220,38,38,.06)':'rgba(26,102,68,.07)'};border-radius:10px;padding:10px 12px">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">
+              ${totalPassivos>0?'Maior passivo':'Sem passivos'}
             </div>
-            <div style="text-align:right;flex-shrink:0">
-              <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
-              ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
-              <div style="font-size:.62rem;color:var(--muted)">${pct}% dos ativos</div>
-            </div>
-          </div>`;
-      });
-      content += `
-          <div style="display:flex;justify-content:flex-end;padding:4px 10px 0;font-size:.75rem">
-            <span style="font-weight:700;color:var(--red,#dc2626)">−${dashFmt(debtTotal,'BRL')}</span>
+            ${totalPassivos > 0 ? (() => {
+              const top = [...debts].sort((a,b)=>toBRL(parseFloat(b.current_balance||b.original_amount)||0,b.currency||'BRL')-toBRL(parseFloat(a.current_balance||a.original_amount)||0,a.currency||'BRL'))[0];
+              const topCard = accsCard.filter(a=>(parseFloat(a.balance)||0)<0).sort((a,b)=>Math.abs(parseFloat(b.balance)||0)-Math.abs(parseFloat(a.balance)||0))[0];
+              const item = top || topCard;
+              if (!item) return `<div style="font-size:.8rem;color:var(--muted)">—</div>`;
+              const brl = top ? toBRL(parseFloat(top.current_balance||top.original_amount)||0,top.currency||'BRL') : toBRL(Math.abs(parseFloat(topCard.balance)||0),topCard.currency||'BRL');
+              const name = top ? top.name : topCard.name;
+              return `<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
+                      <div style="font-size:.7rem;color:var(--red,#dc2626);font-weight:700">−${dashFmt(brl,'BRL')}</div>`;
+            })() : `<div style="font-size:.8rem;color:var(--accent);font-weight:600">✓ Patrimônio livre</div>`}
           </div>
         </div>
-      </div>`;
-    }
-  }
-
-  // ── Net worth summary (sempre visível) ────────────────────────────────────
-  const alavancagem = accountTotal > 0 ? (totalPassivos / accountTotal * 100).toFixed(1) : '0.0';
-  content += `
-    <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:.8rem;font-weight:700;color:var(--text)">Patrimônio Líquido</div>
-        <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red,#dc2626)'}">
-          ${dashFmt(totalBRL,'BRL')}
+        <div style="font-size:.68rem;color:var(--muted);text-align:center">
+          ${accs.length} conta${accs.length!==1?'s':''} · ${invPositions.length} posição${invPositions.length!==1?'ões':''} de investimento · ${debts.length} dívida${debts.length!==1?'s':''}
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-        <div style="background:rgba(42,96,73,.08);border-radius:8px;padding:7px 10px;text-align:center">
-          <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Ativos</div>
-          <div style="font-size:.82rem;font-weight:700;color:var(--accent)">+${dashFmt(accountTotal,'BRL')}</div>
-        </div>
-        <div style="background:rgba(220,38,38,.07);border-radius:8px;padding:7px 10px;text-align:center">
-          <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Passivos</div>
-          <div style="font-size:.82rem;font-weight:700;color:var(--red,#dc2626)">−${dashFmt(totalPassivos,'BRL')}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:8px;padding:7px 10px;text-align:center">
-          <div style="font-size:.62rem;color:var(--muted);margin-bottom:2px">Endividamento</div>
-          <div style="font-size:.82rem;font-weight:700;color:${+alavancagem>50?'var(--red,#dc2626)':+alavancagem>20?'#b45309':'var(--text2)'}">
-            ${alavancagem}%
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:10px">
-        <div style="height:8px;border-radius:4px;overflow:hidden;display:flex;gap:1px">
-          <div style="flex:${accountTotal};background:var(--accent);border-radius:4px 0 0 4px;min-width:${totalPassivos>0?'4px':'100%'}"></div>
-          ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:var(--red,#dc2626);border-radius:0 4px 4px 0;min-width:4px"></div>` : ''}
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted);margin-top:3px">
-          <span>● Ativos ${_pct(accountTotal,accountTotal+totalPassivos)}%</span>
-          ${totalPassivos>0?`<span>● Passivos ${_pct(totalPassivos,accountTotal+totalPassivos)}%</span>`:''}
-        </div>
-      </div>
-    </div>`;
 
-  content += '</div>';
+    </div><!-- /padding -->
+  </div>`; // /container
 
-  // Inject into modal
   let modal = document.getElementById('patrimonioModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
-    modal.id = 'patrimonioModal';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
+    modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:0;border-radius:18px"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
     document.body.appendChild(modal);
   }
-  document.getElementById('patrimonioModalBody').innerHTML = content;
+  document.getElementById('patrimonioModalBody').innerHTML = html;
   openModal('patrimonioModal');
 }
 window._openPatrimonioModal = _openPatrimonioModal;
