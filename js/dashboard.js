@@ -3433,14 +3433,16 @@ async function _loadDashTopPayeesCard() {
     const yFrom = `${y}-01-01`;
     const yTo   = `${y}-12-31`;
 
+    // Fetch with full tx details needed for drill-down
+    const _sel = 'id,date,description,amount,brl_amount,currency,payee_id,payees(id,name,type),categories(name,color)';
     const [{ data: txMonth }, { data: txYear }] = await Promise.all([
-      famQ(sb.from('transactions').select('amount,brl_amount,currency,payee_id,payees(id,name,type)'))
+      famQ(sb.from('transactions').select(_sel))
         .gte('date', mFrom).lte('date', mTo).not('payee_id','is',null),
-      famQ(sb.from('transactions').select('amount,brl_amount,currency,payee_id,payees(id,name,type)'))
+      famQ(sb.from('transactions').select(_sel))
         .gte('date', yFrom).lte('date', yTo).not('payee_id','is',null),
     ]);
 
-    // Agregar por payee: separar despesas (amount<0) de receitas (amount>0)
+    // Agregar por payee — guardar txs completas para drill-down
     const _aggregate = (rows) => {
       const exp = {}, inc = {};
       (rows || []).forEach(t => {
@@ -3449,11 +3451,13 @@ async function _loadDashTopPayeesCard() {
         const type = t.payees?.type || 'beneficiario';
         const amt  = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
         if (parseFloat(t.amount) < 0) {
-          if (!exp[pid]) exp[pid] = { name, type, total: 0, count: 0 };
+          if (!exp[pid]) exp[pid] = { id: pid, name, type, total: 0, count: 0, txs: [] };
           exp[pid].total += amt; exp[pid].count++;
+          exp[pid].txs.push(t);
         } else {
-          if (!inc[pid]) inc[pid] = { name, type, total: 0, count: 0 };
+          if (!inc[pid]) inc[pid] = { id: pid, name, type, total: 0, count: 0, txs: [] };
           inc[pid].total += amt; inc[pid].count++;
+          inc[pid].txs.push(t);
         }
       });
       const topExp = Object.values(exp).sort((a,b)=>b.total-a.total).slice(0,10);
@@ -3464,22 +3468,35 @@ async function _loadDashTopPayeesCard() {
     const month = _aggregate(txMonth);
     const year  = _aggregate(txYear);
 
-    const _payeeRow = (p, i, maxVal) => {
-      const bar = maxVal > 0 ? Math.min(p.total / maxVal * 100, 100).toFixed(1) : 0;
-      const isInc = p.type === 'fonte_pagadora';
-      const color = isInc ? '#16a34a' : 'var(--accent)';
+    // Guardar dados para o drill-down (acesso pelo handler de click)
+    window._dashPayeeDrillData = { month, year };
+
+    const _payeeRow = (p, i, maxVal, isYear) => {
+      const bar    = maxVal > 0 ? Math.min(p.total / maxVal * 100, 100).toFixed(1) : 0;
+      const isInc  = p.type === 'fonte_pagadora';
+      const color  = isInc ? '#16a34a' : 'var(--accent)';
+      const scope  = isYear ? 'year' : 'month';
+      const bucket = isInc  ? 'inc'   : 'exp';
       return `
-        <div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;
+          cursor:pointer;transition:background .12s;margin:-2px -8px"
+          onclick="_dashPayeeDrill('${esc(p.id)}','${scope}','${bucket}')"
+          onmouseover="this.style.background='var(--surface2)'"
+          onmouseout="this.style.background=''">
           <span style="font-size:.65rem;font-weight:700;color:var(--muted);width:14px;text-align:right;flex-shrink:0">${i+1}</span>
           <div style="flex:1;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
-              <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">${esc(p.name)}</span>
+              <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${esc(p.name)}</span>
               <span style="font-size:.75rem;font-weight:700;color:${isInc?'#16a34a':'var(--text)'};white-space:nowrap;margin-left:6px">${isInc?'+':'−'}${dashFmt(p.total,'BRL')}</span>
             </div>
-            <div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden">
-              <div style="height:100%;width:${bar}%;background:${color};border-radius:2px;transition:width .5s"></div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
+                <div style="height:100%;width:${bar}%;background:${color};border-radius:2px;transition:width .5s"></div>
+              </div>
+              <span style="font-size:.6rem;color:var(--muted);flex-shrink:0">${p.count} tx</span>
             </div>
           </div>
+          <span style="font-size:.7rem;color:var(--muted);flex-shrink:0">›</span>
         </div>`;
     };
 
@@ -3488,8 +3505,9 @@ async function _loadDashTopPayeesCard() {
       const max = items[0]?.total || 1;
       return `
         <div style="margin-bottom:14px">
-          <div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${title}</div>
-          ${items.map((p,i) => _payeeRow(p, i, max)).join('')}
+          <div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+            color:var(--muted);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${title}</div>
+          ${items.map((p,i) => _payeeRow(p, i, max, isYear)).join('')}
         </div>`;
     };
 
@@ -3522,6 +3540,104 @@ async function _loadDashTopPayeesCard() {
   }
 }
 window._loadDashTopPayeesCard = _loadDashTopPayeesCard;
+
+// ── Drill-down: mostrar transações de um beneficiário/fonte ─────────────────
+function _dashPayeeDrill(payeeId, scope, bucket) {
+  const data   = window._dashPayeeDrillData;
+  if (!data) return;
+
+  const list   = data[scope][bucket === 'exp' ? 'topExp' : 'topInc'];
+  const entry  = list.find(p => p.id === payeeId);
+  if (!entry) return;
+
+  const isInc  = bucket === 'inc';
+  const color  = isInc ? '#16a34a' : '#dc2626';
+  const total  = entry.total;
+  const txs    = [...entry.txs].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  // Remove modal existente se houver
+  document.getElementById('dashPayeeDrillModal')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'dashPayeeDrillModal';
+  overlay.style.zIndex = '10025';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  const rows = txs.map(t => {
+    const amt   = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
+    const catColor = t.categories?.color || (isInc ? '#16a34a' : '#94a3b8');
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;
+        border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
+        onclick="overlay.remove();editTransaction('${t.id}')"
+        onmouseover="this.style.background='var(--surface2)'"
+        onmouseout="this.style.background=''">
+        <div style="width:7px;height:7px;border-radius:50%;background:${catColor};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.83rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            ${esc(t.description || entry.name || '—')}
+          </div>
+          <div style="font-size:.68rem;color:var(--muted)">
+            ${fmtDate(t.date)}${t.categories?.name ? ' · ' + esc(t.categories.name) : ''}
+          </div>
+        </div>
+        <span style="font-size:.88rem;font-weight:700;color:${color};flex-shrink:0;margin-left:8px">
+          ${isInc ? '+' : '−'}${dashFmt(amt,'BRL')}
+        </span>
+      </div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:480px;max-height:85dvh;display:flex;flex-direction:column;padding:0;border-radius:16px">
+      <div class="modal-handle"></div>
+      <!-- Header -->
+      <div style="padding:14px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:.95rem;font-weight:800;color:var(--text)">${esc(entry.name)}</div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:1px">
+              ${txs.length} transaç${txs.length===1?'ão':'ões'} · ${scope === 'year' ? 'Ano ' + new Date().getFullYear() : 'Mês atual'}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:1.1rem;font-weight:900;font-family:var(--font-serif);color:${color}">
+              ${isInc ? '+' : '−'}${dashFmt(total,'BRL')}
+            </div>
+            <button onclick="document.getElementById('dashPayeeDrillModal').remove()"
+              style="font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;margin-top:2px">
+              Fechar ✕
+            </button>
+          </div>
+        </div>
+        <!-- Barra de progresso (total desta entrada vs total do período) -->
+        <div style="height:3px;border-radius:3px;background:var(--border);margin-top:10px;overflow:hidden">
+          <div style="height:100%;width:100%;background:${color};border-radius:3px"></div>
+        </div>
+      </div>
+      <!-- Lista de transações -->
+      <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+        ${rows || '<div style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Nenhuma transação</div>'}
+      </div>
+    </div>`;
+
+  // Corrigir o onclick das linhas (overlay não está no escopo do template literal)
+  document.body.appendChild(overlay);
+
+  // Rewire os cliques nas linhas para fechar o modal correto
+  overlay.querySelectorAll('[onclick*="overlay.remove"]').forEach(el => {
+    const txId = el.getAttribute('onclick').match(/editTransaction\('([^']+)'\)/)?.[1];
+    if (txId) {
+      el.removeAttribute('onclick');
+      el.addEventListener('click', () => {
+        overlay.remove();
+        if (typeof editTransaction === 'function') editTransaction(txId);
+      });
+    }
+  });
+}
+window._dashPayeeDrill = _dashPayeeDrill;
+
 window._catColor                           = _catColor;
 window._dashCustomSave                     = _dashCustomSave;
 window._dashGetPrefs                       = _dashGetPrefs;
