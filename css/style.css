@@ -958,12 +958,13 @@ body.sidebar-open .fab{
 /* ─── CATEGORY PICKER ─── */
 .cat-picker-wrap { position: relative; }
 .cat-picker-btn {
-  width: 100%; padding: 8px 12px;
-  background: var(--surface); border: 1px solid var(--border2);
+  width: 100%; padding: 11px 13px;
+  background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); cursor: pointer; text-align: left;
   font-family: var(--font-sans); font-size: .875rem; color: var(--text);
   display: flex; align-items: center; gap: 8px;
-  transition: border-color .15s;
+  transition: border-color .15s, box-shadow .15s;
+  min-height: 44px; /* match input height */
 }
 .cat-picker-btn:hover { border-color: var(--accent); }
 .cat-picker-btn.open { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
