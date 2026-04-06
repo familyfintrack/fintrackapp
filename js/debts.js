@@ -206,7 +206,7 @@ function renderDebtsPage() {
 
   
   const preservedFxBar = document.getElementById('fxRatesBadge');
-const active   = _dbt.debts.filter(d => d.status === 'active');
+  const active   = _dbt.debts.filter(d => d.status === 'active');
   const settled  = _dbt.debts.filter(d => d.status === 'settled');
   const totalActive = active.reduce((s, d) => s + _debtCurrentBalance(d), 0);
   const totalOrig   = active.reduce((s, d) => s + parseFloat(d.original_amount || 0), 0);
