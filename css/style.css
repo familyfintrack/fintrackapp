@@ -25237,3 +25237,126 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   .budget-controls-bar { flex-direction: column; align-items: stretch; }
   .budget-controls-left { flex-direction: column; align-items: stretch; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD CARDS REDESIGN — dcard component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dcard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  transition: box-shadow .18s;
+}
+.dcard:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+
+.dcard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+}
+.dcard-title-wrap {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+.dcard-icon {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.dcard-title {
+  font-weight: 800; font-size: .9rem; color: var(--text); line-height: 1.2;
+}
+.dcard-sub {
+  font-size: .7rem; color: var(--muted); margin-top: 1px;
+}
+.dcard-actions {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+}
+.dcard-link-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: .78rem; font-weight: 700; color: var(--accent);
+  font-family: var(--font-sans); padding: 4px 0;
+  transition: opacity .15s;
+  white-space: nowrap;
+}
+.dcard-link-btn:hover { opacity: .7; }
+.dcard-pill-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: .75rem; font-weight: 600; color: var(--text2);
+  cursor: pointer; font-family: var(--font-sans);
+  transition: border-color .15s, background .15s;
+  white-space: nowrap;
+}
+.dcard-pill-btn:hover { border-color: var(--accent); color: var(--accent); }
+.dcard-toggle-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .75rem; color: var(--muted); cursor: pointer;
+  user-select: none; white-space: nowrap;
+}
+.dcard-body { padding: 0; }
+.dcard-loading {
+  text-align: center; padding: 28px; color: var(--muted);
+  font-size: .83rem;
+}
+.dcard-chart-wrap {
+  position: relative; height: 180px; padding: 4px 4px 0;
+}
+.dcard-summary-row {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px 8px; font-size: .78rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODULE INTRO BANNER — shared by budgets, objectives, dreams
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.module-intro-banner {
+  --intro-accent: var(--accent);
+  --intro-accent-lt: var(--accent-lt);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--intro-accent-lt, var(--accent-lt)) 100%);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--intro-accent, var(--accent));
+  border-radius: 12px;
+  padding: 16px 20px 18px;
+  margin-bottom: 20px;
+}
+.module-intro-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: .65rem; font-weight: 800; letter-spacing: .1em;
+  text-transform: uppercase;
+  background: var(--accent-lt); color: var(--accent);
+  padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+}
+.module-intro-headline {
+  font-size: 1.05rem; font-weight: 800; color: var(--text);
+  margin: 0 0 6px; line-height: 1.3;
+}
+.module-intro-text {
+  font-size: .8rem; color: var(--muted); line-height: 1.55;
+  margin: 0 0 14px; max-width: 560px;
+}
+.module-intro-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.module-intro-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .72rem; font-weight: 600;
+  background: var(--accent-lt); color: var(--accent);
+  padding: 4px 10px; border-radius: 20px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .module-intro-banner { padding: 14px 14px 16px; }
+  .module-intro-headline { font-size: .95rem; }
+  .dcard-header { padding: 12px 14px 10px; }
+  .dcard-icon { width: 30px; height: 30px; border-radius: 8px; }
+}
