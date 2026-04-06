@@ -6036,6 +6036,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 .sc-card-end {
   flex-shrink: 0; text-align: right; min-width: 0; max-width: 44%;
+  overflow: hidden;
 }
 .sc-card-amt {
   font-family: var(--font-serif); font-weight: 700;
@@ -19446,7 +19447,7 @@ section[data-page="transactions"] .content {
 .lgn-label {
   display: block;
   font-size: .66rem; font-weight: 700;
-  color: rgba(255,255,255,.75); letter-spacing: .08em;
+  color: #ffffff; letter-spacing: .08em;
   text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -21323,6 +21324,26 @@ tr.payee-row[onclick] { cursor: pointer; }
     display: block !important;
   }
   #page-scheduled .sc-card-chevron { flex-shrink: 0 !important; }
+  /* Garantir que sc-card-end nunca ultrapasse a tela */
+  #page-scheduled .sc-card-end {
+    max-width: 42% !important;
+    min-width: 0 !important;
+    flex-shrink: 1 !important;
+    overflow: hidden !important;
+  }
+  /* sc-card-badges não pode expandir além do container */
+  #page-scheduled .sc-card-badges {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+    justify-content: flex-end !important;
+  }
+  /* sc-card-row: overflow:hidden estrito */
+  #page-scheduled .sc-card > .sc-card-row {
+    overflow: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
 
   /* sup-item: flex row — ícone | corpo | valor+botões */
   #page-scheduled .sup-item {
