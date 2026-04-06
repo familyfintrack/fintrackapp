@@ -1648,6 +1648,7 @@ function _openFavAccountModal(accountId) {
     modal = document.createElement('div');
     modal.id = 'favAccModal';
     modal.className = 'modal-overlay';
+    modal.id = 'favAccModal';
     modal.onclick = e => { if (e.target === modal) closeModal('favAccModal'); };
     modal.innerHTML = '<div class="modal" style="max-width:400px;padding:0;overflow:hidden"><div class="modal-handle"></div><div id="favAccModalBody"></div></div>';
     document.body.appendChild(modal);
@@ -2336,6 +2337,7 @@ function _showForecastDrillModal(date, dayData) {
     modal = document.createElement('div');
     modal.id = 'forecastDrillModal';
     modal.className = 'modal-overlay';
+    modal.id = 'forecastDrillModal';
     modal.onclick = e => { if (e.target === modal) closeModal('forecastDrillModal'); };
     modal.innerHTML = '<div class="modal" style="max-width:540px;max-height:90dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="forecastDrillModalBody" style="padding:18px 18px 22px"></div></div>';
     document.body.appendChild(modal);
@@ -2776,6 +2778,7 @@ async function _openPatrimonioModal() {
     modal = document.createElement('div');
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
+    modal.id = 'patrimonioModal';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
     modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
     document.body.appendChild(modal);

@@ -1125,14 +1125,14 @@ function openAccountDetailPanel(accountId) {
 
   const panel = document.createElement('div');
   panel.id = 'accDetailPanel';
-  panel.className = 'modal-overlay active';
+  panel.className = 'modal-overlay open';
   panel.style.zIndex = '10020';
-  panel.onclick = e => { if (e.target === panel) panel.remove(); };
+  panel.onclick = e => { if (e.target === panel) { panel.classList.remove('open'); setTimeout(()=>panel.remove(),300); } };
   panel.innerHTML = `
   <div class="modal" style="max-width:400px"><div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title">${_dashRenderIcon ? '' : '🏦 '}${esc(a.name)}</span>
-      <button class="modal-close" onclick="document.getElementById('accDetailPanel').remove()">✕</button>
+      <button class="modal-close" onclick="(()=>{const p=document.getElementById('accDetailPanel');if(p){p.classList.remove('open');setTimeout(()=>p.remove(),300);}})()">✕</button>
     </div>
     <div class="modal-body" style="padding:16px">
       <!-- Balance hero -->
@@ -1155,8 +1155,8 @@ function openAccountDetailPanel(accountId) {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="document.getElementById('accDetailPanel').remove()">Fechar</button>
-      <button class="btn btn-primary" onclick="document.getElementById('accDetailPanel').remove();openAccountModal('${a.id}')">✏️ Editar</button>
+      <button class="btn btn-ghost" onclick="(()=>{const p=document.getElementById('accDetailPanel');if(p){p.classList.remove('open');setTimeout(()=>p.remove(),300);}})()">Fechar</button>
+      <button class="btn btn-primary" onclick="(()=>{const p=document.getElementById('accDetailPanel');if(p){p.classList.remove('open');setTimeout(()=>p.remove(),300);}})();openAccountModal('${a.id}')">✏️ Editar</button>
     </div>
   </div>`;
   document.body.appendChild(panel);

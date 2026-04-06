@@ -852,7 +852,6 @@ function toggleTxGroup(k) {
 function changePage(dir){state.txPage+=dir;loadTransactions();}
 async // ══ Tags Field — chips visuais com autocomplete ══════════════════════════════
 
-const _tagsState = { tags: [], allTags: [], similarTags: [], activeIdx: -1 };
 
 // Coletar todas as tags usadas no histórico de transações
 async function _loadAllTags() {
@@ -1660,6 +1659,7 @@ async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel, level = '
 // ── Module-level state — declared early to avoid TDZ errors ────────────────
 let _txDetailId   = null;  // id da transação aberta no detail/modal
 let _txSwipeBound = false; // swipe listener bound guard
+const _tagsState  = { tags: [], allTags: [], similarTags: [], activeIdx: -1 }; // tags field state
 
 // ── Duplicate transaction guard ─────────────────────────────────────────────
 let _txSaving = false; // re-entrancy guard against concurrent double-clicks
@@ -2627,6 +2627,7 @@ function initTxMobileUX(){
   _txSwipeBound = true;
 
   let startX=0, startY=0, targetEl=null, tracking=false, didSwipe=false;
+  let _swipeAxis = null; // null | 'h' | 'v' — declared early to avoid TDZ within closure
 
   // ── Delegated CLICK: iOS Safari exige cursor:pointer ou listener explícito
   //    no elemento para disparar click. Adicionamos delegation como garantia.
@@ -2655,8 +2656,6 @@ function initTxMobileUX(){
   //   Fase 1 (primeiros 8px): ainda ambíguo — NÃO chamar preventDefault()
   //     para que o scroll vertical do browser funcione normalmente.
   //   Fase 2 (horizontal dominante confirmado): bloquear scroll e animar swipe.
-  let _swipeAxis = null; // null | 'h' | 'v'
-
   document.addEventListener('touchmove', (ev)=>{
     // Sem tracking ativo → deixar scroll livre (não chamar preventDefault)
     if(!tracking || !targetEl) return;
