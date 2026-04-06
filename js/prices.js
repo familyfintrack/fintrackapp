@@ -373,27 +373,11 @@ function _populatePricesCatFilter() {
     cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
-// Retorna o label do estabelecimento: nome do payee vinculado (se houver) + nome do store como legenda
-function _storeLabel(s, opts = {}) {
-  const payeeName = s.payees?.name;
-  const storeName = s.name;
-  if (!opts.html) {
-    // texto plano para <option>
-    if (payeeName && payeeName !== storeName) return `${payeeName} · ${storeName}`;
-    return payeeName || storeName;
-  }
-  // HTML rico para uso em cards/linhas
-  if (payeeName && payeeName !== storeName) {
-    return `${esc(payeeName)} <span style="font-size:.68rem;color:var(--muted)">· ${esc(storeName)}</span>`;
-  }
-  return esc(payeeName || storeName);
-}
-
 function _populatePricesStoreFilter() {
   const sel = document.getElementById('pricesStoreFilter');
   if (!sel) return;
   sel.innerHTML = '<option value="">Todos os estabelecimentos</option>' +
-    _px.stores.map(s => `<option value="${s.id}">${esc(_storeLabel(s))}</option>`).join('');
+    _px.stores.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
 }
 
 async function _loadPricesData() {
@@ -812,7 +796,7 @@ async function openPriceItemDetail(itemId) {
   const pidStoreSel = el('pidStoreFilter');
   if (pidStoreSel) {
     pidStoreSel.innerHTML = '<option value="">Todos os estabelecimentos</option>' +
-      _px.stores.map(s => `<option value="${s.id}">${esc(_storeLabel(s))}</option>`).join('');
+      _px.stores.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
     pidStoreSel.value = _px.pidStoreFilter || '';
   }
   const histEl = el('pidHistoryList');
@@ -962,21 +946,14 @@ function _aprStoreSearch(val) {
   if (hidEl) hidEl.value = '';
   if (!val.trim()) { if (suggest) suggest.style.display = 'none'; return; }
   const q = val.toLowerCase();
-  const matches = _px.stores.filter(s =>
-    s.name.toLowerCase().includes(q) || (s.payees?.name || '').toLowerCase().includes(q)
-  );
+  const matches = _px.stores.filter(s => s.name.toLowerCase().includes(q));
   if (!suggest) return;
   if (!matches.length) { suggest.style.display = 'none'; return; }
   suggest.style.display = '';
   suggest.innerHTML = matches.map(s => {
     const loc = [s.address, s.city].filter(Boolean).join(', ');
-    const payeeName = s.payees?.name;
-    const label = payeeName && payeeName !== s.name
-      ? `<strong>${esc(payeeName)}</strong> <span style="font-size:.72rem;color:var(--muted)">· ${esc(s.name)}</span>`
-      : `<strong>${esc(s.name)}</strong>`;
-    const selectName = payeeName || s.name;
-    return `<div class="store-suggest-item" onclick="_aprSelectStore('${s.id}','${esc(selectName).replace(/'/g,"\\'")}')">
-      ${label}${loc ? `<div style="font-size:.72rem;color:var(--muted)">${esc(loc)}</div>` : ''}
+    return `<div class="store-suggest-item" onclick="_aprSelectStore('${s.id}','${esc(s.name).replace(/'/g,"\\'")}')">
+      <strong>${esc(s.name)}</strong>${loc ? `<div style="font-size:.72rem;color:var(--muted)">${esc(loc)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1118,21 +1095,14 @@ function _pifStoreSearch(val) {
   if (hidEl) hidEl.value = '';
   if (!val.trim()) { if (suggest) suggest.style.display = 'none'; return; }
   const q = val.toLowerCase();
-  const matches = _px.stores.filter(s =>
-    s.name.toLowerCase().includes(q) || (s.payees?.name || '').toLowerCase().includes(q)
-  );
+  const matches = _px.stores.filter(s => s.name.toLowerCase().includes(q));
   if (!suggest) return;
   if (!matches.length) { suggest.style.display = 'none'; return; }
   suggest.style.display = '';
   suggest.innerHTML = matches.map(s => {
     const loc = [s.address, s.city].filter(Boolean).join(', ');
-    const payeeName = s.payees?.name;
-    const label = payeeName && payeeName !== s.name
-      ? `<strong>${esc(payeeName)}</strong> <span style="font-size:.72rem;color:var(--muted)">· ${esc(s.name)}</span>`
-      : `<strong>${esc(s.name)}</strong>`;
-    const selectName = payeeName || s.name;
-    return `<div class="store-suggest-item" onclick="_pifSelectStore('${s.id}','${esc(selectName).replace(/'/g,"\\'")}')">
-      ${label}${loc ? `<div style="font-size:.72rem;color:var(--muted)">${esc(loc)}</div>` : ''}
+    return `<div class="store-suggest-item" onclick="_pifSelectStore('${s.id}','${esc(s.name).replace(/'/g,"\\'")}')">
+      <strong>${esc(s.name)}</strong>${loc ? `<div style="font-size:.72rem;color:var(--muted)">${esc(loc)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1310,21 +1280,15 @@ function _rpmStoreSearch(val) {
   if (si) si.style.display = 'none';
   if (!val.trim()) { if (suggest) suggest.style.display = 'none'; return; }
   const q = val.toLowerCase();
-  const matches = _px.stores.filter(s =>
-    s.name.toLowerCase().includes(q) || (s.payees?.name || '').toLowerCase().includes(q)
-  );
+  const matches = _px.stores.filter(s => s.name.toLowerCase().includes(q));
   if (!suggest) return;
   if (!matches.length) { suggest.style.display = 'none'; return; }
   suggest.style.display = '';
   suggest.innerHTML = matches.map(s => {
     const loc = [s.address, s.city].filter(Boolean).join(', ');
-    const payeeName = s.payees?.name;
-    const label = payeeName && payeeName !== s.name
-      ? `<strong>${esc(payeeName)}</strong> <span style="font-size:.68rem;color:var(--muted)">· ${esc(s.name)}</span>`
-      : `<strong>${esc(s.name)}</strong>`;
-    const selectName = payeeName || s.name;
-    return `<div class="store-suggest-item" onclick="_rpmSelectStore('${s.id}','${esc(selectName).replace(/'/g,"\\'")}')">
-      ${label}
+    const payeeLine = s.payees ? ` <span style="font-size:.68rem;color:var(--muted)">· ${esc(s.payees.name)}</span>` : '';
+    return `<div class="store-suggest-item" onclick="_rpmSelectStore('${s.id}','${esc(s.name).replace(/'/g,"\\'")}')">
+      <strong>${esc(s.name)}</strong>${payeeLine}
       ${loc ? `<div style="font-size:.72rem;color:var(--muted)">${esc(loc)}</div>` : ''}
     </div>`;
   }).join('');
@@ -1797,7 +1761,7 @@ async function readPricesReceiptWithAI() {
 
 async function _callPricesVision(apiKey, pending) {
   const catList   = (state.categories || []).filter(c => c.type === 'expense').map(c => c.name).join(', ');
-  const storeList = _px.stores.slice(0, 20).map(s => s.payees?.name ? `${s.payees.name} (${s.name})` : s.name).join(', ');
+  const storeList = _px.stores.slice(0, 20).map(s => s.name).join(', ');
   const today     = new Date().toISOString().slice(0, 10);
   const prompt =
     `Você é especialista em leitura de notas fiscais e recibos brasileiros.\n` +

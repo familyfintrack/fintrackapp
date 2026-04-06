@@ -1657,10 +1657,6 @@ async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel, level = '
   });
 }
 
-// ── Module-level state — declared early to avoid TDZ errors ────────────────
-let _txDetailId   = null;  // id da transação aberta no detail/modal
-let _txSwipeBound = false; // swipe listener bound guard
-
 // ── Duplicate transaction guard ─────────────────────────────────────────────
 let _txSaving = false; // re-entrancy guard against concurrent double-clicks
 
@@ -2375,9 +2371,10 @@ async function deleteTransaction(id){
 }
 
 /* ── Transaction Detail Drawer ── */
+let _txDetailId = null;
+
 async function openTxDetail(id) {
   _txDetailId = id;
-  window._txDetailId = id; // keep global in sync
 
   // Always fetch fresh from DB to get attachment_name and all joined fields
   const { data, error } = await sb.from('transactions')
@@ -2546,6 +2543,7 @@ async function toggleTxDetailStatus() {
 // ─────────────────────────────────────────────
 // Mobile UX: swipe to confirm + compact view
 // ─────────────────────────────────────────────
+let _txSwipeBound = false;
 
 function enhanceTransactionsMobileLayout(){
   const page = document.getElementById('page-transactions');
@@ -2639,61 +2637,45 @@ function initTxMobileUX(){
     if(window.innerWidth>720) return; // swipe só em mobile
     // Não iniciar se tocar no botão de reconciliação
     if(ev.target.closest?.('.reconcile-chk-label,.dcc-toggle,.tx-v2-btns,.btn')) return;
-    tracking=true; didSwipe=false; _swipeAxis=null;
+    tracking=true; didSwipe=false;
     targetEl=row;
     const t=ev.touches[0];
     startX=t.clientX; startY=t.clientY;
   }, {passive:true});
 
-  // touchmove — passive:false apenas quando swipe horizontal confirmado.
-  // Lógica em duas fases:
-  //   Fase 1 (primeiros 8px): ainda ambíguo — NÃO chamar preventDefault()
-  //     para que o scroll vertical do browser funcione normalmente.
-  //   Fase 2 (horizontal dominante confirmado): bloquear scroll e animar swipe.
-  let _swipeAxis = null; // null | 'h' | 'v'
-
+  // touchmove NÃO-PASSIVO: precisa chamar preventDefault() para bloquear
+  // o scroll do browser quando o swipe é horizontal
   document.addEventListener('touchmove', (ev)=>{
-    // Sem tracking ativo → deixar scroll livre (não chamar preventDefault)
-    if(!tracking || !targetEl) return;
+    if(!tracking||!targetEl) return;
+    const t=ev.touches[0];
+    const dx=t.clientX-startX;
+    const dy=t.clientY-startY;
 
-    const t  = ev.touches[0];
-    const dx = t.clientX - startX;
-    const dy = t.clientY - startY;
-    const adx = Math.abs(dx);
-    const ady = Math.abs(dy);
-
-    // Fase de detecção de eixo (aguardar 8px de movimento)
-    if(_swipeAxis === null) {
-      if(adx < 8 && ady < 8) return; // movimento muito pequeno — aguardar
-      _swipeAxis = ady > adx ? 'v' : 'h';
-    }
-
-    // Eixo vertical → abandonar tracking e liberar scroll
-    if(_swipeAxis === 'v') {
-      tracking    = false;
-      _swipeAxis  = null;
-      targetEl.style.transition = 'transform 150ms ease';
-      targetEl.style.transform  = 'translateX(0px)';
-      targetEl.style.background = '';
-      targetEl = null;
+    // Se movimento vertical domina → scroll normal, abandonar tracking
+    if(Math.abs(dy) > Math.abs(dx) + 5){
+      tracking=false;
+      targetEl.style.transition='transform 150ms ease';
+      targetEl.style.transform='translateX(0px)';
+      targetEl.style.background='';
+      targetEl=null;
       return;
     }
 
-    // Eixo horizontal confirmado → bloquear scroll e animar
+    // Movimento horizontal: bloquear scroll para fazer o swipe
     ev.preventDefault();
 
     const clamped = Math.max(-100, Math.min(dx, 100));
-    targetEl.style.transition = 'none';
-    targetEl.style.transform  = `translateX(${clamped}px)`;
+    targetEl.style.transition='none';
+    targetEl.style.transform=`translateX(${clamped}px)`;
 
     if(clamped > 8){
-      targetEl.style.background = 'var(--green-lt,#dcfce7)';
+      targetEl.style.background='var(--green-lt,#dcfce7)';
     } else if(clamped < -8){
-      targetEl.style.background = 'var(--amber-lt,#fffbeb)';
+      targetEl.style.background='var(--amber-lt,#fffbeb)';
     } else {
-      targetEl.style.background = '';
+      targetEl.style.background='';
     }
-  }, {passive:false}); // passive:false necessário para poder chamar preventDefault()
+  }, {passive:false}); // NÃO passive — para chamar preventDefault()
 
   document.addEventListener('touchend', async (ev)=>{
     if(!tracking||!targetEl) return;
@@ -2706,7 +2688,7 @@ function initTxMobileUX(){
     targetEl.style.transform='translateX(0px)';
     targetEl.style.background='';
 
-    tracking=false; _swipeAxis=null;
+    tracking=false;
     const el=targetEl; targetEl=null;
 
     if(!id) return;

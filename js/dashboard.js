@@ -1037,74 +1037,45 @@ function _initDashDrag(list) {
     return null;
   }
 
-  // Detecção de eixo para não bloquear scroll vertical até confirmar drag
-  let _dccTouchStartX = 0;
-  let _dccAxis        = null; // null | 'drag' | 'scroll'
-  const DRAG_THRESHOLD = 6; // px de movimento vertical para confirmar drag
-
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('touchstart', e => {
       // Só iniciar drag se o toque for no handle ou no item fora do toggle
       const tog = e.target.closest('.dcc-toggle');
-      if (tog) return;
+      if (tog) return; // toque no toggle → não arrastar
 
-      // Registrar ponto de início — ainda NÃO chamar preventDefault
-      // (seria passive:false desnecessário que bloqueia scroll imediatamente)
-      touchSrc     = item;
-      touchStartY  = e.touches[0].clientY;
-      _dccTouchStartX = e.touches[0].clientX;
-      _dccAxis     = null; // aguardar confirmação de eixo
+      touchSrc    = item;
+      touchStartY = e.touches[0].clientY;
 
-      const rect = item.getBoundingClientRect();
-      touchOffY  = touchStartY - rect.top;
-    }, { passive: true }); // passive:true — não bloquear scroll no touchstart
+      const rect   = item.getBoundingClientRect();
+      touchOffY    = touchStartY - rect.top;
+
+      // Criar clone visual que segue o dedo
+      touchClone = item.cloneNode(true);
+      touchClone.style.cssText = [
+        'position:fixed',
+        'z-index:9999',
+        'pointer-events:none',
+        'left:' + rect.left + 'px',
+        'width:' + rect.width + 'px',
+        'top:'  + (touchStartY - touchOffY) + 'px',
+        'opacity:.85',
+        'box-shadow:0 8px 28px rgba(0,0,0,.22)',
+        'border-radius:10px',
+        'transform:scale(1.02)',
+        'transition:none',
+      ].join(';');
+      document.body.appendChild(touchClone);
+
+      item.classList.add('dcc-dragging');
+      e.preventDefault(); // impede scroll durante drag
+    }, { passive: false });
 
     item.addEventListener('touchmove', e => {
-      if (!touchSrc) return;
-
-      const t  = e.touches[0];
-      const dy = Math.abs(t.clientY - touchStartY);
-      const dx = Math.abs(t.clientX - _dccTouchStartX);
-
-      // Fase de detecção de eixo
-      if (_dccAxis === null) {
-        if (dy < DRAG_THRESHOLD && dx < DRAG_THRESHOLD) return; // aguardar
-        // Movimento horizontal dominante = scroll lateral (não é drag de reorder)
-        // Movimento vertical dominante = drag de reorder
-        _dccAxis = dy >= dx ? 'drag' : 'scroll';
-      }
-
-      // Eixo scroll → abandonar, deixar scroll livre
-      if (_dccAxis === 'scroll') {
-        touchSrc = null; _dccAxis = null;
-        return;
-      }
-
-      // Eixo drag confirmado — agora sim bloquear scroll e criar clone
+      if (!touchSrc || !touchClone) return;
       e.preventDefault();
 
-      if (!touchClone) {
-        // Criar clone apenas quando drag é confirmado (primeira vez aqui)
-        const rect = item.getBoundingClientRect();
-        touchClone = item.cloneNode(true);
-        touchClone.style.cssText = [
-          'position:fixed',
-          'z-index:9999',
-          'pointer-events:none',
-          'left:' + rect.left + 'px',
-          'width:' + rect.width + 'px',
-          'top:'  + (touchStartY - touchOffY) + 'px',
-          'opacity:.85',
-          'box-shadow:0 8px 28px rgba(0,0,0,.22)',
-          'border-radius:10px',
-          'transform:scale(1.02)',
-          'transition:none',
-        ].join(';');
-        document.body.appendChild(touchClone);
-        item.classList.add('dcc-dragging');
-      }
-
-      const y = t.clientY;
+      const y = e.touches[0].clientY;
+      // Mover o clone
       touchClone.style.top = (y - touchOffY) + 'px';
 
       // Highlight do item alvo
@@ -1112,38 +1083,35 @@ function _initDashDrag(list) {
       list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
       if (over && over !== touchSrc) over.classList.add('dcc-over');
 
-    }, { passive: false }); // passive:false necessário para preventDefault no drag
+    }, { passive: false });
 
     item.addEventListener('touchend', e => {
       if (!touchSrc) return;
 
-      // Remover clone se foi criado
+      // Remover clone
       if (touchClone) { touchClone.remove(); touchClone = null; }
 
-      // Só reordenar se drag foi de facto confirmado (clone chegou a existir)
-      if (_dccAxis === 'drag') {
-        const y = e.changedTouches[0].clientY;
-        const over = _getItemAtY(y);
-        if (over && over !== touchSrc) {
-          const allItems = [...list.querySelectorAll('.dcc-item')];
-          const srcIdx = allItems.indexOf(touchSrc);
-          const tgtIdx = allItems.indexOf(over);
-          if (srcIdx < tgtIdx) over.after(touchSrc);
-          else over.before(touchSrc);
-        }
-        _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+      const y = e.changedTouches[0].clientY;
+      const over = _getItemAtY(y);
+
+      if (over && over !== touchSrc) {
+        const allItems = [...list.querySelectorAll('.dcc-item')];
+        const srcIdx = allItems.indexOf(touchSrc);
+        const tgtIdx = allItems.indexOf(over);
+        if (srcIdx < tgtIdx) over.after(touchSrc);
+        else over.before(touchSrc);
       }
 
       touchSrc.classList.remove('dcc-dragging');
       list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
-      touchSrc = null; _dccAxis = null;
+      _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+      touchSrc = null;
     });
 
     item.addEventListener('touchcancel', () => {
       if (touchClone) { touchClone.remove(); touchClone = null; }
       if (touchSrc)   { touchSrc.classList.remove('dcc-dragging'); touchSrc = null; }
       list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
-      _dccAxis = null;
     });
   });
 }
@@ -2777,7 +2745,7 @@ async function _openPatrimonioModal() {
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
+    modal.innerHTML = `<div class="modal" style="max-width:480px;max-height:80dvh;overflow-y:auto;padding:0"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
     document.body.appendChild(modal);
   }
   document.getElementById('patrimonioModalBody').innerHTML = content;

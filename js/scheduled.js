@@ -284,26 +284,25 @@ function scStatusLabel(sc) {
 
 // ── Load & Render ──────────────────────────────────────
 async function loadScheduled() {
-  // Recuperar view preferida — padrão: lista (carrega mais rápido, sem flash)
+  // Aplicar view preferida imediatamente — ocultar lista antes de qualquer render
+  // para evitar o flash lista → calendário
   const _savedView = (() => {
-    try { return localStorage.getItem('sc_view_pref') || 'list'; } catch(_) { return 'list'; }
+    try { return localStorage.getItem('sc_view_pref') || 'calendar'; } catch(_) { return 'calendar'; }
   })();
+  // Definir _scView antes dos dados chegarem
+  if (typeof _scView !== 'undefined') _scView = _savedView;
 
-  // Sincronizar variável de estado ANTES de qualquer render
-  _scView = _savedView;
-
-  // Aplicar visibilidade das áreas imediatamente (sem dados ainda) — elimina qualquer flash
-  const _lvEarly    = document.getElementById('scListView');
-  const _cvEarly    = document.getElementById('scCalendarView');
-  const _catsEarly  = document.getElementById('scCategoriesView');
-  const _kpiEarly   = document.getElementById('scKpiStrip');
-  const _mKpiEarly  = document.getElementById('scMobileKpis');
-
-  if (_lvEarly)    _lvEarly.style.display    = _savedView === 'list'       ? '' : 'none';
-  if (_cvEarly)    _cvEarly.style.display    = _savedView === 'calendar'   ? '' : 'none';
-  if (_catsEarly)  _catsEarly.style.display  = _savedView === 'categories' ? '' : 'none';
-  if (_kpiEarly)   _kpiEarly.style.display   = _savedView === 'list'       ? '' : 'none';
-  if (_mKpiEarly)  _mKpiEarly.style.display  = _savedView === 'list'       ? '' : 'none';
+  // Ocultar/mostrar áreas imediatamente (sem dados ainda)
+  const _lvEarly = document.getElementById('scListView');
+  const _cvEarly = document.getElementById('scCalendarView');
+  const _catsEarly = document.getElementById('scCategoriesView');
+  const _kpiEarly = document.getElementById('scKpiStrip');
+  const _mKpiEarly = document.getElementById('scMobileKpis');
+  if (_lvEarly) _lvEarly.style.display = _savedView === 'list' ? '' : 'none';
+  if (_cvEarly) _cvEarly.style.display = _savedView === 'calendar' ? '' : 'none';
+  if (_catsEarly) _catsEarly.style.display = _savedView === 'categories' ? '' : 'none';
+  if (_kpiEarly) _kpiEarly.style.display = _savedView === 'list' ? '' : 'none';
+  if (_mKpiEarly) _mKpiEarly.style.display = _savedView === 'list' ? '' : 'none';
 
   // Atualizar botões de view imediatamente
   document.querySelectorAll('#scViewList').forEach(b => b.classList.toggle('active', _savedView === 'list'));
@@ -382,7 +381,7 @@ function filterScheduled() {
   state._scFiltered = list;
 
   // Renderizar apenas o que está visível — evita flash entre views
-  const currentView = typeof _scView !== 'undefined' ? _scView : 'list';
+  const currentView = typeof _scView !== 'undefined' ? _scView : 'calendar';
 
   if (currentView === 'calendar') {
     // View calendário: só renderizar calendário, não a lista
@@ -1813,7 +1812,7 @@ async function showAutoRegisterNotification(items){
 ══════════════════════════════════════════════════════════════════ */
 
 // ── State ─────────────────────────────────────────────────────────
-let _scView       = 'list';           // 'list' | 'calendar' — padrão: lista
+let _scView       = 'calendar';       // 'list' | 'calendar' — padrão: calendário
 let _scCalYear    = new Date().getFullYear();
 let _scCalMonth   = new Date().getMonth(); // 0-indexed
 let _scCalSelDay  = null;             // 'YYYY-MM-DD' | null
