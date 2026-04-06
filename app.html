@@ -4996,31 +4996,28 @@ Se você não solicitou isso, ignore este e-mail.`,
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
   <div id="loginScreen" class="lgn-screen" style="display:none;position:fixed;inset:0;z-index:9999">
 
-    <!-- Left panel: branding (hidden on mobile) -->
-    <div class="lgn-brand-panel">
-      <div class="lgn-brand-grid"></div>
-      <div class="lgn-brand-orb lgn-brand-orb1"></div>
-      <div class="lgn-brand-orb lgn-brand-orb2"></div>
-      <div class="lgn-brand-orb lgn-brand-orb3"></div>
-      <div class="lgn-brand-content">
-        <img src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-brand-logo">
-        <div class="lgn-brand-title">Family FinTrack</div>
-        <div class="lgn-brand-sub" data-i18n="auth.tagline">Família inteligente, finanças sob controle</div>
-        <div class="lgn-brand-divider"></div>
-        <div class="lgn-brand-features">
-          <div class="lgn-brand-feat"><span>📊</span> Dashboard financeiro completo</div>
-          <div class="lgn-brand-feat"><span>🤖</span> Agente IA integrado</div>
-          <div class="lgn-brand-feat"><span>🔐</span> Dados seguros e privados</div>
-          <div class="lgn-brand-feat"><span>👨‍👩‍👧</span> Gestão familiar colaborativa</div>
-        </div>
-        <div class="lgn-brand-version">Family FinTrack</div>
-      </div>
-    </div>
+    <!-- Orbs flutuantes -->
+    <div class="lgn-orb lgn-orb1"></div>
+    <div class="lgn-orb lgn-orb2"></div>
+    <div class="lgn-orb lgn-orb3"></div>
 
-    <!-- Right panel: form -->
-    <div class="lgn-form-panel">
-      <div class="lgn-form-inner">
-        <!-- Logo — always visible, bigger on desktop via CSS -->
+    <!-- Opção C: Logo acima + Card abaixo -->
+    <div class="lgn-centered-wrap">
+
+      <!-- Logo flutuando acima do card -->
+      <div class="lgn-logo-wrap">
+        <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img"
+          onerror="this.style.opacity='.4'">
+        <div class="lgn-badge">
+          <div class="lgn-badge-dot"></div>
+          Acesso à plataforma
+        </div>
+      </div>
+
+      <!-- Card -->
+      <div class="lgn-card lgn-form-inner" style="position:relative">
+
+            <!-- Logo — always visible, bigger on desktop via CSS -->
         <div class="lgn-logo-wrap">
           <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
         </div>
@@ -5216,25 +5213,36 @@ Se você não solicitou isso, ignore este e-mail.`,
         </button>
         <div id="changePwdError" style="margin-top:10px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
       </div><!-- end changePwdArea -->
-        </div><!-- end lgn-form-inner -->
-      </div><!-- end lgn-form-panel -->
-    </div><!-- end lgn-screen -->
+        <!-- Features row — Opção C -->
+        <div class="lgn-features-row" id="lgnFeaturesRow">
+          <div class="lgn-feat-item"><span>📊</span><span>Dashboard</span></div>
+          <div class="lgn-feat-item"><span>🤖</span><span>IA Integrada</span></div>
+          <div class="lgn-feat-item"><span>🔐</span><span>Seguro</span></div>
+          <div class="lgn-feat-item"><span>👨‍👩‍👧</span><span>Familiar</span></div>
+        </div>
+
+      </div><!-- .lgn-card -->
+    </div><!-- .lgn-centered-wrap -->
+
+  </div><!-- end lgn-screen -->
 
   <!-- ═══════════ USER ADMIN MODAL ═══════════ -->
   <!-- ══ ADMIN USER MANAGEMENT MODAL — Modern tabs ═══════════════════════ -->
   <div class="modal-overlay" id="userAdminModal">
     <div class="modal ua-modal"><div class="modal-handle"></div>
 
-      <!-- Header -->
+      <!-- Header redesenhado -->
       <div class="ua-header">
-        <div class="ua-header-info">
-          <div class="ua-header-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Gerenciamento
+        <div class="ua-header-inner">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="ua-header-icon">👥</div>
+            <div>
+              <div class="ua-header-title">Gerenciamento</div>
+              <div class="ua-header-sub">Usuários, famílias e lista de espera</div>
+            </div>
           </div>
-          <div class="ua-header-sub">Usuários, famílias e lista de espera</div>
+          <button class="ua-close-btn" onclick="closeModal('userAdminModal')">✕</button>
         </div>
-        <button class="modal-close" onclick="closeModal('userAdminModal')">✕</button>
       </div>
 
       <!-- Tab bar -->
@@ -5424,19 +5432,52 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- Scoped styles -->
       <style>
-        .ua-modal { max-width: 780px; display: flex; flex-direction: column; max-height: 88dvh; padding: 0; overflow: hidden; }
+        /* ══ UserAdmin Modal — Design moderno alinhado ao app ══ */
+        .ua-modal {
+          max-width: 760px; display: flex; flex-direction: column;
+          max-height: 90dvh; padding: 0; overflow: hidden;
+          border-radius: 22px 22px 0 0;
+        }
+        /* Header com gradiente hero */
         .ua-header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 18px 22px 14px;
-          border-bottom: 1px solid var(--border);
-          background: var(--surface);
+          display: flex; align-items: flex-start; justify-content: space-between;
+          padding: 0;
           flex-shrink: 0;
+          background: linear-gradient(135deg, #0d2e1a 0%, #122a18 50%, #0a1e12 100%);
+          border-bottom: 1px solid rgba(125,194,66,.15);
+          position: relative; overflow: hidden;
+        }
+        .ua-header::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background-image: linear-gradient(rgba(125,194,66,.018) 1px,transparent 1px),
+            linear-gradient(90deg,rgba(125,194,66,.018) 1px,transparent 1px);
+          background-size: 32px 32px;
+        }
+        .ua-header-inner {
+          position: relative; z-index: 1;
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 16px 20px 14px; width: 100%;
         }
         .ua-header-title {
-          display: flex; align-items: center; gap: 8px;
-          font-size: .95rem; font-weight: 800; color: var(--text); margin-bottom: 2px;
+          display: flex; align-items: center; gap: 10px;
+          font-size: .95rem; font-weight: 800;
+          color: rgba(255,255,255,.92); margin-bottom: 2px;
         }
-        .ua-header-sub { font-size: .75rem; color: var(--muted); }
+        .ua-header-icon {
+          width: 34px; height: 34px; border-radius: 10px;
+          background: rgba(125,194,66,.15); border: 1px solid rgba(125,194,66,.25);
+          display: flex; align-items: center; justify-content: center; font-size: 1rem;
+          flex-shrink: 0;
+        }
+        .ua-header-sub { font-size: .72rem; color: rgba(200,230,200,.45); margin-top: 1px; }
+        .ua-close-btn {
+          width: 30px; height: 30px; border-radius: 8px;
+          background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+          color: rgba(255,255,255,.5); font-size: .8rem; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; transition: all .15s;
+          flex-shrink: 0;
+        }
+        .ua-close-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
         .ua-tab-bar {
           display: flex;
           border-bottom: 1px solid var(--border);
@@ -5540,6 +5581,86 @@ Se você não solicitou isso, ignore este e-mail.`,
         #usersList { padding: 10px 20px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
         #familiesList { padding: 10px 20px; overflow-y: auto; flex: 1; }
         #uaPendingContent { padding: 16px 20px; overflow-y: auto; flex: 1; }
+
+        /* Tab bar modernizada */
+        .ua-tab-bar {
+          display: flex; border-bottom: 1px solid var(--border);
+          background: var(--surface2); overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+          padding: 0 4px;
+        }
+        .ua-tab-bar::-webkit-scrollbar { display: none; }
+        .ua-tab {
+          display: flex; align-items: center; gap: 6px; padding: 11px 15px;
+          font-family: var(--font-sans); font-size: .76rem; font-weight: 600;
+          color: var(--muted); border: none; background: none; cursor: pointer;
+          border-bottom: 2px solid transparent; margin-bottom: -1px;
+          white-space: nowrap; transition: color .15s, border-color .15s; flex-shrink: 0;
+        }
+        .ua-tab:hover { color: var(--text); }
+        .ua-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* Cards de usuário modernos */
+        .ua-user-card {
+          display: flex; align-items: center; gap: 12px;
+          padding: 12px 14px; background: var(--surface);
+          border: 1px solid var(--border); border-radius: 12px;
+          transition: border-color .15s, box-shadow .15s;
+        }
+        .ua-user-card:hover { border-color: var(--accent-lt,rgba(42,96,73,.25)); box-shadow: var(--shadow-sm); }
+        .ua-user-avatar {
+          width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--accent-lt,rgba(42,96,73,.1)); font-size: 1rem;
+          overflow: hidden; border: 2px solid var(--border);
+        }
+        .ua-user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .ua-user-info { flex: 1; min-width: 0; }
+        .ua-user-name { font-size: .86rem; font-weight: 700; color: var(--text); }
+        .ua-user-email { font-size: .72rem; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ua-user-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
+        .ua-role-badge {
+          font-size: .62rem; font-weight: 700; padding: 2px 8px; border-radius: 100px;
+          background: var(--accent-lt,rgba(42,96,73,.1)); color: var(--accent); border: 1px solid rgba(42,96,73,.2);
+        }
+        .ua-role-badge.admin { background: rgba(59,130,246,.1); color: #2563eb; border-color: rgba(59,130,246,.2); }
+        .ua-role-badge.owner { background: rgba(245,158,11,.1); color: #d97706; border-color: rgba(245,158,11,.2); }
+        .ua-role-badge.viewer { background: var(--bg2); color: var(--muted); border-color: var(--border); }
+        .ua-status-dot {
+          width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+        }
+        .ua-status-dot.active { background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,.5); }
+        .ua-status-dot.inactive { background: var(--muted); }
+        .ua-status-dot.pending { background: #f59e0b; }
+        .ua-user-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+        /* Pending card */
+        .ua-pending-card {
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 12px; padding: 14px 16px;
+          display: flex; align-items: flex-start; gap: 12px;
+        }
+        .ua-pending-card:hover { border-color: var(--accent-lt,rgba(42,96,73,.25)); }
+        .ua-pending-badge {
+          display: inline-flex; align-items: center;
+          padding: 3px 10px; border-radius: 100px;
+          font-size: .65rem; font-weight: 700;
+          background: rgba(245,158,11,.1); color: #d97706;
+          border: 1px solid rgba(245,158,11,.2);
+        }
+
+        /* Family card */
+        .ua-family-card {
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 12px; padding: 14px 16px;
+          display: flex; align-items: center; gap: 12px;
+          transition: border-color .15s;
+        }
+        .ua-family-card:hover { border-color: var(--accent-lt,rgba(42,96,73,.25)); }
+        .ua-family-icon {
+          width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+          background: var(--accent-lt,rgba(42,96,73,.1)); border: 1px solid rgba(42,96,73,.15);
+        }
       </style>
 
     </div>
@@ -6633,6 +6754,7 @@ Se você não solicitou isso, ignore este e-mail.`,
                 <option value="corrente">🏦 Conta Corrente</option>
                 <option value="poupanca">🐷 Poupança</option>
                 <option value="cartao_credito">💳 Cartão de Crédito</option>
+                <option value="vale_refeicao">🍽️ Vale Refeição / Alimentação</option>
                 <option value="investimento">📈 Investimentos</option>
                 <option value="dinheiro">💵 Dinheiro / Caixa</option>
                 <option value="outros">📌 Outros</option>
@@ -6782,6 +6904,63 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
 
         <!-- Cartão não selecionado aviso -->
+        <!-- Painel Vale Refeição/Alimentação -->
+        <div id="accountValeDataSection" style="display:none">
+          <div class="acm-section-title">💳 Dados do Cartão Vale</div>
+          <div class="acm-fields-grid">
+            <div class="acm-field">
+              <label class="acm-label">Operadora / Bandeira</label>
+              <input type="text" id="valeOperadora" class="acm-input"
+                placeholder="Ex: Alelo, Sodexo, Ticket, VR, Flash..."
+                oninput="acmLivePreview()">
+            </div>
+            <div class="acm-field">
+              <label class="acm-label">Tipo de benefício</label>
+              <select id="valeTipoBeneficio" class="acm-select" onchange="acmLivePreview()">
+                <option value="refeicao">🍽️ Vale Refeição</option>
+                <option value="alimentacao">🛒 Vale Alimentação</option>
+                <option value="ambos">🍽️🛒 Refeição + Alimentação</option>
+                <option value="combustivel">⛽ Vale Combustível</option>
+                <option value="cultura">🎭 Vale Cultura</option>
+                <option value="mobilidade">🚌 Vale Mobilidade</option>
+                <option value="multibeneficio">🎁 Multi-benefício</option>
+              </select>
+            </div>
+            <div class="acm-field">
+              <label class="acm-label">Saldo mensal creditado</label>
+              <div class="amt-wrap">
+                <input type="text" id="valeSaldoMensal" class="acm-input"
+                  inputmode="numeric" placeholder="0,00" autocomplete="off"
+                  oninput="_amtFieldInput('valeSaldoMensal');acmLivePreview()"
+                  onkeydown="_amtFieldKeydown('valeSaldoMensal', event)"
+                  onblur="_amtFieldBlur('valeSaldoMensal')"
+                  onfocus="_amtFieldFocus('valeSaldoMensal')">
+              </div>
+            </div>
+            <div class="acm-field">
+              <label class="acm-label">Dia do crédito</label>
+              <input type="number" id="valeDiaCredito" class="acm-input"
+                min="1" max="31" placeholder="Ex: 5"
+                oninput="acmLivePreview()">
+            </div>
+            <div class="acm-field acm-field--full">
+              <label class="acm-label">Empresa / Empregador</label>
+              <input type="text" id="valeEmpresa" class="acm-input"
+                placeholder="Nome da empresa que oferece o benefício"
+                oninput="acmLivePreview()">
+            </div>
+            <div class="acm-field acm-field--full">
+              <label class="acm-label">Observações</label>
+              <input type="text" id="valeObs" class="acm-input"
+                placeholder="Ex: usar somente em restaurantes conveniados..."
+                oninput="acmLivePreview()">
+            </div>
+          </div>
+          <div class="acm-notice" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534;margin-top:12px">
+            💡 O saldo do vale é gerenciado como uma conta separada. Registre compras como despesas nesta conta para acompanhar o saldo disponível.
+          </div>
+        </div>
+
         <div id="acmCardNotice" class="acm-notice" style="display:none">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           Selecione o tipo <strong>Cartão de Crédito</strong> na aba Básico para editar estas configurações.
@@ -8579,6 +8758,9 @@ Se você não solicitou isso, ignore este e-mail.`,
                   <option value="">— Selecionar —</option>
                 </select>
               </div>
+              <div id="mfmNoUsersMsg" style="display:none;font-size:.78rem;color:var(--muted);
+                background:var(--bg2);border-radius:8px;padding:10px 12px;margin-top:8px;
+                border:1px solid var(--border);line-height:1.5"></div>
               <div style="display:flex;gap:8px;margin-top:10px">
                 <select id="mfmAddUserRole" class="mfm-select" style="flex:1">
                   <option value="user">👤 Usuário</option>
