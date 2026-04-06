@@ -2320,15 +2320,17 @@ html, body { overscroll-behavior: none; }
 /* ── Dashboard Customizer — drag-and-drop ─────────────────────────────────── */
 /* Dashboard customizer — desativar touch-action do modal para permitir drag */
 #dashCustomModal .modal {
-  touch-action: none; /* permite drag vertical no iOS */
+  /* touch-action livre no modal — o drag JS gerencia por item individualmente */
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 #dashCustomList {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 4px 0;
-  touch-action: none; /* essencial para touchmove no iOS */
+  /* touch-action gerenciada por item via JS two-phase detection */
+  touch-action: pan-y; /* scroll vertical livre por padrão */
 }
 .dcc-item {
   display: flex;
@@ -2341,7 +2343,7 @@ html, body { overscroll-behavior: none; }
   cursor: grab;
   transition: background .12s, box-shadow .12s, transform .12s;
   user-select: none;
-  touch-action: none; /* permite capturar touchmove sem o scroll roubar o evento */
+  touch-action: pan-y; /* scroll livre — drag detectado via JS two-phase */
   -webkit-user-drag: element;
 }
 .dcc-item:active { cursor: grabbing; }
@@ -4953,6 +4955,7 @@ html, body { overscroll-behavior: none; }
   cursor: pointer;
   -webkit-tap-highlight-color: rgba(42,96,73,.08);
   touch-action: manipulation; /* permite scroll + tap, elimina delay de 300ms no iOS */
+  overflow: visible; /* permite swipe translateX não ser clipado pelo pai */
 }
 .tx-row-clickable:active {
   background: var(--surface2) !important;
@@ -19582,14 +19585,15 @@ section[data-page="transactions"] .content {
 
 
 /* 2FA */
+/* ── 2FA screen — cores para card escuro (rgba(4,14,8,.82)) ── */
 .twofa-title {
   font-size: 1.15rem; font-weight: 800;
-  color: #0a1e12; text-align: center;
+  color: #ffffff; text-align: center;
   margin-bottom: 6px;
   font-family: var(--font-serif, Georgia, serif);
 }
 .twofa-sub {
-  font-size: .82rem; color: #7a9080;
+  font-size: .82rem; color: rgba(200,225,210,.65);
   text-align: center; margin-bottom: 24px;
   line-height: 1.55;
 }
@@ -19597,40 +19601,47 @@ section[data-page="transactions"] .content {
   width: 100%; text-align: center;
   font-size: 2rem; font-weight: 800;
   letter-spacing: .35em; font-variant-numeric: tabular-nums;
-  padding: 16px; border: 1.5px solid #d4e0d4;
+  padding: 16px; border: 1.5px solid rgba(125,194,66,.3);
   border-radius: 12px; outline: none;
-  background: #fff; color: #0a1e12;
-  transition: border-color .18s, box-shadow .18s;
+  background: rgba(255,255,255,.06); color: #ffffff;
+  transition: border-color .18s, box-shadow .18s, background .18s;
   margin-bottom: 20px; box-sizing: border-box;
-  font-family: var(--font-serif, Georgia, monospace);
+  font-family: 'Courier New', monospace;
 }
+.twofa-code-input::placeholder { color: rgba(200,225,210,.22); }
 .twofa-code-input:focus {
-  border-color: #2a6049;
-  box-shadow: 0 0 0 4px rgba(42,96,73,.10);
+  border-color: rgba(125,194,66,.55);
+  background: rgba(255,255,255,.09);
+  box-shadow: 0 0 0 3px rgba(125,194,66,.13);
 }
 .twofa-actions { display: flex; flex-direction: column; gap: 10px; }
 .twofa-trust-row {
   display: flex; align-items: center; gap: 8px;
-  font-size: .78rem; color: #7a9080;
+  font-size: .78rem; color: rgba(200,225,210,.55);
   padding: 4px 0;
+}
+.twofa-trust-row label {
+  color: rgba(200,225,210,.65);
+  cursor: pointer; user-select: none;
+  font-size: .78rem;
 }
 .twofa-resend {
   background: none; border: none;
-  color: #2a6049; font-size: .82rem;
+  color: var(--lime, #7dc242); font-size: .82rem;
   font-weight: 600; cursor: pointer;
   text-align: center; padding: 4px;
   font-family: inherit;
   transition: opacity .15s;
 }
-.twofa-resend:hover { opacity: .65; text-decoration: underline; }
+.twofa-resend:hover { opacity: .75; text-decoration: underline; }
 .twofa-back {
   background: none; border: none;
-  color: #9ab0a0; font-size: .8rem;
+  color: rgba(200,225,210,.45); font-size: .8rem;
   cursor: pointer; text-align: center;
   padding: 4px; font-family: inherit;
   transition: color .15s;
 }
-.twofa-back:hover { color: #2a6049; }
+.twofa-back:hover { color: var(--lime, #7dc242); }
 
 /* Legacy compat */
 .login-hgrid, .login-orb, .login-card-a,
@@ -24197,80 +24208,7 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
    Não definir display aqui — especificidade de ID sobrescreveria o JS.
 ══════════════════════════════════════════════════════════════════ */
 
-.twofa-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #0a1e12;
-  margin-bottom: 5px;
-  text-align: center;
-}
-.twofa-sub {
-  font-size: .81rem;
-  color: #6b7280;
-  text-align: center;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-.twofa-code-input {
-  width: 100%;
-  padding: 14px !important;
-  font-size: 2rem !important;
-  font-weight: 800 !important;
-  letter-spacing: .36em !important;
-  text-align: center !important;
-  border: 2px solid #d4e0d4 !important;
-  border-radius: 14px !important;
-  background: #fff !important;
-  color: #0a1e12 !important;
-  outline: none !important;
-  transition: border-color .18s, box-shadow .18s !important;
-  font-family: 'Courier New', monospace !important;
-  box-sizing: border-box !important;
-  margin-bottom: 4px !important;
-}
-.twofa-code-input:focus {
-  border-color: #2a6049 !important;
-  box-shadow: 0 0 0 3px rgba(42,96,73,.14) !important;
-}
-.twofa-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 18px;
-}
-.twofa-trust-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-.twofa-trust-row label {
-  font-size: .8rem;
-  color: #6b7280;
-  cursor: pointer;
-  user-select: none;
-}
-.twofa-resend {
-  background: none;
-  border: none;
-  color: #2a6049;
-  font-size: .8rem;
-  cursor: pointer;
-  text-align: center;
-  text-decoration: underline;
-  font-family: var(--font-sans);
-  padding: 4px 0;
-}
-.twofa-back {
-  background: none;
-  border: none;
-  color: #6b7280;
-  font-size: .78rem;
-  cursor: pointer;
-  text-align: center;
-  font-family: var(--font-sans);
-  padding: 4px 0;
-}
+/* twofa styles consolidated above — duplicate removed */
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -24958,4 +24896,117 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   color: var(--muted);
   font-style: italic;
   line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PATCH 2026-04-06 v2 — Transações: corrigir conflito de layout mobile
+   Múltiplos blocos @media (max-width: 640px) legados no arquivo forçavam
+   display:block em tr/td com seletores de alta especificidade como:
+     #page-transactions #txFlatCard tr:not(.tx-date-header-row)
+   Isso sobrescrevia o display:grid do layout v2 (720px).
+   Solução: usar seletores de especificidade IGUAL OU MAIOR com !important.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* table e tbody: block está ok para ambos os sistemas */
+@media (max-width: 720px) {
+  #page-transactions #txFlatCard table,
+  #page-transactions #txFlatCard tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  #page-transactions #txFlatCard .table-wrap {
+    overflow: visible !important;
+    touch-action: pan-y !important;
+  }
+
+  /* Date-header rows: block correto */
+  #page-transactions #txFlatCard tr.tx-date-header-row,
+  #page-transactions #txBody tr.tx-date-header-row {
+    display: block !important;
+  }
+
+  /* ── CORREÇÃO PRINCIPAL ──────────────────────────────────────────────
+     Seletor com mesma especificidade dos blocos legados mas vem DEPOIS
+     no arquivo, portanto vence na cascata CSS.
+     Os legados usam: #page-transactions #txFlatCard tr:not(.tx-date-header-row)
+     Nós usamos:      #page-transactions #txFlatCard tr.tx-row-clickable
+     Ambos têm especificidade 0-3-1, mas este vem por último → vence.
+  ─────────────────────────────────────────────────────────────────────── */
+  #page-transactions #txFlatCard tr.tx-row-clickable,
+  #page-transactions #txBody    tr.tx-row-clickable {
+    display: grid !important;
+    grid-template-columns: minmax(42px,10%) minmax(0,60%) minmax(72px,20%) !important;
+    grid-template-areas: "date body right" !important;
+    gap: 10px !important;
+    align-items: center !important;
+    padding: 12px 14px !important;
+    border-radius: 16px !important;
+    width: auto !important;       /* desfaz width:100% do legado */
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: rgba(42,96,73,.08) !important;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 0 !important;
+  }
+
+  /* Células: revert de display:block forçado pelos blocos legados
+     #page-transactions #txFlatCard td:not(.tx-date-header-cell) { display:block }
+     Seletor abaixo tem especificidade maior (classe extra) → vence */
+  #page-transactions #txFlatCard tr.tx-row-clickable td,
+  #page-transactions #txBody    tr.tx-row-clickable td {
+    display: block !important;    /* dentro do grid, block é correto para células */
+    width: auto !important;       /* grid controla largura via grid-area */
+    pointer-events: auto !important;
+  }
+
+  /* Grid areas para cada célula */
+  #page-transactions #txFlatCard tr.tx-row-clickable td.tx-v2-date,
+  #page-transactions #txBody    tr.tx-row-clickable td.tx-v2-date {
+    grid-area: date !important;
+  }
+  #page-transactions #txFlatCard tr.tx-row-clickable td.tx-v2-body,
+  #page-transactions #txBody    tr.tx-row-clickable td.tx-v2-body {
+    grid-area: body !important;
+  }
+  #page-transactions #txFlatCard tr.tx-row-clickable td.tx-v2-right,
+  #page-transactions #txBody    tr.tx-row-clickable td.tx-v2-right {
+    grid-area: right !important;
+  }
+
+  /* Neutralizar font-size gigante de blocos legados */
+  #page-transactions #txFlatCard tr.tx-row-clickable td:nth-child(6),
+  #page-transactions #txBody    tr.tx-row-clickable td:nth-child(6) {
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    text-align: inherit !important;
+  }
+
+  #page-transactions.page {
+    touch-action: pan-y !important;
+  }
+
+  /* Swipe: overflow:visible nos containers para não clipar o translateX do <tr> */
+  #page-transactions #txFlatCard,
+  #page-transactions .tx-table-card {
+    overflow: visible !important;
+  }
+  #page-transactions #txFlatCard .table-wrap {
+    overflow: visible !important;
+  }
+  #page-transactions #txFlatCard table,
+  #page-transactions #txFlatCard tbody {
+    overflow: visible !important;
+  }
+}
+
+/* Desktop: tr normal */
+@media (min-width: 721px) {
+  #page-transactions #txBody tr.tx-row-clickable {
+    display: table-row !important;
+  }
+  #page-transactions #txBody tr.tx-row-clickable td {
+    display: table-cell !important;
+  }
 }
