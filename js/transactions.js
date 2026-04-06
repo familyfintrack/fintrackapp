@@ -897,8 +897,8 @@ function toggleTxGroup(k) {
 }
 
 function changePage(dir){state.txPage+=dir;loadTransactions();}
-async // ══ Tags Field — chips visuais com autocomplete ══════════════════════════════
 
+// ══ Tags Field — chips visuais com autocomplete ══════════════════════════════
 
 // Coletar todas as tags usadas no histórico de transações
 async function _loadAllTags() {
