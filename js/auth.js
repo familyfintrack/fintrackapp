@@ -6157,47 +6157,83 @@ async function _sendOfficialInvite() {
   const btn   = document.getElementById('wlInvSendBtn');
 
   if (!email || !msg) { toast('Preencha a mensagem', 'error'); return; }
+  if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.templateId || !EMAILJS_CONFIG.publicKey) {
+    toast('EmailJS não configurado. Configure em Configurações → E-mail.', 'error');
+    return;
+  }
 
-  btn.disabled   = true;
+  btn.disabled    = true;
   btn.textContent = '⏳ Enviando…';
 
   try {
-    // 1. Enviar email via EmailJS
-    if (EMAILJS_CONFIG.serviceId && EMAILJS_CONFIG.templateId && EMAILJS_CONFIG.publicKey) {
-      const fn   = name.split(' ')[0] || 'Olá';
-      const body = _buildOfficialInviteEmail(fn, email, msg);
-      await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
-        to_email:       email,
-        report_subject: '[Family FinTrack] 🎉 Seu convite chegou! Acesso liberado.',
-        Subject:        '[Family FinTrack] Seu acesso ao Family FinTrack foi liberado!',
-        month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-        report_content: body,
-      });
-    } else {
-      throw new Error('EmailJS não configurado. Configure em Configurações → Email.');
-    }
+    const familyId = famId();
+    if (!familyId) throw new Error('Usuário sem família definida. Configure a família do admin.');
 
-    // 2. Marcar como 'invited' na lista de espera
+    // ── 1. Criar token de convite na tabela family_invites ─────────────────
+    // (mesmo mecanismo do convite normal — gera link rastreável com expiração)
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Invalidar convites anteriores para o mesmo email
+    await sb.from('family_invites')
+      .update({ used: true })
+      .eq('email', email)
+      .eq('family_id', familyId)
+      .eq('used', false);
+
+    const { error: invErr } = await sb.from('family_invites').insert({
+      token,
+      email,
+      family_id:  familyId,
+      role:       'user',
+      invited_by: currentUser?.app_user_id || null,
+      expires_at: expiresAt,
+      used:       false,
+    });
+    if (invErr) throw new Error('Erro ao gerar token de convite: ' + invErr.message);
+
+    // ── 2. Montar URL com token ────────────────────────────────────────────
+    const appUrl    = typeof getAppBaseUrl === 'function'
+      ? getAppBaseUrl()
+      : (window.location.origin + window.location.pathname);
+    const inviteUrl = `${appUrl}?invite=${token}`;
+
+    // ── 3. Enviar email via EmailJS (com emailjs.init obrigatório) ─────────
+    const fn   = name.split(' ')[0] || 'Olá';
+    const body = _buildOfficialInviteEmail(fn, email, msg, inviteUrl);
+
+    emailjs.init(EMAILJS_CONFIG.publicKey); // OBRIGATÓRIO antes de send()
+    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+      to_email:       email,
+      report_subject: '[Family FinTrack] 🎉 Seu convite chegou! Acesso liberado.',
+      Subject:        '[Family FinTrack] Seu acesso ao Family FinTrack foi liberado!',
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      report_content: body,
+    });
+
+    // ── 4. Marcar como 'invited' na lista de espera ────────────────────────
     await sb.from('waitlist').update({
       status:     'invited',
       updated_at: new Date().toISOString(),
     }).eq('id', wlId);
 
-    toast(`✅ Convite enviado para ${name || email}!`, 'success');
+    toast(`✅ Convite enviado para ${name || email}! Link válido por 7 dias.`, 'success');
     closeModal('wlInviteModal');
     loadWaitlist();
 
   } catch(e) {
-    toast('Erro ao enviar convite: ' + e.message, 'error');
-    btn.disabled   = false;
+    const msg_ = e.message || String(e);
+    toast('Erro ao enviar convite: ' + (msg_ === 'undefined' ? 'falha no envio de email — verifique as credenciais EmailJS' : msg_), 'error');
+    btn.disabled    = false;
     btn.textContent = '✉️ Enviar Convite';
   }
 }
 window._sendOfficialInvite = _sendOfficialInvite;
 
-function _buildOfficialInviteEmail(firstName, email, personalMsg) {
+function _buildOfficialInviteEmail(firstName, email, personalMsg, inviteUrl) {
   const safeMsg  = personalMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-  const appUrl   = location.origin + '/app.html';
+  const appUrl   = inviteUrl || (location.origin + '/app.html');
   const landUrl  = location.origin;
 
   return `
