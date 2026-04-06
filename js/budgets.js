@@ -152,6 +152,17 @@ async function loadBudgets() {
   const { data: txs } = await txQ;
   const raw = _buildRawSpending(txs);
 
+  // 2b. Auto-project recurring budgets from previous month if current period is empty
+  if (hasNewSchema && _budgetView === 'monthly' && _budgetCache.length === 0) {
+    await _autoProjectRecurringBudgets(period);
+    // Re-fetch after projection
+    let bq2 = famQ(sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)'))
+      .eq('budget_type', 'monthly')
+      .eq('month', `${period.year}-${String(period.month).padStart(2,'0')}-01`);
+    const { data: projectedBudgets } = await bq2;
+    _budgetCache = projectedBudgets || [];
+  }
+
   // 3. Gasto por orçamento (soma hierarquia)
   const resolved = {};
   _budgetCache.forEach(b => {
@@ -692,6 +703,45 @@ function getPeriodColor(period) {
   }
 }
 
+// ── Auto-project recurring budgets ──────────────────────────────────────────
+// If no budgets exist for current month but recurring ones exist from last month,
+// automatically create copies for the current month.
+async function _autoProjectRecurringBudgets(period) {
+  try {
+    // Look for recurring budgets in previous month
+    const prevDate = new Date(period.year, period.month - 1, 1);
+    prevDate.setMonth(prevDate.getMonth() - 1);
+    const prevY = prevDate.getFullYear();
+    const prevM = prevDate.getMonth() + 1;
+    const prevMonthStr = `${prevY}-${String(prevM).padStart(2,'0')}-01`;
+    const curMonthStr  = `${period.year}-${String(period.month).padStart(2,'0')}-01`;
+
+    const { data: prevBudgets } = await famQ(
+      sb.from('budgets').select('category_id,amount,budget_type,family_member_id,notes')
+    ).eq('budget_type','monthly').eq('month', prevMonthStr).eq('auto_reset', true);
+
+    if (!prevBudgets || !prevBudgets.length) return;
+
+    // Insert for current month (ignore conflicts)
+    const toInsert = prevBudgets.map(b => ({
+      family_id:        famId(),
+      category_id:      b.category_id,
+      amount:           b.amount,
+      month:            curMonthStr,
+      budget_type:      'monthly',
+      auto_reset:       true,
+      paused:           false,
+      notes:            b.notes || null,
+      family_member_id: b.family_member_id || null,
+    }));
+
+    await sb.from('budgets')
+      .upsert(toInsert, { onConflict: 'family_id,category_id,month,budget_type', ignoreDuplicates: true });
+  } catch(e) {
+    console.debug('[budget auto-project]', e.message);
+  }
+}
+
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.initBudgetsPage                     = initBudgetsPage;
 window.loadBudgets                         = loadBudgets;
@@ -700,3 +750,4 @@ window.saveBudget                          = saveBudget;
 window.setBudgetModalType                  = setBudgetModalType;
 window.setBudgetView                       = setBudgetView;
 window.switchBudgetMainTab                 = switchBudgetMainTab;
+window._autoProjectRecurringBudgets        = _autoProjectRecurringBudgets;

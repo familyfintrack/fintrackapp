@@ -250,6 +250,11 @@ async function loadTransactions(){
     renderTransactions();
   } catch(e) { toast(e.message,'error'); }
 }
+// FX endpoint — must be declared before any async function that uses it
+const FX_API_BASE = (typeof window !== 'undefined' && window.FX_API_BASE)
+  ? window.FX_API_BASE
+  : 'https://api.frankfurter.dev/v1';
+
 let _filterTxDebounceTimer = null;
 function filterTransactions(immediate = false){
   state.txFilter.search=document.getElementById('txSearch').value;
@@ -1245,10 +1250,7 @@ function setTxType(type){
 
 // ── FX / Exchange-rate helpers ─────────────────────────────────────────────
 
-// frankfurter.dev/v1: free, no key, CORS-correct, ECB data
-// Endpoint: GET https://api.frankfurter.dev/v1/YYYY-MM-DD?base=EUR&to=BRL
-// FX_API_BASE is set by fx_rates.js (loaded before this file); fallback here for safety
-const FX_API_BASE = window.FX_API_BASE || 'https://api.frankfurter.dev/v1';
+// FX_API_BASE moved to top of file — see early declarations
 
 function _getTransferCurrencies() {
   const srcId  = document.getElementById('txAccountId').value;
@@ -1330,10 +1332,17 @@ function _hideTxCurrencyPanel() {
 function _rebuildTxCurrencySelect(accountCur, selectedCur) {
   const sel = document.getElementById('txCurrencySelect');
   if (!sel) return;
-  const CURRENCIES = ['BRL','USD','EUR','GBP','AED','ARS','CAD','CHF','JPY','MXN','CLP','COP','PEN','UYU'];
-  const list = [...new Set([accountCur, ...CURRENCIES])];
+  // Lista completa sempre visível — usuário pode escolher qualquer moeda
+  const CURRENCIES = [
+    'BRL','USD','EUR','GBP','JPY','CHF','CAD','AUD','NZD',
+    'AED','ARS','CLP','COP','MXN','PEN','UYU','BOB','PYG',
+    'CNY','HKD','SGD','KRW','INR','THB','IDR','MYR','PHP',
+    'ZAR','EGP','TRY','SEK','NOK','DKK','PLN','CZK','HUF',
+  ];
+  const list = [...new Set([accountCur || 'BRL', ...CURRENCIES])];
+  const picked = selectedCur || accountCur || 'BRL';
   sel.innerHTML = list.map(c =>
-    `<option value="${c}"${c===(selectedCur||accountCur)?' selected':''}>${c}</option>`
+    `<option value="${c}"${c === picked ? ' selected' : ''}>${c}</option>`
   ).join('');
 }
 
