@@ -1011,15 +1011,6 @@ async function deleteFamilyMemberFromFamily(familyId, memberId, name) {
 
 
 // === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
-}
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.createFirstFamily                   = createFirstFamily;

@@ -514,7 +514,7 @@ function _amtFieldInput(fieldId) {
   _amtRender(el, cents);
 }
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 
 /* ═══════════════════════════════════════
@@ -829,15 +829,6 @@ async function createPayeeFromInput(ctx) {
 
 
 // === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
-}
 
 
 /* ═══════════════════════════════════════

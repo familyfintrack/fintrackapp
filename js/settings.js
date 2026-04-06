@@ -2361,15 +2361,6 @@ window._telCloseFamilyDetail = _telCloseFamilyDetail;
 
 
 // === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TELEMETRIA — Exclusão de registros
@@ -2617,19 +2608,7 @@ window.saveShowAccessRequest = async function(enabled) {
   toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
 };
 
-function _applyAccessRequestVisibility(enabled) {
-  // Hide the entire wrap (button + "Não tem conta?" text) as one unit
-  const wrap = document.getElementById('loginRequestAccessWrap');
-  if (wrap) { wrap.style.display = enabled ? '' : 'none'; return; }
-  // Fallback: hide button + sibling text individually
-  const btn = document.getElementById('loginRequestAccessBtn');
-  if (btn) btn.style.display = enabled ? '' : 'none';
-  const parent = btn?.parentElement;
-  if (parent) {
-    parent.querySelectorAll('span[data-i18n="auth.no_account"]')
-      .forEach(t => { t.style.display = enabled ? '' : 'none'; });
-  }
-}
+// _applyAccessRequestVisibility defined in auth.js
 
 // Apply on page load (called by auth.js after settings load)
 async function initAccessRequestVisibility() {

@@ -630,7 +630,15 @@ async function _fetchAccessRequestSettingAnon() {
 function _applyAccessRequestVisibility(enabled) {
   try {
     const wrap = document.getElementById('loginRequestAccessWrap');
-    if (wrap) wrap.style.display = enabled ? '' : 'none';
+    if (wrap) { wrap.style.display = enabled ? '' : 'none'; return; }
+    // Fallback: hide button + sibling text individually
+    const btn = document.getElementById('loginRequestAccessBtn');
+    if (btn) btn.style.display = enabled ? '' : 'none';
+    const parent = btn?.parentElement;
+    if (parent) {
+      parent.querySelectorAll('span[data-i18n="auth.no_account"]')
+        .forEach(t => { t.style.display = enabled ? '' : 'none'; });
+    }
   } catch(_) {}
 }
 // Alias kept for legacy callers — delegates to DB fetch
@@ -5945,15 +5953,6 @@ function _mfmMsg(text, type) {
 
 
 // === PERIODICITY COLORS ===
-function getPeriodColor(period) {
-  switch((period||'').toLowerCase()) {
-    case 'daily': return '#2ecc71';
-    case 'weekly': return '#3498db';
-    case 'monthly': return '#f39c12';
-    case 'yearly': return '#9b59b6';
-    default: return '#1F6B4F';
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LISTA DE ESPERA — Gerenciamento admin
