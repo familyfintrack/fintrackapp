@@ -6587,6 +6587,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             <button type="button" class="amt-sign-btn" id="consolidateAmountSignBtn"
               onclick="toggleAmtSign('consolidateAmount')" aria-label="Alternar sinal">+</button>
             <input type="text" id="consolidateAmount" inputmode="numeric" placeholder="0,00"
+                oninput="_amtFieldInput('consolidateAmount')" onkeydown="_amtFieldKeydown('consolidateAmount', event)" onblur="_amtFieldBlur('consolidateAmount')" onfocus="_amtFieldFocus('consolidateAmount')"
               pattern="[0-9.,]*" autocomplete="off"
               oninput="_updateConsolidatePreview()">
           </div>
@@ -6907,6 +6908,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div class="amt-wrap">
               <input type="text" id="accountCardLimit" class="acm-input acm-input--mono"
                 inputmode="numeric" placeholder="0,00" autocomplete="off"
+                oninput="_amtFieldInput('accountCardLimit')" onkeydown="_amtFieldKeydown('accountCardLimit', event)" onblur="_amtFieldBlur('accountCardLimit')" onfocus="_amtFieldFocus('accountCardLimit')"
                 oninput="_amtFieldInput('accountCardLimit');acmLivePreview()"
                 onkeydown="_amtFieldKeydown('accountCardLimit', event)"
                 onblur="_amtFieldBlur('accountCardLimit')"
@@ -6943,6 +6945,7 @@ Se você não solicitou isso, ignore este e-mail.`,
               <div class="amt-wrap">
                 <input type="text" id="valeSaldoMensal" class="acm-input"
                   inputmode="numeric" placeholder="0,00" autocomplete="off"
+                oninput="_amtFieldInput('valeSaldoMensal')" onkeydown="_amtFieldKeydown('valeSaldoMensal', event)" onblur="_amtFieldBlur('valeSaldoMensal')" onfocus="_amtFieldFocus('valeSaldoMensal')"
                   oninput="_amtFieldInput('valeSaldoMensal');acmLivePreview()"
                   onkeydown="_amtFieldKeydown('valeSaldoMensal', event)"
                   onblur="_amtFieldBlur('valeSaldoMensal')"
@@ -8394,7 +8397,9 @@ Se você não solicitou isso, ignore este e-mail.`,
           <label>Valor *</label>
           <div class="amt-wrap">
             <button type="button" class="amt-sign-btn" onclick="toggleAmtSign('ctsAmountInput')">+</button>
-            <input type="text" id="ctsAmountInput" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off">
+            <input type="text" id="ctsAmountInput" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
+                oninput="_amtFieldInput('ctsAmountInput')" onkeydown="_amtFieldKeydown('ctsAmountInput', event)" onblur="_amtFieldBlur('ctsAmountInput')" onfocus="_amtFieldFocus('ctsAmountInput')"
+>
           </div>
         </div>
         <div class="form-group">
@@ -10656,26 +10661,41 @@ body.dark .agent-welcome-card { background: var(--surface2); }
 
 <!-- ══ OBJECTIVE MODAL ══ -->
 <div class="modal-overlay" id="objectiveModal">
-  <div class="modal" style="max-width:460px"><div class="modal-handle"></div>
+  <div class="modal" style="max-width:500px;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch"><div class="modal-handle"></div>
     <div class="modal-header">
       <span class="modal-title" id="objModalTitle">Novo Objetivo</span>
       <button class="modal-close" onclick="closeModal('objectiveModal')">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="objId">
+      <input type="hidden" id="objIconValue" value="🎯">
+
+      <!-- Nome + ícone -->
       <div class="form-grid">
-        <div class="form-group" style="flex:0 0 60px">
-          <label>Ícone</label>
-          <input type="text" id="objIcon" value="🎯" style="text-align:center;font-size:1.4rem;padding:8px 4px;width:100%">
-        </div>
-        <div class="form-group" style="flex:1">
+        <div class="form-group full">
           <label>Nome do objetivo <span class="req-star">*</span></label>
           <input type="text" id="objName" placeholder="Ex: Reforma da cozinha, Viagem Europa…" autocomplete="off">
         </div>
+
+        <!-- Ícone picker -->
+        <div class="form-group full">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <span>Ícone</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span id="objIconDisplay" style="font-size:1.6rem;line-height:1">🎯</span>
+              <button type="button" id="objAiIconBtn" class="btn btn-ghost btn-sm"
+                onclick="suggestObjIconWithAI()" title="Sugerir ícone com IA">✨ IA</button>
+            </div>
+          </label>
+          <div id="objIconPicker" class="obj-icon-picker"></div>
+          <div id="objAiIconFeedback" style="display:none;font-size:.75rem;margin-top:4px;padding:4px 8px;border-radius:6px;background:var(--surface2)"></div>
+        </div>
+
         <div class="form-group full">
           <label>Descrição <span class="opt-label">opcional</span></label>
           <textarea id="objDescription" rows="2" placeholder="Descreva brevemente o objetivo…"></textarea>
         </div>
+
         <div class="form-group">
           <label>Data inicial <span class="req-star">*</span></label>
           <input type="date" id="objStartDate">
@@ -10684,9 +10704,14 @@ body.dark .agent-welcome-card { background: var(--surface2); }
           <label>Data final <span class="opt-label">opcional</span></label>
           <input type="date" id="objEndDate">
         </div>
+
         <div class="form-group">
           <label>Limite de gastos <span class="opt-label">opcional</span></label>
-          <input type="text" id="objBudgetLimit" inputmode="numeric" placeholder="0,00" autocomplete="off">
+          <input type="text" id="objBudgetLimit" inputmode="numeric" placeholder="0,00" autocomplete="off"
+            oninput="_amtFieldInput('objBudgetLimit')"
+            onkeydown="_amtFieldKeydown('objBudgetLimit', event)"
+            onblur="_amtFieldBlur('objBudgetLimit')"
+            onfocus="_amtFieldFocus('objBudgetLimit')">
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -10696,8 +10721,9 @@ body.dark .agent-welcome-card { background: var(--surface2); }
           </select>
         </div>
       </div>
-      <div style="margin-top:8px;padding:10px 12px;background:var(--accent-lt);border-radius:var(--r-sm);font-size:.78rem;color:var(--accent);border:1px solid rgba(42,96,73,.15)">
-        💡 Este objetivo é compartilhado com toda a família. Qualquer membro pode vincular transações a ele.
+
+      <div style="margin-top:12px;padding:10px 12px;background:var(--accent-lt);border-radius:var(--r-sm);font-size:.78rem;color:var(--accent);border:1px solid rgba(42,96,73,.15)">
+        💡 Objetivo compartilhado com toda a família — qualquer membro pode vincular transações.
       </div>
     </div>
     <div class="modal-footer">
@@ -10729,6 +10755,40 @@ body.dark .agent-welcome-card { background: var(--surface2); }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
+}
+
+/* Icon picker */
+.obj-icon-picker {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px; background: var(--surface2); border-radius: var(--r-sm);
+  border: 1px solid var(--border); margin-top: 6px; max-height: 130px; overflow-y: auto;
+}
+.obj-icon-opt {
+  width: 34px; height: 34px; border-radius: 8px; border: 2px solid transparent;
+  background: var(--surface); font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .12s, background .12s;
+}
+.obj-icon-opt:hover { border-color: var(--accent); background: var(--accent-lt); }
+.obj-icon-opt--sel  { border-color: var(--accent); background: var(--accent-lt); }
+
+/* Budget tabs modernized */
+#budgetMainTabBar {
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+  padding-bottom: 0;
+}
+#budgetMainTabBar .tab {
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  padding: 9px 18px;
+  font-weight: 600;
+}
+#budgetMainTabBar .tab.active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-lt);
 }
 .obj-card {
   background: var(--surface);
