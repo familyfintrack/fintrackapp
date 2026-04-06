@@ -769,6 +769,52 @@ async function deleteGroup(id){
   renderAccounts(_accountsViewMode);
 }
 
+const _GROUP_ICONS = [
+  // Contas & Finanças
+  '🏦','💳','💰','💵','💴','💶','💷','🪙','💎','📈','📉','📊','🏧','💹','🏪',
+  // Países / Bandeiras
+  '🇧🇷','🇺🇸','🇪🇺','🇬🇧','🇯🇵','🇨🇦','🇦🇺','🇨🇭','🇦🇷','🇲🇽','🇵🇹','🇫🇷','🇩🇪','🇮🇹','🇨🇳',
+  // Investimentos
+  '📊','📈','🏗️','🏢','🏠','🏡','🚗','✈️','🛳️','⚓','🌍','🌎','🌏',
+  // Família & Pessoas
+  '👨‍👩‍👧‍👦','👤','👥','🧑‍💼','🧒','👴','🤝','💑','👨‍👧','👩‍👦',
+  // Categorias de gasto
+  '🛒','🍔','🍕','☕','🍷','🏥','💊','📚','🎓','🎮','🎬','🎵','⚽','🏋️','✈️','🚀',
+  // Natureza & Símbolos
+  '🌱','🌿','🌊','🔥','⚡','🌟','⭐','🌙','☀️','🎯','🔑','🏆','🎪','🎨',
+  // Negócios
+  '📁','🗂️','📂','📋','📌','📎','🖇️','📝','✏️','🖊️','🔧','⚙️','🛠️','🔩',
+  // Outros úteis
+  '🏖️','🏔️','🌆','🌇','🌃','🎠','🎡','🎢','🏰','⛰️','🗺️','🧭','🌐',
+];
+
+function _populateGroupIconPicker(selectedEmoji) {
+  const picker = document.getElementById('groupIconPicker');
+  if (!picker) return;
+  picker.innerHTML = _GROUP_ICONS.map(icon => {
+    const sel = icon === selectedEmoji;
+    return `<button type="button" title="${icon}"
+      data-icon="${icon}"
+      style="width:34px;height:34px;border-radius:8px;border:2px solid ${sel?'var(--accent)':'transparent'};
+        background:${sel?'var(--accent-lt)':'transparent'};font-size:1.1rem;cursor:pointer;
+        transition:all .12s;display:flex;align-items:center;justify-content:center;padding:0"
+      onclick="_selectGroupIcon('${icon}')"
+      onmouseover="this.style.background='var(--accent-lt)'"
+      onmouseout="this.style.background=this.dataset.icon===document.getElementById('groupEmoji').value?'var(--accent-lt)':'transparent'"
+      >${icon}</button>`;
+  }).join('');
+}
+window._populateGroupIconPicker = _populateGroupIconPicker;
+
+function _selectGroupIcon(icon) {
+  const input = document.getElementById('groupEmoji');
+  const preview = document.getElementById('groupEmojiPreview');
+  if (input) input.value = icon;
+  if (preview) preview.textContent = icon;
+  _populateGroupIconPicker(icon);
+}
+window._selectGroupIcon = _selectGroupIcon;
+
 async function openGroupModal(id=''){
   if (!state.groups || !state.groups.length) { await loadGroups(); }
   document.getElementById('groupName').value='';
@@ -788,6 +834,11 @@ async function openGroupModal(id=''){
       document.getElementById('groupEditId').value=id;
     }
   }
+  // Populate icon picker
+  _populateGroupIconPicker(document.getElementById('groupEmoji').value || '🗂️');
+  // Sync preview
+  const prev = document.getElementById('groupEmojiPreview');
+  if (prev) prev.textContent = document.getElementById('groupEmoji').value || '🗂️';
   openModal('groupModal');
   renderGroupManager();
 }

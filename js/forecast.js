@@ -696,8 +696,12 @@ function renderForecastTables(allItems, accounts) {
 
       const drillLabel = (t.description||dp.short).replace(/'/g,"\\'");
       const amt = parseFloat(t.amount)||0;
+      const clickAction = (!t.isScheduled && t.id)
+        ? `if(typeof editTransaction==='function')editTransaction('${t.id}')`
+        : `if(typeof _forecastDrillRow==='function')_forecastDrillRow('${t.date}','${drillLabel}')`;
+      const rowTitle = t.isScheduled ? 'Ver programados desta data' : 'Editar transação';
 
-      return `${grpHdr}<tr class="${rowCls} forecast-tx-row" style="cursor:pointer" onclick="if(typeof _forecastDrillRow==='function')_forecastDrillRow('${t.date}','${drillLabel}')" title="Ver detalhes">
+      return `${grpHdr}<tr class="${rowCls} forecast-tx-row" style="cursor:pointer" onclick="${clickAction}" title="${rowTitle}">
         <td class="forecast-date-cell${isToday?' forecast-date-cell--today':''}"><div class="forecast-date-card forecast-date-card--compact"><div class="forecast-date-weekday">${dp.weekday}</div><div class="forecast-date-daynum">${dp.day}</div><div class="forecast-date-monthyear">${dp.monthYear}</div></div></td>
         <td class="forecast-desc-cell"><div class="forecast-line forecast-title">${_fcEsc(t.description||'')}${scBadge}</div>${catLine}${paLine}</td>
         <td class="forecast-amount-cell ${amt>=0?'amount-pos':'amount-neg'}">

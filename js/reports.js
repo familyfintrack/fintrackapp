@@ -786,8 +786,10 @@ function setReportView(view) {
   document.getElementById('reportTxView').style.display       = view==='transactions'  ? '' : 'none';
   document.getElementById('reportForecastView').style.display = view==='forecast'      ? '' : 'none';
   document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
+  document.getElementById('reportPayeesView')?.style && (document.getElementById('reportPayeesView').style.display = view==='payees' ? '' : 'none');
+  document.getElementById('reportObjectivesView')?.style && (document.getElementById('reportObjectivesView').style.display = view==='objectives' ? '' : 'none');
   // Hide the entire filter section (wrapper + bar) for views that don't need filters
-  const _hideFilters = (view === 'forecast' || view === 'budgets');
+  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees' || view === 'objectives');
   const _filterWrap = document.getElementById('rptFilterWrap');
   if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
   // Keep filter bar collapsed when switching views — user opens it manually
@@ -795,11 +797,13 @@ function setReportView(view) {
     document.getElementById('reportFilterBar').style.display = 'none';
   }
   // If not hiding, leave bar in its current collapsed/expanded state (don't force open)
-  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
+  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets','rptBtnPayees','rptBtnObjectives'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
-  const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets'};
+  const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',payees:'rptBtnPayees',objectives:'rptBtnObjectives'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
+  if (view === 'payees') _rptPayeesInit();
+  if (view === 'objectives') _rptObjectivesInit();
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
       const today=new Date().toISOString().slice(0,10);
@@ -2688,6 +2692,496 @@ function getPeriodColor(period) {
     }
   }
 })();
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RELATÓRIO DE BENEFICIÁRIOS / FONTES PAGADORAS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function _rptPayeesInit() {
+  // Preencher datas padrão (mês atual) e conta se ainda vazio
+  const from = document.getElementById('rptPayeesFrom');
+  const to   = document.getElementById('rptPayeesTo');
+  if (from && !from.value) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    const lastDay = new Date(y, now.getMonth()+1, 0).getDate();
+    from.value = `${y}-${m}-01`;
+    to.value   = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+  }
+  // Preencher contas
+  const accSel = document.getElementById('rptPayeesAccount');
+  if (accSel && accSel.options.length <= 1) {
+    (state.accounts || []).forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id; opt.textContent = a.name;
+      accSel.appendChild(opt);
+    });
+  }
+}
+
+async function _rptPayeesLoad() {
+  const body    = document.getElementById('reportPayeesBody');
+  if (!body) return;
+  const dateFrom = document.getElementById('rptPayeesFrom')?.value;
+  const dateTo   = document.getElementById('rptPayeesTo')?.value;
+  const accId    = document.getElementById('rptPayeesAccount')?.value || '';
+  const typeMode = document.getElementById('rptPayeesType')?.value || 'expense';
+
+  if (!dateFrom || !dateTo) { toast('Selecione o período', 'warning'); return; }
+
+  body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Gerando relatório…</div>`;
+
+  try {
+    let q = famQ(sb.from('transactions')
+      .select('id,date,description,amount,brl_amount,currency,payee_id,payees(id,name,type),categories(name,color,icon)'))
+      .gte('date', dateFrom).lte('date', dateTo)
+      .not('payee_id','is',null);
+    if (accId) q = q.eq('account_id', accId);
+    if (typeMode === 'expense') q = q.lt('amount', 0);
+    else if (typeMode === 'income') q = q.gt('amount', 0);
+
+    const { data: txs, error } = await q.order('date', { ascending: false });
+    if (error) throw error;
+
+    const rows = (txs || []).filter(t => t.payees?.name);
+
+    if (!rows.length) {
+      body.innerHTML = `<div style="text-align:center;padding:40px 16px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:8px">📭</div>
+        <div style="font-size:.85rem">Nenhuma transação com beneficiário no período.</div>
+      </div>`;
+      return;
+    }
+
+    // Agrupar por payee
+    const byPayee = {};
+    rows.forEach(t => {
+      const pid  = t.payee_id;
+      const name = t.payees?.name || '—';
+      const ptype = t.payees?.type || 'beneficiario';
+      if (!byPayee[pid]) byPayee[pid] = { id: pid, name, type: ptype, txs: [], total: 0, count: 0 };
+      const amt = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
+      byPayee[pid].total += amt;
+      byPayee[pid].count++;
+      byPayee[pid].txs.push(t);
+    });
+
+    const sorted = Object.values(byPayee).sort((a,b) => b.total - a.total);
+    const grandTotal = sorted.reduce((s,p) => s+p.total, 0);
+
+    // Separar por tipo de relação
+    const expenses = sorted.filter(p => !['fonte_pagadora'].includes(p.type) || typeMode==='both'
+      ? (p.txs.some(t => parseFloat(t.amount)<0)) : false);
+    const incomes  = sorted.filter(p => p.txs.some(t => parseFloat(t.amount)>0));
+
+    const _payeeTypeLabel = { beneficiario:'Beneficiário', fonte_pagadora:'Fonte Pagadora', ambos:'Ambos' };
+
+    const _buildSection = (title, color, icon, items, base) => {
+      if (!items.length) return '';
+      const secTotal = items.reduce((s,p)=>s+p.total,0);
+      return `
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:2px solid ${color}33;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:.9rem">${icon}</span>
+              <span style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${color}">${title}</span>
+              <span style="font-size:.65rem;color:var(--muted);background:${color}11;border-radius:4px;padding:1px 6px">${items.length} encontrados</span>
+            </div>
+            <span style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:${color}">${fmt(secTotal)}</span>
+          </div>
+          ${items.map((p,i) => {
+            const pct = base > 0 ? (p.total/base*100) : 0;
+            const avg = p.count > 0 ? p.total/p.count : 0;
+            return `
+            <details style="border-radius:10px;overflow:hidden;background:var(--surface2);margin-bottom:4px">
+              <summary style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none;-webkit-appearance:none">
+                <div style="width:28px;height:28px;border-radius:8px;background:${color}18;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.82rem;font-weight:800;color:${color}">${i+1}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:.85rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</div>
+                  <div style="font-size:.67rem;color:var(--muted)">${p.count} transaç${p.count===1?'ão':'ões'} · média ${fmt(avg)}</div>
+                  <div style="height:3px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:4px">
+                    <div style="height:100%;width:${Math.min(pct,100).toFixed(1)}%;background:${color};border-radius:3px;transition:width .4s"></div>
+                  </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--text)">${fmt(p.total)}</div>
+                  <div style="font-size:.65rem;color:var(--muted)">${pct.toFixed(1)}%</div>
+                </div>
+              </summary>
+              <div style="padding:4px 12px 10px;border-top:1px solid var(--border)">
+                <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+                  ${p.txs.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t => {
+                    const tAmt = Math.abs(parseFloat(t.brl_amount??t.amount)||0);
+                    const isExp = parseFloat(t.amount) < 0;
+                    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:7px;background:var(--surface);cursor:pointer;transition:background .12s"
+                      onclick="editTransaction('${t.id}')"
+                      onmouseover="this.style.background='rgba(0,0,0,.04)'" onmouseout="this.style.background='var(--surface)'">
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||t.payees?.name||'—')}</div>
+                        <div style="font-size:.65rem;color:var(--muted)">${fmtDate(t.date)}${t.categories?.name?` · ${esc(t.categories.name)}`:''}</div>
+                      </div>
+                      <div style="font-size:.82rem;font-weight:700;color:${isExp?'var(--red,#dc2626)':'var(--accent)'};flex-shrink:0;margin-left:8px">${isExp?'−':'+'}${fmt(tAmt)}</div>
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>
+            </details>`;
+          }).join('')}
+        </div>`;
+    };
+
+    // Montar HTML completo
+    const periodLabel = (() => {
+      const [fy,fm,fd] = dateFrom.split('-'); const [ty,tm,td] = dateTo.split('-');
+      return `${fd}/${fm}/${fy} – ${td}/${tm}/${ty}`;
+    })();
+
+    let html = `
+      <!-- Hero -->
+      <div style="background:linear-gradient(135deg,#0d3d28,#1a6644);border-radius:12px;padding:16px 18px;margin-bottom:16px">
+        <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.5);margin-bottom:4px">Período: ${periodLabel}</div>
+        <div style="font-size:1.5rem;font-weight:900;font-family:var(--font-serif);color:#fff">${fmt(grandTotal)}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 10px">
+            <div style="font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Registros</div>
+            <div style="font-size:.9rem;font-weight:800;color:#fff">${rows.length}</div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 10px">
+            <div style="font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Únicos</div>
+            <div style="font-size:.9rem;font-weight:800;color:#fff">${sorted.length}</div>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:8px;padding:8px 10px">
+            <div style="font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Média/benefic.</div>
+            <div style="font-size:.9rem;font-weight:800;color:#fff">${sorted.length>0?fmt(grandTotal/sorted.length):'—'}</div>
+          </div>
+        </div>
+      </div>`;
+
+    if (typeMode === 'expense' || typeMode === 'both') {
+      const expItems = sorted.filter(p => p.txs.some(t => parseFloat(t.amount)<0)).map(p => ({
+        ...p, total: p.txs.filter(t=>parseFloat(t.amount)<0).reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount??t.amount)||0),0),
+        count: p.txs.filter(t=>parseFloat(t.amount)<0).length,
+        txs: p.txs.filter(t=>parseFloat(t.amount)<0)
+      })).filter(p=>p.total>0).sort((a,b)=>b.total-a.total);
+      const expTotal = expItems.reduce((s,p)=>s+p.total,0);
+      html += _buildSection('Beneficiários — Despesas','#dc2626','📤', expItems, expTotal);
+    }
+    if (typeMode === 'income' || typeMode === 'both') {
+      const incItems = sorted.filter(p => p.txs.some(t => parseFloat(t.amount)>0)).map(p => ({
+        ...p, total: p.txs.filter(t=>parseFloat(t.amount)>0).reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount??t.amount)||0),0),
+        count: p.txs.filter(t=>parseFloat(t.amount)>0).length,
+        txs: p.txs.filter(t=>parseFloat(t.amount)>0)
+      })).filter(p=>p.total>0).sort((a,b)=>b.total-a.total);
+      const incTotal = incItems.reduce((s,p)=>s+p.total,0);
+      html += _buildSection('Fontes Pagadoras — Receitas','#16a34a','📥', incItems, incTotal);
+    }
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">⚠️ ${esc(e.message||String(e))}</div>`;
+  }
+}
+window._rptPayeesInit = _rptPayeesInit;
+window._rptPayeesLoad = _rptPayeesLoad;
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RELATÓRIO DE OBJETIVOS
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function _rptObjectivesInit() {
+  const sel = document.getElementById('rptObjSelect');
+  if (!sel) return;
+
+  // Populate objective select
+  sel.innerHTML = '<option value="">— Selecione um objetivo —</option>';
+  try {
+    const objs = typeof loadObjectives === 'function'
+      ? await loadObjectives()
+      : (window._objList || []);
+    (objs || []).forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = `${o.icon||'🎯'} ${o.name}${o.status==='closed'?' (encerrado)':''}`;
+      sel.appendChild(opt);
+    });
+  } catch(_) {}
+
+  // Default dates: beginning of year to today
+  const from = document.getElementById('rptObjFrom');
+  const to   = document.getElementById('rptObjTo');
+  if (from && !from.value) {
+    const now = new Date();
+    from.value = `${now.getFullYear()}-01-01`;
+    to.value   = now.toISOString().slice(0,10);
+  }
+}
+
+async function _rptObjectivesLoad() {
+  const body   = document.getElementById('reportObjectivesBody');
+  if (!body) return;
+  const objId  = document.getElementById('rptObjSelect')?.value;
+  const from   = document.getElementById('rptObjFrom')?.value;
+  const to     = document.getElementById('rptObjTo')?.value;
+
+  if (!objId) { toast('Selecione um objetivo', 'warning'); return; }
+  if (!from || !to) { toast('Selecione o período', 'warning'); return; }
+
+  body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Analisando objetivo…</div>`;
+
+  try {
+    // Load objective details
+    const objs = typeof loadObjectives === 'function' ? await loadObjectives() : (window._objList || []);
+    const obj  = (objs || []).find(o => o.id === objId);
+    if (!obj) throw new Error('Objetivo não encontrado');
+
+    // Load all transactions linked to this objective in the period
+    const { data: txs, error } = await famQ(
+      sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,categories(id,name,color,icon),payees(id,name),accounts!transactions_account_id_fkey(id,name,color,icon,currency)')
+    ).eq('objective_id', objId)
+     .gte('date', from).lte('date', to)
+     .order('date', { ascending: false });
+
+    if (error) throw error;
+
+    const rows = txs || [];
+    const expenses = rows.filter(t => parseFloat(t.amount) < 0);
+    const incomes  = rows.filter(t => parseFloat(t.amount) > 0);
+
+    const totalExp = expenses.reduce((s,t) => s + Math.abs(parseFloat(t.brl_amount ?? t.amount)||0), 0);
+    const totalInc = incomes.reduce((s,t)  => s + Math.abs(parseFloat(t.brl_amount ?? t.amount)||0), 0);
+    const balance  = totalInc - totalExp;
+    const limit    = parseFloat(obj.budget_limit) || 0;
+    const limitPct = limit > 0 ? Math.min(totalExp / limit * 100, 999) : 0;
+
+    // -- Agregar por categoria
+    const byCat = {};
+    expenses.forEach(t => {
+      const k = t.category_id || '__none__';
+      if (!byCat[k]) byCat[k] = { name: t.categories?.name || 'Sem categoria', color: t.categories?.color || '#94a3b8', icon: t.categories?.icon || '📦', total: 0, count: 0, txs: [] };
+      byCat[k].total += Math.abs(parseFloat(t.brl_amount ?? t.amount)||0);
+      byCat[k].count++;
+      byCat[k].txs.push(t);
+    });
+    const catList = Object.values(byCat).sort((a,b) => b.total - a.total);
+
+    // -- Agregar por beneficiário
+    const byPayee = {};
+    expenses.forEach(t => {
+      if (!t.payee_id) return;
+      const k = t.payee_id;
+      if (!byPayee[k]) byPayee[k] = { name: t.payees?.name || '—', total: 0, count: 0 };
+      byPayee[k].total += Math.abs(parseFloat(t.brl_amount ?? t.amount)||0);
+      byPayee[k].count++;
+    });
+    const payeeList = Object.values(byPayee).sort((a,b) => b.total - a.total).slice(0, 10);
+
+    // -- Evolução mensal
+    const byMonth = {};
+    rows.forEach(t => {
+      const mo = (t.date||'').slice(0,7);
+      if (!byMonth[mo]) byMonth[mo] = { exp: 0, inc: 0 };
+      const amt = Math.abs(parseFloat(t.brl_amount ?? t.amount)||0);
+      if (parseFloat(t.amount) < 0) byMonth[mo].exp += amt;
+      else byMonth[mo].inc += amt;
+    });
+    const months = Object.keys(byMonth).sort();
+
+    // -- Status do objetivo
+    const today = new Date().toISOString().slice(0,10);
+    const isActive  = obj.status === 'active' && (!obj.end_date || obj.end_date >= today);
+    const isExpired = obj.end_date && today > obj.end_date && obj.status !== 'closed';
+    const statusLabel = obj.status === 'closed' ? 'Encerrado' : isExpired ? 'Expirado' : isActive ? 'Ativo' : 'Aguardando';
+    const statusColor = obj.status === 'closed' ? '#6b7280' : isExpired ? '#b45309' : '#16a34a';
+
+    const _bar = (pct, color, h=4) =>
+      `<div style="height:${h}px;border-radius:${h}px;background:var(--border);overflow:hidden;margin-top:4px">
+        <div style="height:100%;width:${Math.min(+pct,100).toFixed(1)}%;background:${color};border-radius:${h}px;transition:width .5s"></div>
+      </div>`;
+
+    const periodLabel = `${from.split('-').reverse().join('/')} – ${to.split('-').reverse().join('/')}`;
+
+    let html = `
+    <!-- HERO -->
+    <div style="background:linear-gradient(145deg,#0d3d28,#1a6644,#0f4a31);border-radius:14px;padding:18px 18px 16px;margin-bottom:16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;background:rgba(255,255,255,.05);border-radius:50%"></div>
+      <div style="font-size:1.5rem;margin-bottom:4px">${obj.icon||'🎯'}</div>
+      <div style="font-size:1.1rem;font-weight:900;color:#fff;margin-bottom:2px">${esc(obj.name)}</div>
+      ${obj.description ? `<div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:10px">${esc(obj.description)}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="font-size:.65rem;font-weight:700;background:${statusColor}33;color:${statusColor};border-radius:20px;padding:2px 8px">${statusLabel}</span>
+        ${obj.start_date ? `<span style="font-size:.65rem;color:rgba(255,255,255,.5)">${obj.start_date.split('-').reverse().join('/')}${obj.end_date?' → '+obj.end_date.split('-').reverse().join('/'):''}</span>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px">
+          <div style="font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Gastos</div>
+          <div style="font-size:.9rem;font-weight:800;color:#fca5a5">−${fmt(totalExp)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px">
+          <div style="font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Receitas</div>
+          <div style="font-size:.9rem;font-weight:800;color:#86efac">${totalInc>0?'+':''}${fmt(totalInc)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px">
+          <div style="font-size:.58rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Saldo</div>
+          <div style="font-size:.9rem;font-weight:800;color:${balance>=0?'#86efac':'#fca5a5'}">${balance>=0?'+':''}${fmt(balance)}</div>
+        </div>
+      </div>
+      ${limit > 0 ? `
+      <div style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;color:rgba(255,255,255,.6);margin-bottom:3px">
+          <span>Orçamento: ${fmt(limit)}</span>
+          <span style="color:${limitPct>100?'#fca5a5':'rgba(255,255,255,.8)'}">${limitPct.toFixed(1)}% utilizado</span>
+        </div>
+        <div style="height:5px;border-radius:5px;background:rgba(255,255,255,.15);overflow:hidden">
+          <div style="height:100%;width:${Math.min(limitPct,100).toFixed(1)}%;background:${limitPct>100?'#ef4444':'#4ade80'};border-radius:5px;transition:width .5s"></div>
+        </div>
+      </div>` : ''}
+      <div style="font-size:.62rem;color:rgba(255,255,255,.4);margin-top:10px">Período: ${periodLabel} · ${rows.length} transaç${rows.length===1?'ão':'ões'}</div>
+    </div>`;
+
+    // -- GASTOS POR CATEGORIA
+    if (catList.length) {
+      html += `
+      <div style="background:var(--surface);border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:.78rem;font-weight:800;color:var(--text)">📂 Gastos por Categoria</span>
+          <span style="font-size:.78rem;font-weight:700;color:var(--red,#dc2626)">−${fmt(totalExp)}</span>
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+          ${catList.map(c => {
+            const pct = totalExp > 0 ? (c.total/totalExp*100) : 0;
+            return `<details style="border-radius:8px;overflow:hidden">
+              <summary style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;list-style:none;-webkit-appearance:none">
+                <span style="font-size:.9rem">${c.icon}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline">
+                    <span style="font-size:.8rem;font-weight:700;color:var(--text)">${esc(c.name)}</span>
+                    <span style="font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;margin-left:6px">${fmt(c.total)}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted)">
+                    <span>${c.count} transaç${c.count===1?'ão':'ões'}</span>
+                    <span>${pct.toFixed(1)}%</span>
+                  </div>
+                  ${_bar(pct, c.color||'#94a3b8')}
+                </div>
+              </summary>
+              <div style="padding:4px 0 6px 30px;display:flex;flex-direction:column;gap:3px">
+                ${c.txs.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t => {
+                  const amt = Math.abs(parseFloat(t.brl_amount??t.amount)||0);
+                  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:7px;background:var(--surface2);cursor:pointer;transition:background .12s"
+                    onclick="editTransaction('${t.id}')"
+                    onmouseover="this.style.background='rgba(0,0,0,.04)'" onmouseout="this.style.background='var(--surface2)'">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||t.payees?.name||'—')}</div>
+                      <div style="font-size:.63rem;color:var(--muted)">${fmtDate(t.date)}${t.payees?.name?' · '+esc(t.payees.name):''}</div>
+                    </div>
+                    <span style="font-size:.8rem;font-weight:700;color:var(--red,#dc2626);margin-left:8px;flex-shrink:0">−${fmt(amt)}</span>
+                  </div>`;
+                }).join('')}
+              </div>
+            </details>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    // -- TOP BENEFICIÁRIOS
+    if (payeeList.length) {
+      html += `
+      <div style="background:var(--surface);border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+          <span style="font-size:.78rem;font-weight:800;color:var(--text)">👤 Top Beneficiários</span>
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+          ${payeeList.map((p,i) => {
+            const pct = totalExp > 0 ? (p.total/totalExp*100) : 0;
+            return `<div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:.65rem;font-weight:800;color:var(--muted);width:16px;text-align:right;flex-shrink:0">${i+1}</span>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
+                  <span style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">${esc(p.name)}</span>
+                  <span style="font-size:.78rem;font-weight:700;color:var(--text);white-space:nowrap;margin-left:6px">−${fmt(p.total)}</span>
+                </div>
+                ${_bar(pct,'#dc2626',3)}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    // -- EVOLUÇÃO MENSAL
+    if (months.length > 1) {
+      html += `
+      <div style="background:var(--surface);border-radius:12px;border:1px solid var(--border);margin-bottom:12px;overflow:hidden">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+          <span style="font-size:.78rem;font-weight:800;color:var(--text)">📅 Evolução Mensal</span>
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+          ${months.map(mo => {
+            const d = byMonth[mo];
+            const maxVal = Math.max(...months.map(m => byMonth[m].exp), 0.01);
+            const pctExp = (d.exp/maxVal*100).toFixed(1);
+            const [y2,m2] = mo.split('-');
+            return `<div>
+              <div style="display:flex;justify-content:space-between;font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:3px">
+                <span>${m2}/${y2}</span>
+                <div style="display:flex;gap:10px">
+                  ${d.exp>0?`<span style="color:#dc2626">−${fmt(d.exp)}</span>`:''}
+                  ${d.inc>0?`<span style="color:#16a34a">+${fmt(d.inc)}</span>`:''}
+                </div>
+              </div>
+              ${d.exp>0?_bar(pctExp,'#dc2626',4):''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    // -- TODAS AS TRANSAÇÕES (tabela compacta)
+    if (rows.length) {
+      html += `
+      <div style="background:var(--surface);border-radius:12px;border:1px solid var(--border);overflow:hidden">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:.78rem;font-weight:800;color:var(--text)">🧾 Todas as Transações</span>
+          <span style="font-size:.7rem;color:var(--muted)">${rows.length} registro${rows.length!==1?'s':''}</span>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          ${rows.map(t => {
+            const amt   = Math.abs(parseFloat(t.brl_amount??t.amount)||0);
+            const isExp = parseFloat(t.amount) < 0;
+            return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
+              onclick="editTransaction('${t.id}')"
+              onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+              <div style="width:7px;height:7px;border-radius:50%;background:${t.categories?.color||'#94a3b8'};flex-shrink:0"></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.82rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||t.payees?.name||'—')}</div>
+                <div style="font-size:.67rem;color:var(--muted)">${fmtDate(t.date)}${t.categories?.name?' · '+esc(t.categories.name):''}${t.payees?.name?' · '+esc(t.payees.name):''}</div>
+              </div>
+              <span style="font-size:.85rem;font-weight:700;color:${isExp?'#dc2626':'#16a34a'};flex-shrink:0">${isExp?'−':'+'}${fmt(amt)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    if (!rows.length) {
+      html += `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:8px">📭</div>
+        <div style="font-size:.85rem">Nenhuma transação vinculada a este objetivo no período.</div>
+      </div>`;
+    }
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">⚠️ ${esc(e.message||String(e))}</div>`;
+  }
+}
+window._rptObjectivesInit = _rptObjectivesInit;
+window._rptObjectivesLoad = _rptObjectivesLoad;
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.closeEmailPopup                     = closeEmailPopup;

@@ -292,6 +292,7 @@ async function loadDashboard(){
   _loadDashBudgetsCard().catch(() => {});
   _loadDashInvestmentsCard().catch(() => {});
   _loadDashDreamsCard().catch(() => {});
+  _loadDashTopPayeesCard().catch(() => {});
 
   // Render account balances grouped by account group
   (function renderAccountBalances() {
@@ -877,6 +878,7 @@ const _DASH_CARDS = [
   { id: 'budgets',      label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Progresso dos orçamentos mensais',          el: 'dashCardBudgets',     optional: true },
   { id: 'investments',  label: 'Carteira de Investimentos', icon: '📈', sub: 'Resumo e distribuição da carteira',         el: 'dashCardInvestments', optional: true },
   { id: 'dreams',       label: 'Meus Sonhos',               icon: '🌟', sub: 'Progresso dos seus sonhos financeiros',     el: 'dashCardDreams',      optional: true },
+  { id: 'toppayees',    label: 'Top Beneficiários',         icon: '🏪', sub: 'Quem mais recebe seus pagamentos',          el: 'dashCardTopPayees',   optional: true },
 ];
 
 function _dashGetPrefs() {
@@ -1194,6 +1196,7 @@ function _dashCustomSave() {
   if (prefs.budgets     !== false && _wasOff('budgets',     true))  _loadDashBudgetsCard().catch(()=>{});
   if (prefs.investments !== false && _wasOff('investments', true))  _loadDashInvestmentsCard().catch(()=>{});
   if (prefs.dreams      !== false && _wasOff('dreams',      true))  _loadDashDreamsCard().catch(()=>{});
+  if (prefs.toppayees   !== false && _wasOff('toppayees',   false)) _loadDashTopPayeesCard().catch(()=>{});
   if (prefs.forecast90  !== false && _wasOff('forecast90',  false)) _renderDashForecast().catch(()=>{});
   closeModal('dashCustomModal');
   toast('Preferências do dashboard salvas!', 'success');
@@ -2901,13 +2904,17 @@ async function _loadDashBudgetsCard() {
       const color   = b.over ? '#dc2626' : (b.categories?.color || 'var(--accent)');
       const barPct  = Math.min(b.pct, 100);
       const overage = b.over ? `+${dashFmt(b.spent - b.limit,'BRL')}` : '';
+      const catIdSafe = (b.category_id||'').replace(/'/g,'');
+      const nameSafe  = (name||'').replace(/'/g,'').replace(/"/g,'');
       html += `
-          <div>
+          <div style="cursor:pointer;border-radius:7px;padding:4px 5px;margin:-4px -5px;transition:background .12s"
+            onclick="_openBudgetTxModal('${catIdSafe}','${nameSafe}','${b.budget_type||'monthly'}')"
+            onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
               <span style="font-size:.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
-                <span>${icon}</span>${esc(name)}${b.budget_type==='annual'?'<span style="font-size:.58rem;background:rgba(29,78,216,.1);color:#1d4ed8;border-radius:4px;padding:1px 4px;margin-left:3px">YTD</span>':''}${b.over?'<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px;margin-left:2px">${esc(overage)}</span>':''}
+                <span>${icon}</span>${esc(name)}${b.budget_type==='annual'?'<span style="font-size:.58rem;background:rgba(29,78,216,.1);color:#1d4ed8;border-radius:4px;padding:1px 4px;margin-left:3px">YTD</span>':''}${b.over?`<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px;margin-left:2px">${esc(overage)}</span>`:''}
               </span>
-              <span style="font-size:.7rem;color:${b.pct>=90?'var(--red)':'var(--muted)'};white-space:nowrap">${b.pct.toFixed(0)}%</span>
+              <span style="font-size:.7rem;color:${b.pct>=90?'var(--red)':'var(--muted)'};white-space:nowrap">${b.pct.toFixed(0)}% <span style="font-size:.6rem;opacity:.6">▶</span></span>
             </div>
             <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
               <div style="height:100%;width:${barPct}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
@@ -2962,6 +2969,99 @@ async function _loadDashBudgetsCard() {
   }
 }
 window._loadDashBudgetsCard = _loadDashBudgetsCard;
+
+// ── Modal: transações que compõem um orçamento ─────────────────────────────
+async function _openBudgetTxModal(categoryId, categoryName, budgetType) {
+  // Calcular período
+  const now = new Date();
+  const y   = now.getFullYear();
+  const m   = String(now.getMonth() + 1).padStart(2, '0');
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+  const dateFrom = budgetType === 'annual' ? `${y}-01-01` : `${y}-${m}-01`;
+  const dateTo   = budgetType === 'annual' ? `${y}-12-31` : `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+  const period   = budgetType === 'annual' ? `Ano ${y}` : `${String(now.getMonth()+1).padStart(2,'0')}/${y}`;
+
+  // Coletar ids da família de categorias (pai + filhos)
+  const allCats = state.categories || [];
+  const famIds = new Set([categoryId]);
+  allCats.forEach(c => { if (c.parent_id === categoryId) famIds.add(c.id); });
+  const lvl1 = new Set(famIds);
+  allCats.forEach(c => { if (lvl1.has(c.parent_id)) famIds.add(c.id); });
+
+  // Criar/reabrir modal
+  document.getElementById('budgetTxModal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'budgetTxModal';
+  overlay.style.zIndex = '10020';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:520px;max-height:85dvh;display:flex;flex-direction:column">
+      <div class="modal-handle"></div>
+      <div class="modal-header" style="flex-shrink:0">
+        <div>
+          <div class="modal-title">${esc(categoryName)}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:1px">Transações do orçamento · ${period}</div>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('budgetTxModal')?.remove()">✕</button>
+      </div>
+      <div id="budgetTxBody" style="flex:1;overflow-y:auto;padding:14px 16px">
+        <div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">⏳ Carregando…</div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const body = document.getElementById('budgetTxBody');
+  try {
+    const { data: txs, error } = await famQ(
+      sb.from('transactions')
+        .select('id,date,description,amount,currency,brl_amount,payees(name),accounts!transactions_account_id_fkey(name,icon,color)')
+    ).in('category_id', [...famIds])
+     .gte('date', dateFrom).lte('date', dateTo)
+     .lt('amount', 0)
+     .order('date', { ascending: false });
+
+    if (error) throw error;
+    if (!txs || !txs.length) {
+      body.innerHTML = `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
+        <div style="font-size:2rem;margin-bottom:8px">📭</div>
+        <div style="font-size:.85rem">Nenhuma transação neste período para este orçamento.</div>
+      </div>`;
+      return;
+    }
+
+    const total = txs.reduce((s, t) => s + Math.abs(parseFloat(t.amount)||0), 0);
+    let html = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <span style="font-size:.75rem;color:var(--muted)">${txs.length} transaç${txs.length===1?'ão':'ões'}</span>
+        <span style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(total,'BRL')}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">`;
+
+    txs.forEach(t => {
+      const amt     = Math.abs(parseFloat(t.amount)||0);
+      const payee   = t.payees?.name || '';
+      const acct    = t.accounts?.name || '';
+      const desc    = t.description || payee || '—';
+      const sub     = [payee !== desc ? payee : '', acct].filter(Boolean).join(' · ');
+      html += `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface2);cursor:pointer;transition:background .12s"
+          onclick="document.getElementById('budgetTxModal')?.remove();editTransaction('${t.id}')"
+          onmouseover="this.style.background='var(--bg2,rgba(0,0,0,.04))'" onmouseout="this.style.background='var(--surface2)'">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.83rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(desc)}</div>
+            <div style="font-size:.67rem;color:var(--muted)">${fmtDate(t.date)}${sub ? ' · ' + esc(sub) : ''}</div>
+          </div>
+          <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626);flex-shrink:0">−${dashFmt(amt,'BRL')}</div>
+        </div>`;
+    });
+    html += `</div>`;
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem">⚠️ ${esc(e.message)}</div>`;
+  }
+}
+window._openBudgetTxModal = _openBudgetTxModal;
 
 /* ══════════════════════════════════════════════════════════════════
    DASHBOARD — Card de Investimentos
@@ -3310,7 +3410,118 @@ async function _loadDashDreamsCard() {
 }
 window._loadDashDreamsCard = _loadDashDreamsCard;
 
-// ── Expor funções públicas no window ──────────────────────────────────────────
+window._loadDashDreamsCard = _loadDashDreamsCard;
+
+// ── Card: Top Beneficiários e Fontes Pagadoras ────────────────────────────
+async function _loadDashTopPayeesCard() {
+  const card = document.getElementById('dashCardTopPayees');
+  const body = document.getElementById('dashTopPayeesBody');
+  if (!card || !body) return;
+
+  const prefs = _dashGetPrefs();
+  if (prefs['toppayees'] === false) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  body.innerHTML = '<div class="dcard-loading">⏳ Carregando…</div>';
+
+  try {
+    const now  = new Date();
+    const y    = now.getFullYear();
+    const m    = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+    const mFrom = `${y}-${m}-01`;
+    const mTo   = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+    const yFrom = `${y}-01-01`;
+    const yTo   = `${y}-12-31`;
+
+    const [{ data: txMonth }, { data: txYear }] = await Promise.all([
+      famQ(sb.from('transactions').select('amount,brl_amount,currency,payee_id,payees(id,name,type)'))
+        .gte('date', mFrom).lte('date', mTo).not('payee_id','is',null),
+      famQ(sb.from('transactions').select('amount,brl_amount,currency,payee_id,payees(id,name,type)'))
+        .gte('date', yFrom).lte('date', yTo).not('payee_id','is',null),
+    ]);
+
+    // Agregar por payee: separar despesas (amount<0) de receitas (amount>0)
+    const _aggregate = (rows) => {
+      const exp = {}, inc = {};
+      (rows || []).forEach(t => {
+        const pid  = t.payee_id;
+        const name = t.payees?.name || pid;
+        const type = t.payees?.type || 'beneficiario';
+        const amt  = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
+        if (parseFloat(t.amount) < 0) {
+          if (!exp[pid]) exp[pid] = { name, type, total: 0, count: 0 };
+          exp[pid].total += amt; exp[pid].count++;
+        } else {
+          if (!inc[pid]) inc[pid] = { name, type, total: 0, count: 0 };
+          inc[pid].total += amt; inc[pid].count++;
+        }
+      });
+      const topExp = Object.values(exp).sort((a,b)=>b.total-a.total).slice(0,10);
+      const topInc = Object.values(inc).sort((a,b)=>b.total-a.total).slice(0,5);
+      return { topExp, topInc };
+    };
+
+    const month = _aggregate(txMonth);
+    const year  = _aggregate(txYear);
+
+    const _payeeRow = (p, i, maxVal) => {
+      const bar = maxVal > 0 ? Math.min(p.total / maxVal * 100, 100).toFixed(1) : 0;
+      const isInc = p.type === 'fonte_pagadora';
+      const color = isInc ? '#16a34a' : 'var(--accent)';
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+          <span style="font-size:.65rem;font-weight:700;color:var(--muted);width:14px;text-align:right;flex-shrink:0">${i+1}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
+              <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">${esc(p.name)}</span>
+              <span style="font-size:.75rem;font-weight:700;color:${isInc?'#16a34a':'var(--text)'};white-space:nowrap;margin-left:6px">${isInc?'+':'−'}${dashFmt(p.total,'BRL')}</span>
+            </div>
+            <div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${bar}%;background:${color};border-radius:2px;transition:width .5s"></div>
+            </div>
+          </div>
+        </div>`;
+    };
+
+    const _section = (title, items, isYear) => {
+      if (!items.length) return '';
+      const max = items[0]?.total || 1;
+      return `
+        <div style="margin-bottom:14px">
+          <div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${title}</div>
+          ${items.map((p,i) => _payeeRow(p, i, max)).join('')}
+        </div>`;
+    };
+
+    let html = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+        <div style="padding:10px 14px;border-right:1px solid var(--border)">
+          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Despesas/mês</div>
+          <div style="font-size:1.05rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(month.topExp.reduce((s,p)=>s+p.total,0),'BRL')}</div>
+        </div>
+        <div style="padding:10px 14px">
+          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Receitas/mês</div>
+          <div style="font-size:1.05rem;font-weight:800;font-family:var(--font-serif);color:#16a34a">${dashFmt(month.topInc.reduce((s,p)=>s+p.total,0),'BRL')}</div>
+        </div>
+      </div>
+      <div style="padding:12px 14px">
+        ${_section(`Top 10 Beneficiários — ${String(now.getMonth()+1).padStart(2,'0')}/${y}`, month.topExp, false)}
+        ${_section(`Top 5 Fontes Pagadoras — ${String(now.getMonth()+1).padStart(2,'0')}/${y}`, month.topInc, false)}
+        ${_section(`Top 5 Beneficiários — Ano ${y}`, year.topExp.slice(0,5), true)}
+        ${_section(`Top 5 Fontes Pagadoras — Ano ${y}`, year.topInc.slice(0,5), true)}
+      </div>
+      <div style="padding:2px 14px 10px;text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="navigate('reports');setTimeout(()=>setReportView&&setReportView('payees'),300)">
+          Relatório completo →
+        </button>
+      </div>`;
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div class="dcard-loading">⚠️ ${esc(e.message)}</div>`;
+  }
+}
+window._loadDashTopPayeesCard = _loadDashTopPayeesCard;
 window._catColor                           = _catColor;
 window._dashCustomSave                     = _dashCustomSave;
 window._dashGetPrefs                       = _dashGetPrefs;
