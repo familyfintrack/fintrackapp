@@ -231,6 +231,7 @@ async function loadForecast() {
     const { data, error } = await q;
     if (error) throw error;
     txData = data || [];
+    window._forecastTxCache = txData; // cache para _forecastDrillRow
   } catch(e) {
     console.error('[forecast] transactions query:', e?.message);
     if (container) container.innerHTML = `

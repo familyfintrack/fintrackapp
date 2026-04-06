@@ -984,17 +984,19 @@ function _renderDashCustomList(order, prefs) {
 }
 
 function _initDashDrag(list) {
+  // ── Suporte a Mouse (HTML5 DnD) ──────────────────────────────────────────
   let dragSrc = null;
+
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('dragstart', e => {
       dragSrc = item;
       item.classList.add('dcc-dragging');
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.dataset.cardId);
     });
     item.addEventListener('dragend', () => {
       item.classList.remove('dcc-dragging');
       list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
-      // Update pending order from DOM
       _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
     });
     item.addEventListener('dragover', e => {
@@ -1015,6 +1017,101 @@ function _initDashDrag(list) {
         else item.before(dragSrc);
         _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
       }
+    });
+  });
+
+  // ── Suporte a Touch (iOS Safari + Android) ──────────────────────────────
+  // HTML5 DnD não funciona em touch — implementar via touchstart/touchmove/touchend
+  let touchSrc    = null;
+  let touchClone  = null;
+  let touchStartY = 0;
+  let touchOffY   = 0;
+
+  function _getItemAtY(y) {
+    // Encontrar o dcc-item sob a coordenada Y ignorando o clone
+    const items = [...list.querySelectorAll('.dcc-item:not(.dcc-dragging)')];
+    for (const it of items) {
+      const r = it.getBoundingClientRect();
+      if (y >= r.top && y <= r.bottom) return it;
+    }
+    return null;
+  }
+
+  list.querySelectorAll('.dcc-item').forEach(item => {
+    item.addEventListener('touchstart', e => {
+      // Só iniciar drag se o toque for no handle ou no item fora do toggle
+      const tog = e.target.closest('.dcc-toggle');
+      if (tog) return; // toque no toggle → não arrastar
+
+      touchSrc    = item;
+      touchStartY = e.touches[0].clientY;
+
+      const rect   = item.getBoundingClientRect();
+      touchOffY    = touchStartY - rect.top;
+
+      // Criar clone visual que segue o dedo
+      touchClone = item.cloneNode(true);
+      touchClone.style.cssText = [
+        'position:fixed',
+        'z-index:9999',
+        'pointer-events:none',
+        'left:' + rect.left + 'px',
+        'width:' + rect.width + 'px',
+        'top:'  + (touchStartY - touchOffY) + 'px',
+        'opacity:.85',
+        'box-shadow:0 8px 28px rgba(0,0,0,.22)',
+        'border-radius:10px',
+        'transform:scale(1.02)',
+        'transition:none',
+      ].join(';');
+      document.body.appendChild(touchClone);
+
+      item.classList.add('dcc-dragging');
+      e.preventDefault(); // impede scroll durante drag
+    }, { passive: false });
+
+    item.addEventListener('touchmove', e => {
+      if (!touchSrc || !touchClone) return;
+      e.preventDefault();
+
+      const y = e.touches[0].clientY;
+      // Mover o clone
+      touchClone.style.top = (y - touchOffY) + 'px';
+
+      // Highlight do item alvo
+      const over = _getItemAtY(y);
+      list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
+      if (over && over !== touchSrc) over.classList.add('dcc-over');
+
+    }, { passive: false });
+
+    item.addEventListener('touchend', e => {
+      if (!touchSrc) return;
+
+      // Remover clone
+      if (touchClone) { touchClone.remove(); touchClone = null; }
+
+      const y = e.changedTouches[0].clientY;
+      const over = _getItemAtY(y);
+
+      if (over && over !== touchSrc) {
+        const allItems = [...list.querySelectorAll('.dcc-item')];
+        const srcIdx = allItems.indexOf(touchSrc);
+        const tgtIdx = allItems.indexOf(over);
+        if (srcIdx < tgtIdx) over.after(touchSrc);
+        else over.before(touchSrc);
+      }
+
+      touchSrc.classList.remove('dcc-dragging');
+      list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
+      _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+      touchSrc = null;
+    });
+
+    item.addEventListener('touchcancel', () => {
+      if (touchClone) { touchClone.remove(); touchClone = null; }
+      if (touchSrc)   { touchSrc.classList.remove('dcc-dragging'); touchSrc = null; }
+      list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
     });
   });
 }

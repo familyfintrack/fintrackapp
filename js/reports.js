@@ -147,20 +147,40 @@ window._drillClose = _drillClose;
 window._drillOpen  = _drillOpen;
 
 // ── Forecast table drill-down: click row → show tx details ──────────
-window._forecastDrillRow = function(dateStr, label) {
+window._forecastDrillRow = async function(dateStr, label) {
+  // 1. Tentar nos dados carregados pelo relatório
   const txSlice = (rptState.txData || []).filter(t => t.date === dateStr);
-  if (!txSlice.length) {
-    // Try from forecast state
-    const allTx = window._forecastTxCache || [];
-    const fSlice = allTx.filter(t => t.date === dateStr);
-    if (fSlice.length) {
-      _drillOpen({ title: label || dateStr, subtitle: 'Transações previstas', txs: fSlice, color: 'var(--accent)' });
-      return;
-    }
-    toast('Sem transações nesta data', 'warning');
+  if (txSlice.length) {
+    _drillOpen({ title: label || dateStr, subtitle: 'Transações · ' + dateStr, txs: txSlice, color: 'var(--accent)' });
     return;
   }
-  _drillOpen({ title: label || dateStr, subtitle: 'Transações · ' + dateStr, txs: txSlice, color: 'var(--accent)' });
+
+  // 2. Tentar no cache do forecast (transações previstas já carregadas)
+  const cached = (window._forecastTxCache || []).filter(t => t.date === dateStr);
+  if (cached.length) {
+    _drillOpen({ title: label || dateStr, subtitle: 'Transações · ' + dateStr, txs: cached, color: 'var(--accent)' });
+    return;
+  }
+
+  // 3. Fallback: buscar diretamente do banco para essa data
+  try {
+    if (typeof sb === 'undefined' || !sb) { toast('Sem transações nesta data', 'warning'); return; }
+    const { data, error } = await (typeof famQ === 'function' ? famQ : (q => q))(
+      sb.from('transactions')
+        .select('id,date,description,amount,currency,brl_amount,categories(name,color),payees(name),accounts!transactions_account_id_fkey(name,currency)')
+        .eq('date', dateStr)
+        .order('amount')
+    );
+    if (error) throw error;
+    if (!data || !data.length) {
+      toast('Sem transações lançadas nesta data', 'info');
+      return;
+    }
+    _drillOpen({ title: label || dateStr, subtitle: 'Transações · ' + dateStr, txs: data, color: 'var(--accent)' });
+  } catch(e) {
+    console.error('[forecastDrill]', e?.message);
+    toast('Erro ao carregar transações: ' + (e?.message || ''), 'error');
+  }
 };
 
 
@@ -747,7 +767,7 @@ function renderReportTxTable(txs) {
   const totEl=document.getElementById('reportTxTotal');
   if(totEl){totEl.textContent=fmt(total);totEl.className=total>=0?'amount-pos':'amount-neg';}
   document.getElementById('reportTxBody').innerHTML=txs.length
-    ? txs.map(t=>`<tr>
+    ? txs.map(t=>`<tr class="rpt-tx-clickable" onclick="typeof openTxDetail==='function'&&openTxDetail('${t.id}')" style="cursor:pointer" title="Clique para ver detalhes">
         <td class="rpt-td-date">${fmtDate(t.date)}</td>
         <td class="rpt-td-desc"><div class="rpt-desc-cell">${esc(t.description||'—')}</div></td>
         <td class="rpt-td-acct">${esc(t.accounts?.name||'—')}</td>
