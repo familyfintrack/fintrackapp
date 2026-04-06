@@ -2194,43 +2194,31 @@ window.toggleSupGroup = toggleSupGroup;
 
 // ── Modal: Composição do Patrimônio Total ─────────────────────────────────
 async function _openPatrimonioModal() {
-  // Garantir que state.accounts está populado — tentar recarregar se necessário
-  let accs = Array.isArray(state.accounts) ? state.accounts : [];
-  if (!accs.length) {
-    try { await DB.accounts.load(); accs = state.accounts || []; } catch(_) {}
-  }
-  if (!accs.length) { toast('Nenhuma conta encontrada', 'info'); return; }
+  const accs = Array.isArray(state.accounts) ? state.accounts : [];
+  if (!accs.length) return;
 
   // ══════════════════════════════════════════════════════════════════
-  // CÁLCULO IDÊNTICO ao loadKPIs (db.js) — garante que total bate com dashboard
+  // ATIVOS — contas + investimentos detalhados
   // ══════════════════════════════════════════════════════════════════
 
-  // Separar contas por tipo para exibição detalhada
+  // Separar contas por tipo
   const accsLiquid  = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
   const accsInvest  = accs.filter(a => a.type === 'investimento');
   const accsCard    = accs.filter(a => a.type === 'cartao_credito');
 
-  // ── ATIVOS ─────────────────────────────────────────────────────────
-  // Saldo de contas líquidas (corrente + poupança + dinheiro + outros)
+  // Saldo líquido (corrente + poupança + dinheiro + outros — exceto CC e investimento)
   const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Investimentos — market value quando disponível (igual ao KPI)
+  // Investimentos — usar market value (_totalPortfolioBalance) quando disponível
   const invTotal = accsInvest.reduce((s,a) => {
     const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
     return s + toBRL(bal, a.currency||'BRL');
   }, 0);
 
-  // Cartões de crédito — saldo entra integral (positivo OU negativo), igual ao KPI
-  const cardTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+  // Cartões de crédito — saldo já pode ser negativo (fatura em aberto)
+  const cardLiquidTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Total de contas = soma de TODOS os saldos (idêntico ao accountTotal do KPI)
-  const accountTotal = liquidTotal + invTotal + cardTotal;
-
-  // Separar CC positivos/negativos só para exibição visual
-  const cardPositive = Math.max(0, cardTotal);
-  const cardDebt     = Math.abs(Math.min(0, cardTotal));
-
-  // Posições de investimento por tipo (para breakdown visual)
+  // Investimentos por tipo (usando posições do módulo de investimentos)
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
   const invByType = {};
   invPositions.forEach(p => {
@@ -2241,41 +2229,32 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // ── PASSIVOS — dívidas ativas ─────────────────────────────────────────────
-  // Schema correto: name (não description), creditor:payees!fkey(name) para credor
-  // status válidos: active|settled|suspended|renegotiated|archived (sem 'open')
+  // Total de ativos BRUTOS (sem subtrair passivos)
+  // Cartões de crédito POSITIVOS somam como ativo; negativos (fatura) são passivo
+  const cardPositive = Math.max(0, cardLiquidTotal);  // CC com saldo positivo → ativo
+  const accountTotal = liquidTotal + invTotal + cardPositive;
+
+  // ══════════════════════════════════════════════════════════════════
+  // PASSIVOS — dívidas ativas
+  // ══════════════════════════════════════════════════════════════════
+
+  // Debts: same query as KPI
   let debtTotal = 0;
   let debts = [];
   try {
-    const { data: debtsData, error: debtErr } = await famQ(
-      sb.from('debts').select(
-        'id,name,current_balance,original_amount,currency,status,start_date,fixed_rate,adjustment_type,periodicity,notes,' +
-        'creditor:payees!debts_creditor_payee_id_fkey(id,name)'
-      )
-    ).eq('status', 'active').order('current_balance', { ascending: false });
+    // Fetch active debts — try with status filter first, fall back to all debts
+    let { data: debtsData, error: debtErr } = await famQ(
+      sb.from('debts').select('id,description,current_balance,original_amount,currency,status')
+    ).order('created_at', { ascending: false });
     if (debtErr) throw debtErr;
-    debts = debtsData || [];
+    // Filter to active/open debts client-side (handles schemas without status column)
+    debts = (debtsData || []).filter(d => !d.status || d.status === 'active' || d.status === 'open');
     debtTotal = debts.reduce((s,d) =>
       s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
   } catch(e) {
     console.warn('[patrimônio] debts query failed:', e?.message || e);
-    // fallback: tentar sem join (schema mais simples)
-    try {
-      const { data: debtsSimple } = await famQ(
-        sb.from('debts').select('id,name,current_balance,original_amount,currency,status')
-      ).eq('status','active');
-      debts = debtsSimple || [];
-      debtTotal = debts.reduce((s,d) =>
-        s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
-    } catch(_) {}
   }
 
-  // Total de passivos = dívidas + faturas CC em aberto (idêntico ao KPI)
-  const totalPassivos = debtTotal + cardDebt;
-
-  // Patrimônio líquido = accountTotal (todos os saldos) - debtTotal
-  // NOTA: cardDebt já está embutido no accountTotal como negativo,
-  // então: totalBRL = accountTotal - debtTotal  (igual ao KPI: accountTotal - debtTotal)
   const totalBRL = accountTotal - debtTotal;
 
   // Group accounts by currency
@@ -2469,6 +2448,13 @@ async function _openPatrimonioModal() {
     return;
   });
 
+  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
+  const cardDebt = accsCard.reduce((s,a) => {
+    const bal = parseFloat(a.balance)||0;
+    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
+  }, 0);
+  const totalPassivos = debtTotal + cardDebt;
+
   // ── PASSIVOS ─────────────────────────────────────────────────────────────
   if (totalPassivos > 0) {
     const passivosPct = _pct(totalPassivos, accountTotal);
@@ -2517,42 +2503,31 @@ async function _openPatrimonioModal() {
 
     // ── Dívidas do módulo ─────────────────────────────────────────────────
     if (debts.length) {
-      const _adjLabel = { fixed:'Fixo', selic:'SELIC', ipca:'IPCA', igpm:'IGP-M', cdi:'CDI', poupanca:'Poupança', custom:'Personalizado' };
       content += `
         <div style="margin-bottom:12px">
           <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">🏦 Dívidas Ativas</div>
           <div style="display:flex;flex-direction:column;gap:4px">`;
       debts.forEach(d => {
-        const bal       = parseFloat(d.current_balance ?? d.original_amount) || 0;
-        const balBRL    = toBRL(bal, d.currency || 'BRL');
-        const origBRL   = toBRL(parseFloat(d.original_amount)||0, d.currency||'BRL');
-        const pct       = _pct(balBRL, accountTotal);
-        const progPct   = d.original_amount && +d.original_amount > 0
-          ? Math.max(0, Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100)).toFixed(0)
+        const bal    = parseFloat(d.current_balance ?? d.original_amount) || 0;
+        const balBRL = toBRL(bal, d.currency || 'BRL');
+        const pct    = _pct(balBRL, accountTotal);
+        const progPct = d.original_amount
+          ? Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100).toFixed(0)
           : null;
-        const credName  = d.creditor?.name || '';
-        const adjLabel  = _adjLabel[d.adjustment_type] || d.adjustment_type || '';
-        const rateLabel = d.fixed_rate ? `${(+d.fixed_rate).toFixed(2)}% a.m.` : '';
-        const subtitle  = [credName, adjLabel, rateLabel].filter(Boolean).join(' · ');
         content += `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
             <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
-              ${subtitle ? `<div style="font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subtitle)}</div>` : ''}
-              ${progPct !== null ? `
-              <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
-                <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
-                  <div style="height:100%;width:${progPct}%;background:var(--accent);border-radius:2px"></div>
-                </div>
-                <span style="font-size:.62rem;color:var(--muted);flex-shrink:0">${progPct}% quitado</span>
-              </div>` : ''}
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
+              <div style="font-size:.68rem;color:var(--muted)">Dívida ativa · ${pct}% dos ativos${progPct ? ` · ${progPct}% quitado` : ''}</div>
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
               ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
-              <div style="font-size:.62rem;color:var(--muted)">${pct}% dos ativos</div>
             </div>
+          </div>
+          <div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(+pct,100)}%;background:#dc2626;border-radius:2px;transition:width .4s ease"></div>
           </div>`;
       });
       content += `

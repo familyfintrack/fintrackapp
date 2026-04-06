@@ -299,13 +299,14 @@ function _accountOptions(accounts, placeholder) {
 function _setModalState(el, isOpen){
   if (!el) return;
   if (isOpen) {
-    // CSS já define display:none por padrão e display:flex em .open
-    // Apenas adicionar a classe — o CSS cuida do resto
+    el.style.removeProperty('display');
     el.classList.add('open');
     el.setAttribute('aria-hidden', 'false');
   } else {
     el.classList.remove('open');
     el.setAttribute('aria-hidden', 'true');
+    // Leave CSS as the source of truth, but clear stale inline styles from previous patches.
+    if ((el.style.display || '').trim() === 'flex') el.style.removeProperty('display');
   }
 }
 function openModal(id){ _setModalState(document.getElementById(id), true); }

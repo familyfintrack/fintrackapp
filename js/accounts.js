@@ -255,19 +255,15 @@ function accountCardHTML(a){
     ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.8">${esc(bankParts.join(' · '))}</div>`
     : '';
 
-  return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative;padding-top:38px">
+  return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
     ${favStar}
     <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
-    <div class="account-actions">
-      <button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button>
-      <button class="btn-icon" title="Editar conta"     onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button>
-      <button class="btn-icon" title="Excluir conta"    onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button>
-    </div>
+    <div class="account-actions"><button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button><button class="btn-icon" onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button><button class="btn-icon" onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button></div>
     <div class="account-icon" style="font-size:1.6rem;margin-bottom:8px">${renderIconEl(a.icon,a.color,36)}</div>
     <div class="account-name">${esc(a.name)}</div>
     <div class="account-type">${accountTypeLabel(a.type)}</div>
     <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
-    ${a.currency && a.currency!=='BRL' ? `<div class="account-currency">${esc(a.currency)}</div>` : ''}
+    <div class="account-currency">${a.currency}</div>
     ${bankInfoLine}
     ${dueLine}
   </div>`;
@@ -399,18 +395,17 @@ async function openAccountModal(id=''){
     } catch(_) {}
     dreamSel.value = form.linked_dream_id || '';
   }
-  openModal('accountModal');
-  // acmSwitchTab DEVE ser chamado APÓS openModal para garantir que o overlay
-  // já recebeu .open (pointer-events:all) antes de manipular os panes.
-  // 80ms é suficiente para a transição de opacity (.22s) iniciar e o CSS render.
   setTimeout(() => {
     syncIconPickerToValue(form.icon||'', form.color||'#2a6049');
     acmSwitchTab(window._acmOpenOnTab || 'basic');
     window._acmOpenOnTab = null;
     acmLivePreview();
+  }, 50);
+  openModal('accountModal');
+  setTimeout(() => {
     const body = document.querySelector('#accountModal .acm-body');
     if (body) body.scrollTop = 0;
-  }, 80);
+  }, 30);
 }
 
 async function saveAccount(){
@@ -1284,25 +1279,3 @@ document.addEventListener('DOMContentLoaded', function() {
     if (fp) setTimeout(() => { fp.style.display = 'none'; }, 180);
   };
 });
-
-// ── Expor funções públicas no window (necessário para onclick inline em HTML dinâmico) ──
-window.openAccountModal        = openAccountModal;
-window.saveAccount             = saveAccount;
-window.deleteAccount           = deleteAccount;
-window.confirmDeleteAccount    = confirmDeleteAccount;
-window.onDelAccOptionChange    = onDelAccOptionChange;
-window.onDelAccConfirmType     = onDelAccConfirmType;
-window.openConsolidateModal    = openConsolidateModal;
-window.saveConsolidation       = saveConsolidation;
-window.goToAccountTransactions = goToAccountTransactions;
-window.accountTypeLabel        = accountTypeLabel;
-window.filterAccounts          = filterAccounts;
-window.renderAccounts          = renderAccounts;
-window.loadAccounts            = loadAccounts;
-window.toggleGroupCollapse     = toggleGroupCollapse;
-window.openGroupModal          = openGroupModal;
-window.cancelGroupEdit         = cancelGroupEdit;
-window.saveGroup               = saveGroup;
-window.deleteGroup             = deleteGroup;
-window.onAccountTypeChange     = onAccountTypeChange;
-window.initAccountsPage        = initAccountsPage;

@@ -304,7 +304,6 @@ const _dashboard = {
       // Subtrair dívidas ativas (se módulo habilitado)
       let debtTotal = 0;
       try {
-        // Schema: debts.status ∈ {active,settled,suspended,renegotiated,archived}
         const { data: debtsData } = await Promise.resolve(
           famQ(sb.from('debts').select('current_balance,original_amount,currency').eq('status', 'active'))
         ).catch(() => ({ data: [] }));
