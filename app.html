@@ -21,10 +21,10 @@
 <title>Family Fintrack · Família inteligente, Finanças sob controle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3.12.1/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -641,49 +641,102 @@
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <!-- Active filter badge — shown when member/group filter is active -->
+      <!-- Active filter badge -->
       <div id="dashFilterBadge" style="display:none;background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 12px;font-size:.78rem;font-weight:600;margin-bottom:10px;align-items:center;gap:6px">
         <span></span>
         <button onclick="document.getElementById('dashMemberFilter').value='';document.getElementById('dashRelGroup').value='';loadDashboard()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:.85rem;padding:0;line-height:1" title="Limpar filtro">✕</button>
       </div>
-      <!-- family badge moved to FX bar; dashboard customize moved to page title bar -->
-      <div class="grid-4 mb-4">
-        <div class="stat-card" onclick="_openPatrimonioModal()" style="cursor:pointer" title="Ver composição do patrimônio"><div class="stat-accent"></div><div class="stat-label">Patrimônio Total</div><div class="stat-value text-accent" id="statTotal">—</div><div class="stat-sub" style="color:var(--accent);font-weight:600">Ver composição →</div></div>
-        <div class="stat-card"><div class="stat-accent" style="background:var(--green)"></div><div class="stat-label">Receitas do Mês</div><div class="stat-value text-green" id="statIncome">—</div><div class="stat-sub">Mês atual</div></div>
-        <div class="stat-card"><div class="stat-accent" style="background:var(--red)"></div><div class="stat-label">Despesas do Mês</div><div class="stat-value text-red" id="statExpenses">—</div><div class="stat-sub">Mês atual</div></div>
-        <div class="stat-card"><div class="stat-accent" style="background:var(--amber)"></div><div class="stat-label">Saldo do Mês</div><div class="stat-value" id="statBalance">—</div><div class="stat-sub">Receitas − Despesas</div></div>
+
+      <!-- ── KPI Cards ── -->
+      <div class="dash-kpi-grid mb-4">
+        <div class="dash-kpi-card dash-kpi-patrimonio" onclick="_openPatrimonioModal()" title="Ver composição do patrimônio" style="cursor:pointer">
+          <div class="dash-kpi-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </div>
+          <div class="dash-kpi-body">
+            <div class="dash-kpi-label">Patrimônio Total</div>
+            <div class="dash-kpi-value text-accent" id="statTotal">—</div>
+            <div class="dash-kpi-sub">Ver composição <span class="dash-kpi-arrow">→</span></div>
+          </div>
+          <div class="dash-kpi-glow dash-kpi-glow--accent"></div>
+        </div>
+        <div class="dash-kpi-card dash-kpi-income" id="dashKpiIncome" style="cursor:pointer" title="Ver receitas do mês">
+          <div class="dash-kpi-icon dash-kpi-icon--green">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div class="dash-kpi-body">
+            <div class="dash-kpi-label">Receitas do Mês</div>
+            <div class="dash-kpi-value amount-pos" id="statIncome">—</div>
+            <div class="dash-kpi-sub" id="dashIncomeMonth">Mês atual</div>
+          </div>
+          <div class="dash-kpi-glow dash-kpi-glow--green"></div>
+        </div>
+        <div class="dash-kpi-card dash-kpi-expense" id="dashKpiExpense" style="cursor:pointer" title="Ver despesas do mês">
+          <div class="dash-kpi-icon dash-kpi-icon--red">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+          </div>
+          <div class="dash-kpi-body">
+            <div class="dash-kpi-label">Despesas do Mês</div>
+            <div class="dash-kpi-value amount-neg" id="statExpenses">—</div>
+            <div class="dash-kpi-sub" id="dashExpenseMonth">Mês atual</div>
+          </div>
+          <div class="dash-kpi-glow dash-kpi-glow--red"></div>
+        </div>
+        <div class="dash-kpi-card dash-kpi-balance" id="dashKpiBalance" style="cursor:pointer" title="Ver saldo do mês">
+          <div class="dash-kpi-icon dash-kpi-icon--amber">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div class="dash-kpi-body">
+            <div class="dash-kpi-label">Saldo do Mês</div>
+            <div class="dash-kpi-value" id="statBalance">—</div>
+            <div class="dash-kpi-sub">Receitas − Despesas</div>
+          </div>
+          <div class="dash-kpi-glow dash-kpi-glow--amber"></div>
+        </div>
       </div>
+
       <!-- Saldo por Conta -->
-      <div class="card mb-4" id="dashCardAccounts">
-        <div class="card-header"><span class="card-title">Saldo por Conta</span></div>
+      <div class="dash-section-card mb-4" id="dashCardAccounts">
+        <div class="dash-section-header">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Saldo por Conta
+          </span>
+          <button class="dash-section-link" onclick="navigate('accounts')">Ver contas →</button>
+        </div>
         <div id="accountBalancesList"></div>
       </div>
 
-      <div class="grid-2 mb-6" id="dashCardCharts">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Fluxo de Caixa (6 meses)</span>
-            <select id="cashflowAccountFilter" onchange="renderCashflowChart(_getDashMemberIds())"
-              style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:160px">
+      <!-- Charts: Fluxo de Caixa + Distribuição -->
+      <div class="dash-charts-grid mb-4" id="dashCardCharts">
+        <div class="dash-section-card">
+          <div class="dash-section-header">
+            <span class="dash-section-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Fluxo de Caixa
+            </span>
+            <select id="cashflowAccountFilter" onchange="renderCashflowChart(_getDashMemberIds())" class="dash-select">
               <option value="" data-i18n="tx.all_accounts">Todas as contas</option>
             </select>
           </div>
-          <div id="dashForecastChartWrap"><canvas id="cashflowChart" height="200"></canvas></div>
+          <div class="dash-chart-wrap" id="dashForecastChartWrap">
+            <canvas id="cashflowChart"></canvas>
+          </div>
           <div id="dashCashflowDrill" style="display:none;padding:4px 2px"></div>
+          <div class="dash-chart-hint">Clique nas barras para ver transações do mês</div>
         </div>
-        <div class="card" id="catChartCard">
-          <div class="card-header">
-            <span class="card-title" id="dashCatChartTitle">Distribuição por Categoria</span>
-            <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-              <!-- Back button — shown when detail is open, hidden otherwise -->
-              <button id="catDetailBackBtn" onclick="closeCatDetail()" class="dash-cat-back" style="display:none">
-                ← Voltar ao gráfico
-              </button>
-              <!-- Despesas / Receitas toggle — hidden when detail is open -->
+        <div class="dash-section-card" id="catChartCard">
+          <div class="dash-section-header">
+            <span class="dash-section-title" id="dashCatChartTitle">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+              Distribuição por Categoria
+            </span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button id="catDetailBackBtn" onclick="closeCatDetail()" class="dash-back-btn" style="display:none">← Voltar</button>
               <div class="dash-cat-controls" id="dashCatControls">
-                <div class="dash-cat-toggle" role="group">
-                  <button class="dash-cat-btn active" id="dashCatModeExp" onclick="_setDashCatMode('expense')">Despesas</button>
-                  <button class="dash-cat-btn" id="dashCatModeInc" onclick="_setDashCatMode('income')">Receitas</button>
+                <div class="dash-pill-toggle" role="group">
+                  <button class="dash-pill-btn active" id="dashCatModeExp" onclick="_setDashCatMode('expense')">Despesas</button>
+                  <button class="dash-pill-btn" id="dashCatModeInc" onclick="_setDashCatMode('income')">Receitas</button>
                 </div>
               </div>
             </div>
@@ -695,11 +748,10 @@
             <div id="catChartDetailTitle" style="font-size:.78rem;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px"></div>
             <div id="catChartDetailList" style="max-height:260px;overflow-y:auto"></div>
           </div>
-          <!-- Barras / Rosca toggle — below chart -->
           <div style="display:flex;justify-content:center;padding:10px 0 2px;border-top:1px solid var(--border);margin-top:8px">
-            <div class="dash-cat-toggle" role="group">
-              <button class="dash-cat-btn active" id="catChartTypeBar" onclick="_setCatChartType('bar')">Barras</button>
-              <button class="dash-cat-btn" id="catChartTypePie" onclick="_setCatChartType('doughnut')">Rosca</button>
+            <div class="dash-pill-toggle" role="group">
+              <button class="dash-pill-btn active" id="catChartTypeBar" onclick="_setCatChartType('bar')">Barras</button>
+              <button class="dash-pill-btn" id="catChartTypePie" onclick="_setCatChartType('doughnut')">Rosca</button>
             </div>
           </div>
         </div>
@@ -711,46 +763,46 @@
       </div>
 
       <!-- Próximas transações programadas -->
-      <div id="dashCardUpcoming" class="card mb-4">
-        <div class="card-header" style="gap:8px;flex-wrap:wrap">
-          <span class="card-title">Próximas Transações</span>
-          <span class="text-muted" style="font-size:.78rem">Próximos 10 dias</span>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('scheduled')">Ver programados</button>
+      <div id="dashCardUpcoming" class="dash-section-card mb-4">
+        <div class="dash-section-header">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Próximas Transações
+          </span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="dash-meta-text">Próximos 10 dias</span>
+            <button class="dash-section-link" onclick="navigate('scheduled')">Ver programados →</button>
+          </div>
         </div>
         <div id="dashUpcomingWrap">
           <div id="dashUpcomingList" style="padding:4px 0 2px 0">
-            <div class="text-muted" style="text-align:center;padding:18px;font-size:.83rem">Carregando...</div>
+            <div class="dash-empty-state">Carregando...</div>
           </div>
         </div>
       </div>
 
       <!-- Previsão de Caixa 90 dias -->
-      <div id="dashCardForecast90" class="dcard mb-4">
-        <div class="dcard-header">
-          <div class="dcard-title-wrap">
-            <div class="dcard-icon" style="background:rgba(42,96,73,.12);color:var(--accent)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-            </div>
-            <div>
-              <div class="dcard-title">Previsão de Caixa</div>
-              <div class="dcard-sub">Projeção dos próximos 90 dias</div>
-            </div>
-          </div>
-          <div class="dcard-actions">
+      <div id="dashCardForecast90" class="dash-section-card mb-4">
+        <div class="dash-section-header">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Previsão de Caixa <span class="dash-badge-pill">90 dias</span>
+          </span>
+          <div class="dash-section-actions">
             <div class="fc-acct-picker" id="dashForecastAcctPicker">
-              <button type="button" class="dcard-pill-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
+              <button type="button" class="dash-select-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
                 <span id="dashForecastAcctLabel">Todas contas</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
             </div>
-            <label class="dcard-toggle-label">
+            <label class="dash-toggle-label">
               <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" style="width:13px;height:13px;accent-color:var(--accent)">
               <span>Programados</span>
             </label>
           </div>
         </div>
-        <div class="dcard-chart-wrap">
+        <div class="dash-chart-wrap">
           <canvas id="dashForecastChart"></canvas>
           <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
         </div>
@@ -758,100 +810,90 @@
       </div>
 
       <!-- Últimas transações -->
-      <div id="dashCardRecent" class="dash-tx-col card mb-4">
-          <div class="card-header" style="gap:8px;flex-wrap:wrap">
-            <span class="card-title">Últimas Transações</span>
+      <div id="dashCardRecent" class="dash-section-card mb-4">
+        <div class="dash-section-header" style="flex-wrap:wrap;gap:8px">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Últimas Transações
+          </span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span id="dashPendingBadge" class="badge" style="background:var(--amber-lt,#fffbeb);color:var(--amber,#b45309);border:1px solid rgba(180,83,9,.18);display:none;white-space:nowrap">⏳ 0 pendentes</span>
-            <span id="dashAutoRunSummary" class="text-muted" style="font-size:.75rem;display:none;white-space:nowrap;cursor:pointer" onclick="navigate('audit')"></span>
-            <select id="dashRecentStatus" onchange="loadDashboardRecent(_getDashMemberIds())" style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:170px">
+            <span id="dashAutoRunSummary" class="dash-meta-text" style="display:none;cursor:pointer" onclick="navigate('audit')"></span>
+            <select id="dashRecentStatus" onchange="loadDashboardRecent(_getDashMemberIds())" class="dash-select">
               <option value="">Todos</option>
               <option value="confirmed">✅ Confirmadas</option>
               <option value="pending">⏳ Pendentes</option>
             </select>
-            <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Ver todas</button>
+            <button class="dash-section-link" onclick="navigate('transactions')">Ver todas →</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody id="recentTxBody"><tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando...</td></tr></tbody></table></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody id="recentTxBody"><tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando...</td></tr></tbody></table></div>
+      </div>
+
+      <!-- Card: Orçamentos -->
+      <div id="dashCardBudgets" class="dash-section-card mb-4" style="display:none">
+        <div class="dash-section-header">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#7c3aed"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Orçamentos do Mês
+          </span>
+          <button class="dash-section-link" onclick="navigate('budgets')">Ver todos →</button>
+        </div>
+        <div id="dashBudgetsBody" class="dcard-body">
+          <div class="dash-empty-state">⏳ Carregando orçamentos…</div>
+        </div>
       </div>
 
       <!-- Card: Investimentos -->
-      <!-- Card: Orçamentos -->
-      <div id="dashCardBudgets" class="dcard mb-4" style="display:none">
-        <div class="dcard-header">
-          <div class="dcard-title-wrap">
-            <div class="dcard-icon" style="background:rgba(124,58,237,.1);color:#7c3aed">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div>
-              <div class="dcard-title">Orçamentos do Mês</div>
-              <div class="dcard-sub">Progresso por categoria</div>
-            </div>
-          </div>
-          <button class="dcard-link-btn" onclick="navigate('budgets')">Ver todos →</button>
-        </div>
-        <div id="dashBudgetsBody" class="dcard-body">
-          <div class="dcard-loading">⏳ Carregando orçamentos…</div>
-        </div>
-      </div>
-
-      <div id="dashCardInvestments" class="dcard mb-4" style="display:none">
-        <div class="dcard-header">
-          <div class="dcard-title-wrap">
-            <div class="dcard-icon" style="background:rgba(29,78,216,.1);color:#1d4ed8">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-            </div>
-            <div>
-              <div class="dcard-title">Carteira de Investimentos</div>
-              <div class="dcard-sub">Resumo e distribuição</div>
-            </div>
-          </div>
-          <button class="dcard-link-btn" onclick="navigate('investments')">Ver carteira →</button>
+      <div id="dashCardInvestments" class="dash-section-card mb-4" style="display:none">
+        <div class="dash-section-header">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#1d4ed8"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+            Carteira de Investimentos
+          </span>
+          <button class="dash-section-link" onclick="navigate('investments')">Ver carteira →</button>
         </div>
         <div id="dashInvestmentsBody" class="dcard-body">
-          <div class="dcard-loading">⏳ Carregando carteira…</div>
+          <div class="dash-empty-state">⏳ Carregando carteira…</div>
         </div>
       </div>
 
       <!-- Card: Sonhos -->
-      <div id="dashCardDreams" class="card mb-4" style="display:none">
-        <div class="card-header">
-          <span class="card-title">🌟 Meus Sonhos</span>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('dreams')">Ver sonhos</button>
+      <div id="dashCardDreams" class="dash-section-card mb-4" style="display:none">
+        <div class="dash-section-header">
+          <span class="dash-section-title">🌟 Meus Sonhos</span>
+          <button class="dash-section-link" onclick="navigate('dreams')">Ver sonhos →</button>
         </div>
         <div id="dashDreamsBody">
-          <div class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando…</div>
+          <div class="dash-empty-state">Carregando…</div>
         </div>
       </div>
 
-      <!-- Card: Top Beneficiários / Fontes Pagadoras -->
-      <div id="dashCardTopPayees" class="dcard mb-4" style="display:none">
-        <div class="dcard-header">
-          <div class="dcard-title-wrap">
-            <div class="dcard-icon" style="background:rgba(5,150,105,.1);color:#059669">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-            <div>
-              <div class="dcard-title">Beneficiários &amp; Fontes</div>
-              <div class="dcard-sub">Top 10 do mês · Top 5 do ano</div>
-            </div>
-          </div>
-          <button class="dcard-link-btn" onclick="navigate('reports');setTimeout(()=>setReportView&&setReportView('payees'),300)">Ver relatório →</button>
+      <!-- Card: Top Beneficiários -->
+      <div id="dashCardTopPayees" class="dash-section-card mb-4" style="display:none">
+        <div class="dash-section-header">
+          <span class="dash-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#059669"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Beneficiários &amp; Fontes
+          </span>
+          <button class="dash-section-link" onclick="navigate('reports');setTimeout(()=>setReportView&&setReportView('payees'),300)">Ver relatório →</button>
         </div>
         <div id="dashTopPayeesBody" class="dcard-body">
-          <div class="dcard-loading">⏳ Carregando…</div>
+          <div class="dash-empty-state">⏳ Carregando…</div>
         </div>
       </div>
 
       <!-- Modal de customização do dashboard -->
       <div class="modal-overlay" id="dashCustomModal">
-        <div class="modal" style="max-width:380px">
+        <div class="modal" style="max-width:400px">
           <div class="modal-handle"></div>
           <div class="modal-header">
             <span class="modal-title">⚙️ Personalizar Dashboard</span>
             <button class="modal-close" onclick="closeModal('dashCustomModal')">✕</button>
           </div>
           <div class="modal-body">
-            <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px">Escolha quais cards exibir e reordene com as setas ↑↓. Preferências salvas por usuário.</p>
-            <div id="dashCustomList" style="display:flex;flex-direction:column;gap:10px"></div>
+            <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px">Arraste para reordenar ou use as setas ↑↓. Ative/desative cada card com o toggle.</p>
+            <div id="dashCustomList" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('dashCustomModal')">Fechar</button>
@@ -860,7 +902,6 @@
         </div>
       </div>
     </div>
-
     <!-- TRANSACTIONS -->
     <div class="page" id="page-transactions">
       <style>
@@ -8020,14 +8061,15 @@ Se você não solicitou isso, ignore este e-mail.`,
 </div>
 
   <script src="js/state.js"></script>
+  <script src="js/date.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/translations_admin.js"></script>
   <script src="js/cursor.js"></script>
   <script src="js/db.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/telemetry.js"></script>
-  <script src="js/settings.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/app.js"></script>
   <script src="js/accounts.js"></script>
   <script src="js/categories.js"></script>
@@ -8042,7 +8084,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/scheduled.js"></script>
   <script src="js/attachments.js"></script>
   <script src="js/iof.js"></script>
-  <script src="js/date.js"></script>
   <script src="js/forecast.js"></script>
   <script src="js/email.js"></script>
   <script src="js/import.js"></script>
