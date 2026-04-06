@@ -725,30 +725,36 @@
       </div>
 
       <!-- Previsão de Caixa 90 dias -->
-      <div id="dashCardForecast90" class="card mb-4">
-        <div class="card-header fc-forecast-header">
-          <span class="card-title">📈 Previsão de Caixa (90 dias)</span>
-          <div class="fc-forecast-controls">
+      <div id="dashCardForecast90" class="dcard mb-4">
+        <div class="dcard-header">
+          <div class="dcard-title-wrap">
+            <div class="dcard-icon" style="background:rgba(42,96,73,.12);color:var(--accent)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            </div>
+            <div>
+              <div class="dcard-title">Previsão de Caixa</div>
+              <div class="dcard-sub">Projeção dos próximos 90 dias</div>
+            </div>
+          </div>
+          <div class="dcard-actions">
             <div class="fc-acct-picker" id="dashForecastAcctPicker">
-              <button type="button" class="fc-acct-btn fc-acct-btn--sm"
-                onclick="_fcPickerToggle('dashForecastAcctPicker')">
-                <span id="dashForecastAcctLabel">Todas</span>
-                <span class="fc-acct-caret">▼</span>
+              <button type="button" class="dcard-pill-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
+                <span id="dashForecastAcctLabel">Todas contas</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
             </div>
-            <label class="fc-forecast-check">
-              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()"
-                style="width:13px;height:13px;accent-color:var(--accent)">
-              Incluir programados
+            <label class="dcard-toggle-label">
+              <input type="checkbox" id="dashForecastScheduled" checked onchange="_renderDashForecast()" style="width:13px;height:13px;accent-color:var(--accent)">
+              <span>Programados</span>
             </label>
           </div>
         </div>
-        <div style="position:relative;height:180px;margin-top:4px">
+        <div class="dcard-chart-wrap">
           <canvas id="dashForecastChart"></canvas>
-      <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
+          <div id="dashForecastDrillPanel" style="display:none;padding:10px 4px"></div>
         </div>
-        <div id="dashForecastSummary" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 0 2px 0;font-size:.78rem"></div>
+        <div id="dashForecastSummary" class="dcard-summary-row"></div>
       </div>
 
       <!-- Últimas transações -->
@@ -769,23 +775,39 @@
 
       <!-- Card: Investimentos -->
       <!-- Card: Orçamentos -->
-      <div id="dashCardBudgets" class="card mb-4" style="display:none">
-        <div class="card-header">
-          <span class="card-title">🎯 Orçamentos do Mês</span>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver todos</button>
+      <div id="dashCardBudgets" class="dcard mb-4" style="display:none">
+        <div class="dcard-header">
+          <div class="dcard-title-wrap">
+            <div class="dcard-icon" style="background:rgba(124,58,237,.1);color:#7c3aed">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+              <div class="dcard-title">Orçamentos do Mês</div>
+              <div class="dcard-sub">Progresso por categoria</div>
+            </div>
+          </div>
+          <button class="dcard-link-btn" onclick="navigate('budgets')">Ver todos →</button>
         </div>
-        <div id="dashBudgetsBody">
-          <div class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando…</div>
+        <div id="dashBudgetsBody" class="dcard-body">
+          <div class="dcard-loading">⏳ Carregando orçamentos…</div>
         </div>
       </div>
 
-      <div id="dashCardInvestments" class="card mb-4" style="display:none">
-        <div class="card-header">
-          <span class="card-title">📈 Carteira de Investimentos</span>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('investments')">Ver carteira</button>
+      <div id="dashCardInvestments" class="dcard mb-4" style="display:none">
+        <div class="dcard-header">
+          <div class="dcard-title-wrap">
+            <div class="dcard-icon" style="background:rgba(29,78,216,.1);color:#1d4ed8">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+            </div>
+            <div>
+              <div class="dcard-title">Carteira de Investimentos</div>
+              <div class="dcard-sub">Resumo e distribuição</div>
+            </div>
+          </div>
+          <button class="dcard-link-btn" onclick="navigate('investments')">Ver carteira →</button>
         </div>
-        <div id="dashInvestmentsBody">
-          <div class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando…</div>
+        <div id="dashInvestmentsBody" class="dcard-body">
+          <div class="dcard-loading">⏳ Carregando carteira…</div>
         </div>
       </div>
 
@@ -1467,20 +1489,16 @@
   <!-- ── Painel: Orçamentos ── -->
   <div id="budgetPanelBudgets">
 
-    <!-- Intro card -->
-    <div class="budget-intro-card">
-      <div class="budget-intro-left">
-        <div class="budget-intro-icon">💰</div>
-        <div>
-          <div class="budget-intro-title">Controle seus gastos com orçamentos inteligentes</div>
-          <div class="budget-intro-desc">Defina limites por categoria, acompanhe em tempo real e receba alertas ao se aproximar do limite. Orçamentos recorrentes se renovam automaticamente todo mês.</div>
-        </div>
-      </div>
-      <div class="budget-intro-features">
-        <div class="budget-intro-feat"><span>🔄</span> Recorrente</div>
-        <div class="budget-intro-feat"><span>📊</span> Histórico 12m</div>
-        <div class="budget-intro-feat"><span>⚡</span> Alertas</div>
-        <div class="budget-intro-feat"><span>👥</span> Por membro</div>
+    <!-- Intro banner -->
+    <div class="module-intro-banner">
+      <div class="module-intro-badge">💰 Orçamentos</div>
+      <h3 class="module-intro-headline">Controle inteligente de gastos por categoria</h3>
+      <p class="module-intro-text">Defina limites mensais ou anuais, acompanhe em tempo real e deixe os orçamentos recorrentes renovarem sozinhos todo mês.</p>
+      <div class="module-intro-chips">
+        <span class="module-intro-chip">🔄 Recorrente automático</span>
+        <span class="module-intro-chip">📊 Histórico 12 meses</span>
+        <span class="module-intro-chip">⚡ Alertas de limite</span>
+        <span class="module-intro-chip">👥 Por membro da família</span>
       </div>
     </div>
 
@@ -1533,20 +1551,16 @@
   <!-- ── Painel: Objetivos ── -->
   <div id="budgetPanelObjectives" style="display:none">
 
-    <!-- Intro card -->
-    <div class="budget-intro-card" style="--intro-color:#7c3aed">
-      <div class="budget-intro-left">
-        <div class="budget-intro-icon" style="background:rgba(124,58,237,.1);color:#7c3aed">🎯</div>
-        <div>
-          <div class="budget-intro-title">Monitoramento por projeto ou objetivo</div>
-          <div class="budget-intro-desc">Crie objetivos para acompanhar gastos de projetos específicos — reformas, viagens, eventos. Vincule transações ao objetivo e veja o breakdown por categoria, beneficiário e membro.</div>
-        </div>
-      </div>
-      <div class="budget-intro-features">
-        <div class="budget-intro-feat"><span>📦</span> Por categoria</div>
-        <div class="budget-intro-feat"><span>🏪</span> Por beneficiário</div>
-        <div class="budget-intro-feat"><span>👥</span> Por membro</div>
-        <div class="budget-intro-feat"><span>✨</span> IA sugere ícone</div>
+    <!-- Intro banner -->
+    <div class="module-intro-banner" style="--intro-accent:#7c3aed;--intro-accent-lt:rgba(124,58,237,.08)">
+      <div class="module-intro-badge" style="background:rgba(124,58,237,.1);color:#7c3aed">🎯 Objetivos</div>
+      <h3 class="module-intro-headline">Monitoramento por projeto ou evento</h3>
+      <p class="module-intro-text">Crie objetivos para rastrear gastos de projetos específicos — reformas, viagens, casamentos, festas. Vincule transações e veja o breakdown completo.</p>
+      <div class="module-intro-chips">
+        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📦 Por categoria</span>
+        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">🏪 Por beneficiário</span>
+        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">👥 Por membro</span>
+        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">✨ IA sugere ícone</span>
       </div>
     </div>
 
@@ -3606,20 +3620,16 @@
     <!-- ══ DREAMS PAGE ══════════════════════════════════════════════════════ -->
     <div class="page" id="page-dreams" style="display:none">
 
-      <!-- Dreams intro card -->
-      <div class="budget-intro-card" style="--intro-color:#f59e0b;margin-bottom:20px">
-        <div class="budget-intro-left">
-          <div class="budget-intro-icon" style="background:rgba(245,158,11,.1);color:#f59e0b;font-size:1.8rem">🌟</div>
-          <div>
-            <div class="budget-intro-title">Transforme sonhos em metas financeiras reais</div>
-            <div class="budget-intro-desc">Defina objetivos de vida, estime custos com IA, acompanhe o progresso e receba sugestões personalizadas de quanto poupar por mês para realizar cada sonho.</div>
-          </div>
-        </div>
-        <div class="budget-intro-features">
-          <div class="budget-intro-feat"><span>🤖</span> IA estima custos</div>
-          <div class="budget-intro-feat"><span>📈</span> Progresso visual</div>
-          <div class="budget-intro-feat"><span>💡</span> Plano de poupança</div>
-          <div class="budget-intro-feat"><span>🏆</span> Conquistas</div>
+      <!-- Dreams intro banner -->
+      <div class="module-intro-banner" style="--intro-accent:#f59e0b;--intro-accent-lt:rgba(245,158,11,.08);margin-bottom:20px">
+        <div class="module-intro-badge" style="background:rgba(245,158,11,.12);color:#b45309">🌟 Sonhos</div>
+        <h3 class="module-intro-headline">Transforme sonhos em metas financeiras reais</h3>
+        <p class="module-intro-text">Defina objetivos de vida, estime custos com IA e receba um plano personalizado de quanto poupar por mês para realizar cada sonho.</p>
+        <div class="module-intro-chips">
+          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🤖 IA estima custos</span>
+          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">📈 Progresso visual</span>
+          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">💡 Plano de poupança</span>
+          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🏆 Conquistas</span>
         </div>
       </div>
 
@@ -6573,6 +6583,15 @@ Se você não solicitou isso, ignore este e-mail.`,
             <select id="txObjectiveId" style="width:100%" onchange="void 0">
               <option value="">— Nenhum objetivo —</option>
             </select>
+          </div>
+          <div class="form-group full" id="txDreamGroup" style="display:none">
+            <label>🌟 Sonho vinculado <span class="opt-label">opcional</span></label>
+            <select id="txDreamId" style="width:100%">
+              <option value="">— Nenhum sonho —</option>
+            </select>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
+              O valor desta transação será registrado como aporte no sonho selecionado
+            </div>
           </div>
           <div class="form-group full"><label>Observação <span class="opt-label">opcional</span></label><textarea id="txMemo" rows="2" placeholder="Memo, notas..."></textarea></div>
           <div class="form-group full" id="txIofGroup" style="display:none">
