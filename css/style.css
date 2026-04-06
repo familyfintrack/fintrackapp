@@ -504,7 +504,7 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
    display:none em selects filhos causa campos inacessiveis quando modais abrem.
 ══════════════════════════════════════════════════════════════════════════════ */
 /* Modais fechados: nenhum evento de toque */
-.modal-overlay:not(.open) { pointer-events:none !important; }
+.modal-overlay:not(.open):not(.active) { pointer-events:none !important; }
 /* Conteudo da pagina bloqueado quando sidebar esta aberta */
 body.sidebar-open .page,
 body.sidebar-open .content { pointer-events:none !important; }
