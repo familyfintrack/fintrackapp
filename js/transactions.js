@@ -2142,6 +2142,7 @@ async function saveTransaction(){
     }
   }
   _txSaving = true;
+  if (window.Cursor) Cursor.show('Salvando transação…', 'save');
   // ── End duplicate detection ──────────────────────────────────────────────
 
   const id=document.getElementById('txId').value,type=document.getElementById('txTypeField').value;
@@ -2249,9 +2250,11 @@ async function saveTransaction(){
     objective_id: document.getElementById('txObjectiveId')?.value || null,
     dream_id:     document.getElementById('txDreamId')?.value || null,
   };
-  if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
+  if(!data.date||!data.account_id){if(window.Cursor)Cursor.hide();_txSaving=false;toast(t('tx.err_date_account'),'error');return;}
   // Beneficiário obrigatório para não-transferências
   if(!isTransfer && !data.payee_id) {
+    if(window.Cursor) Cursor.hide();
+    _txSaving = false;
     toast('Beneficiário / Fonte é obrigatório.','error');
     // Switch to Principal tab to show the field
     if(typeof switchTxTab==='function') {
@@ -2263,6 +2266,8 @@ async function saveTransaction(){
   }
   // Categoria obrigatória para não-transferências
   if(!isTransfer && !data.category_id) {
+    if(window.Cursor) Cursor.hide();
+    _txSaving = false;
     toast('Categoria é obrigatória.','error');
     if(typeof switchTxTab==='function') {
       const btn = document.querySelector('[data-tab="txCtxPrincipal"]');
@@ -2333,7 +2338,7 @@ async function saveTransaction(){
       }
     }
   }
-  if(err){_txSaving = false; toast(err.message,'error');return;}
+  if(err){_txSaving = false; if(window.Cursor) Cursor.hide(); toast(err.message,'error');return;}
 
   // Create IOF mirror transaction if international (new transactions only)
   // Keep this BEFORE attachment upload. Otherwise an attachment upload failure would
@@ -2355,6 +2360,7 @@ async function saveTransaction(){
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Salvar'; }
     if (!uploadedUrl) {
       // Upload failed — transaction was saved. Existing attachment is preserved; warn the user.
+      if(window.Cursor) Cursor.hide(); _txSaving = false;
       toast('⚠️ Transação salva, mas o anexo não foi enviado. Verifique o bucket "fintrack-attachments" no Supabase.', 'error');
       closeModal('txModal');
       if(!id && savedId) {
@@ -2393,6 +2399,7 @@ async function saveTransaction(){
   }
 
   _txSaving = false; // release guard
+  if (window.Cursor) Cursor.flash(id ? 'Atualizado!' : 'Transação salva!');
   toast(id?'✓ Atualizado!':'✓ Transação salva!','success');
   // Notify user on new transaction if enabled
   if (!id && savedId && typeof notifyOnTransaction === 'function') {
