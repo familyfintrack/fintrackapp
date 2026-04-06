@@ -1174,7 +1174,7 @@ function _renderStorePayeeMap() {
 
 async function saveStorePayeeLink(storeId, payeeId) {
   const { error } = await sb.from('price_stores')
-    .update({ payee_id: payeeId || null, updated_at: new Date().toISOString() })
+    .update({ payee_id: payeeId || null })
     .eq('id', storeId);
   if (error) { toast('Erro ao salvar vínculo: ' + error.message, 'error'); return; }
 

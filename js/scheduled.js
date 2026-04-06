@@ -284,6 +284,31 @@ function scStatusLabel(sc) {
 
 // ── Load & Render ──────────────────────────────────────
 async function loadScheduled() {
+  // Aplicar view preferida imediatamente — ocultar lista antes de qualquer render
+  // para evitar o flash lista → calendário
+  const _savedView = (() => {
+    try { return localStorage.getItem('sc_view_pref') || 'calendar'; } catch(_) { return 'calendar'; }
+  })();
+  // Definir _scView antes dos dados chegarem
+  if (typeof _scView !== 'undefined') _scView = _savedView;
+
+  // Ocultar/mostrar áreas imediatamente (sem dados ainda)
+  const _lvEarly = document.getElementById('scListView');
+  const _cvEarly = document.getElementById('scCalendarView');
+  const _catsEarly = document.getElementById('scCategoriesView');
+  const _kpiEarly = document.getElementById('scKpiStrip');
+  const _mKpiEarly = document.getElementById('scMobileKpis');
+  if (_lvEarly) _lvEarly.style.display = _savedView === 'list' ? '' : 'none';
+  if (_cvEarly) _cvEarly.style.display = _savedView === 'calendar' ? '' : 'none';
+  if (_catsEarly) _catsEarly.style.display = _savedView === 'categories' ? '' : 'none';
+  if (_kpiEarly) _kpiEarly.style.display = _savedView === 'list' ? '' : 'none';
+  if (_mKpiEarly) _mKpiEarly.style.display = _savedView === 'list' ? '' : 'none';
+
+  // Atualizar botões de view imediatamente
+  document.querySelectorAll('#scViewList').forEach(b => b.classList.toggle('active', _savedView === 'list'));
+  document.querySelectorAll('#scViewCal').forEach(b  => b.classList.toggle('active', _savedView === 'calendar'));
+  document.querySelectorAll('#scViewCats').forEach(b => b.classList.toggle('active', _savedView === 'categories'));
+
   try {
     const { data, error } = await famQ(sb.from('scheduled_transactions').select('*, accounts!scheduled_transactions_account_id_fkey(name,currency), payees(name), categories(name,color), occurrences:scheduled_occurrences(id,scheduled_date,actual_date,amount,memo,transaction_id,execution_status,executed_at)'));
     if(error) throw error;
@@ -354,11 +379,22 @@ function filterScheduled() {
   }
   // Store filtered list globally so calendar + upcoming also respect active filters
   state._scFiltered = list;
-  renderScheduled(list);
-  renderUpcoming();
-  _renderScKpis();
-  // Re-render calendar if active — it also needs to respect filters
-  if (typeof _scView !== 'undefined' && _scView === 'calendar') renderScCalendar();
+
+  // Renderizar apenas o que está visível — evita flash entre views
+  const currentView = typeof _scView !== 'undefined' ? _scView : 'calendar';
+
+  if (currentView === 'calendar') {
+    // View calendário: só renderizar calendário, não a lista
+    renderScCalendar();
+    _renderScKpis(); // KPIs usados pela barra de topo
+  } else if (currentView === 'categories') {
+    renderScCategories();
+  } else {
+    // View lista
+    renderScheduled(list);
+    renderUpcoming();
+    _renderScKpis();
+  }
   // Keep both type selects in sync so switching between views preserves selection
   const _syncVal = typeF;
   const _m = document.getElementById('scTypeFilter');

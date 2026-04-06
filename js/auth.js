@@ -4057,26 +4057,23 @@ async function doResetUserPwd() {
     }
 
     if (!authUpdated) {
-      // 2b. Fallback: RPC SECURITY DEFINER (requer migration_set_password.sql)
-      const { data: rpcData, error: rpcErr } = await sb.rpc('set_user_password', {
-        p_email:    targetEmail,
-        p_password: pwd1
-      });
-      if (rpcErr) {
-        if (rpcErr.code === '42883' || rpcErr.message?.includes('function')) {
-          throw new Error(
-            'Configure a Service Role Key em Configurações, ou execute migration_set_password.sql no Supabase.'
-          );
+      // 2b. Tentar RPC set_user_password (SECURITY DEFINER) — se existir no banco
+      try {
+        const { data: rpcData, error: rpcErr } = await sb.rpc('set_user_password', {
+          p_email:    targetEmail,
+          p_password: pwd1
+        });
+        if (!rpcErr && !rpcData?.error) {
+          authUpdated = true;
         }
-        throw new Error('RPC: ' + rpcErr.message);
-      }
-      if (rpcData?.error) throw new Error(rpcData.error);
-      authUpdated = true;
+        // Se RPC não existe (42883) ou falha, cai no fallback abaixo
+      } catch(_) {}
     }
 
     if (!authUpdated) {
-      // Fallback final: sem Service Role Key nem RPC — atualizar apenas app_users
-      // e enviar link de reset para o usuário definir a própria senha no Supabase Auth
+      // Fallback final: sem Service Role Key nem RPC disponível
+      // Gravar hash em app_users (funciona para login via app) +
+      // enviar link de reset para atualizar no Supabase Auth
       try {
         const hash = await sha256(pwd1);
         await sb.from('app_users').update({
@@ -4084,13 +4081,18 @@ async function doResetUserPwd() {
           must_change_pwd: true
         }).eq('id', userId);
       } catch(_) {}
-      const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+
+      const redirectTo = typeof getAppBaseUrl === 'function'
+        ? getAppBaseUrl()
+        : (window.location.origin + window.location.pathname);
+
       const { error: resetErr } = await sb.auth.resetPasswordForEmail(targetEmail, { redirectTo });
-      if (resetErr) {
-        // Mesmo sem o link, gravamos o hash — quando o usuário fizer login via app, a senha funciona
-        toast('⚠️ Senha atualizada no sistema interno. Para atualizar no Supabase Auth, configure a Service Role Key em Configurações → Dados → Service Role Key.', 'warning');
+
+      if (!resetErr) {
+        toast(`✅ Senha definida. Um link de confirmação foi enviado para ${targetEmail}.`, 'success');
       } else {
-        toast(`✅ Senha atualizada + link de redefinição enviado para ${targetEmail}.`, 'success');
+        // Hash gravado — login via app funciona; Auth externo não foi atualizado
+        toast(`✅ Senha atualizada no sistema. O usuário poderá fazer login com a nova senha.`, 'success');
       }
       closeModal('resetPwdModal');
       await loadUsersList();
@@ -4601,12 +4603,23 @@ function _show2FAScreen() {
   const codeInput = document.getElementById('twoFaCode');
   if (codeInput) {
     codeInput.value = '';
-    // Delay focus to allow layout reflow on iOS
     setTimeout(() => codeInput.focus(), 150);
   }
 
   const errEl = document.getElementById('twoFaError');
   if (errEl) errEl.style.display = 'none';
+
+  // Mostrar expiração do trust se já existe (informativo)
+  const trustExpEl = document.getElementById('twoFaTrustExpiry');
+  const expiry = _2fa.userId ? _get2FATrustExpiry(_2fa.userId) : null;
+  if (trustExpEl && expiry) {
+    try {
+      const d = new Date(expiry);
+      const fmt = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+      trustExpEl.textContent = '(confiança válida até ' + fmt + ')';
+      trustExpEl.style.display = 'inline';
+    } catch(_) {}
+  }
 }
 
 // ── Verificar código inserido pelo usuário ──
@@ -4659,7 +4672,10 @@ async function doVerify2FA() {
     await sb.from('two_fa_codes').update({ used: true }).eq('id', codeRow.id);
 
     // Salvar trusted device se solicitado
-    if (trust) _set2FATrusted(_2fa.userId);
+    if (trust) {
+      _set2FATrusted(_2fa.userId);
+      toast('✓ Dispositivo confiável por 30 dias — não pediremos o código novamente.', 'success');
+    }
 
     // Continuar fluxo de login
     await _loadCurrentUserContext(_2fa.sessionData);

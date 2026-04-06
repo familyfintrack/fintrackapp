@@ -2618,36 +2618,64 @@ function initTxMobileUX(){
   // Bind once using event delegation
   if(_txSwipeBound) return;
   _txSwipeBound = true;
-  let startX=0, startY=0, targetEl=null, tracking=false;
+
+  let startX=0, startY=0, targetEl=null, tracking=false, didSwipe=false;
+
+  // ── Delegated CLICK: iOS Safari exige cursor:pointer ou listener explícito
+  //    no elemento para disparar click. Adicionamos delegation como garantia.
+  document.addEventListener('click', (ev) => {
+    const row = ev.target.closest?.('.tx-row-clickable');
+    if (!row) return;
+    if (didSwipe) { didSwipe = false; return; } // swipe não abre modal
+    const id = row.getAttribute('data-tx-id');
+    if (id && typeof openTxDetail === 'function') openTxDetail(id);
+  });
 
   document.addEventListener('touchstart', (ev)=>{
     const row = ev.target.closest?.('.tx-row-clickable');
     if(!row) return;
-    // Only enable swipe on small screens
-    if(window.innerWidth>720) return;
-    tracking=true;
+    if(window.innerWidth>720) return; // swipe só em mobile
+    // Não iniciar se tocar no botão de reconciliação
+    if(ev.target.closest?.('.reconcile-chk-label,.dcc-toggle,.tx-v2-btns,.btn')) return;
+    tracking=true; didSwipe=false;
     targetEl=row;
     const t=ev.touches[0];
     startX=t.clientX; startY=t.clientY;
   }, {passive:true});
 
+  // touchmove NÃO-PASSIVO: precisa chamar preventDefault() para bloquear
+  // o scroll do browser quando o swipe é horizontal
   document.addEventListener('touchmove', (ev)=>{
     if(!tracking||!targetEl) return;
     const t=ev.touches[0];
-    const dx=t.clientX-startX; const dy=t.clientY-startY;
-    if(Math.abs(dy) > Math.abs(dx)) return; // vertical scroll wins
+    const dx=t.clientX-startX;
+    const dy=t.clientY-startY;
 
-    // Allow both directions: right = confirm, left = back to pending
-    const clamped = Math.max(-90, Math.min(dx, 90));
+    // Se movimento vertical domina → scroll normal, abandonar tracking
+    if(Math.abs(dy) > Math.abs(dx) + 5){
+      tracking=false;
+      targetEl.style.transition='transform 150ms ease';
+      targetEl.style.transform='translateX(0px)';
+      targetEl.style.background='';
+      targetEl=null;
+      return;
+    }
+
+    // Movimento horizontal: bloquear scroll para fazer o swipe
+    ev.preventDefault();
+
+    const clamped = Math.max(-100, Math.min(dx, 100));
     targetEl.style.transition='none';
     targetEl.style.transform=`translateX(${clamped}px)`;
 
-    if(clamped > 0){
+    if(clamped > 8){
       targetEl.style.background='var(--green-lt,#dcfce7)';
-    } else if(clamped < 0){
+    } else if(clamped < -8){
       targetEl.style.background='var(--amber-lt,#fffbeb)';
+    } else {
+      targetEl.style.background='';
     }
-  }, {passive:true});
+  }, {passive:false}); // NÃO passive — para chamar preventDefault()
 
   document.addEventListener('touchend', async (ev)=>{
     if(!tracking||!targetEl) return;
@@ -2655,8 +2683,8 @@ function initTxMobileUX(){
     const dx = (targetEl.style.transform||'').match(/translateX\(([-0-9.]+)px\)/);
     const moved = dx ? parseFloat(dx[1]) : 0;
 
-    // Reset visuals with animation
-    targetEl.style.transition='transform 180ms ease, background 180ms ease';
+    // Reset visuals com animação
+    targetEl.style.transition='transform 200ms ease, background 200ms ease';
     targetEl.style.transform='translateX(0px)';
     targetEl.style.background='';
 
@@ -2664,19 +2692,23 @@ function initTxMobileUX(){
     const el=targetEl; targetEl=null;
 
     if(!id) return;
-    if(Math.abs(moved) < 60) return;
 
+    // Movimento muito pequeno = tap (não swipe) → click handler cuida
+    if(Math.abs(moved) < 40) return;
+
+    // Swipe confirmado
+    didSwipe = true;
     const isPending = el.classList.contains('tx-pending');
 
     try {
       if(moved > 0) {
-        // Swipe right: pending -> confirmed
+        // Swipe direita: pendente → confirmada
         if(!isPending) return;
         el.classList.add('tx-confirm-anim');
         setTimeout(()=>el.classList.remove('tx-confirm-anim'), 650);
         await setTransactionStatus(id, 'confirmed');
       } else {
-        // Swipe left: confirmed -> pending
+        // Swipe esquerda: confirmada → pendente
         if(isPending) return;
         el.classList.add('tx-pending-anim');
         setTimeout(()=>el.classList.remove('tx-pending-anim'), 650);
@@ -2687,7 +2719,7 @@ function initTxMobileUX(){
     }
   }, {passive:true});
 
-  // Compact view: apply class based on preference
+  // Compact view
   applyTxCompactPreference();
 }
 
