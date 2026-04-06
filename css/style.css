@@ -19385,7 +19385,7 @@ section[data-page="transactions"] .content {
   text-align: center;
 }
 .lgn-logo-img {
-  height: 96px; width: auto; object-fit: contain;
+  height: 110px; width: auto; object-fit: contain;
   filter: drop-shadow(0 0 28px rgba(125,194,66,.35));
   animation: lgnLogoPulse 4s ease-in-out infinite;
 }
@@ -19451,7 +19451,7 @@ section[data-page="transactions"] .content {
 .lgn-label {
   display: block;
   font-size: .66rem; font-weight: 700;
-  color: #ffffff; letter-spacing: .08em;
+  color: #ffffff !important; letter-spacing: .08em;
   text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -19589,7 +19589,7 @@ section[data-page="transactions"] .content {
 /* ── 2FA screen — cores para card escuro (rgba(4,14,8,.82)) ── */
 .twofa-title {
   font-size: 1.15rem; font-weight: 800;
-  color: #ffffff; text-align: center;
+  color: #ffffff !important; text-align: center;
   margin-bottom: 6px;
   font-family: var(--font-serif, Georgia, serif);
 }
@@ -19600,14 +19600,15 @@ section[data-page="transactions"] .content {
 }
 .twofa-code-input {
   width: 100%; text-align: center;
-  font-size: 2rem; font-weight: 800;
-  letter-spacing: .35em; font-variant-numeric: tabular-nums;
-  padding: 16px; border: 1.5px solid rgba(125,194,66,.3);
-  border-radius: 12px; outline: none;
-  background: rgba(255,255,255,.06); color: #ffffff;
+  font-size: 2.6rem; font-weight: 800;
+  letter-spacing: .42em; font-variant-numeric: tabular-nums;
+  padding: 20px 16px; border: 2px solid rgba(125,194,66,.4);
+  border-radius: 16px; outline: none;
+  background: rgba(255,255,255,.07); color: #ffffff;
   transition: border-color .18s, box-shadow .18s, background .18s;
   margin-bottom: 20px; box-sizing: border-box;
   font-family: 'Courier New', monospace;
+  min-height: 84px;
 }
 .twofa-code-input::placeholder { color: rgba(200,225,210,.22); }
 .twofa-code-input:focus {
