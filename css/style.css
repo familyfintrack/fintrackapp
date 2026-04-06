@@ -8708,9 +8708,22 @@ tr.tx-row-new td:first-child {
 /* Reuse grid from existing report-kpi-grid */
 #reportKpis {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 16px;
+}
+@media (max-width: 480px) {
+  #reportKpis { grid-template-columns: 1fr 1fr; }
+}
+#reportKpis .rpt-kpi--inc,
+#reportKpis .rpt-kpi--exp,
+#reportKpis .rpt-kpi--bal {
+  padding: 16px 18px 14px;
+}
+#reportKpis .rpt-kpi--inc .rpt-kpi-value,
+#reportKpis .rpt-kpi--exp .rpt-kpi-value,
+#reportKpis .rpt-kpi--bal .rpt-kpi-value {
+  font-size: 1.3rem;
 }
 
 /* ── Chart cards ── */
@@ -25338,7 +25351,46 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   border-radius: 12px;
   padding: 16px 20px 18px;
   margin-bottom: 20px;
+  position: relative;
+  transition: padding-bottom .25s ease;
 }
+.module-intro-banner.is-collapsed { padding-bottom: 12px !important; }
+
+/* Collapse toggle button */
+.module-intro-toggle {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--intro-accent-lt, var(--accent-lt));
+  border: 1px solid var(--intro-accent, var(--accent));
+  border-radius: 20px;
+  padding: 3px 10px 3px 8px;
+  font-size: .67rem;
+  font-weight: 700;
+  color: var(--intro-accent, var(--accent));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity .15s;
+  opacity: .8;
+  line-height: 1;
+}
+.module-intro-toggle:hover { opacity: 1; }
+.module-intro-toggle .mib-arr { display:inline-block; transition: transform .25s; font-style:normal; }
+.module-intro-banner.is-collapsed .module-intro-toggle .mib-arr { transform: rotate(-90deg); }
+
+/* Collapsible body — wraps headline, text, chips */
+.module-intro-body {
+  overflow: hidden;
+  max-height: 300px;
+  opacity: 1;
+  transition: max-height .3s ease, opacity .22s ease;
+}
+.module-intro-banner.is-collapsed .module-intro-body {
+  max-height: 0 !important;
+  opacity: 0;
+}
+
 .module-intro-badge {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: .65rem; font-weight: 800; letter-spacing: .1em;
