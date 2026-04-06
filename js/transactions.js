@@ -850,6 +850,228 @@ function toggleTxGroup(k) {
 }
 
 function changePage(dir){state.txPage+=dir;loadTransactions();}
+async // ══ Tags Field — chips visuais com autocomplete ══════════════════════════════
+
+const _tagsState = { tags: [], allTags: [], similarTags: [], activeIdx: -1 };
+
+// Coletar todas as tags usadas no histórico de transações
+async function _loadAllTags() {
+  try {
+    const { data } = await famQ(
+      sb.from('transactions').select('tags').not('tags', 'is', null).limit(500)
+    );
+    const freq = {};
+    (data || []).forEach(t => {
+      (t.tags || []).forEach(tag => {
+        const k = tag.trim().toLowerCase();
+        if (k) freq[k] = (freq[k] || 0) + 1;
+      });
+    });
+    // Ordenar por frequência
+    _tagsState.allTags = Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag, count]) => ({ tag, count }));
+  } catch(e) {
+    _tagsState.allTags = [];
+  }
+}
+
+// Buscar tags de transações com descrição ou beneficiário similar
+async function _loadSimilarTags(description, payeeId) {
+  _tagsState.similarTags = [];
+  if (!description && !payeeId) return;
+  try {
+    let q = famQ(sb.from('transactions').select('tags,description,payee_id'))
+      .not('tags', 'is', null);
+    if (payeeId) {
+      q = q.eq('payee_id', payeeId);
+    } else if (description && description.length >= 3) {
+      q = q.ilike('description', `%${description.slice(0, 20)}%`);
+    }
+    const { data } = await q.limit(100);
+    const freq = {};
+    (data || []).forEach(t => {
+      (t.tags || []).forEach(tag => {
+        const k = tag.trim().toLowerCase();
+        if (k) freq[k] = (freq[k] || 0) + 1;
+      });
+    });
+    _tagsState.similarTags = Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([tag, count]) => ({ tag, count }));
+  } catch(e) {}
+}
+
+function _tagsRenderChips() {
+  const chipsEl = document.getElementById('txTagsChips');
+  const hiddenEl = document.getElementById('txTags');
+  if (!chipsEl) return;
+  chipsEl.innerHTML = _tagsState.tags.map((tag, i) => `
+    <span class="tags-chip" title="${esc(tag)}">
+      <span>${esc(tag)}</span>
+      <button class="tags-chip-remove" type="button" onclick="event.stopPropagation();_tagsRemove(${i})">✕</button>
+    </span>`).join('');
+  if (hiddenEl) hiddenEl.value = _tagsState.tags.join(', ');
+}
+
+function _tagsAdd(tag) {
+  const t = tag.trim().toLowerCase();
+  if (!t) return;
+  if (!_tagsState.tags.map(x => x.toLowerCase()).includes(t)) {
+    _tagsState.tags.push(tag.trim());
+    _tagsRenderChips();
+  }
+  const inp = document.getElementById('txTagsInput');
+  if (inp) { inp.value = ''; inp.focus(); }
+  _tagsHideSuggestions();
+}
+
+function _tagsRemove(idx) {
+  _tagsState.tags.splice(idx, 1);
+  _tagsRenderChips();
+}
+
+function _tagsHideSuggestions() {
+  const el = document.getElementById('txTagsSuggestions');
+  if (el) el.style.display = 'none';
+  _tagsState.activeIdx = -1;
+}
+
+function _tagsShowSuggestions(query) {
+  const el = document.getElementById('txTagsSuggestions');
+  if (!el) return;
+  const q = (query || '').trim().toLowerCase();
+  const existing = _tagsState.tags.map(t => t.toLowerCase());
+
+  // Similar tags (de transações com mesma descrição/beneficiário)
+  const similar = _tagsState.similarTags
+    .filter(s => !existing.includes(s.tag) && (!q || s.tag.includes(q)))
+    .slice(0, 4);
+
+  // Todas as tags filtradas por query
+  const all = _tagsState.allTags
+    .filter(s => !existing.includes(s.tag) && s.tag.includes(q || ''))
+    .filter(s => !similar.find(x => x.tag === s.tag))
+    .slice(0, 6);
+
+  if (!similar.length && !all.length && !q) {
+    el.style.display = 'none';
+    return;
+  }
+
+  let html = '';
+  if (similar.length) {
+    html += `<div class="tags-sug-section">Sugeridas para esta transação</div>`;
+    html += similar.map((s, i) => `
+      <div class="tags-sug-item" data-tag="${esc(s.tag)}" onclick="_tagsAdd('${esc(s.tag)}')" onmouseenter="_tagsSetActive(${i})">
+        <span style="font-size:.8rem">✨</span>
+        <span class="tags-sug-tag">${esc(s.tag)}</span>
+        <span class="tags-sug-similar">${s.count}× similar</span>
+      </div>`).join('');
+  }
+  if (all.length) {
+    html += `<div class="tags-sug-section">${q ? 'Corresponde a' : 'Mais usadas'}</div>`;
+    html += all.map((s, i) => `
+      <div class="tags-sug-item" data-tag="${esc(s.tag)}" onclick="_tagsAdd('${esc(s.tag)}')" onmouseenter="_tagsSetActive(${similar.length + i})">
+        <span style="font-size:.8rem">🏷</span>
+        <span class="tags-sug-tag">${esc(s.tag)}</span>
+        <span class="tags-sug-count">${s.count}×</span>
+      </div>`).join('');
+  }
+  if (!html && q) {
+    html = `<div class="tags-sug-item" data-tag="${esc(q)}" onclick="_tagsAdd('${esc(q)}')">
+      <span>➕</span><span class="tags-sug-tag">Criar tag "${esc(q)}"</span>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+  el.style.display = html ? '' : 'none';
+  _tagsState.activeIdx = -1;
+}
+
+function _tagsSetActive(idx) {
+  _tagsState.activeIdx = idx;
+  document.querySelectorAll('#txTagsSuggestions .tags-sug-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+function _initTagsField(existingTags) {
+  _tagsState.tags = (existingTags || []).filter(Boolean);
+  _tagsState.activeIdx = -1;
+  _tagsRenderChips();
+
+  const inp = document.getElementById('txTagsInput');
+  const field = document.getElementById('txTagsField');
+  if (!inp) return;
+
+  inp.value = '';
+
+  // Click sur le wrapper → focus l'input
+  if (field) field.onclick = (e) => { if (e.target !== inp) inp.focus(); };
+
+  inp.oninput = () => {
+    const val = inp.value;
+    if (val.endsWith(',') || val.endsWith(' ') || val.endsWith(';')) {
+      const tag = val.slice(0, -1).trim();
+      if (tag) _tagsAdd(tag);
+    } else {
+      _tagsShowSuggestions(val.trim());
+    }
+  };
+
+  inp.onkeydown = (e) => {
+    const items = document.querySelectorAll('#txTagsSuggestions .tags-sug-item');
+    const sug = document.getElementById('txTagsSuggestions');
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (_tagsState.activeIdx >= 0 && items[_tagsState.activeIdx]) {
+        const tag = items[_tagsState.activeIdx].dataset.tag;
+        if (tag) _tagsAdd(tag);
+      } else if (inp.value.trim()) {
+        _tagsAdd(inp.value.trim());
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _tagsSetActive(Math.min(_tagsState.activeIdx + 1, items.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _tagsSetActive(Math.max(_tagsState.activeIdx - 1, 0));
+    } else if (e.key === 'Escape') {
+      _tagsHideSuggestions();
+    } else if (e.key === 'Backspace' && !inp.value && _tagsState.tags.length) {
+      _tagsRemove(_tagsState.tags.length - 1);
+    }
+  };
+
+  inp.onfocus = () => {
+    _loadAllTags().then(() => _tagsShowSuggestions(inp.value.trim()));
+    // Carregar similares com base nos campos já preenchidos
+    const desc = document.getElementById('txDesc')?.value?.trim();
+    const payeeId = document.getElementById('txPayeeId')?.value;
+    _loadSimilarTags(desc, payeeId).then(() => _tagsShowSuggestions(inp.value.trim()));
+  };
+
+  inp.onblur = () => {
+    // Delay para permitir click nos itens
+    setTimeout(() => {
+      if (inp.value.trim()) _tagsAdd(inp.value.trim());
+      _tagsHideSuggestions();
+    }, 200);
+  };
+}
+
+// Obter tags do campo visual (não do hidden input)
+function _getTagsFieldValue() {
+  return [..._tagsState.tags];
+}
+
+// Expor no window para uso em onclick
+window._tagsAdd    = _tagsAdd;
+window._tagsRemove = _tagsRemove;
+window._tagsSetActive = _tagsSetActive;
+
 async function openTransactionModal(id=''){
   // Ensure family composition is loaded so the member picker renders with actual members
   if (typeof loadFamilyComposition === 'function' && typeof _fmc !== 'undefined' && !_fmc.loaded) {
@@ -877,6 +1099,7 @@ async function openTransactionModal(id=''){
 }
 function resetTxModal(){
   ['txId','txDesc','txMemo','txTags'].forEach(f=>document.getElementById(f).value='');
+  _initTagsField([]); // Inicializar campo de tags vazio para nova transação
   const stEl=document.getElementById('txStatus'); if(stEl) stEl.value='confirmed';
   setAmtField('txAmount', 0);
   document.getElementById('txTypeField').value='expense';
@@ -912,7 +1135,7 @@ function resetTxModal(){
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
-  document.getElementById('txId').value=data.id;document.getElementById('txDate').value=data.date;setAmtField('txAmount', data.amount);document.getElementById('txDesc').value=data.description||'';document.getElementById('txAccountId').value=data.account_id||'';setCatPickerValue(data.category_id||null);document.getElementById('txMemo').value=data.memo||'';document.getElementById('txTags').value=(data.tags||[]).join(', ');setPayeeField(data.payee_id||null,'tx');
+  document.getElementById('txId').value=data.id;document.getElementById('txDate').value=data.date;setAmtField('txAmount', data.amount);document.getElementById('txDesc').value=data.description||'';document.getElementById('txAccountId').value=data.account_id||'';setCatPickerValue(data.category_id||null);document.getElementById('txMemo').value=data.memo||'';document.getElementById('txTags').value=(data.tags||[]).join(', ');_initTagsField(data.tags||[]);setPayeeField(data.payee_id||null,'tx');
   // Load attachment if exists
   if (data.attachment_url) {
     document.getElementById('txAttachUrl').value        = data.attachment_url;
@@ -1525,7 +1748,10 @@ async function saveTransaction(){
       if (fxRate > 0) pairedAmount = Math.abs(amount) * fxRate;
     }
   }
-  const tags=document.getElementById('txTags').value.split(',').map(s=>s.trim()).filter(Boolean);
+  // Ler tags do campo visual (chips) — o hidden input é sincronizado pelos chips
+  const tags = _getTagsFieldValue().length
+    ? _getTagsFieldValue()
+    : (document.getElementById('txTags').value||'').split(',').map(s=>s.trim()).filter(Boolean);
 
   // Determine attachment fields for the DB record
   // Rules:
@@ -1762,6 +1988,7 @@ function _openTxAsCopy(orig) {
   setPayeeField(orig.payee_id || null, 'tx');
   document.getElementById('txMemo').value = orig.memo || '';
   document.getElementById('txTags').value = (orig.tags || []).join(', ');
+  _initTagsField(orig.tags || []);
   const stEl = document.getElementById('txStatus');
   if (stEl) stEl.value = orig.status || 'confirmed';
   const type = orig.is_transfer

@@ -927,10 +927,6 @@ function navigate(page){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  // iOS Safari fix: desabilitar selects em páginas inativas para evitar
-  // que o picker nativo apareça ao tocar/rolar em cima de páginas ocultas
-  document.querySelectorAll('.page:not(.active) select').forEach(s => { s.disabled = true; });
-  document.querySelectorAll('.page.active select').forEach(s => { s.disabled = false; });
   const ni=document.querySelector(`.nav-item[onclick="navigate('${page}')"]`);if(ni)ni.classList.add('active');
   const bi=document.querySelector(`.bn-item[data-page="${page}"]`);if(bi)bi.classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[page]||page;

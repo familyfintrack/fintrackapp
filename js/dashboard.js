@@ -2706,39 +2706,53 @@ async function _loadDashBudgetsCard() {
 
     // Fetch spending: current month for monthly budgets; YTD for annual budgets
     // We run two queries in parallel when annual budgets exist
+    // Alinhar com módulo de orçamentos: sem filtro de status (inclui pending + confirmed)
     const txMonthQ = famQ(
       sb.from('transactions').select('category_id,amount,brl_amount,currency')
-    ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-${String(lastDay).padStart(2,'0')}`).lt('amount', 0).eq('status', 'confirmed');
+    ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-${String(lastDay).padStart(2,'0')}`).lt('amount', 0);
 
     const txYtdQ = hasAnnual
       ? famQ(sb.from('transactions').select('category_id,amount,brl_amount,currency'))
-          .gte('date', `${y}-01-01`).lte('date', `${y}-12-31`).lt('amount', 0).eq('status', 'confirmed')
+          .gte('date', `${y}-01-01`).lte('date', `${y}-12-31`).lt('amount', 0)
       : Promise.resolve({ data: [] });
 
     const [{ data: txMonth }, { data: txYtd }] = await Promise.all([txMonthQ, txYtdQ]);
 
     const _sumBycat = (rows) => {
+      // Usar amount diretamente como o módulo de orçamentos faz (igual ao buildRawSpending)
       const map = {};
       (rows || []).forEach(t => {
         if (!t.category_id) return;
-        const amtBRL = t.brl_amount != null
-          ? Math.abs(t.brl_amount)
-          : (typeof toBRL === 'function' ? toBRL(Math.abs(parseFloat(t.amount)||0), t.currency||'BRL') : Math.abs(parseFloat(t.amount)||0));
-        map[t.category_id] = (map[t.category_id] || 0) + amtBRL;
+        map[t.category_id] = (map[t.category_id] || 0) + Math.abs(parseFloat(t.amount) || 0);
       });
       return map;
     };
     const spentMonthBycat = _sumBycat(txMonth);
     const spentYtdBycat   = hasAnnual ? _sumBycat(txYtd) : spentMonthBycat;
 
+    // Helper: soma categoria pai + todas as subcategorias (igual ao _categoryFamily do módulo)
+    const _catFamily = (catId) => {
+      const cats = state.categories || [];
+      const ids = new Set([catId]);
+      // Nível 1: filhos diretos
+      cats.forEach(c => { if (c.parent_id === catId) ids.add(c.id); });
+      // Nível 2: filhos dos filhos
+      const lvl1 = new Set(ids);
+      cats.forEach(c => { if (lvl1.has(c.parent_id) && c.id !== catId) ids.add(c.id); });
+      return ids;
+    };
+
     // Sort: most exceeded first, then by % used desc
     // Annual budgets use YTD spending; monthly use current-month spending
     const enriched = bRows.map(b => {
-      const limit   = parseFloat(b.amount) || 0;
+      const limit    = parseFloat(b.amount) || 0;
       const spentMap = b.budget_type === 'annual' ? spentYtdBycat : spentMonthBycat;
-      const spent   = spentMap[b.category_id] || 0;
-      const pct     = limit > 0 ? (spent / limit) * 100 : 0;
-      const over    = spent > limit;
+      // Somar hierarquia de subcategorias (igual ao módulo)
+      const famIds = _catFamily(b.category_id);
+      let spent = 0;
+      famIds.forEach(cid => { spent += (spentMap[cid] || 0); });
+      const pct  = limit > 0 ? (spent / limit) * 100 : 0;
+      const over = spent > limit;
       return { ...b, limit, spent, pct, over };
     }).sort((a, b) => (b.over - a.over) || (b.pct - a.pct));
 

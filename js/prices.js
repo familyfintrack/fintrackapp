@@ -530,7 +530,7 @@ function _renderPricesGrouped(items) {
         <div class="px-group-section">
           <div class="px-group-header">
             <span class="px-group-dot" style="background:var(--accent)">🏪</span>
-            <span class="px-group-label">${esc(store?.name || 'Estabelecimento')}</span>
+            <span class="px-group-label">${esc(store ? (store.payees?.name || store.name) : 'Estabelecimento')}</span>
             <span class="px-group-count">${items.length} ${items.length !== 1 ? 'itens' : 'item'}</span>
           </div>
           <div class="px-grid">${items.map(_pxCardHtml).join('')}</div>
@@ -567,7 +567,7 @@ async function _renderPricesGroupedByStore(items, listEl) {
   items.forEach(item => {
     const storeId = itemToStore[item.id];
     const store = storeId ? storeMap[storeId] : null;
-    const key = store?.name || 'Sem estabelecimento';
+    const key = (store?.payees?.name) || store?.name || 'Sem estabelecimento';
     if (!groups[key]) groups[key] = { items: [] };
     groups[key].items.push(item);
   });
@@ -827,7 +827,7 @@ async function _loadAndRenderPidHistory(itemId) {
     <div class="pid-row">
       <div class="pid-row-date">${dateStr}</div>
       <div class="pid-row-store">
-        <div class="pid-row-store-name">${esc(store?.name || '—')}${payeeName && payeeName !== store?.name ? ` <span style="font-size:.68rem;color:var(--muted)">(${esc(payeeName)})</span>` : ''}</div>
+        <div class="pid-row-store-name">${esc(payeeName || store?.name || '—')}${store?.name && payeeName && payeeName !== store?.name ? ` <span style="font-size:.68rem;color:var(--muted)">· ${esc(store.name)}</span>` : ''}</div>
         ${loc ? `<div class="pid-row-store-addr">${esc(loc)}</div>` : ''}
       </div>
       <div class="pid-row-qty">×${h.quantity ?? 1}</div>
@@ -1155,7 +1155,7 @@ function _renderStorePayeeMap() {
     const locLine  = locParts.join(', ');
     return `<div class="spm-row" id="spmRow-${store.id}">
       <div class="spm-store">
-        <div class="spm-store-name">${esc(store.name)}</div>
+        <div class="spm-store-name">${esc(store.payees?.name || store.name)}</div>
         ${locLine ? `<div class="spm-store-addr">${esc(locLine)}</div>` : ''}
         ${store.cnpj ? `<div class="spm-store-cnpj">🪪 ${esc(store.cnpj)}</div>` : ''}
       </div>
@@ -1532,15 +1532,18 @@ function _renderStoreList(search) {
   }
   el.innerHTML = stores.map(s => {
     const loc = [s.address, s.city, s.state_uf].filter(Boolean).join(', ');
+    // Nome principal: payee vinculado (beneficiário). Store.name é nome interno para recibos.
+    const displayName = s.payees?.name || s.name;
+    const storeSub    = s.payees && s.payees.name !== s.name ? s.name : null;
     const contact = [
-      s.payees ? `<span>👤 ${esc(s.payees.name)}</span>` : '',
+      storeSub ? `<span>🏪 ${esc(storeSub)}</span>` : '',
       s.phone  ? `<span>📞 ${esc(s.phone)}</span>`  : '',
       s.cnpj   ? `<span>🪪 ${esc(s.cnpj)}</span>`   : '',
     ].filter(Boolean).join(' · ');
     return `
     <div class="store-list-row" onclick="openStoreForm('${s.id}')">
       <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:.88rem">${esc(s.name)}</div>
+        <div style="font-weight:600;font-size:.88rem">${esc(displayName)}</div>
         ${loc     ? `<div style="font-size:.75rem;color:var(--muted)">${esc(loc)}</div>` : ''}
         ${contact ? `<div style="font-size:.72rem;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">${contact}</div>` : ''}
       </div>
