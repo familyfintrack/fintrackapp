@@ -328,12 +328,17 @@ async function saveObjective() {
     if (msg.includes('row-level security') || msg.includes('violates row-level')) {
       const rlsSQL = [
         'DROP POLICY IF EXISTS "family_objectives" ON financial_objectives;',
-        'CREATE POLICY "fobj_sel" ON financial_objectives FOR SELECT USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
-        'CREATE POLICY "fobj_ins" ON financial_objectives FOR INSERT WITH CHECK (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
-        'CREATE POLICY "fobj_upd" ON financial_objectives FOR UPDATE USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid())) WITH CHECK (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
-        'CREATE POLICY "fobj_del" ON financial_objectives FOR DELETE USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
-      ].join(' ');
-      console.error('[objectives RLS] SQL to fix:', rlsSQL);
+        'DROP POLICY IF EXISTS "fobj_sel" ON financial_objectives;',
+        'DROP POLICY IF EXISTS "fobj_ins" ON financial_objectives;',
+        'DROP POLICY IF EXISTS "fobj_upd" ON financial_objectives;',
+        'DROP POLICY IF EXISTS "fobj_del" ON financial_objectives;',
+        'ALTER TABLE financial_objectives ENABLE ROW LEVEL SECURITY;',
+        'CREATE POLICY "fobj_sel" ON financial_objectives FOR SELECT USING (family_id IN (SELECT fm.family_id FROM family_members fm JOIN app_users u ON u.id = fm.user_id WHERE u.auth_uid = auth.uid()));',
+        'CREATE POLICY "fobj_ins" ON financial_objectives FOR INSERT WITH CHECK (family_id IN (SELECT fm.family_id FROM family_members fm JOIN app_users u ON u.id = fm.user_id WHERE u.auth_uid = auth.uid()));',
+        'CREATE POLICY "fobj_upd" ON financial_objectives FOR UPDATE USING (family_id IN (SELECT fm.family_id FROM family_members fm JOIN app_users u ON u.id = fm.user_id WHERE u.auth_uid = auth.uid())) WITH CHECK (family_id IN (SELECT fm.family_id FROM family_members fm JOIN app_users u ON u.id = fm.user_id WHERE u.auth_uid = auth.uid()));',
+        'CREATE POLICY "fobj_del" ON financial_objectives FOR DELETE USING (family_id IN (SELECT fm.family_id FROM family_members fm JOIN app_users u ON u.id = fm.user_id WHERE u.auth_uid = auth.uid()));',
+      ].join('\n');
+      console.error('[objectives RLS] SQL to fix:\n' + rlsSQL);
       _objToast('Erro de permissão (RLS) — execute o SQL de correção no Supabase (veja console)', 'error');
     } else {
       _objToast('Erro ao salvar: ' + msg, 'error');
