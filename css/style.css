@@ -25011,3 +25011,228 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
     display: table-cell !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUDGETS REDESIGN 2026 — UI moderna
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Intro card (used by budgets, objectives, dreams) ─────────────────────── */
+.budget-intro-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--intro-color, var(--accent));
+  border-radius: var(--r);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.budget-intro-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+.budget-intro-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-lt);
+  color: var(--accent);
+}
+.budget-intro-title {
+  font-weight: 800;
+  font-size: .95rem;
+  color: var(--text);
+  margin-bottom: 5px;
+  line-height: 1.3;
+}
+.budget-intro-desc {
+  font-size: .78rem;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 520px;
+}
+.budget-intro-features {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 130px;
+}
+.budget-intro-feat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.budget-intro-feat span { font-size: .9rem; }
+
+/* ── Controls bar ─────────────────────────────────────────────────────────── */
+.budget-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.budget-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.budget-period-tabs {
+  display: flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 3px;
+  gap: 2px;
+}
+.budget-period-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px;
+  border: none; border-radius: calc(var(--r-sm) - 2px);
+  background: transparent;
+  font-family: var(--font-sans); font-size: .8rem; font-weight: 600;
+  color: var(--muted); cursor: pointer;
+  transition: all .15s;
+}
+.budget-period-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.budget-period-btn:hover:not(.active) { color: var(--text); }
+.budget-period-input {
+  font-size: .83rem;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+/* ── Budget card modernizado ─────────────────────────────────────────────── */
+.budget-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow .18s, transform .18s, border-color .18s;
+  position: relative;
+}
+.budget-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
+  transform: translateY(-1px);
+}
+.budget-card--over  { border-color: rgba(220,38,38,.4) !important; }
+.budget-card--near  { border-color: rgba(245,158,11,.4) !important; }
+.budget-card--paused { opacity: .72; }
+
+/* Top color bar */
+.budget-card-stripe {
+  height: 4px;
+  width: 100%;
+  position: static;
+  border-radius: 0;
+}
+
+/* Body padding wrapper */
+.budget-card > *:not(.budget-card-stripe) {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.budget-card-header { padding-top: 14px; padding-bottom: 0; }
+.budget-amounts { padding-top: 12px; padding-bottom: 12px; }
+
+/* Progress bar section */
+.budget-card .progress {
+  margin: 0 16px 4px;
+}
+
+/* History section */
+.budget-history-section {
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.budget-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.budget-history-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+.budget-history-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 4px;
+  min-height: 48px;
+}
+.budget-history-placeholder {
+  color: var(--muted);
+  font-size: .83rem;
+  padding: 16px 12px;
+}
+
+/* Objectives empty state — CENTERED */
+.obj-grid:has(> div[style*="min-height"]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+/* Fallback for browsers without :has() */
+#objectivesGrid {
+  width: 100%;
+}
+#budgetPanelObjectives > #objectivesGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .budget-intro-card {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .budget-intro-features {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .budget-controls-bar { flex-direction: column; align-items: stretch; }
+  .budget-controls-left { flex-direction: column; align-items: stretch; }
+}
