@@ -396,23 +396,52 @@ function _storeLabel(s, opts = {}) {
 function _populatePricesStoreFilter() {
   const sel = document.getElementById('pricesStoreFilter');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Todos os beneficiários/estabelecimentos</option>' +
-    _px.stores.map(s => `<option value="${s.id}">${esc(_storeLabel(s))}</option>`).join('');
+
+  // Distinct por beneficiário: stores com mesmo payee_id aparecem como uma entrada só.
+  // Valor prefixado 'p:<payee_id>' ou 's:<store_id>' para diferenciá-los na filtragem.
+  const seen = new Map();
+  _px.stores.forEach(s => {
+    if (s.payee_id && s.payees?.name) {
+      if (!seen.has('p:' + s.payee_id)) {
+        seen.set('p:' + s.payee_id, { label: s.payees.name, value: 'p:' + s.payee_id });
+      }
+    } else {
+      seen.set('s:' + s.id, { label: s.name, value: 's:' + s.id });
+    }
+  });
+
+  const opts = [...seen.values()]
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }))
+    .map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`)
+    .join('');
+
+  sel.innerHTML = '<option value="">Todos os beneficiários/estabelecimentos</option>' + opts;
 }
 
 async function _loadPricesData() {
   const fid = _famId();
   if (!fid) return;
-  const [itemsRes, storesRes] = await Promise.all([
+  const [itemsRes, storesRes, histRes] = await Promise.all([
     sb.from('price_items')
       .select('id, name, description, unit, category_id, avg_price, last_price, record_count, categories(name)')
       .eq('family_id', fid).order('name'),
     sb.from('price_stores')
       .select('id, name, address, city, state_uf, zip_code, phone, cnpj, payee_id, payees(id, name, phone, address, city, state_uf, cnpj_cpf, whatsapp, website)')
       .eq('family_id', fid).order('name'),
+    sb.from('price_history')
+      .select('item_id, store_id')
+      .eq('family_id', fid),
   ]);
   _px.items  = itemsRes.data  || [];
   _px.stores = storesRes.data || [];
+
+  // Construir indice item_id -> Set<store_id> para filtragem rapida
+  _px._itemStoreIndex = {};
+  (histRes.data || []).forEach(h => {
+    if (!h.item_id || !h.store_id) return;
+    if (!_px._itemStoreIndex[h.item_id]) _px._itemStoreIndex[h.item_id] = new Set();
+    _px._itemStoreIndex[h.item_id].add(h.store_id);
+  });
 }
 
 function _famId() { return currentUser?.family_id || null; }
@@ -430,7 +459,26 @@ function _renderPricesPage() {
     items = items.filter(i => i.name.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q));
   }
   if (_px.catFilter)   items = items.filter(i => i.category_id === _px.catFilter);
-  // Filtros hierárquicos exclusivos de preços
+  // Filtro de estabelecimento/beneficiario (via historico de precos)
+  if (_px.storeFilter) {
+    const filterVal = _px.storeFilter;
+    const idx = _px._itemStoreIndex || {};
+    if (filterVal.startsWith('p:')) {
+      // Filtrar por payee_id: obter todos os store_ids com esse payee
+      const payeeId = filterVal.slice(2);
+      const storeIds = new Set((_px.stores || []).filter(s => s.payee_id === payeeId).map(s => s.id));
+      items = items.filter(i => {
+        const itemStores = idx[i.id];
+        if (!itemStores) return false;
+        for (const sid of itemStores) { if (storeIds.has(sid)) return true; }
+        return false;
+      });
+    } else if (filterVal.startsWith('s:')) {
+      const storeId = filterVal.slice(2);
+      items = items.filter(i => idx[i.id]?.has(storeId));
+    }
+  }
+  // Filtros hierarquicos exclusivos de precos
   items = _pxApplyHierFilter(items);
 
   const countEl = document.getElementById('pricesCount');
@@ -541,16 +589,25 @@ function _renderPricesGrouped(items) {
     // Since items don't carry store directly, group by avg cheapest store from history
     // Fallback: group items by name prefix (letter) or show all under store filter
     // We load per-item store data lazily — for now group by store from _px.stores filter
-    const storeId = _px.storeFilter;
-    if (storeId) {
+    const storeFilterVal = _px.storeFilter;
+    if (storeFilterVal) {
       // If a store filter is active, show items that have history in that store
       // (already filtered) grouped under that store header
-      const store = _px.stores.find(s => s.id === storeId);
+      let label = 'Estabelecimento';
+      if (storeFilterVal.startsWith('p:')) {
+        const payeeId = storeFilterVal.slice(2);
+        const store = _px.stores.find(s => s.payee_id === payeeId);
+        label = store?.payees?.name || 'Beneficiário';
+      } else if (storeFilterVal.startsWith('s:')) {
+        const storeId = storeFilterVal.slice(2);
+        const store = _px.stores.find(s => s.id === storeId);
+        label = store?.name || 'Estabelecimento';
+      }
       listEl.innerHTML = `
         <div class="px-group-section">
           <div class="px-group-header">
             <span class="px-group-dot" style="background:var(--accent)">🏪</span>
-            <span class="px-group-label">${esc(store ? (store.payees?.name || store.name) : 'Estabelecimento')}</span>
+            <span class="px-group-label">${esc(label)}</span>
             <span class="px-group-count">${items.length} ${items.length !== 1 ? 'itens' : 'item'}</span>
           </div>
           <div class="px-grid">${items.map(_pxCardHtml).join('')}</div>

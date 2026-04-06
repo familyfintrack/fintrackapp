@@ -358,6 +358,7 @@ function _renderPositionRow(p, totalMV) {
       <span class="inv-pos-actions">
         <button class="btn-icon" onclick="openInvPositionDetail('${p.id}')" title="Histórico">📋</button>
         <button class="btn-icon" onclick="openInvTransactionModal(null,'${p.id}')" title="Nova movimentação">+</button>
+        <button class="btn-icon" onclick="openInvBalanceModal('${p.id}')" title="Informar saldo atual" style="font-size:.8rem">💰</button>
       </span>
     </div>`;
 }
@@ -668,25 +669,34 @@ window._invOnBrokerChange = _invOnBrokerChange;
 
 // ── Formatação automática de qty / price ──────────────────────────────────
 function _invFmtQty(el) {
-  // Allow digits, dot, comma — clean non-numeric except separator
   let v = el.value.replace(/[^\d.,]/g, '');
-  // Normalize comma to dot for parsing
   el.value = v;
 }
 function _invFmtQtyBlur(el) {
   const v = parseFloat(el.value.replace(',', '.'));
   if (!isNaN(v) && v > 0) el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
 }
+
+// Mascara de preco: entrada automatica de 2 casas decimais (estilo centavos).
+// Conforme o usuario digita: "1" -> "0,01"; "12" -> "0,12"; "123" -> "1,23"
 function _invFmtPrice(el) {
-  let raw = el.value.replace(/[^\d,]/g, '');
-  el.value = raw;
+  const raw = el.value.replace(/\D/g, '');
+  if (!raw) { el.value = ''; _invCalcTotal(); return; }
+  const cents = parseInt(raw, 10);
+  el.value = (cents / 100).toFixed(2).replace('.', ',');
+  _invCalcTotal();
 }
 function _invFmtPriceBlur(el) {
   const raw = el.value.replace(',', '.');
   const v = parseFloat(raw);
   if (!isNaN(v) && v > 0) {
-    el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    el.value = v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+}
+// Leitura segura do campo de preco (suporta "1.234,56" e "1234,56")
+function _invReadPrice(el) {
+  if (!el) return 0;
+  return parseFloat(el.value.replace(/\./g, '').replace(',', '.')) || 0;
 }
 window._invFmtQty = _invFmtQty;
 window._invFmtQtyBlur = _invFmtQtyBlur;
@@ -791,7 +801,7 @@ function _invOnAccountChange() {
 
 function _invCalcTotal() {
   const qty   = parseFloat(document.getElementById('invTxQty')?.value?.replace(',','.')) || 0;
-  const price = parseFloat(document.getElementById('invTxPrice')?.value?.replace(',','.')) || 0;
+  const price = _invReadPrice(document.getElementById('invTxPrice'));
   const total = qty * price;
   const el    = document.getElementById('invTxTotal');
   if (el) el.textContent = fmt(total);
@@ -817,7 +827,7 @@ async function saveInvTransaction() {
   const assetT  = document.getElementById('invTxAssetType').value;
   const name    = document.getElementById('invTxName').value.trim();
   const qtyRaw  = parseFloat(document.getElementById('invTxQty').value.replace(',','.'));
-  const priceRaw= parseFloat(document.getElementById('invTxPrice').value.replace(',','.'));
+  const priceRaw= _invReadPrice(document.getElementById('invTxPrice'));
   const notesRaw  = document.getElementById('invTxNotes').value.trim();
   const brokerSel = document.getElementById('invTxBroker')?.value || '';
   const brokerOth = document.getElementById('invTxBrokerOther')?.value?.trim() || '';
@@ -983,10 +993,15 @@ async function openInvPositionDetail(positionId) {
       <td style="padding:6px 8px;text-align:right">${(+(tx.quantity)).toFixed(4)}</td>
       <td style="padding:6px 8px;text-align:right">${fmt(tx.unit_price)}</td>
       <td style="padding:6px 8px;text-align:right" class="${tx.type==='buy'?'amount-neg':'amount-pos'}">${tx.type==='buy'?'-':'+'}${fmt(tx.total_brl)}</td>
-      <td style="padding:6px 4px;text-align:center">
+      <td style="padding:6px 4px;text-align:center;white-space:nowrap">
+        <button onclick="openEditInvTransaction('${tx.id}')"
+          title="Editar movimentacao"
+          style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--muted);padding:2px 5px;border-radius:6px;transition:all .15s"
+          onmouseover="this.style.color='var(--accent)';this.style.background='var(--accent-lt)'"
+          onmouseout="this.style.color='var(--muted)';this.style.background='none'">✏️</button>
         <button onclick="deleteInvTransaction('${tx.id}','${pos.id}')"
-          title="Excluir movimentação"
-          style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--muted);padding:2px 6px;border-radius:6px;transition:all .15s"
+          title="Excluir movimentacao"
+          style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--muted);padding:2px 5px;border-radius:6px;transition:all .15s"
           onmouseover="this.style.color='var(--danger,#dc2626)';this.style.background='rgba(220,38,38,.08)'"
           onmouseout="this.style.color='var(--muted)';this.style.background='none'">🗑️</button>
       </td>
@@ -1444,6 +1459,306 @@ async function deleteInvTransaction(txId, positionId) {
     toast('Erro ao excluir: ' + (e.message || e), 'error');
   }
 }
+// ── Atualizar saldo total do ativo ──────────────────────────────────────────
+// O usuario informa o saldo financeiro atual (R$) da posicao.
+// O app calcula o preco unitario implicito = saldoInformado / quantity
+// e registra como novo current_price no historico.
+function openInvBalanceModal(positionId) {
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) return;
+  const t      = _invAssetType(pos.asset_type);
+  const mv     = _invMarketValue(pos);
+  const cost   = _invCost(pos);
+  const qty    = +(pos.quantity) || 0;
+  const curPnl = mv - cost;
+
+  document.getElementById('invBalanceModal')?.remove();
+  const d = document.createElement('div');
+  d.className = 'modal-overlay open';
+  d.id = 'invBalanceModal';
+  d.style.zIndex = '10015';
+  d.innerHTML = `
+  <div class="modal" style="max-width:420px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">${t.emoji} Atualizar Saldo — ${esc(pos.ticker)}</span>
+      <button class="modal-close" onclick="closeModal('invBalanceModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface2);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:16px;font-size:.83rem;line-height:1.7">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Posição atual:</span> <strong>${qty.toLocaleString('pt-BR',{maximumFractionDigits:6})} ${esc(pos.ticker)}</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Custo total:</span> <strong>${fmt(cost)}</strong></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Valor de mercado atual:</span> <strong>${mv ? fmt(mv) : '—'}</strong></div>
+      </div>
+      <div class="form-group">
+        <label style="font-weight:700">Saldo atual da posição (R$) *</label>
+        <input type="text" id="invBalanceInput" inputmode="decimal" placeholder="0,00"
+          style="font-size:1.1rem;font-weight:700;text-align:right"
+          oninput="_invFmtBalanceInput(this)" onblur="_invFmtPriceBlur(this)">
+        <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
+          Informe o valor financeiro total atual desta posição.
+        </div>
+      </div>
+      <div id="invBalancePreview" style="display:none;margin-top:12px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:.83rem;line-height:1.8"></div>
+      <div id="invBalanceErr" style="display:none;color:var(--danger,#dc2626);font-size:.8rem;margin-top:8px;padding:8px 12px;background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--r-sm)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('invBalanceModal')">Cancelar</button>
+      <button class="btn btn-primary" id="invBalanceSaveBtn" onclick="saveInvBalance('${positionId}')">
+        💾 Consolidar Saldo
+      </button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+  setTimeout(() => document.getElementById('invBalanceInput')?.focus(), 80);
+}
+window.openInvBalanceModal = openInvBalanceModal;
+
+function _invFmtBalanceInput(el) {
+  const raw = el.value.replace(/\D/g, '');
+  if (!raw) { el.value = ''; _invUpdateBalancePreview(); return; }
+  el.value = (parseInt(raw, 10) / 100).toFixed(2).replace('.', ',');
+  _invUpdateBalancePreview();
+}
+window._invFmtBalanceInput = _invFmtBalanceInput;
+
+function _invUpdateBalancePreview() {
+  const preview = document.getElementById('invBalancePreview');
+  if (!preview) return;
+  const rawVal = document.getElementById('invBalanceInput')?.value || '';
+  const newBalance = parseFloat(rawVal.replace(/\./g,'').replace(',','.')) || 0;
+  // Find the position via the save button's onclick attribute
+  const btn = document.getElementById('invBalanceSaveBtn');
+  if (!btn) return;
+  const posId = btn.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+  const pos = posId ? _inv.positions.find(p => p.id === posId) : null;
+  if (!pos || newBalance <= 0) { preview.style.display = 'none'; return; }
+  const qty    = +(pos.quantity) || 0;
+  const cost   = _invCost(pos);
+  const pnl    = newBalance - cost;
+  const pct    = cost ? (pnl / cost * 100) : 0;
+  const newPrice = qty > 0 ? newBalance / qty : 0;
+  const pnlColor = pnl >= 0 ? 'var(--green,#16a34a)' : 'var(--danger,#dc2626)';
+  preview.style.display = '';
+  preview.innerHTML = `
+    <div style="font-weight:700;margin-bottom:6px;font-size:.85rem">Resumo da consolidação:</div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Novo preço unitário calculado:</span><strong>${fmt(newPrice)}</strong></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Ganho / Perda:</span>
+      <strong style="color:${pnlColor}">${pnl >= 0 ? '+' : ''}${fmt(pnl)} (${pct.toFixed(2)}%)</strong></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Novo valor de mercado:</span><strong>${fmt(newBalance)}</strong></div>
+  `;
+}
+
+async function saveInvBalance(positionId) {
+  const btn    = document.getElementById('invBalanceSaveBtn');
+  const errEl  = document.getElementById('invBalanceErr');
+  const rawVal = document.getElementById('invBalanceInput')?.value || '';
+  const newBalance = parseFloat(rawVal.replace(/\./g,'').replace(',','.')) || 0;
+
+  if (errEl) errEl.style.display = 'none';
+  if (!newBalance || newBalance <= 0) {
+    if (errEl) { errEl.textContent = 'Informe um saldo valido maior que zero.'; errEl.style.display = ''; }
+    return;
+  }
+
+  const pos = _inv.positions.find(p => p.id === positionId);
+  if (!pos) return;
+  const qty = +(pos.quantity) || 0;
+  if (qty <= 0) {
+    if (errEl) { errEl.textContent = 'Esta posicao tem quantidade zero — registre uma compra primeiro.'; errEl.style.display = ''; }
+    return;
+  }
+
+  const newPrice = newBalance / qty;
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    await _invSavePrice(pos, newPrice, pos.currency || 'BRL', today, 'manual');
+    toast(`Saldo de ${esc(pos.ticker)} consolidado: ${fmt(newBalance)}`, 'success');
+    closeModal('invBalanceModal');
+    await loadInvestments(true);
+    DB.accounts.bust();
+    await DB.accounts.load(true);
+    _invAugmentAccountBalances();
+    _renderInvestmentsPage();
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+  } catch(e) {
+    if (errEl) { errEl.textContent = e.message || 'Erro ao salvar'; errEl.style.display = ''; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Consolidar Saldo'; }
+  }
+}
+window.saveInvBalance = saveInvBalance;
+
+// ── Editar transacao de investimento ───────────────────────────────────────
+// Abre o mesmo modal de nova transacao pre-preenchido com os dados existentes.
+// Ao salvar: reverte o efeito da transacao original na posicao (replay sem ela)
+// e aplica a nova versao — mantendo avg_cost e qty corretos.
+async function openEditInvTransaction(txId) {
+  const invTx = _inv.transactions.find(t => t.id === txId);
+  if (!invTx) { toast('Movimentacao nao encontrada', 'error'); return; }
+  const pos = _inv.positions.find(p => p.id === invTx.position_id);
+  if (!pos) { toast('Posicao nao encontrada', 'error'); return; }
+
+  // Buscar dados da transacao financeira vinculada para pegar notas/memo
+  let linkedTxNotes = '';
+  if (invTx.tx_id) {
+    const { data: linked } = await sb.from('transactions').select('memo').eq('id', invTx.tx_id).maybeSingle();
+    linkedTxNotes = linked?.memo || '';
+  }
+
+  // Fechar modal de detalhe se aberto
+  closeModal('invDetailModal');
+
+  // Montar modal reutilizando openInvTransactionModal mas pre-preenchendo
+  openInvTransactionModal(invTx.account_id, pos.id);
+
+  // Aguardar DOM do modal montar
+  await new Promise(r => setTimeout(r, 60));
+
+  const modal = document.getElementById('invTxModal');
+  if (!modal) return;
+
+  // Atualizar titulo
+  const titleEl = modal.querySelector('#invTxModalTitle');
+  if (titleEl) titleEl.textContent = 'Editar Movimentacao';
+
+  // Pre-preencher campos
+  _invSetTxType(invTx.type);
+  const dateEl = document.getElementById('invTxDate');
+  if (dateEl) dateEl.value = invTx.date || '';
+  const tickerEl = document.getElementById('invTxTicker');
+  if (tickerEl) { tickerEl.value = pos.ticker; tickerEl.readOnly = true; tickerEl.style.opacity = '.6'; }
+  const nameEl = document.getElementById('invTxName');
+  if (nameEl) nameEl.value = pos.name || pos.ticker;
+  const assetEl = document.getElementById('invTxAssetType');
+  if (assetEl) { assetEl.value = pos.asset_type || 'outro'; _invToggleFundoPanel(assetEl.value); }
+
+  // Quantidade
+  const qtyEl = document.getElementById('invTxQty');
+  if (qtyEl) qtyEl.value = (+(invTx.quantity)).toLocaleString('pt-BR', { maximumFractionDigits: 6 });
+
+  // Preco — converter para formato de mascara centavos
+  const priceEl = document.getElementById('invTxPrice');
+  if (priceEl) {
+    const pv = +(invTx.unit_price) || 0;
+    priceEl.value = pv.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Notas / corretora
+  const notesEl = document.getElementById('invTxNotes');
+  if (notesEl) notesEl.value = invTx.notes || linkedTxNotes || '';
+
+  // Guardar o txId original para o save saber que e uma edicao
+  const hiddenId = document.getElementById('invTxPositionId');
+  if (hiddenId) hiddenId.dataset.editTxId = txId;
+
+  // Atualizar botao salvar
+  const saveBtn = document.getElementById('invTxSaveBtn');
+  if (saveBtn) {
+    saveBtn.textContent = 'Salvar Edicao';
+    saveBtn.onclick = () => saveEditInvTransaction(txId, pos.id);
+  }
+  _invCalcTotal();
+}
+window.openEditInvTransaction = openEditInvTransaction;
+
+async function saveEditInvTransaction(originalTxId, positionId) {
+  const btn    = document.getElementById('invTxSaveBtn');
+  const type   = document.getElementById('invTxType').value;
+  const date   = document.getElementById('invTxDate').value;
+  const qtyRaw = parseFloat(document.getElementById('invTxQty').value.replace(',','.'));
+  const priceRaw = _invReadPrice(document.getElementById('invTxPrice'));
+  const notesRaw = document.getElementById('invTxNotes').value.trim();
+  const brokerSel = document.getElementById('invTxBroker')?.value || '';
+  const brokerOth = document.getElementById('invTxBrokerOther')?.value?.trim() || '';
+  const broker    = brokerSel === 'Outro' ? brokerOth : brokerSel;
+  const notes     = [notesRaw, broker ? `Corretora: ${broker}` : ''].filter(Boolean).join(' · ') || '';
+
+  if (!date)              { _invShowErr('Informe a data'); return; }
+  if (!qtyRaw || qtyRaw <= 0)    { _invShowErr('Informe a quantidade'); return; }
+  if (!priceRaw || priceRaw <= 0){ _invShowErr('Informe o preco unitario'); return; }
+
+  const total = qtyRaw * priceRaw;
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  try {
+    const originalInvTx = _inv.transactions.find(t => t.id === originalTxId);
+    if (!originalInvTx) throw new Error('Movimentacao original nao encontrada.');
+
+    // Replay de todas as transacoes EXCETO a que esta sendo editada
+    const remaining = _inv.transactions
+      .filter(t => t.position_id === positionId && t.id !== originalTxId)
+      .slice()
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    // Construir a versao editada como objeto temporario
+    const editedTx = { type, date, quantity: qtyRaw, unit_price: priceRaw };
+
+    // Inserir a tx editada na ordem cronologica correta
+    const allTxs = [...remaining, editedTx].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    // Recalcular qty e avg_cost
+    let recalcQty = 0, recalcCost = 0;
+    for (const t of allTxs) {
+      if (t.type === 'buy') {
+        const newQty = recalcQty + t.quantity;
+        recalcCost = newQty > 0
+          ? (recalcQty * recalcCost + t.quantity * t.unit_price) / newQty
+          : t.unit_price;
+        recalcQty = newQty;
+      } else {
+        recalcQty = Math.max(0, recalcQty - t.quantity);
+      }
+    }
+
+    // 1. Atualizar investment_transaction
+    const { error: invTxErr } = await sb.from('investment_transactions').update({
+      type, date,
+      quantity:   qtyRaw,
+      unit_price: priceRaw,
+      total_brl:  total,
+      notes:      notes || null,
+    }).eq('id', originalTxId);
+    if (invTxErr) throw invTxErr;
+
+    // 2. Atualizar transacao financeira vinculada (se existir)
+    if (originalInvTx.tx_id) {
+      const txAmount = type === 'buy' ? -total : total;
+      const txDesc   = `${type === 'buy' ? 'Compra' : 'Venda'}: ${_inv.positions.find(p=>p.id===positionId)?.ticker || ''} ${qtyRaw}x @ ${fmt(priceRaw)}`;
+      await sb.from('transactions').update({
+        date, amount: txAmount, description: txDesc, memo: notes || null,
+      }).eq('id', originalInvTx.tx_id).catch(() => {});
+    }
+
+    // 3. Atualizar posicao com valores recalculados
+    const { error: posErr } = await sb.from('investment_positions').update({
+      quantity:   recalcQty,
+      avg_cost:   recalcCost,
+      updated_at: new Date().toISOString(),
+    }).eq('id', positionId);
+    if (posErr) throw posErr;
+
+    // 4. Atualizar historico de preco na data
+    const pos2 = _inv.positions.find(p => p.id === positionId);
+    if (pos2) await _invSavePrice(pos2, priceRaw, pos2.currency || 'BRL', date, 'manual');
+
+    toast('Movimentacao atualizada com sucesso!', 'success');
+    closeModal('invTxModal');
+
+    await loadInvestments(true);
+    DB.accounts.bust();
+    await DB.accounts.load(true);
+    _invAugmentAccountBalances();
+    _renderInvestmentsPage();
+    setTimeout(() => openInvPositionDetail(positionId), 300);
+
+  } catch(e) {
+    _invShowErr(e.message || 'Erro ao salvar edicao');
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar Edicao'; }
+  }
+}
+window.saveEditInvTransaction = saveEditInvTransaction;
+
 window.deleteInvTransaction = deleteInvTransaction;
 
 async function deleteInvPosition(positionId) {
