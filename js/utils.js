@@ -300,10 +300,20 @@ function _setModalState(el, isOpen){
   if (!el) return;
   if (isOpen) {
     el.classList.add('open');
-    el.setAttribute('aria-hidden', 'false');
+    el.removeAttribute('aria-hidden');
+    el.removeAttribute('inert');
   } else {
+    // Blur any focused element inside before hiding — prevents aria-hidden+focus conflict
+    // that blocks ALL click events on the page (browser bug workaround)
+    try {
+      const focused = el.querySelector(':focus');
+      if (focused) focused.blur();
+    } catch(_) {}
     el.classList.remove('open');
     el.setAttribute('aria-hidden', 'true');
+    // Use inert as well — recommended by WAI-ARIA spec, prevents focus from entering
+    // without the side-effect of blocking page-level pointer events
+    try { el.setAttribute('inert', ''); } catch(_) {}
   }
 }
 function openModal(id){ _setModalState(document.getElementById(id), true); }

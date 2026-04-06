@@ -600,8 +600,9 @@ async function _dashCashflowDrill(monthLabel, type) {
 window._dashCashflowDrill = _dashCashflowDrill;
 // ─── Category chart: rich palette + click-to-drill ───────────────────────
 // Stores raw transaction data so click handler can filter without re-fetching
-let _catChartRawData = [];  // [{name, color, brl, t}]
-let _catChartEntries = [];  // [{name, total, color, txs}]
+let _catChartType    = 'bar'; // 'bar' | 'doughnut' — declared early to avoid TDZ
+let _catChartRawData = [];   // [{name, color, brl, t}]
+let _catChartEntries = [];   // [{name, total, color, txs}]
 
 // Extended 24-color palette — enough for all realistic category counts without repeats
 const CAT_PALETTE = [
