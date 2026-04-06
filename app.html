@@ -1466,44 +1466,95 @@
 
   <!-- ── Painel: Orçamentos ── -->
   <div id="budgetPanelBudgets">
-    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div class="tab-bar" style="margin-bottom:0">
-          <button class="tab active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">📅 Mensal</button>
-          <button class="tab" id="budgetTabAnnual"  onclick="setBudgetView('annual')">📆 Anual</button>
-        </div>
-        <div id="budgetMonthPicker">
-          <input type="month" id="budgetMonth" onchange="loadBudgets()" style="font-size:.85rem">
-        </div>
-        <div id="budgetYearPicker" style="display:none">
-          <select id="budgetYear" onchange="loadBudgets()" style="font-size:.85rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)"></select>
+
+    <!-- Intro card -->
+    <div class="budget-intro-card">
+      <div class="budget-intro-left">
+        <div class="budget-intro-icon">💰</div>
+        <div>
+          <div class="budget-intro-title">Controle seus gastos com orçamentos inteligentes</div>
+          <div class="budget-intro-desc">Defina limites por categoria, acompanhe em tempo real e receba alertas ao se aproximar do limite. Orçamentos recorrentes se renovam automaticamente todo mês.</div>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo orçamento</button>
+      <div class="budget-intro-features">
+        <div class="budget-intro-feat"><span>🔄</span> Recorrente</div>
+        <div class="budget-intro-feat"><span>📊</span> Histórico 12m</div>
+        <div class="budget-intro-feat"><span>⚡</span> Alertas</div>
+        <div class="budget-intro-feat"><span>👥</span> Por membro</div>
+      </div>
     </div>
-    <div style="height:16px;"></div>
+
+    <!-- Controls bar -->
+    <div class="budget-controls-bar">
+      <div class="budget-controls-left">
+        <div class="budget-period-tabs">
+          <button class="budget-period-btn active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Mensal
+          </button>
+          <button class="budget-period-btn" id="budgetTabAnnual" onclick="setBudgetView('annual')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Anual
+          </button>
+        </div>
+        <div id="budgetMonthPicker">
+          <input type="month" id="budgetMonth" onchange="loadBudgets()" class="budget-period-input">
+        </div>
+        <div id="budgetYearPicker" style="display:none">
+          <select id="budgetYear" onchange="loadBudgets()" class="budget-period-input"></select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openBudgetModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo orçamento
+      </button>
+    </div>
+
+    <!-- Grid -->
     <div class="budget-grid" id="budgetGrid"></div>
-    <div style="margin-top:32px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-        <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">📊 Histórico por categoria</span>
-        <select id="budgetHistCat" onchange="loadBudgetHistory()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:240px">
+
+    <!-- History -->
+    <div class="budget-history-section">
+      <div class="budget-history-header">
+        <div class="budget-history-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Histórico por categoria
+        </div>
+        <select id="budgetHistCat" onchange="loadBudgetHistory()" class="budget-period-input" style="max-width:220px">
           <option value="">— Selecionar categoria —</option>
         </select>
       </div>
-      <div id="budgetHistContainer" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;min-height:48px">
-        <div style="color:var(--muted);font-size:.83rem;padding:16px 12px">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
+      <div id="budgetHistContainer" class="budget-history-body">
+        <div class="budget-history-placeholder">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
       </div>
     </div>
   </div>
 
   <!-- ── Painel: Objetivos ── -->
   <div id="budgetPanelObjectives" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div>
-        <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Monitoramento por projeto</div>
-        <div style="font-size:.83rem;color:var(--muted);margin-top:2px">Crie objetivos para acompanhar gastos de projetos ou eventos específicos</div>
+
+    <!-- Intro card -->
+    <div class="budget-intro-card" style="--intro-color:#7c3aed">
+      <div class="budget-intro-left">
+        <div class="budget-intro-icon" style="background:rgba(124,58,237,.1);color:#7c3aed">🎯</div>
+        <div>
+          <div class="budget-intro-title">Monitoramento por projeto ou objetivo</div>
+          <div class="budget-intro-desc">Crie objetivos para acompanhar gastos de projetos específicos — reformas, viagens, eventos. Vincule transações ao objetivo e veja o breakdown por categoria, beneficiário e membro.</div>
+        </div>
       </div>
-      <button class="btn btn-primary" onclick="openObjectiveModal()">+ Novo objetivo</button>
+      <div class="budget-intro-features">
+        <div class="budget-intro-feat"><span>📦</span> Por categoria</div>
+        <div class="budget-intro-feat"><span>🏪</span> Por beneficiário</div>
+        <div class="budget-intro-feat"><span>👥</span> Por membro</div>
+        <div class="budget-intro-feat"><span>✨</span> IA sugere ícone</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-primary btn-sm" onclick="openObjectiveModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo objetivo
+      </button>
     </div>
     <div id="objectivesGrid" class="obj-grid"></div>
   </div>
@@ -3554,6 +3605,24 @@
 
     <!-- ══ DREAMS PAGE ══════════════════════════════════════════════════════ -->
     <div class="page" id="page-dreams" style="display:none">
+
+      <!-- Dreams intro card -->
+      <div class="budget-intro-card" style="--intro-color:#f59e0b;margin-bottom:20px">
+        <div class="budget-intro-left">
+          <div class="budget-intro-icon" style="background:rgba(245,158,11,.1);color:#f59e0b;font-size:1.8rem">🌟</div>
+          <div>
+            <div class="budget-intro-title">Transforme sonhos em metas financeiras reais</div>
+            <div class="budget-intro-desc">Defina objetivos de vida, estime custos com IA, acompanhe o progresso e receba sugestões personalizadas de quanto poupar por mês para realizar cada sonho.</div>
+          </div>
+        </div>
+        <div class="budget-intro-features">
+          <div class="budget-intro-feat"><span>🤖</span> IA estima custos</div>
+          <div class="budget-intro-feat"><span>📈</span> Progresso visual</div>
+          <div class="budget-intro-feat"><span>💡</span> Plano de poupança</div>
+          <div class="budget-intro-feat"><span>🏆</span> Conquistas</div>
+        </div>
+      </div>
+
       <div id="dreams-list-container" style="padding:0 0 100px">
         <!-- Rendered by dreams.js renderDreamsPage() -->
         <div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
