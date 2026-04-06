@@ -6368,7 +6368,16 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div id="txFamilyMemberPicker" class="fmc-picker-container"><div class="fmc-picker-empty">Carregando…</div></div>
             <select id="txFamilyMember" style="display:none"></select>
           </div>
-          <div class="form-group"><label>Tags <span class="opt-label">opcional</span></label><input type="text" id="txTags" placeholder="IR, Décio, ..."></div>
+          <div class="form-group" id="txTagsGroup">
+            <label>Tags <span class="opt-label">opcional</span></label>
+            <div class="tags-field" id="txTagsField">
+              <div class="tags-chips" id="txTagsChips"></div>
+              <input type="text" id="txTagsInput" class="tags-input" placeholder="Adicionar tag..." autocomplete="off" autocorrect="off" spellcheck="false">
+            </div>
+            <div class="tags-suggestions" id="txTagsSuggestions" style="display:none"></div>
+            <!-- campo oculto lido pelo saveTransaction -->
+            <input type="hidden" id="txTags">
+          </div>
           <div class="form-group full"><label>Observação <span class="opt-label">opcional</span></label><textarea id="txMemo" rows="2" placeholder="Memo, notas..."></textarea></div>
           <div class="form-group full" id="txIofGroup" style="display:none">
             <label class="iof-intl-toggle" onclick="toggleIofIntl()">
