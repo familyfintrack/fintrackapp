@@ -5091,6 +5091,26 @@ Se você não solicitou isso, ignore este e-mail.`,
 
   <!-- ═══════════ LOGIN SCREEN ═══════════ -->
   <div id="loginScreen" class="lgn-screen" style="display:none;position:fixed;inset:0;z-index:9999">
+<style>
+  /* Nuclear scoped fix: ID specificity beats all cascade overrides */
+  #loginScreen label,
+  #loginScreen .lgn-label,
+  #loginScreen label.lgn-label {
+    color: #ffffff !important;
+    font-size: .66rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+  }
+  #loginScreen .lgn-input:-webkit-autofill,
+  #loginScreen .lgn-input:-webkit-autofill:hover,
+  #loginScreen .lgn-input:-webkit-autofill:focus,
+  #loginScreen .lgn-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px rgba(18,42,26,.97) inset !important;
+    -webkit-text-fill-color: rgba(255,255,255,.92) !important;
+    caret-color: #fff !important;
+  }
+</style>
 
     <!-- Orbs flutuantes -->
     <div class="lgn-orb lgn-orb1"></div>
