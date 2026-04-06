@@ -2051,6 +2051,20 @@
     </div>    <!-- IMPORT / BACKUP PAGE -->
     <!-- Feature 4: Lista de Mercado -->
     <div class="page" id="page-grocery">
+
+      <!-- Mercado intro banner -->
+      <div class="module-intro-banner" style="--intro-accent:#16a34a;--intro-accent-lt:rgba(22,163,74,.07)">
+        <div class="module-intro-badge" style="background:rgba(22,163,74,.1);color:#15803d">🛒 Lista de Mercado</div>
+        <h3 class="module-intro-headline">Planeje compras e registre gastos no supermercado</h3>
+        <p class="module-intro-text">Crie listas de compras colaborativas, marque itens no mercado, importe recibos com IA para registrar transações automaticamente e acompanhe gastos por categoria.</p>
+        <div class="module-intro-chips">
+          <span class="module-intro-chip">📝 Listas colaborativas</span>
+          <span class="module-intro-chip">🤖 Importação por IA</span>
+          <span class="module-intro-chip">✅ Check em tempo real</span>
+          <span class="module-intro-chip">💰 Controle de gastos</span>
+        </div>
+      </div>
+
       <div class="section-header mb-6">
 
         <button class="btn btn-primary" onclick="openCreateGroceryList()">+ Nova Lista</button>
@@ -3260,6 +3274,20 @@
     </div>
     <!-- ══ PRICES PAGE ══════════════════════════════════════════════════════ -->
     <div class="page" id="page-prices">
+
+      <!-- Preços intro banner -->
+      <div class="module-intro-banner" style="--intro-accent:#0891b2;--intro-accent-lt:rgba(8,145,178,.07)">
+        <div class="module-intro-badge" style="background:rgba(8,145,178,.1);color:#0369a1">🏷️ Gestão de Preços</div>
+        <h3 class="module-intro-headline">Monitore preços e compare estabelecimentos</h3>
+        <p class="module-intro-text">Registre preços de produtos, acompanhe variações ao longo do tempo, importe recibos com IA e compare beneficiários para sempre pagar o menor preço.</p>
+        <div class="module-intro-chips">
+          <span class="module-intro-chip" style="background:rgba(8,145,178,.08);color:#0369a1">📷 Importação por IA</span>
+          <span class="module-intro-chip" style="background:rgba(8,145,178,.08);color:#0369a1">📈 Histórico de preços</span>
+          <span class="module-intro-chip" style="background:rgba(8,145,178,.08);color:#0369a1">🔗 Vínculos beneficiários</span>
+          <span class="module-intro-chip" style="background:rgba(8,145,178,.08);color:#0369a1">🏷️ Categorias e tipos</span>
+        </div>
+      </div>
+
       <div class="section-header mb-6">
 
         <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
@@ -3461,6 +3489,19 @@
          AI INSIGHTS — Análise IA + Chat financeiro
     ════════════════════════════════════════════════════════ -->
     <div class="page" id="page-ai_insights">
+
+      <!-- AI Insights intro banner -->
+      <div class="module-intro-banner" style="--intro-accent:#7c3aed;--intro-accent-lt:rgba(124,58,237,.07)">
+        <div class="module-intro-badge" style="background:rgba(124,58,237,.1);color:#7c3aed">🤖 AI Insights</div>
+        <h3 class="module-intro-headline">Análise financeira com Inteligência Artificial</h3>
+        <p class="module-intro-text">O modelo de IA analisa seus lançamentos, identifica padrões de gasto, detecta anomalias e responde perguntas sobre suas finanças em linguagem natural.</p>
+        <div class="module-intro-chips">
+          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📊 Análise automática</span>
+          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">💬 Chat financeiro</span>
+          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📸 Snapshots históricos</span>
+          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">🔍 Detecção de padrões</span>
+        </div>
+      </div>
 
       <!-- ── TAB BAR ── -->
       <div class="ai2-tabbar">
@@ -7110,6 +7151,14 @@ Se você não solicitou isso, ignore este e-mail.`,
           <div class="acm-field">
             <label class="acm-field-label">Número da conta</label>
             <input type="text" id="accountNumber" class="acm-input" placeholder="Ex: 12345-6">
+          </div>
+          <div class="acm-field acm-field--full">
+            <label class="acm-field-label" style="display:flex;align-items:center;gap:6px">
+              <span style="display:inline-flex;align-items:center;justify-content:center;background:#00b4d8;color:#fff;border-radius:6px;width:18px;height:18px;font-size:.65rem;font-weight:900;letter-spacing:-.02em;flex-shrink:0">PIX</span>
+              Chave PIX <span class="acm-optional-badge">opcional</span>
+            </label>
+            <input type="text" id="accountPixKey" class="acm-input" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" autocomplete="off">
+            <div style="font-size:.68rem;color:var(--muted);margin-top:4px">Formatos aceitos: CPF (000.000.000-00), CNPJ, e-mail, +55 11 99999-9999 ou UUID aleatório</div>
           </div>
           <div class="acm-field acm-field--full">
             <label class="acm-field-label">IBAN</label>
