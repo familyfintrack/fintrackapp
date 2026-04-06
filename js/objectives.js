@@ -66,20 +66,29 @@ async function renderObjectivesPage() {
   await loadObjectives(true);
 
   if (!_objList.length) {
+    // Set container to centered flex for empty state
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.minHeight = '320px';
     container.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-                  min-height:260px;text-align:center;padding:48px 24px">
-        <div style="font-size:3.5rem;margin-bottom:16px;opacity:.7">🎯</div>
-        <div style="font-weight:800;font-size:1.05rem;color:var(--text);margin-bottom:8px">Nenhum objetivo criado</div>
-        <div style="font-size:.83rem;color:var(--muted);max-width:300px;line-height:1.5;margin-bottom:24px">
-          Crie objetivos para monitorar gastos de projetos específicos como reformas, viagens ou eventos
+      <div style="text-align:center;padding:32px 24px;max-width:380px">
+        <div style="font-size:4rem;margin-bottom:16px;line-height:1">🎯</div>
+        <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:10px">Nenhum objetivo criado</div>
+        <div style="font-size:.83rem;color:var(--muted);line-height:1.55;margin-bottom:24px">
+          Crie objetivos para monitorar gastos de projetos específicos como reformas, viagens ou eventos especiais
         </div>
-        <button class="btn btn-primary" onclick="openObjectiveModal()" style="padding:11px 24px">
+        <button class="btn btn-primary" onclick="openObjectiveModal()" style="padding:12px 28px;font-size:.9rem">
           🎯 Criar primeiro objetivo
         </button>
       </div>`;
     return;
   }
+  // Reset container for grid layout when there are items
+  container.style.display = '';
+  container.style.alignItems = '';
+  container.style.justifyContent = '';
+  container.style.minHeight = '';
   container.innerHTML = _objList.map(o => _renderObjectiveCard(o)).join('');
 }
 
@@ -200,14 +209,23 @@ Responda APENAS com um único emoji que represente melhor este objetivo.
 Escolha entre emojis comuns como: 🎯 🏠 ✈️ 🚗 💒 🎓 💻 📱 🏋️ 🎸 🍕 🌴 🎉 🏖️ 🛍️ 🔧 🎨 📚 💡 🌍 🏗️ 🚀 💰 🏦 🛒 👶 💍 🎂 🏥 🚢 🎮 📷 🎵
 Responda somente com o emoji, sem texto adicional.`;
 
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      { method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-    );
-    if (!resp.ok) throw new Error('Erro na API Gemini: ' + resp.status);
-    const data = await resp.json();
+    // Try models in order — same fallback chain as agent.js
+    const MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let data = null;
+    for (const model of MODELS) {
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 16, temperature: 0.4 } }) }
+      );
+      if (resp.status === 404) continue; // model not available, try next
+      if (!resp.ok) throw new Error('Erro na API Gemini: ' + resp.status);
+      data = await resp.json();
+      break;
+    }
+    if (!data) throw new Error('Nenhum modelo Gemini disponível');
     const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
     // Extrair o primeiro emoji da resposta
     const emojiMatch = raw.match(/\p{Emoji}/u);

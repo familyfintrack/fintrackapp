@@ -69,8 +69,13 @@ function _populateHistCat() {
 
 function setBudgetView(view) {
   _budgetView = view;
-  document.getElementById('budgetTabMonthly')?.classList.toggle('active', view === 'monthly');
-  document.getElementById('budgetTabAnnual')?.classList.toggle('active',  view === 'annual');
+  // Support both old .tab class and new .budget-period-btn class
+  ['budgetTabMonthly', 'budgetTabAnnual'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.toggle('active', id === (view === 'monthly' ? 'budgetTabMonthly' : 'budgetTabAnnual'));
+    }
+  });
   const mp = document.getElementById('budgetMonthPicker');
   const yp = document.getElementById('budgetYearPicker');
   if (mp) mp.style.display = view === 'monthly' ? '' : 'none';
@@ -687,8 +692,11 @@ function initBudgetsPage() {
   _dbHasBudgetType = null;
 
   // Garantir painel correto visível
-  switchBudgetMainTab(_budgetMainTab);
-  if (_budgetMainTab === 'budgets') setBudgetView(_budgetView);
+  if (_budgetMainTab === 'budgets') {
+    setBudgetView(_budgetView);
+  } else {
+    switchBudgetMainTab(_budgetMainTab);
+  }
 }
 
 
