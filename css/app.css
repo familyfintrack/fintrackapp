@@ -172,6 +172,9 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 
 /* MODALS */
 .modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:none;align-items:flex-end;justify-content:center;z-index:1000;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.modal-overlay:not(.open) select{display:none!important;}
+.modal-overlay:not(.open){pointer-events:none!important;}
+
 .modal-overlay.open{display:flex;pointer-events:all;animation:modalOverlayIn .22s ease both;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);}
 .modal-overlay.open .modal{transform:translateY(0);}
