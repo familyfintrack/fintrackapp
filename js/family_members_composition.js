@@ -1020,3 +1020,18 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.createFirstFamily                   = createFirstFamily;
+// enforceFirstLoginFamilyCreation: removido do window — app.js usa typeof check; expor aqui causaria wizard indevido para usuários existentes
+window.fmcBust                             = fmcBust;
+window.getFamilyMemberById                 = getFamilyMemberById;
+window.getFamilyMembers                    = getFamilyMembers;
+window.getFmcMultiPickerSelected           = getFmcMultiPickerSelected;
+window.getMemberIdsByRelGroup              = getMemberIdsByRelGroup;
+window.loadFamilyComposition               = loadFamilyComposition;
+window.openFamilyMemberFormForFamily       = openFamilyMemberFormForFamily;
+window.populateFamilyMemberSelect          = populateFamilyMemberSelect;
+window.populateRelationshipFilter          = populateRelationshipFilter;
+window.refreshAllFamilyMemberSelects       = refreshAllFamilyMemberSelects;
+window.renderFmcMultiPicker                = renderFmcMultiPicker;

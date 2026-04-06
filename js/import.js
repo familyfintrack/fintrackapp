@@ -1343,3 +1343,14 @@ function showStagingArea(show) {
 /* ══════════════════════════════════════════════════════════════════
    BACKUP & RESTORE
 ══════════════════════════════════════════════════════════════════ */
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.cancelImport                        = cancelImport;
+window.commitImport                        = commitImport;
+window.goToStep                            = goToStep;
+window.initImportPage                      = initImportPage;
+window.proceedFromColMapper                = proceedFromColMapper;
+window.proceedFromFieldMap                 = proceedFromFieldMap;
+window.selectImportSection                 = selectImportSection;
+window.selectSourcePreset                  = selectSourcePreset;
+window.showFieldMapTab                     = showFieldMapTab;

@@ -2272,3 +2272,33 @@ async function pxhmDeleteType(catId, subcatKey, typeLabel, itemCount) {
   }
 }
 window.pxhmDeleteType = pxhmDeleteType;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._loadPricesData                     = _loadPricesData;
+window._pifStoreNew                        = _pifStoreNew;
+window._renderPricesPage                   = _renderPricesPage;
+window.applyGroceryFeature                 = applyGroceryFeature;
+window.applyPricesFeature                  = applyPricesFeature;
+window.aprNewStore                         = aprNewStore;
+window.closePricesReceiptZone              = closePricesReceiptZone;
+window.confirmAddToGroceryList             = confirmAddToGroceryList;
+window.deletePriceItemCurrent              = deletePriceItemCurrent;
+window.initPricesPage                      = initPricesPage;
+window.isGroceryEnabled                    = isGroceryEnabled;
+window.openAddPriceRecord                  = openAddPriceRecord;
+window.openEditPriceItem                   = openEditPriceItem;
+window.openNewPriceItem                    = openNewPriceItem;
+window.openPricesReceiptScan               = openPricesReceiptScan;
+window.openPricesStoreManager              = openPricesStoreManager;
+window.openRegisterPricesFromReceipt       = openRegisterPricesFromReceipt;
+window.openStoreForm                       = openStoreForm;
+window.openStorePayeeMap                   = openStorePayeeMap;
+window.pricesSetGroup                      = pricesSetGroup;
+window.readPricesReceiptWithAI             = readPricesReceiptWithAI;
+window.rpmAddRow                           = rpmAddRow;
+window.rpmNewStore                         = rpmNewStore;
+window.rpmNormalizeAllAI                   = rpmNormalizeAllAI;
+window.saveAddPriceRecord                  = saveAddPriceRecord;
+window.savePriceItem                       = savePriceItem;
+window.saveRegisterPrices                  = saveRegisterPrices;
+window.saveStoreForm                       = saveStoreForm;

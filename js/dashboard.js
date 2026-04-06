@@ -960,26 +960,63 @@ function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
 
-  // Always show all optional cards in the customize panel.
-  // Module availability is checked inside each card's loader — not here.
-  // Hiding cards from this list would prevent users from ever activating them.
-  const visibleCards = order;
-
-  list.innerHTML = visibleCards.map((c, idx) => `
-    <div class="dash-custom-toggle" data-card-id="${c.id}" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
-      <span class="dash-custom-toggle-icon">${c.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div class="dash-custom-toggle-label">${c.label}</div>
-        <div class="dash-custom-toggle-sub" style="font-size:.72rem;color:var(--muted)">${c.sub}</div>
-        ${c.optional ? '<span style="font-size:.65rem;background:var(--accent-lt);color:var(--accent);padding:1px 6px;border-radius:8px;font-weight:700">opcional</span>' : ''}
+  list.innerHTML = order.map((c) => `
+    <div class="dcc-item" data-card-id="${c.id}" draggable="true">
+      <div class="dcc-handle" title="Arrastar para reordenar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
       </div>
-      <div class="dash-reorder-btns">
-        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',-1)" title="Mover para cima" ${idx===0?'disabled style="opacity:.3"':''}>▲</button>
-        <button class="dash-reorder-btn" onclick="_dashMoveCard('${c.id}',+1)" title="Mover para baixo" ${idx===visibleCards.length-1?'disabled style="opacity:.3"':''}>▼</button>
+      <span class="dcc-icon">${c.icon}</span>
+      <div class="dcc-info">
+        <div class="dcc-label">${c.label}</div>
+        <div class="dcc-sub">${c.sub}</div>
+        ${c.optional ? '<span class="dcc-badge">opcional</span>' : ''}
       </div>
-      <button class="dash-toggle-switch ${prefs[c.id]!==false?'on':''}" data-card="${c.id}"
-        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dash-custom-toggle'))"></button>
+      <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
+        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
+        title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}">
+        <span class="dcc-toggle-knob"></span>
+      </button>
     </div>`).join('');
+
+  _initDashDrag(list);
+}
+
+function _initDashDrag(list) {
+  let dragSrc = null;
+  list.querySelectorAll('.dcc-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      item.classList.add('dcc-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dcc-dragging');
+      list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
+      // Update pending order from DOM
+      _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (item !== dragSrc) {
+        list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
+        item.classList.add('dcc-over');
+      }
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrc && item !== dragSrc) {
+        const allItems = [...list.querySelectorAll('.dcc-item')];
+        const srcIdx  = allItems.indexOf(dragSrc);
+        const tgtIdx  = allItems.indexOf(item);
+        if (srcIdx < tgtIdx) item.after(dragSrc);
+        else item.before(dragSrc);
+        _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+      }
+    });
+  });
 }
 
 function _dashMoveCard(id, dir) {
@@ -998,10 +1035,10 @@ function _dashMoveCard(id, dir) {
 let _dashCustomPendingOrder = null;
 
 function _dashToggleCard(id, row) {
-  const btn = row?.querySelector('.dash-toggle-switch');
+  const btn = row?.querySelector('.dcc-toggle');
   if (!btn) return;
-  const isOn = btn.classList.toggle('on');
-  btn.setAttribute('data-state', isOn ? 'on' : 'off');
+  const isOn = btn.classList.toggle('dcc-on');
+  btn.title = isOn ? 'Ocultar card' : 'Mostrar card';
 }
 
 function _dashCustomSave() {
@@ -1009,8 +1046,8 @@ function _dashCustomSave() {
   const existingPrefs = _dashGetPrefs();
   const prefs = { ...existingPrefs };
   _DASH_CARDS.forEach(c => {
-    const btn = document.querySelector(`.dash-toggle-switch[data-card="${c.id}"]`);
-    prefs[c.id] = btn ? btn.classList.contains('on') : !c.optional;
+    const btn = document.querySelector(`.dcc-toggle[data-card="${c.id}"]`);
+    prefs[c.id] = btn ? btn.classList.contains('dcc-on') : !c.optional;
   });
   // Save card order if user reordered
   if (_dashCustomPendingOrder) {
@@ -2194,31 +2231,43 @@ window.toggleSupGroup = toggleSupGroup;
 
 // ── Modal: Composição do Patrimônio Total ─────────────────────────────────
 async function _openPatrimonioModal() {
-  const accs = Array.isArray(state.accounts) ? state.accounts : [];
-  if (!accs.length) return;
+  // Garantir que state.accounts está populado — tentar recarregar se necessário
+  let accs = Array.isArray(state.accounts) ? state.accounts : [];
+  if (!accs.length) {
+    try { await DB.accounts.load(); accs = state.accounts || []; } catch(_) {}
+  }
+  if (!accs.length) { toast('Nenhuma conta encontrada', 'info'); return; }
 
   // ══════════════════════════════════════════════════════════════════
-  // ATIVOS — contas + investimentos detalhados
+  // CÁLCULO IDÊNTICO ao loadKPIs (db.js) — garante que total bate com dashboard
   // ══════════════════════════════════════════════════════════════════
 
-  // Separar contas por tipo
+  // Separar contas por tipo para exibição detalhada
   const accsLiquid  = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
   const accsInvest  = accs.filter(a => a.type === 'investimento');
   const accsCard    = accs.filter(a => a.type === 'cartao_credito');
 
-  // Saldo líquido (corrente + poupança + dinheiro + outros — exceto CC e investimento)
+  // ── ATIVOS ─────────────────────────────────────────────────────────
+  // Saldo de contas líquidas (corrente + poupança + dinheiro + outros)
   const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Investimentos — usar market value (_totalPortfolioBalance) quando disponível
+  // Investimentos — market value quando disponível (igual ao KPI)
   const invTotal = accsInvest.reduce((s,a) => {
     const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
     return s + toBRL(bal, a.currency||'BRL');
   }, 0);
 
-  // Cartões de crédito — saldo já pode ser negativo (fatura em aberto)
-  const cardLiquidTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+  // Cartões de crédito — saldo entra integral (positivo OU negativo), igual ao KPI
+  const cardTotal = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
 
-  // Investimentos por tipo (usando posições do módulo de investimentos)
+  // Total de contas = soma de TODOS os saldos (idêntico ao accountTotal do KPI)
+  const accountTotal = liquidTotal + invTotal + cardTotal;
+
+  // Separar CC positivos/negativos só para exibição visual
+  const cardPositive = Math.max(0, cardTotal);
+  const cardDebt     = Math.abs(Math.min(0, cardTotal));
+
+  // Posições de investimento por tipo (para breakdown visual)
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
   const invByType = {};
   invPositions.forEach(p => {
@@ -2229,32 +2278,41 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // Total de ativos BRUTOS (sem subtrair passivos)
-  // Cartões de crédito POSITIVOS somam como ativo; negativos (fatura) são passivo
-  const cardPositive = Math.max(0, cardLiquidTotal);  // CC com saldo positivo → ativo
-  const accountTotal = liquidTotal + invTotal + cardPositive;
-
-  // ══════════════════════════════════════════════════════════════════
-  // PASSIVOS — dívidas ativas
-  // ══════════════════════════════════════════════════════════════════
-
-  // Debts: same query as KPI
+  // ── PASSIVOS — dívidas ativas ─────────────────────────────────────────────
+  // Schema correto: name (não description), creditor:payees!fkey(name) para credor
+  // status válidos: active|settled|suspended|renegotiated|archived (sem 'open')
   let debtTotal = 0;
   let debts = [];
   try {
-    // Fetch active debts — try with status filter first, fall back to all debts
-    let { data: debtsData, error: debtErr } = await famQ(
-      sb.from('debts').select('id,description,current_balance,original_amount,currency,status')
-    ).order('created_at', { ascending: false });
+    const { data: debtsData, error: debtErr } = await famQ(
+      sb.from('debts').select(
+        'id,name,current_balance,original_amount,currency,status,start_date,fixed_rate,adjustment_type,periodicity,notes,' +
+        'creditor:payees!debts_creditor_payee_id_fkey(id,name)'
+      )
+    ).eq('status', 'active').order('current_balance', { ascending: false });
     if (debtErr) throw debtErr;
-    // Filter to active/open debts client-side (handles schemas without status column)
-    debts = (debtsData || []).filter(d => !d.status || d.status === 'active' || d.status === 'open');
+    debts = debtsData || [];
     debtTotal = debts.reduce((s,d) =>
       s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
   } catch(e) {
     console.warn('[patrimônio] debts query failed:', e?.message || e);
+    // fallback: tentar sem join (schema mais simples)
+    try {
+      const { data: debtsSimple } = await famQ(
+        sb.from('debts').select('id,name,current_balance,original_amount,currency,status')
+      ).eq('status','active');
+      debts = debtsSimple || [];
+      debtTotal = debts.reduce((s,d) =>
+        s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
+    } catch(_) {}
   }
 
+  // Total de passivos = dívidas + faturas CC em aberto (idêntico ao KPI)
+  const totalPassivos = debtTotal + cardDebt;
+
+  // Patrimônio líquido = accountTotal (todos os saldos) - debtTotal
+  // NOTA: cardDebt já está embutido no accountTotal como negativo,
+  // então: totalBRL = accountTotal - debtTotal  (igual ao KPI: accountTotal - debtTotal)
   const totalBRL = accountTotal - debtTotal;
 
   // Group accounts by currency
@@ -2448,13 +2506,6 @@ async function _openPatrimonioModal() {
     return;
   });
 
-  // ── Calcular total real de passivos (dívidas + faturas abertas de cartão) ─
-  const cardDebt = accsCard.reduce((s,a) => {
-    const bal = parseFloat(a.balance)||0;
-    return s + (bal < 0 ? toBRL(Math.abs(bal), a.currency||'BRL') : 0);
-  }, 0);
-  const totalPassivos = debtTotal + cardDebt;
-
   // ── PASSIVOS ─────────────────────────────────────────────────────────────
   if (totalPassivos > 0) {
     const passivosPct = _pct(totalPassivos, accountTotal);
@@ -2503,31 +2554,42 @@ async function _openPatrimonioModal() {
 
     // ── Dívidas do módulo ─────────────────────────────────────────────────
     if (debts.length) {
+      const _adjLabel = { fixed:'Fixo', selic:'SELIC', ipca:'IPCA', igpm:'IGP-M', cdi:'CDI', poupanca:'Poupança', custom:'Personalizado' };
       content += `
         <div style="margin-bottom:12px">
           <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">🏦 Dívidas Ativas</div>
           <div style="display:flex;flex-direction:column;gap:4px">`;
       debts.forEach(d => {
-        const bal    = parseFloat(d.current_balance ?? d.original_amount) || 0;
-        const balBRL = toBRL(bal, d.currency || 'BRL');
-        const pct    = _pct(balBRL, accountTotal);
-        const progPct = d.original_amount
-          ? Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100).toFixed(0)
+        const bal       = parseFloat(d.current_balance ?? d.original_amount) || 0;
+        const balBRL    = toBRL(bal, d.currency || 'BRL');
+        const origBRL   = toBRL(parseFloat(d.original_amount)||0, d.currency||'BRL');
+        const pct       = _pct(balBRL, accountTotal);
+        const progPct   = d.original_amount && +d.original_amount > 0
+          ? Math.max(0, Math.min(100, ((+d.original_amount - bal) / +d.original_amount) * 100)).toFixed(0)
           : null;
+        const credName  = d.creditor?.name || '';
+        const adjLabel  = _adjLabel[d.adjustment_type] || d.adjustment_type || '';
+        const rateLabel = d.fixed_rate ? `${(+d.fixed_rate).toFixed(2)}% a.m.` : '';
+        const subtitle  = [credName, adjLabel, rateLabel].filter(Boolean).join(' · ');
         content += `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.1)">
             <div style="width:30px;height:30px;border-radius:8px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.description||'Dívida')}</div>
-              <div style="font-size:.68rem;color:var(--muted)">Dívida ativa · ${pct}% dos ativos${progPct ? ` · ${progPct}% quitado` : ''}</div>
+              <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
+              ${subtitle ? `<div style="font-size:.68rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subtitle)}</div>` : ''}
+              ${progPct !== null ? `
+              <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+                <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
+                  <div style="height:100%;width:${progPct}%;background:var(--accent);border-radius:2px"></div>
+                </div>
+                <span style="font-size:.62rem;color:var(--muted);flex-shrink:0">${progPct}% quitado</span>
+              </div>` : ''}
             </div>
             <div style="text-align:right;flex-shrink:0">
               <div style="font-size:.88rem;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626)">−${fmt(bal, d.currency||'BRL')}</div>
               ${d.currency&&d.currency!=='BRL'?`<div style="font-size:.68rem;color:var(--muted)">−${dashFmt(balBRL,'BRL')}</div>`:''}
+              <div style="font-size:.62rem;color:var(--muted)">${pct}% dos ativos</div>
             </div>
-          </div>
-          <div style="height:3px;border-radius:2px;background:var(--border);margin:2px 10px;overflow:hidden">
-            <div style="height:100%;width:${Math.min(+pct,100)}%;background:#dc2626;border-radius:2px;transition:width .4s ease"></div>
           </div>`;
       });
       content += `
@@ -2617,11 +2679,13 @@ async function _loadDashBudgetsCard() {
     const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
 
     // Fetch all budgets and filter client-side (compatible with all schema versions)
+    // Excluir pausados do total — paused=true são standby e não contam
     const { data: allBudgets } = await famQ(
-      sb.from('budgets').select('id,amount,category_id,budget_type,month,year,categories(id,name,icon,color)')
+      sb.from('budgets').select('id,amount,category_id,budget_type,month,year,paused,categories(id,name,icon,color)')
     ).order('amount', { ascending: false });
 
     const bRows = (allBudgets || []).filter(b => {
+      if (b.paused) return false; // pausados ficam fora do dashboard
       // year column may come as string or number depending on DB driver
       if (b.budget_type === 'annual') return String(b.year) === String(y);
       const bMonth = (b.month || '').slice(0, 7);
@@ -3134,3 +3198,14 @@ async function _loadDashDreamsCard() {
   }
 }
 window._loadDashDreamsCard = _loadDashDreamsCard;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._catColor                           = _catColor;
+window._dashCustomSave                     = _dashCustomSave;
+window._dashGetPrefs                       = _dashGetPrefs;
+window._dashSavePrefs                      = _dashSavePrefs;
+window._renderDashFavCategories            = _renderDashFavCategories;
+window.closeCatDetail                      = closeCatDetail;
+window.loadDashboard                       = loadDashboard;
+window.loadDashboardRecent                 = loadDashboardRecent;
+window.openDashCustomModal                 = openDashCustomModal;

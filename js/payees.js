@@ -1206,3 +1206,19 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._loadPayeeTxCounts                  = _loadPayeeTxCounts;
+window.applyNormalizePayees                = applyNormalizePayees;
+window.confirmPayeeClipboardImport         = confirmPayeeClipboardImport;
+window.confirmPayeeReassign                = confirmPayeeReassign;
+window.loadPayees                          = loadPayees;
+window.openNormalizePayeesModal            = openNormalizePayeesModal;
+window.openPayeeClipboardImport            = openPayeeClipboardImport;
+window.openPayeeModal                      = openPayeeModal;
+window.pasteFromClipboard                  = pasteFromClipboard;
+window.py2SetTypeFilter                    = py2SetTypeFilter;
+window.renderPayees                        = renderPayees;
+window.savePayee                           = savePayee;
+window.searchPayeeOnMaps                   = searchPayeeOnMaps;
+window.togglePayeeCatPicker                = togglePayeeCatPicker;

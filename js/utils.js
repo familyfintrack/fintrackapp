@@ -299,14 +299,18 @@ function _accountOptions(accounts, placeholder) {
 function _setModalState(el, isOpen){
   if (!el) return;
   if (isOpen) {
-    el.style.removeProperty('display');
+    // CSS já define display:none por padrão e display:flex em .open
     el.classList.add('open');
     el.setAttribute('aria-hidden', 'false');
+    // Reabilitar selects ao abrir
+    el.querySelectorAll('select').forEach(s => { s.disabled = false; });
   } else {
     el.classList.remove('open');
     el.setAttribute('aria-hidden', 'true');
-    // Leave CSS as the source of truth, but clear stale inline styles from previous patches.
-    if ((el.style.display || '').trim() === 'flex') el.style.removeProperty('display');
+    // iOS Safari fix: desabilitar selects ao fechar o modal
+    // pointer-events:none não é suficiente — disabled remove completamente
+    // do hit-testing nativo do browser
+    el.querySelectorAll('select').forEach(s => { s.disabled = true; });
   }
 }
 function openModal(id){ _setModalState(document.getElementById(id), true); }
@@ -316,6 +320,10 @@ function closeAllModals(){
 }
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click', e => { if (e.target === el) _setModalState(el, false); });
+  // Desabilitar selects em modais que já estão fechados no carregamento
+  if (!el.classList.contains('open')) {
+    el.querySelectorAll('select').forEach(s => { s.disabled = true; });
+  }
 });
 
 function toast(msg,type='info'){

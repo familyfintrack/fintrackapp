@@ -770,3 +770,8 @@ function getPeriodColor(period) {
   return ({ daily:'#2ecc71', weekly:'#3498db', monthly:'#f39c12', yearly:'#9b59b6' })[(period||'').toLowerCase()] || '#1F6B4F';
 }
 window.getPeriodColor = getPeriodColor;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._destroyForecastChart               = _destroyForecastChart;
+window._fcEnsureState                      = _fcEnsureState;
+window._initForecastPicker                 = _initForecastPicker;

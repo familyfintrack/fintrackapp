@@ -9,8 +9,8 @@ let _dbHasBudgetType = null; // null = ainda não testado
 
 async function _checkBudgetSchema() {
   if (_dbHasBudgetType !== null) return _dbHasBudgetType;
-  // Testa se a coluna budget_type existe com uma query leve
-  const { error } = await famQ(sb.from('budgets').select('budget_type').limit(1));
+  // Testa se as colunas novas existem com uma query leve
+  const { error } = await famQ(sb.from('budgets').select('budget_type,paused').limit(1));
   _dbHasBudgetType = !error || !error.message?.includes('budget_type');
   return _dbHasBudgetType;
 }
@@ -103,6 +103,7 @@ async function loadBudgets() {
 
   // 1. Buscar orçamentos do período
   let bq = famQ(sb.from('budgets').select('*, categories(id,name,icon,color,parent_id)'));
+  // Mostrar ativos e pausados; pausados aparecem em seção separada
 
   if (hasNewSchema) {
     bq = bq.eq('budget_type', _budgetView);
@@ -172,12 +173,23 @@ async function loadBudgets() {
     return;
   }
 
-  // 5. Ordenar: estourado primeiro, depois % desc
-  const sorted = [..._budgetCache].sort((a, b) =>
-    (resolved[b.id] / (b.amount || 1)) - (resolved[a.id] / (a.amount || 1))
-  );
+  // 5. Separar pausados dos ativos; ordenar: estourado primeiro, depois % desc
+  const activeBudgets = _budgetCache.filter(b => !b.paused);
+  const pausedBudgets = _budgetCache.filter(b =>  b.paused);
+  const _sortFn = (a, b) =>
+    (resolved[b.id] / (b.amount || 1)) - (resolved[a.id] / (a.amount || 1));
+  const sortedActive = [...activeBudgets].sort(_sortFn);
+  const sortedPaused = [...pausedBudgets].sort(_sortFn);
 
-  grid.innerHTML = sorted.map(b => _budgetCardHTML(b, resolved[b.id], raw)).join('');
+  let gridHtml = sortedActive.map(b => _budgetCardHTML(b, resolved[b.id], raw)).join('');
+  if (sortedPaused.length) {
+    gridHtml += `<div style="grid-column:1/-1;margin-top:16px;margin-bottom:4px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:flex;align-items:center;gap:8px">
+      <span>⏸ Orçamentos pausados (${sortedPaused.length})</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>`;
+    gridHtml += sortedPaused.map(b => _budgetCardHTML(b, resolved[b.id], raw)).join('');
+  }
+  grid.innerHTML = gridHtml;
 }
 
 // ── Budget Drill-Through ────────────────────────────────────────────────
@@ -278,16 +290,20 @@ function _budgetCardHTML(b, spent, raw) {
         }).join('')}
       </div>` : '';
 
+  const isPaused   = !!b.paused;
+  const isRecurring = (b.auto_reset ?? true) && _budgetView === 'monthly';
   const badgesHtml = [
-    (b.auto_reset ?? true) && _budgetView === 'monthly'
-      ? `<span class="budget-badge" style="background:#e0f2fe;color:#0369a1" title="Reseta todo mês">🔄</span>` : '',
+    isPaused
+      ? `<span class="budget-badge" style="background:#fef3c7;color:#b45309;font-weight:700">⏸ Pausado</span>` : '',
+    isRecurring && !isPaused
+      ? `<span class="budget-badge" style="background:#e0f2fe;color:#0369a1" title="Recorrente — reseta todo mês automaticamente">🔄 Recorrente</span>` : '',
     _budgetView === 'annual'
       ? `<span class="budget-badge" style="background:#f0fdf4;color:#15803d">📆</span>` : '',
     b.notes
       ? `<span class="budget-badge" style="background:var(--bg2);color:var(--muted)" title="${esc(b.notes)}">📝</span>` : '',
   ].filter(Boolean).join('');
 
-  return `<div class="budget-card${over ? ' budget-card--over' : near ? ' budget-card--near' : ''}" style="cursor:pointer" onclick="openBudgetDrilldown('${b.id}','${(cat.name||'').replace(/'/g,'\\u0027')}')">
+  return `<div class="budget-card${over ? ' budget-card--over' : near ? ' budget-card--near' : ''}${isPaused ? ' budget-card--paused' : ''}" style="cursor:pointer;${isPaused ? 'opacity:.72' : ''}" onclick="openBudgetDrilldown('${b.id}','${(cat.name||'').replace(/'/g,'\\u0027')}')">
     <div class="budget-card-stripe" style="background:${color}"></div>
 
     <div class="budget-card-header">
@@ -301,6 +317,10 @@ function _budgetCardHTML(b, spent, raw) {
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
         ${badgesHtml}
+        <button class="btn-icon" onclick="event.stopPropagation();toggleBudgetPaused('${b.id}',${isPaused})"
+          title="${isPaused ? 'Retomar orçamento' : 'Pausar orçamento'}"
+          style="color:${isPaused ? 'var(--accent)' : 'var(--muted)'}"
+          >${isPaused ? '▶️' : '⏸'}</button>
         <button class="btn-icon" onclick="event.stopPropagation();openBudgetModal('${b.id}')" title="Editar">✏️</button>
         <button class="btn-icon" onclick="event.stopPropagation();deleteBudget('${b.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
       </div>
@@ -476,6 +496,10 @@ function openBudgetModal(id = '') {
   const arEl = document.getElementById('budgetAutoReset');
   if (arEl) arEl.checked = existing ? !!(existing.auto_reset ?? true) : true;
 
+  // Pausado
+  const pausedEl = document.getElementById('budgetPaused');
+  if (pausedEl) pausedEl.checked = !!(existing?.paused);
+
   // Notas
   const notesEl = document.getElementById('budgetNotes');
   if (notesEl) notesEl.value = existing?.notes || '';
@@ -486,6 +510,10 @@ function openBudgetModal(id = '') {
     const fmSel = document.getElementById('budgetFamilyMember');
     if (fmSel) fmSel.value = existing?.family_member_id || '';
   }
+
+  // Campo "pausar" só aparece em edição (orçamentos novos sempre começam ativos)
+  const pausedGroup = document.getElementById('budgetPausedGroup');
+  if (pausedGroup) pausedGroup.style.display = id ? '' : 'none';
 
   openModal('budgetModal');
 }
@@ -554,7 +582,13 @@ async function saveBudget() {
     data.auto_reset  = btype === 'monthly' ? autoReset : false;
     data.year        = year;
     data.notes       = notes;
-    // updated_at omitido — coluna não existe no schema atual
+    // paused — só salvar em edições (novo orçamento começa ativo)
+    if (id) {
+      const pausedEl = document.getElementById('budgetPaused');
+      data.paused = pausedEl ? !!pausedEl.checked : false;
+    } else {
+      data.paused = false;
+    }
   }
   // family_member_id — works if column exists (silently ignored if not)
   const fmMemberId = document.getElementById('budgetFamilyMember')?.value || null;
@@ -591,6 +625,19 @@ async function deleteBudget(id) {
   loadBudgets();
 }
 
+// ── Toggle pausa de orçamento recorrente ──────────────────────────────────
+async function toggleBudgetPaused(id, currentlyPaused) {
+  const newPaused = !currentlyPaused;
+  const { error } = await famQ(
+    sb.from('budgets').update({ paused: newPaused }).eq('id', id)
+  );
+  if (error) { toast('Erro ao ' + (newPaused ? 'pausar' : 'retomar') + ': ' + error.message, 'error'); return; }
+  toast(newPaused ? '⏸ Orçamento pausado' : '▶️ Orçamento retomado', 'success');
+  await loadBudgets();
+}
+window.toggleBudgetPaused = toggleBudgetPaused;
+
+
 // ── Init ──────────────────────────────────────────────────────────────────
 
 function initBudgetsPage() {
@@ -618,3 +665,11 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.initBudgetsPage                     = initBudgetsPage;
+window.loadBudgets                         = loadBudgets;
+window.openBudgetModal                     = openBudgetModal;
+window.saveBudget                          = saveBudget;
+window.setBudgetModalType                  = setBudgetModalType;
+window.setBudgetView                       = setBudgetView;

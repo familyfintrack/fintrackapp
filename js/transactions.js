@@ -2684,3 +2684,28 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._aiDismissAll                       = _aiDismissAll;
+window._txDetailAction                     = _txDetailAction;
+window._txDupConfirm                       = _txDupConfirm;
+window.confirmReconcileMode                = confirmReconcileMode;
+window.confirmTxClipImport                 = confirmTxClipImport;
+window.editTransaction                     = editTransaction;
+window.enterReconcileMode                  = enterReconcileMode;
+window.exitReconcileMode                   = exitReconcileMode;
+window.fetchSuggestedFxRate                = fetchSuggestedFxRate;
+window.fetchTxCurrencyRate                 = fetchTxCurrencyRate;
+window.filterTransactions                  = filterTransactions;
+window.loadTransactions                    = loadTransactions;
+window.openTransactionModal                = openTransactionModal;
+window.openTxClipboardImport               = openTxClipboardImport;
+window.openTxDetail                        = openTxDetail;
+window.populateTxMonthFilter               = populateTxMonthFilter;
+window.renderTransactions                  = renderTransactions;
+window.saveConvertToScheduled              = saveConvertToScheduled;
+window.saveTransaction                     = saveTransaction;
+window.setTxType                           = setTxType;
+window.setTxView                           = setTxView;
+window.sortTx                              = sortTx;
+window.txClipPasteFromClipboard            = txClipPasteFromClipboard;

@@ -490,3 +490,23 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.applyAutoCheckTimer                 = applyAutoCheckTimer;
+window.copyAutoCheckSql                    = copyAutoCheckSql;
+window.getAutoCheckConfig                  = getAutoCheckConfig;
+window.getCronExpression                   = getCronExpression;
+window.getScheduledDates                   = getScheduledDates;
+window.getSupabaseCronSql                  = getSupabaseCronSql;
+window.getSupabaseEdgeSql                  = getSupabaseEdgeSql;
+window.loadAutoCheckConfig                 = loadAutoCheckConfig;
+window.nextScheduledDate                   = nextScheduledDate;
+window.onAutoCheckMethodChange             = onAutoCheckMethodChange;
+window.runAutoRegister                     = runAutoRegister;
+window.saveAutoCheckConfig                 = saveAutoCheckConfig;
+window.sendScheduledNotification           = sendScheduledNotification;
+window.sendUpcomingNotification            = sendUpcomingNotification;
+window.showAuthMigration                   = showAuthMigration;
+window.showAutoRegisterMigration           = showAutoRegisterMigration;
+window.updateAutoCheckUI                   = updateAutoCheckUI;
+window.updateLastRunConfig                 = updateLastRunConfig;

@@ -1493,3 +1493,10 @@ async function deleteInvPosition(positionId) {
   }
 }
 window.deleteInvPosition = deleteInvPosition;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._invBrlPrice                        = _invBrlPrice;
+window._invMarketValue                     = _invMarketValue;
+window.applyInvestmentsFeature             = applyInvestmentsFeature;
+window.invTotalPortfolioValue              = invTotalPortfolioValue;
+window.loadInvestments                     = loadInvestments;

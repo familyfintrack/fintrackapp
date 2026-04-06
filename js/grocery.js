@@ -780,3 +780,16 @@ async function _applyGroceryReceiptResult(result) {
     toast('Nenhum preço novo foi salvo. Verifique o mapeamento dos itens.', 'warning');
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._loadGroceryItems                   = _loadGroceryItems;
+window._loadGroceryLists                   = _loadGroceryLists;
+window._renderGroceryItems                 = _renderGroceryItems;
+window._renderGroceryLists                 = _renderGroceryLists;
+window.confirmAddGroceryItem               = confirmAddGroceryItem;
+window.initGroceryPage                     = initGroceryPage;
+window.openAddGroceryItem                  = openAddGroceryItem;
+window.openCreateGroceryList               = openCreateGroceryList;
+window.openGroceryReceiptAI                = openGroceryReceiptAI;
+window.processGroceryReceiptWithAI         = processGroceryReceiptWithAI;
+window.saveGroceryList                     = saveGroceryList;

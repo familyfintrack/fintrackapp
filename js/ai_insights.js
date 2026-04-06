@@ -2731,3 +2731,13 @@ window.loadAiSnapshots = loadAiSnapshots;
 window.saveCurrentAiSnapshot = saveCurrentAiSnapshot;
 
 window.deleteAiSnapshot = deleteAiSnapshot;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._aiShowTab                          = _aiShowTab;
+window.aiChatSuggest                       = aiChatSuggest;
+window.applyAiInsightsFeature              = applyAiInsightsFeature;
+window.clearAiChat                         = clearAiChat;
+window.exportAiAnalysis                    = exportAiAnalysis;
+window.initAiInsightsPage                  = initAiInsightsPage;
+window.runAiAnalysis                       = runAiAnalysis;
+window.sendAiChatMessage                   = sendAiChatMessage;

@@ -1101,3 +1101,7 @@ window.sendScheduledTelegramNotification = sendScheduledTelegramNotification;
 window.sendScheduledNotification         = typeof sendScheduledNotification === 'function'
   ? sendScheduledNotification : (window.sendScheduledNotification || null);
 window.runScheduledUpcomingNotifications = runScheduledUpcomingNotifications;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._sendTelegramDirect                 = _sendTelegramDirect;
+window._sendTelegramWithFallback           = _sendTelegramWithFallback;

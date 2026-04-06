@@ -3127,3 +3127,30 @@ async function openTelegramLinkFlow() {
   }
 }
 
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._applyNotifChannelVisibility        = _applyNotifChannelVisibility;
+window._load2FAIntoProfile                 = _load2FAIntoProfile;
+window.advancePinStep                      = advancePinStep;
+window.clearServiceRoleKey                 = clearServiceRoleKey;
+window.copyEjField                         = copyEjField;
+window.ensureSupabaseClient                = ensureSupabaseClient;
+window.getAppSetting                       = getAppSetting;
+window.getMasterPin                        = getMasterPin;
+window.getUserPreference                   = getUserPreference;
+window.initEmailJSStatus                   = initEmailJSStatus;
+window.isNotifChannelEnabled               = isNotifChannelEnabled;
+window.loadAppSettings                     = loadAppSettings;
+window.loadNotifChannelSettings            = loadNotifChannelSettings;
+window.loadSettings                        = loadSettings;
+window.openNormalizeNamesPreview           = openNormalizeNamesPreview;
+window.openTelegramLinkFlow                = openTelegramLinkFlow;
+window.resetAppLogo                        = resetAppLogo;
+window.runNormalizeNames                   = runNormalizeNames;
+window.saveAppLogo                         = saveAppLogo;
+window.saveAppSetting                      = saveAppSetting;
+window.saveEmailJSConfig                   = saveEmailJSConfig;
+window.saveServiceRoleKey                  = saveServiceRoleKey;
+window.showEmailConfig                     = showEmailConfig;
+window.testEmailJSConnection               = testEmailJSConnection;
+window.toggleEjKey                         = toggleEjKey;

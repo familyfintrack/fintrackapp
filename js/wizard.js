@@ -1189,3 +1189,12 @@ window.restartWizardFromProfile = async function() {
     window._wzOpen();
   }, 300);
 };
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._updateWizardSettingsStatus         = _updateWizardSettingsStatus;
+window._wzDismiss                          = _wzDismiss;
+window._wzFinish                           = _wzFinish;
+window._wzReset                            = _wzReset;
+window.initWizard                          = initWizard;
+window.openWizardForNewUser                = openWizardForNewUser;
+window.openWizardManual                    = openWizardManual;

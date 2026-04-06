@@ -1406,3 +1406,9 @@ async function exportAllExcelZip() {
   }
 }
 window.exportAllExcelZip = exportAllExcelZip;
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.loadDbBackups                       = loadDbBackups;
+window.openDbBackupCreate                  = openDbBackupCreate;
+window.openDbBackupCreateForFamily         = openDbBackupCreateForFamily;
+window.openFamilyBackupManager             = openFamilyBackupManager;

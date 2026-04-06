@@ -588,3 +588,16 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._loadCatFavorites                   = _loadCatFavorites;
+window._syncCatFavsFromServer              = _syncCatFavsFromServer;
+window.confirmCatReassign                  = confirmCatReassign;
+window.initCategoriesPage                  = initCategoriesPage;
+window.loadCategories                      = loadCategories;
+window.openCategoryHistory                 = openCategoryHistory;
+window.openCategoryModal                   = openCategoryModal;
+window.renderCategories                    = renderCategories;
+window.saveCategory                        = saveCategory;
+window.selectCatIcon                       = selectCatIcon;
+window.showCatIconGroup                    = showCatIconGroup;

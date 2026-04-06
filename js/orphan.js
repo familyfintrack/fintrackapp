@@ -739,3 +739,8 @@ function getPeriodColor(period) {
     default: return '#1F6B4F';
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.confirmOrphanDelete                 = confirmOrphanDelete;
+window.runOrphanScan                       = runOrphanScan;
+window.scanOrphanAttachments               = scanOrphanAttachments;

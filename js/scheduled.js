@@ -2724,3 +2724,24 @@ function _renderCalList(list) {
     el.innerHTML = list.map(sc => `<div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:.84rem">${esc(sc.description||'—')}</div>`).join('');
   }
 }
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window._openUpcomingIfHasEvents            = _openUpcomingIfHasEvents;
+window.confirmRegisterOccurrence           = confirmRegisterOccurrence;
+window.fetchScCurrencyRate                 = fetchScCurrencyRate;
+window.fetchScSuggestedFxRate              = fetchScSuggestedFxRate;
+window.generateOccurrences                 = generateOccurrences;
+window.ignoreOccurrence                    = ignoreOccurrence;
+window.loadScheduled                       = loadScheduled;
+window.openRegisterOcc                     = openRegisterOcc;
+window.openScheduledModal                  = openScheduledModal;
+window.renderScheduled                     = renderScheduled;
+window.runScheduledAutoRegister            = runScheduledAutoRegister;
+window.saveScheduled                       = saveScheduled;
+window.scCalGoToday                        = scCalGoToday;
+window.scCalMove                           = scCalMove;
+window.scChipFilter                        = scChipFilter;
+window.setScCurrencyMode                   = setScCurrencyMode;
+window.setScFxMode                         = setScFxMode;
+window.setScType                           = setScType;
+window.setScView                           = setScView;

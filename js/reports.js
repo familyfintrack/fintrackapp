@@ -2667,3 +2667,18 @@ function getPeriodColor(period) {
     }
   }
 })();
+
+// ── Expor funções públicas no window ──────────────────────────────────────────
+window.closeEmailPopup                     = closeEmailPopup;
+window.exportReportCSV                     = exportReportCSV;
+window.exportReportPDF                     = exportReportPDF;
+window.loadCurrentReport                   = loadCurrentReport;
+window.populateReportFilters               = populateReportFilters;
+window.populateSelects                     = populateSelects;
+window.printReport                         = printReport;
+window.renderChart                         = renderChart;
+window.rptSortTx                           = rptSortTx;
+window.sendReportByEmail                   = sendReportByEmail;
+window.setReportView                       = setReportView;
+window.setRptCatChart                      = setRptCatChart;
+window.showEmailPopup                      = showEmailPopup;
