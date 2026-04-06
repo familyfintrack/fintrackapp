@@ -1457,38 +1457,54 @@
     <!-- BUDGETS -->
 <div class="page" id="page-budgets">
 
-  <!-- Header: tabs + period picker + new button -->
-  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="tab-bar" style="margin-bottom:0">
-        <button class="tab active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">📅 Mensal</button>
-        <button class="tab" id="budgetTabAnnual"  onclick="setBudgetView('annual')">📆 Anual</button>
-      </div>
-      <div id="budgetMonthPicker">
-        <input type="month" id="budgetMonth" onchange="loadBudgets()" style="font-size:.85rem">
-      </div>
-      <div id="budgetYearPicker" style="display:none">
-        <select id="budgetYear" onchange="loadBudgets()" style="font-size:.85rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)"></select>
-      </div>
-    </div>
-    <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo orçamento</button>
+  <!-- Top tabs: Orçamentos | Objetivos -->
+  <div class="tab-bar mb-4" id="budgetMainTabBar">
+    <button class="tab active" id="budgetMainTabBudgets" onclick="switchBudgetMainTab('budgets')">💰 Orçamentos</button>
+    <button class="tab" id="budgetMainTabObjectives" onclick="switchBudgetMainTab('objectives')">🎯 Objetivos</button>
   </div>
 
-  <!-- Budget cards grid -->
-  <div style="height:16px;"></div>
-  <div class="budget-grid" id="budgetGrid"></div>
+  <!-- ── Painel: Orçamentos ── -->
+  <div id="budgetPanelBudgets">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="tab-bar" style="margin-bottom:0">
+          <button class="tab active" id="budgetTabMonthly" onclick="setBudgetView('monthly')">📅 Mensal</button>
+          <button class="tab" id="budgetTabAnnual"  onclick="setBudgetView('annual')">📆 Anual</button>
+        </div>
+        <div id="budgetMonthPicker">
+          <input type="month" id="budgetMonth" onchange="loadBudgets()" style="font-size:.85rem">
+        </div>
+        <div id="budgetYearPicker" style="display:none">
+          <select id="budgetYear" onchange="loadBudgets()" style="font-size:.85rem;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text)"></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="openBudgetModal()">+ Novo orçamento</button>
+    </div>
+    <div style="height:16px;"></div>
+    <div class="budget-grid" id="budgetGrid"></div>
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">📊 Histórico por categoria</span>
+        <select id="budgetHistCat" onchange="loadBudgetHistory()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:240px">
+          <option value="">— Selecionar categoria —</option>
+        </select>
+      </div>
+      <div id="budgetHistContainer" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;min-height:48px">
+        <div style="color:var(--muted);font-size:.83rem;padding:16px 12px">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
+      </div>
+    </div>
+  </div>
 
-  <!-- History panel -->
-  <div style="margin-top:32px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-      <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">📊 Histórico por categoria</span>
-      <select id="budgetHistCat" onchange="loadBudgetHistory()" style="font-size:.82rem;padding:5px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);max-width:240px">
-        <option value="">— Selecionar categoria —</option>
-      </select>
+  <!-- ── Painel: Objetivos ── -->
+  <div id="budgetPanelObjectives" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Monitoramento por projeto</div>
+        <div style="font-size:.83rem;color:var(--muted);margin-top:2px">Crie objetivos para acompanhar gastos de projetos ou eventos específicos</div>
+      </div>
+      <button class="btn btn-primary" onclick="openObjectiveModal()">+ Novo objetivo</button>
     </div>
-    <div id="budgetHistContainer" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px;min-height:48px">
-      <div style="color:var(--muted);font-size:.83rem;padding:16px 12px">Selecione uma categoria para ver o histórico dos últimos 12 meses.</div>
-    </div>
+    <div id="objectivesGrid" class="obj-grid"></div>
   </div>
 
 </div>
@@ -6482,6 +6498,12 @@ Se você não solicitou isso, ignore este e-mail.`,
             <!-- campo oculto lido pelo saveTransaction -->
             <input type="hidden" id="txTags">
           </div>
+          <div class="form-group full" id="txObjectiveGroup">
+            <label>🎯 Objetivo/Projeto <span class="opt-label">opcional</span></label>
+            <select id="txObjectiveId" style="width:100%" onchange="void 0">
+              <option value="">— Nenhum objetivo —</option>
+            </select>
+          </div>
           <div class="form-group full"><label>Observação <span class="opt-label">opcional</span></label><textarea id="txMemo" rows="2" placeholder="Memo, notas..."></textarea></div>
           <div class="form-group full" id="txIofGroup" style="display:none">
             <label class="iof-intl-toggle" onclick="toggleIofIntl()">
@@ -10631,6 +10653,134 @@ body.dark .agent-input-wrap   { background: var(--surface2); }
 body.dark .agent-welcome-card { background: var(--surface2); }
 </style>
 
+
+<!-- ══ OBJECTIVE MODAL ══ -->
+<div class="modal-overlay" id="objectiveModal">
+  <div class="modal" style="max-width:460px"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="objModalTitle">Novo Objetivo</span>
+      <button class="modal-close" onclick="closeModal('objectiveModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="objId">
+      <div class="form-grid">
+        <div class="form-group" style="flex:0 0 60px">
+          <label>Ícone</label>
+          <input type="text" id="objIcon" value="🎯" style="text-align:center;font-size:1.4rem;padding:8px 4px;width:100%">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Nome do objetivo <span class="req-star">*</span></label>
+          <input type="text" id="objName" placeholder="Ex: Reforma da cozinha, Viagem Europa…" autocomplete="off">
+        </div>
+        <div class="form-group full">
+          <label>Descrição <span class="opt-label">opcional</span></label>
+          <textarea id="objDescription" rows="2" placeholder="Descreva brevemente o objetivo…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Data inicial <span class="req-star">*</span></label>
+          <input type="date" id="objStartDate">
+        </div>
+        <div class="form-group">
+          <label>Data final <span class="opt-label">opcional</span></label>
+          <input type="date" id="objEndDate">
+        </div>
+        <div class="form-group">
+          <label>Limite de gastos <span class="opt-label">opcional</span></label>
+          <input type="text" id="objBudgetLimit" inputmode="numeric" placeholder="0,00" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="objStatus">
+            <option value="active">🟢 Ativo</option>
+            <option value="closed">🔒 Encerrado</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:8px;padding:10px 12px;background:var(--accent-lt);border-radius:var(--r-sm);font-size:.78rem;color:var(--accent);border:1px solid rgba(42,96,73,.15)">
+        💡 Este objetivo é compartilhado com toda a família. Qualquer membro pode vincular transações a ele.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('objectiveModal')">Cancelar</button>
+      <button class="btn btn-primary" id="objSaveBtn" onclick="saveObjective()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OBJECTIVE DETAIL MODAL ══ -->
+<div class="modal-overlay" id="objectiveDetailModal">
+  <div class="modal" style="max-width:520px;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain"><div class="modal-handle"></div>
+    <div class="modal-header" style="position:sticky;top:0;background:var(--surface);z-index:2;border-bottom:1px solid var(--border)">
+      <div>
+        <span class="modal-title" id="objDetailTitle">Objetivo</span>
+        <div id="objDetailPeriod" style="font-size:.72rem;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('objectiveDetailModal')">✕</button>
+    </div>
+    <div class="modal-body" id="objDetailBody" style="padding:16px">
+      <div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando…</div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ── Objectives CSS ─────────────────────────────────────────────────────── */
+.obj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.obj-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  cursor: pointer;
+  transition: box-shadow .18s, transform .18s;
+  box-shadow: var(--shadow-sm);
+}
+.obj-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.obj-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.obj-card-icon { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
+.obj-card-info { flex: 1; min-width: 0; }
+.obj-card-name { font-weight: 700; font-size: .92rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obj-card-dates { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.obj-card-desc { font-size: .78rem; color: var(--text2); margin-bottom: 8px; line-height: 1.45; }
+.obj-card-budget { font-size: .78rem; color: var(--muted); margin-bottom: 10px; }
+.obj-card-footer { display: flex; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 8px; }
+
+.obj-status-badge { font-size: .66rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+.obj-status-active  { background: var(--green-lt, #dcfce7); color: var(--green, #16a34a); }
+.obj-status-closed  { background: var(--surface2); color: var(--muted); }
+.obj-status-expired { background: var(--amber-lt, #fffbeb); color: var(--amber, #d97706); }
+.obj-status-waiting { background: var(--blue-lt, #eff6ff); color: #3b82f6; }
+
+/* Detail modal */
+.obj-detail-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+.obj-kpi { background: var(--surface2); border-radius: var(--r-sm); padding: 10px 8px; text-align: center; }
+.obj-kpi-label { font-size: .63rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+.obj-kpi-value { font-size: .92rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+
+.obj-detail-budget-bar-wrap { margin-bottom: 16px; padding: 12px 14px; background: var(--surface2); border-radius: var(--r-sm); border: 1px solid var(--border); }
+.obj-budget-track { height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
+.obj-budget-fill  { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+.obj-budget-over  { background: var(--red, #dc2626); }
+
+.obj-detail-section { margin-bottom: 18px; }
+.obj-detail-section-title { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.obj-breakdown-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: .82rem; }
+.obj-breakdown-row:last-child { border-bottom: none; }
+.obj-breakdown-label { flex: 1; font-weight: 500; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obj-breakdown-meta { font-size: .68rem; color: var(--muted); flex-shrink: 0; }
+.obj-breakdown-value { font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .obj-grid { grid-template-columns: 1fr; }
+  .obj-detail-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+
+  <script src="js/objectives.js"></script>
 </body>
 </html>
 
