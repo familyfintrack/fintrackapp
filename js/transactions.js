@@ -1153,6 +1153,346 @@ async function openTransactionModal(id=''){
     toast('Erro ao abrir formulário: ' + e.message, 'error');
   }
 }
+// ══════════════════════════════════════════════════════════════════════════════
+//  SMART AI SUGGESTIONS ENGINE — v2
+//  Single Gemini call returns payee + category + account + member together.
+//  Also triggers when payee is selected (to suggest category).
+//  Supports both 'tx' (transaction) and 'sc' (scheduled) contexts.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const _aiSuggest = {
+  timer:   { tx: null, sc: null },
+  pending: { tx: null, sc: null },  // { payee, category, account, member }
+  loading: { tx: false, sc: false },
+};
+
+// Keep legacy vars to avoid breaking any external references
+let _aiPayeeTimer = null, _aiPayeePending = null;
+let _aiAccountTimer = null, _aiAccountPending = null;
+let _aiMemberTimer = null, _aiMemberPending = null;
+
+// ── Entry points (called from HTML oninput / onblur) ─────────────────────────
+
+function _aiSmartDebounce(val, ctx = 'tx') {
+  if (_aiSuggest.timer[ctx]) clearTimeout(_aiSuggest.timer[ctx]);
+  _aiHideSuggestPanel(ctx);
+  if (!val || val.trim().length < 4) return;
+  _aiSuggest.timer[ctx] = setTimeout(() => _aiSmartRun(val.trim(), ctx), 750);
+}
+
+function _aiSmartTrigger(val, ctx = 'tx') {
+  if (!val || val.trim().length < 4) return;
+  if (_aiSuggest.timer[ctx]) { clearTimeout(_aiSuggest.timer[ctx]); _aiSuggest.timer[ctx] = null; }
+  _aiSmartRun(val.trim(), ctx);
+}
+
+// ── Core: build context and call Gemini (or fallback) ────────────────────────
+
+async function _aiSmartRun(desc, ctx) {
+  if (_aiSuggest.loading[ctx]) return;
+
+  // Don't suggest fields already filled
+  const payeeAlreadySet = !!document.getElementById(ctx + 'PayeeId')?.value;
+  const catAlreadySet   = !!(ctx === 'tx'
+    ? document.getElementById('txCategoryId')?.value
+    : document.getElementById('scCategoryId')?.value);
+  const accAlreadySet   = !!document.getElementById(ctx === 'tx' ? 'txAccountId' : 'scAccountId')?.value;
+  const memberAlreadySet = ctx === 'tx'
+    ? document.querySelectorAll('#txFamilyMemberPicker .fmc-pick-chip').length > 0
+    : false;
+
+  if (payeeAlreadySet && catAlreadySet && accAlreadySet && memberAlreadySet) return;
+
+  _aiSuggest.loading[ctx] = true;
+  try {
+    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    if (apiKey?.startsWith('AIza')) {
+      await _aiSmartGemini(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
+    } else {
+      _aiSmartFallback(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
+    }
+  } catch (_) {
+    _aiSmartFallback(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
+  } finally {
+    _aiSuggest.loading[ctx] = false;
+  }
+}
+
+async function _aiSmartGemini(desc, ctx, flags) {
+  const payees    = (state.payees    || []).slice(0, 100).map(p => p.name);
+  const cats      = (state.categories || []).filter(c => c.type !== 'transferencia').slice(0, 80).map(c => c.name);
+  const accounts  = (state.accounts  || []).slice(0, 20).map(a => a.name);
+  const members   = typeof getFamilyMembers === 'function' ? getFamilyMembers().map(m => m.name) : [];
+
+  // Build a minimal recent history snapshot for smarter matching
+  const recentSnap = (state.transactions || []).slice(0, 60)
+    .filter(t => t.description)
+    .map(t => {
+      const cat = (state.categories || []).find(c => c.id === t.category_id)?.name;
+      const acc = (state.accounts   || []).find(a => a.id === t.account_id)?.name;
+      const pay = (state.payees     || []).find(p => p.id === t.payee_id)?.name;
+      return [t.description, pay, cat, acc].filter(Boolean).join('|');
+    }).slice(0, 30).join('\n');
+
+  const prompt = `You are a financial assistant helping fill a transaction form.
+
+Transaction description typed by user: "${desc}"
+
+Available data:
+PAYEES: ${payees.join(', ') || 'none'}
+CATEGORIES: ${cats.join(', ') || 'none'}
+ACCOUNTS: ${accounts.join(', ') || 'none'}
+FAMILY MEMBERS: ${members.join(', ') || 'none'}
+
+Recent transaction history (desc|payee|category|account):
+${recentSnap || 'none'}
+
+Based on the description and history, suggest the BEST match for each field.
+If no good match exists for a field, use null.
+Respond ONLY with valid JSON, no explanation:
+{
+  "payee": "exact name from PAYEES list or null",
+  "category": "exact name from CATEGORIES list or null",
+  "account": "exact name from ACCOUNTS list or null",
+  "member": "exact name from FAMILY MEMBERS list or null",
+  "confidence": "high|medium|low"
+}`;
+
+  const apiKey = await getAppSetting('gemini_api_key', '');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 80, temperature: 0 },
+    }),
+  });
+  if (!resp.ok) { _aiSmartFallback(desc, ctx, flags); return; }
+
+  const json = await resp.json();
+  let raw = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  // Strip markdown code fences if present
+  raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+
+  let result;
+  try { result = JSON.parse(raw); } catch (_) { _aiSmartFallback(desc, ctx, flags); return; }
+
+  _aiSmartApplySuggestions(result, ctx, flags);
+}
+
+function _aiSmartFallback(desc, ctx, flags) {
+  // Pure client-side fallback — frequency analysis on recent transactions
+  const words = desc.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+  if (!words.length) return;
+
+  const recent = (state.transactions || []).slice(0, 300);
+  const payeeScores = {}, catScores = {}, accScores = {}, memberScores = {};
+
+  for (const tx of recent) {
+    if (!tx.description) continue;
+    const txWords = tx.description.toLowerCase().split(/\s+/);
+    const matchCount = words.filter(w => txWords.some(tw => tw.includes(w) || w.includes(tw))).length;
+    if (!matchCount) continue;
+    const weight = matchCount;
+    if (tx.payee_id)    payeeScores[tx.payee_id]   = (payeeScores[tx.payee_id]   || 0) + weight;
+    if (tx.category_id) catScores[tx.category_id]  = (catScores[tx.category_id]  || 0) + weight;
+    if (tx.account_id)  accScores[tx.account_id]   = (accScores[tx.account_id]   || 0) + weight;
+    const mids = tx.family_member_ids?.length ? tx.family_member_ids : (tx.family_member_id ? [tx.family_member_id] : []);
+    for (const mid of mids) memberScores[mid] = (memberScores[mid] || 0) + weight;
+  }
+
+  const topPayee  = Object.entries(payeeScores).sort((a,b)=>b[1]-a[1])[0];
+  const topCat    = Object.entries(catScores).sort((a,b)=>b[1]-a[1])[0];
+  const topAcc    = Object.entries(accScores).sort((a,b)=>b[1]-a[1])[0];
+  const topMember = Object.entries(memberScores).sort((a,b)=>b[1]-a[1])[0];
+
+  const payeeObj  = topPayee?.[1] >= 1 ? (state.payees    || []).find(p => p.id === topPayee[0])  : null;
+  const catObj    = topCat?.[1]   >= 1 ? (state.categories|| []).find(c => c.id === topCat[0])    : null;
+  const accObj    = topAcc?.[1]   >= 1 ? (state.accounts  || []).find(a => a.id === topAcc[0])    : null;
+  const members   = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+  const memberObj = topMember?.[1] >= 2 ? members.find(m => m.id === topMember[0]) : null;
+
+  _aiSmartApplySuggestions({
+    payee:    payeeObj?.name   || null,
+    category: catObj?.name    || null,
+    account:  accObj?.name    || null,
+    member:   memberObj?.name || null,
+    confidence: 'medium',
+  }, ctx, flags);
+}
+
+function _aiSmartApplySuggestions(result, ctx, flags) {
+  const suggestions = [];
+
+  // Payee suggestion
+  if (!flags.payeeAlreadySet && result.payee) {
+    const matched = (state.payees || []).find(p =>
+      p.name.toLowerCase() === result.payee.toLowerCase() ||
+      p.name.toLowerCase().includes(result.payee.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'payee', icon: '👤', label: 'Beneficiário',
+        value: matched.name, id: matched.id,
+        apply: () => {
+          selectPayee(matched.id, matched.name, ctx);
+          // After selecting payee, trigger category suggestion from payee history
+          if (ctx === 'tx' && typeof suggestCategoryForPayee === 'function') {
+            suggestCategoryForPayee(matched.id);
+          }
+        },
+      });
+    }
+  }
+
+  // Category suggestion
+  if (!flags.catAlreadySet && result.category) {
+    const matched = (state.categories || []).find(c =>
+      c.name.toLowerCase() === result.category.toLowerCase() ||
+      c.name.toLowerCase().includes(result.category.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'category', icon: matched.icon || '📂', label: 'Categoria',
+        value: matched.name, id: matched.id, color: matched.color,
+        apply: () => {
+          if (ctx === 'tx') {
+            setCatPickerValue(matched.id);
+            hideCatSuggestion();
+          } else if (ctx === 'sc' && typeof setCatPickerValue === 'function') {
+            setCatPickerValue(matched.id, 'sc');
+          }
+        },
+      });
+    }
+  }
+
+  // Account suggestion
+  if (!flags.accAlreadySet && result.account) {
+    const accSelId = ctx === 'tx' ? 'txAccountId' : 'scAccountId';
+    const matched = (state.accounts || []).find(a =>
+      a.name.toLowerCase() === result.account.toLowerCase() ||
+      a.name.toLowerCase().includes(result.account.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'account', icon: matched.icon || '🏦', label: 'Conta',
+        value: matched.name, id: matched.id,
+        apply: () => {
+          const sel = document.getElementById(accSelId);
+          if (sel) { sel.value = matched.id; sel.dispatchEvent(new Event('change')); }
+        },
+      });
+    }
+  }
+
+  // Member suggestion (tx only for now)
+  if (ctx === 'tx' && !flags.memberAlreadySet && result.member) {
+    const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+    const matched = members.find(m =>
+      m.name.toLowerCase() === result.member.toLowerCase() ||
+      m.name.toLowerCase().includes(result.member.toLowerCase())
+    );
+    if (matched) {
+      suggestions.push({
+        type: 'member', icon: '👤', label: 'Membro',
+        value: matched.name, id: matched.id,
+        apply: () => {
+          if (typeof renderFmcMultiPicker === 'function') {
+            renderFmcMultiPicker('txFamilyMemberPicker', { selected: [matched.id] });
+          }
+        },
+      });
+    }
+  }
+
+  if (!suggestions.length) return;
+
+  _aiSuggest.pending[ctx] = suggestions;
+  _aiRenderSuggestPanel(ctx, suggestions);
+}
+
+// ── Render the suggestion panel ───────────────────────────────────────────────
+
+function _aiRenderSuggestPanel(ctx, suggestions) {
+  const panelId = ctx + 'AiSuggestionsPanel';
+  const chipsId = ctx + 'AiSuggestChips';
+  const panel = document.getElementById(panelId);
+  const chips = document.getElementById(chipsId);
+  if (!panel || !chips) return;
+
+  chips.innerHTML = suggestions.map((s, i) => {
+    const colorStyle = s.color ? `border-left: 3px solid ${s.color}` : '';
+    return `<div class="ai-suggest-chip" style="${colorStyle}">
+      <span class="ai-suggest-chip-label">${s.label}</span>
+      <button class="ai-suggest-chip-value" onclick="_aiApplySuggestion('${ctx}',${i})"
+        title="Aplicar sugestão">
+        ${s.icon} ${esc(s.value)}
+      </button>
+      <button class="ai-suggest-chip-dismiss" onclick="_aiDismissSuggestion('${ctx}',${i})"
+        title="Ignorar">✕</button>
+    </div>`;
+  }).join('');
+
+  panel.style.display = 'block';
+}
+
+function _aiHideSuggestPanel(ctx) {
+  const panel = document.getElementById(ctx + 'AiSuggestionsPanel');
+  if (panel) panel.style.display = 'none';
+  _aiSuggest.pending[ctx] = null;
+}
+
+function _aiApplySuggestion(ctx, idx) {
+  const suggestions = _aiSuggest.pending[ctx];
+  if (!suggestions?.[idx]) return;
+  suggestions[idx].apply();
+  // Remove this chip from the panel
+  suggestions.splice(idx, 1);
+  if (!suggestions.length) {
+    _aiHideSuggestPanel(ctx);
+  } else {
+    _aiRenderSuggestPanel(ctx, suggestions);
+  }
+}
+
+function _aiDismissSuggestion(ctx, idx) {
+  const suggestions = _aiSuggest.pending[ctx];
+  if (!suggestions) return;
+  suggestions.splice(idx, 1);
+  if (!suggestions.length) {
+    _aiHideSuggestPanel(ctx);
+  } else {
+    _aiRenderSuggestPanel(ctx, suggestions);
+  }
+}
+
+function _aiDismissAll(ctx) {
+  _aiHideSuggestPanel(ctx);
+}
+
+// ── Legacy compatibility shims (kept so old HTML references still work) ───────
+
+function _aiPayeeDebounce(val)       { _aiSmartDebounce(val, 'tx'); }
+function _aiAccountDebounce(val)     { /* absorbed into _aiSmartDebounce */ }
+function _aiMemberDebounce(val)      { /* absorbed into _aiSmartDebounce */ }
+function _aiSuggestPayeeFromDesc(v)  { _aiSmartTrigger(v, 'tx'); }
+function _applyAiPayeeSuggestion()   { /* legacy — now handled by chip buttons */ }
+function _dismissAiPayeeSuggestion() { _aiHideSuggestPanel('tx'); }
+function _applyAiAccountSuggestion() { /* legacy */ }
+function _dismissAiAccountSuggestion(){ _aiHideSuggestPanel('tx'); }
+function _applyAiMemberSuggestion()  { /* legacy */ }
+function _dismissAiMemberSuggestion(){ _aiHideSuggestPanel('tx'); }
+
+// ── Trigger from payee selection (category suggestion based on payee history) ─
+
+function _aiSuggestFromPayee(payeeId, ctx) {
+  if (!payeeId || ctx !== 'tx') return;
+  // suggestCategoryForPayee already called by selectPayee → handled there
+}
+
+
 function resetTxModal(){
   try {
   ['txId','txDesc','txMemo','txTags'].forEach(f=>{ const el=document.getElementById(f); if(el) el.value=''; });
@@ -2111,346 +2451,6 @@ function _openTxAsCopy(orig) {
   openModal('txModal');
   if (typeof initTxFormMode === 'function') initTxFormMode();
 }
-// ══════════════════════════════════════════════════════════════════════════════
-//  SMART AI SUGGESTIONS ENGINE — v2
-//  Single Gemini call returns payee + category + account + member together.
-//  Also triggers when payee is selected (to suggest category).
-//  Supports both 'tx' (transaction) and 'sc' (scheduled) contexts.
-// ══════════════════════════════════════════════════════════════════════════════
-
-const _aiSuggest = {
-  timer:   { tx: null, sc: null },
-  pending: { tx: null, sc: null },  // { payee, category, account, member }
-  loading: { tx: false, sc: false },
-};
-
-// Keep legacy vars to avoid breaking any external references
-let _aiPayeeTimer = null, _aiPayeePending = null;
-let _aiAccountTimer = null, _aiAccountPending = null;
-let _aiMemberTimer = null, _aiMemberPending = null;
-
-// ── Entry points (called from HTML oninput / onblur) ─────────────────────────
-
-function _aiSmartDebounce(val, ctx = 'tx') {
-  if (_aiSuggest.timer[ctx]) clearTimeout(_aiSuggest.timer[ctx]);
-  _aiHideSuggestPanel(ctx);
-  if (!val || val.trim().length < 4) return;
-  _aiSuggest.timer[ctx] = setTimeout(() => _aiSmartRun(val.trim(), ctx), 750);
-}
-
-function _aiSmartTrigger(val, ctx = 'tx') {
-  if (!val || val.trim().length < 4) return;
-  if (_aiSuggest.timer[ctx]) { clearTimeout(_aiSuggest.timer[ctx]); _aiSuggest.timer[ctx] = null; }
-  _aiSmartRun(val.trim(), ctx);
-}
-
-// ── Core: build context and call Gemini (or fallback) ────────────────────────
-
-async function _aiSmartRun(desc, ctx) {
-  if (_aiSuggest.loading[ctx]) return;
-
-  // Don't suggest fields already filled
-  const payeeAlreadySet = !!document.getElementById(ctx + 'PayeeId')?.value;
-  const catAlreadySet   = !!(ctx === 'tx'
-    ? document.getElementById('txCategoryId')?.value
-    : document.getElementById('scCategoryId')?.value);
-  const accAlreadySet   = !!document.getElementById(ctx === 'tx' ? 'txAccountId' : 'scAccountId')?.value;
-  const memberAlreadySet = ctx === 'tx'
-    ? document.querySelectorAll('#txFamilyMemberPicker .fmc-pick-chip').length > 0
-    : false;
-
-  if (payeeAlreadySet && catAlreadySet && accAlreadySet && memberAlreadySet) return;
-
-  _aiSuggest.loading[ctx] = true;
-  try {
-    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
-    if (apiKey?.startsWith('AIza')) {
-      await _aiSmartGemini(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
-    } else {
-      _aiSmartFallback(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
-    }
-  } catch (_) {
-    _aiSmartFallback(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
-  } finally {
-    _aiSuggest.loading[ctx] = false;
-  }
-}
-
-async function _aiSmartGemini(desc, ctx, flags) {
-  const payees    = (state.payees    || []).slice(0, 100).map(p => p.name);
-  const cats      = (state.categories || []).filter(c => c.type !== 'transferencia').slice(0, 80).map(c => c.name);
-  const accounts  = (state.accounts  || []).slice(0, 20).map(a => a.name);
-  const members   = typeof getFamilyMembers === 'function' ? getFamilyMembers().map(m => m.name) : [];
-
-  // Build a minimal recent history snapshot for smarter matching
-  const recentSnap = (state.transactions || []).slice(0, 60)
-    .filter(t => t.description)
-    .map(t => {
-      const cat = (state.categories || []).find(c => c.id === t.category_id)?.name;
-      const acc = (state.accounts   || []).find(a => a.id === t.account_id)?.name;
-      const pay = (state.payees     || []).find(p => p.id === t.payee_id)?.name;
-      return [t.description, pay, cat, acc].filter(Boolean).join('|');
-    }).slice(0, 30).join('\n');
-
-  const prompt = `You are a financial assistant helping fill a transaction form.
-
-Transaction description typed by user: "${desc}"
-
-Available data:
-PAYEES: ${payees.join(', ') || 'none'}
-CATEGORIES: ${cats.join(', ') || 'none'}
-ACCOUNTS: ${accounts.join(', ') || 'none'}
-FAMILY MEMBERS: ${members.join(', ') || 'none'}
-
-Recent transaction history (desc|payee|category|account):
-${recentSnap || 'none'}
-
-Based on the description and history, suggest the BEST match for each field.
-If no good match exists for a field, use null.
-Respond ONLY with valid JSON, no explanation:
-{
-  "payee": "exact name from PAYEES list or null",
-  "category": "exact name from CATEGORIES list or null",
-  "account": "exact name from ACCOUNTS list or null",
-  "member": "exact name from FAMILY MEMBERS list or null",
-  "confidence": "high|medium|low"
-}`;
-
-  const apiKey = await getAppSetting('gemini_api_key', '');
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 80, temperature: 0 },
-    }),
-  });
-  if (!resp.ok) { _aiSmartFallback(desc, ctx, flags); return; }
-
-  const json = await resp.json();
-  let raw = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-  // Strip markdown code fences if present
-  raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-
-  let result;
-  try { result = JSON.parse(raw); } catch (_) { _aiSmartFallback(desc, ctx, flags); return; }
-
-  _aiSmartApplySuggestions(result, ctx, flags);
-}
-
-function _aiSmartFallback(desc, ctx, flags) {
-  // Pure client-side fallback — frequency analysis on recent transactions
-  const words = desc.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
-  if (!words.length) return;
-
-  const recent = (state.transactions || []).slice(0, 300);
-  const payeeScores = {}, catScores = {}, accScores = {}, memberScores = {};
-
-  for (const tx of recent) {
-    if (!tx.description) continue;
-    const txWords = tx.description.toLowerCase().split(/\s+/);
-    const matchCount = words.filter(w => txWords.some(tw => tw.includes(w) || w.includes(tw))).length;
-    if (!matchCount) continue;
-    const weight = matchCount;
-    if (tx.payee_id)    payeeScores[tx.payee_id]   = (payeeScores[tx.payee_id]   || 0) + weight;
-    if (tx.category_id) catScores[tx.category_id]  = (catScores[tx.category_id]  || 0) + weight;
-    if (tx.account_id)  accScores[tx.account_id]   = (accScores[tx.account_id]   || 0) + weight;
-    const mids = tx.family_member_ids?.length ? tx.family_member_ids : (tx.family_member_id ? [tx.family_member_id] : []);
-    for (const mid of mids) memberScores[mid] = (memberScores[mid] || 0) + weight;
-  }
-
-  const topPayee  = Object.entries(payeeScores).sort((a,b)=>b[1]-a[1])[0];
-  const topCat    = Object.entries(catScores).sort((a,b)=>b[1]-a[1])[0];
-  const topAcc    = Object.entries(accScores).sort((a,b)=>b[1]-a[1])[0];
-  const topMember = Object.entries(memberScores).sort((a,b)=>b[1]-a[1])[0];
-
-  const payeeObj  = topPayee?.[1] >= 1 ? (state.payees    || []).find(p => p.id === topPayee[0])  : null;
-  const catObj    = topCat?.[1]   >= 1 ? (state.categories|| []).find(c => c.id === topCat[0])    : null;
-  const accObj    = topAcc?.[1]   >= 1 ? (state.accounts  || []).find(a => a.id === topAcc[0])    : null;
-  const members   = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
-  const memberObj = topMember?.[1] >= 2 ? members.find(m => m.id === topMember[0]) : null;
-
-  _aiSmartApplySuggestions({
-    payee:    payeeObj?.name   || null,
-    category: catObj?.name    || null,
-    account:  accObj?.name    || null,
-    member:   memberObj?.name || null,
-    confidence: 'medium',
-  }, ctx, flags);
-}
-
-function _aiSmartApplySuggestions(result, ctx, flags) {
-  const suggestions = [];
-
-  // Payee suggestion
-  if (!flags.payeeAlreadySet && result.payee) {
-    const matched = (state.payees || []).find(p =>
-      p.name.toLowerCase() === result.payee.toLowerCase() ||
-      p.name.toLowerCase().includes(result.payee.toLowerCase())
-    );
-    if (matched) {
-      suggestions.push({
-        type: 'payee', icon: '👤', label: 'Beneficiário',
-        value: matched.name, id: matched.id,
-        apply: () => {
-          selectPayee(matched.id, matched.name, ctx);
-          // After selecting payee, trigger category suggestion from payee history
-          if (ctx === 'tx' && typeof suggestCategoryForPayee === 'function') {
-            suggestCategoryForPayee(matched.id);
-          }
-        },
-      });
-    }
-  }
-
-  // Category suggestion
-  if (!flags.catAlreadySet && result.category) {
-    const matched = (state.categories || []).find(c =>
-      c.name.toLowerCase() === result.category.toLowerCase() ||
-      c.name.toLowerCase().includes(result.category.toLowerCase())
-    );
-    if (matched) {
-      suggestions.push({
-        type: 'category', icon: matched.icon || '📂', label: 'Categoria',
-        value: matched.name, id: matched.id, color: matched.color,
-        apply: () => {
-          if (ctx === 'tx') {
-            setCatPickerValue(matched.id);
-            hideCatSuggestion();
-          } else if (ctx === 'sc' && typeof setCatPickerValue === 'function') {
-            setCatPickerValue(matched.id, 'sc');
-          }
-        },
-      });
-    }
-  }
-
-  // Account suggestion
-  if (!flags.accAlreadySet && result.account) {
-    const accSelId = ctx === 'tx' ? 'txAccountId' : 'scAccountId';
-    const matched = (state.accounts || []).find(a =>
-      a.name.toLowerCase() === result.account.toLowerCase() ||
-      a.name.toLowerCase().includes(result.account.toLowerCase())
-    );
-    if (matched) {
-      suggestions.push({
-        type: 'account', icon: matched.icon || '🏦', label: 'Conta',
-        value: matched.name, id: matched.id,
-        apply: () => {
-          const sel = document.getElementById(accSelId);
-          if (sel) { sel.value = matched.id; sel.dispatchEvent(new Event('change')); }
-        },
-      });
-    }
-  }
-
-  // Member suggestion (tx only for now)
-  if (ctx === 'tx' && !flags.memberAlreadySet && result.member) {
-    const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
-    const matched = members.find(m =>
-      m.name.toLowerCase() === result.member.toLowerCase() ||
-      m.name.toLowerCase().includes(result.member.toLowerCase())
-    );
-    if (matched) {
-      suggestions.push({
-        type: 'member', icon: '👤', label: 'Membro',
-        value: matched.name, id: matched.id,
-        apply: () => {
-          if (typeof renderFmcMultiPicker === 'function') {
-            renderFmcMultiPicker('txFamilyMemberPicker', { selected: [matched.id] });
-          }
-        },
-      });
-    }
-  }
-
-  if (!suggestions.length) return;
-
-  _aiSuggest.pending[ctx] = suggestions;
-  _aiRenderSuggestPanel(ctx, suggestions);
-}
-
-// ── Render the suggestion panel ───────────────────────────────────────────────
-
-function _aiRenderSuggestPanel(ctx, suggestions) {
-  const panelId = ctx + 'AiSuggestionsPanel';
-  const chipsId = ctx + 'AiSuggestChips';
-  const panel = document.getElementById(panelId);
-  const chips = document.getElementById(chipsId);
-  if (!panel || !chips) return;
-
-  chips.innerHTML = suggestions.map((s, i) => {
-    const colorStyle = s.color ? `border-left: 3px solid ${s.color}` : '';
-    return `<div class="ai-suggest-chip" style="${colorStyle}">
-      <span class="ai-suggest-chip-label">${s.label}</span>
-      <button class="ai-suggest-chip-value" onclick="_aiApplySuggestion('${ctx}',${i})"
-        title="Aplicar sugestão">
-        ${s.icon} ${esc(s.value)}
-      </button>
-      <button class="ai-suggest-chip-dismiss" onclick="_aiDismissSuggestion('${ctx}',${i})"
-        title="Ignorar">✕</button>
-    </div>`;
-  }).join('');
-
-  panel.style.display = 'block';
-}
-
-function _aiHideSuggestPanel(ctx) {
-  const panel = document.getElementById(ctx + 'AiSuggestionsPanel');
-  if (panel) panel.style.display = 'none';
-  _aiSuggest.pending[ctx] = null;
-}
-
-function _aiApplySuggestion(ctx, idx) {
-  const suggestions = _aiSuggest.pending[ctx];
-  if (!suggestions?.[idx]) return;
-  suggestions[idx].apply();
-  // Remove this chip from the panel
-  suggestions.splice(idx, 1);
-  if (!suggestions.length) {
-    _aiHideSuggestPanel(ctx);
-  } else {
-    _aiRenderSuggestPanel(ctx, suggestions);
-  }
-}
-
-function _aiDismissSuggestion(ctx, idx) {
-  const suggestions = _aiSuggest.pending[ctx];
-  if (!suggestions) return;
-  suggestions.splice(idx, 1);
-  if (!suggestions.length) {
-    _aiHideSuggestPanel(ctx);
-  } else {
-    _aiRenderSuggestPanel(ctx, suggestions);
-  }
-}
-
-function _aiDismissAll(ctx) {
-  _aiHideSuggestPanel(ctx);
-}
-
-// ── Legacy compatibility shims (kept so old HTML references still work) ───────
-
-function _aiPayeeDebounce(val)       { _aiSmartDebounce(val, 'tx'); }
-function _aiAccountDebounce(val)     { /* absorbed into _aiSmartDebounce */ }
-function _aiMemberDebounce(val)      { /* absorbed into _aiSmartDebounce */ }
-function _aiSuggestPayeeFromDesc(v)  { _aiSmartTrigger(v, 'tx'); }
-function _applyAiPayeeSuggestion()   { /* legacy — now handled by chip buttons */ }
-function _dismissAiPayeeSuggestion() { _aiHideSuggestPanel('tx'); }
-function _applyAiAccountSuggestion() { /* legacy */ }
-function _dismissAiAccountSuggestion(){ _aiHideSuggestPanel('tx'); }
-function _applyAiMemberSuggestion()  { /* legacy */ }
-function _dismissAiMemberSuggestion(){ _aiHideSuggestPanel('tx'); }
-
-// ── Trigger from payee selection (category suggestion based on payee history) ─
-
-function _aiSuggestFromPayee(payeeId, ctx) {
-  if (!payeeId || ctx !== 'tx') return;
-  // suggestCategoryForPayee already called by selectPayee → handled there
-}
-
-
 async function deleteTransaction(id){
   if(!confirm('Excluir transação?'))return;
   // 1. Null out any scheduled_occurrence that references this transaction
