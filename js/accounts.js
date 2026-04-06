@@ -293,18 +293,24 @@ function accountTypeLabel(t){
 // Chamado ao mudar o tipo de conta no MODAL (não navega para transações)
 function _onAccModalTypeChange() {
   const type  = document.getElementById('accountType')?.value || '';
-  const isCC  = type === 'cartao_credito';
+  const isCC   = type === 'cartao_credito';
+  const isVale = type === 'vale_refeicao';
 
   // Card tab: show/hide sections and notice
-  const notice   = document.getElementById('acmCardNotice');
-  const iofCfg   = document.getElementById('accountIofConfig');
-  const cardData = document.getElementById('accountCardDataSection');
+  const notice    = document.getElementById('acmCardNotice');
+  const iofCfg    = document.getElementById('accountIofConfig');
+  const cardData  = document.getElementById('accountCardDataSection');
+  const valeData  = document.getElementById('accountValeDataSection');
 
-  if (notice)   notice.style.display   = isCC ? 'none' : '';
+  // Card notice: hide for CC and vale (both have specific panels)
+  if (notice)   notice.style.display   = (isCC || isVale) ? 'none' : '';
   if (iofCfg)   iofCfg.style.display   = isCC ? '' : 'none';
   if (cardData)  cardData.style.display  = isCC ? '' : 'none';
+  if (valeData)  valeData.style.display  = isVale ? '' : 'none';
 
-  // Legacy compat: accountCardDatesConfig removed in redesign (fields moved to card tab)
+  // Mostrar aba Cartão para CC e Vale
+  const cardTab = document.getElementById('acmTabCard');
+  if (cardTab) cardTab.style.display = (isCC || isVale) ? '' : '';
 
   // Trigger preview update
   if (typeof acmLivePreview === 'function') acmLivePreview();
@@ -996,7 +1002,7 @@ window.accountAiSuggestIcon = async function() {
       return;
     }
 
-    const typeLabels = { corrente:'Conta Corrente', poupanca:'Poupança', cartao_credito:'Cartão de Crédito', investimento:'Investimentos', dinheiro:'Dinheiro', outros:'Outros' };
+    const typeLabels = { corrente:'Conta Corrente', poupanca:'Poupança', cartao_credito:'Cartão de Crédito', vale_refeicao:'Vale Refeição/Alimentação', investimento:'Investimentos', dinheiro:'Dinheiro', outros:'Outros' };
     const context = [
       `Nome da conta: ${name}`,
       `Tipo de conta: ${typeLabels[type] || type}`,

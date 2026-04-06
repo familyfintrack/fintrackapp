@@ -3268,78 +3268,70 @@ async function loadUsersList() {
 
   let html = '';
 
+  // ── Pending banner ──────────────────────────────────────────────────────
   if (pendingUsers.length) {
-    html += `<div style="background:linear-gradient(135deg,#fef3c7,#fef9e8);border:1.5px solid #f59e0b;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px">
-      <div style="font-size:1.6rem;flex-shrink:0">⏳</div>
+    html += `<div style="background:rgba(245,158,11,.07);border:1.5px solid rgba(245,158,11,.25);border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,.15);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">⏳</div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:.92rem;color:#92400e;margin-bottom:2px">${pendingUsers.length} solicitação(ões) aguardando aprovação</div>
-        <div style="font-size:.78rem;color:#b45309">Novos usuários não têm acesso até você aprovar.</div>
+        <div style="font-weight:700;font-size:.86rem;color:var(--text);margin-bottom:1px">${pendingUsers.length} ${pendingUsers.length===1?'solicitação':'solicitações'} pendente${pendingUsers.length>1?'s':''}</div>
+        <div style="font-size:.74rem;color:var(--muted)">Aguardando aprovação na aba <strong>Pendentes</strong></div>
       </div>
+      <button class="btn btn-ghost btn-sm" onclick="switchUATab('pending')" style="white-space:nowrap">Ver →</button>
     </div>`;
-    html += '<div class="table-wrap" style="margin-bottom:20px;border-radius:var(--r);overflow:hidden;border:1.5px solid #f59e0b"><table><thead><tr style="background:#fef3c7"><th>Solicitante</th><th>E-mail</th><th>Aguardando</th><th style="text-align:center">Ações</th></tr></thead><tbody>';
-    html += pendingUsers.map(u => {
-      const daysAgo = Math.floor((Date.now() - new Date(u.created_at)) / 86400000);
-      const ageLabel = daysAgo === 0 ? 'Hoje' : daysAgo === 1 ? '1 dia' : (daysAgo + ' dias');
-      const ageStyle = daysAgo >= 3 ? 'color:#dc2626;font-weight:600' : 'color:var(--muted)';
-      const initials = (u.name || u.email || '?').slice(0, 2).toUpperCase();
-      return '<tr style="background:#fffbeb">' +
-        '<td><div style="display:flex;align-items:center;gap:10px">' +
-        '<div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;border:2px solid #f59e0b;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;color:#92400e;flex-shrink:0">' + initials + '</div>' +
-        '<strong>' + esc(u.name||'—') + '</strong></div></td>' +
-        '<td style="font-size:.82rem">' + esc(u.email) + '</td>' +
-        '<td><span style="' + ageStyle + '">' + ageLabel + '</span></td>' +
-        '<td style="text-align:center;white-space:nowrap">' +
-        '<button class="btn btn-primary btn-sm" onclick="approveUser(' + "'" + u.id + "','" + esc(u.name||u.email) + "')" + ' style="background:#16a34a;margin-right:4px">✅ Aprovar</button>' +
-        '<button class="btn btn-ghost btn-sm" onclick="rejectUser(' + "'" + u.id + "','" + esc(u.name||u.email) + "')" + ' style="color:#dc2626">✕ Rejeitar</button>' +
-        '</td></tr>';
-    }).join('');
-    html += '</tbody></table></div>';
-    html += '<div style="font-weight:600;font-size:.82rem;margin-bottom:10px;color:var(--muted)">Usuários ativos</div>';
   }
 
+  // ── Active users — modern cards ──────────────────────────────────────────
   if (!activeUsers.length) {
-    html += '<div style="text-align:center;padding:20px;color:var(--muted)">Nenhum usuário ativo.</div>';
+    html += '<div style="text-align:center;padding:32px 20px;color:var(--muted)"><div style="font-size:2rem;margin-bottom:8px">👥</div><div style="font-size:.88rem">Nenhum usuário ativo.</div></div>';
   } else {
-    html += '<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Família</th><th>Status</th><th style="width:80px"></th></tr></thead><tbody>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
     html += activeUsers.map(u => {
-      const avatarHtml = _userAvatarHtml(u, 34);
-      const roleBadge = u.role==='owner'
-        ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;font-size:.7rem">👑 Owner</span>'
-        : u.role==='admin'
-        ? '<span class="badge badge-amber" style="font-size:.7rem">🔧 Admin</span>'
-        : u.role==='viewer'
-        ? '<span class="badge badge-muted" style="font-size:.7rem">👁 Viewer</span>'
-        : '<span class="badge badge-blue" style="font-size:.7rem">👤 Usuário</span>';
-      return `<tr onclick="editUser('${u.id}')" style="cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <td>
-          <div style="display:flex;align-items:center;gap:10px">
-            ${avatarHtml}
-            <div>
-              <div style="font-weight:600;font-size:.875rem">${esc(u.name||'—')}</div>
-              <div style="font-size:.72rem;color:var(--muted)">${esc(u.email)}</div>
-            </div>
+      const initials = (u.name||u.email||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+      const roleConf = {
+        owner:  { icon:'👑', label:'Owner',       cls:'owner'   },
+        admin:  { icon:'🔧', label:'Admin',        cls:'admin'   },
+        viewer: { icon:'👁', label:'Visualizador', cls:'viewer'  },
+        user:   { icon:'👤', label:'Usuário',      cls:''        },
+      }[u.role] || { icon:'👤', label:'Usuário', cls:'' };
+      const statusDot = u.active
+        ? '<span class="ua-status-dot active" title="Ativo"></span>'
+        : '<span class="ua-status-dot inactive" title="Inativo"></span>';
+      const userFams = (allMembers||[]).filter(m => m.user_id === u.id);
+      const famBadges = userFams.length
+        ? userFams.slice(0,2).map(m => {
+            const ri = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role]||'👤';
+            const fn = m.family_name || famById[m.family_id] || '—';
+            return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt,rgba(42,96,73,.1));color:var(--accent);border:1px solid rgba(42,96,73,.18);border-radius:100px;padding:1px 8px;font-size:.62rem;font-weight:600">${ri} ${esc(fn)}</span>`;
+          }).join('') + (userFams.length > 2 ? `<span style="font-size:.65rem;color:var(--muted)">+${userFams.length-2}</span>` : '')
+        : '<span style="font-size:.72rem;color:var(--muted)">Sem família</span>';
+      const avatarHtml = u.avatar_url
+        ? `<img src="${esc(u.avatar_url)}" onerror="this.outerHTML='<span>${initials}</span>'">`
+        : `<span style="font-size:.75rem;font-weight:700;color:var(--accent)">${initials}</span>`;
+      const isSelf = u.id === currentUser?.id;
+      const selfBadge = isSelf ? '<span style="font-size:.6rem;background:var(--accent);color:#fff;border-radius:100px;padding:1px 7px;font-weight:700;margin-left:4px">Você</span>' : '';
+      return `<div class="ua-user-card" onclick="editUser('${u.id}')" style="cursor:pointer">
+        <div class="ua-user-avatar">${avatarHtml}</div>
+        <div class="ua-user-info">
+          <div class="ua-user-name">${esc(u.name||'—')}${selfBadge}</div>
+          <div class="ua-user-email">${esc(u.email)}</div>
+          <div class="ua-user-meta">
+            <span class="ua-role-badge ${roleConf.cls}">${roleConf.icon} ${roleConf.label}</span>
+            ${statusDot}
+            ${famBadges}
           </div>
-        </td>
-        <td>${roleBadge}</td>
-        <td style="font-size:.78rem;color:var(--text2)">
-          ${(() => {
-            const userFams = (allMembers||[]).filter(m => m.user_id === u.id);
-            if (!userFams.length) return '<span style="color:var(--muted)">—</span>';
-            return userFams.map(m => {
-              const roleIcon = {owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[m.member_role]||'👤';
-              const fName = m.family_name || famById[m.family_id] || m.family_id?.slice(0,8) || '—';
-              return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-lt);color:var(--accent);border-radius:4px;padding:1px 6px;font-size:.7rem;margin:1px">${roleIcon} ${esc(fName)}</span>`;
-            }).join('');
-          })()}
-        </td>
-        <td><span style="font-size:.75rem;color:${u.active?'var(--green)':'var(--red)'}">● ${u.active?'Ativo':'Inativo'}</span></td>
-        <td style="white-space:nowrap" onclick="event.stopPropagation()">
-          ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="toggleUserActive('${u.id}',${u.active})" style="padding:3px 8px;font-size:.73rem" title="${u.active?'Desativar':'Ativar'}">${u.active?'🚫':'✅'}</button>` : ''}
-          ${u.id !== currentUser?.id ? `<button class="btn btn-ghost btn-sm" onclick="resetUserPwd('${u.id}','${esc(u.name||u.email)}')" style="padding:3px 8px;font-size:.73rem" title="Redefinir senha">🔑</button>` : ''}
-        </td>
-      </tr>`;
+        </div>
+        <div class="ua-user-actions" onclick="event.stopPropagation()">
+          ${!isSelf ? `<button class="ua-icon-btn" onclick="toggleUserActive('${u.id}',${u.active})" title="${u.active?'Desativar':'Ativar'}">
+            ${u.active ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>'
+                       : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>'}
+          </button>` : ''}
+          ${!isSelf ? `<button class="ua-icon-btn" onclick="resetUserPwd('${u.id}','${esc(u.name||u.email)}')" title="Redefinir senha">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </button>` : ''}
+        </div>
+      </div>`;
     }).join('');
-    html += '</tbody></table></div>';
+    html += '</div>';
   }
   el.innerHTML = html;
 }
@@ -4083,14 +4075,23 @@ async function doResetUserPwd() {
     }
 
     if (!authUpdated) {
-      // Fallback: enviar link de redefinição por email
+      // Fallback final: sem Service Role Key nem RPC — atualizar apenas app_users
+      // e enviar link de reset para o usuário definir a própria senha no Supabase Auth
+      try {
+        const hash = await sha256(pwd1);
+        await sb.from('app_users').update({
+          password_hash: hash,
+          must_change_pwd: true
+        }).eq('id', userId);
+      } catch(_) {}
       const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
       const { error: resetErr } = await sb.auth.resetPasswordForEmail(targetEmail, { redirectTo });
-      if (resetErr) throw new Error('Sem Service Role Key configurada. Vá em Configurações → Service Role Key.');
-      // Sincronizar app_users mesmo assim
-      const hash = await sha256(pwd1);
-      await sb.from('app_users').update({ password_hash: hash, must_change_pwd: true }).eq('id', userId);
-      toast(`📧 Link de redefinição enviado para ${targetEmail}. Configure a Service Role Key para definir senhas diretamente.`, 'warning');
+      if (resetErr) {
+        // Mesmo sem o link, gravamos o hash — quando o usuário fizer login via app, a senha funciona
+        toast('⚠️ Senha atualizada no sistema interno. Para atualizar no Supabase Auth, configure a Service Role Key em Configurações → Dados → Service Role Key.', 'warning');
+      } else {
+        toast(`✅ Senha atualizada + link de redefinição enviado para ${targetEmail}.`, 'success');
+      }
       closeModal('resetPwdModal');
       await loadUsersList();
       return;
@@ -5450,7 +5451,19 @@ async function _mfmRenderMembros(famId) {
       const available = eligible.filter(u => !memberIds.has(u.id));
       addSel.innerHTML = '<option value="">— Selecionar —</option>' + available.map(u => `<option value="${u.id}">${esc(u.name || u.email)}</option>`).join('');
       const existRow = document.getElementById('mfmAddExistingRow');
+      const noUsersMsg = document.getElementById('mfmNoUsersMsg');
       if (existRow) existRow.style.display = available.length ? '' : 'none';
+      if (noUsersMsg) {
+        if (!available.length) {
+          const hasEligible = eligible.length > 0;
+          noUsersMsg.textContent = hasEligible
+            ? 'Todos os usuários elegíveis já são membros desta família.'
+            : 'Nenhum usuário disponível. Apenas usuários que fazem parte de famílias em comum com você podem ser adicionados desta forma. Use "Convidar por e-mail" para novos usuários.';
+          noUsersMsg.style.display = '';
+        } else {
+          noUsersMsg.style.display = 'none';
+        }
+      }
     } catch(_) {}
   }
   const invEl = document.getElementById('mfmInviteEmail');
@@ -5874,6 +5887,10 @@ async function mfmInvite() {
       _mfmMsg(`✓ ${email} já estava cadastrado e foi adicionado à família.`, 'success');
     } else {
       // New user — create pending record
+      // password_hash NOT NULL — gerar hash temporário para satisfazer constraint
+      // O usuário precisará definir senha após aceitar o convite
+      const tmpPwd  = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36) + Date.now().toString(36);
+      const tmpHash = await sha256(tmpPwd);
       const { data: newUser, error: insErr } = await sb.from('app_users').insert({
         email,
         name:            email.split('@')[0],
@@ -5882,6 +5899,7 @@ async function mfmInvite() {
         active:          false,
         family_id:       famId,
         must_change_pwd: true,
+        password_hash:   tmpHash,
       }).select().single();
       if (insErr) throw new Error(insErr.message);
 
