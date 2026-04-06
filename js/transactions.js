@@ -1072,6 +1072,7 @@ window._tagsRemove = _tagsRemove;
 window._tagsSetActive = _tagsSetActive;
 
 async function openTransactionModal(id=''){
+  try {
   // Ensure family composition is loaded so the member picker renders with actual members
   if (typeof loadFamilyComposition === 'function' && typeof _fmc !== 'undefined' && !_fmc.loaded) {
     await loadFamilyComposition().catch(() => {});
@@ -1092,16 +1093,25 @@ async function openTransactionModal(id=''){
         _onTxSourceAccountChange(filteredAccId);
       }
     }
+    // Popular objetivo — nova transação começa sem vínculo
+    if (typeof populateObjectiveSelect === 'function') {
+      populateObjectiveSelect('txObjectiveId', null).catch(() => {});
+    }
     openModal('txModal');
   if (typeof initTxFormMode === 'function') initTxFormMode();
   }
+  } catch(e) {
+    console.error('[openTransactionModal]', e);
+    toast('Erro ao abrir formulário: ' + e.message, 'error');
+  }
 }
 function resetTxModal(){
-  ['txId','txDesc','txMemo','txTags'].forEach(f=>document.getElementById(f).value='');
+  try {
+  ['txId','txDesc','txMemo','txTags'].forEach(f=>{ const el=document.getElementById(f); if(el) el.value=''; });
   _initTagsField([]); // Inicializar campo de tags vazio para nova transação
   const stEl=document.getElementById('txStatus'); if(stEl) stEl.value='confirmed';
   setAmtField('txAmount', 0);
-  document.getElementById('txTypeField').value='expense';
+  const _ttf=document.getElementById('txTypeField'); if(_ttf) _ttf.value='expense';
   _hideTxCurrencyPanel();
   setTxType('expense');clearPayeeField('tx');hideCatSuggestion();setCatPickerValue(null);
   // Always populate full currency list on open — user can pick currency before selecting account
@@ -1109,11 +1119,11 @@ function resetTxModal(){
   // Reset attachment — clear pending file AND all UI state
   window._txPendingFile = null;
   window._txPendingName = null;
-  document.getElementById('txAttachUrl').value = '';
-  document.getElementById('txAttachNameHidden').value = '';
+  const _attUrl=document.getElementById('txAttachUrl'); if(_attUrl) _attUrl.value='';
+  const _attNm=document.getElementById('txAttachNameHidden'); if(_attNm) _attNm.value='';
   try { document.getElementById('txAttachFile').value = ''; } catch(e) {}
-  document.getElementById('txAttachPreview').style.display = 'none';
-  document.getElementById('txAttachArea').style.display = '';
+  const _attPrev=document.getElementById('txAttachPreview'); if(_attPrev) _attPrev.style.display='none';
+  const _attArea=document.getElementById('txAttachArea'); if(_attArea) _attArea.style.display='';
   // Reset IA de recibo
   if (typeof resetReceiptAI === 'function') resetReceiptAI();
   const oldThumb = document.getElementById('txAttachThumb');
@@ -1121,8 +1131,8 @@ function resetTxModal(){
   // Reset IOF
   const iofCb = document.getElementById('txIsInternational');
   if(iofCb) iofCb.checked = false;
-  document.getElementById('txIofMirrorInfo').classList.remove('visible');
-  document.getElementById('txIofGroup').style.display='none';
+  document.getElementById('txIofMirrorInfo')?.classList.remove('visible');
+  const _iofGrp=document.getElementById('txIofGroup'); if(_iofGrp) _iofGrp.style.display='none';
   // Render family member multi-picker (cleared state)
   if (typeof renderFmcMultiPicker === 'function') {
     renderFmcMultiPicker('txFamilyMemberPicker', { selected: [] });
@@ -1131,6 +1141,10 @@ function resetTxModal(){
   _dismissAiPayeeSuggestion();
   _dismissAiAccountSuggestion();
   _dismissAiMemberSuggestion();
+  // Reset objetivo
+  const _objSel = document.getElementById('txObjectiveId');
+  if (_objSel) _objSel.value = '';
+  } catch(e) { console.error('[resetTxModal]', e); }
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
@@ -1171,6 +1185,10 @@ async function editTransaction(id){
   window._pendingAmortDebtId = null;
   const _dab = document.getElementById('debtAmortizationBanner');
   if (_dab) { _dab.style.display = 'none'; _dab.innerHTML = ''; }
+  // Carregar objetivo vinculado
+  if (typeof populateObjectiveSelect === 'function') {
+    populateObjectiveSelect('txObjectiveId', data.objective_id || null).catch(() => {});
+  }
   openModal('txModal');
   if (typeof initTxFormMode === 'function') initTxFormMode();
 }
@@ -1836,7 +1854,8 @@ async function saveTransaction(){
         return ids[0] || null;
       }
       return document.getElementById('txFamilyMember')?.value || null;
-    })()
+    })(),
+    objective_id: document.getElementById('txObjectiveId')?.value || null,
   };
   if(!data.date||!data.account_id){toast(t('tx.err_date_account'),'error');return;}
   // Beneficiário obrigatório para não-transferências
@@ -1992,6 +2011,10 @@ function _openTxAsCopy(orig) {
   setPayeeField(orig.payee_id || null, 'tx');
   document.getElementById('txMemo').value = orig.memo || '';
   document.getElementById('txTags').value = (orig.tags || []).join(', ');
+  // Copiar objetivo vinculado
+  if (typeof populateObjectiveSelect === 'function') {
+    populateObjectiveSelect('txObjectiveId', orig.objective_id || null).catch(() => {});
+  }
   _initTagsField(orig.tags || []);
   const stEl = document.getElementById('txStatus');
   if (stEl) stEl.value = orig.status || 'confirmed';
@@ -2398,6 +2421,10 @@ async function openTxDetail(id) {
   const amtClass  = isIncome ? 'amount-pos' : 'amount-neg';
   const typeLabel = t.is_card_payment ? '💳 Pgto. Cartão' : t.is_transfer ? '🔄 Transferência' : isIncome ? '📈 Receita' : '📉 Despesa';
   const catColor  = t.categories?.color || 'var(--muted)';
+  // Resolver nome do objetivo (se vinculado)
+  const _objName = t.objective_id
+    ? ((window._objList || []).find(o => o.id === t.objective_id)?.name || '🎯 Objetivo vinculado')
+    : null;
   const accColor  = t.accounts?.color   || 'var(--accent)';
 
   // ── Attachment block ─────────────────────────────────────────────────────
@@ -2461,6 +2488,7 @@ async function openTxDetail(id) {
   const metaRows = [];
   if (t.memo)         metaRows.push(['Memo', esc(t.memo)]);
   if (t.tags?.length) metaRows.push(['Tags', t.tags.map(tag => `<span class="badge badge-muted">${esc(tag)}</span>`).join(' ')]);
+  if (_objName)       metaRows.push(['🎯 Objetivo', `<span style="font-weight:700;color:var(--accent)">${esc(_objName)}</span>`]);
   if (t.family_composition) {
     const m = t.family_composition;
     const age = typeof _fmcCalcAge === 'function' ? _fmcCalcAge(m.birth_date) : null;

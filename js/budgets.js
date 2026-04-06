@@ -640,6 +640,30 @@ window.toggleBudgetPaused = toggleBudgetPaused;
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
+// ── Estado das abas principais de Orçamentos ─────────────────────────────────
+let _budgetMainTab = 'budgets'; // 'budgets' | 'objectives'
+
+function switchBudgetMainTab(tab) {
+  _budgetMainTab = tab;
+
+  // Atualizar botões
+  document.getElementById('budgetMainTabBudgets')?.classList.toggle('active', tab === 'budgets');
+  document.getElementById('budgetMainTabObjectives')?.classList.toggle('active', tab === 'objectives');
+
+  // Mostrar/ocultar painéis
+  const panelBudgets    = document.getElementById('budgetPanelBudgets');
+  const panelObjectives = document.getElementById('budgetPanelObjectives');
+  if (panelBudgets)    panelBudgets.style.display    = tab === 'budgets'    ? '' : 'none';
+  if (panelObjectives) panelObjectives.style.display  = tab === 'objectives' ? '' : 'none';
+
+  if (tab === 'objectives') {
+    // Carregar objetivos quando a aba é aberta
+    if (typeof renderObjectivesPage === 'function') {
+      renderObjectivesPage().catch(e => console.warn('[objectives]', e.message));
+    }
+  }
+}
+
 function initBudgetsPage() {
   const now     = new Date();
   const monthEl = document.getElementById('budgetMonth');
@@ -651,7 +675,9 @@ function initBudgetsPage() {
   // Resetar cache de schema para re-testar a cada visita (banco pode ter sido migrado)
   _dbHasBudgetType = null;
 
-  setBudgetView(_budgetView);
+  // Garantir painel correto visível
+  switchBudgetMainTab(_budgetMainTab);
+  if (_budgetMainTab === 'budgets') setBudgetView(_budgetView);
 }
 
 
@@ -673,3 +699,4 @@ window.openBudgetModal                     = openBudgetModal;
 window.saveBudget                          = saveBudget;
 window.setBudgetModalType                  = setBudgetModalType;
 window.setBudgetView                       = setBudgetView;
+window.switchBudgetMainTab                 = switchBudgetMainTab;
