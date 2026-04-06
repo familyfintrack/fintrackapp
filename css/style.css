@@ -19338,26 +19338,28 @@ section[data-page="transactions"] .content {
   justify-content: center;
   padding: 24px 16px;
 }
+/* Grid quadriculado — idêntico ao .hgrid da landing page */
 .lgn-screen::before {
   content: '';
   position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background-image:
-    linear-gradient(rgba(125,194,66,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125,194,66,.025) 1px, transparent 1px);
+    linear-gradient(rgba(125,194,66,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.07) 1px, transparent 1px);
   background-size: 48px 48px;
   animation: lgnGridFade 14s ease-in-out infinite alternate;
 }
-@keyframes lgnGridFade { from { opacity: .7; } to { opacity: 1; } }
+@keyframes lgnGridFade { from { opacity: .85; } to { opacity: 1; } }
+/* Radial gradients — idêntico ao .hbg da landing page */
 .lgn-screen::after {
   content: '';
   position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.32) 0%, transparent 60%),
-    radial-gradient(ellipse 70%  80% at 90% 75%, rgba(26,61,39,.28)  0%, transparent 55%),
+    radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.30) 0%, transparent 60%),
+    radial-gradient(ellipse 70%  80% at 90% 75%, rgba(26,61,39,.25)  0%, transparent 55%),
     radial-gradient(ellipse 55%  35% at 50%  -5%, rgba(125,194,66,.07) 0%, transparent 55%);
   animation: lgnBgPulse 14s ease-in-out infinite alternate;
 }
-@keyframes lgnBgPulse { from { opacity: .8; } to { opacity: 1; transform: scale(1.02); } }
+@keyframes lgnBgPulse { from { opacity: .8; } to { opacity: 1; transform: scale(1.03); } }
 .lgn-orb {
   position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0;
 }
@@ -19375,7 +19377,7 @@ section[data-page="transactions"] .content {
 }
 .lgn-orb3 {
   width: 260px; height: 260px;
-  background: rgba(26,61,39,.2);
+  background: rgba(26,61,39,.20);
   top: 40%; left: 55%;
   animation: lgnOrbDrift 20s ease-in-out infinite alternate;
 }
