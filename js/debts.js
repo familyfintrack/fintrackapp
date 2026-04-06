@@ -114,13 +114,32 @@ window.toggleFamilyDebts = toggleFamilyDebts;
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadDebts(force = false) {
   if (_dbt.loaded && !force) return;
-  const { data, error } = await famQ(
-    sb.from('debts')
-      .select(`*, payees(id,name), creditor:payees!debts_creditor_payee_id_fkey(id,name)`)
-  ).order('created_at', { ascending: false });
-  if (error) { console.error('[debts] load error:', error.message); return; }
-  _dbt.debts = data || [];
-  _dbt.loaded = true;
+  // Primary query with creditor join
+  try {
+    const { data, error } = await famQ(
+      sb.from('debts')
+        .select(`*, creditor:payees!debts_creditor_payee_id_fkey(id,name)`)
+    ).order('created_at', { ascending: false });
+    if (error) throw error;
+    _dbt.debts  = data || [];
+    _dbt.loaded = true;
+    return;
+  } catch(e) {
+    console.warn('[debts] primary query failed, trying fallback:', e.message);
+  }
+  // Fallback: simpler query without FK alias
+  try {
+    const { data, error } = await famQ(
+      sb.from('debts').select('*')
+    ).order('created_at', { ascending: false });
+    if (error) throw error;
+    _dbt.debts  = data || [];
+    _dbt.loaded = true;
+  } catch(e2) {
+    console.error('[debts] fallback query also failed:', e2.message);
+    _dbt.debts  = [];
+    _dbt.loaded = false;
+  }
 }
 
 async function loadDebtLedger(debtId) {
@@ -142,9 +161,42 @@ function _debtCurrentBalance(debt) {
 
 // ── Page init ─────────────────────────────────────────────────────────────────
 async function loadDebtsPage() {
-  if (!await isDebtsEnabled()) return;
-  await loadDebts(true);
-  renderDebtsPage();
+  const page = document.getElementById('page-debts');
+  const enabled = await isDebtsEnabled();
+
+  if (!enabled) {
+    // Show enable-module prompt instead of blank page
+    if (page) {
+      page.innerHTML = `
+        <div class="page-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:32px 20px;text-align:center">
+          <div style="font-size:3rem;margin-bottom:16px">💳</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:8px">Módulo de Dívidas</div>
+          <div style="font-size:.85rem;color:var(--muted);max-width:320px;line-height:1.6;margin-bottom:20px">
+            O módulo de dívidas não está ativado para sua família. Ative nas configurações para rastrear empréstimos, financiamentos e outras obrigações financeiras.
+          </div>
+          <button class="btn btn-primary" onclick="navigate('settings')">
+            ⚙️ Ir para Configurações
+          </button>
+        </div>`;
+    }
+    return;
+  }
+
+  try {
+    await loadDebts(true);
+    renderDebtsPage();
+  } catch(e) {
+    console.error('[debts] loadDebtsPage error:', e.message);
+    if (page) {
+      page.innerHTML = `
+        <div class="page-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:32px 20px;text-align:center">
+          <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+          <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:8px">Erro ao carregar dívidas</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:16px">${e.message || 'Erro desconhecido'}</div>
+          <button class="btn btn-primary btn-sm" onclick="loadDebtsPage()">↻ Tentar novamente</button>
+        </div>`;
+    }
+  }
 }
 window.loadDebtsPage = loadDebtsPage;
 
@@ -163,6 +215,24 @@ const active   = _dbt.debts.filter(d => d.status === 'active');
 
   page.innerHTML = `
 <div class="page-inner">
+
+  <!-- Intro banner -->
+  <div class="module-intro-banner" style="--intro-accent:#dc2626;--intro-accent-lt:rgba(220,38,38,.07)">
+    <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
+      <i class="mib-arr">▾</i> Recolher
+    </button>
+    <div class="module-intro-badge" style="background:rgba(220,38,38,.1);color:#dc2626">💳 Dívidas</div>
+    <div class="module-intro-body">
+      <h3 class="module-intro-headline">Controle total das suas dívidas e financiamentos</h3>
+      <p class="module-intro-text">Acompanhe empréstimos, financiamentos e qualquer obrigação financeira. Registre amortizações, atualize saldos por índices (SELIC, IPCA, CDI) e veja o progresso de quitação em tempo real.</p>
+      <div class="module-intro-chips">
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📉 Índices BCB</span>
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">🏦 Ledger completo</span>
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">💰 Amortizações</span>
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📊 Progresso visual</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Hero header -->
   <div class="dbt-hero">

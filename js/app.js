@@ -1290,3 +1290,44 @@ window.quickSetLang           = quickSetLang;
 window._i18nUpdateTopbarLabel = _i18nUpdateTopbarLabel;
 window._scrollTopAndHighlight = _scrollTopAndHighlight;
 window.getPeriodColor         = getPeriodColor;
+
+// ── Collapsible module intros ──────────────────────────────────────────────────
+// State persisted in localStorage per banner (keyed by badge text)
+
+function _introKey(banner) {
+  const badge = banner.querySelector('.module-intro-badge');
+  const text  = (badge ? badge.textContent : '').trim().replace(/\s+/g,'_').slice(0,30);
+  return 'intro_collapsed_' + text;
+}
+
+function _toggleModuleIntro(btn) {
+  const banner = btn.closest('.module-intro-banner');
+  if (!banner) return;
+  const collapsed = banner.classList.toggle('is-collapsed');
+  btn.innerHTML = collapsed
+    ? '<i class="mib-arr">▾</i> Expandir'
+    : '<i class="mib-arr">▾</i> Recolher';
+  try { localStorage.setItem(_introKey(banner), collapsed ? '1' : '0'); } catch(_) {}
+}
+window._toggleModuleIntro = _toggleModuleIntro;
+
+function _restoreModuleIntroStates() {
+  document.querySelectorAll('.module-intro-banner').forEach(banner => {
+    try {
+      const key = _introKey(banner);
+      if (localStorage.getItem(key) === '1') {
+        banner.classList.add('is-collapsed');
+        const btn = banner.querySelector('.module-intro-toggle');
+        if (btn) btn.innerHTML = '<i class="mib-arr">▾</i> Expandir';
+      }
+    } catch(_) {}
+  });
+}
+window._restoreModuleIntroStates = _restoreModuleIntroStates;
+
+// Restore on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _restoreModuleIntroStates);
+} else {
+  setTimeout(_restoreModuleIntroStates, 200);
+}
