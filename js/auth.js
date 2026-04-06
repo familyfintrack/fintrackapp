@@ -4576,18 +4576,17 @@ async function _initiate2FA(authData, appUserRow) {
 }
 
 function _show2FAScreen() {
-  // Esconder todos os formulários e elementos de cabeçalho do login
+  // Esconder formulários de login mas manter logo, título e subtítulo visíveis
   ['loginFormArea','registerFormArea','pendingApprovalArea',
    'forgotPwdArea','changePwdArea','recoveryPwdArea']
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
-  // Esconder logo, título e subtítulo para dar espaço ao 2FA
-  ['lgn-logo-wrap','lgn-form-title','lgn-form-sub'].forEach(cls => {
+  // Manter logo visível durante 2FA — esconder apenas título e subtítulo para dar espaço
+  ['lgn-form-title','lgn-form-sub'].forEach(cls => {
     document.querySelectorAll('.' + cls).forEach(el => { el.style.display = 'none'; });
   });
-  // Também esconder pelo id se houver
-  const logoImg = document.getElementById('loginLogoImg');
-  if (logoImg) logoImg.closest('.lgn-logo-wrap')?.style && (logoImg.closest('.lgn-logo-wrap').style.display = 'none');
+  // Garantir que o logo (lgn-logo-wrap) permaneça visível
+  document.querySelectorAll('.lgn-logo-wrap').forEach(el => { el.style.display = ''; });
 
   // Adicionar classe ao form-inner para reduzir padding
   const formInner = document.querySelector('.lgn-form-inner');
