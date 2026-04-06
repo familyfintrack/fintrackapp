@@ -23,7 +23,7 @@ function _auditInitMonthFilter() {
   for (let i = 0; i < 13; i++) {
     const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    const lbl = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const lbl = fmtMonthYear(d);
     opts.push(`<option value="${val}"${i === 0 ? ' selected' : ''}>${lbl.charAt(0).toUpperCase() + lbl.slice(1)}</option>`);
   }
   sel.innerHTML = opts.join('');
@@ -258,11 +258,11 @@ function _auditRowDesktop(r) {
   const typeIcon = { expense:'💸', income:'💰', transfer:'↔️', card_payment:'💳' }[sc?.type || ''] || '';
   const amount   = r.amount ?? 0;
   const createdAt = r.created_at
-    ? new Date(r.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+    ? fmtDatetime(r.created_at)
     : '—';
 
   return `<tr class="audit-tr-${r.status || 'confirmed'}">
-    <td style="white-space:nowrap;font-size:.82rem;color:var(--text2)">${fmtDate(r.scheduled_date || r.created_at)}</td>
+    <td style="white-space:nowrap;font-size:.82rem;color:var(--text2)">${r.scheduled_date ? fmtDate(r.scheduled_date) : fmtDatetime(r.created_at)}</td>
     <td style="max-width:220px">
       <div style="font-weight:600;font-size:.875rem;color:var(--text)">${typeIcon} ${esc(mainDesc)}</div>
       ${catName  ? `<div style="font-size:.72rem;color:var(--accent);margin-top:1px">📁 ${esc(catName)}</div>` : ''}
@@ -286,7 +286,7 @@ function _auditRowMobile(r) {
   const typeIcon = { expense:'💸', income:'💰', transfer:'↔️', card_payment:'💳' }[sc?.type || ''] || '';
   const amount   = r.amount ?? 0;
   const amtClass = amount >= 0 ? 'amount-pos' : 'amount-neg';
-  const date     = fmtDate(r.scheduled_date || r.created_at);
+  const date     = (r.scheduled_date ? fmtDate(r.scheduled_date) : fmtDatetime(r.created_at));
   const statusCls = r.status === 'pending' ? 'aud-card-pending'
                   : r.status === 'error'   ? 'aud-card-error' : '';
 

@@ -411,7 +411,7 @@ async function _txAiGeminiExtract(text, apiKey) {
   const payees    = (window.state?.payees    || []).slice(0, 80).map(p => p.name).join(', ');
   const cats      = (window.state?.categories|| []).filter(c => c.type !== 'transferencia').slice(0, 80).map(c => c.name).join(', ');
   const members   = (typeof getFamilyMembers === 'function' ? getFamilyMembers() : []).map(m => m.name).join(', ');
-  const today     = new Date().toISOString().slice(0, 10);
+  const today     = todayISO();
 
   const prompt = `Você é um assistente financeiro para o app Family FinTrack. Extraia os dados da transação descrita pelo usuário.
 

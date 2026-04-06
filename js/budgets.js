@@ -90,7 +90,7 @@ function _getSelectedPeriod() {
     const y = parseInt(document.getElementById('budgetYear')?.value) || new Date().getFullYear();
     return { year: y };
   }
-  const mv = document.getElementById('budgetMonth')?.value || new Date().toISOString().slice(0, 7);
+  const mv = document.getElementById('budgetMonth')?.value || todayMonthISO();
   const [y, m] = mv.split('-');
   return { year: parseInt(y), month: parseInt(m), monthStr: mv };
 }
@@ -179,7 +179,7 @@ async function loadBudgets() {
   // 4. Estado vazio
   if (!_budgetCache.length) {
     const lbl = _budgetView === 'monthly'
-      ? new Date(period.year, period.month - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      ? fmtMonthYear(new Date(period.year, period.month - 1, 1))
       : String(period.year);
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="es-icon">🎯</div>
@@ -427,7 +427,7 @@ async function loadBudgetHistory() {
     const budget = budgetMap[ms] || 0;
     const pct    = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
     const over   = budget > 0 && spent > budget;
-    const label  = new Date(ms + 'T12:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    const label  = fmtMonthShort(new Date(ms + 'T12:00'));
     const isCur  = ms === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
 
     if (budget > 0) { totalBudget += budget; totalSpent += spent; }
@@ -481,7 +481,7 @@ function openBudgetModal(id = '') {
   if (monthEl) {
     monthEl.value = existing?.month
       ? existing.month.slice(0, 7)
-      : (period.monthStr || now.toISOString().slice(0, 7));
+      : (period.monthStr || todayMonthISO());
   }
 
   // Ano — o select já foi populado em initBudgetsPage
@@ -698,7 +698,7 @@ function switchBudgetMainTab(tab) {
 function initBudgetsPage() {
   const now     = new Date();
   const monthEl = document.getElementById('budgetMonth');
-  if (monthEl && !monthEl.value) monthEl.value = now.toISOString().slice(0, 7);
+  if (monthEl && !monthEl.value) monthEl.value = todayMonthISO();
 
   _populateYearSelectors();
   _populateHistCat();

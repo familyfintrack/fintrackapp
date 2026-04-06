@@ -513,7 +513,9 @@ function _amtFieldInput(fieldId) {
   el.dataset.cents = String(cents);
   _amtRender(el, cents);
 }
-function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
+// fmtDate, fmtDatetime, fmtTime, fmtRelDate, todayISO, nowLocalISO, localISOTimestamp
+// são definidos em date.js (carregado antes). Esta linha mantém compat. se date.js falhar.
+function fmtDate(d){if(window.FinTrackDateUtils?.fmtDate)return window.FinTrackDateUtils.fmtDate(d);if(!d)return'—';const[y,m,day]=(d+'').split('T')[0].split('-');return`${day}/${m}/${y}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 

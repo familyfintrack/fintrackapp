@@ -522,7 +522,7 @@ async function openCategoryHistory(catId, catName) {
 
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
-  const sinceStr = since.toISOString().slice(0, 10);
+  const sinceStr = dateToLocalISO(since);
   const childIds = state.categories.filter(c => c.parent_id === catId).map(c => c.id);
   const allIds = [catId, ...childIds];
 

@@ -173,7 +173,7 @@ async function saveModuleFlag(key, value, famId) {
     try {
       const col = 'module_' + modKey; // ex: "module_debts"
       const { error } = await sb.from('family_preferences')
-        .upsert({ family_id: famId, [col]: !!value, updated_at: new Date().toISOString() },
+        .upsert({ family_id: famId, [col]: !!value, updated_at: localISOTimestamp() },
                  { onConflict: 'family_id' });
       if (!error) {
         // Também atualiza o cache do family_prefs service
@@ -338,7 +338,7 @@ async function testEmailJSConnection() {
       from_name:      'J.F. Family FinTrack',
       subject:        'FinTrack — Teste de conexão ✅',
       message:        'Este é um e-mail de teste enviado pelo JF Family FinTrack para confirmar que a configuração do EmailJS está correta. Se recebeu este e-mail, está tudo funcionando!',
-      report_period:  'Teste — ' + new Date().toLocaleDateString('pt-BR'),
+      report_period:  'Teste — ' + fmtDate(new Date()),
       report_view:    'Teste de conexão',
       report_income:  'R$ 1.000,00',
       report_expense: 'R$ 800,00',
@@ -796,7 +796,7 @@ async function setUserPreference(screen, key, value){
       user_id: currentUser.id,
       screen,
       preferences: prefs,
-      created_at: new Date().toISOString()
+      created_at: localISOTimestamp()
     });
   }catch(e){
     // ignore if table missing / RLS blocks
@@ -1462,9 +1462,9 @@ async function _loadNormalizeNamesInfo() {
     const val = await getAppSetting('normalize_names_last_run', null);
     if (val && typeof val === 'object' && val.ran_at) {
       const d = new Date(val.ran_at);
-      const fmt = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })
+      const fmt = fmtDate(d)
                 + ' às '
-                + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+                + fmtTime(d);
       if (lastRunEl) {
         lastRunEl.style.display = '';
         lastRunEl.innerHTML =
@@ -1852,7 +1852,7 @@ function _telRenderDailyChart(rows, days) {
   const buckets = {};
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    buckets[d.toISOString().slice(0,10)] = 0;
+    buckets[dateToLocalISO(d)] = 0;
   }
   rows.forEach(r => { const day = (r.ts||'').slice(0,10); if (day in buckets) buckets[day]++; });
 
@@ -2412,7 +2412,7 @@ window._telDelSetQuick = function(daysBack) {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
   const dateEl = document.getElementById('telDelBeforeDate');
-  if (dateEl) dateEl.value = d.toISOString().slice(0, 10);
+  if (dateEl) dateEl.value = dateToLocalISO(d);
   _telDelUpdatePreview();
 };
 
@@ -2696,7 +2696,7 @@ async function _telRenderLandingContent(el, cachedRows) {
   const dailyMap = {};
   for (let i=13; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    dailyMap[d.toISOString().slice(0,10)] = 0;
+    dailyMap[dateToLocalISO(d)] = 0;
   }
   landingRows.filter(r => r.event_type === 'page_view').forEach(r => {
     const day = (r.ts||'').slice(0,10);

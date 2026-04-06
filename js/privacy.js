@@ -34,7 +34,7 @@ async function _prvRestoreFormState() {
     const prev = await getAppSetting('data_deletion_request', null);
     if (prev) {
       _prvShowStatus(
-        `✅ Solicitação de exclusão enviada em ${new Date(prev).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' })}. Prazo: até 15 dias úteis.`,
+        `✅ Solicitação de exclusão enviada em ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(prev))}. Prazo: até 15 dias úteis.`,
         'success'
       );
       const btn = document.getElementById('privDeleteSubmit');
@@ -75,7 +75,7 @@ async function _privSubmitDeletion() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
 
   try {
-    const ts        = new Date().toISOString();
+    const ts        = localISOTimestamp();
     const userName  = currentUser?.name || 'Usuário';
     const familyId  = typeof famId === 'function' ? famId() : (currentUser?.family_id || '');
     const familyName = currentUser?.families?.find(f => f.id === familyId)?.name || familyId;
@@ -111,7 +111,7 @@ async function _privSubmitDeletion() {
           to_email:   adminEmail,
           subject:    `[Family FinTrack] Solicitação de Exclusão de Dados — ${email}`,
           from_name:  'Family FinTrack — Solicitação de Privacidade',
-          message:    `Solicitação de exclusão recebida:\n\nUsuário: ${userName}\nE-mail: ${email}\nFamília: ${familyName} (${familyId})\nMotivo: ${reasonLabel}\nData: ${new Date(ts).toLocaleString('pt-BR')}\n\nPrazo LGPD: 15 dias úteis a partir desta data.\nPor favor, processe a exclusão completa dos dados desta família no banco Supabase.`,
+          message:    `Solicitação de exclusão recebida:\n\nUsuário: ${userName}\nE-mail: ${email}\nFamília: ${familyName} (${familyId})\nMotivo: ${reasonLabel}\nData: ${fmtDatetime(ts)}\n\nPrazo LGPD: 15 dias úteis a partir desta data.\nPor favor, processe a exclusão completa dos dados desta família no banco Supabase.`,
           report_content: `
             <h2 style="color:#dc2626">⚠️ Solicitação de Exclusão de Dados (LGPD)</h2>
             <table style="border-collapse:collapse;width:100%;font-size:14px">
@@ -119,8 +119,8 @@ async function _privSubmitDeletion() {
               <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">E-mail</td><td style="padding:8px;border:1px solid #e5e7eb">${email}</td></tr>
               <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Família</td><td style="padding:8px;border:1px solid #e5e7eb">${familyName}</td></tr>
               <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Motivo</td><td style="padding:8px;border:1px solid #e5e7eb">${reasonLabel}</td></tr>
-              <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Data</td><td style="padding:8px;border:1px solid #e5e7eb">${new Date(ts).toLocaleString('pt-BR')}</td></tr>
-              <tr style="background:#fef2f2"><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Prazo LGPD</td><td style="padding:8px;border:1px solid #e5e7eb;color:#dc2626;font-weight:700">15 dias úteis a partir de ${new Date(ts).toLocaleDateString('pt-BR')}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Data</td><td style="padding:8px;border:1px solid #e5e7eb">${fmtDatetime(ts)}</td></tr>
+              <tr style="background:#fef2f2"><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Prazo LGPD</td><td style="padding:8px;border:1px solid #e5e7eb;color:#dc2626;font-weight:700">15 dias úteis a partir de ${fmtDate(ts)}</td></tr>
             </table>
             <p style="margin-top:16px;color:#6b7280;font-size:12px">Esta solicitação foi registrada automaticamente pelo Family FinTrack em conformidade com a LGPD (Art. 18).</p>`,
         });

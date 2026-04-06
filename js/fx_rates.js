@@ -214,7 +214,7 @@ async function _fetchRates(currencies) {
     if (!newRates[cur]) delete newRates[cur]; // remove se não obteve taxa
   });
   window._fxRates   = newRates;
-  window._fxRatesTs = new Date().toISOString();
+  window._fxRatesTs = localISOTimestamp();
 
   // Salvar no localStorage imediatamente como fallback offline
   try {

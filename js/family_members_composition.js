@@ -503,7 +503,7 @@ async function openFamilyMemberForm(memberId = null, familyId = null) {
             <div class="form-group full" id="fmcBirthDateGroup">
               <label>Data de Nascimento <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
               <input type="date" id="fmcBirthDate" value="${m?.birth_date ? m.birth_date.slice(0,10) : ''}"
-                style="width:100%" max="${new Date().toISOString().slice(0,10)}">
+                style="width:100%" max="${todayISO()}">
             </div>
             <div class="form-group">
               <label>Emoji / Avatar <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>

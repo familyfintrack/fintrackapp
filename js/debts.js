@@ -564,7 +564,7 @@ function openDebtModal(debtId = null) {
     <div class="form-group">
       <label>${t('dbt.start_date')} *</label>
       <input class="form-input" id="debtFormStartDate" type="date"
-        value="${debt?.start_date || new Date().toISOString().slice(0,10)}">
+        value="${debt?.start_date || todayISO()}">
     </div>
     <div class="form-group">
       <label>${t('ui.status')}</label>
@@ -883,7 +883,7 @@ async function saveDebt() {
     start_date: startDate, status, adjustment_type: indexType, periodicity: period,
     fixed_rate: indexType === 'fixed' ? fixedRate : null,
     contract_ref: contractRef || null, notes: notes || null,
-    family_id: famId(), updated_at: new Date().toISOString(),
+    family_id: famId(), updated_at: localISOTimestamp(),
   };
 
   let error, result;
@@ -921,7 +921,7 @@ async function saveDebt() {
         resulting_balance: amount,
         source_type: 'manual',
         family_id: famId(),
-        created_at: new Date().toISOString(),
+        created_at: localISOTimestamp(),
       });
       // Ensure "Amortização de Dívida" category exists for this family
       await _ensureAmortizacaoCategory();
@@ -952,7 +952,7 @@ function _openDebtManualEntry(debtId) {
 </div>
 <div class="form-group">
   <label>${t('ui.date')}</label>
-  <input class="form-input" type="date" id="debtManualDate" value="${new Date().toISOString().slice(0,10)}">
+  <input class="form-input" type="date" id="debtManualDate" value="${todayISO()}">
 </div>
 <div class="form-group">
   <label>${t('ui.amount')} ${d => d.entry_type==='amortization'?'(positivo = reduz dívida)':''}</label>
@@ -994,7 +994,7 @@ async function saveDebtManualEntry() {
     description: desc || _dl(DEBT_ENTRY_TYPES.find(t=>t.code===type)?.label||{pt:type}),
     amount: delta, rate_applied: rate,
     previous_balance: prevBalance, resulting_balance: newBalance,
-    source_type: 'manual', family_id: famId(), created_at: new Date().toISOString(),
+    source_type: 'manual', family_id: famId(), created_at: localISOTimestamp(),
   });
   if (ledgerErr) { toast(t('dbt.err_save') + ': ' + ledgerErr.message, 'error'); return; }
 
@@ -1002,7 +1002,7 @@ async function saveDebtManualEntry() {
   await sb.from('debts').update({
     current_balance: newBalance,
     status: newBalance <= 0 ? 'settled' : debt.status,
-    updated_at: new Date().toISOString(),
+    updated_at: localISOTimestamp(),
   }).eq('id', debtId);
 
   toast(t('dbt.entry_saved'), 'success');
@@ -1022,13 +1022,13 @@ async function _settleDebt(debtId) {
 
   if (prevBalance > 0) {
     await sb.from('debt_ledger').insert({
-      debt_id: debtId, entry_date: new Date().toISOString().slice(0,10),
+      debt_id: debtId, entry_date: todayISO(),
       entry_type: 'settlement', description: t('dbt.entry_settlement'),
       amount: -prevBalance, previous_balance: prevBalance, resulting_balance: 0,
-      source_type: 'manual', family_id: famId(), created_at: new Date().toISOString(),
+      source_type: 'manual', family_id: famId(), created_at: localISOTimestamp(),
     });
   }
-  await sb.from('debts').update({ status: 'settled', current_balance: 0, updated_at: new Date().toISOString() }).eq('id', debtId);
+  await sb.from('debts').update({ status: 'settled', current_balance: 0, updated_at: localISOTimestamp() }).eq('id', debtId);
   toast(t('dbt.settled_toast'), 'success');
   closeModal('debtDetailModal');
   await loadDebts(true);
@@ -1217,7 +1217,7 @@ async function runDebtUpdateJob(manual = true) {
     if (active.length === 0) { toast(t('dbt.no_active'), 'info'); return; }
 
     let updated = 0, failed = 0;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayISO();
     const competencePeriod = today.slice(0, 7); // YYYY-MM
 
     for (const debt of active) {
@@ -1244,9 +1244,9 @@ async function runDebtUpdateJob(manual = true) {
           amount: interest, rate_applied: monthlyRate * 100,
           previous_balance: prevBalance, resulting_balance: newBalance,
           competence_period: competencePeriod, source_type: 'auto',
-          family_id: famId(), created_at: new Date().toISOString(),
+          family_id: famId(), created_at: localISOTimestamp(),
         });
-        await sb.from('debts').update({ current_balance: newBalance, updated_at: new Date().toISOString() }).eq('id', debt.id);
+        await sb.from('debts').update({ current_balance: newBalance, updated_at: localISOTimestamp() }).eq('id', debt.id);
         updated++;
         continue;
       }
@@ -1277,9 +1277,9 @@ async function runDebtUpdateJob(manual = true) {
         previous_balance: prevBalance, resulting_balance: newBalance,
         competence_period: competencePeriod,
         source_type: 'bcb_api',
-        family_id: famId(), created_at: new Date().toISOString(),
+        family_id: famId(), created_at: localISOTimestamp(),
       });
-      await sb.from('debts').update({ current_balance: newBalance, updated_at: new Date().toISOString() }).eq('id', debt.id);
+      await sb.from('debts').update({ current_balance: newBalance, updated_at: localISOTimestamp() }).eq('id', debt.id);
       updated++;
     }
 
@@ -1467,19 +1467,19 @@ async function postDebtAmortizationEntry(txAmount, txDate, txId) {
   const newBalance  = Math.max(0, prevBalance - amortAmount);
 
   await sb.from('debt_ledger').insert({
-    debt_id: debtId, entry_date: txDate || new Date().toISOString().slice(0,10),
+    debt_id: debtId, entry_date: txDate || todayISO(),
     entry_type: 'amortization',
     description: t('dbt.entry_amortization'),
     amount: -amortAmount, rate_applied: null,
     previous_balance: prevBalance, resulting_balance: newBalance,
     source_type: 'transaction', source_reference_id: txId || null,
-    family_id: famId(), created_at: new Date().toISOString(),
+    family_id: famId(), created_at: localISOTimestamp(),
   });
 
   await sb.from('debts').update({
     current_balance: newBalance,
     status: newBalance <= 0.01 ? 'settled' : debt.status,
-    updated_at: new Date().toISOString(),
+    updated_at: localISOTimestamp(),
   }).eq('id', debtId);
 
   _dbt.loaded = false; // invalidate cache

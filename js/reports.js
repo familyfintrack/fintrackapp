@@ -297,24 +297,24 @@ function getRptDateRange() {
   const now = new Date();
   let from, to;
   if(p === 'month') {
-    const ym = document.getElementById('reportMonth')?.value || now.toISOString().slice(0,7);
+    const ym = document.getElementById('reportMonth')?.value || todayMonthISO();
     const [y,m] = ym.split('-');
     from = `${y}-${m}-01`;
     to   = `${y}-${m}-${String(new Date(+y,+m,0).getDate()).padStart(2,'0')}`;
   } else if(p === 'custom') {
-    from = document.getElementById('rptFrom')?.value || now.toISOString().slice(0,10);
-    to   = document.getElementById('rptTo')?.value   || now.toISOString().slice(0,10);
+    from = document.getElementById('rptFrom')?.value || todayISO();
+    to   = document.getElementById('rptTo')?.value   || todayISO();
   } else if(p === 'quarter') {
     const q = Math.floor(now.getMonth()/3);
-    from = new Date(now.getFullYear(),q*3,1).toISOString().slice(0,10);
-    to   = new Date(now.getFullYear(),q*3+3,0).toISOString().slice(0,10);
+    from = dateToLocalISO(new Date(now.getFullYear(),q*3,1));
+    to   = dateToLocalISO(new Date(now.getFullYear(),q*3+3,0));
   } else if(p === 'year') {
     from = `${now.getFullYear()}-01-01`;
     to   = `${now.getFullYear()}-12-31`;
   } else { // last12
     const d = new Date(); d.setMonth(d.getMonth()-11); d.setDate(1);
-    from = d.toISOString().slice(0,10);
-    to   = now.toISOString().slice(0,10);
+    from = dateToLocalISO(d);
+    to   = todayISO();
   }
   return {from, to};
 }
@@ -806,10 +806,10 @@ function setReportView(view) {
   if (view === 'objectives') _rptObjectivesInit();
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
-      const today=new Date().toISOString().slice(0,10);
+      const today=todayISO();
       const in3=new Date();in3.setMonth(in3.getMonth()+3);
       document.getElementById('forecastFrom').value=today;
-      document.getElementById('forecastTo').value=in3.toISOString().slice(0,10);
+      document.getElementById('forecastTo').value=dateToLocalISO(in3);
     }
     // Init picker then load (dependencies handled inside loadForecast)
     if (typeof _initForecastPicker === 'function') {
@@ -997,7 +997,7 @@ function _pdfHeader(doc, from, to, viewLabel, familyName) {
   // Right side: date + family
   doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 220, 200);
-  doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), W - 12, 28, { align: 'right' });
+  doc.text('Gerado em ' + fmtDatetime(new Date()), W - 12, 28, { align: 'right' });
   if (familyName) {
     doc.text(familyName, W - 12, 35, { align: 'right' });
   }
@@ -1414,7 +1414,7 @@ function _pdfFooter(doc, from, to) {
     doc.line(0, H - 11, W, H - 11);
     doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...PDF_MUTED);
     doc.text('Family FinTrack  ·  Documento Confidencial', 14, H - 4);
-    doc.text(new Date().toLocaleDateString('pt-BR'), W / 2, H - 4, { align: 'center' });
+    doc.text(fmtDate(new Date()), W / 2, H - 4, { align: 'center' });
     doc.text(`Página ${i} / ${pages}`, W - 14, H - 4, { align: 'right' });
   }
 }
@@ -1690,7 +1690,7 @@ function printReport() {
         <div style="font-size:11px;opacity:.8;margin-top:6px">
           Período: ${fmtDate(from)} até ${fmtDate(to)}
           &nbsp;·&nbsp; Filtros: ${_getActiveFiltersLabel()}
-          &nbsp;·&nbsp; Gerado: ${new Date().toLocaleString('pt-BR')}
+          &nbsp;·&nbsp; Gerado: ${fmtDatetime(new Date())}
         </div>
       </div>
       <div style="background:#f0f7f2;padding:16px 24px">
@@ -1765,7 +1765,7 @@ function _buildReportEmailHTML(txs, from, to, viewLabel, filters, pdfUrl) {
   const savingsRate = totInc > 0 ? ((totInc - totExp) / totInc * 100) : 0;
 
   const periodLabel = fmtDate(from) + ' a ' + fmtDate(to);
-  const generatedAt = new Date().toLocaleString('pt-BR');
+  const generatedAt = fmtDatetime(new Date());
   const familyName  = currentUser?.name || currentUser?.email || 'Família';
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2214,11 +2214,11 @@ async function _rbtLoad() {
   // Init controls with today's month if empty
   const monthEl = document.getElementById('rbtMonth');
   const yearEl  = document.getElementById('rbtYear');
-  if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
+  if (monthEl && !monthEl.value) monthEl.value = todayMonthISO();
   if (yearEl  && !yearEl.value)  yearEl.value  = new Date().getFullYear();
 
   const period = _rbtType === 'monthly'
-    ? { type: 'monthly', month: monthEl?.value || new Date().toISOString().slice(0,7) }
+    ? { type: 'monthly', month: monthEl?.value || todayMonthISO() }
     : { type: 'annual',  year: parseInt(yearEl?.value) || new Date().getFullYear() };
 
   grid.innerHTML = '<div class="empty-state"><span>⏳</span></div>';
@@ -2229,7 +2229,7 @@ async function _rbtLoad() {
   let budgets = null, be = null;
 
   if (period.type === 'monthly') {
-    const monthStr = (period.month || new Date().toISOString().slice(0,7)) + '-01';
+    const monthStr = (period.month || todayMonthISO()) + '-01';
     // Try with budget_type filter first (new schema)
     if (hasNew) {
       ({ data: budgets, error: be } = await famQ(
@@ -2367,7 +2367,7 @@ async function _rbtLoad() {
     const barW     = Math.min(100, pct).toFixed(1);
     const pctLabel = pct > 999 ? '>999%' : pct.toFixed(0) + '%';
     // Projection for current month
-    const isCurrentMonth = period.type === 'monthly' && period.month === now.toISOString().slice(0,7);
+    const isCurrentMonth = period.type === 'monthly' && period.month === todayMonthISO();
     const dailyAvg = daysDone > 0 ? used / daysDone : 0;
     const projected = dailyAvg * daysInM;
     const showProj  = isCurrentMonth && !over && limit > 0 && projected > limit * 0.85;
@@ -2610,7 +2610,7 @@ async function _rbtGetBudgetContext() {
   if (!grid || !grid.querySelector('.rbt-card')) return null;
   // Re-run quietly and return data
   const period = _rbtType === 'monthly'
-    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || new Date().toISOString().slice(0,7) }
+    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || todayMonthISO() }
     : { type:'annual',  year: parseInt(document.getElementById('rbtYear')?.value) || new Date().getFullYear() };
 
   const hasNew = await _rbtCheckSchema();
@@ -2906,7 +2906,7 @@ async function _rptObjectivesInit() {
   if (from && !from.value) {
     const now = new Date();
     from.value = `${now.getFullYear()}-01-01`;
-    to.value   = now.toISOString().slice(0,10);
+    to.value   = todayISO();
   }
 }
 
@@ -2982,7 +2982,7 @@ async function _rptObjectivesLoad() {
     const months = Object.keys(byMonth).sort();
 
     // -- Status do objetivo
-    const today = new Date().toISOString().slice(0,10);
+    const today = todayISO();
     const isActive  = obj.status === 'active' && (!obj.end_date || obj.end_date >= today);
     const isExpired = obj.end_date && today > obj.end_date && obj.status !== 'closed';
     const statusLabel = obj.status === 'closed' ? 'Encerrado' : isExpired ? 'Expirado' : isActive ? 'Ativo' : 'Aguardando';

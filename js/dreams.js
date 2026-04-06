@@ -355,7 +355,7 @@ function _renderDreamCard(d) {
       ${months !== null ? `<span class="drm-meta-chip">📅 ${months > 0 ? months + ' meses' : 'Este mês!'}</span>` : ''}
       ${monthly !== null && monthly > 0 && !privacy ? `<span class="drm-meta-chip accent">💰 ${_fmtCurrency(monthly, d.currency)}/mês</span>` : ''}
       ${items.length ? `<span class="drm-meta-chip">${items.length} componentes</span>` : ''}
-      ${d.target_date ? `<span class="drm-meta-chip">🎯 ${new Date(d.target_date).toLocaleDateString('pt-BR', {month:'short',year:'numeric'})}</span>` : ''}
+      ${d.target_date ? `<span class="drm-meta-chip">🎯 ${fmtMonthShort(d.target_date)}</span>` : ''}
     </div>
 
     ${d.description ? `<div class="drm-card-desc">${_esc(d.description).slice(0,90)}${d.description.length > 90 ? '…' : ''}</div>` : ''}
@@ -535,7 +535,7 @@ function openDreamDetail(dreamId) {
           <div class="drm-contribs-list">
             ${(d._contributions || []).slice(-5).reverse().map(c => `
             <div class="drm-contrib-row">
-              <span class="drm-contrib-date">${new Date(c.date || c.created_at).toLocaleDateString('pt-BR')}</span>
+              <span class="drm-contrib-date">${fmtDate(c.date || c.created_at)}</span>
               <span class="drm-contrib-amount">${privacy ? '••••' : _fmtCurrency(parseFloat(c.amount)||0, d.currency)}</span>
               ${c.type === 'manual' ? '<span class="drm-contrib-badge">manual</span>' : '<span class="drm-contrib-badge drm-contrib-badge--tx">transação</span>'}
             </div>`).join('')}
@@ -601,7 +601,7 @@ window.openDreamMenu = openDreamMenu;
 
 async function changeDreamStatus(dreamId, newStatus) {
   try {
-    const { error } = await sb.from('dreams').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', dreamId);
+    const { error } = await sb.from('dreams').update({ status: newStatus, updated_at: localISOTimestamp() }).eq('id', dreamId);
     if (error) throw error;
     const d = _drm.dreams.find(x => x.id === dreamId);
     if (d) d.status = newStatus;
@@ -634,7 +634,7 @@ function openContributeModal(dreamId) {
   const d = _drm.dreams.find(x => x.id === dreamId);
   if (!d) return;
   document.querySelectorAll('#contributeModal').forEach(m => m.remove());
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   const html = `
   <div id="contributeModal" class="modal-overlay active" onclick="if(event.target===this)document.getElementById('contributeModal').remove()">
@@ -686,7 +686,7 @@ async function saveContribution(dreamId) {
       date: date,
       type: 'manual',
       notes: note || null,
-      created_at: new Date().toISOString(),
+      created_at: localISOTimestamp(),
     }).select().single();
     if (error) throw error;
 
@@ -788,10 +788,10 @@ RETORNE EXATAMENTE ESTE JSON (em português brasileiro):
     const result = JSON.parse(clean);
 
     // Save to simulation_json
-    const simData = { ai_summary: result.resumo, ai_full: result, generated_at: new Date().toISOString() };
+    const simData = { ai_summary: result.resumo, ai_full: result, generated_at: localISOTimestamp() };
     await sb.from('dreams').update({
       simulation_json: JSON.stringify(simData),
-      updated_at: new Date().toISOString(),
+      updated_at: localISOTimestamp(),
     }).eq('id', dreamId);
     const dm = _drm.dreams.find(x => x.id === dreamId);
     if (dm) dm.simulation_json = simData;
@@ -828,7 +828,7 @@ function _renderAiResult(result, currency) {
     ${result.prazo_realista_meses ? `<div class="drm-ai-meta">Prazo realista sugerido: <strong>${result.prazo_realista_meses} meses</strong></div>` : ''}
     ${result.economia_sugerida_mensal ? `<div class="drm-ai-meta">Economia mensal sugerida: <strong>${_fmtCurrency(result.economia_sugerida_mensal, currency)}</strong></div>` : ''}
     ${result.motivacao ? `<div class="drm-ai-motivacao">✨ ${result.motivacao}</div>` : ''}
-    <div class="drm-ai-footer">Gerado por IA · ${new Date().toLocaleDateString('pt-BR')}</div>
+    <div class="drm-ai-footer">Gerado por IA · ${fmtDate(new Date())}</div>
   </div>`;
 }
 
@@ -1001,7 +1001,7 @@ JSON esperado (sem markdown, sem texto adicional):
       if (result.prazo_meses_sugerido) {
         const d = new Date();
         d.setMonth(d.getMonth() + result.prazo_meses_sugerido);
-        _drm.wizard.data.target_date = d.toISOString().slice(0, 10);
+        _drm.wizard.data.target_date = dateToLocalISO(d);
       }
     }
 
@@ -1392,7 +1392,7 @@ function _wizStep4() {
         </div>
         ${date ? `<div class="drm-review-item">
           <span class="drm-review-label">Prazo</span>
-          <span class="drm-review-value">${new Date(date).toLocaleDateString('pt-BR', {month:'long',year:'numeric'})}</span>
+          <span class="drm-review-value">${fmtMonthYear(date)}</span>
         </div>` : ''}
         ${months !== null ? `<div class="drm-review-item">
           <span class="drm-review-label">Meses</span>
@@ -1732,7 +1732,7 @@ async function saveDream() {
     priority:    w.data.priority || 1,
     status:      w.data.status || 'active',
     ai_generated_fields_json: w.data.ai_generated_fields_json ? JSON.stringify(w.data.ai_generated_fields_json) : null,
-    updated_at:  new Date().toISOString(),
+    updated_at:  localISOTimestamp(),
   };
 
   try {
@@ -1747,7 +1747,7 @@ async function saveDream() {
     } else {
       const { data, error } = await sb.from('dreams').insert({
         ...dreamPayload,
-        created_at: new Date().toISOString(),
+        created_at: localISOTimestamp(),
       }).select().single();
       if (error) throw error;
       dreamId = data.id;
@@ -1769,7 +1769,7 @@ async function saveDream() {
         name: it.name.trim(),
         estimated_amount: parseFloat(it.estimated_amount) || 0,
         is_ai_suggested: !!it.is_ai_suggested,
-        created_at: new Date().toISOString(),
+        created_at: localISOTimestamp(),
       }));
       if (itemsPayload.length) {
         const { error: itemErr } = await sb.from('dream_items').insert(itemsPayload);

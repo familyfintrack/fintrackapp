@@ -79,10 +79,10 @@ async function loadDashboardRecent(memberIds = null){
     return;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayISO();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const yesterdayStr = dateToLocalISO(yesterday);
   const byDate = {};
   items.forEach(t => { (byDate[t.date] ||= []).push(t); });
 
@@ -1091,7 +1091,7 @@ async function loadDashboardAutoRunSummary(){
   const el = document.getElementById('dashAutoRunSummary');
   if(!el || !sb) return;
   try{
-    const today = new Date().toISOString().slice(0,10);
+    const today = todayISO();
     const q = famQ(sb.from('scheduled_run_logs').select('id',{count:'exact', head:true}))
       .eq('scheduled_date', today);
     const { count, error } = await q;
@@ -1513,7 +1513,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
   const now  = new Date(), y = now.getFullYear(), mo = String(now.getMonth()+1).padStart(2,'0');
   const from = `${y}-${mo}-01`;
   const to   = `${y}-${mo}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
-  const monthLabel = now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const monthLabel = fmtMonthYear(now);
 
   // Índice de transações confirmadas do mês por category_id
   const txsByCat = {};
@@ -1692,10 +1692,10 @@ async function renderDashboardUpcoming(memberIds = null) {
     try { if (typeof loadScheduled === 'function') await loadScheduled(); } catch(e) { console.warn('[dash upcoming loadScheduled]', e?.message || e); }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const limit = new Date();
   limit.setDate(limit.getDate() + 10);
-  const limitStr = limit.toISOString().slice(0, 10);
+  const limitStr = dateToLocalISO(limit);
 
   const memberSet = Array.isArray(memberIds) && memberIds.length ? new Set(memberIds) : null;
   const upcoming = [];
@@ -1752,7 +1752,7 @@ async function renderDashboardUpcoming(memberIds = null) {
   upcoming.forEach(u => { (byDate[u.date] ||= []).push(u); });
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  const tomorrowStr = dateToLocalISO(tomorrow);
 
   listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
     const isToday = date === today;
@@ -1959,8 +1959,8 @@ async function _renderDashForecast() {
   const fromDate = new Date();
   const toDate   = new Date();
   toDate.setDate(toDate.getDate() + 90);
-  const fromStr = fromDate.toISOString().slice(0, 10);
-  const toStr   = toDate.toISOString().slice(0, 10);
+  const fromStr = dateToLocalISO(fromDate);
+  const toStr   = dateToLocalISO(toDate);
 
   // Fetch real transactions in period
   let q = famQ(sb.from('transactions')
@@ -2017,7 +2017,7 @@ async function _renderDashForecast() {
   const allDates = [];
   let cur = new Date(fromStr + 'T12:00');
   const end = new Date(toStr + 'T12:00');
-  while (cur <= end) { allDates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
+  while (cur <= end) { allDates.push(dateToLocalISO(cur)); cur.setDate(cur.getDate()+1); }
   _fcAllDates = allDates;
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
@@ -2370,8 +2370,8 @@ function _showForecastDrillModal(date, dayData) {
   const dateLabel  = d && m && y ? `${d}/${m}/${y}` : date;
   const weekdays   = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const weekday    = date ? weekdays[new Date(date + 'T12:00').getDay()] : '';
-  const isToday    = date === new Date().toISOString().slice(0,10);
-  const isPast     = date < new Date().toISOString().slice(0,10);
+  const isToday    = date === todayISO();
+  const isPast     = date < todayISO();
 
   // ── Estatísticas do dia ───────────────────────────────────────────────────
   const totalIn   = allItems.filter(t => Number(t.amount) > 0).reduce((s,t)=>s+Number(t.amount),0);
@@ -2755,7 +2755,7 @@ async function _openPatrimonioModal() {
           <div>
             <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px">Patrimônio Líquido</div>
             <div style="font-size:2rem;font-weight:900;font-family:var(--font-serif);color:#fff;line-height:1">${dashFmt(totalBRL,'BRL')}</div>
-            <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'long',year:'numeric'}).format(new Date())}</div>
           </div>
           <button onclick="closeModal('patrimonioModal')"
             style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:34px;height:34px;font-size:.85rem;cursor:pointer;color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;flex-shrink:0;backdrop-filter:blur(4px)">✕</button>

@@ -85,7 +85,7 @@ function telTrack(event_type, payload = {}) {
       session_id:   _tel.sessionId,
       event_type,   // 'page_view' | 'operation' | 'error' | 'ai_call' | 'performance'
       page:         (typeof state !== 'undefined' ? state.currentPage : null) || null,
-      ts:           new Date().toISOString(),
+      ts:           localISOTimestamp(),
       device:       _telGetDevice(),
       ...ctx,
       payload: {

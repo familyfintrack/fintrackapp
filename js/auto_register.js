@@ -74,7 +74,7 @@ function updateAutoCheckUI(cfg) {
   if(lrEl) {
     if(cfg.lastRun) {
       const d = new Date(cfg.lastRun);
-      lrEl.textContent = `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} — ${cfg.lastRunCount||0} transação(ões) registrada(s)`;
+      lrEl.textContent = `${fmtDate(d)} às ${fmtTime(d)} — ${cfg.lastRunCount||0} transação(ões) registrada(s)`;
     } else {
       lrEl.textContent = 'Nunca executada';
     }
@@ -279,7 +279,7 @@ async function runAutoRegister(manual=false) {
 
 function updateLastRunConfig(count) {
   const cfg = getAutoCheckConfig();
-  cfg.lastRun = new Date().toISOString();
+  cfg.lastRun = localISOTimestamp();
   cfg.lastRunCount = count;
   localStorage.setItem(AUTO_CHECK_CONFIG_KEY, JSON.stringify(cfg));
   saveAppSetting(AUTO_CHECK_CONFIG_KEY, cfg).catch(()=>{});
@@ -326,7 +326,7 @@ function nextScheduledDate(dateStr, sc) {
     }
     default: return null;
   }
-  return d.toISOString().slice(0,10);
+  return dateToLocalISO(d);
 }
 
 
@@ -402,7 +402,7 @@ async function runScheduledUpcomingNotifications() {
   try {
     if (!state.scheduled || !state.scheduled.length) return 0;
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = dateToLocalISO(today);
     let sent = 0;
     for (const sc of state.scheduled) {
       if (sc.status !== 'active') continue;
@@ -415,7 +415,7 @@ async function runScheduledUpcomingNotifications() {
         Math.max(0, parseInt(sc.notify_telegram_days_before ?? sc.notify_days_before ?? 0, 10) || 0),
         Math.max(0, parseInt(sc.notify_days_before ?? 0, 10) || 0)
       );
-      const cutoff = new Date(today.getTime() + daysBefore * 86400000).toISOString().slice(0,10);
+      const cutoff = dateToLocalISO(new Date(today.getTime() + daysBefore * 86400000));
       const occDates = getScheduledDates(sc, cutoff);
       for (const d of occDates) {
         if (d < todayStr) continue;
@@ -453,7 +453,7 @@ async function runScheduledUpcomingNotifications() {
 function _ejMonthYear(dateStr) {
   try {
     const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return fmtMonthYear(d);
   } catch { return dateStr; }
 }
 
@@ -944,7 +944,7 @@ async function notifyOnTransaction(tx, sc = null) {
     const currency = (fullTx?.currency || 'BRL').toUpperCase();
     const brl      = fullTx?.brl_amount;
     const date     = typeof fmtDate === 'function'
-      ? fmtDate(fullTx?.date || new Date().toISOString().slice(0,10))
+      ? fmtDate(fullTx?.date || todayISO())
       : (fullTx?.date || '');
     const status   = (fullTx?.status || 'confirmed') === 'pending' ? '⏳ Pendente' : '✅ Confirmada';
     const memo     = fullTx?.memo || '';

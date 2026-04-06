@@ -40,7 +40,7 @@ function _lTelTrack(event_type, payload = {}) {
       session_id:     _lTelSession,
       event_type,
       page:           'landing',
-      ts:             new Date().toISOString(),
+      ts:             localISOTimestamp(),
       device_type:    /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
       device_browser: (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)||['unknown'])[0],
       device_os:      /Win/i.test(navigator.userAgent) ? 'windows' : /Mac/i.test(navigator.userAgent) ? 'macos' : /Android/i.test(navigator.userAgent) ? 'android' : /iPhone|iPad/i.test(navigator.userAgent) ? 'ios' : 'other',
@@ -216,7 +216,7 @@ async function handleWl(e) {
     const {error:dbErr} = await _sb.from('waitlist').insert({
       name, email, whatsapp:phone||null, role,
       source:'landing', status:'pending',
-      created_at: new Date().toISOString()
+      created_at: localISOTimestamp()
     });
     if (dbErr) {
       if (dbErr.code==='23505')

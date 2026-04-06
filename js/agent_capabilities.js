@@ -786,7 +786,7 @@ function _agentBuildGuidedInput(step, idx) {
   }
 
   if (step.type === 'date') {
-    const today = new Date().toISOString().slice(0,10);
+    const today = todayISO();
     return `<input type="date" id="${id}" class="agf-input" value="${today}"
       onchange="agentGuidedInput(${idx}, this.value)"
       onkeydown="if(event.key==='Enter')agentGuidedAdvance(${idx})"
@@ -801,7 +801,7 @@ function _agentBuildGuidedInput(step, idx) {
 
 function _agentFmtGuidedVal(step, val) {
   if (step.type === 'money') return 'R$ ' + parseFloat(String(val).replace(',','.')).toFixed(2).replace('.', ',');
-  if (step.type === 'date')  return new Date(val + 'T12:00').toLocaleDateString('pt-BR');
+  if (step.type === 'date')  return fmtDate(val);
   if (step.type === 'select') {
     const opt = step.options?.find(o => o.value === val);
     return opt ? opt.label : val;
@@ -888,7 +888,7 @@ window.agentGuidedConfirm = async function() {
 
   // Normalize: if date not set, use today
   if (!data.date && !data.start_date) {
-    data.date = new Date().toISOString().slice(0,10);
+    data.date = todayISO();
   }
 
   // Build natural-language summary

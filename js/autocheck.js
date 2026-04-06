@@ -59,7 +59,7 @@ function updateAutoCheckUI(cfg) {
   if(lrEl) {
     if(cfg.lastRun) {
       const d = new Date(cfg.lastRun);
-      lrEl.textContent = `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} — ${cfg.lastRunCount||0} transação(ões) registrada(s)`;
+      lrEl.textContent = `${fmtDate(d)} às ${fmtTime(d)} — ${cfg.lastRunCount||0} transação(ões) registrada(s)`;
     } else {
       lrEl.textContent = 'Nunca executada';
     }
@@ -263,7 +263,7 @@ async function runAutoRegister(manual=false) {
 
 function updateLastRunConfig(count) {
   const cfg = getAutoCheckConfig();
-  cfg.lastRun = new Date().toISOString();
+  cfg.lastRun = localISOTimestamp();
   cfg.lastRunCount = count;
   localStorage.setItem(AUTO_CHECK_CONFIG_KEY, JSON.stringify(cfg));
   saveAppSetting(AUTO_CHECK_CONFIG_KEY, cfg).catch(()=>{});
@@ -310,7 +310,7 @@ function nextScheduledDate(dateStr, sc) {
     }
     default: return null;
   }
-  return d.toISOString().slice(0,10);
+  return dateToLocalISO(d);
 }
 
 /* ── Email Notifications ── */

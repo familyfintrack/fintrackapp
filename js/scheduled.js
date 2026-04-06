@@ -32,7 +32,7 @@ async function _createPairedTransferLeg(originTx, sc, actualDate, memoOverride=n
     is_transfer: true,
     is_card_payment: sc.type==='card_payment',
     transfer_to_account_id: sc.account_id,
-    updated_at: new Date().toISOString(),
+    updated_at: localISOTimestamp(),
     status: originTx.status || 'confirmed',
   };
   let pairedResult, pairedErr;
@@ -127,7 +127,7 @@ async function _finalizeScheduledOccurrence(scId, scheduledDate, executionToken,
     memo: memo ?? null,
     transaction_id: transactionId,
     execution_status: 'executed',
-    executed_at: new Date().toISOString(),
+    executed_at: localISOTimestamp(),
   };
   let q = sb.from('scheduled_occurrences').update(payload)
     .eq('scheduled_id', scId)
@@ -169,7 +169,7 @@ async function processScheduledOccurrence(sc, opts = {}) {
     is_transfer: isScTransfer,
     is_card_payment: sc.type === 'card_payment',
     transfer_to_account_id: isScTransfer ? sc.transfer_to_account_id : null,
-    updated_at: new Date().toISOString(),
+    updated_at: localISOTimestamp(),
     status: txStatus,
     // Propagate member attribution from the scheduled transaction
     family_member_id:  sc.family_member_id  || null,
@@ -1338,7 +1338,7 @@ async function saveScheduled() {
     notify_telegram_on_upcoming: notifyTg ? !!notifyTgUpcoming : false,
     fx_mode:  fxVisible ? fxMode : null,
     fx_rate:  fxRate,
-    updated_at: new Date().toISOString(),
+    updated_at: localISOTimestamp(),
     family_member_ids: typeof getFmcMultiPickerSelected === 'function'
       ? getFmcMultiPickerSelected('scFamilyMemberPicker')
       : [],
@@ -1536,7 +1536,7 @@ async function ignoreOccurrence(scId, date) {
     actual_date: date,
     amount: 0,
     execution_status: 'skipped',
-    executed_at: new Date().toISOString(),
+    executed_at: localISOTimestamp(),
   }, { onConflict: 'scheduled_id,scheduled_date' });
   if (error) { toast('Erro ao ignorar ocorrência: ' + error.message, 'error'); return; }
   toast('Ocorrência ignorada. Próximas datas não são afetadas.', 'success');
@@ -1738,7 +1738,7 @@ async function runScheduledAutoRegister() {
             status: it.status,
             amount: it.amount,
             description: it.description,
-            created_at: new Date().toISOString(),
+            created_at: localISOTimestamp(),
           });
         }
       }catch(e){}

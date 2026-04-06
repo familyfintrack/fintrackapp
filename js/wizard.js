@@ -815,7 +815,7 @@ async function _wzRunSetup() {
     // 2. Create categories
     if (_wz.expenses.length) {
       _wzSetStatus('wzSt_cats', 'Criando categorias…', false);
-      const now = new Date().toISOString();
+      const now = localISOTimestamp();
       const catResults = [];
       for (const exp of _wz.expenses) {
         const { data: cat, error } = await sb.from('categories').insert({
@@ -833,7 +833,7 @@ async function _wzRunSetup() {
       // 3. Create budgets
       if (catResults.length) {
         _wzSetStatus('wzSt_budgets', 'Criando orçamentos…', false);
-        const ym = new Date().toISOString().slice(0, 7);
+        const ym = todayMonthISO();
         const [y, m] = ym.split('-');
         const monthStr = `${y}-${m}-01`;
         let budgetCount = 0;
