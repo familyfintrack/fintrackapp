@@ -1005,13 +1005,8 @@ function navigate(page){
     // Use the exposed setter so the module-scoped variable is actually set
     if (typeof window._setScCalSelDay === 'function') window._setScCalSelDay(_todayStr);
     loadScheduled().then(() => {
-      if (typeof setScView === 'function') {
-        const savedView = currentUser?.preferred_sc_view ||
-                          localStorage.getItem('sc_view_pref') ||
-                          'calendar';
-        setScView(savedView);
-      }
-      // Open upcoming panel if it has events, keep day groups collapsed per spec
+      // NOTE: do NOT call setScView here — loadScheduled() already reads sc_view_pref
+      // and applies it. Calling setScView again would cause a flash (list→calendar).
       if (typeof _openUpcomingIfHasEvents === 'function') _openUpcomingIfHasEvents();
     });
   }

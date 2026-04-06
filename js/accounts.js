@@ -318,7 +318,7 @@ function _onAccModalTypeChange() {
 window._onAccModalTypeChange = _onAccModalTypeChange;
 
 async function openAccountModal(id=''){
-  const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
+  const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',pix_key:'',card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
   if(id){
     const a=state.accounts.find(x=>x.id===id);
     if(a){Object.assign(form,a);form.initial_balance=parseFloat(a.initial_balance)||0;}

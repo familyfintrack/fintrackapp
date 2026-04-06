@@ -673,9 +673,24 @@ function switchBudgetMainTab(tab) {
   if (panelObjectives) panelObjectives.style.display  = tab === 'objectives' ? '' : 'none';
 
   if (tab === 'objectives') {
+    // Reset container display antes de render (evita estado flex travado)
+    const grid = document.getElementById('objectivesGrid');
+    if (grid) {
+      grid.style.display = '';
+      grid.style.alignItems = '';
+      grid.style.justifyContent = '';
+      grid.style.minHeight = '';
+    }
     // Carregar objetivos quando a aba é aberta
     if (typeof renderObjectivesPage === 'function') {
-      renderObjectivesPage().catch(e => console.warn('[objectives]', e.message));
+      try {
+        renderObjectivesPage();
+      } catch(e) {
+        console.warn('[objectives] renderObjectivesPage:', e.message);
+        if (grid) grid.innerHTML = `<div style="color:var(--red);padding:16px">Erro ao carregar: ${e.message}</div>`;
+      }
+    } else {
+      console.warn('[objectives] renderObjectivesPage not yet defined — objectives.js may not be loaded');
     }
   }
 }

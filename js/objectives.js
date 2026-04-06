@@ -124,49 +124,67 @@ const OBJ_ICONS = [
 
 // ── Abrir modal de criação/edição ────────────────────────────────────────────
 async function openObjectiveModal(id = null) {
-  let obj = null;
-  if (id) {
-    obj = _objList.find(o => o.id === id);
-    if (!obj) {
-      const { data } = await sb.from('financial_objectives').select('*').eq('id', id).single();
-      obj = data;
-    }
+  // Guard: verify modal exists in DOM before proceeding
+  const modal = document.getElementById('objectiveModal');
+  if (!modal) {
+    console.error('[objectives] #objectiveModal not found in DOM');
+    if (typeof toast === 'function') toast('Erro interno: modal não encontrado', 'error');
+    return;
   }
 
-  document.getElementById('objModalTitle').textContent = obj ? 'Editar Objetivo' : 'Novo Objetivo';
-  document.getElementById('objId').value           = obj?.id || '';
-  document.getElementById('objName').value         = obj?.name || '';
-  document.getElementById('objDescription').value  = obj?.description || '';
-  document.getElementById('objStartDate').value    = obj?.start_date || new Date().toISOString().slice(0,10);
-  document.getElementById('objEndDate').value      = obj?.end_date || '';
-  document.getElementById('objStatus').value       = obj?.status || 'active';
-
-  // Setar ícone selecionado
-  const currentIcon = obj?.icon || '🎯';
-  document.getElementById('objIconDisplay').textContent = currentIcon;
-  document.getElementById('objIconValue').value = currentIcon;
-  _renderIconPicker(currentIcon);
-
-  // Setar valor com ATM formatting
-  const limitEl = document.getElementById('objBudgetLimit');
-  if (limitEl) {
-    if (obj?.budget_limit) {
-      if (typeof setAmtField === 'function') {
-        setAmtField('objBudgetLimit', obj.budget_limit);
-      } else {
-        limitEl.value = obj.budget_limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  try {
+    let obj = null;
+    if (id) {
+      obj = _objList.find(o => o.id === id);
+      if (!obj && typeof sb !== 'undefined') {
+        const { data } = await sb.from('financial_objectives').select('*').eq('id', id).single();
+        obj = data;
       }
-    } else {
-      limitEl.value = '';
-      limitEl.dataset.cents = '0';
     }
+
+    // Safe element setter helper
+    const setVal = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
+    const setText = (elId, val) => { const el = document.getElementById(elId); if (el) el.textContent = val ?? ''; };
+
+    setText('objModalTitle', obj ? 'Editar Objetivo' : 'Novo Objetivo');
+    setVal('objId',          obj?.id || '');
+    setVal('objName',        obj?.name || '');
+    setVal('objDescription', obj?.description || '');
+    setVal('objStartDate',   obj?.start_date || new Date().toISOString().slice(0,10));
+    setVal('objEndDate',     obj?.end_date || '');
+    setVal('objStatus',      obj?.status || 'active');
+
+    // Icon picker
+    const currentIcon = obj?.icon || '🎯';
+    setText('objIconDisplay', currentIcon);
+    setVal('objIconValue', currentIcon);
+    _renderIconPicker(currentIcon);
+
+    // Limit field with ATM formatting
+    const limitEl = document.getElementById('objBudgetLimit');
+    if (limitEl) {
+      if (obj?.budget_limit) {
+        if (typeof setAmtField === 'function') {
+          setAmtField('objBudgetLimit', obj.budget_limit);
+        } else {
+          limitEl.value = obj.budget_limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        }
+      } else {
+        limitEl.value = '';
+        limitEl.dataset.cents = '0';
+      }
+    }
+
+    // Clear AI feedback
+    const aiFeedback = document.getElementById('objAiIconFeedback');
+    if (aiFeedback) aiFeedback.style.display = 'none';
+
+    openModal('objectiveModal');
+
+  } catch(e) {
+    console.error('[objectives] openObjectiveModal error:', e);
+    if (typeof toast === 'function') toast('Erro ao abrir modal: ' + e.message, 'error');
   }
-
-  // Limpar feedback de IA
-  const aiFeedback = document.getElementById('objAiIconFeedback');
-  if (aiFeedback) aiFeedback.style.display = 'none';
-
-  openModal('objectiveModal');
 }
 
 // ── Renderizar picker de ícones ───────────────────────────────────────────────
@@ -308,23 +326,15 @@ async function saveObjective() {
   } catch(e) {
     let msg = e.message || String(e);
     if (msg.includes('row-level security') || msg.includes('violates row-level')) {
-      msg = 'Erro de permissão (RLS). Execute o SQL de correção no Supabase:
-
-'
-        + 'DROP POLICY IF EXISTS "family_objectives" ON financial_objectives;
-'
-        + 'CREATE POLICY "fobj_sel" ON financial_objectives FOR SELECT USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));
-'
-        + 'CREATE POLICY "fobj_ins" ON financial_objectives FOR INSERT WITH CHECK (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));
-'
-        + 'CREATE POLICY "fobj_upd" ON financial_objectives FOR UPDATE USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid())) WITH CHECK (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));
-'
-        + 'CREATE POLICY "fobj_del" ON financial_objectives FOR DELETE USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));';
-      console.error('[objectives RLS] SQL to fix:
-', msg.split('
-').slice(1).join('
-'));
-      _objToast('Erro de permissão (RLS) — veja console para SQL de correção', 'error');
+      const rlsSQL = [
+        'DROP POLICY IF EXISTS "family_objectives" ON financial_objectives;',
+        'CREATE POLICY "fobj_sel" ON financial_objectives FOR SELECT USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
+        'CREATE POLICY "fobj_ins" ON financial_objectives FOR INSERT WITH CHECK (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
+        'CREATE POLICY "fobj_upd" ON financial_objectives FOR UPDATE USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid())) WITH CHECK (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
+        'CREATE POLICY "fobj_del" ON financial_objectives FOR DELETE USING (family_id=(SELECT family_id FROM app_users WHERE id=auth.uid()));',
+      ].join(' ');
+      console.error('[objectives RLS] SQL to fix:', rlsSQL);
+      _objToast('Erro de permissão (RLS) — execute o SQL de correção no Supabase (veja console)', 'error');
     } else {
       _objToast('Erro ao salvar: ' + msg, 'error');
     }

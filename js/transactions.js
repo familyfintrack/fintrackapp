@@ -285,6 +285,12 @@ const FX_API_BASE = (typeof window !== 'undefined' && window.FX_API_BASE)
   ? window.FX_API_BASE
   : 'https://api.frankfurter.dev/v1';
 
+// ── Module-level state — declared at TOP to avoid let/const TDZ errors ─────
+// (function declarations are hoisted; let/const are NOT — they must come first)
+let _txDetailId   = null;   // id da transação aberta no detail/modal
+let _txSwipeBound = false;  // swipe listener bound guard
+const _tagsState  = { tags: [], allTags: [], similarTags: [], activeIdx: -1 };
+
 let _filterTxDebounceTimer = null;
 function filterTransactions(immediate = false){
   state.txFilter.search=document.getElementById('txSearch').value;
@@ -529,9 +535,12 @@ function txRow(t, showAccount=true, runningBalance=null) {
         <div class="tx-v2-title">${titleCategoryIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
         ${detailLines}
       </td>
-      <td class="tx-v2-right">
+      <td class="tx-v2-right" style="position:relative">
         <div class="tx-v2-amt-wrap">${amtHtml}</div>
         ${balHtml}
+        <button class="tx-edit-btn" title="Editar transação"
+          onclick="event.stopPropagation();editTransaction('${t.id}')"
+          aria-label="Editar">✏️</button>
       </td>
     </tr>`;
   }
@@ -543,9 +552,12 @@ function txRow(t, showAccount=true, runningBalance=null) {
       <div class="tx-v2-title">${titleCategoryIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
       ${detailLines}
     </td>
-    <td class="tx-v2-right">
+    <td class="tx-v2-right" style="position:relative">
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
       ${balHtml}
+      <button class="tx-edit-btn" title="Editar transação"
+        onclick="event.stopPropagation();editTransaction('${t.id}')"
+        aria-label="Editar">✏️</button>
     </td>
   </tr>`;
 }
@@ -1717,10 +1729,6 @@ async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel, level = '
   });
 }
 
-// ── Module-level state — declared early to avoid TDZ errors ────────────────
-let _txDetailId   = null;  // id da transação aberta no detail/modal
-let _txSwipeBound = false; // swipe listener bound guard
-const _tagsState  = { tags: [], allTags: [], similarTags: [], activeIdx: -1 }; // tags field state
 
 // ── Duplicate transaction guard ─────────────────────────────────────────────
 let _txSaving = false; // re-entrancy guard against concurrent double-clicks
@@ -2467,9 +2475,10 @@ async function deleteTransaction(id){
 /* ── Transaction Detail Drawer ── */
 async function openTxDetail(id) {
   // Guard: evitar dupla abertura (onclick inline + delegation simultâneos)
+  // Timeout reduzido para 150ms — o guard mais longo bloqueava cliques legítimos
   if (window._txDetailOpening === id) return;
   window._txDetailOpening = id;
-  setTimeout(() => { window._txDetailOpening = null; }, 400);
+  setTimeout(() => { window._txDetailOpening = null; }, 150);
 
   _txDetailId = id;
   window._txDetailId = id; // keep global in sync
