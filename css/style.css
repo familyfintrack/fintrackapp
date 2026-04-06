@@ -445,22 +445,20 @@ input[type="color"]{padding:4px;height:38px;cursor:pointer;}
 /* MODALS */
 .modal-overlay{position:fixed;inset:0;background:rgba(26,23,20,.4);display:none;align-items:flex-end;justify-content:center;z-index:1000;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
 .modal-overlay.open{display:flex;pointer-events:all;animation:modalOverlayIn .22s ease both;}
-/* ══ iOS Safari — Prevenir selects fantasma ═══════════════════════════════════
-   No iOS Safari, selects em elementos position:fixed podem ser ativados mesmo
-   quando o elemento pai está visualmente oculto (opacity:0, visibility:hidden,
-   pointer-events:none). A única solução confiável é display:none no próprio
-   select ou no ancestral mais próximo.
-   Essas regras cobrem as 3 camadas de ocultação:
-   1. Modais fechados (sem classe .open)
-   2. Páginas inativas (sem classe .active)
-   3. loginScreen enquanto oculto
+
+/* ══ iOS Safari — Prevenir inputs/selects fantasma ════════════════════════════
+   SOLUCAO CORRETA: pointer-events:none no CONTAINER — bloqueia TODOS os tipos
+   de input (select, input, textarea) sem afetar layout/display.
+   display:none em selects filhos causa campos inacessiveis quando modais abrem.
 ══════════════════════════════════════════════════════════════════════════════ */
-.modal-overlay:not(.open) select { display:none !important; }
-.page:not(.active) select { display:none !important; }
-#loginScreen[style*="display:none"] select,
-#loginScreen[style*="display: none"] select { display:none !important; }
-/* Também cobrir pointer-events para garantia dupla */
+/* Modais fechados: nenhum evento de toque */
 .modal-overlay:not(.open) { pointer-events:none !important; }
+/* Conteudo da pagina bloqueado quando sidebar esta aberta */
+body.sidebar-open .page,
+body.sidebar-open .content { pointer-events:none !important; }
+/* loginScreen quando hidden */
+#loginScreen[style*="display:none"] { pointer-events:none !important; }
+
 
 @keyframes modalOverlayIn{from{opacity:0}to{opacity:1}}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-shadow:var(--shadow-lg);transform:translateY(40px);transition:transform .28s cubic-bezier(.4,0,.2,1);overscroll-behavior-y:contain;}
@@ -2961,6 +2959,126 @@ html, body { overscroll-behavior: none; }
   .sc-card-header { padding: 12px 14px; gap: 10px; }
   .sc-card-type   { width: 32px; height: 32px; font-size: .9rem; }
   .sc-card-amount { font-size: .95rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TAGS FIELD — chips visuais com autocomplete
+══════════════════════════════════════════════════════════════════ */
+.tags-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm, 8px);
+  background: var(--surface);
+  cursor: text;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.tags-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .tags-field:focus-within { box-shadow: 0 0 0 3px rgba(42,96,73,.12); }
+}
+.tags-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 10px;
+  background: var(--accent-lt, rgba(42,96,73,.1));
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 100px;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .tags-chip { border-color: rgba(42,96,73,.22); }
+}
+.tags-chip-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: .75rem;
+  color: var(--accent);
+  opacity: .6;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.tags-chip-remove:hover { opacity: 1; }
+.tags-input {
+  flex: 1;
+  min-width: 80px;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: .88rem !important;
+  padding: 2px 0 !important;
+  color: var(--text);
+  font-family: var(--font-sans);
+  box-shadow: none !important;
+}
+.tags-suggestions {
+  position: absolute;
+  z-index: 500;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm, 8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  max-height: 220px;
+  overflow-y: auto;
+  width: 100%;
+  left: 0;
+  top: calc(100% + 4px);
+  padding: 4px 0;
+}
+#txTagsGroup { position: relative; }
+.tags-sug-section {
+  padding: 4px 12px 2px;
+  font-size: .63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+.tags-sug-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: .84rem;
+  transition: background .1s;
+}
+.tags-sug-item:hover, .tags-sug-item.active {
+  background: var(--surface2);
+}
+.tags-sug-tag {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text);
+}
+.tags-sug-count {
+  font-size: .72rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.tags-sug-similar {
+  font-size: .7rem;
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -5943,6 +6061,9 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   padding: 10px 14px;
   cursor: pointer;
   transition: background .12s;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 .sc-card-row:hover { background: var(--surface2); }
 
@@ -5965,9 +6086,10 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px;
   display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;
+  max-width: 100%;
 }
 .sc-card-end {
-  flex-shrink: 0; text-align: right; min-width: 80px;
+  flex-shrink: 0; text-align: right; min-width: 0; max-width: 44%;
 }
 .sc-card-amt {
   font-family: var(--font-serif); font-weight: 700;
@@ -5976,7 +6098,7 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 }
 .sc-card-badges {
   display: flex; gap: 4px; justify-content: flex-end;
-  flex-wrap: nowrap; margin-top: 3px;
+  flex-wrap: wrap; margin-top: 3px;
 }
 .sc-card-chevron {
   flex-shrink: 0; color: var(--muted);
@@ -11222,43 +11344,38 @@ tr.reconcile-checked td { opacity: 1 !important; }
 
 /* ── Mobile: tabela de transações ocupa 100% sem scroll horizontal ── */
 @media (max-width: 640px) {
-  /* Wrapper sem overflow-x para não criar scroll lateral */
   .rpt-tx-table { table-layout: auto !important; width: 100% !important; }
 
-  /* Esconde colunas Conta e Beneficiário (col + th + td) */
-  .rpt-col-acct, .rpt-col-pay          { display: none !important; }
-  .rpt-td-acct,  .rpt-td-pay           { display: none !important; }
+  /* Esconde Conta e Beneficiário */
+  .rpt-col-acct, .rpt-col-pay, .rpt-td-acct, .rpt-td-pay,
   thead .rpt-td-acct, thead .rpt-td-pay { display: none !important; }
 
   /* Categoria compacta */
-  .rpt-col-cat  { width: 76px; }
-  .rpt-td-cat   { width: 76px; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rpt-col-cat  { width: 72px; }
+  .rpt-td-cat   { width: 72px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 4px; }
 
-  /* Valor alinhado à direita com largura fixa */
-  .rpt-col-amt  { width: 86px; }
-  .rpt-td-amt   { width: 86px; }
+  /* Valor: largura fixa suficiente para qualquer valor em BRL */
+  .rpt-col-amt  { width: 108px !important; }
+  .rpt-td-amt   { width: 108px !important; min-width: 108px !important;
+                  font-size: .85rem; padding: 6px 10px 6px 4px; white-space: nowrap; }
 
-  /* Data mais compacta */
-  .rpt-col-date { width: 78px; }
-  .rpt-td-date  { width: 78px; font-size: .74rem; padding: 6px 4px 6px 8px; }
+  /* Data compacta */
+  .rpt-col-date { width: 70px; }
+  .rpt-td-date  { width: 70px; font-size: .72rem; padding: 6px 4px 6px 8px; }
 
-  /* Descrição ocupa todo o espaço restante */
-  .rpt-td-desc  { padding: 6px 4px; }
-  .rpt-desc-cell { font-size: .8rem; }
-
-  /* Padding menor nas células */
-  .rpt-td-amt   { padding: 6px 8px 6px 4px; font-size: .8rem; }
-  .rpt-td-cat   { padding: 6px 4px; }
+  /* Descrição ocupa o espaço restante — nunca empurra o valor */
+  .rpt-td-desc  { padding: 6px 4px; overflow: hidden; }
+  .rpt-desc-cell { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
-/* Telas muito pequenas: esconde Categoria também */
+/* Telas muito pequenas: esconde Categoria, valor ganha mais espaço */
 @media (max-width: 420px) {
-  .rpt-col-cat, .rpt-td-cat            { display: none !important; }
-  thead .rpt-td-cat                     { display: none !important; }
-  .rpt-col-amt  { width: 84px; }
-  .rpt-td-amt   { width: 84px; font-size: .79rem; }
-  .rpt-col-date { width: 76px; }
-  .rpt-td-date  { width: 76px; font-size: .72rem; }
+  .rpt-col-cat, .rpt-td-cat, thead .rpt-td-cat { display: none !important; }
+  .rpt-col-amt  { width: 102px !important; }
+  .rpt-td-amt   { width: 102px !important; min-width: 102px !important;
+                  font-size: .82rem; }
+  .rpt-col-date { width: 66px; }
+  .rpt-td-date  { width: 66px; font-size: .71rem; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -18073,38 +18190,52 @@ section[data-page="transactions"] .content {
 
 
 
-/* === 2026-03-26 FINAL MOBILE TX WIDTH REBALANCE === */
+/* === MOBILE TX LAYOUT — valor sempre visível com largura fixa === */
 @media (max-width: 720px){
+  /* Grid: [data fixa] [descrição flex] [valor fixo suficiente] */
   #page-transactions #txBody tr.tx-row-clickable{
-    grid-template-columns: minmax(38px, 10%) minmax(0, 60%) minmax(82px, 20%) !important;
-    gap: 10px !important;
+    grid-template-columns: 38px 1fr 108px !important;
+    gap: 0 8px !important;
     align-items: center !important;
   }
 
   #page-transactions #txBody td.tx-v2-date{
-    width: auto !important;
+    width: 38px !important;
     min-width: 38px !important;
-    max-width: 10% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    align-items: flex-start !important;
-    justify-content: center !important;
-    text-align: left !important;
+    max-width: 38px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    text-align: center !important;
   }
 
   #page-transactions #txBody td.tx-v2-body{
     width: auto !important;
     min-width: 0 !important;
-    max-width: none !important;
-    padding-right: 6px !important;
+    max-width: 100% !important;
     overflow: hidden !important;
+    padding-left: 2px !important;
+    padding-right: 4px !important;
   }
 
   #page-transactions #txBody td.tx-v2-right{
-    width: auto !important;
-    min-width: 82px !important;
-    max-width: 20% !important;
-    padding-right: 0 !important;
+    width: 108px !important;
+    min-width: 108px !important;
+    max-width: 108px !important;
+    padding-right: 10px !important;
+    padding-left: 0 !important;
+    white-space: nowrap !important;
+    text-align: right !important;
+  }
+
+  /* Valor: tamanho adequado e sem quebra */
+  #page-transactions #txBody .tx-v2-amt {
+    font-size: .92rem !important;
+    white-space: nowrap !important;
+    display: block !important;
+  }
+  #page-transactions #txBody .tx-v2-brl,
+  #page-transactions #txBody .tx-v2-bal {
+    font-size: .68rem !important;
     white-space: nowrap !important;
   }
 
