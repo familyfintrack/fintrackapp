@@ -19448,12 +19448,14 @@ section[data-page="transactions"] .content {
   justify-content: space-between;
   margin-bottom: 6px;
 }
-.lgn-label {
+.lgn-label,
+#loginScreen .lgn-label,
+#loginScreen label.lgn-label {
   display: block;
-  font-size: .66rem; font-weight: 700;
-  color: #ffffff !important; letter-spacing: .08em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
+  font-size: .66rem !important; font-weight: 700 !important;
+  color: #ffffff !important; letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 6px !important;
 }
 .lgn-field-row .lgn-label { margin-bottom: 0; }
 .lgn-input-wrap { position: relative; display: flex; align-items: center; }
@@ -19476,6 +19478,15 @@ section[data-page="transactions"] .content {
   box-shadow: 0 0 0 3px rgba(125,194,66,.12);
 }
 .lgn-input::placeholder { color: rgba(200,225,210,.22); }
+/* Prevent autofill from changing label/input colors (iOS Safari + Chrome) */
+#loginScreen .lgn-input:-webkit-autofill,
+#loginScreen .lgn-input:-webkit-autofill:hover,
+#loginScreen .lgn-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(18,42,26,.95) inset !important;
+  -webkit-text-fill-color: rgba(255,255,255,.9) !important;
+  caret-color: #ffffff !important;
+  border-color: rgba(125,194,66,.3) !important;
+}
 .lgn-input--pwd { padding-right: 46px; }
 .lgn-pwd-toggle {
   position: absolute; right: 13px;
@@ -19600,15 +19611,15 @@ section[data-page="transactions"] .content {
 }
 .twofa-code-input {
   width: 100%; text-align: center;
-  font-size: 2.6rem; font-weight: 800;
-  letter-spacing: .42em; font-variant-numeric: tabular-nums;
-  padding: 20px 16px; border: 2px solid rgba(125,194,66,.4);
-  border-radius: 16px; outline: none;
+  font-size: 2.2rem; font-weight: 800;
+  letter-spacing: .38em; font-variant-numeric: tabular-nums;
+  padding: 14px 16px; border: 2px solid rgba(125,194,66,.4);
+  border-radius: 14px; outline: none;
   background: rgba(255,255,255,.07); color: #ffffff;
   transition: border-color .18s, box-shadow .18s, background .18s;
   margin-bottom: 20px; box-sizing: border-box;
   font-family: 'Courier New', monospace;
-  min-height: 84px;
+  min-height: 64px;
 }
 .twofa-code-input::placeholder { color: rgba(200,225,210,.22); }
 .twofa-code-input:focus {
@@ -25359,4 +25370,30 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   .module-intro-headline { font-size: .95rem; }
   .dcard-header { padding: 12px 14px 10px; }
   .dcard-icon { width: 30px; height: 30px; border-radius: 8px; }
+}
+
+/* ── Tx row discrete edit button ────────────────────────────────────────── */
+.tx-edit-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--muted); cursor: pointer; font-size: .72rem;
+  transition: background .12s, color .12s, border-color .12s, opacity .15s;
+  opacity: 0; flex-shrink: 0; margin-left: 4px;
+  font-family: var(--font-sans); line-height: 1;
+  vertical-align: middle;
+}
+.tx-row-clickable:hover .tx-edit-btn,
+.tx-row-clickable:focus-within .tx-edit-btn {
+  opacity: 1;
+}
+.tx-edit-btn:hover {
+  background: var(--accent-lt);
+  color: var(--accent);
+  border-color: var(--accent);
+  opacity: 1 !important;
+}
+/* Always visible on touch devices (no hover) */
+@media (hover: none) {
+  .tx-edit-btn { opacity: .55; }
 }
