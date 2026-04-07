@@ -1857,6 +1857,31 @@ canvas { cursor: default; }
 }
 
 
+/* ══════════════════════════════════════════════════════════════════
+   AGENT — Proactive Alert Card
+══════════════════════════════════════════════════════════════════ */
+.agent-proactive-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(245,158,11,.1), rgba(239,68,68,.08));
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 4px 0;
+}
+.agent-proactive-alert-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.agent-proactive-alert-text {
+  font-size: .82rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
