@@ -425,10 +425,10 @@
 </div>
 
 <!-- SIDEBAR OVERLAY -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()" style="display:none"></div>
 
 <!-- SIDEBAR -->
-<nav class="sidebar" id="sidebar">
+<nav class="sidebar" id="sidebar" style="display:none">
 
   <!-- Header: logo + close button -->
   <div class="sb-header">
@@ -558,7 +558,7 @@
 </nav>
 
 <!-- MAIN -->
-<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
+<div class="main" id="mainApp" style="display:none;visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
     <div class="topbar-left">
       <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
