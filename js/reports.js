@@ -2765,7 +2765,7 @@ async function _rptPayeesLoad() {
     let txs = null, queryError = null;
     try {
       let q = famQ(sb.from('transactions')
-        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
         .gte('date', dateFrom).lte('date', dateTo)
         .not('payee_id','is',null);
       if (accId) q = q.eq('account_id', accId);
@@ -2776,7 +2776,7 @@ async function _rptPayeesLoad() {
       // Fallback: simpler query without FK alias (works on all Supabase configs)
       console.warn('[rptPayees] FK join failed, using simpler query:', joinErr.message);
       let q2 = famQ(sb.from('transactions')
-        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon)'))
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name),categories(name,color,icon)'))
         .gte('date', dateFrom).lte('date', dateTo)
         .not('payee_id','is',null);
       if (accId) q2 = q2.eq('account_id', accId);
@@ -2787,7 +2787,14 @@ async function _rptPayeesLoad() {
     if (!txs) throw new Error('Nenhum dado retornado da consulta.');
     const error = null; // query succeeded
 
-    const rows = (txs || []).filter(t => t.payees?.name);
+    // Include all rows with payee_id, even if the payee join returned null
+    // (e.g. payee deleted after transaction was created)
+    const rows = (txs || []).filter(t => t.payee_id != null);
+    // Ensure every row has a usable payee name
+    rows.forEach(t => {
+      if (!t.payees) t.payees = { id: t.payee_id, name: '(beneficiário removido)' };
+      if (!t.payees.name) t.payees.name = '(sem nome)';
+    });
     if (!rows.length) {
       body.innerHTML = `<div style="text-align:center;padding:48px 20px;color:var(--muted)">
         <div style="font-size:2.5rem;margin-bottom:10px">📭</div>
@@ -2990,8 +2997,9 @@ async function _rptObjectivesLoad() {
     const obj  = (objs || []).find(o => o.id === objId);
     if (!obj) throw new Error('Objetivo não encontrado');
 
-    // Try full FK join; fall back to simpler query if it fails
+    // Try full FK join; fall back progressively if columns/joins not available
     let txs = null;
+    // Try 1: full select with account FK join
     try {
       const r1 = await famQ(
         sb.from('transactions')
@@ -3003,16 +3011,30 @@ async function _rptObjectivesLoad() {
       if (r1.error) throw r1.error;
       txs = r1.data;
     } catch(joinErr) {
-      console.warn('[rptObjectives] FK join failed, simpler query:', joinErr.message);
-      const r2 = await famQ(
-        sb.from('transactions')
-          .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
-                  'categories(id,name,color,icon),payees(id,name)')
-      ).eq('objective_id', objId)
-       .gte('date', from).lte('date', to)
-       .order('date', { ascending: false });
-      if (r2.error) throw r2.error;
-      txs = r2.data;
+      console.warn('[rptObjectives] FK join failed, trying simpler:', joinErr.message);
+      // Try 2: without account FK join
+      try {
+        const r2 = await famQ(
+          sb.from('transactions')
+            .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
+                    'categories(id,name,color,icon),payees(id,name)')
+        ).eq('objective_id', objId)
+         .gte('date', from).lte('date', to)
+         .order('date', { ascending: false });
+        if (r2.error) throw r2.error;
+        txs = r2.data;
+      } catch(colErr) {
+        // Try 3: objective_id column may not exist — check error message
+        const msg = (colErr.message || '').toLowerCase();
+        if (msg.includes('column') && msg.includes('objective_id')) {
+          throw new Error(
+            'A coluna objective_id não existe na tabela transactions. ' +
+            'Para usar este relatório, vincule transações a objetivos no lançamento de transações.' +
+            ' (Erro técnico: ' + colErr.message + ')'
+          );
+        }
+        throw colErr;
+      }
     }
     if (!txs) throw new Error('Nenhum dado retornado.');
 
