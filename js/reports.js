@@ -818,12 +818,7 @@ function setReportView(view) {
     // DOM is updated and any in-flight regular report has a chance to finish.
     setTimeout(() => _rptPayeesLoad().catch(() => {}), 0);
   }
-  if (view === 'objectives') {
-    _rptObjectivesInit();
-    setTimeout(() => {
-      if (document.getElementById('rptObjSelect')?.value) _rptObjectivesLoad().catch(() => {});
-    }, 0);
-  }
+  if (view === 'objectives') _rptObjectivesInit(); // populates select; user triggers load manually
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
       const today=new Date().toISOString().slice(0,10);
@@ -2765,38 +2760,34 @@ async function _rptPayeesLoad() {
   body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Gerando relatório…</div>`;
 
   try {
-    let q = famQ(sb.from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,category_id'))
-      .gte('date', dateFrom).lte('date', dateTo)
-      .not('payee_id','is',null);
-    if (accId) q = q.eq('account_id', accId);
-    const r1 = await q.order('date', { ascending: false });
-    if (r1.error) throw r1.error;
-    const txs = r1.data || [];
-
-    const payeeIds = [...new Set(txs.map(t => t.payee_id).filter(Boolean))];
-    const categoryIds = [...new Set(txs.map(t => t.category_id).filter(Boolean))];
-
-    const payeesById = new Map((state?.payees || []).map(p => [p.id, p]));
-    const categoriesById = new Map((state?.categories || []).map(c => [c.id, c]));
-
-    if (payeeIds.length) {
-      const pRes = await famQ(sb.from('payees').select('id,name,type')).in('id', payeeIds);
-      if (!pRes.error && pRes.data) pRes.data.forEach(p => payeesById.set(p.id, p));
-      else if (pRes.error) console.warn('[rptPayees] payees lookup failed:', pRes.error.message);
+    // Fetch ALL transactions with payees (no amount filter — we split later)
+    // Try with full FK join first; fall back to simpler select if it fails
+    let txs = null, queryError = null;
+    try {
+      let q = famQ(sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
+        .gte('date', dateFrom).lte('date', dateTo)
+        .not('payee_id','is',null);
+      if (accId) q = q.eq('account_id', accId);
+      const r1 = await q.order('date', { ascending: false });
+      if (r1.error) throw r1.error;
+      txs = r1.data;
+    } catch(joinErr) {
+      // Fallback: simpler query without FK alias (works on all Supabase configs)
+      console.warn('[rptPayees] FK join failed, using simpler query:', joinErr.message);
+      let q2 = famQ(sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon)'))
+        .gte('date', dateFrom).lte('date', dateTo)
+        .not('payee_id','is',null);
+      if (accId) q2 = q2.eq('account_id', accId);
+      const r2 = await q2.order('date', { ascending: false });
+      if (r2.error) throw r2.error;
+      txs = r2.data;
     }
-    if (categoryIds.length) {
-      const cRes = await famQ(sb.from('categories').select('id,name,color,icon')).in('id', categoryIds);
-      if (!cRes.error && cRes.data) cRes.data.forEach(c => categoriesById.set(c.id, c));
-      else if (cRes.error) console.warn('[rptPayees] categories lookup failed:', cRes.error.message);
-    }
+    if (!txs) throw new Error('Nenhum dado retornado da consulta.');
+    const error = null; // query succeeded
 
-    const rows = (txs || []).filter(t => t.payee_id).map(t => ({
-      ...t,
-      payees: t.payees || payeesById.get(t.payee_id) || null,
-      categories: t.categories || categoriesById.get(t.category_id) || null
-    }));
-
+    const rows = (txs || []).filter(t => t.payees?.name);
     if (!rows.length) {
       body.innerHTML = `<div style="text-align:center;padding:48px 20px;color:var(--muted)">
         <div style="font-size:2.5rem;margin-bottom:10px">📭</div>
@@ -2814,7 +2805,7 @@ async function _rptPayeesLoad() {
       const map = {};
       txList.forEach(t => {
         const pid  = t.payee_id;
-        const name = t.payees?.name || payeesById.get(pid)?.name || 'Beneficiário sem nome';
+        const name = t.payees?.name || '—';
         if (!map[pid]) map[pid] = { id: pid, name, txs: [], total: 0, count: 0 };
         const amt = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
         map[pid].total += amt;
@@ -2865,7 +2856,7 @@ async function _rptPayeesLoad() {
             const catDot = t.categories?.color
               ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${t.categories.color};margin-right:4px;flex-shrink:0"></span>` : '';
             return `<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;transition:background .12s"
-              onclick="(typeof openTxDetail==='function'?openTxDetail('${t.id}'):editTransaction('${t.id}'))"
+              onclick="editTransaction('${t.id}')"
               onmouseover="this.style.background='rgba(0,0,0,.05)'" onmouseout="this.style.background=''">
               <div style="flex:1;min-width:0">
                 <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description || p.name || '—')}</div>
@@ -2962,7 +2953,7 @@ async function _rptObjectivesInit() {
   sel.innerHTML = '<option value="">— Selecione um objetivo —</option>';
   try {
     const objs = typeof loadObjectives === 'function'
-      ? await loadObjectives(true)
+      ? await loadObjectives()
       : (window._objList || []);
     (objs || []).forEach(o => {
       const opt = document.createElement('option');
@@ -2971,8 +2962,6 @@ async function _rptObjectivesInit() {
       sel.appendChild(opt);
     });
   } catch(_) {}
-
-  if (!sel.value && sel.options.length > 1) sel.value = sel.options[1].value;
 
   // Default dates: beginning of year to today
   const from = document.getElementById('rptObjFrom');
@@ -2991,65 +2980,43 @@ async function _rptObjectivesLoad() {
   const from  = document.getElementById('rptObjFrom')?.value;
   const to    = document.getElementById('rptObjTo')?.value;
 
-  if (!objId) {
-    const sel = document.getElementById('rptObjSelect');
-    if (sel && sel.options.length <= 1) {
-      body.innerHTML = `<div style="text-align:center;padding:36px 20px;color:var(--muted)">
-        <div style="font-size:2.1rem;margin-bottom:10px">🎯</div>
-        <div style="font-weight:700;color:var(--text);margin-bottom:4px">Nenhum objetivo disponível</div>
-        <div style="font-size:.82rem">Crie ou carregue objetivos para gerar este relatório.</div>
-      </div>`;
-      return;
-    }
-    toast('Selecione um objetivo', 'warning'); return; }
+  if (!objId) { toast('Selecione um objetivo', 'warning'); return; }
   if (!from || !to) { toast('Selecione o período', 'warning'); return; }
 
   body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Analisando objetivo…</div>`;
 
   try {
-    const objs = typeof loadObjectives === 'function' ? await loadObjectives(true) : (window._objList || []);
+    const objs = typeof loadObjectives === 'function' ? await loadObjectives() : (window._objList || []);
     const obj  = (objs || []).find(o => o.id === objId);
     if (!obj) throw new Error('Objetivo não encontrado');
 
-    const txRes = await famQ(
-      sb.from('transactions')
-        .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,objective_id')
-    ).eq('objective_id', objId)
-     .gte('date', from).lte('date', to)
-     .order('date', { ascending: false });
-    if (txRes.error) throw txRes.error;
-    const txs = txRes.data || [];
-
-    const payeeIds = [...new Set(txs.map(t => t.payee_id).filter(Boolean))];
-    const categoryIds = [...new Set(txs.map(t => t.category_id).filter(Boolean))];
-    const accountIds = [...new Set(txs.map(t => t.account_id).filter(Boolean))];
-
-    const payeesById = new Map((state?.payees || []).map(p => [p.id, p]));
-    const categoriesById = new Map((state?.categories || []).map(c => [c.id, c]));
-    const accountsById = new Map([...(state?.accounts || []), ...(state?.archivedAccounts || [])].map(a => [a.id, a]));
-
-    if (payeeIds.length) {
-      const pRes = await famQ(sb.from('payees').select('id,name,type')).in('id', payeeIds);
-      if (!pRes.error && pRes.data) pRes.data.forEach(p => payeesById.set(p.id, p));
-      else if (pRes.error) console.warn('[rptObjectives] payees lookup failed:', pRes.error.message);
+    // Try full FK join; fall back to simpler query if it fails
+    let txs = null;
+    try {
+      const r1 = await famQ(
+        sb.from('transactions')
+          .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
+                  'categories(id,name,color,icon),payees(id,name),accounts!transactions_account_id_fkey(id,name,color,icon,currency)')
+      ).eq('objective_id', objId)
+       .gte('date', from).lte('date', to)
+       .order('date', { ascending: false });
+      if (r1.error) throw r1.error;
+      txs = r1.data;
+    } catch(joinErr) {
+      console.warn('[rptObjectives] FK join failed, simpler query:', joinErr.message);
+      const r2 = await famQ(
+        sb.from('transactions')
+          .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
+                  'categories(id,name,color,icon),payees(id,name)')
+      ).eq('objective_id', objId)
+       .gte('date', from).lte('date', to)
+       .order('date', { ascending: false });
+      if (r2.error) throw r2.error;
+      txs = r2.data;
     }
-    if (categoryIds.length) {
-      const cRes = await famQ(sb.from('categories').select('id,name,color,icon')).in('id', categoryIds);
-      if (!cRes.error && cRes.data) cRes.data.forEach(c => categoriesById.set(c.id, c));
-      else if (cRes.error) console.warn('[rptObjectives] categories lookup failed:', cRes.error.message);
-    }
-    if (accountIds.length) {
-      const aRes = await famQ(sb.from('accounts').select('id,name,color,icon,currency')).in('id', accountIds);
-      if (!aRes.error && aRes.data) aRes.data.forEach(a => accountsById.set(a.id, a));
-      else if (aRes.error) console.warn('[rptObjectives] accounts lookup failed:', aRes.error.message);
-    }
+    if (!txs) throw new Error('Nenhum dado retornado.');
 
-    const rows = txs.map(t => ({
-      ...t,
-      payees: t.payees || payeesById.get(t.payee_id) || null,
-      categories: t.categories || categoriesById.get(t.category_id) || null,
-      accounts: t.accounts || accountsById.get(t.account_id) || null
-    }));
+    const rows    = txs || [];
     const expenses = rows.filter(t => parseFloat(t.amount) < 0);
     const incomes  = rows.filter(t => parseFloat(t.amount) > 0);
 
@@ -3077,7 +3044,7 @@ async function _rptObjectivesLoad() {
       if (!t.payee_id) return;
       const k = t.payee_id;
       const isExp = parseFloat(t.amount) < 0;
-      if (!byPayee[k]) byPayee[k] = { name: t.payees?.name || payeesById.get(k)?.name || 'Beneficiário sem nome', expTotal:0, incTotal:0, count:0, txs:[] };
+      if (!byPayee[k]) byPayee[k] = { name: t.payees?.name||'—', expTotal:0, incTotal:0, count:0, txs:[] };
       const amt = Math.abs(parseFloat(t.brl_amount??t.amount)||0);
       if (isExp) byPayee[k].expTotal += amt;
       else       byPayee[k].incTotal += amt;
@@ -3092,8 +3059,8 @@ async function _rptObjectivesLoad() {
     const byAcc = {};
     rows.forEach(t => {
       const k = t.account_id || '__none__';
-      const acc = t.accounts || accountsById.get(k);
-      if (!byAcc[k]) byAcc[k] = { name: acc?.name||'Conta', color: acc?.color||'#94a3b8', icon: acc?.icon||'🏦', total:0, count:0 };
+      const acc = t.accounts;
+      if (!byAcc[k]) byAcc[k] = { name: acc?.name||'—', color: acc?.color||'#94a3b8', icon: acc?.icon||'🏦', total:0, count:0 };
       byAcc[k].total += Math.abs(parseFloat(t.brl_amount??t.amount)||0);
       byAcc[k].count++;
     });
@@ -3130,7 +3097,7 @@ async function _rptObjectivesLoad() {
       const catDot = t.categories?.color
         ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${t.categories.color};margin-right:5px;flex-shrink:0"></span>` : '';
       return `<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;transition:background .12s"
-        onclick="(typeof openTxDetail==='function'?openTxDetail('${t.id}'):editTransaction('${t.id}'))"
+        onclick="editTransaction('${t.id}')"
         onmouseover="this.style.background='rgba(0,0,0,.05)'" onmouseout="this.style.background=''">
         <div style="flex:1;min-width:0">
           <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||t.payees?.name||'—')}</div>
@@ -3323,7 +3290,7 @@ async function _rptObjectivesLoad() {
     if (!rows.length) {
       html += `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
         <div style="font-size:2rem;margin-bottom:8px">📭</div>
-        <div style="font-size:.85rem">Nenhuma transação com objective_id vinculado a este objetivo foi encontrada no período.</div>
+        <div style="font-size:.85rem">Nenhuma transação vinculada a este objetivo no período.</div>
       </div>`;
     }
 
