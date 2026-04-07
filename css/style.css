@@ -1704,6 +1704,25 @@ canvas { cursor: default; }
   background:linear-gradient(135deg,#0d3d2b 0%,#1a5c42 60%,#2a6049 100%);
   display:flex;align-items:center;justify-content:center;
   padding:20px;
+  /* Mobile: prevent scroll/drag on the background */
+  overflow:hidden;
+  touch-action:none;
+  overscroll-behavior:none;
+  -webkit-overflow-scrolling:auto;
+  user-select:none;
+  -webkit-user-select:none;
+}
+/* Allow touch/scroll only inside the card itself */
+.auth-screen .auth-card {
+  touch-action:pan-y;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  user-select:text;
+  -webkit-user-select:text;
+  /* Ensure card stays centered and doesn't drift */
+  position:relative;
+  -webkit-transform:translateZ(0);
+  transform:translateZ(0);
 }
 .auth-card {
   background:#fff;border-radius:20px;padding:40px 36px;
@@ -25332,12 +25351,38 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   font-size: .83rem;
 }
 .dcard-chart-wrap {
-  position: relative; height: 180px; padding: 4px 4px 0;
+  position: relative; height: 210px; padding: 8px 6px 0;
 }
 .dcard-summary-row {
-  display: flex; gap: 12px; flex-wrap: wrap;
-  padding: 10px 14px 8px; font-size: .78rem;
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  padding: 10px 16px 12px; font-size: .78rem;
   border-top: 1px solid var(--border);
+  background: linear-gradient(to bottom, var(--surface2) 0%, var(--surface) 100%);
+}
+
+/* ── Forecast 90d card refinements ───────────────────────────────── */
+#dashCardForecast90 {
+  border: 1px solid rgba(42,96,73,.14);
+}
+#dashCardForecast90 .dcard-header {
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(42,96,73,.05) 100%);
+}
+#dashCardForecast90 .dcard-chart-wrap {
+  height: 220px;
+  padding: 10px 4px 0;
+}
+/* Programados badge — replaces removed checkbox */
+#dashCardForecast90 .dcard-actions::after {
+  content: '▲ Programados';
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(42,96,73,.08);
+  border: 1px solid rgba(42,96,73,.18);
+  border-radius: 20px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  letter-spacing: .01em;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
