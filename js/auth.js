@@ -3101,10 +3101,9 @@ async function inviteToFamily(familyId, familyName) {
 
 async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl, role) {
   try {
-    const { autoCheckConfig } = await _getAutoCheckConfig();
-    const serviceId  = autoCheckConfig?.emailServiceId  || 'service_8e4rkde';
-    const publicKey  = autoCheckConfig?.emailPublicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
-    const templateId = autoCheckConfig?.emailTemplateId || 'template_fla7gdi';
+    const serviceId  = EMAILJS_CONFIG.serviceId  || 'service_8e4rkde';
+    const publicKey  = EMAILJS_CONFIG.publicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
+    const templateId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId || 'template_fla7gdi';
     const appUrl     = inviteUrl || (typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname));
 
     const roleLabel = { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador', editor:'Editor' }[role] || role || 'Usuário';
@@ -3756,14 +3755,11 @@ async function doApproveUser() {
           <div style="font-size:.78rem;color:var(--muted);margin-top:10px">📧 E-mail de boas-vindas enviado.</div>
         </div>`;
     }
-    toast('✓ ' + displayName + ' aprovado!' + (createNewFamily ? ' Criará família no primeiro login.' : familyName ? ' Família: ' + familyName : ''), 'success');
+    toast('✓ ' + displayName + ' aprovado!' + (familyName ? ' Família: ' + familyName : ''), 'success');
     await loadUsersList();
     await _checkPendingApprovals();
     if (document.getElementById('uaPending')?.style.display !== 'none') _renderPendingTab();
     setTimeout(() => closeModal('approvalModal'), 2000);
-
-  } catch(e) {
-    console.error('[doApproveUser]', e);
     errEl.textContent = 'Erro: ' + (e.message || String(e));
     errEl.style.display = '';
   } finally {
@@ -4441,10 +4437,9 @@ async function _send2FAByEmail(email, code, name) {
   // Use same config resolution as _sendInviteEmail (fetches from app_settings with hardcoded fallbacks)
   let serviceId, publicKey, tplId;
   try {
-    const { autoCheckConfig } = await _getAutoCheckConfig();
-    serviceId = autoCheckConfig?.emailServiceId  || EMAILJS_CONFIG.serviceId  || 'service_8e4rkde';
-    publicKey = autoCheckConfig?.emailPublicKey  || EMAILJS_CONFIG.publicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
-    tplId     = autoCheckConfig?.emailTemplateId || EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId || 'template_fla7gdi';
+    serviceId = EMAILJS_CONFIG.serviceId  || 'service_8e4rkde';
+    publicKey = EMAILJS_CONFIG.publicKey  || 'wwnXjEFDaVY7K-qIjwX0H';
+    tplId     = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId || 'template_fla7gdi';
   } catch(_) {
     serviceId = EMAILJS_CONFIG.serviceId;
     publicKey = EMAILJS_CONFIG.publicKey;
