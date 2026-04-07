@@ -803,8 +803,13 @@ function setReportView(view) {
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',payees:'rptBtnPayees',objectives:'rptBtnObjectives'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
-  if (view === 'payees') { _rptPayeesInit(); }           // sets default dates; loadCurrentReport auto-loads data below
-  if (view === 'objectives') _rptObjectivesInit();       // populates select; user triggers load manually
+  if (view === 'payees') {
+    _rptPayeesInit();   // sets default dates synchronously
+    // Bypass _rptLoading guard: call loader directly after a tick so the
+    // DOM is updated and any in-flight regular report has a chance to finish.
+    setTimeout(() => _rptPayeesLoad().catch(() => {}), 0);
+  }
+  if (view === 'objectives') _rptObjectivesInit(); // populates select; user triggers load manually
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
       const today=new Date().toISOString().slice(0,10);
