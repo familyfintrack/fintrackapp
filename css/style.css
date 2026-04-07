@@ -19346,7 +19346,14 @@ section[data-page="transactions"] .content {
 
 /* ══ Screen — fundo verde escuro + grade quadriculada (landing page pattern) ══ */
 .lgn-screen {
-  overflow-y: auto;
+  /* MOBILE SCROLL LOCK — prevent drag/bounce on iOS Safari and Android Chrome */
+  overflow: hidden;                     /* no scrolling on the backdrop itself */
+  touch-action: none;                   /* block all touch gestures on the backdrop */
+  overscroll-behavior: none;            /* prevent rubber-band / overscroll bounce */
+  -webkit-overflow-scrolling: auto;     /* disable momentum scroll on older iOS */
+  user-select: none;                    /* prevent text selection drag gestures */
+  -webkit-user-select: none;
+  /* Layout */
   display: flex;
   position: fixed;
   inset: 0;
@@ -19356,6 +19363,7 @@ section[data-page="transactions"] .content {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
+  box-sizing: border-box;
 }
 /* Grid quadriculado — idêntico ao .hgrid da landing page */
 .lgn-screen::before {
@@ -19408,8 +19416,17 @@ section[data-page="transactions"] .content {
   position: relative; z-index: 1;
   display: flex; flex-direction: column; align-items: center;
   width: 100%; max-width: 460px;
-  margin: auto; /* centralização vertical e horizontal dentro do flex da tela */
+  margin: auto;
   animation: lgnFadeUp .55s cubic-bezier(.22,1,.36,1) both;
+  /* Restore touch interactivity for the form content */
+  touch-action: pan-y;        /* allow vertical scroll inside card on short screens */
+  overflow-y: auto;           /* scroll when card taller than viewport */
+  overflow-x: hidden;
+  overscroll-behavior: contain; /* don't propagate scroll to backdrop */
+  -webkit-overflow-scrolling: touch;
+  max-height: 100dvh;         /* cap height so it never exceeds viewport */
+  user-select: text;          /* allow text selection inside form */
+  -webkit-user-select: text;
 }
 @keyframes lgnFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 .lgn-logo-wrap {
