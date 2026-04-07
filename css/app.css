@@ -1304,9 +1304,7 @@ body.tx-compact .tx-table .badge{
 }
 
 /* Better mobile layout for transaction rows */
-/* === Mobile 720px — consolidated === */
 @media (max-width: 720px){
-
   .tx-table thead{ display:none; }
   .tx-table, .tx-table tbody, .tx-table tr, .tx-table td{ display:block; width:100%; }
   .tx-table tr{
@@ -1343,8 +1341,56 @@ body.tx-compact .tx-table .badge{
     font-size:1.05rem;
     font-weight:700;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUDIT PAGE — UX melhorada
+══════════════════════════════════════════════════════════════════════ */
+
+/* Linha colorida por status */
+.audit-tr-confirmed td { border-left: none; }
+.audit-tr-pending td:first-child  { border-left: 3px solid var(--amber); }
+.audit-tr-error   td:first-child  { border-left: 3px solid var(--red);   }
+
+/* KPI counters clicáveis — feedback visual */
+.audit-counter { transition: box-shadow .15s, transform .1s; }
+.audit-counter:hover { transform: translateY(-1px); }
+.audit-counter:active { transform: translateY(0); }
+
+/* Filtro de mês alinhado com os demais selects */
+#auditMonthFilter::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; }
+
+/* Tabela: header sticky em scroll vertical */
+#auditTable thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface2);
+  z-index: 1;
+}
 
 
+/* === THEME UPDATE === */
+.topbar, .header, .app-header {
+  background: linear-gradient(135deg, #0E3B2B 0%, #145238 52%, #1C6A49 100%) !important;
+  color: #F7FAF8;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.page-titlebar {
+  background: #305E4E !important;
+  color: #F7FAF8;
+}
+
+.fx-bar {
+  background: #F4FBF7;
+  color: #23483B;
+  border-bottom: 1px solid #D8EADF;
+}
+
+
+
+/* === 2026-03-26 FINAL MOBILE TX WIDTH REBALANCE === */
+@media (max-width: 720px){
   #page-transactions #txBody tr.tx-row-clickable{
     grid-template-columns: 42px 1fr auto !important;
     gap: 10px !important;
@@ -1435,54 +1481,4 @@ body.tx-compact .tx-table .badge{
     width: 100% !important;
     align-items: flex-end !important;
   }
-
 }
-
-
-/* ══════════════════════════════════════════════════════════════════════
-   AUDIT PAGE — UX melhorada
-══════════════════════════════════════════════════════════════════════ */
-
-/* Linha colorida por status */
-.audit-tr-confirmed td { border-left: none; }
-.audit-tr-pending td:first-child  { border-left: 3px solid var(--amber); }
-.audit-tr-error   td:first-child  { border-left: 3px solid var(--red);   }
-
-/* KPI counters clicáveis — feedback visual */
-.audit-counter { transition: box-shadow .15s, transform .1s; }
-.audit-counter:hover { transform: translateY(-1px); }
-.audit-counter:active { transform: translateY(0); }
-
-/* Filtro de mês alinhado com os demais selects */
-#auditMonthFilter::-webkit-calendar-picker-indicator { opacity: .6; cursor: pointer; }
-
-/* Tabela: header sticky em scroll vertical */
-#auditTable thead th {
-  position: sticky;
-  top: 0;
-  background: var(--surface2);
-  z-index: 1;
-}
-
-
-/* === THEME UPDATE === */
-.topbar, .header, .app-header {
-  background: linear-gradient(135deg, #0E3B2B 0%, #145238 52%, #1C6A49 100%) !important;
-  color: #F7FAF8;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-
-.page-titlebar {
-  background: #305E4E !important;
-  color: #F7FAF8;
-}
-
-.fx-bar {
-  background: #F4FBF7;
-  color: #23483B;
-  border-bottom: 1px solid #D8EADF;
-}
-
-
-
-
