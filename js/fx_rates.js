@@ -59,10 +59,17 @@ function _startFxAutoRefresh() {
         console.warn('[FX] auto-refresh falhou:', e.message)
       );
       _renderFxBadge();
-      console.info('[FX] cotações atualizadas automaticamente');
     }
   }, 30 * 60 * 1000); // 30 minutos
 }
+
+function _stopFxAutoRefresh() {
+  if (_fxAutoRefreshTimer) {
+    clearInterval(_fxAutoRefreshTimer);
+    _fxAutoRefreshTimer = null;
+  }
+}
+window._stopFxAutoRefresh = _stopFxAutoRefresh;
 
 async function _initFxRates() {
   // 1. Carrega cache persistido
