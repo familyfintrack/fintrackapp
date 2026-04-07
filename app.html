@@ -7320,6 +7320,13 @@ Se você não solicitou isso, ignore este e-mail.`,
             placeholder="Anotações livres sobre esta conta…"></textarea>
           <div class="acm-hint">Visível apenas para você. Ex: finalidade, contatos, contratos.</div>
         </div>
+
+        <!-- Archive / Unarchive -->
+        <div id="acmArchiveWrap" style="display:none;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+          <div class="acm-section-label" style="color:var(--muted)">⚠️ Zona de Atenção</div>
+          <p style="font-size:.78rem;color:var(--muted);margin:6px 0 12px">Arquivar uma conta a esconde de todas as listas e seletores. As transações são mantidas e podem ser consultadas para fins históricos e de relatório.</p>
+          <button id="acmArchiveBtn" type="button" class="acm-btn-archive">📦 Arquivar conta</button>
+        </div>
       </div><!-- /pane-extra -->
 
     </div><!-- /acm-body -->
@@ -7333,6 +7340,53 @@ Se você não solicitou isso, ignore este e-mail.`,
       </button>
     </div>
 
+  </div>
+</div>
+
+
+<!-- ARCHIVE ACCOUNT MODAL -->
+<div class="modal-overlay" id="archiveAccountModal" onclick="if(event.target===this)closeModal('archiveAccountModal')">
+  <div class="modal" style="max-width:440px" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:14px;padding:20px 20px 0">
+      <div id="archAccIcon" style="flex-shrink:0"></div>
+      <div>
+        <div id="archAccName" style="font-weight:800;font-size:1rem;color:var(--text)"></div>
+        <div id="archAccType" style="font-size:.75rem;color:var(--muted);margin-top:2px"></div>
+        <div id="archAccBalance" style="font-size:.9rem;font-weight:700;margin-top:4px"></div>
+      </div>
+    </div>
+
+    <!-- Warning -->
+    <div style="margin:16px 20px 0;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 14px">
+      <div style="font-size:.78rem;font-weight:700;color:#b45309;margin-bottom:6px">📦 O que acontece ao arquivar?</div>
+      <ul style="margin:0;padding-left:18px;font-size:.76rem;color:var(--text2);line-height:1.7">
+        <li>A conta <strong>não aparece</strong> em nenhuma listagem ou seletor</li>
+        <li>Novas transações <strong>não podem</strong> ser lançadas nela</li>
+        <li>Todas as transações existentes são <strong>preservadas</strong></li>
+        <li>A conta <strong>continua disponível</strong> para relatórios históricos</li>
+        <li>Você pode <strong>desarquivá-la</strong> a qualquer momento</li>
+      </ul>
+    </div>
+
+    <!-- Optional reason -->
+    <div style="padding:14px 20px 0">
+      <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Motivo (opcional)</label>
+      <input type="text" id="archAccReason" class="form-control"
+        placeholder="Ex: conta encerrada, fusão de contas…"
+        style="font-size:.85rem">
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;padding:16px 20px 20px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('archiveAccountModal')">Cancelar</button>
+      <button id="archAccConfirmBtn" class="btn btn-primary" style="flex:1;background:#b45309;border-color:#b45309"
+        onclick="confirmArchiveAccount()">
+        📦 Confirmar Arquivamento
+      </button>
+    </div>
   </div>
 </div>
 
