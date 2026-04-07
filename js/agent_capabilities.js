@@ -787,7 +787,7 @@ function _agentBuildGuidedInput(step, idx) {
 
   if (step.type === 'date') {
     const today = new Date().toISOString().slice(0,10);
-    return `<input type="date" id="${id}" class="agf-input" value="${today}"
+    return `<input type="date" lang="pt-BR" id="${id}" class="agf-input" value="${today}"
       onchange="agentGuidedInput(${idx}, this.value)"
       onkeydown="if(event.key==='Enter')agentGuidedAdvance(${idx})"
       autocomplete="off">`;

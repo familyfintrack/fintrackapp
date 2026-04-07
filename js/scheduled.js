@@ -206,16 +206,27 @@ const FREQ_LABELS = {
   semiannual: 'Semestral', annual: 'Anual', custom: 'Personalizado'
 };
 
+// Adds N months to a Date, clamping to the last valid day of the target month.
+// Prevents overflow: 2025-01-31 + 1 month → 2025-02-28 (not 2025-03-03).
+function _addMonthsClamped(d, n) {
+  const originalDay = d.getDate();
+  d.setDate(1);                    // go to 1st to avoid overflow during month change
+  d.setMonth(d.getMonth() + n);    // move to target month
+  // Clamp to the last day of the target month
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(originalDay, lastDay));
+}
+
 function nextDate(from, freq, customInterval, customUnit) {
   const d = new Date(from + 'T12:00:00');
   switch(freq) {
     case 'weekly':     d.setDate(d.getDate() + 7); break;
     case 'biweekly':   d.setDate(d.getDate() + 14); break;
-    case 'monthly':    d.setMonth(d.getMonth() + 1); break;
-    case 'bimonthly':  d.setMonth(d.getMonth() + 2); break;
-    case 'quarterly':  d.setMonth(d.getMonth() + 3); break;
-    case 'semiannual': d.setMonth(d.getMonth() + 6); break;
-    case 'annual':     d.setFullYear(d.getFullYear() + 1); break;
+    case 'monthly':    _addMonthsClamped(d, 1); break;
+    case 'bimonthly':  _addMonthsClamped(d, 2); break;
+    case 'quarterly':  _addMonthsClamped(d, 3); break;
+    case 'semiannual': _addMonthsClamped(d, 6); break;
+    case 'annual':     _addMonthsClamped(d, 12); break;
     case 'custom':
       const n = parseInt(customInterval) || 1;
       if(customUnit === 'days')   d.setDate(d.getDate() + n);
@@ -1660,10 +1671,16 @@ async function runScheduledAutoRegister() {
   try {
     const cfg = getAutoCheckConfig ? getAutoCheckConfig() : { daysAhead: 0 };
     const daysAhead = parseInt(cfg?.daysAhead || 0, 10) || 0;
-    const today = new Date();
-    const toDate = new Date(today.getTime() + daysAhead*86400000);
+    // Always use local midnight as the baseline — prevents timestamp-based drift.
+    // new Date() could be 14:00; adding N×86400000 would point to 14:00 in N days
+    // instead of midnight, causing transactions to register 0-23h too early.
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0); // local midnight, no timezone ambiguity
+    const todayStr = localDateStr(todayMidnight);
+    // For the cutoff (toStr), add whole calendar days from local midnight
+    const toDate = new Date(todayMidnight);
+    toDate.setDate(toDate.getDate() + daysAhead); // calendar-day addition, not ms
     const toStr = localDateStr(toDate);
-    const todayStr = localDateStr(today);
 
     // Ensure scheduled loaded
     if(!state.scheduled || !state.scheduled.length) return 0;
@@ -1674,7 +1691,7 @@ async function runScheduledAutoRegister() {
       if(sc.status !== 'active' || !sc.auto_register) continue;
       const occDates = generateOccurrences(sc, 500);
       for(const d of occDates) {
-        if(d > toStr) continue;
+        if(d > toStr) break;  // dates are ordered ASC — once past cutoff, stop
 
         const result = await processScheduledOccurrence(sc, {
           scheduledDate: d,

@@ -1278,6 +1278,45 @@ function getPeriodColor(period) {
 // ── Expor funções públicas no window ─────────────────────────────────────────
 window.navigate               = navigate;
 window.navigateBack           = navigateBack;
+
+/* ──────────────────────────────────────────────────────────────────
+   DATE INPUT LOCALE — Garante formato DD/MM/AAAA em todos os campos
+   de data, incluindo os criados dinamicamente por JS.
+   MutationObserver captura novos inputs ao abrir modais.
+────────────────────────────────────────────────────────────────── */
+(function _initDateLocale() {
+  function _fixDateInputs(root) {
+    (root || document).querySelectorAll('input[type="date"]').forEach(function(el) {
+      if (!el.getAttribute('lang')) {
+        el.setAttribute('lang', 'pt-BR');
+      }
+    });
+  }
+
+  // Fix existing inputs immediately
+  document.addEventListener('DOMContentLoaded', function() { _fixDateInputs(); });
+
+  // Watch for dynamically added inputs (modal opens, JS render)
+  if (typeof MutationObserver !== 'undefined') {
+    const _dateObserver = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) { // Element node
+            if (node.matches && node.matches('input[type="date"]')) {
+              if (!node.getAttribute('lang')) node.setAttribute('lang', 'pt-BR');
+            } else if (node.querySelectorAll) {
+              _fixDateInputs(node);
+            }
+          }
+        });
+      });
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+      _dateObserver.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+})();
+
 window.bootApp                = bootApp;
 window.closeSidebar           = closeSidebar;
 window.openSidebar            = openSidebar;

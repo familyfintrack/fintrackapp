@@ -306,27 +306,37 @@ function getScheduledDates(sc, upToCutoff) {
 }
 
 function nextScheduledDate(dateStr, sc) {
+  // Use T12:00:00 (noon) to avoid DST-related date shifts.
+  // Return using local date components (not toISOString which is UTC) to prevent
+  // the date appearing as yesterday for users in UTC+ timezones.
   const d = new Date(dateStr + 'T12:00:00');
+  const _origDay = d.getDate(); // save original day for month clamping
   switch(sc.frequency) {
     case 'weekly':     d.setDate(d.getDate()+7); break;
     case 'biweekly':   d.setDate(d.getDate()+14); break;
-    case 'monthly':    d.setMonth(d.getMonth()+1); break;
-    case 'bimonthly':  d.setMonth(d.getMonth()+2); break;
-    case 'quarterly':  d.setMonth(d.getMonth()+3); break;
-    case 'semiannual': d.setMonth(d.getMonth()+6); break;
-    case 'annual':     d.setFullYear(d.getFullYear()+1); break;
+    // Month-based: clamp to last valid day to prevent overflow
+    // (e.g. Jan 31 + 1 month → Feb 28/29, not Mar 3)
+    case 'monthly':    { d.setDate(1); d.setMonth(d.getMonth()+1); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); break; }
+    case 'bimonthly':  { d.setDate(1); d.setMonth(d.getMonth()+2); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); break; }
+    case 'quarterly':  { d.setDate(1); d.setMonth(d.getMonth()+3); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); break; }
+    case 'semiannual': { d.setDate(1); d.setMonth(d.getMonth()+6); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); break; }
+    case 'annual':     { d.setDate(1); d.setFullYear(d.getFullYear()+1); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); break; }
     case 'custom': {
       const n = sc.custom_interval||1;
       const u = sc.custom_unit||'months';
       if(u==='days')   d.setDate(d.getDate()+n);
       else if(u==='weeks')  d.setDate(d.getDate()+7*n);
-      else if(u==='months') d.setMonth(d.getMonth()+n);
-      else if(u==='years')  d.setFullYear(d.getFullYear()+n);
+      else if(u==='months') { d.setDate(1); d.setMonth(d.getMonth()+n); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); }
+      else if(u==='years')  { d.setDate(1); d.setFullYear(d.getFullYear()+n); d.setDate(Math.min(_origDay, new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); }
       break;
     }
     default: return null;
   }
-  return d.toISOString().slice(0,10);
+  // Return local date string (not toISOString which returns UTC)
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dy = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dy;
 }
 
 
@@ -401,8 +411,13 @@ Valor: ${amountLabel}`;
 async function runScheduledUpcomingNotifications() {
   try {
     if (!state.scheduled || !state.scheduled.length) return 0;
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    // Use local midnight for today — toISOString() returns UTC which can be
+    // tomorrow's date for users in UTC+ timezones at night (e.g. UTC-3 at 22:00).
+    const _todayMidnight = new Date();
+    _todayMidnight.setHours(0, 0, 0, 0);
+    const todayStr = typeof localDateStr === 'function'
+      ? localDateStr(_todayMidnight)
+      : _todayMidnight.toISOString().slice(0, 10);
     let sent = 0;
     for (const sc of state.scheduled) {
       if (sc.status !== 'active') continue;
@@ -415,11 +430,17 @@ async function runScheduledUpcomingNotifications() {
         Math.max(0, parseInt(sc.notify_telegram_days_before ?? sc.notify_days_before ?? 0, 10) || 0),
         Math.max(0, parseInt(sc.notify_days_before ?? 0, 10) || 0)
       );
-      const cutoff = new Date(today.getTime() + daysBefore * 86400000).toISOString().slice(0,10);
+      // Cutoff: add whole calendar days from local midnight (not ms from now)
+      const _cutoffDate = new Date(_todayMidnight);
+      _cutoffDate.setDate(_cutoffDate.getDate() + daysBefore);
+      const cutoff = typeof localDateStr === 'function'
+        ? localDateStr(_cutoffDate)
+        : _cutoffDate.toISOString().slice(0,10);
       const occDates = getScheduledDates(sc, cutoff);
       for (const d of occDates) {
         if (d < todayStr) continue;
-        const diffDays = Math.round((new Date(d + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
+        // diffDays: compare date strings directly to avoid DST issues
+        const diffDays = Math.round((new Date(d + 'T12:00:00') - new Date(todayStr + 'T12:00:00')) / 86400000);
         if (diffDays !== daysBefore) continue;
         if (emailEnabled) {
           const cfg = getAutoCheckConfig ? getAutoCheckConfig() : {};

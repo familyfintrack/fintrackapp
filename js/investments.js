@@ -570,7 +570,7 @@ function openInvTransactionModal(accountId = null, positionId = null) {
         </div>
         <div class="form-group">
           <label>Data *</label>
-          <input type="date" id="invTxDate" value="${new Date().toISOString().slice(0,10)}">
+          <input type="date" lang="pt-BR" id="invTxDate" value="${new Date().toISOString().slice(0,10)}">
         </div>
         <div class="form-group">
           <label>Código do Ativo *</label>

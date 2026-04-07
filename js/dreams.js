@@ -651,7 +651,7 @@ function openContributeModal(dreamId) {
         </div>
         <div class="form-group">
           <label class="form-label">Data</label>
-          <input type="date" id="contribDate" class="form-input" value="${today}">
+          <input type="date" lang="pt-BR" id="contribDate" class="form-input" value="${today}">
         </div>
         <div class="form-group">
           <label class="form-label">Observação (opcional)</label>
@@ -1052,7 +1052,7 @@ function _wizStep2() {
         </div>
         <div class="form-group">
           <label class="form-label">Prazo</label>
-          <input type="date" id="wizDate" class="form-input" value="${d.target_date||''}">
+          <input type="date" lang="pt-BR" id="wizDate" class="form-input" value="${d.target_date||''}">
         </div>
       </div>
       <div class="form-group">

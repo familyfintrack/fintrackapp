@@ -327,7 +327,16 @@ function filterAccounts(type){
 }
 
 function accountTypeLabel(t){
-  return{corrente:'Corrente',poupanca:'Poupança',cartao_credito:'Crédito',investimento:'Investimentos',dinheiro:'Dinheiro',outros:'Outros'}[t]||t;
+  return{
+    corrente:      'Corrente',
+    poupanca:      'Poupança',
+    cartao_credito:'Crédito',
+    investimento:  'Investimentos',
+    dinheiro:      'Dinheiro',
+    outros:        'Outros',
+    // Legacy value — DB may have this; display gracefully
+    vale_refeicao: 'Vale Refeição',
+  }[t] || t;
 }
 
 // Chamado ao mudar o tipo de conta no MODAL (não navega para transações)
@@ -362,7 +371,13 @@ async function openAccountModal(id=''){
   if(id){
     const a = state.accounts.find(x=>x.id===id)
            || (state.archivedAccounts||[]).find(x=>x.id===id);
-    if(a){Object.assign(form,a);form.initial_balance=parseFloat(a.initial_balance)||0;}
+    if(a){
+      Object.assign(form,a);
+      form.initial_balance=parseFloat(a.initial_balance)||0;
+      // Remap legacy/invalid type values that aren't in the select
+      const _validTypes=['corrente','poupanca','cartao_credito','investimento','dinheiro','outros'];
+      if(!_validTypes.includes(form.type)) form.type='outros';
+    }
   }
   document.getElementById('accountId').value=form.id;
   document.getElementById('accountName').value=form.name;
@@ -476,7 +491,13 @@ async function saveAccount(){
   const _gv = id => (document.getElementById(id)?.value || '').trim() || null;
   const data={
     name:document.getElementById('accountName').value.trim(),
-    type:document.getElementById('accountType').value,
+    // Map any legacy/invalid enum values to 'outros' before saving
+    // (prevents 'invalid input value for enum account_type' DB error)
+    type:(()=>{
+      const raw = document.getElementById('accountType').value;
+      const validTypes = ['corrente','poupanca','cartao_credito','investimento','dinheiro','outros'];
+      return validTypes.includes(raw) ? raw : 'outros';
+    })(),
     currency:document.getElementById('accountCurrency').value,
     initial_balance:getAmtField('accountBalance'),
     icon:document.getElementById('accountIcon').value||'',

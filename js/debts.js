@@ -563,7 +563,7 @@ function openDebtModal(debtId = null) {
     </div>
     <div class="form-group">
       <label>${t('dbt.start_date')} *</label>
-      <input class="form-input" id="debtFormStartDate" type="date"
+      <input class="form-input" id="debtFormStartDate" type="date" lang="pt-BR"
         value="${debt?.start_date || new Date().toISOString().slice(0,10)}">
     </div>
     <div class="form-group">
@@ -952,7 +952,7 @@ function _openDebtManualEntry(debtId) {
 </div>
 <div class="form-group">
   <label>${t('ui.date')}</label>
-  <input class="form-input" type="date" id="debtManualDate" value="${new Date().toISOString().slice(0,10)}">
+  <input class="form-input" type="date" lang="pt-BR" id="debtManualDate" value="${new Date().toISOString().slice(0,10)}">
 </div>
 <div class="form-group">
   <label>${t('ui.amount')} ${d => d.entry_type==='amortization'?'(positivo = reduz dívida)':''}</label>
