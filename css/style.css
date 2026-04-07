@@ -1908,6 +1908,38 @@ canvas { cursor: default; }
 .agent-proactive-alert-text strong { color: #b45309; }
 
 
+/* ══════════════════════════════════════════════════════════════════
+   DATE INPUT — Força exibição em formato brasileiro DD/MM/AAAA
+   Chrome/Edge usam a ordem do OS; este CSS reordena os campos
+   internos do WebKit independentemente do locale do sistema.
+══════════════════════════════════════════════════════════════════ */
+
+/* Reordena os campos internos do date picker (Chrome/Edge/Safari) */
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+}
+input[type="date"]::-webkit-datetime-edit-day-field   { order: 1; }
+input[type="date"]::-webkit-datetime-edit-literal     { order: 2; } /* o '/' entre dia e mês */
+input[type="date"]::-webkit-datetime-edit-month-field { order: 3; }
+/* segundo literal '/' entre mês e ano — usa :nth-of-type não disponível, ok */
+input[type="date"]::-webkit-datetime-edit-year-field  { order: 5; }
+
+/* Placeholder text when no date selected */
+input[type="date"]::-webkit-datetime-edit {
+  color: var(--text);
+}
+
+/* Ensure the calendar icon stays on the right */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  margin-left: auto;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
