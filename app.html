@@ -2437,11 +2437,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div>
               <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">De</label>
-              <input type="date" id="rptPayeesFrom" class="form-control" style="font-size:.83rem">
+              <input type="date" id="rptPayeesFrom" class="form-control" style="font-size:.83rem" onchange="_rptPayeesLoad()">
             </div>
             <div>
               <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Até</label>
-              <input type="date" id="rptPayeesTo" class="form-control" style="font-size:.83rem">
+              <input type="date" id="rptPayeesTo" class="form-control" style="font-size:.83rem" onchange="_rptPayeesLoad()">
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -2453,10 +2453,10 @@
             </div>
             <div>
               <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Tipo</label>
-              <select id="rptPayeesType" class="form-control" style="font-size:.83rem">
-                <option value="expense">Beneficiários (Despesas)</option>
-                <option value="income">Fontes Pagadoras (Receitas)</option>
-                <option value="both">Ambos</option>
+              <select id="rptPayeesType" class="form-control" style="font-size:.83rem" onchange="_rptPayeesLoad()">
+                <option value="both">Ambos (Desp. + Rec.)</option>
+                <option value="expense">Só Despesas</option>
+                <option value="income">Só Receitas</option>
               </select>
             </div>
           </div>
@@ -2475,7 +2475,7 @@
         <div class="card mb-3" style="padding:14px 16px">
           <div style="margin-bottom:10px">
             <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Objetivo</label>
-            <select id="rptObjSelect" class="form-control" style="font-size:.83rem">
+            <select id="rptObjSelect" class="form-control" style="font-size:.83rem" onchange="document.getElementById('rptObjFrom')?.value && document.getElementById('rptObjTo')?.value && _rptObjectivesLoad()">
               <option value="">— Selecione um objetivo —</option>
             </select>
           </div>
