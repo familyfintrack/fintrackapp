@@ -1685,6 +1685,8 @@ async function saveMyProfile() {
 // ── Logout ──
 async function doLogout() {
   try { await sb?.auth?.signOut(); } catch(e) {}
+  // Stop background timers
+  try { if (typeof _stopFxAutoRefresh === 'function') _stopFxAutoRefresh(); } catch(_) {}
   localStorage.removeItem('ft_session_token');
   localStorage.removeItem('ft_user_id');
   currentUser = null;
