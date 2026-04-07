@@ -455,6 +455,22 @@ function focusFieldSafely(elementId, delay = 100) {
 
 
 // ── Show / hide login screen ──
+// ── Login screen touch-lock (prevents iOS bounce/drag on backdrop) ───────────
+function _lgnTouchLock(e) {
+  // Allow touch inside the scrollable content area — block everything else
+  const wrap = document.getElementById('loginScreen')?.querySelector('.lgn-centered-wrap');
+  if (wrap && wrap.contains(e.target)) return;
+  e.preventDefault();
+}
+
+function _lockLoginScreen() {
+  document.addEventListener('touchmove', _lgnTouchLock, { passive: false });
+}
+
+function _unlockLoginScreen() {
+  document.removeEventListener('touchmove', _lgnTouchLock, { passive: false });
+}
+
 function showLoginScreen() {
   // Ensure sb is initialized whenever login screen is shown —
   // guards against iOS/Safari timing issues where createClient failed silently
@@ -464,6 +480,7 @@ function showLoginScreen() {
   // Exibir o loginScreen (começa display:none no HTML para evitar flicker e bugs de select iOS)
   const _ls = document.getElementById('loginScreen');
   if (_ls) { _ls.style.display = 'flex'; _ls.style.opacity = ''; _ls.style.transition = ''; }
+  _lockLoginScreen(); // block backdrop drag/bounce on mobile
   // Hide main app
   const mainApp = document.getElementById('mainApp');
   const sidebar = document.getElementById('sidebar');
@@ -534,6 +551,7 @@ function _clearRememberedCredentials() {
 function hideLoginScreen() {
   const ls = document.getElementById('loginScreen');
   if (ls) {
+    _unlockLoginScreen(); // restore normal touch behavior on the document
     ls.style.transition = 'opacity .2s ease';
     ls.style.opacity = '0';
     ls.style.pointerEvents = 'none'; // Impedir interação imediatamente — não esperar 200ms
