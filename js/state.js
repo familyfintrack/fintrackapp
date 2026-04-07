@@ -19,6 +19,7 @@ var state = window.state || {
 
   // ── Dados de domínio (preenchidos pelo DB / módulos) ──────────
   accounts:           [],
+  archivedAccounts:   [],  // accounts with is_archived=true
   accountGroups:      [],
   groups:             [],   // alias de accountGroups (legado — mantido para compatibilidade)
   categories:         [],
@@ -61,6 +62,7 @@ window.state = state;
 
 // Garantir que todos os containers existam mesmo em reloads parciais
 state.accounts            = state.accounts            || [];
+state.archivedAccounts    = state.archivedAccounts    || [];
 state.accountGroups       = state.accountGroups       || [];
 state.groups              = state.groups              || [];
 state.categories          = state.categories          || [];

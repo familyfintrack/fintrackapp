@@ -117,11 +117,46 @@ function renderAccounts(ft=''){
   } else {
     renderAccountsFlat(ft?accs.filter(a=>a.type===ft):accs,grid);
   }
+  // ── Render archived accounts section below active accounts ──────────────
+  _renderArchivedSection(grid);
   renderAccountsSummary();
   // Sync active tab to current view mode
   _syncAccountsTab(ft);
   try { renderGroupManager(); } catch(e) {}
 }
+
+function _renderArchivedSection(grid) {
+  // Remove previous archived section if any
+  document.getElementById('archivedAccountsSection')?.remove();
+
+  const archived = state.archivedAccounts || [];
+  if (!archived.length) return;
+
+  const section = document.createElement('div');
+  section.id = 'archivedAccountsSection';
+  section.style.cssText = 'grid-column:1/-1;margin-top:24px;';
+  section.innerHTML = `
+    <div class="archived-section-header" onclick="toggleArchivedSection()" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 4px;border-top:1px solid var(--border);user-select:none">
+      <span style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">
+        📦 Contas Arquivadas (${archived.length})
+      </span>
+      <svg id="archivedSectionArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--muted);transition:transform .22s"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div id="archivedGrid" class="account-grid" style="display:none;opacity:.75;margin-top:8px">
+      ${archived.map(a => accountCardHTML(a, true)).join('')}
+    </div>`;
+  grid.appendChild(section);
+}
+
+function toggleArchivedSection() {
+  const grid  = document.getElementById('archivedGrid');
+  const arrow = document.getElementById('archivedSectionArrow');
+  if (!grid) return;
+  const isOpen = grid.style.display !== 'none';
+  grid.style.display = isOpen ? 'none' : '';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+window.toggleArchivedSection = toggleArchivedSection;
 
 function _syncAccountsTab(ft) {
   document.querySelectorAll('#page-accounts .tab').forEach(t => t.classList.remove('active'));
@@ -235,7 +270,7 @@ function renderAccountsSummary(){
   el.innerHTML=`<span class="summary-label">${t('acct.total')}</span><span class="summary-value ${total<0?'text-red':'text-accent'}">${fmt(total)}</span>${pos?`<span class="summary-sep">·</span><span class="summary-pos">+${fmt(pos)}</span>`:''}${neg?`<span class="summary-sep">·</span><span class="summary-neg">${fmt(neg)}</span>`:''}`;
 }
 
-function accountCardHTML(a){
+function accountCardHTML(a, isArchived=false){
   const favStar = `<span
     onclick="event.stopPropagation();toggleAccountFavorite('${a.id}',${!!a.is_favorite})"
     title="${a.is_favorite?'Remover dos favoritos':'Adicionar aos favoritos'}"
@@ -255,13 +290,18 @@ function accountCardHTML(a){
     ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.8">${esc(bankParts.join(' · '))}</div>`
     : '';
 
-  return `<div class="account-card" onclick="goToAccountTransactions('${a.id}')" style="position:relative;padding-top:38px">
-    ${favStar}
+  return `<div class="account-card${isArchived ? ' account-card--archived' : ''}" onclick="goToAccountTransactions('${a.id}')" style="position:relative;padding-top:38px">
+    ${isArchived ? '<div class="archived-card-badge">📦 Arquivada</div>' : favStar}
     <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
     <div class="account-actions">
-      <button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button>
-      <button class="btn-icon" title="Editar conta"     onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button>
-      <button class="btn-icon" title="Excluir conta"    onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button>
+      ${isArchived ? `
+        <button class="btn-icon" title="Desarquivar conta" onclick="event.stopPropagation();unarchiveAccount('${a.id}')">📤</button>
+        <button class="btn-icon" title="Ver transações" onclick="event.stopPropagation();goToAccountTransactions('${a.id}')">📋</button>
+      ` : `
+        <button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button>
+        <button class="btn-icon" title="Editar conta"     onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button>
+        <button class="btn-icon" title="Excluir conta"    onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button>
+      `}
     </div>
     <div class="account-icon" style="font-size:1.6rem;margin-bottom:8px">${renderIconEl(a.icon,a.color,36)}</div>
     <div class="account-name">${esc(a.name)}</div>
@@ -320,7 +360,8 @@ window._onAccModalTypeChange = _onAccModalTypeChange;
 async function openAccountModal(id=''){
   const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',pix_key:'',card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
   if(id){
-    const a=state.accounts.find(x=>x.id===id);
+    const a = state.accounts.find(x=>x.id===id)
+           || (state.archivedAccounts||[]).find(x=>x.id===id);
     if(a){Object.assign(form,a);form.initial_balance=parseFloat(a.initial_balance)||0;}
   }
   document.getElementById('accountId').value=form.id;
@@ -416,6 +457,8 @@ async function openAccountModal(id=''){
     acmLivePreview();
     const body = document.querySelector('#accountModal .acm-body');
     if (body) body.scrollTop = 0;
+    // ── Archive button visibility ──────────────────────────────────────
+    _acmUpdateArchiveButton(id, form.is_archived);
   }, 80);
 }
 
@@ -519,7 +562,7 @@ async function deleteAccount(id) {
   const sel = document.getElementById('delAccTargetSelect');
   sel.innerHTML = '<option value="">— Selecione a conta —</option>' +
     state.accounts
-      .filter(a => a.id !== id && a.active !== false)
+      .filter(a => a.id !== id && a.active !== false && !a.is_archived)
       .map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`)
       .join('');
 
@@ -1341,6 +1384,145 @@ document.addEventListener('DOMContentLoaded', function() {
     if (fp) setTimeout(() => { fp.style.display = 'none'; }, 180);
   };
 });
+
+
+function _acmUpdateArchiveButton(accountId, isArchived) {
+  const wrap = document.getElementById('acmArchiveWrap');
+  if (!wrap) return;
+  if (!accountId) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const btn = document.getElementById('acmArchiveBtn');
+  if (!btn) return;
+  if (isArchived) {
+    btn.textContent = '📤 Desarquivar conta';
+    btn.className   = 'acm-btn-unarchive';
+    btn.onclick     = () => { closeModal('accountModal'); unarchiveAccount(accountId); };
+  } else {
+    btn.textContent = '📦 Arquivar conta';
+    btn.className   = 'acm-btn-archive';
+    btn.onclick     = () => archiveAccount(accountId);
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   ARCHIVE / UNARCHIVE ACCOUNT
+════════════════════════════════════════════════════════════════════ */
+let _archiveAccId = null;
+
+async function archiveAccount(id) {
+  const acc = state.accounts.find(a => a.id === id);
+  if (!acc) return;
+  _archiveAccId = id;
+
+  // ── Check for active/future scheduled transactions ─────────────────
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: scData } = await famQ(
+    sb.from('scheduled_transactions')
+      .select('id,description,frequency,status,end_date,account_id,transfer_to_account_id')
+  ).or(`account_id.eq.${id},transfer_to_account_id.eq.${id}`);
+
+  const activeScheduled = (scData || []).filter(sc => {
+    if (sc.status === 'finished') return false;
+    if (sc.end_date && sc.end_date < today) return false;
+    return true;
+  });
+
+  if (activeScheduled.length > 0) {
+    const names = activeScheduled.slice(0, 5)
+      .map(s => '• ' + (s.description || '(sem descrição)'))
+      .join(', ');
+    toast(
+      '⚠️ Esta conta possui ' + activeScheduled.length + ' transação(ões) programada(s) ativa(s): ' +
+      names + '. Altere a conta dessas transações antes de arquivar.',
+      'error'
+    );
+    if (confirm(
+      'Esta conta tem ' + activeScheduled.length + ' transação(ões) programada(s) ativa(s).\n\n' +
+      'Você precisa alterar a conta dessas transações antes de arquivar.\n\n' +
+      'Deseja ir para Programados agora?'
+    )) {
+      navigate('scheduled');
+    }
+    return;
+  }
+
+  // ── Confirm archival ───────────────────────────────────────────────
+  // Populate the archive confirm modal
+  const el = id => document.getElementById(id);
+  if (el('archAccIcon')) {
+    el('archAccIcon').innerHTML = typeof renderIconEl === 'function'
+      ? renderIconEl(acc.icon, acc.color, 28)
+      : `<span style="font-size:1.3rem">${acc.icon || '🏦'}</span>`;
+  }
+  if (el('archAccName'))    el('archAccName').textContent    = acc.name;
+  if (el('archAccType'))    el('archAccType').textContent    = accountTypeLabel(acc.type) + ' · ' + (acc.currency || 'BRL');
+  if (el('archAccBalance')) {
+    el('archAccBalance').textContent = fmt(acc.balance, acc.currency);
+    el('archAccBalance').style.color = acc.balance < 0 ? 'var(--red)' : 'var(--accent)';
+  }
+  if (el('archAccReason')) el('archAccReason').value = '';
+
+  openModal('archiveAccountModal');
+}
+
+async function confirmArchiveAccount() {
+  if (!_archiveAccId) return;
+  const btn = document.getElementById('archAccConfirmBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Arquivando…'; }
+
+  try {
+    const reason = document.getElementById('archAccReason')?.value?.trim() || null;
+    const { error } = await sb.from('accounts')
+      .update({
+        is_archived:    true,
+        archived_at:    new Date().toISOString(),
+        archive_reason: reason,
+      })
+      .eq('id', _archiveAccId);
+
+    if (error) throw error;
+
+    toast('📦 Conta arquivada com sucesso!', 'success');
+    closeModal('archiveAccountModal');
+    closeModal('accountModal');
+    _archiveAccId = null;
+
+    // Reload and re-render
+    await loadAccounts();
+    if (typeof populateSelects === 'function') populateSelects();
+    renderAccounts(_accountsViewMode);
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+  } catch(e) {
+    toast('Erro ao arquivar: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📦 Confirmar Arquivamento'; }
+  }
+}
+
+async function unarchiveAccount(id) {
+  if (!confirm('Deseja desarquivar esta conta? Ela voltará a aparecer normalmente em todos os seletores e listagens.')) return;
+
+  try {
+    const { error } = await sb.from('accounts')
+      .update({ is_archived: false, archived_at: null, archive_reason: null })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    toast('✅ Conta desarquivada!', 'success');
+    await loadAccounts();
+    if (typeof populateSelects === 'function') populateSelects();
+    renderAccounts(_accountsViewMode);
+    if (state.currentPage === 'dashboard') loadDashboard?.();
+  } catch(e) {
+    toast('Erro ao desarquivar: ' + (e.message || e), 'error');
+  }
+}
+
+window.archiveAccount        = archiveAccount;
+window.confirmArchiveAccount = confirmArchiveAccount;
+window.unarchiveAccount      = unarchiveAccount;
 
 // ── Expor funções públicas no window (necessário para onclick inline em HTML dinâmico) ──
 window.openAccountModal        = openAccountModal;

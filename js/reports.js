@@ -336,7 +336,16 @@ function populateReportFilters() {
     const el = document.getElementById(id); if(!el) return;
     const cur = el.value;
     const placeholder = id==='forecastAccountFilter' ? 'Todas as contas' : 'Todas';
-    el.innerHTML = _accountOptions(state.accounts, placeholder);
+    // Reports include archived accounts for historical analysis
+    const allAccs = [...(state.accounts||[]), ...(state.archivedAccounts||[])];
+    const archived = (state.archivedAccounts||[]);
+    let html = `<option value="">${placeholder}</option>`;
+    html += _accountOptions(state.accounts, '');
+    if (archived.length) {
+      html += `<option value="" disabled>── Arquivadas ──</option>`;
+      archived.forEach(a => { html += `<option value="${a.id}">📦 ${esc(a.name)} (${a.currency})</option>`; });
+    }
+    el.innerHTML = html;
     el.value = cur;
   });
   const catEl = document.getElementById('rptCategory');
@@ -2724,6 +2733,17 @@ function _rptPayeesInit() {
       opt.value = a.id; opt.textContent = a.name;
       accSel.appendChild(opt);
     });
+    // Include archived accounts for historical payee analysis
+    if ((state.archivedAccounts||[]).length) {
+      const sep = document.createElement('option');
+      sep.disabled = true; sep.textContent = '── Arquivadas ──';
+      accSel.appendChild(sep);
+      (state.archivedAccounts || []).forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id; opt.textContent = '📦 ' + a.name;
+        accSel.appendChild(opt);
+      });
+    }
   }
 }
 

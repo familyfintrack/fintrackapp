@@ -54,16 +54,19 @@ const _accounts = {
       const cols = 'id,name,type,currency,color,icon,initial_balance,group_id,family_id,' +
                    'active,is_favorite,best_purchase_day,due_day,iof_rate,is_brazilian,' +
                    'bank_name,bank_code,agency,account_number,iban,routing_number,swift_bic,' +
-                   'card_brand,card_type,card_issuer,card_limit,linked_dream_id,notes';
-      const [ar, gr] = await Promise.all([
-        famQ(sb.from('accounts').select(cols).eq('active', true)).order('name'),
+                   'card_brand,card_type,card_issuer,card_limit,linked_dream_id,notes,' +
+                   'is_archived,archived_at,archive_reason';
+      const [ar, gr, arr] = await Promise.all([
+        famQ(sb.from('accounts').select(cols).eq('active', true).eq('is_archived', false)).order('name'),
         famQ(sb.from('account_groups').select('id,name,emoji,color,currency')).order('name'),
+        famQ(sb.from('accounts').select(cols).eq('active', true).eq('is_archived', true)).order('name'),
       ]);
       if (ar.error) throw ar.error;
       if (gr.error) console.warn('[DB] account_groups:', gr.error.message);
-      state.accounts      = ar.data || [];
-      state.groups        = gr.data || [];
-      state.accountGroups = state.groups;
+      state.accounts         = ar.data  || [];
+      state.archivedAccounts = arr.data || [];
+      state.groups           = gr.data  || [];
+      state.accountGroups    = state.groups;
       _touch('accounts');
       await _accounts.recalcBalances();
     }));

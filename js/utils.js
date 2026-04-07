@@ -273,7 +273,8 @@ function _buildCategoryFilterOptions() {
 }
 
 function _accountOptions(accounts, placeholder) {
-  const list = Array.isArray(accounts) ? accounts : [];
+  // Always exclude archived accounts from selection menus
+  const list = (Array.isArray(accounts) ? accounts : []).filter(a => !a.is_archived);
   const favs = list.filter(a => a.is_favorite);
   const rest = list.filter(a => !a.is_favorite);
   const renderOpt = (a, isFav=false) => `<option value="${a.id}">${isFav ? '⭐ ' : ''}${esc(a.name)} (${a.currency})</option>`;
