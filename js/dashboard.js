@@ -989,30 +989,48 @@ function _renderDashCustomList(order, prefs) {
 
 function _initDashDrag(list) {
   // ── Suporte a Mouse (HTML5 DnD) ──────────────────────────────────────────
+  // Fix: pointer-events:none on the dragging item breaks HTML5 DnD on desktop.
+  // Solution: use a CSS class that only changes visual appearance (opacity/shadow)
+  // WITHOUT pointer-events:none — the browser needs to keep pointer events active
+  // on the source element throughout the drag operation.
   let dragSrc = null;
 
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('dragstart', e => {
       dragSrc = item;
-      item.classList.add('dcc-dragging');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', item.dataset.cardId);
+      // Delay adding class so the browser can capture the drag image first
+      requestAnimationFrame(() => item.classList.add('dcc-dragging'));
     });
+
     item.addEventListener('dragend', () => {
       item.classList.remove('dcc-dragging');
       list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
+      dragSrc = null;
       _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
     });
+
     item.addEventListener('dragover', e => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      if (item !== dragSrc) {
+      if (dragSrc && item !== dragSrc) {
         list.querySelectorAll('.dcc-item').forEach(i => i.classList.remove('dcc-over'));
         item.classList.add('dcc-over');
       }
     });
+
+    item.addEventListener('dragleave', e => {
+      // Only remove highlight if truly leaving the item (not entering a child)
+      if (!item.contains(e.relatedTarget)) {
+        item.classList.remove('dcc-over');
+      }
+    });
+
     item.addEventListener('drop', e => {
       e.preventDefault();
+      e.stopPropagation();
+      item.classList.remove('dcc-over');
       if (dragSrc && item !== dragSrc) {
         const allItems = [...list.querySelectorAll('.dcc-item')];
         const srcIdx  = allItems.indexOf(dragSrc);
@@ -1023,6 +1041,11 @@ function _initDashDrag(list) {
       }
     });
   });
+
+  // Container-level dragover — needed so the browser registers the list as a valid
+  // drop target even between items (prevents the "not allowed" cursor glitch)
+  list.addEventListener('dragover', e => { e.preventDefault(); });
+  list.addEventListener('drop',     e => { e.preventDefault(); });
 
   // ── Suporte a Touch (iOS Safari + Android) ──────────────────────────────
   // HTML5 DnD não funciona em touch — implementar via touchstart/touchmove/touchend
