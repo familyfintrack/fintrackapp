@@ -629,7 +629,7 @@ async function bootApp(){
   if (typeof initWizard === 'function') setTimeout(() => initWizard().catch(()=>{}), 800);
 }
 
-const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',tags:'Gestão de Tags',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
+const pageTitles={dashboard:'Dashboard',transactions:'Transações',accounts:'Contas',reports:'Relatórios',budgets:'Orçamentos',categories:'Categorias',payees:'Beneficiários',scheduled:'Programados',import:'Importar / Backup',settings:'Configurações',investments:'Carteira de Investimentos',prices:'Gestão de Preços',
   grocery:'Lista de Mercado',
   ai_insights:'AI Insights',
   debts:'Dívidas',
@@ -995,7 +995,6 @@ function navigate(page){
   else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();
-  else if(page==='tags'){initTagsPage();}
   else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
   else if(page==='scheduled') {
     const _now = new Date();

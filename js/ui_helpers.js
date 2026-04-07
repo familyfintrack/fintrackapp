@@ -446,11 +446,6 @@ function setCatPickerValue(catId, ctx) {
     });
   }
   _closeCatPickerByCtx(ctx);
-
-  // Hook: sugerir tags ao selecionar categoria no formulário de transações
-  if (ctx === 'tx' && catId && typeof _tagsSuggestForCategory === 'function') {
-    _tagsSuggestForCategory(catId);
-  }
 }
 
 
