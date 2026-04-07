@@ -2578,24 +2578,34 @@ html, body { overscroll-behavior: none; }
 }
 .dcc-item:active { cursor: grabbing; }
 .dcc-item.dcc-dragging {
-  opacity: .45;
+  opacity: .4;
   box-shadow: 0 6px 20px rgba(0,0,0,.15);
   transform: scale(1.015);
-  pointer-events: none; /* evita que o item fantasma interfira nos eventos de drop */
+  /* NOTE: pointer-events must NOT be none here — it breaks HTML5 DnD on desktop.
+     The browser needs pointer events active on the source element during drag. */
+  cursor: grabbing;
+  background: var(--surface2);
+  border-color: var(--accent);
+  border-style: dashed;
 }
 .dcc-item.dcc-over {
   border-color: var(--accent);
-  background: var(--accent-lt, rgba(42,96,73,.07));
+  background: var(--accent-lt, rgba(42,96,73,.09));
+  box-shadow: 0 0 0 2px var(--accent);
   transform: translateY(-2px);
+  transition: transform .1s, box-shadow .1s;
 }
 .dcc-handle {
   color: var(--muted);
   flex-shrink: 0;
   cursor: grab;
-  padding: 6px 4px; /* área de toque maior */
+  padding: 6px 8px; /* área de toque maior */
   opacity: .5;
   transition: opacity .12s;
   touch-action: none;
+  /* Ensure the handle doesn't interfere with the draggable attribute on desktop */
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 .dcc-item:hover .dcc-handle { opacity: 1; }
 .dcc-icon { font-size: 1.1rem; flex-shrink: 0; }
