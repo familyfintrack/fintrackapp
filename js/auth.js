@@ -486,8 +486,8 @@ function showLoginScreen() {
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
   if (mainApp) { mainApp.style.display = 'none'; mainApp.style.visibility = 'hidden'; mainApp.style.opacity = '0'; }
-  if (sidebar) sidebar.style.display = 'none';
-  if (sidebarOverlay) sidebarOverlay.style.display = 'none';
+  if (sidebar) { sidebar.style.display = 'none'; sidebar.style.visibility = 'hidden'; }
+  if (sidebarOverlay) { sidebarOverlay.style.display = 'none'; sidebarOverlay.style.visibility = 'hidden'; }
 
   try {
     document.querySelectorAll('.modal-overlay').forEach(el => {
@@ -565,8 +565,8 @@ function hideLoginScreen() {
     mainApp.style.visibility = 'visible';
     requestAnimationFrame(() => { mainApp.style.opacity = '1'; });
   }
-  if (sidebar) sidebar.style.display = '';
-  if (sidebarOverlay) sidebarOverlay.style.display = '';
+  if (sidebar) { sidebar.style.display = ''; sidebar.style.visibility = ''; }
+  if (sidebarOverlay) { sidebarOverlay.style.display = ''; sidebarOverlay.style.visibility = ''; }
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
@@ -4414,12 +4414,27 @@ function _2faTrustKey(userId) {
 }
 
 // ── Verifica se este dispositivo está trusted para o usuário ──
+// Verifica pela chave primária (app_users.id) e também por auth.uid como fallback
+// para garantir que trust salvo por qualquer path seja reconhecido.
 function _is2FATrusted(userId) {
   try {
+    // Check primary key
     const raw = localStorage.getItem(_2faTrustKey(userId));
-    if (!raw) return false;
-    const { until } = JSON.parse(raw);
-    return Date.now() < until;
+    if (raw) {
+      const { until } = JSON.parse(raw);
+      if (Date.now() < until) return true;
+    }
+    // Scan all trust keys — handles case where trust was saved with a
+    // different id (e.g. auth.uid vs app_users.id mismatch across sessions)
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('ft_2fa_trust_')) continue;
+      try {
+        const { until, userId: savedId } = JSON.parse(localStorage.getItem(k) || '{}');
+        if ((savedId === userId) && Date.now() < until) return true;
+      } catch(_) {}
+    }
+    return false;
   } catch(_) { return false; }
 }
 
@@ -4428,12 +4443,20 @@ function _set2FATrusted(userId) {
   try {
     const now   = Date.now();
     const until = now + 30 * 24 * 60 * 60 * 1000;
+    // Store userId inside payload for cross-id fallback lookup
     localStorage.setItem(_2faTrustKey(userId), JSON.stringify({
       until,
       since: now,
-      // ISO string for UI display
+      userId,  // stored so _is2FATrusted fallback scan can match
       expiresAt: new Date(until).toISOString(),
     }));
+    // Also store under auth.uid if different (covers cross-id scenarios)
+    const authUid = typeof currentUser !== 'undefined' ? currentUser?.id : null;
+    if (authUid && authUid !== userId) {
+      localStorage.setItem(_2faTrustKey(authUid), JSON.stringify({
+        until, since: now, userId, expiresAt: new Date(until).toISOString(),
+      }));
+    }
   } catch(_) {}
 }
 

@@ -333,12 +333,37 @@ function _showAuthErrorBanner(msg) {
   document.body.insertAdjacentElement('afterbegin', banner);
 }
 
+// ── Peek at Supabase session in localStorage WITHOUT async call ───────────
+// Supabase JS v2 persists the session under storageKey 'family-fintrack-auth'.
+// Checking this synchronously lets us decide immediately whether to show
+// the login form — eliminating the sidebar/app flash before getSession().
+function _hasLocalSession() {
+  try {
+    const raw = localStorage.getItem('family-fintrack-auth');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const session = parsed?.currentSession || parsed;
+    if (!session?.access_token) return false;
+    // expires_at is Unix timestamp in seconds
+    return Date.now() / 1000 < (session.expires_at || 0) + 60;
+  } catch(_) { return false; }
+}
+window._hasLocalSession = _hasLocalSession;
+
 async function tryAutoConnect(){
   const creds=getSupabaseCreds();
   const url=creds.url, key=creds.key;
   if(url&&key){
     document.getElementById('supabaseUrl').value=url;
     document.getElementById('supabaseKey').value=key;
+
+    // ── Show login IMMEDIATELY if no local session ────────────────────────
+    // Prevents sidebar/mainApp flash during the async getSession() call.
+    // If there IS a cached session, keep everything hidden until bootApp
+    // confirms validity and calls hideLoginScreen().
+    if (!_hasLocalSession()) {
+      if (typeof showLoginScreen === 'function') showLoginScreen();
+    }
 
     // ── Supabase email link cross-path redirect ───────────────────────────────
     // When Supabase Dashboard "Site URL" is set to the root (e.g. /),
