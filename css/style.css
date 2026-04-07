@@ -1800,6 +1800,63 @@ canvas { cursor: default; }
 }
 
 
+/* ══════════════════════════════════════════════════════════════════
+   REPORTS — Payees two-column grid + row animations
+══════════════════════════════════════════════════════════════════ */
+
+/* Desktop: two columns side by side */
+.rpt-payee-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Mobile: single column, expenses first */
+@media (max-width: 767px) {
+  .rpt-payee-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  /* Ensure expenses col appears first on mobile via CSS order */
+  .rpt-payee-col:first-child { order: 1; }
+  .rpt-payee-col:last-child  { order: 2; }
+}
+
+.rpt-payee-col {
+  min-width: 0;
+}
+
+/* Payee row hover state on <details> */
+.rpt-payee-row summary:hover {
+  background: var(--surface) !important;
+}
+.rpt-payee-row[open] > summary {
+  border-radius: 10px 10px 0 0;
+  background: var(--surface);
+}
+.rpt-payee-row > summary::-webkit-details-marker { display: none; }
+.rpt-payee-row > summary::marker { display: none; }
+
+/* Chevron indicator on payee rows */
+.rpt-payee-row > summary::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  margin-left: 6px;
+  transition: transform .2s;
+  opacity: .5;
+}
+.rpt-payee-row[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
