@@ -22100,6 +22100,12 @@ tr.payee-row[onclick] { cursor: pointer; }
     box-shadow: 0 1px 4px rgba(0,0,0,.05) !important;
     overflow: hidden !important;
     background: var(--surface) !important;
+    /* Limitar largura a 95% da página no mobile */
+    width: 95% !important;
+    max-width: 95% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
   }
   #page-scheduled #scheduledList .sc-card:active { transform: scale(.989) !important; }
 
