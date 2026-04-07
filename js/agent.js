@@ -54,7 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const AGENT_ALLOWED_INTENTS = new Set([
   'create_transaction','create_scheduled','create_payee','create_category',
-  'create_family_member','create_debt','create_account','create_dream',
+  'create_family_member','create_debt','create_account','create_dream','create_budget',
+  'edit_transaction','edit_scheduled','edit_account','edit_budget',
+  'delete_transaction','delete_scheduled','toggle_scheduled',
   'edit_entity','delete_entity','pay_debt',
   'query_balance','navigate','confirm','cancel','help','finance_query','not_understood',
 ]);
@@ -180,6 +182,9 @@ function _agentWelcome() {
       <strong>${upcomingSched.length} programado${upcomingSched.length>1?'s':''}</strong> vencem esta semana
     </div>`;
   }
+
+  // ── Alerta proativo de saldo com IA (após welcome, não-bloqueante) ─────
+  setTimeout(() => _agentScanProactiveAlerts().catch(() => {}), 1800);
 
   const html = `
 <div class="agent-welcome">
@@ -541,17 +546,19 @@ async function _agentAnswerHelpWithGemini(query, articles, apiKey) {
     `=== ${a.title} (${a.section}) ===\n${a.plainText.slice(0, 500)}`
   ).join('\n\n');
 
-  const prompt = `Você é o suporte do app Family FinTrack.
-Pergunta do usuário: "${query}"
+  const systemInstruction =
+    'Você é o suporte do app Family FinTrack. ' +
+    'Responda SOMENTE em português. Seja objetivo (máx 5 frases). ' +
+    'Use **negrito** para termos importantes. ' +
+    'Use APENAS o contexto fornecido. Se não souber, diga que não encontrou.';
 
-Responda em português usando APENAS o contexto abaixo. Seja objetivo (máx 5 frases).
-Use **negrito** para termos importantes. Se não souber, diga que não encontrou.
-
-CONTEXTO:
-${ctx}`;
+  const prompt = `Pergunta: "${query}"\n\nCONTEXTO:\n${ctx}`;
+  const history = _agentBuildChatHistory();
 
   try {
-    const resp = await _agentCallGemini(prompt, apiKey, 400);
+    const resp = await _agentCallGemini(prompt, apiKey, 500, 'gemini-2.0-flash', {
+      systemInstruction, history
+    });
     _agentAppend('assistant', resp);
   } catch (e) {
     _agentAppend('assistant', articles[0]?.summary || 'Consulte a Central de Ajuda para detalhes.');
@@ -641,18 +648,71 @@ async function _agentAnswerFinance(query) {
 }
 
 async function _agentFinanceWithGemini(query, data, apiKey) {
-  const prompt = `Você é o assistente financeiro do app Family FinTrack.
-Pergunta: "${query}"
+  // Usa contexto profundo + histórico de conversa para respostas mais precisas
+  let ctx = null;
+  try { ctx = await _agentBuildDeepFinanceContext(); } catch(_) {}
 
-Use SOMENTE os dados abaixo. Responda em português, de forma objetiva (máx 8 linhas).
-Use **negrito** e listas com •. Não invente dados.
+  const systemInstruction = typeof AgentEngine !== 'undefined' && AgentEngine.GeminiContract.buildSystemInstruction
+    ? AgentEngine.GeminiContract.buildSystemInstruction(ctx || {})
+    : `Você é o assistente financeiro do FinTrack. Responda em português, de forma objetiva.`;
 
-DADOS:
-${data}`;
+  const prompt = `${query}`;
+  const history = _agentBuildChatHistory();
+
+  // Tenta streaming para resposta progressiva
+  const feed = document.getElementById('agentFeed');
+  const now = new Date();
+
+  // Cria bubble vazio para streaming
+  const msgEl = document.createElement('div');
+  msgEl.className = 'agent-msg agent-msg--assistant';
+  const textEl = document.createElement('div');
+  textEl.className = 'agent-text';
+
+  msgEl.innerHTML =
+    '<div class="agent-msg-bot-wrap">' +
+      '<div class="agent-bot-avatar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L13.5 7.5L19 9L13.5 10.5L12 16L10.5 10.5L5 9L10.5 7.5Z"/></svg></div>' +
+      '<div class="agent-bubble agent-bubble--bot"></div>' +
+    '</div>' +
+    '<div class="agent-msg-time agent-msg-time--bot">' + _agentFmtTime(now) + ' · FinTrack Agent</div>';
+
+  if (feed) feed.appendChild(msgEl);
+  const bubbleEl = msgEl.querySelector('.agent-bubble--bot');
+  if (bubbleEl) bubbleEl.appendChild(textEl);
+
+  let fullText = '';
+
   try {
-    _agentAppend('assistant', await _agentCallGemini(prompt, apiKey, 500));
+    if (_agent._engineReady && typeof AgentEngine !== 'undefined') {
+      // Tenta streaming real via SSE
+      fullText = await AgentEngine._callGeminiStream(
+        prompt, apiKey,
+        (chunk, accumulated) => {
+          textEl.innerHTML = _agentMarkdown(accumulated);
+          if (feed) feed.scrollTop = feed.scrollHeight;
+        },
+        { systemInstruction, history, maxTokens: 700 }
+      ).catch(async () => {
+        // Fallback para call normal se streaming falhar
+        const text = await _agentCallGemini(prompt, apiKey, 700, 'gemini-2.0-flash', {
+          systemInstruction, history
+        });
+        textEl.innerHTML = _agentMarkdown(text);
+        return text;
+      });
+    } else {
+      fullText = await _agentCallGemini(prompt, apiKey, 600, 'gemini-2.0-flash', {
+        systemInstruction, history
+      });
+      textEl.innerHTML = _agentMarkdown(fullText);
+    }
+    // Registra no histórico
+    _agent.history.push({ role: 'assistant', text: fullText.slice(0, 500) });
+    if (feed) feed.scrollTop = feed.scrollHeight;
+
   } catch (e) {
-    _agentAppend('assistant', data);
+    textEl.innerHTML = _agentMarkdown(data);
+    _agent.history.push({ role: 'assistant', text: data.slice(0, 300) });
   }
 }
 
@@ -825,16 +885,8 @@ function _agentNormalizeEngineResult(engineResult, originalText) {
   const intent = engineResult.intent || 'not_understood';
   if (!AGENT_ALLOWED_INTENTS.has(intent) && intent !== 'not_understood') {
     // Intents novos do v3 que não estão no set clássico — tenta mapear
-    const mapped = {
-      create_account: 'not_understood', // ainda não implementado, seguro
-      create_dream:   'not_understood',
-      pay_debt:       'not_understood',
-      edit_entity:    'not_understood',
-      delete_entity:  'not_understood',
-    };
-    if (mapped[intent]) {
-      _agentAppend('assistant', `ℹ️ A ação **${_agentBuildSummary(intent, {})}** ainda está em desenvolvimento. Em breve!`);
-    }
+    // Todos os intents são agora implementados — nenhum bloqueado
+    // (manter compatibilidade com intents legados mapeados)
   }
 
   const data = engineResult.data || {};
@@ -859,10 +911,26 @@ async function _agentPlanWithGemini(userMessage) {
       currentPage: window.state?.currentPage || 'dashboard',
       pendingIntent: null,
     });
+    // Build system instruction with family financial context
+    let sysInstr = '';
+    try {
+      const deepCtx = await _agentBuildDeepFinanceContext();
+      sysInstr = AgentEngine.GeminiContract.buildSystemInstruction(deepCtx);
+    } catch(_) {}
+    const chatHistory = _agentBuildChatHistory();
+
     for (const model of ['gemini-2.0-flash','gemini-2.5-flash','gemini-2.5-flash-lite']) {
       try {
-        const text = await _agentCallGemini(prompt, _agent.apiKey, 800, model);
-        const parsed = AgentEngine.GeminiContract.parseResponse(text);
+        const rawText = await _agentCallGemini(userMessage, _agent.apiKey, 800, model, {
+          systemInstruction: sysInstr, history: chatHistory,
+        });
+        // If it's a free-text response (not JSON), it's a query answer — render directly
+        if (!AgentEngine.GeminiContract.isActionResponse(rawText)) {
+          _agentAppend('assistant', rawText);
+          _agent.history.push({ role: 'assistant', text: rawText.slice(0, 500) });
+          return { intent: 'finance_query', _handled: true, actions: [], summary: '', requires_confirmation: false, missing_fields: [], guided: false };
+        }
+        const parsed = AgentEngine.GeminiContract.parseResponse(rawText);
         // Converte para formato de plano clássico
         return {
           intent: parsed.intent,
@@ -908,16 +976,117 @@ Pedido: ${JSON.stringify(userMessage)}`;
 }
 
 // ── Core Gemini caller ─────────────────────────────────────────────────────
-async function _agentCallGemini(prompt, apiKey, maxTokens=600, model='gemini-2.0-flash') {
+async function _agentCallGemini(prompt, apiKey, maxTokens=600, model='gemini-2.0-flash', opts={}) {
+  // Delega para o engine se disponível (suporta systemInstruction + history)
+  if (_agent._engineReady && typeof AgentEngine !== 'undefined') {
+    try {
+      return await AgentEngine._callGemini(prompt, apiKey, maxTokens, model, opts);
+    } catch(e) {
+      if (!/404/.test(e.message || '')) throw e;
+    }
+  }
+  // Fallback direto
   const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const resp=await fetch(url,{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.15}})
+    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.15}})
   });
-  if(!resp.ok){const raw=await resp.text().catch(()=>'');throw new Error(`Gemini HTTP ${resp.status}${raw?': '+raw.slice(0,120):''}`);}
+  if(!resp.ok){const raw=await resp.text().catch(()=>'');throw new Error(`Gemini HTTP ${resp.status}${raw?': '+raw.slice(0,200):''}`);}
   const data=await resp.json();
   return data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
 }
+
+// ── Constrói o histórico de conversa no formato Gemini (multi-turn) ────────
+function _agentBuildChatHistory() {
+  const history = _agent.history.slice(-20); // últimas 20 mensagens
+  const geminiHistory = [];
+  for (const msg of history) {
+    const role = msg.role === 'user' ? 'user' : 'model';
+    const text = String(msg.text || '[mensagem]').slice(0, 500);
+    if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === role) {
+      geminiHistory[geminiHistory.length - 1].parts[0].text += '\n' + text;
+    } else {
+      geminiHistory.push({ role, parts: [{ text }] });
+    }
+  }
+  // Remove última entrada se for 'user' — será re-adicionada como o prompt atual
+  if (geminiHistory.length > 0 && geminiHistory[geminiHistory.length - 1].role === 'user') {
+    geminiHistory.pop();
+  }
+  return geminiHistory;
+}
+
+// ── Constrói contexto financeiro profundo para o system instruction ────────
+async function _agentBuildDeepFinanceContext() {
+  const f = (v, cur) => typeof fmt === 'function' ? fmt(v, cur || 'BRL') : `R$ ${Number(v).toFixed(2)}`;
+  const toBrl = (v, cur) => typeof toBRL === 'function' ? toBRL(v, cur) : Number(v);
+
+  try { await _agentEnsureContextLoaded(); } catch(_) {}
+
+  const accs    = state.accounts   || [];
+  const sched   = state.scheduled  || [];
+  const budgets = state.budgets    || [];
+  const cats    = state.categories || [];
+  const pays    = state.payees     || [];
+
+  const totalBRL = accs.reduce((s, a) => s + toBrl(Number(a.balance||0), a.currency||'BRL'), 0);
+  const negAccs  = accs.filter(a => Number(a.balance) < 0);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const upcomingSched = sched.filter(sc => {
+    if ((sc.status || 'active') !== 'active') return false;
+    const d = sc.start_date || sc.next_occurrence || '';
+    if (!d) return false;
+    const diff = (new Date(d) - new Date(todayStr)) / 86400000;
+    return diff >= 0 && diff <= 7;
+  });
+
+  const activeExpSched = sched
+    .filter(sc => (sc.status || 'active') === 'active' && Number(sc.amount) < 0)
+    .sort((a, b) => Math.abs(Number(b.amount)) - Math.abs(Number(a.amount)))
+    .slice(0, 6)
+    .map(sc => `${sc.description||'?'} ${f(Math.abs(Number(sc.amount)))} (${sc.frequency||'mensal'})`);
+
+  const budgetLines = budgets.slice(0, 8).map(b => {
+    const pct = b.amount > 0 ? Math.round((Number(b.spent||0) / Number(b.amount)) * 100) : 0;
+    const icon = pct >= 100 ? '🔴' : pct >= 80 ? '🟡' : '🟢';
+    return `${icon} ${b.categories?.name||b.category_name||'?'}: ${pct}% de ${f(b.amount)}`;
+  });
+
+  return {
+    today:             todayStr,
+    totalBRL:          f(totalBRL),
+    negativeAccounts:  negAccs.map(a => a.name),
+    upcomingCount:     upcomingSched.length,
+    accounts:          accs.slice(0, 30).map(a => ({
+      id: a.id, name: a.name, type: a.type,
+      currency: a.currency || 'BRL',
+      balance: f(Number(a.balance||0), a.currency),
+    })),
+    categories:        cats.slice(0, 60).map(c => ({ id: c.id, name: c.name, type: c.type })),
+    payees:            pays.slice(0, 50).map(p => ({ id: p.id, name: p.name })),
+    scheduled:         sched.slice(0, 15).map(sc => ({
+      id: sc.id, description: sc.description,
+      amount: sc.amount, frequency: sc.frequency,
+      status: sc.status || 'active',
+      account_id: sc.account_id,
+    })),
+    budgets:           budgets.slice(0, 10).map(b => ({
+      id: b.id,
+      category: b.categories?.name || b.category_name || '?',
+      limit: b.amount, spent: b.spent || 0,
+      category_id: b.category_id,
+    })),
+    scheduledSummary:  activeExpSched.join('; '),
+    budgetSummary:     budgetLines.join('; '),
+    financialSnapshot: `Total: ${f(totalBRL)} em ${accs.length} conta(s).` +
+      (negAccs.length ? ` ${negAccs.length} negativa(s): ${negAccs.map(a=>a.name).join(', ')}.` : '') +
+      (upcomingSched.length ? ` ${upcomingSched.length} programado(s) vencendo esta semana.` : '') +
+      (budgets.filter(b => Number(b.spent||0) >= Number(b.amount||Infinity)).length ?
+        ` ${budgets.filter(b => Number(b.spent||0) >= Number(b.amount)).length} orçamento(s) estourado(s).` : ''),
+  };
+}
+
 
 function _agentExtractJson(text) {
   const s=String(text||'').trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```$/i,'').trim();
@@ -1045,6 +1214,9 @@ function _agentExtractNavPage(text) {
 }
 
 async function _agentExecute(plan, originalText) {
+  // Check if Gemini already handled the response (free-text query mode)
+  if (plan && plan._handled) return;
+
   const normalized=_agentNormalizePlan(plan,originalText);
 
   if (normalized.intent==='not_understood') {
@@ -1135,15 +1307,28 @@ async function _agentRunAction(action,ctx) {
   switch(action.type){
     case 'check_payee':    return _agentEnsurePayee(d.name||d.payee_name||'',ctx);
     case 'check_category': return _agentEnsureCategory(d.category_name||d.name||'',d.type||'expense',d.color,ctx);
-    case 'create_transaction': return _agentCreateTransaction(d,ctx);
-    case 'create_scheduled':   return _agentCreateScheduled(d,ctx);
-    case 'create_payee':       return _agentEnsurePayee(d.name||'',ctx,true);
-    case 'create_category':    return _agentEnsureCategory(d.name||'',d.type||'expense',d.color,ctx,true);
-    case 'create_family_member': return _agentCreateFamilyMember(d);
-    case 'create_debt':        return _agentCreateDebt(d);
-    case 'create_account':     return _agentCreateAccount(d);
-    case 'create_dream':       return _agentCreateDream(d);
-    case 'pay_debt':           return _agentPayDebt(d);
+    case 'create_transaction':   return _agentCreateTransaction(d,ctx);
+    case 'create_scheduled':    return _agentCreateScheduled(d,ctx);
+    case 'create_payee':        return _agentEnsurePayee(d.name||'',ctx,true);
+    case 'create_category':     return _agentEnsureCategory(d.name||'',d.type||'expense',d.color,ctx,true);
+    case 'create_family_member':return _agentCreateFamilyMember(d);
+    case 'create_debt':         return _agentCreateDebt(d);
+    case 'create_account':      return _agentCreateAccount(d);
+    case 'create_dream':        return _agentCreateDream(d);
+    case 'create_budget':       return _agentCreateBudget(d);
+    case 'pay_debt':            return _agentPayDebt(d);
+    // Edit actions
+    case 'edit_transaction':    return _agentEditTransaction(d);
+    case 'edit_scheduled':      return _agentEditScheduled(d);
+    case 'edit_account':        return _agentEditAccount(d);
+    case 'edit_budget':         return _agentEditBudget(d);
+    case 'edit_entity':         return _agentDispatchEditEntity(d);
+    // Delete actions
+    case 'delete_transaction':  return _agentDeleteTransaction(d);
+    case 'delete_scheduled':    return _agentDeleteScheduled(d);
+    case 'delete_entity':       return _agentDispatchDeleteEntity(d);
+    // Toggle actions
+    case 'toggle_scheduled':    return _agentToggleScheduled(d);
     case 'navigate':
       if(d.page&&typeof navigate==='function'){navigate(d.page);return{ok:true,msg:`Página **${d.page}** aberta`};}
       throw new Error('Página não informada.');
@@ -1391,6 +1576,252 @@ async function _agentPayDebt(d) {
   const fmtPaid = typeof fmt === 'function' ? fmt(payAmount, debt.currency || 'BRL') : payAmount.toFixed(2);
   const statusMsg = newStatus === 'paid' ? ' 🎉 **Dívida quitada!**' : ` Saldo restante: ${typeof fmt === 'function' ? fmt(newBalance, debt.currency || 'BRL') : newBalance.toFixed(2)}`;
   return { ok: true, msg: `Pagamento de ${fmtPaid} registrado em **${debtLabel}**.${statusMsg}` };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   EXECUTORES v4 — Fase 2: Budget, Edit, Delete, Toggle
+═══════════════════════════════════════════════════════════════════════ */
+
+async function _agentCreateBudget(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+  const limit = Math.abs(Number(d.amount || d.limit || d.budget_limit || 0));
+  if (!limit) throw new Error('Valor limite do orcamento nao informado.');
+
+  let catId = d.category_id || _agentResolveCategory(d.category_name);
+  if (!catId && d.category_name) {
+    const ctx = {};
+    await _agentEnsureCategory(d.category_name, 'expense', null, ctx);
+    catId = ctx.category_id;
+  }
+  if (!catId) throw new Error('Categoria do orcamento nao informada.');
+
+  const monthStr = String(d.month || new Date().toISOString().slice(0, 7));
+  const parts = monthStr.split('-');
+  const budYear  = Number(parts[0]) || new Date().getFullYear();
+  const budMonth = Number(parts[1]) || (new Date().getMonth() + 1);
+
+  const payload = {
+    family_id: fid,
+    category_id: catId,
+    amount: limit,
+    month: budMonth,
+    year: budYear,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await sb.from('budgets').insert(payload);
+  if (error) throw new Error(error.message);
+
+  const catName = d.category_name || (state.categories || []).find(c => c.id === catId)?.name || '?';
+  const fmtLimit = typeof fmt === 'function' ? fmt(limit, 'BRL') : 'R$ ' + limit.toFixed(2);
+  return { ok: true, msg: 'Orcamento de **' + fmtLimit + '** criado para **' + catName + '** (' + budMonth + '/' + budYear + ')' };
+}
+
+async function _agentEditTransaction(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  let txId = d.transaction_id || d.id;
+  if (!txId && d.description) {
+    const match = _agentFindByName(
+      (state.transactions || []).map(t => ({ id: t.id, name: t.description })),
+      d.description
+    );
+    if (match) txId = match.id;
+  }
+  if (!txId) {
+    const last = (state.transactions || [])[0];
+    if (last) txId = last.id;
+    else throw new Error('Transacao nao encontrada. Especifique a descricao.');
+  }
+
+  const updates = {};
+  if (d.amount != null)   updates.amount      = Number(d.amount);
+  if (d.description)      updates.description = d.description;
+  if (d.date)             updates.date        = d.date;
+  if (d.category_name) {
+    const cid = _agentResolveCategory(d.category_name);
+    if (cid) updates.category_id = cid;
+  }
+  if (d.payee_name) {
+    const pid = _agentResolvePayee(d.payee_name);
+    if (pid) updates.payee_id = pid;
+  }
+  updates.updated_at = new Date().toISOString();
+
+  const { error } = await sb.from('transactions').update(updates).eq('id', txId).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+  if (typeof DB !== 'undefined' && DB.accounts?.bust) DB.accounts.bust();
+  return { ok: true, msg: 'Transacao atualizada com sucesso.' };
+}
+
+async function _agentDeleteTransaction(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  let txId = d.transaction_id || d.id;
+  if (!txId && d.description) {
+    const match = _agentFindByName(
+      (state.transactions || []).map(t => ({ id: t.id, name: t.description })),
+      d.description
+    );
+    if (match) txId = match.id;
+  }
+  if (!txId) throw new Error('Transacao nao encontrada. Informe a descricao.');
+
+  const { error } = await sb.from('transactions').delete().eq('id', txId).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+  if (typeof DB !== 'undefined' && DB.accounts?.bust) DB.accounts.bust();
+  return { ok: true, msg: 'Transacao excluida.' };
+}
+
+async function _agentEditScheduled(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  let sc = null;
+  if (d.scheduled_id || d.id) {
+    sc = (state.scheduled || []).find(s => s.id === (d.scheduled_id || d.id));
+  }
+  if (!sc && d.description) {
+    sc = _agentFindByName(
+      (state.scheduled || []).map(s => ({ id: s.id, name: s.description })),
+      d.description
+    );
+    if (sc) sc = (state.scheduled || []).find(s => s.id === sc.id);
+  }
+  if (!sc) throw new Error('Programado nao encontrado. Informe o nome.');
+
+  const updates = {};
+  if (d.amount != null)  updates.amount      = Number(d.amount);
+  if (d.description)     updates.description = d.description;
+  if (d.frequency)       updates.frequency   = d.frequency;
+  if (d.start_date)      updates.start_date  = d.start_date;
+  if (d.end_date)        updates.end_date    = d.end_date;
+  if (d.category_name) {
+    const cid = _agentResolveCategory(d.category_name);
+    if (cid) updates.category_id = cid;
+  }
+  updates.updated_at = new Date().toISOString();
+
+  const { error } = await sb.from('scheduled_transactions').update(updates).eq('id', sc.id).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+  return { ok: true, msg: 'Programado **' + (sc.description || sc.id) + '** atualizado.' };
+}
+
+async function _agentDeleteScheduled(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  let sc = null;
+  if (d.scheduled_id || d.id) {
+    sc = (state.scheduled || []).find(s => s.id === (d.scheduled_id || d.id));
+  }
+  if (!sc && d.description) {
+    sc = _agentFindByName(
+      (state.scheduled || []).map(s => ({ id: s.id, name: s.description })),
+      d.description
+    );
+    if (sc) sc = (state.scheduled || []).find(s => s.id === sc.id);
+  }
+  if (!sc) throw new Error('Programado nao encontrado. Informe o nome.');
+
+  const { error } = await sb.from('scheduled_transactions').delete().eq('id', sc.id).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+  return { ok: true, msg: 'Programado **' + (sc.description || sc.id) + '** excluido.' };
+}
+
+async function _agentToggleScheduled(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  let sc = null;
+  if (d.scheduled_id || d.id) {
+    sc = (state.scheduled || []).find(s => s.id === (d.scheduled_id || d.id));
+  }
+  if (!sc) {
+    const nameRef = d.description || d.name || '';
+    if (nameRef) {
+      const found = _agentFindByName(
+        (state.scheduled || []).map(s => ({ id: s.id, name: s.description })),
+        nameRef
+      );
+      if (found) sc = (state.scheduled || []).find(s => s.id === found.id);
+    }
+  }
+  if (!sc) throw new Error('Programado nao encontrado. Informe o nome.');
+
+  const newStatus = (sc.status || 'active') === 'active' ? 'paused' : 'active';
+  const { error } = await sb.from('scheduled_transactions')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', sc.id).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+
+  const label = newStatus === 'paused' ? 'pausado' : 'reativado';
+  return { ok: true, msg: 'Programado **' + sc.description + '** ' + label + '.' };
+}
+
+async function _agentEditAccount(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  const acc = _agentResolveAccountObj(d.account_id, d.account_name || d.name);
+  if (!acc) throw new Error('Conta nao encontrada. Informe o nome da conta.');
+
+  const updates = {};
+  if (d.new_name)  updates.name  = d.new_name;
+  if (d.color)     updates.color = d.color;
+  if (d.notes)     updates.notes = d.notes;
+  if (d.icon)      updates.icon  = d.icon;
+  updates.updated_at = new Date().toISOString();
+
+  const { error } = await sb.from('accounts').update(updates).eq('id', acc.id).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+  if (typeof DB !== 'undefined' && DB.accounts?.bust) DB.accounts.bust();
+  return { ok: true, msg: 'Conta **' + acc.name + '** atualizada.' };
+}
+
+async function _agentEditBudget(d) {
+  const fid = _agentGetFamilyId();
+  if (!fid) throw new Error('Familia nao identificada.');
+
+  let budget = null;
+  if (d.budget_id || d.id) {
+    budget = (state.budgets || []).find(b => b.id === (d.budget_id || d.id));
+  }
+  if (!budget && d.category_name) {
+    budget = (state.budgets || []).find(b =>
+      _agentNormalizeName(b.categories?.name || '') === _agentNormalizeName(d.category_name)
+    );
+  }
+  if (!budget) throw new Error('Orcamento nao encontrado. Informe a categoria.');
+
+  const newLimit = Number(d.amount || d.limit || budget.amount);
+  const updates = { amount: newLimit, updated_at: new Date().toISOString() };
+
+  const { error } = await sb.from('budgets').update(updates).eq('id', budget.id).eq('family_id', fid);
+  if (error) throw new Error(error.message);
+
+  const fmtLimit = typeof fmt === 'function' ? fmt(newLimit, 'BRL') : 'R$ ' + newLimit.toFixed(2);
+  const catName  = budget.categories?.name || d.category_name || '?';
+  return { ok: true, msg: 'Orcamento de **' + catName + '** atualizado para ' + fmtLimit + '.' };
+}
+
+function _agentDispatchEditEntity(d) {
+  const etype = String(d.entity_type || d.type || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/transac/.test(etype))  return _agentEditTransaction(d);
+  if (/program/.test(etype))  return _agentEditScheduled(d);
+  if (/conta|account/.test(etype)) return _agentEditAccount(d);
+  if (/orcam|budget/.test(etype))  return _agentEditBudget(d);
+  throw new Error('Tipo de entidade para edicao nao reconhecido: ' + etype + '. Use: transacao, programado, conta ou orcamento.');
+}
+
+function _agentDispatchDeleteEntity(d) {
+  const etype = String(d.entity_type || d.type || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/transac/.test(etype)) return _agentDeleteTransaction(d);
+  if (/program/.test(etype)) return _agentDeleteScheduled(d);
+  throw new Error('Tipo de entidade para exclusao nao reconhecido: ' + etype + '. Use: transacao ou programado.');
 }
 
 function _agentParseBirthDate(text){
@@ -1869,7 +2300,7 @@ async function _agentRefreshAfterPlan(plan){
     if(plan.intent==='create_category'&&typeof loadCategories==='function')await loadCategories();
     if(plan.intent==='create_debt'&&typeof loadDebts==='function')await loadDebts();
     if(plan.intent==='pay_debt'&&typeof loadDebts==='function')await loadDebts();
-    if(plan.intent==='create_account'){
+    if(['create_account','edit_account','delete_account'].includes(plan.intent)){
       if(typeof DB!=='undefined'&&DB.accounts?.bust)DB.accounts.bust();
       if(typeof loadAccounts==='function')await loadAccounts();
       if(typeof loadDashboard==='function')await loadDashboard();
@@ -1878,6 +2309,18 @@ async function _agentRefreshAfterPlan(plan){
     if(plan.intent==='create_family_member'&&typeof loadFamilyComposition==='function'){
       await loadFamilyComposition(true);
       if(typeof refreshAllFamilyMemberSelects==='function') refreshAllFamilyMemberSelects();
+    }
+    // Novos intents v4
+    if(['create_budget','edit_budget'].includes(plan.intent)){
+      if(typeof loadBudgets==='function')await loadBudgets();
+    }
+    if(['edit_transaction','delete_transaction'].includes(plan.intent)){
+      if(typeof DB!=='undefined'&&DB.accounts?.bust)DB.accounts.bust();
+      if(typeof loadTransactions==='function')await loadTransactions();
+      if(typeof loadDashboard==='function')await loadDashboard();
+    }
+    if(['edit_scheduled','delete_scheduled','toggle_scheduled'].includes(plan.intent)){
+      if(typeof loadScheduled==='function')await loadScheduled();
     }
   }catch(e){console.warn('[agent refresh]',e?.message||e);}
 }
@@ -2120,6 +2563,77 @@ async function _agentStreamText(text, targetEl, delayMs = 8) {
     if (feed) feed.scrollTop = feed.scrollHeight;
   }
 }
+
+
+// ── Varredura proativa — detecta situações críticas e notifica o usuário ──
+async function _agentScanProactiveAlerts() {
+  const key = await _agentGetKey();
+  if (!key || !_agentGetFamilyId()) return; // sem IA, sem alerta inteligente
+
+  const f = (v, cur) => typeof fmt === 'function' ? fmt(v, cur || 'BRL') : 'R$ ' + Number(v).toFixed(2);
+  const toBrl = (v, cur) => typeof toBRL === 'function' ? toBRL(v, cur) : Number(v);
+
+  const accs    = state.accounts  || [];
+  const budgets = state.budgets   || [];
+  const sched   = state.scheduled || [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const alerts = [];
+
+  // 1. Contas negativas
+  const negAccs = accs.filter(a => Number(a.balance) < 0);
+  if (negAccs.length) {
+    alerts.push('Contas negativas: ' + negAccs.map(a =>
+      a.name + ' (' + f(Number(a.balance), a.currency) + ')'
+    ).join(', '));
+  }
+
+  // 2. Orçamentos >= 90% utilizados
+  const nearBudgets = budgets.filter(b => {
+    const pct = Number(b.amount) > 0 ? Number(b.spent || 0) / Number(b.amount) : 0;
+    return pct >= 0.9;
+  });
+  if (nearBudgets.length) {
+    alerts.push('Orçamentos críticos (>=90%): ' + nearBudgets.map(b => {
+      const pct = Math.round(Number(b.spent||0) / Number(b.amount) * 100);
+      return (b.categories?.name || '?') + ' (' + pct + '%)';
+    }).join(', '));
+  }
+
+  // 3. Programados vencendo hoje
+  const dueTodaySched = sched.filter(sc => {
+    if ((sc.status || 'active') !== 'active') return false;
+    const d = sc.next_occurrence || sc.start_date || '';
+    return d.slice(0, 10) === todayStr;
+  });
+  if (dueTodaySched.length) {
+    alerts.push('Programados vencendo hoje: ' + dueTodaySched.map(sc =>
+      sc.description + ' (' + f(Math.abs(Number(sc.amount))) + ')'
+    ).join(', '));
+  }
+
+  if (!alerts.length) return; // tudo bem — sem alerta
+
+  // Usa Gemini para formular a mensagem de alerta de forma natural
+  const systemInstruction = 'Você é o FinTrack Copiloto. Responda em português, de forma concisa e amigável. Use emojis. Máximo 3 frases.';
+  const prompt = 'Resuma estes alertas financeiros de forma amigável para o usuário: ' + alerts.join('. ');
+
+  try {
+    const msg = await _agentCallGemini(prompt, key, 200, 'gemini-2.0-flash', { systemInstruction });
+    if (msg && msg.trim()) {
+      // Renderiza como card de alerta
+      const alertHtml = '<div class="agent-proactive-alert">' +
+        '<div class="agent-proactive-alert-icon">⚡</div>' +
+        '<div class="agent-proactive-alert-text">' + _agentMarkdown(msg) + '</div>' +
+        '</div>';
+      _agentAppendStructured('assistant', alertHtml, msg);
+    }
+  } catch(_) {
+    // Alerta sem IA — texto direto
+    _agentAppend('assistant', '⚠️ ' + alerts.join(' | '));
+  }
+}
+window._agentScanProactiveAlerts = _agentScanProactiveAlerts;
 
 // ── Rich finance response card ─────────────────────────────────────────────
 function _agentRenderRichFinanceCard(data) {

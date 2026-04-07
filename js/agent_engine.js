@@ -387,6 +387,55 @@ const AgentSession = {
 const AgentGeminiContract = {
 
   // Prompt padrão para interpretação de intenção (NL → JSON estruturado)
+
+  // Constrói o system instruction permanente — persona + dados da família
+  buildSystemInstruction(context) {
+    const today = context.today || new Date().toISOString().slice(0, 10);
+    const accs  = (context.accounts   || []).map(a =>
+      `${a.name} (${a.type||'conta'}, ${a.currency||'BRL'}${a.balance!=null?', saldo '+a.balance:''})`
+    ).join('; ');
+    const cats  = (context.categories || []).map(c => `${c.name} (${c.type||''})`).join('; ');
+    const pays  = (context.payees     || []).map(p => p.name).join('; ');
+    const sched = String(context.scheduledSummary || '').slice(0, 400);
+    const budg  = String(context.budgetSummary    || '').slice(0, 400);
+    const snap  = String(context.financialSnapshot || '').slice(0, 600);
+
+    return [
+      'Você é o FinTrack Copiloto, assistente financeiro pessoal da família.',
+      'Idioma: sempre português brasileiro. Tom: amigável, direto, preciso.',
+      'Use **negrito**, listas com •, emojis com moderação.',
+      'NUNCA invente dados financeiros — use apenas os fornecidos abaixo.',
+      '',
+      '## CAPACIDADES',
+      'Você executa QUALQUER ação do app via JSON estruturado e responde consultas em texto livre.',
+      'Ações: criar/editar/excluir transações, programados, contas, categorias, beneficiários,',
+      'dívidas, sonhos, orçamentos. Pagar dívidas. Pausar/reativar programados. Navegar páginas.',
+      '',
+      '## DADOS DA FAMÍLIA (hoje: ' + today + ')',
+      'Contas: ' + (accs || 'nenhuma'),
+      'Categorias: ' + (cats || 'nenhuma'),
+      'Beneficiários: ' + (pays || 'nenhum'),
+      sched ? 'Programados: ' + sched : '',
+      budg  ? 'Orçamentos: '  + budg  : '',
+      snap  ? 'Snapshot: '    + snap  : '',
+      '',
+      '## MODO DE RESPOSTA',
+      'AÇÃO → responda SOMENTE com JSON:',
+      '{"mode":"action","intent":"<intent>","confidence":<0-1>,"extracted_fields":{...},"missing_fields":[...],"suggested_ui":"<msg>"}',
+      'CONSULTA/PERGUNTA → responda em texto livre natural, sem JSON.',
+      '',
+      '## INTENTS DE AÇÃO',
+      'create_transaction | create_scheduled | create_payee | create_category |',
+      'create_family_member | create_account | create_debt | create_dream | create_budget |',
+      'edit_transaction | edit_scheduled | edit_account | edit_budget |',
+      'delete_transaction | delete_scheduled | toggle_scheduled | pay_debt |',
+      'query_balance | finance_query | navigate | help | not_understood',
+      '',
+      'Regras JSON: despesa=amount negativo, receita=positivo.',
+      'confidence: 1.0=certeza, 0.0=não entendeu. suggested_ui=mensagem amigável ao usuário.',
+    ].filter(Boolean).join('\n');
+  },
+
   buildInterpretPrompt(userMessage, context) {
     return `Você é o interpretador do FinTrack Agent. Sua ÚNICA função é analisar o pedido do usuário e retornar JSON estruturado.
 
@@ -427,6 +476,12 @@ Sessão pendente: ${context.pendingIntent || 'nenhuma'}
 "${userMessage}"`;
   },
 
+  // Detecta se a resposta é JSON de ação ou texto livre de consulta
+  isActionResponse(rawText) {
+    const t = String(rawText || '').trim();
+    return /\{[\s\S]*"intent"/.test(t);
+  },
+
   // Valida e normaliza a resposta do Gemini
   parseResponse(rawText) {
     try {
@@ -442,6 +497,7 @@ Sessão pendente: ${context.pendingIntent || 'nenhuma'}
 
       // Normalização e defaults
       return {
+        mode:             String(parsed.mode || 'action'),
         intent:           String(parsed.intent || 'not_understood'),
         confidence:       Math.min(1, Math.max(0, Number(parsed.confidence) || 0)),
         extracted_fields: parsed.extracted_fields && typeof parsed.extracted_fields === 'object'
@@ -453,6 +509,7 @@ Sessão pendente: ${context.pendingIntent || 'nenhuma'}
     } catch (e) {
       AgentLogger.warn('[gemini-contract] parse error:', e.message);
       return {
+        mode: 'action',
         intent: 'not_understood',
         confidence: 0,
         extracted_fields: {},
@@ -1048,36 +1105,147 @@ const AgentEngine = {
     };
   },
 
-  // Constrói contexto para interpretação
+  // Constrói contexto para interpretação — enriquecido com snapshot financeiro
   _buildContext(agentState, appState) {
-    const s = appState || {};
+    const s = appState || window.state || {};
+    const f = (v, cur) => typeof fmt === 'function' ? fmt(v, cur || 'BRL') : `R$ ${Number(v).toFixed(2)}`;
+
+    // Snapshot programados ativos (top 5 despesas)
+    const activeSched = (s.scheduled || [])
+      .filter(sc => (sc.status || 'active') === 'active' && Number(sc.amount) < 0)
+      .sort((a, b) => Math.abs(Number(a.amount)) - Math.abs(Number(b.amount))).reverse()
+      .slice(0, 5)
+      .map(sc => `${sc.description||'?'} ${f(Math.abs(Number(sc.amount)))} (${sc.frequency||'mensal'})`)
+      .join('; ');
+
+    // Snapshot orçamentos
+    const budgetSummary = (s.budgets || [])
+      .map(b => {
+        const pct = b.amount > 0 ? Math.round((b.spent||0) / b.amount * 100) : 0;
+        return `${b.categories?.name||'?'}: ${pct}% de ${f(b.amount)}`;
+      })
+      .join('; ');
+
+    // Snapshot financeiro geral
+    const accs = s.accounts || [];
+    const totalBRL = accs.reduce((sum, a) => {
+      const v = Number(a.balance || 0);
+      return sum + (typeof toBRL === 'function' ? toBRL(v, a.currency||'BRL') : v);
+    }, 0);
+
     return {
-      today:         new Date().toISOString().slice(0, 10),
-      currentPage:   s.currentPage || window.state?.currentPage || 'dashboard',
-      pendingIntent: AgentSession.state.pendingIntent,
-      accounts:      (s.accounts   || []).slice(0, 20).map(a => ({ id: a.id, name: a.name, type: a.type })),
-      categories:    (s.categories || []).slice(0, 40).map(c => ({ id: c.id, name: c.name, type: c.type })),
-      payees:        (s.payees     || []).slice(0, 30).map(p => ({ id: p.id, name: p.name })),
+      today:             new Date().toISOString().slice(0, 10),
+      currentPage:       s.currentPage || 'dashboard',
+      pendingIntent:     AgentSession.state.pendingIntent,
+      // Entidades com saldo incluído para melhor resolução
+      accounts:          accs.slice(0, 30).map(a => ({
+        id: a.id, name: a.name, type: a.type,
+        currency: a.currency || 'BRL',
+        balance: typeof fmt === 'function' ? fmt(Number(a.balance||0), a.currency||'BRL') : Number(a.balance||0),
+      })),
+      categories:        (s.categories  || []).slice(0, 60).map(c => ({ id: c.id, name: c.name, type: c.type })),
+      payees:            (s.payees      || []).slice(0, 50).map(p => ({ id: p.id, name: p.name })),
+      scheduled:         (s.scheduled   || []).slice(0, 10).map(sc => ({
+        id: sc.id, description: sc.description,
+        amount: sc.amount, frequency: sc.frequency, status: sc.status,
+      })),
+      budgets:           (s.budgets     || []).slice(0, 10).map(b => ({
+        id: b.id,
+        category: b.categories?.name || '?',
+        limit: b.amount, spent: b.spent || 0,
+      })),
+      // Summaries for system prompt
+      scheduledSummary:  activeSched,
+      budgetSummary,
+      financialSnapshot: `Total em contas: ${f(totalBRL)}. Contas: ${accs.length}. Orçamentos: ${(s.budgets||[]).length}. Programados ativos: ${(s.scheduled||[]).filter(sc=>(sc.status||'active')==='active').length}.`,
     };
   },
 
-  // Chamada Gemini compartilhada
-  async _callGemini(prompt, apiKey, maxTokens = 600, model = 'gemini-2.0-flash') {
+  // Chamada Gemini com suporte a systemInstruction + histório de conversa
+  async _callGemini(prompt, apiKey, maxTokens = 600, model = 'gemini-2.0-flash', opts = {}) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const body = {
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        temperature: opts.temperature != null ? opts.temperature : 0.15,
+      },
+    };
+
+    // System instruction (persona + dados da família)
+    if (opts.systemInstruction) {
+      body.system_instruction = { parts: [{ text: opts.systemInstruction }] };
+    }
+
+    // Chat history (multi-turn: alternância user/model)
+    if (opts.history && opts.history.length > 0) {
+      body.contents = [
+        ...opts.history,
+        { role: 'user', parts: [{ text: prompt }] },
+      ];
+    } else {
+      body.contents = [{ role: 'user', parts: [{ text: prompt }] }];
+    }
+
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.1 },
-      }),
+      body: JSON.stringify(body),
     });
+
     if (!resp.ok) {
       const raw = await resp.text().catch(() => '');
-      throw new Error(`Gemini HTTP ${resp.status}${raw ? ': ' + raw.slice(0, 120) : ''}`);
+      throw new Error(`Gemini HTTP ${resp.status}${raw ? ': ' + raw.slice(0, 200) : ''}`);
     }
     const json = await resp.json();
     return json?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  },
+
+  // Streaming call (usa streamGenerateContent)
+  async _callGeminiStream(prompt, apiKey, onChunk, opts = {}, model = 'gemini-2.0-flash') {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
+
+    const body = {
+      generationConfig: { maxOutputTokens: opts.maxTokens || 800, temperature: 0.2 },
+    };
+    if (opts.systemInstruction) {
+      body.system_instruction = { parts: [{ text: opts.systemInstruction }] };
+    }
+    if (opts.history && opts.history.length > 0) {
+      body.contents = [...opts.history, { role: 'user', parts: [{ text: prompt }] }];
+    } else {
+      body.contents = [{ role: 'user', parts: [{ text: prompt }] }];
+    }
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!resp.ok) throw new Error(`Gemini stream HTTP ${resp.status}`);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let full = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      // SSE: lines starting with "data: "
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(raw);
+          const text = parsed?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+          if (text) { full += text; onChunk(text, full); }
+        } catch(_) {}
+      }
+    }
+    return full;
   },
 };
 
