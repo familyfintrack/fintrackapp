@@ -2760,9 +2760,22 @@ async function _rptPayeesLoad() {
   body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Gerando relatório…</div>`;
 
   try {
+    const payeesById = new Map((state.payees || []).map(p => [p.id, p]));
+    const hydratePayee = (t) => {
+      const fallbackPayee = t?.payee_id ? payeesById.get(t.payee_id) : null;
+      return {
+        ...t,
+        payees: t?.payees || (fallbackPayee ? {
+          id: fallbackPayee.id,
+          name: fallbackPayee.name,
+          type: fallbackPayee.type
+        } : null)
+      };
+    };
+
     // Fetch ALL transactions with payees (no amount filter — we split later)
     // Try with full FK join first; fall back to simpler select if it fails
-    let txs = null, queryError = null;
+    let txs = null;
     try {
       let q = famQ(sb.from('transactions')
         .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
@@ -2785,9 +2798,8 @@ async function _rptPayeesLoad() {
       txs = r2.data;
     }
     if (!txs) throw new Error('Nenhum dado retornado da consulta.');
-    const error = null; // query succeeded
 
-    const rows = (txs || []).filter(t => t.payees?.name);
+    const rows = (txs || []).filter(t => t?.payee_id).map(hydratePayee);
     if (!rows.length) {
       body.innerHTML = `<div style="text-align:center;padding:48px 20px;color:var(--muted)">
         <div style="font-size:2.5rem;margin-bottom:10px">📭</div>
@@ -2805,7 +2817,7 @@ async function _rptPayeesLoad() {
       const map = {};
       txList.forEach(t => {
         const pid  = t.payee_id;
-        const name = t.payees?.name || '—';
+        const name = t.payees?.name || payeesById.get(pid)?.name || 'Beneficiário sem nome';
         if (!map[pid]) map[pid] = { id: pid, name, txs: [], total: 0, count: 0 };
         const amt = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
         map[pid].total += amt;
@@ -2953,7 +2965,7 @@ async function _rptObjectivesInit() {
   sel.innerHTML = '<option value="">— Selecione um objetivo —</option>';
   try {
     const objs = typeof loadObjectives === 'function'
-      ? await loadObjectives()
+      ? await loadObjectives(true)
       : (window._objList || []);
     (objs || []).forEach(o => {
       const opt = document.createElement('option');
@@ -2986,7 +2998,7 @@ async function _rptObjectivesLoad() {
   body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Analisando objetivo…</div>`;
 
   try {
-    const objs = typeof loadObjectives === 'function' ? await loadObjectives() : (window._objList || []);
+    const objs = typeof loadObjectives === 'function' ? await loadObjectives(true) : (window._objList || []);
     const obj  = (objs || []).find(o => o.id === objId);
     if (!obj) throw new Error('Objetivo não encontrado');
 
@@ -3016,7 +3028,27 @@ async function _rptObjectivesLoad() {
     }
     if (!txs) throw new Error('Nenhum dado retornado.');
 
-    const rows    = txs || [];
+    const payeesById = new Map((state.payees || []).map(p => [p.id, p]));
+    const accountsById = new Map([...(state.accounts || []), ...(state.archivedAccounts || [])].map(a => [a.id, a]));
+    const rows = (txs || []).map(t => {
+      const fallbackPayee = t?.payee_id ? payeesById.get(t.payee_id) : null;
+      const fallbackAccount = t?.account_id ? accountsById.get(t.account_id) : null;
+      return {
+        ...t,
+        payees: t?.payees || (fallbackPayee ? {
+          id: fallbackPayee.id,
+          name: fallbackPayee.name,
+          type: fallbackPayee.type
+        } : null),
+        accounts: t?.accounts || (fallbackAccount ? {
+          id: fallbackAccount.id,
+          name: fallbackAccount.name,
+          color: fallbackAccount.color,
+          icon: fallbackAccount.icon,
+          currency: fallbackAccount.currency
+        } : null)
+      };
+    });
     const expenses = rows.filter(t => parseFloat(t.amount) < 0);
     const incomes  = rows.filter(t => parseFloat(t.amount) > 0);
 
@@ -3044,7 +3076,7 @@ async function _rptObjectivesLoad() {
       if (!t.payee_id) return;
       const k = t.payee_id;
       const isExp = parseFloat(t.amount) < 0;
-      if (!byPayee[k]) byPayee[k] = { name: t.payees?.name||'—', expTotal:0, incTotal:0, count:0, txs:[] };
+      if (!byPayee[k]) byPayee[k] = { name: t.payees?.name || payeesById.get(k)?.name || 'Beneficiário sem nome', expTotal:0, incTotal:0, count:0, txs:[] };
       const amt = Math.abs(parseFloat(t.brl_amount??t.amount)||0);
       if (isExp) byPayee[k].expTotal += amt;
       else       byPayee[k].incTotal += amt;
@@ -3060,7 +3092,7 @@ async function _rptObjectivesLoad() {
     rows.forEach(t => {
       const k = t.account_id || '__none__';
       const acc = t.accounts;
-      if (!byAcc[k]) byAcc[k] = { name: acc?.name||'—', color: acc?.color||'#94a3b8', icon: acc?.icon||'🏦', total:0, count:0 };
+      if (!byAcc[k]) byAcc[k] = { name: acc?.name || accountsById.get(k)?.name || 'Conta', color: acc?.color || accountsById.get(k)?.color || '#94a3b8', icon: acc?.icon || accountsById.get(k)?.icon || '🏦', total:0, count:0 };
       byAcc[k].total += Math.abs(parseFloat(t.brl_amount??t.amount)||0);
       byAcc[k].count++;
     });
@@ -3100,8 +3132,8 @@ async function _rptObjectivesLoad() {
         onclick="editTransaction('${t.id}')"
         onmouseover="this.style.background='rgba(0,0,0,.05)'" onmouseout="this.style.background=''">
         <div style="flex:1;min-width:0">
-          <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||t.payees?.name||'—')}</div>
-          <div style="font-size:.64rem;color:var(--muted);display:flex;align-items:center;margin-top:1px">${catDot}${fmtDate(t.date)}${t.payees?.name?' · '+esc(t.payees.name):''}${t.categories?.name?' · '+esc(t.categories.name):''}</div>
+          <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description || t.payees?.name || payeesById.get(t.payee_id)?.name || '—')}</div>
+          <div style="font-size:.64rem;color:var(--muted);display:flex;align-items:center;margin-top:1px">${catDot}${fmtDate(t.date)}${(t.payees?.name || payeesById.get(t.payee_id)?.name)?' · '+esc(t.payees?.name || payeesById.get(t.payee_id)?.name):''}${t.categories?.name?' · '+esc(t.categories.name):''}${(t.accounts?.name || accountsById.get(t.account_id)?.name)?' · '+esc(t.accounts?.name || accountsById.get(t.account_id)?.name):''}</div>
         </div>
         <span style="font-size:.84rem;font-weight:700;color:${isExp?'#dc2626':'#16a34a'};flex-shrink:0">${isExp?'−':'+'}${fmt(amt)}</span>
       </div>`;
@@ -3290,7 +3322,7 @@ async function _rptObjectivesLoad() {
     if (!rows.length) {
       html += `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
         <div style="font-size:2rem;margin-bottom:8px">📭</div>
-        <div style="font-size:.85rem">Nenhuma transação vinculada a este objetivo no período.</div>
+        <div style="font-size:.85rem">Nenhuma transação com objective_id vinculado a este objetivo foi encontrada no período.</div>
       </div>`;
     }
 
