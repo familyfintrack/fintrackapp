@@ -15,7 +15,6 @@
        GUIDED  → _agentShowGuided()        (UI interativa para campos faltantes)
      → _agentRefreshAfterPlan()           (atualiza estado do app)
 ═══════════════════════════════════════════════════════════════════════ */
-'use strict';
 
 const _agent = {
   open: false,
