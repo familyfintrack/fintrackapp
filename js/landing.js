@@ -11,6 +11,19 @@ let   _geminiKey = '';
 let   _senderName  = '';
 let   _senderEmail = '';
 
+/* ── localISOTimestamp — inline (date.js não é carregado na landing) ── */
+if (typeof localISOTimestamp === 'undefined') {
+  window.localISOTimestamp = function () {
+    const d = new Date();
+    const off = -d.getTimezoneOffset();
+    const sign = off >= 0 ? '+' : '-';
+    const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+      sign + pad(off/60) + ':' + pad(off%60);
+  };
+}
+
 const _dateUtils = window.FinTrackDateUtils || {
   getUserLocale: () => document?.documentElement?.lang || navigator.language || 'pt-BR',
   formatMonthYear: (dateInput = new Date(), options = {}) => new Intl.DateTimeFormat(
