@@ -108,7 +108,59 @@ async function loadAppSettings() {
   }
   // Signal that app_settings are ready — lets modules do a cross-device restore pass
   try { document.dispatchEvent(new CustomEvent('appsettings:loaded')); } catch(_) {}
+  // Sync module states from family_preferences table (new persistent store)
+  // Non-blocking: runs after boot, re-applies module visibility with DB truth
+  setTimeout(() => _seedModulesFromFamilyPreferences().catch(() => {}), 200);
 }
+
+// Reads family_preferences and seeds _familyFeaturesCache + _appSettingsCache.
+// Called after loadAppSettings() finishes — guarantees DB truth wins over
+// stale localStorage, without blocking the initial render.
+async function _seedModulesFromFamilyPreferences() {
+  if (!window.sb || !window.currentUser?.family_id) return;
+  const fid = window.currentUser.family_id;
+  try {
+    const { data, error } = await window.sb
+      .from('family_preferences')
+      .select('*')
+      .eq('family_id', fid)
+      .maybeSingle();
+    if (error || !data) return;
+    const modMap = {
+      ai_insights: data.module_ai_insights,
+      ai_chat:     data.module_ai_chat,
+      debts:       data.module_debts,
+      investments: data.module_investments,
+      grocery:     data.module_grocery,
+      prices:      data.module_prices,
+      dreams:      data.module_dreams,
+    };
+    if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+    if (!window._appSettingsCache)    window._appSettingsCache    = {};
+    let changed = false;
+    Object.entries(modMap).forEach(([mod, enabled]) => {
+      const key = mod + '_enabled_' + fid;
+      const prev = window._appSettingsCache[key];
+      const next = !!enabled;
+      if (prev !== next) {
+        window._appSettingsCache[key]    = next;
+        window._familyFeaturesCache[key] = next;
+        try { localStorage.setItem(key, String(next)); } catch(_) {}
+        changed = true;
+      }
+    });
+    if (!changed) return; // nothing to re-apply
+    // Re-apply module visibility so nav items show/hide correctly
+    ['applyInvestmentsFeature','applyDebtsFeature','applyDreamsFeature',
+     'applyPricesFeature','applyGroceryFeature','applyAiInsightsFeature',
+    ].forEach(fn => {
+      if (typeof window[fn] === 'function') window[fn]().catch(() => {});
+    });
+  } catch(e) {
+    console.warn('[_seedModulesFromFamilyPreferences]', e.message);
+  }
+}
+window._seedModulesFromFamilyPreferences = _seedModulesFromFamilyPreferences;
 
 async function saveAppSetting(key, value) {
   // Always persist locally as fallback
@@ -123,7 +175,7 @@ async function saveAppSetting(key, value) {
   _appSettingsCache[key] = value;
   if (!sb) return;
   try {
-    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_|ai_insights_enabled_)(.+)$/);
+    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_|ai_insights_enabled_|ai_chat_enabled_|dreams_enabled_)(.+)$/);
     const family_id = m ? m[2] : null;
     // Feature flags: try RPC SECURITY DEFINER first (bypasses RLS)
     if (family_id) {
@@ -178,11 +230,14 @@ async function saveModuleFlag(key, value, famId) {
         .upsert({ family_id: famId, [col]: !!value, updated_at: new Date().toISOString() },
                  { onConflict: 'family_id' });
       if (!error) {
-        // Também atualiza o cache do family_prefs service
-        if (typeof getFamilyPreferences === 'function') {
-          const p = await getFamilyPreferences().catch(() => null);
-          if (p && p.modules) p.modules[modKey] = !!value;
+        // Atualiza _fpCache diretamente (sync, sem await que pode retornar stale)
+        if (window._fpCache && window._fpCache.modules) {
+          window._fpCache.modules[modKey] = !!value;
         }
+        // Dispara evento para que a UI reaja
+        document.dispatchEvent(new CustomEvent('familyprefs:changed', {
+          detail: { prefs: window._fpCache }
+        }));
         return; // persistiu no caminho novo
       }
     } catch(_) {}
@@ -197,13 +252,15 @@ async function saveModuleFlag(key, value, famId) {
     } catch(_) {}
   }
 
-  // 5. RPC set_family_module (da nossa migration)
+  // 5. RPCs SECURITY DEFINER (upsert_family_module e set_family_module)
   if (famId && modKey) {
-    try {
-      const { error } = await sb.rpc('set_family_module',
-        { p_family_id: famId, p_module: modKey, p_enabled: !!value });
-      if (!error) return;
-    } catch(_) {}
+    for (const rpcName of ['upsert_family_module', 'set_family_module']) {
+      try {
+        const { error } = await sb.rpc(rpcName,
+          { p_family_id: famId, p_module: modKey, p_enabled: !!value });
+        if (!error) return;
+      } catch(_) {}
+    }
   }
 
   // 6. Upsert direto em app_settings (pode falhar por RLS — best-effort)

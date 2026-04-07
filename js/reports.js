@@ -2761,14 +2761,31 @@ async function _rptPayeesLoad() {
 
   try {
     // Fetch ALL transactions with payees (no amount filter — we split later)
-    let q = famQ(sb.from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
-      .gte('date', dateFrom).lte('date', dateTo)
-      .not('payee_id','is',null);
-    if (accId) q = q.eq('account_id', accId);
-
-    const { data: txs, error } = await q.order('date', { ascending: false });
-    if (error) throw error;
+    // Try with full FK join first; fall back to simpler select if it fails
+    let txs = null, queryError = null;
+    try {
+      let q = famQ(sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
+        .gte('date', dateFrom).lte('date', dateTo)
+        .not('payee_id','is',null);
+      if (accId) q = q.eq('account_id', accId);
+      const r1 = await q.order('date', { ascending: false });
+      if (r1.error) throw r1.error;
+      txs = r1.data;
+    } catch(joinErr) {
+      // Fallback: simpler query without FK alias (works on all Supabase configs)
+      console.warn('[rptPayees] FK join failed, using simpler query:', joinErr.message);
+      let q2 = famQ(sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name,type),categories(name,color,icon)'))
+        .gte('date', dateFrom).lte('date', dateTo)
+        .not('payee_id','is',null);
+      if (accId) q2 = q2.eq('account_id', accId);
+      const r2 = await q2.order('date', { ascending: false });
+      if (r2.error) throw r2.error;
+      txs = r2.data;
+    }
+    if (!txs) throw new Error('Nenhum dado retornado da consulta.');
+    const error = null; // query succeeded
 
     const rows = (txs || []).filter(t => t.payees?.name);
     if (!rows.length) {
@@ -2911,7 +2928,13 @@ async function _rptPayeesLoad() {
     body.innerHTML = html;
 
   } catch(e) {
-    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">⚠️ ${esc(e.message||String(e))}</div>`;
+    console.error('[rptPayees]', e);
+    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">
+      <div style="font-size:1.5rem;margin-bottom:8px">⚠️</div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:4px">Erro ao carregar relatório</div>
+      <div style="font-size:.78rem;color:var(--muted)">${esc(e.message||String(e))}</div>
+      <button onclick="_rptPayeesLoad()" style="margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:.8rem">↺ Tentar novamente</button>
+    </div>`;
   }
 }
 window._rptPayeesInit = _rptPayeesInit;
@@ -2967,15 +2990,31 @@ async function _rptObjectivesLoad() {
     const obj  = (objs || []).find(o => o.id === objId);
     if (!obj) throw new Error('Objetivo não encontrado');
 
-    const { data: txs, error } = await famQ(
-      sb.from('transactions')
-        .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
-                'categories(id,name,color,icon),payees(id,name),accounts!transactions_account_id_fkey(id,name,color,icon,currency)')
-    ).eq('objective_id', objId)
-     .gte('date', from).lte('date', to)
-     .order('date', { ascending: false });
-
-    if (error) throw error;
+    // Try full FK join; fall back to simpler query if it fails
+    let txs = null;
+    try {
+      const r1 = await famQ(
+        sb.from('transactions')
+          .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
+                  'categories(id,name,color,icon),payees(id,name),accounts!transactions_account_id_fkey(id,name,color,icon,currency)')
+      ).eq('objective_id', objId)
+       .gte('date', from).lte('date', to)
+       .order('date', { ascending: false });
+      if (r1.error) throw r1.error;
+      txs = r1.data;
+    } catch(joinErr) {
+      console.warn('[rptObjectives] FK join failed, simpler query:', joinErr.message);
+      const r2 = await famQ(
+        sb.from('transactions')
+          .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,' +
+                  'categories(id,name,color,icon),payees(id,name)')
+      ).eq('objective_id', objId)
+       .gte('date', from).lte('date', to)
+       .order('date', { ascending: false });
+      if (r2.error) throw r2.error;
+      txs = r2.data;
+    }
+    if (!txs) throw new Error('Nenhum dado retornado.');
 
     const rows    = txs || [];
     const expenses = rows.filter(t => parseFloat(t.amount) < 0);
@@ -3258,7 +3297,13 @@ async function _rptObjectivesLoad() {
     body.innerHTML = html;
 
   } catch(e) {
-    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">⚠️ ${esc(e.message||String(e))}</div>`;
+    console.error('[rptObjectives]', e);
+    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">
+      <div style="font-size:1.5rem;margin-bottom:8px">⚠️</div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:4px">Erro ao carregar objetivo</div>
+      <div style="font-size:.78rem;color:var(--muted)">${esc(e.message||String(e))}</div>
+      <button onclick="_rptObjectivesLoad()" style="margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:.8rem">↺ Tentar novamente</button>
+    </div>`;
   }
 }
 window._rptObjectivesInit = _rptObjectivesInit;

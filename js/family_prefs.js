@@ -202,8 +202,15 @@ async function _fpLoadFromDB(famId, background) {
         .select('*')
         .eq('family_id', famId)
         .maybeSingle();
-      if (!error && data) prefs = _fpRowToPrefs(data, famId);
-    } catch(_) {}
+      if (!error && data) {
+        prefs = _fpRowToPrefs(data, famId);
+      } else if (error) {
+        // Table may not exist yet — log and fall through to legacy
+        console.warn('[family_prefs] family_preferences table error (run migration?):', error.message);
+      }
+    } catch(tableErr) {
+      console.warn('[family_prefs] family_preferences not available:', tableErr.message);
+    }
 
     if (!prefs) {
       // Fallback: monta preferências a partir de app_settings (legado)
@@ -281,8 +288,9 @@ async function _fpLoadFromLegacySettings(famId) {
 
 async function _fpSaveToDB(famId, prefs) {
   if (!window.sb) return;
+
+  // Path 1: upsert entire row via direct table access (owner can write via RLS)
   try {
-    // Try dedicated table first
     const row = {
       family_id:          famId,
       module_ai_insights: !!(prefs.modules?.ai_insights),
@@ -299,15 +307,28 @@ async function _fpSaveToDB(famId, prefs) {
     const { error } = await sb
       .from('family_preferences')
       .upsert(row, { onConflict: 'family_id' });
+    if (!error) return; // success
+    console.warn('[family_prefs] direct upsert failed:', error.message, '— trying RPC');
+  } catch(e) {
+    console.warn('[family_prefs] direct upsert exception:', e.message, '— trying RPC');
+  }
 
-    if (!error) {
-      // Also sync to legacy app_settings for backwards compatibility
-      await _fpSyncToLegacySettings(famId, prefs);
-      return;
-    }
-  } catch(_) {}
+  // Path 2: RPC upsert_family_module per module (SECURITY DEFINER — bypasses RLS)
+  const modules = prefs.modules || {};
+  const modEntries = Object.entries(modules);
+  let rpcOk = false;
+  for (const rpcName of ['upsert_family_module', 'set_family_module']) {
+    try {
+      const tasks = modEntries.map(([mod, enabled]) =>
+        sb.rpc(rpcName, { p_family_id: famId, p_module: mod, p_enabled: !!enabled })
+      );
+      const results = await Promise.all(tasks);
+      if (results.every(r => !r.error)) { rpcOk = true; break; }
+    } catch(_) {}
+  }
+  if (rpcOk) return;
 
-  // Fallback: save to legacy app_settings
+  // Path 3: legacy app_settings (last resort)
   await _fpSyncToLegacySettings(famId, prefs);
 }
 
