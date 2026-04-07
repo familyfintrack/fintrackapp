@@ -106,8 +106,6 @@ async function loadAppSettings() {
     EMAILJS_CONFIG.templateId = localStorage.getItem('ej_template') || '';
     EMAILJS_CONFIG.publicKey  = localStorage.getItem('ej_key')      || '';
   }
-  // Signal that app_settings are ready — lets modules do a cross-device restore pass
-  try { document.dispatchEvent(new CustomEvent('appsettings:loaded')); } catch(_) {}
 }
 
 async function saveAppSetting(key, value) {

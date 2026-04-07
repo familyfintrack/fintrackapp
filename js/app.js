@@ -1292,8 +1292,7 @@ window._scrollTopAndHighlight = _scrollTopAndHighlight;
 window.getPeriodColor         = getPeriodColor;
 
 // ── Collapsible module intros ──────────────────────────────────────────────────
-// State persisted in localStorage (immediate) + Supabase app_settings (cross-device)
-// Key format: intro_collapsed_<BADGE_TEXT>  — e.g. intro_collapsed_ORÇAMENTOS
+// State persisted in localStorage per banner (keyed by badge text)
 
 function _introKey(banner) {
   const badge = banner.querySelector('.module-intro-badge');
@@ -1308,14 +1307,7 @@ function _toggleModuleIntro(btn) {
   btn.innerHTML = collapsed
     ? '<i class="mib-arr">▾</i> Expandir'
     : '<i class="mib-arr">▾</i> Recolher';
-  const key = _introKey(banner);
-  const val = collapsed ? '1' : '0';
-  // 1. Persist locally — instant, survives offline
-  try { localStorage.setItem(key, val); } catch(_) {}
-  // 2. Persist to Supabase — syncs across devices (non-blocking)
-  if (typeof saveAppSetting === 'function') {
-    saveAppSetting(key, val).catch(() => {});
-  }
+  try { localStorage.setItem(_introKey(banner), collapsed ? '1' : '0'); } catch(_) {}
 }
 window._toggleModuleIntro = _toggleModuleIntro;
 
@@ -1323,35 +1315,19 @@ function _restoreModuleIntroStates() {
   document.querySelectorAll('.module-intro-banner').forEach(banner => {
     try {
       const key = _introKey(banner);
-      // Check in-memory cache first (set by loadAppSettings on boot), then localStorage
-      const cached = (window._appSettingsCache && key in window._appSettingsCache)
-        ? String(window._appSettingsCache[key])
-        : null;
-      const local  = localStorage.getItem(key);
-      const val    = cached ?? local;
-      if (val === '1') {
+      if (localStorage.getItem(key) === '1') {
         banner.classList.add('is-collapsed');
         const btn = banner.querySelector('.module-intro-toggle');
         if (btn) btn.innerHTML = '<i class="mib-arr">▾</i> Expandir';
-      } else if (val === '0') {
-        // Explicitly expanded — remove collapsed class in case a previous session had it
-        banner.classList.remove('is-collapsed');
-        const btn = banner.querySelector('.module-intro-toggle');
-        if (btn) btn.innerHTML = '<i class="mib-arr">▾</i> Recolher';
       }
     } catch(_) {}
   });
 }
 window._restoreModuleIntroStates = _restoreModuleIntroStates;
 
-// Restore on page load (localStorage pass — fast, before Supabase)
+// Restore on page load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', _restoreModuleIntroStates);
 } else {
   setTimeout(_restoreModuleIntroStates, 200);
 }
-
-// Restore again after bootApp loads app_settings from Supabase (cross-device pass)
-document.addEventListener('appsettings:loaded', () => {
-  try { _restoreModuleIntroStates(); } catch(_) {}
-});

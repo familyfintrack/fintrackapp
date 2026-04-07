@@ -1212,7 +1212,7 @@ function confirmClearDatabase() {
 function showClearDatabasePinConfirm() {
   const pin = prompt('🔐 Digite seu Masterpin para confirmar a limpeza:');
   if (pin === null) return;
-  if (pin !== getMasterPin()) { toast('❌ PIN incorreto. Operação cancelada.', 'error'); return; }
+  if (pin !== getMasterPin()) { alert('❌ PIN incorreto. Operação cancelada.'); return; }
   executeClearDatabase();
 }
 
@@ -1242,7 +1242,8 @@ async function executeClearDatabase() {
     state.txTotal = 0; state.txPage = 0;
     if(typeof populateSelects==='function') populateSelects();
     if (failed.length > 0) {
-      toast('⚠️ Limpeza parcial: ' + failed.join(', '), 'error');
+      alert('⚠️ Limpeza parcial:\n\n• ' + failed.join('\n• '));
+      toast('Limpeza parcial — veja detalhes', 'error');
     } else {
       toast('✓ Base de dados limpa! (' + cleared.length + ' tabelas)', 'success');
     }
