@@ -499,11 +499,6 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </span><span data-i18n="nav.payees">Beneficiários
       </button>
-      <button class="nav-item" onclick="navigate('tags')" id="tagsNav" data-nav="tags">
-        <span class="ni-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        </span><span>Tags
-      </button>
     </div>
 
     <!-- Módulos opcionais: visíveis apenas quando ativados por feature flag -->
@@ -1704,82 +1699,6 @@
           </div>
           <div id="catEditorIncome" style="padding:10px 12px"></div>
           <div class="cat-add-root" onclick="openCategoryModal('','','receita')">+ Nova categoria de receita</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAGS -->
-    <div class="page" id="page-tags">
-      <div class="section-header mb-4">
-        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-          <span id="tagsCountBadge" class="badge" style="background:var(--accent-lt);color:var(--accent);border:1px solid rgba(42,96,73,.18);font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px">0 tags</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="search" id="tagsSearch" placeholder="Filtrar tags…"
-            oninput="tagsSearchFilter(this.value)"
-            style="font-size:.82rem;padding:6px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text);width:180px">
-        </div>
-      </div>
-
-      <div class="card" style="padding:0;overflow:hidden">
-        <div class="tag-mgr-header">
-          <div class="tag-mgr-col-tag">Tag</div>
-          <div class="tag-mgr-col-usage">Uso</div>
-          <div class="tag-mgr-col-actions">Ações</div>
-        </div>
-        <div id="tagsListContainer" style="min-height:120px"></div>
-      </div>
-
-      <!-- Modal: Renomear tag -->
-      <div class="modal-overlay" id="tagRenameModal">
-        <div class="modal" style="max-width:400px">
-          <div class="modal-handle"></div>
-          <div class="modal-header">
-            <span class="modal-title">✏️ Renomear Tag</span>
-            <button class="modal-close" onclick="closeModal('tagRenameModal')">✕</button>
-          </div>
-          <div class="modal-body">
-            <div style="margin-bottom:16px">
-              <div style="font-size:.8rem;color:var(--muted);margin-bottom:4px">Tag atual</div>
-              <div class="tag-mgr-chip" style="display:inline-flex">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                  <line x1="7" y1="7" x2="7.01" y2="7"/>
-                </svg>
-                <span id="tagRenameOldName" style="font-weight:700"></span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Novo nome</label>
-              <input type="text" id="tagRenameNewName" class="form-control" placeholder="Novo nome da tag…" maxlength="60">
-            </div>
-            <div id="tagRenameCount" style="font-size:.78rem;color:var(--muted);margin-top:8px"></div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('tagRenameModal')">Cancelar</button>
-            <button class="btn btn-primary" onclick="confirmTagRename()">Renomear</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal: Confirmar exclusão -->
-      <div class="modal-overlay" id="tagDeleteModal">
-        <div class="modal" style="max-width:380px">
-          <div class="modal-handle"></div>
-          <div class="modal-header">
-            <span class="modal-title">🗑️ Excluir Tag</span>
-            <button class="modal-close" onclick="closeModal('tagDeleteModal')">✕</button>
-          </div>
-          <div class="modal-body">
-            <p style="font-size:.88rem;margin-bottom:12px">
-              Excluir a tag <strong id="tagDeleteName"></strong>?
-            </p>
-            <p id="tagDeleteCount" style="font-size:.8rem;color:var(--muted)"></p>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('tagDeleteModal')">Cancelar</button>
-            <button class="btn btn-danger" onclick="confirmTagDelete()">Excluir</button>
-          </div>
         </div>
       </div>
     </div>
@@ -8155,7 +8074,6 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/accounts.js"></script>
   <script src="js/categories.js"></script>
   <script src="js/payees.js"></script>
-  <script src="js/tags.js"></script>
   <script src="js/transactions.js"></script>
   <script src="js/budgets.js"></script>
   <script src="js/fx_rates.js"></script>
