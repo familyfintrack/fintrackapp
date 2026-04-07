@@ -1762,7 +1762,7 @@ async function _renderDashForecast() {
   while (cur <= end) { allDates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
   _fcAllDates = allDates;
 
-  const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
+  const COLORS = ['#10b981','#6366f1','#f59e0b','#3b82f6','#ec4899','#14b8a6'];
 
   // ── Build _fcDailyData: cumulative balance + transactions per day ─────────
   _fcDailyData = {};
@@ -1799,18 +1799,18 @@ async function _renderDashForecast() {
   // correctly index-aligned with Chart.js v4 category scale.
   const lineDatasets = accounts.slice(0, 6).map((a, idx) => {
     const color = a.color || COLORS[idx % COLORS.length];
-    // Build a canvas gradient for the area fill (top=color, bottom=transparent)
+    // Richer gradient: opaque top → transparent bottom
     const gradientFill = (ctx_chart) => {
       try {
         const chart = ctx_chart.chart;
         const { ctx, chartArea } = chart;
-        if (!chartArea) return color + '18';
+        if (!chartArea) return color + '14';
         const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-        gradient.addColorStop(0, color + '38');
-        gradient.addColorStop(0.6, color + '10');
-        gradient.addColorStop(1, color + '00');
+        gradient.addColorStop(0,   color + '42');  // ~26% alpha at top
+        gradient.addColorStop(0.45, color + '18'); // ~10% mid
+        gradient.addColorStop(1,   color + '00');  // transparent at bottom
         return gradient;
-      } catch(_) { return color + '18'; }
+      } catch(_) { return color + '14'; }
     };
     return {
       label: a.name,
@@ -1818,15 +1818,17 @@ async function _renderDashForecast() {
       borderColor: color,
       backgroundColor: gradientFill,
       fill: true,
-      tension: 0.4,
+      tension: 0.42,
       borderWidth: accounts.length === 1 ? 2.5 : 2,
-      pointRadius: 0,        // hidden — markers drawn by scatter datasets below
+      pointRadius: 0,
       pointHoverRadius: 6,
-      pointHitRadius: 14,    // large hit area so hover still triggers tooltip
+      pointHitRadius: 16,
       pointBackgroundColor: color,
       pointBorderColor: '#fff',
-      pointBorderWidth: 2,
+      pointBorderWidth: 2.5,
       spanGaps: true,
+      // Subtle shadow effect via multiple borderWidth layers not natively supported —
+      // use a second clone dataset for glow on single-account view
     };
   });
 
@@ -1852,19 +1854,23 @@ async function _renderDashForecast() {
     });
     return {
       type: 'scatter',
-      label: '_marker_' + a.id,  // prefix so legend filter can hide these
+      label: '_marker_' + a.id,
       xAxisID: 'x',
       yAxisID: 'y',
       data: pts,
       backgroundColor: pts.map(p =>
-        p._isMixed  ? '#f59e0b' :   // amber  — both real + scheduled
-        p._isSched  ? '#1d4ed8' :   // blue   — scheduled only
-        color                        // account color — real tx only
+        p._isMixed  ? '#f59e0b' :   // amber  — real + scheduled
+        p._isSched  ? '#818cf8' :   // indigo — scheduled only
+        color                        // account color — real tx
       ),
-      borderColor: '#fff',
-      borderWidth: 2,
-      pointRadius: 6,
-      pointHoverRadius: 9,
+      borderColor: pts.map(p =>
+        p._isMixed  ? '#fff' :
+        p._isSched  ? 'rgba(129,140,248,.35)' :
+        'rgba(255,255,255,.9)'
+      ),
+      borderWidth: pts.map(p => p._isSched ? 1.5 : 2),
+      pointRadius: pts.map(p => p._isSched ? 5 : 5.5),
+      pointHoverRadius: pts.map(p => p._isSched ? 8 : 9),
       pointStyle: pts.map(p => p._isSched ? 'triangle' : 'circle'),
       showLine: false,
     };
@@ -1896,30 +1902,61 @@ async function _renderDashForecast() {
 
   const annotations = {
     ...weekGuides,
+    // Zero line — red dashed baseline
     zeroLine: {
       type: 'line', yMin: 0, yMax: 0,
-      borderColor: 'rgba(220,38,38,0.35)', borderWidth: 1.5, borderDash: [6,4],
+      borderColor: 'rgba(239,68,68,0.30)', borderWidth: 1.5, borderDash: [5,4],
     },
+    // Today line — strong accent
     todayLine: {
       type: 'line', xMin: fromStr, xMax: fromStr,
-      borderColor: 'rgba(42,96,73,0.7)', borderWidth: 2, borderDash: [4,3],
+      borderColor: 'rgba(16,185,129,0.65)', borderWidth: 1.5, borderDash: [4,3],
       label: {
-        content: 'Hoje', display: true, position: 'start',
-        font: { size: 10, weight: '700', family: 'Outfit, sans-serif' },
+        content: '⬤ Hoje',
+        display: true, position: 'start',
+        font: { size: 9.5, weight: '800', family: 'Outfit, sans-serif' },
         color: '#fff',
-        backgroundColor: 'rgba(42,96,73,0.82)',
-        padding: { x: 7, y: 4 }, borderRadius: 6,
+        backgroundColor: 'rgba(16,185,129,0.88)',
+        padding: { x: 8, y: 4 },
+        borderRadius: 7,
       },
     },
   };
-  if (minIdx >= 0) annotations.minPt = {
-    type: 'point', xValue: minIdx, yValue: minVal,
-    radius: 7, backgroundColor: '#ef4444', borderColor: '#fff', borderWidth: 2.5,
-  };
-  if (maxIdx >= 0) annotations.maxPt = {
-    type: 'point', xValue: maxIdx, yValue: maxVal,
-    radius: 7, backgroundColor: '#22c55e', borderColor: '#fff', borderWidth: 2.5,
-  };
+  // Min / Max callout annotations with labels
+  if (minIdx >= 0) {
+    annotations.minPt = {
+      type: 'point', xValue: minIdx, yValue: minVal,
+      radius: 5.5, backgroundColor: '#ef4444', borderColor: 'rgba(239,68,68,.25)', borderWidth: 4,
+    };
+    annotations.minLbl = {
+      type: 'label', xValue: minIdx, yValue: minVal,
+      content: ['Mín', fmt(minVal)],
+      backgroundColor: 'rgba(239,68,68,0.92)',
+      color: '#fff',
+      font: [{ size: 8, weight: '700' }, { size: 9, weight: '800' }],
+      padding: { x: 6, y: 3 },
+      borderRadius: 6,
+      position: 'start',
+      yAdjust: 20,
+    };
+  }
+  if (maxIdx >= 0) {
+    annotations.maxPt = {
+      type: 'point', xValue: maxIdx, yValue: maxVal,
+      radius: 5.5, backgroundColor: '#22c55e', borderColor: 'rgba(34,197,94,.25)', borderWidth: 4,
+    };
+    annotations.maxLbl = {
+      type: 'label', xValue: maxIdx, yValue: maxVal,
+      content: ['Máx', fmt(maxVal)],
+      backgroundColor: 'rgba(22,163,74,0.92)',
+      color: '#fff',
+      font: [{ size: 8, weight: '700' }, { size: 9, weight: '800' }],
+      padding: { x: 6, y: 3 },
+      borderRadius: 6,
+      position: 'start',
+      yAdjust: -20,
+    };
+  }
 
   // ── Chart instance ────────────────────────────────────────────────────────
   _dashForecastChart = new Chart(canvas, {
@@ -1929,18 +1966,27 @@ async function _renderDashForecast() {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
-      animation: { duration: 400, easing: 'easeOutQuart' },
+      animation: {
+        duration: 550,
+        easing: 'easeOutCubic',
+        // Stagger line draws for visual polish
+        delay: ctx => ctx.type === 'data' && ctx.datasetIndex < accounts.length
+          ? ctx.datasetIndex * 80
+          : 0,
+      },
+
       plugins: {
+        // ── Legend ──────────────────────────────────────────────────────────
         legend: {
           position: 'bottom',
           align: 'start',
           labels: {
-            boxWidth: 12,
+            boxWidth: 20,
             boxHeight: 3,
-            borderRadius: 2,
+            borderRadius: 3,
             useBorderRadius: true,
-            padding: 14,
-            font: { size: 11, family: 'Outfit, sans-serif', weight: '500' },
+            padding: 16,
+            font: { size: 11, family: 'Outfit, sans-serif', weight: '600' },
             color: '#6b7280',
             filter: item => !item.text.startsWith('_marker_'),
             generateLabels(chart) {
@@ -1950,28 +1996,31 @@ async function _renderDashForecast() {
                   text: ds.label,
                   fillStyle: ds.borderColor,
                   strokeStyle: ds.borderColor,
-                  lineWidth: 2.5,
+                  lineWidth: 3,
                   hidden: !chart.isDatasetVisible(i),
                   datasetIndex: i,
                 }));
             },
           },
         },
+
+        // ── Tooltip ─────────────────────────────────────────────────────────
         tooltip: {
-          backgroundColor: 'rgba(13,20,15,0.97)',
-          titleColor: '#f0fdf4',
-          bodyColor: '#bbf7d0',
+          backgroundColor: 'rgba(10,18,12,0.97)',
+          titleColor: '#ecfdf5',
+          bodyColor: '#a7f3d0',
           footerColor: '#6ee7b7',
-          borderColor: 'rgba(74,222,128,0.25)',
+          borderColor: 'rgba(16,185,129,0.22)',
           borderWidth: 1,
-          padding: { x: 14, y: 12 },
-          cornerRadius: 10,
-          titleFont: { size: 11, weight: '700', family: 'Outfit, sans-serif' },
-          bodyFont: { size: 11, family: 'Outfit, sans-serif' },
-          caretPadding: 8,
+          padding: { x: 14, y: 11 },
+          cornerRadius: 12,
+          titleFont: { size: 11, weight: '800', family: 'Outfit, sans-serif' },
+          bodyFont:  { size: 11, weight: '500', family: 'Outfit, sans-serif' },
+          caretSize: 6,
+          caretPadding: 10,
+          boxPadding: 4,
           filter: item => !item.dataset.label?.startsWith('_marker_'),
           callbacks: {
-            // ── Title: data formatada + dia da semana + contagem de transações ──
             title(items) {
               const d = items[0]?.label || '';
               if (!d) return '';
@@ -1986,7 +2035,6 @@ async function _renderDashForecast() {
               if (nSched) parts.push(`${nSched} programado${nSched>1?'s':''}`);
               return `${wd}, ${day}/${m}/${y}` + (parts.length ? `  ·  ${parts.join(' + ')}` : '');
             },
-            // ── Body: saldo projetado por conta ──────────────────────────────
             label(ctx) {
               if (ctx.dataset.label?.startsWith('_marker_')) return null;
               const d   = ctx.label || '';
@@ -2000,21 +2048,18 @@ async function _renderDashForecast() {
               const tag = hasTx && hasSched ? ' ●▲' : hasTx ? ' ●' : hasSched ? ' ▲' : '';
               return `  ${acc?.name || ctx.dataset.label}: ${balFmt}${tag}`;
             },
-            // ── After body: fluxo diário + lista de transações do dia ─────────
             afterBody(items) {
               const d  = items[0]?.label || '';
               const dd = _fcDailyData[d];
               if (!dd) return [];
               const allDayItems = [...(dd.txs||[]), ...(dd.scheduled||[])];
               const lines = [];
-
               if (dd.totalIn > 0 || dd.totalOut > 0) {
                 lines.push('');
                 lines.push(`  ↑ +${fmt(dd.totalIn)}   ↓ −${fmt(dd.totalOut)}`);
                 const net = dd.totalIn - dd.totalOut;
                 lines.push(`  Net: ${net >= 0 ? '+' : '−'}${fmt(Math.abs(net))}`);
               }
-
               if (allDayItems.length) {
                 lines.push('');
                 allDayItems.slice(0, 5).forEach(t => {
@@ -2026,11 +2071,8 @@ async function _renderDashForecast() {
                   const cat    = t.categories?.icon ? t.categories.icon + ' ' : '';
                   lines.push(`  ${sign}${amtStr}  ${cat}${label}${sched}`);
                 });
-                if (allDayItems.length > 5) {
-                  lines.push(`  + ${allDayItems.length - 5} mais…`);
-                }
+                if (allDayItems.length > 5) lines.push(`  + ${allDayItems.length - 5} mais…`);
               }
-
               lines.push('');
               lines.push('  👆 Toque para detalhes');
               return lines;
@@ -2039,15 +2081,17 @@ async function _renderDashForecast() {
         },
         annotation: { annotations },
       },
+
       scales: {
+        // ── X axis ──────────────────────────────────────────────────────────
         x: {
           type: 'category',
           border: { display: false },
           ticks: {
             color: '#9ca3af',
-            font: { size: 10, family: 'Outfit, sans-serif' },
+            font: { size: 9.5, family: 'Outfit, sans-serif', weight: '500' },
             maxRotation: 0,
-            padding: 6,
+            padding: 8,
             callback(val, idx) {
               const d = allDates[idx];
               if (!d) return '';
@@ -2065,29 +2109,33 @@ async function _renderDashForecast() {
               const d = allDates[ctx.index];
               if (!d) return 'transparent';
               const dow = new Date(d + 'T12:00').getDay();
-              return dow === 1 ? 'rgba(125,194,66,0.08)' : 'transparent';
+              // Mondays: faint green guide; others invisible
+              return dow === 1 ? 'rgba(16,185,129,0.07)' : 'transparent';
             },
             lineWidth: 1,
           },
         },
+
+        // ── Y axis ──────────────────────────────────────────────────────────
         y: {
           position: 'right',
-          border: { display: false, dash: [4, 4] },
+          border: { display: false },
           ticks: {
             callback: v => fmt(v),
             color: '#9ca3af',
-            font: { size: 10, family: 'Outfit, sans-serif' },
+            font: { size: 9.5, family: 'Outfit, sans-serif', weight: '500' },
             maxTicksLimit: 5,
-            padding: 10,
+            padding: 12,
           },
           grid: {
             color: ctx => ctx.tick.value === 0
-              ? 'rgba(239,68,68,0.18)'
-              : 'rgba(156,163,175,0.10)',
+              ? 'rgba(239,68,68,0.15)'
+              : 'rgba(156,163,175,0.07)',
             lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1,
           },
         },
       },
+
       onClick(evt, elements) {
         if (!elements.length) return;
         const el = elements.find(e => !datasets[e.datasetIndex]?.label?.startsWith('_marker_')) || elements[0];
@@ -2101,7 +2149,7 @@ async function _renderDashForecast() {
     },
   });
 
-  // ── Summary row: today balance + 90-day projected balance + delta ─────────
+  // ── Summary strip: per-account projected balance + 90d delta ───────────────
   const summary = document.getElementById('dashForecastSummary');
   if (summary) {
     const lastDate = allDates[allDates.length - 1];
@@ -2111,14 +2159,20 @@ async function _renderDashForecast() {
       const delta    = finalBal - todayBal;
       const isNeg    = finalBal < 0;
       const color    = a.color || COLORS[idx % COLORS.length];
-      const deltaStr = (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta), a.currency);
-      const deltaClr = delta >= 0 ? 'var(--accent)' : 'var(--red,#c0392b)';
-      return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
-        <span style="color:var(--text2);font-size:.78rem">${esc(a.name)}</span>
-        <strong style="color:${isNeg?'var(--red,#c0392b)':'var(--accent)'};font-size:.78rem">${fmt(finalBal, a.currency)}</strong>
-        <span style="font-size:.7rem;color:${deltaClr};opacity:.8">(${deltaStr})</span>
-      </span>`;
+      const deltaSign = delta >= 0 ? '+' : '−';
+      const deltaStr  = deltaSign + fmt(Math.abs(delta), a.currency);
+      const deltaClr  = delta >= 0 ? '#10b981' : '#ef4444';
+      const balClr    = isNeg ? '#ef4444' : 'var(--text)';
+      return `<div class="fc90-sum-item">
+        <span class="fc90-sum-dot" style="background:${color}"></span>
+        <div style="min-width:0">
+          <div class="fc90-sum-name">${esc(a.name)}</div>
+          <div style="display:flex;align-items:baseline;gap:5px;margin-top:1px">
+            <span class="fc90-sum-bal" style="color:${balClr}">${fmt(finalBal, a.currency)}</span>
+            <span class="fc90-sum-delta" style="color:${deltaClr}">${deltaStr}</span>
+          </div>
+        </div>
+      </div>`;
     }).join('');
   }
 }
