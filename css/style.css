@@ -1698,6 +1698,108 @@ canvas { cursor: default; }
 .field-map-panel { display:none; }
 .field-map-panel.active { display:block; }
 
+/* ══════════════════════════════════════════════════════════════════
+   ACCOUNT ARCHIVING — styles
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Archived card visual treatment ─────────────────────────────── */
+.account-card--archived {
+  opacity: .65;
+  filter: grayscale(45%);
+  border-style: dashed !important;
+  position: relative;
+}
+.account-card--archived::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    rgba(0,0,0,.025) 6px,
+    rgba(0,0,0,.025) 12px
+  );
+  pointer-events: none;
+}
+.archived-card-badge {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: .58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #b45309;
+  background: rgba(245,158,11,.12);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 20px;
+  padding: 2px 7px;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+/* ── Archived section header ─────────────────────────────────────── */
+.archived-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px 4px;
+  border-top: 1px solid var(--border);
+  user-select: none;
+  border-radius: 4px;
+  transition: background .15s;
+}
+.archived-section-header:hover { background: var(--surface2); }
+
+/* ── Archive button inside modal ─────────────────────────────────── */
+.acm-btn-archive {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(180,83,9,.4);
+  background: rgba(245,158,11,.06);
+  color: #b45309;
+  font-size: .85rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.acm-btn-archive:hover {
+  background: rgba(245,158,11,.12);
+  border-color: rgba(180,83,9,.6);
+}
+
+.acm-btn-unarchive {
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(42,96,73,.4);
+  background: rgba(42,96,73,.06);
+  color: var(--accent);
+  font-size: .85rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.acm-btn-unarchive:hover {
+  background: rgba(42,96,73,.12);
+  border-color: var(--accent);
+}
+
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
