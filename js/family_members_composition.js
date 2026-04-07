@@ -503,7 +503,7 @@ async function openFamilyMemberForm(memberId = null, familyId = null) {
             <div class="form-group full" id="fmcBirthDateGroup">
               <label>Data de Nascimento <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
               <input type="date" id="fmcBirthDate" value="${m?.birth_date ? m.birth_date.slice(0,10) : ''}"
-                style="width:100%" max="${todayISO()}">
+                style="width:100%" max="${new Date().toISOString().slice(0,10)}">
             </div>
             <div class="form-group">
               <label>Emoji / Avatar <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
@@ -1011,6 +1011,15 @@ async function deleteFamilyMemberFromFamily(familyId, memberId, name) {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.createFirstFamily                   = createFirstFamily;

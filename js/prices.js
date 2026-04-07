@@ -897,7 +897,7 @@ async function _loadAndRenderPidHistory(itemId) {
   if (minEl) minEl.textContent = minPrice != null ? fmt(minPrice) : '—';
   histEl.innerHTML = hist.map(h => {
     const store   = h.price_stores;
-    const dateStr = h.purchased_at ? fmtDate(h.purchased_at) : '—';
+    const dateStr = h.purchased_at ? new Date(h.purchased_at + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
     const loc     = [store?.address, store?.city, store?.state_uf].filter(Boolean).join(', ');
     const payeeName = store?.payees?.name;
     return `
@@ -964,7 +964,7 @@ function openAddPriceRecord() {
   if (el('aprItemId'))     el('aprItemId').value = item.id;
   if (el('aprPrice'))      el('aprPrice').value  = '';
   if (el('aprQty'))        el('aprQty').value    = '1';
-  if (el('aprDate'))       el('aprDate').value   = todayISO();
+  if (el('aprDate'))       el('aprDate').value   = new Date().toISOString().slice(0, 10);
   if (el('aprStoreInput')) el('aprStoreInput').value = '';
   if (el('aprStoreId'))    el('aprStoreId').value    = '';
   const sug = el('aprStoreSuggest');
@@ -1070,7 +1070,7 @@ async function _openItemForm(item) {
   if (el('pifModalTitle')) el('pifModalTitle').textContent = item ? '✏️ Editar Item' : '🏷️ Novo Item';
   if (el('pifPrice'))      el('pifPrice').value  = '';
   if (el('pifQty'))        el('pifQty').value    = '1';
-  if (el('pifDate'))       el('pifDate').value   = todayISO();
+  if (el('pifDate'))       el('pifDate').value   = new Date().toISOString().slice(0, 10);
   if (el('pifStoreInput')) el('pifStoreInput').value = '';
   if (el('pifStoreId'))    el('pifStoreId').value    = '';
   const sug = el('pifStoreSuggest'); if (sug) sug.style.display = 'none';
@@ -1293,7 +1293,7 @@ function _openRegisterModal(aiResult) {
   if (el('rpmStoreId'))    el('rpmStoreId').value    = '';
   if (el('rpmStoreInfo'))  { el('rpmStoreInfo').style.display = 'none'; el('rpmStoreInfo').innerHTML = ''; }
   const sug = el('rpmStoreSuggest'); if (sug) sug.style.display = 'none';
-  if (el('rpmDate'))  el('rpmDate').value  = aiResult.date || todayISO();
+  if (el('rpmDate'))  el('rpmDate').value  = aiResult.date || new Date().toISOString().slice(0, 10);
   if (el('rpmError')) el('rpmError').style.display = 'none';
   window._rpmAiAddress = aiResult.address || null;
   window._rpmAiCnpj    = aiResult.cnpj    || null;
@@ -1859,7 +1859,7 @@ async function readPricesReceiptWithAI() {
 async function _callPricesVision(apiKey, pending) {
   const catList   = (state.categories || []).filter(c => c.type === 'expense').map(c => c.name).join(', ');
   const storeList = _px.stores.slice(0, 20).map(s => s.payees?.name ? `${s.payees.name} (${s.name})` : s.name).join(', ');
-  const today     = todayISO();
+  const today     = new Date().toISOString().slice(0, 10);
   const prompt =
     `Você é especialista em leitura de notas fiscais e recibos brasileiros.\n` +
     `Analise a imagem e extraia TODOS os itens com preços unitários e quantidades.\n` +
@@ -1957,7 +1957,7 @@ async function confirmAddToGroceryList() {
     if (error) throw error;
 
     await sb.from('grocery_lists')
-      .update({ status: 'open', updated_at: localISOTimestamp() })
+      .update({ status: 'open', updated_at: new Date().toISOString() })
       .eq('id', listId);
 
     if (typeof _loadGroceryLists === 'function') await _loadGroceryLists().catch(() => {});

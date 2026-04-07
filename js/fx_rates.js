@@ -214,7 +214,7 @@ async function _fetchRates(currencies) {
     if (!newRates[cur]) delete newRates[cur]; // remove se não obteve taxa
   });
   window._fxRates   = newRates;
-  window._fxRatesTs = localISOTimestamp();
+  window._fxRatesTs = new Date().toISOString();
 
   // Salvar no localStorage imediatamente como fallback offline
   try {
@@ -283,3 +283,12 @@ function _renderFxBadge() {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}

@@ -20,7 +20,7 @@ function openConsolidateModal(accountId) {
   balEl.textContent = fmt(a.balance, cur);
   balEl.style.color = a.balance >= 0 ? 'var(--accent)' : 'var(--red)';
   setAmtField('consolidateAmount', 0);
-  document.getElementById('consolidateDate').value = todayISO();
+  document.getElementById('consolidateDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('consolidateDesc').value = 'Consolidação de saldo';
   document.getElementById('consolidatePreview').style.display = 'none';
   document.getElementById('consolidateError').style.display = 'none';
@@ -75,7 +75,7 @@ async function saveConsolidation() {
   const errEl = document.getElementById('consolidateError');
   errEl.style.display = 'none';
   if (Math.abs(diff) < 0.005) { toast(t('toast.no_diff'), 'info'); closeModal('consolidateModal'); return; }
-  const date = document.getElementById('consolidateDate')?.value || todayISO();
+  const date = document.getElementById('consolidateDate')?.value || new Date().toISOString().slice(0,10);
   const desc = document.getElementById('consolidateDesc')?.value?.trim() || 'Consolidação de saldo';
   const btn = document.getElementById('consolidateSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
@@ -461,7 +461,7 @@ async function saveAccount(){
     linked_dream_id: _gv('accountLinkedDreamId') || null,
     // Observações
     notes: (document.getElementById('accountNotes')?.value || '').trim() || null,
-    updated_at:localISOTimestamp()
+    updated_at:new Date().toISOString()
   };
   if(!data.name){toast(t('toast.err_account_name'),'error');return;}
   if(!id) data.family_id=famId();
@@ -859,7 +859,7 @@ async function saveGroup(){
     emoji:document.getElementById('groupEmoji').value||'🗂️',
     color:colorEl?colorEl.value:'#2a6049',
     currency:currEl?currEl.value:'BRL',
-    updated_at:localISOTimestamp()
+    updated_at:new Date().toISOString()
   };
   if(!data.name){toast(t('toast.err_group_name'),'error');return;}
   if(!id)data.family_id=famId();
@@ -909,6 +909,15 @@ function initAccountsPage() {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Optimistic UI: toggle favorite ────────────────────────────────────────
 async function toggleAccountFavorite(accId, currentIsFav) {

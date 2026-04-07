@@ -54,7 +54,7 @@ async function _getOrSuggestImpostosCategory() {
     color: '#dc2626',
     icon: '🏛️',
     family_id: famId(),
-    updated_at: localISOTimestamp()
+    updated_at: new Date().toISOString()
   }).select().single();
 
   if(error) { toast('Erro ao criar categoria Impostos: '+error.message,'error'); return null; }
@@ -140,7 +140,7 @@ async function createIofMirrorTx(originalData, originalTxId) {
       is_transfer: false,
       is_card_payment: false,
       status: originalData.status || 'confirmed',
-      updated_at: localISOTimestamp(),
+      updated_at: new Date().toISOString(),
       family_id: originalData.family_id || famId() || null,
     };
     const { data, error } = await sb.from('transactions').insert(iofData).select().single();

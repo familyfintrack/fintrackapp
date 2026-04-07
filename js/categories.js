@@ -522,7 +522,7 @@ async function openCategoryHistory(catId, catName) {
 
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
-  const sinceStr = dateToLocalISO(since);
+  const sinceStr = since.toISOString().slice(0, 10);
   const childIds = state.categories.filter(c => c.parent_id === catId).map(c => c.id);
   const allIds = [catId, ...childIds];
 
@@ -579,6 +579,15 @@ async function initCategoriesPage() {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._loadCatFavorites                   = _loadCatFavorites;

@@ -79,10 +79,10 @@ async function loadDashboardRecent(memberIds = null){
     return;
   }
 
-  const todayStr = todayISO();
+  const todayStr = new Date().toISOString().slice(0, 10);
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = dateToLocalISO(yesterday);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
   const byDate = {};
   items.forEach(t => { (byDate[t.date] ||= []).push(t); });
 
@@ -228,15 +228,10 @@ async function loadDashboard(){
   const bal = income - expense;
   const balEl = document.getElementById('statBalance');
 
-  // Current month label for KPI subtexts
-  const _now = new Date();
-  const _monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const _curMonthLabel = `${_monthNames[_now.getMonth()]} ${_now.getFullYear()}`;
-
   if (statTotalEl){
     statTotalEl.textContent = dashFmt(total,'BRL');
-    statTotalEl.className = 'dash-kpi-value ' + (total >= 0 ? 'amount-pos' : 'amount-neg');
-    const _tc = statTotalEl.closest('.dash-kpi-card');
+    statTotalEl.className = 'stat-value ' + (total >= 0 ? 'amount-pos' : 'amount-neg');
+    const _tc = statTotalEl.closest('.stat-card');
     if (_tc) {
       _tc.style.cursor = 'pointer';
       _tc.title = 'Ver composição do patrimônio';
@@ -244,38 +239,22 @@ async function loadDashboard(){
     }
   }
   if (statIncomeEl){
-    statIncomeEl.textContent = dashFmt(income,'BRL');
-    statIncomeEl.className = 'dash-kpi-value amount-pos';
-    const _ic = statIncomeEl.closest('.dash-kpi-card');
-    if (_ic) {
-      _ic.style.cursor = 'pointer';
-      _ic.title = 'Ver receitas do mês';
-      _ic.onclick = () => _openDashMonthTx('income', _dashMemberIds);
-    }
-    const _im = document.getElementById('dashIncomeMonth');
-    if (_im) _im.textContent = _curMonthLabel;
+    statIncomeEl.textContent=dashFmt(income,'BRL');
+    statIncomeEl.className='stat-value amount-pos';
+    const _ic=statIncomeEl.closest('.stat-card');
+    if(_ic){_ic.style.cursor='pointer';_ic.title='Ver receitas do mês';
+      _ic.onclick=()=>_openDashMonthTx('income',_dashMemberIds);}
   }
   if (statExpensesEl){
-    statExpensesEl.textContent = dashFmt(expense,'BRL');
-    statExpensesEl.className = 'dash-kpi-value amount-neg';
-    const _ec = statExpensesEl.closest('.dash-kpi-card');
-    if (_ec) {
-      _ec.style.cursor = 'pointer';
-      _ec.title = 'Ver despesas do mês';
-      _ec.onclick = () => _openDashMonthTx('expense', _dashMemberIds);
-    }
-    const _em = document.getElementById('dashExpenseMonth');
-    if (_em) _em.textContent = _curMonthLabel;
+    statExpensesEl.textContent=dashFmt(expense,'BRL');
+    statExpensesEl.className='stat-value amount-neg';
+    const _ec=statExpensesEl.closest('.stat-card');
+    if(_ec){_ec.style.cursor='pointer';_ec.title='Ver despesas do mês';
+      _ec.onclick=()=>_openDashMonthTx('expense',_dashMemberIds);}
   }
   if (balEl){
     balEl.textContent = dashFmt(bal,'BRL');
-    balEl.className = 'dash-kpi-value ' + (bal >= 0 ? 'amount-pos' : 'amount-neg');
-    const _bc = balEl.closest('.dash-kpi-card');
-    if (_bc) {
-      _bc.style.cursor = 'pointer';
-      _bc.title = 'Ver saldo do mês';
-      _bc.onclick = () => _openDashMonthTx(null, _dashMemberIds);
-    }
+    balEl.className = 'stat-value ' + (bal >= 0 ? 'amount-pos' : 'amount-neg');
   }
   // Pending badge — count already loaded by DB.dashboard.loadKPIs() above
   try {
@@ -520,100 +499,36 @@ async function renderCashflowChart(memberIds = null){
       (typeof _accountOptions === 'function'
         ? _accountOptions(state.accounts, null)
         : state.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join(''));
-    if(curVal) sel.value = curVal;
+    if(curVal) sel.value = curVal; // restore selection
   }
   const accId = sel ? sel.value : '';
   const labels=[];
+  // ONE query for all 6 months, with optional member filter
   const cashRows = await DB.dashboard.loadCashflow(accId, memberIds);
   const incomes  = cashRows.map(r => r.income);
   const expenses = cashRows.map(r => r.expense);
   const balances = cashRows.map(r => r.balance);
   labels.length = 0;
   cashRows.forEach(r => labels.push(r.label));
+  // Store monthly data for drill-down
   window._cashflowMonthData = {};
   cashRows.forEach(r => { window._cashflowMonthData[r.label] = r; });
 
-  // Gradient fill for balance line
-  const canvas = document.getElementById('cashflowChart');
-  const ctx = canvas?.getContext?.('2d');
-  let balGradient = 'rgba(30,91,168,.12)';
-  if (ctx) {
-    const g = ctx.createLinearGradient(0, 0, 0, 220);
-    g.addColorStop(0, 'rgba(30,91,168,.22)');
-    g.addColorStop(1, 'rgba(30,91,168,.01)');
-    balGradient = g;
-  }
-
   const chartInst = _dashRenderChart('cashflowChart','bar',labels,[
-    {
-      label:'Receitas', data:incomes,
-      backgroundColor:'rgba(42,122,74,.82)',
-      hoverBackgroundColor:'rgba(42,122,74,1)',
-      borderRadius:7, borderSkipped:false, order:2,
-    },
-    {
-      label:'Despesas', data:expenses,
-      backgroundColor:'rgba(192,57,43,.75)',
-      hoverBackgroundColor:'rgba(192,57,43,1)',
-      borderRadius:7, borderSkipped:false, order:2,
-    },
-    {
-      label:'Saldo', data:balances, type:'line',
-      borderColor:'#1e5ba8',
-      backgroundColor: balGradient,
-      borderWidth:2.5, pointRadius:5, pointHoverRadius:7,
-      pointBackgroundColor:'#fff', pointBorderColor:'#1e5ba8', pointBorderWidth:2,
-      fill:true, tension:0.4, order:1,
-    },
+    {label:'Receitas',data:incomes,backgroundColor:'rgba(42,122,74,.8)',borderRadius:6,borderSkipped:false,order:2},
+    {label:'Despesas',data:expenses,backgroundColor:'rgba(192,57,43,.75)',borderRadius:6,borderSkipped:false,order:2},
+    {label:'Saldo',data:balances,type:'line',borderColor:'#1e5ba8',backgroundColor:'rgba(30,91,168,.12)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#1e5ba8',fill:true,tension:0.35,order:1},
   ],{
-    plugins:{
-      legend:{
-        display:true,
-        position:'bottom',
-        labels:{
-          boxWidth:10, boxHeight:10, borderRadius:3,
-          usePointStyle:true, pointStyle:'rectRounded',
-          font:{size:11},
-          color: getComputedStyle(document.documentElement).getPropertyValue('--text2').trim() || '#3d3830',
-          padding:14,
-        },
-      },
-      tooltip:{
-        backgroundColor:'rgba(10,20,15,.88)',
-        titleColor:'#fff', bodyColor:'rgba(255,255,255,.85)',
-        borderColor:'rgba(255,255,255,.12)', borderWidth:1,
-        padding:10, cornerRadius:8,
-        callbacks:{
-          label(ctx){
-            const v = ctx.parsed.y;
-            const sign = ctx.dataset.label==='Despesas' ? '−' : (v>0?'+':'');
-            return ` ${ctx.dataset.label}: ${sign}R$ ${Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
-          },
-          title(items){ return items[0]?.label || ''; },
-        },
-      },
-    },
     onClick(evt, elements) {
       if (!elements.length) return;
-      const idx   = elements[0].index;
-      const label = labels[idx];
-      const dsIdx = elements[0].datasetIndex;
-      _dashCashflowDrill(label, dsIdx===0?'income':dsIdx===1?'expense':null);
+      const idx    = elements[0].index;
+      const label  = labels[idx];
+      const dsIdx  = elements[0].datasetIndex;
+      const isInc  = dsIdx === 0;
+      const isExp  = dsIdx === 1;
+      _dashCashflowDrill(label, isInc ? 'income' : isExp ? 'expense' : null);
     },
-    onHover(evt, elements) { evt.native.target.style.cursor = elements.length?'pointer':'default'; },
-    scales:{
-      x:{
-        grid:{display:false},
-        ticks:{font:{size:11},color:'#8c8278'},
-      },
-      y:{
-        grid:{color:'rgba(0,0,0,.05)',drawBorder:false},
-        ticks:{
-          font:{size:11},color:'#8c8278',
-          callback(v){ return 'R$'+Math.abs(v/1000).toFixed(v>=1000||v<=-1000?0:1)+'k'; },
-        },
-      },
-    },
+    onHover(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
   });
 }
 
@@ -687,7 +602,6 @@ window._dashCashflowDrill = _dashCashflowDrill;
 // ─── Category chart: rich palette + click-to-drill ───────────────────────
 // Stores raw transaction data so click handler can filter without re-fetching
 let _catChartType    = 'bar'; // 'bar' | 'doughnut' — declared early to avoid TDZ
-let _catChartMode    = 'expense'; // 'expense' | 'income' — declared early to avoid TDZ
 let _catChartRawData = [];   // [{name, color, brl, t}]
 let _catChartEntries = [];   // [{name, total, color, txs}]
 
@@ -840,172 +754,6 @@ async function renderCategoryChart(){
   _renderCatChartDoughnut();
 }
 
-// ── Render helpers: Bar chart ────────────────────────────────────────────────
-function _renderCatChartBar() {
-  const entries = _catChartMode === 'income'
-    ? (window._catChartIncEntries || [])
-    : (_catChartEntries || []);
-  if (!entries.length) return;
-
-  const total = entries.reduce((s, e) => s + e.total, 0);
-  const textColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--text2').trim() || '#3d3830';
-  const mutedColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--muted').trim() || '#8c8278';
-
-  _dashRenderChart('categoryChart', 'bar',
-    entries.map(e => e.name),
-    [{
-      data: entries.map(e => e.total),
-      backgroundColor: entries.map(e => e.color + 'cc'),
-      hoverBackgroundColor: entries.map(e => e.color),
-      borderColor: entries.map(e => e.color),
-      borderWidth: 1,
-      borderRadius: 6,
-      borderSkipped: false,
-    }],
-    {
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(10,20,15,.88)',
-          titleColor: '#fff', bodyColor: 'rgba(255,255,255,.85)',
-          borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
-          padding: 10, cornerRadius: 8,
-          callbacks: {
-            label(ctx) {
-              const v = ctx.parsed.x;
-              const pct = total > 0 ? (v / total * 100).toFixed(1) : '0.0';
-              return ` R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})} (${pct}%)`;
-            },
-          },
-        },
-      },
-      onClick(evt, elements) {
-        if (!elements.length) return;
-        openCatDetail(elements[0].index);
-      },
-      onHover(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
-      scales: {
-        x: {
-          grid: { color: 'rgba(0,0,0,.05)', drawBorder: false },
-          ticks: {
-            font: { size: 10 }, color: mutedColor,
-            callback(v) { return 'R$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v); },
-          },
-        },
-        y: {
-          grid: { display: false },
-          ticks: {
-            font: { size: 11 }, color: textColor,
-            callback(v, i) {
-              const name = entries[i]?.name || v;
-              return name.length > 14 ? name.slice(0, 13) + '…' : name;
-            },
-          },
-        },
-      },
-    }
-  );
-}
-
-// ── Render helpers: Doughnut chart ───────────────────────────────────────────
-function _renderCatChartDoughnut() {
-  const entries = _catChartMode === 'income'
-    ? (window._catChartIncEntries || [])
-    : (_catChartEntries || []);
-  if (!entries.length) return;
-
-  const total = entries.reduce((s, e) => s + e.total, 0);
-
-  _dashRenderChart('categoryChart', 'doughnut',
-    entries.map(e => e.name),
-    [{
-      data: entries.map(e => e.total),
-      backgroundColor: entries.map(e => e.color + 'cc'),
-      hoverBackgroundColor: entries.map(e => e.color),
-      borderColor: 'var(--surface)',
-      borderWidth: 2,
-      hoverOffset: 8,
-    }],
-    {
-      cutout: '62%',
-      plugins: {
-        legend: {
-          display: true, position: 'right',
-          labels: {
-            boxWidth: 10, boxHeight: 10, borderRadius: 3,
-            usePointStyle: true, pointStyle: 'circle',
-            font: { size: 11 },
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text2').trim() || '#3d3830',
-            padding: 10,
-            generateLabels(chart) {
-              return entries.map((e, i) => ({
-                text: e.name.length > 12 ? e.name.slice(0, 11) + '…' : e.name,
-                fillStyle: e.color + 'cc',
-                strokeStyle: e.color,
-                lineWidth: 1,
-                index: i,
-              }));
-            },
-          },
-        },
-        tooltip: {
-          backgroundColor: 'rgba(10,20,15,.88)',
-          titleColor: '#fff', bodyColor: 'rgba(255,255,255,.85)',
-          borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
-          padding: 10, cornerRadius: 8,
-          callbacks: {
-            label(ctx) {
-              const v = ctx.parsed;
-              const pct = total > 0 ? (v / total * 100).toFixed(1) : '0.0';
-              return ` R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 0, maximumFractionDigits: 0})} · ${pct}%`;
-            },
-          },
-        },
-      },
-      onClick(evt, elements) {
-        if (!elements.length) return;
-        openCatDetail(elements[0].index);
-      },
-      onHover(evt, elements) { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
-    }
-  );
-}
-
-// ── Toggle: bar ↔ doughnut ───────────────────────────────────────────────────
-function _setCatChartType(type) {
-  _catChartType = type;
-  const pie = document.getElementById('catChartTypePie');
-  const bar = document.getElementById('catChartTypeBar');
-  if (pie) pie.classList.toggle('active', type === 'doughnut');
-  if (bar) bar.classList.toggle('active', type === 'bar');
-  // Persist to prefs (non-blocking)
-  _dashSavePrefs({ ..._dashGetPrefs(), catChartType: type }).catch(() => {});
-  if (type === 'bar') _renderCatChartBar();
-  else _renderCatChartDoughnut();
-}
-window._setCatChartType = _setCatChartType;
-
-// ── Toggle: expense ↔ income ─────────────────────────────────────────────────
-function _setDashCatMode(mode) {
-  _catChartMode = mode;
-  const expBtn = document.getElementById('dashCatModeExp');
-  const incBtn = document.getElementById('dashCatModeInc');
-  if (expBtn) expBtn.classList.toggle('active', mode === 'expense');
-  if (incBtn) incBtn.classList.toggle('active', mode === 'income');
-  const titleEl = document.getElementById('dashCatChartTitle');
-  if (titleEl) {
-    const svgInner = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>';
-    titleEl.innerHTML = `${svgInner} ${mode === 'income' ? 'Distribuição por Categoria (Receitas)' : 'Distribuição por Categoria'}`;
-  }
-  closeCatDetail();
-  if (_catChartType === 'bar') _renderCatChartBar();
-  else _renderCatChartDoughnut();
-}
-window._setDashCatMode = _setDashCatMode;
-
 function openCatDetail(idx) {
   const entry = _catChartEntries[idx];
   if (!entry) return;
@@ -1023,7 +771,7 @@ function openCatDetail(idx) {
   // Hide chart + mode controls, show back button + transaction list
   if (wrap)          wrap.style.display = 'none';
   if (chartControls) chartControls.style.display = 'none';
-  if (typeToggle && typeToggle.querySelector('.dash-pill-toggle')) typeToggle.style.display = 'none';
+  if (typeToggle && typeToggle.querySelector('.dash-cat-toggle')) typeToggle.style.display = 'none';
   if (backBtn)       backBtn.style.display = 'flex';
   detailEl.style.display = '';
 
@@ -1072,7 +820,7 @@ function closeCatDetail() {
   if (backBtn)        backBtn.style.display  = 'none';
   if (wrap)           wrap.style.display = '';
   if (chartControls)  chartControls.style.display = '';
-  if (typeToggle && typeToggle.querySelector('.dash-pill-toggle')) typeToggle.style.display = '';
+  if (typeToggle && typeToggle.querySelector('.dash-cat-toggle')) typeToggle.style.display = '';
 
   // Restore chart colors
   const chart = state.chartInstances['categoryChart'];
@@ -1091,7 +839,7 @@ async function loadDashboardAutoRunSummary(){
   const el = document.getElementById('dashAutoRunSummary');
   if(!el || !sb) return;
   try{
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0,10);
     const q = famQ(sb.from('scheduled_run_logs').select('id',{count:'exact', head:true}))
       .eq('scheduled_date', today);
     const { count, error } = await q;
@@ -1216,7 +964,7 @@ function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
 
-  list.innerHTML = order.map((c, idx) => `
+  list.innerHTML = order.map((c) => `
     <div class="dcc-item" data-card-id="${c.id}" draggable="true">
       <div class="dcc-handle" title="Arrastar para reordenar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1228,12 +976,6 @@ function _renderDashCustomList(order, prefs) {
         <div class="dcc-label">${c.label}</div>
         <div class="dcc-sub">${c.sub}</div>
         ${c.optional ? '<span class="dcc-badge">opcional</span>' : ''}
-      </div>
-      <div class="dcc-arrows">
-        <button class="dcc-arrow-btn" onclick="event.stopPropagation();_dashMoveCard('${c.id}',-1)"
-          title="Mover para cima" ${idx === 0 ? 'disabled' : ''}>▲</button>
-        <button class="dcc-arrow-btn" onclick="event.stopPropagation();_dashMoveCard('${c.id}',1)"
-          title="Mover para baixo" ${idx === order.length-1 ? 'disabled' : ''}>▼</button>
       </div>
       <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
         onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
@@ -1513,7 +1255,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
   const now  = new Date(), y = now.getFullYear(), mo = String(now.getMonth()+1).padStart(2,'0');
   const from = `${y}-${mo}-01`;
   const to   = `${y}-${mo}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
-  const monthLabel = fmtMonthYear(now);
+  const monthLabel = now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
   // Índice de transações confirmadas do mês por category_id
   const txsByCat = {};
@@ -1692,10 +1434,10 @@ async function renderDashboardUpcoming(memberIds = null) {
     try { if (typeof loadScheduled === 'function') await loadScheduled(); } catch(e) { console.warn('[dash upcoming loadScheduled]', e?.message || e); }
   }
 
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0, 10);
   const limit = new Date();
   limit.setDate(limit.getDate() + 10);
-  const limitStr = dateToLocalISO(limit);
+  const limitStr = limit.toISOString().slice(0, 10);
 
   const memberSet = Array.isArray(memberIds) && memberIds.length ? new Set(memberIds) : null;
   const upcoming = [];
@@ -1752,7 +1494,7 @@ async function renderDashboardUpcoming(memberIds = null) {
   upcoming.forEach(u => { (byDate[u.date] ||= []).push(u); });
   const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr = dateToLocalISO(tomorrow);
+  const tomorrowStr = tomorrow.toISOString().slice(0,10);
 
   listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
     const isToday = date === today;
@@ -1959,8 +1701,8 @@ async function _renderDashForecast() {
   const fromDate = new Date();
   const toDate   = new Date();
   toDate.setDate(toDate.getDate() + 90);
-  const fromStr = dateToLocalISO(fromDate);
-  const toStr   = dateToLocalISO(toDate);
+  const fromStr = fromDate.toISOString().slice(0, 10);
+  const toStr   = toDate.toISOString().slice(0, 10);
 
   // Fetch real transactions in period
   let q = famQ(sb.from('transactions')
@@ -2017,7 +1759,7 @@ async function _renderDashForecast() {
   const allDates = [];
   let cur = new Date(fromStr + 'T12:00');
   const end = new Date(toStr + 'T12:00');
-  while (cur <= end) { allDates.push(dateToLocalISO(cur)); cur.setDate(cur.getDate()+1); }
+  while (cur <= end) { allDates.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); }
   _fcAllDates = allDates;
 
   const COLORS = ['#2a6049','#1d4ed8','#b45309','#7c3aed','#dc2626','#059669'];
@@ -2370,8 +2112,8 @@ function _showForecastDrillModal(date, dayData) {
   const dateLabel  = d && m && y ? `${d}/${m}/${y}` : date;
   const weekdays   = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const weekday    = date ? weekdays[new Date(date + 'T12:00').getDay()] : '';
-  const isToday    = date === todayISO();
-  const isPast     = date < todayISO();
+  const isToday    = date === new Date().toISOString().slice(0,10);
+  const isPast     = date < new Date().toISOString().slice(0,10);
 
   // ── Estatísticas do dia ───────────────────────────────────────────────────
   const totalIn   = allItems.filter(t => Number(t.amount) > 0).reduce((s,t)=>s+Number(t.amount),0);
@@ -2755,7 +2497,7 @@ async function _openPatrimonioModal() {
           <div>
             <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px">Patrimônio Líquido</div>
             <div style="font-size:2rem;font-weight:900;font-family:var(--font-serif);color:#fff;line-height:1">${dashFmt(totalBRL,'BRL')}</div>
-            <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'long',year:'numeric'}).format(new Date())}</div>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div>
           </div>
           <button onclick="closeModal('patrimonioModal')"
             style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:34px;height:34px;font-size:.85rem;cursor:pointer;color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;flex-shrink:0;backdrop-filter:blur(4px)">✕</button>
@@ -3900,8 +3642,6 @@ window._catColor                           = _catColor;
 window._dashCustomSave                     = _dashCustomSave;
 window._dashGetPrefs                       = _dashGetPrefs;
 window._dashSavePrefs                      = _dashSavePrefs;
-window._dashMoveCard                       = _dashMoveCard;
-window._dashToggleCard                     = _dashToggleCard;
 window._renderDashFavCategories            = _renderDashFavCategories;
 window.closeCatDetail                      = closeCatDetail;
 window.loadDashboard                       = loadDashboard;

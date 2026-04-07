@@ -59,7 +59,7 @@ function updateAutoCheckUI(cfg) {
   if(lrEl) {
     if(cfg.lastRun) {
       const d = new Date(cfg.lastRun);
-      lrEl.textContent = `${fmtDate(d)} às ${fmtTime(d)} — ${cfg.lastRunCount||0} transação(ões) registrada(s)`;
+      lrEl.textContent = `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} — ${cfg.lastRunCount||0} transação(ões) registrada(s)`;
     } else {
       lrEl.textContent = 'Nunca executada';
     }
@@ -263,7 +263,7 @@ async function runAutoRegister(manual=false) {
 
 function updateLastRunConfig(count) {
   const cfg = getAutoCheckConfig();
-  cfg.lastRun = localISOTimestamp();
+  cfg.lastRun = new Date().toISOString();
   cfg.lastRunCount = count;
   localStorage.setItem(AUTO_CHECK_CONFIG_KEY, JSON.stringify(cfg));
   saveAppSetting(AUTO_CHECK_CONFIG_KEY, cfg).catch(()=>{});
@@ -310,7 +310,7 @@ function nextScheduledDate(dateStr, sc) {
     }
     default: return null;
   }
-  return dateToLocalISO(d);
+  return d.toISOString().slice(0,10);
 }
 
 /* ── Email Notifications ── */
@@ -481,6 +481,15 @@ CREATE INDEX IF NOT EXISTS idx_scheduled_auto_register
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.applyAutoCheckTimer                 = applyAutoCheckTimer;

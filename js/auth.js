@@ -630,15 +630,7 @@ async function _fetchAccessRequestSettingAnon() {
 function _applyAccessRequestVisibility(enabled) {
   try {
     const wrap = document.getElementById('loginRequestAccessWrap');
-    if (wrap) { wrap.style.display = enabled ? '' : 'none'; return; }
-    // Fallback: hide button + sibling text individually
-    const btn = document.getElementById('loginRequestAccessBtn');
-    if (btn) btn.style.display = enabled ? '' : 'none';
-    const parent = btn?.parentElement;
-    if (parent) {
-      parent.querySelectorAll('span[data-i18n="auth.no_account"]')
-        .forEach(t => { t.style.display = enabled ? '' : 'none'; });
-    }
+    if (wrap) wrap.style.display = enabled ? '' : 'none';
   } catch(_) {}
 }
 // Alias kept for legacy callers — delegates to DB fetch
@@ -3144,7 +3136,7 @@ async function _sendInviteEmail(toEmail, familyName, inviterName, inviteUrl, rol
       to_email:       toEmail,
       report_subject: `[Family FinTrack] Convite para a família "${familyName}"`,
       Subject:        `[Family FinTrack] Convite para a família "${familyName}"`,
-      month_year:     fmtMonthYear(new Date()),
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
     }, publicKey);
   } catch(e) {
@@ -3921,7 +3913,7 @@ async function _sendApprovalEmail(email, name, familyName) {
       to_email:       email,
       report_subject: '[Family FinTrack] Acesso aprovado — Bem-vindo(a)!',
       Subject:        '[Family FinTrack] Acesso aprovado — Bem-vindo(a)!',
-      month_year:     fmtMonthYear(new Date()),
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
     });
   } catch(e) { console.warn('[approval] _sendApprovalEmail:', e.message); }
@@ -3984,7 +3976,7 @@ async function _sendNewUserWelcomeEmail(email, name, familyName, tempPassword) {
       to_email:       email,
       report_subject: '[Family FinTrack] Sua conta foi criada!',
       Subject:        '[Family FinTrack] Sua conta foi criada!',
-      month_year:     fmtMonthYear(new Date()),
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
     });
   } catch(e) { console.warn('[saveUser] emailjs send:', e.message); }
@@ -4480,7 +4472,7 @@ async function _send2FAByEmail(email, code, name) {
       to_email:       email,
       report_subject: '[Family FinTrack] Seu código de verificação: ' + code,
       Subject:        '[Family FinTrack] Código de verificação',
-      month_year:     fmtMonthYear(new Date()),
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
     }, publicKey);
   } catch(e) {
@@ -4622,7 +4614,7 @@ function _show2FAScreen() {
   if (trustExpEl && expiry) {
     try {
       const d = new Date(expiry);
-      const fmt = fmtDate(d);
+      const fmt = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
       trustExpEl.textContent = '(confiança válida até ' + fmt + ')';
       trustExpEl.style.display = 'inline';
     } catch(_) {}
@@ -4762,7 +4754,7 @@ async function _checkTelegramChatIdUrl() {
         await sb.from('app_settings').upsert({
           key: 'tg_link_token_' + tgToken,
           value: JSON.stringify({ ...payload, chat_id: chatId }),
-          updated_at: localISOTimestamp(),
+          updated_at: new Date().toISOString(),
         }, { onConflict: 'key' });
         toast('📱 Telegram vinculado! Aguarde...', 'success');
         return;
@@ -4910,7 +4902,7 @@ async function _acceptPendingInvite() {
     }
 
     // Marcar convite como usado
-    await sb.from('family_invites').update({ used: true, used_at: localISOTimestamp() }).eq('id', invite.id);
+    await sb.from('family_invites').update({ used: true, used_at: new Date().toISOString() }).eq('id', invite.id);
 
     // Recarregar contexto
     await _loadCurrentUserContext();
@@ -5953,6 +5945,15 @@ function _mfmMsg(text, type) {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LISTA DE ESPERA — Gerenciamento admin
@@ -6008,7 +6009,7 @@ async function loadWaitlist() {
     }
 
     el.innerHTML = rows.map(r => {
-      const date     = r.created_at ? fmtDate(r.created_at) : '—';
+      const date     = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
       const roleLabel = {family:'Família',couple:'Casal',personal:'Individual',business:'Empreendedor',curious:'Curioso IA'}[r.role] || r.role || '—';
       const initials  = (r.name||'?').trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
       const isPending = r.status === 'pending';
@@ -6207,14 +6208,14 @@ async function _sendOfficialInvite() {
       to_email:       email,
       report_subject: '[Family FinTrack] 🎉 Seu convite chegou! Acesso liberado.',
       Subject:        '[Family FinTrack] Seu acesso ao Family FinTrack foi liberado!',
-      month_year:     fmtMonthYear(new Date()),
+      month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
     });
 
     // ── 4. Marcar como 'invited' na lista de espera ────────────────────────
     await sb.from('waitlist').update({
       status:     'invited',
-      updated_at: localISOTimestamp(),
+      updated_at: new Date().toISOString(),
     }).eq('id', wlId);
 
     toast(`✅ Convite enviado para ${name || email}! Link válido por 7 dias.`, 'success');
@@ -6321,14 +6322,14 @@ async function _checkWaitlistOnLogin() {
 // ── Notification dismiss helpers ─────────────────────────────────────────────
 function _dismissNotifToday(key) {
   try {
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0, 10);
     localStorage.setItem('notif_dismiss_' + key, today);
   } catch(_) {}
 }
 function _isNotifDismissedToday(key) {
   try {
     const stored = localStorage.getItem('notif_dismiss_' + key);
-    return stored === todayISO();
+    return stored === new Date().toISOString().slice(0, 10);
   } catch(_) { return false; }
 }
 window._dismissNotifToday    = _dismissNotifToday;
@@ -6411,7 +6412,7 @@ window._showUserLoginNotifications = _showUserLoginNotifications;
 /* ── Collect today's scheduled transactions ──────────────────────────────── */
 async function _getScheduledForToday() {
   try {
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0, 10);
     const scheduled = state?.scheduled || [];
     if (!scheduled.length) return [];
 
@@ -6476,9 +6477,9 @@ async function _getFinancialHealthSnapshot() {
     const negAccs = accs.filter(a => a.type !== 'cartao_credito' && +(a.balance||0) < 0);
 
     // Upcoming 10 days — net cash flow
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0, 10);
     const limit = new Date(); limit.setDate(limit.getDate() + 10);
-    const limitStr = dateToLocalISO(limit);
+    const limitStr = limit.toISOString().slice(0, 10);
 
     let upcomingNet = 0;
     (state?.scheduled || []).forEach(sc => {
@@ -6532,7 +6533,7 @@ async function _getFinancialHealthSnapshot() {
     if (!alert && totalBRL > 0 && upcomingNet >= 0) {
       // Show positive health only occasionally (not every login — check last shown date)
       const lastShown = localStorage.getItem('_healthNotifDate');
-      const today2 = todayISO();
+      const today2 = new Date().toISOString().slice(0, 10);
       if (lastShown !== today2) {
         alert = true; level = 'good';
         icon = '✅'; color = 'var(--accent)';

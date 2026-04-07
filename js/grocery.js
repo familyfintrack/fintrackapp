@@ -73,7 +73,7 @@ function _renderGroceryLists() {
   }
 
   container.innerHTML = _grocery.lists.map(list => {
-    const date = list.updated_at ? fmtDate(list.updated_at) : '';
+    const date = list.updated_at ? new Date(list.updated_at).toLocaleDateString('pt-BR') : '';
     const statusBadge = list.status === 'done'
       ? '<span class="badge badge-green" style="font-size:.68rem">✓ Concluída</span>'
       : '<span class="badge" style="font-size:.68rem;background:var(--accent-lt);color:var(--accent)">Em aberto</span>';
@@ -172,7 +172,7 @@ async function saveGroceryList() {
   const finalName = name || (storeName ? `Lista ${storeName}` : 'Nova Lista');
   const payload = {
     name: finalName, family_id: famId(), status: 'open',
-    updated_at: localISOTimestamp(),
+    updated_at: new Date().toISOString(),
   };
   // store_id and payee_id columns may not exist yet — add defensively
   if (storeId) payload.store_id = storeId;
@@ -281,7 +281,7 @@ async function toggleGroceryItem(itemId, checked) {
   if (item) item.checked = checked;
   _renderGroceryItems();
   if (checked && _grocery.items.every(i => i.checked)) {
-    await sb.from('grocery_lists').update({ status: 'done', updated_at: localISOTimestamp() }).eq('id', _grocery.currentList);
+    await sb.from('grocery_lists').update({ status: 'done', updated_at: new Date().toISOString() }).eq('id', _grocery.currentList);
     const list = _grocery.lists.find(l => l.id === _grocery.currentList);
     if (list) list.status = 'done';
     _renderGroceryLists();
@@ -459,7 +459,7 @@ async function confirmAddGroceryItem() {
   await _loadGroceryItems(listId);
   _renderGroceryItems();
   toast('Item adicionado!', 'success');
-  await sb.from('grocery_lists').update({ status: 'open', updated_at: localISOTimestamp() }).eq('id', listId);
+  await sb.from('grocery_lists').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', listId);
   const list = _grocery.lists.find(l => l.id === listId);
   if (list) list.status = 'open';
   _renderGroceryLists();
@@ -563,7 +563,7 @@ async function _callGroceryReceiptAI(apiKey, pending) {
     `${i.id}|${i.name}|${i.unit||'un'}`
   ).join('\n');
 
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0, 10);
 
   const prompt = `Você é especialista em leitura de recibos e notas fiscais brasileiras.
 Analise o recibo/nota na imagem e retorne SOMENTE um JSON válido.
@@ -675,7 +675,7 @@ async function _applyGroceryReceiptResult(result) {
     }
   }
 
-  const purchasedAt = result.date || todayISO();
+  const purchasedAt = result.date || new Date().toISOString().slice(0, 10);
   const savedItems = [];
   const newPriceItems = [];
 

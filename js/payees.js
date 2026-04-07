@@ -237,7 +237,7 @@ async function openPayeeHistory(payeeId, payeeName) {
 
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
-  const sinceStr = dateToLocalISO(since);
+  const sinceStr = since.toISOString().slice(0,10);
 
   const { data, error } = await famQ(
     sb.from('transactions')
@@ -1197,6 +1197,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._loadPayeeTxCounts                  = _loadPayeeTxCounts;

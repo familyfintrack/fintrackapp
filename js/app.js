@@ -593,7 +593,7 @@ async function bootApp(){
   const _cfg = (typeof getAutoCheckConfig === 'function') ? getAutoCheckConfig() : {};
   if(_cfg.enabled && _cfg.method === 'browser' && typeof applyAutoCheckTimer === 'function') applyAutoCheckTimer(_cfg);
   // Datas padrão
-  const ym=todayMonthISO();
+  const ym=new Date().toISOString().slice(0,7);
   populateTxMonthFilter();
   const txMonthEl=document.getElementById('txMonth');if(txMonthEl)txMonthEl.value=ym;
   const repEl=document.getElementById('reportMonth');if(repEl)repEl.value=ym;
@@ -998,7 +998,7 @@ function navigate(page){
   else if(page==='payees'){_loadPayeeTxCounts().then(()=>renderPayees());}
   else if(page==='scheduled') {
     const _now = new Date();
-    const _todayStr = todayISO();
+    const _todayStr = _now.toISOString().slice(0,10);
     // Always reset calendar to current month/day
     if (typeof _scCalYear  !== 'undefined') { window._scCalYear  = _now.getFullYear(); }
     if (typeof _scCalMonth !== 'undefined') { window._scCalMonth = _now.getMonth(); }
@@ -1264,6 +1264,15 @@ function _i18nUpdateTopbarLabel() {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Expor funções públicas no window ─────────────────────────────────────────
 window.navigate               = navigate;

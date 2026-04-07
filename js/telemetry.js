@@ -85,7 +85,7 @@ function telTrack(event_type, payload = {}) {
       session_id:   _tel.sessionId,
       event_type,   // 'page_view' | 'operation' | 'error' | 'ai_call' | 'performance'
       page:         (typeof state !== 'undefined' ? state.currentPage : null) || null,
-      ts:           localISOTimestamp(),
+      ts:           new Date().toISOString(),
       device:       _telGetDevice(),
       ...ctx,
       payload: {
@@ -370,3 +370,12 @@ initTelemetry();
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}

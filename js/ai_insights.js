@@ -427,7 +427,7 @@ function _aiMonthBounds(ym) {
   const [y, m] = String(ym || '').split('-').map(Number);
   if (!y || !m) return null;
   const start = `${y}-${String(m).padStart(2, '0')}-01`;
-  const end = dateToLocalISO(new Date(y, m, 0));
+  const end = new Date(y, m, 0).toISOString().slice(0, 10);
   return { start, end };
 }
 
@@ -507,7 +507,7 @@ function _aiRenderSnapshotsList() {
     return;
   }
   el.innerHTML = _ai.snapshots.map(s => {
-    const created = fmtDatetime(s.created_at);
+    const created = new Date(s.created_at).toLocaleString('pt-BR');
     const confidence = s.confidence_score != null ? `${Math.round(parseFloat(s.confidence_score || 0))}/100` : '—';
     const summary = s.ai_summary?.summary || s.ai_summary?.overview?.net_comment || 'Snapshot salvo com contexto factual e narrativa da IA.';
     const userNote = (s.filters?.extraContext || '').trim();
@@ -581,8 +581,8 @@ async function _aiSaveSnapshot(ctx, result) {
     family_id: famId,
     created_by: userId,
     title: customTitle || `AI Insights ${ctx.period?.from || ''} → ${ctx.period?.to || ''}`.trim(),
-    period_from: ctx.period?.from || todayISO(),
-    period_to: ctx.period?.to || todayISO(),
+    period_from: ctx.period?.from || new Date().toISOString().slice(0,10),
+    period_to: ctx.period?.to || new Date().toISOString().slice(0,10),
     snapshot_type: 'analysis',
     status: 'completed',
     filters: { ...(ctx.filters || {}), snapshot_hash: snapshotHash, snapshot_custom_title: customTitle || '' },
@@ -680,12 +680,12 @@ async function _aiCollectFinancialContext() {
   if (dateFrom) {
     const histFrom = new Date(dateFrom + 'T12:00:00');
     histFrom.setMonth(histFrom.getMonth() - 12);
-    const histFromStr = dateToLocalISO(histFrom);
+    const histFromStr = histFrom.toISOString().slice(0, 10);
     const histTo = new Date(dateFrom + 'T12:00:00');
     histTo.setDate(histTo.getDate() - 1);
     let hq = famQ(sb.from('transactions').select(
       'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,transfer_to_account_id,family_member_id,family_member_ids,currency,exchange_rate'
-    ).eq('status','confirmed')).gte('date', histFromStr).lte('date', dateToLocalISO(histTo));
+    ).eq('status','confirmed')).gte('date', histFromStr).lte('date', histTo.toISOString().slice(0,10));
     if (accountOrFilter) hq = hq.or(accountOrFilter);
     if (payeeId) hq = hq.eq('payee_id', payeeId);
     if (categoryIds.length) hq = hq.in('category_id', categoryIds);
@@ -746,13 +746,9 @@ async function _aiCollectFinancialContext() {
     if (cls.type === 'balance_adjustment') return;
     if (accMap[t.account_id]?.is_credit_card && cls.type === 'expense') cardSpend[t.account_id] = (cardSpend[t.account_id] || 0) + cls.brlAmt;
     if (!byMonth[month]) byMonth[month] = { income:0, expense:0, transfers:0, card_payments:0 };
-    // Padrão temporal (quinzena) — aplicado a income e expense
-    const _txDayN = parseInt((t.date || '').slice(8, 10));
-    const _qKeyN  = (!isNaN(_txDayN) && _txDayN <= 15) ? 'Q1' : 'Q2';
     if (cls.type === 'income') {
       totalIncome += cls.brlAmt;
       byMonth[month].income += cls.brlAmt;
-      byQuinzena[_qKeyN].income += cls.brlAmt;
       if (memId) byMemberInc[memId] = (byMemberInc[memId] || 0) + cls.brlAmt;
     } else if (cls.type === 'expense') {
       totalExpense += cls.brlAmt;
@@ -767,28 +763,6 @@ async function _aiCollectFinancialContext() {
           if (!byMemberPay[memId]) byMemberPay[memId] = {};
           byMemberPay[memId][payName] = (byMemberPay[memId][payName] || 0) + cls.brlAmt;
         }
-      }
-      // Padrão dia da semana
-      const _txDow = new Date((t.date || '') + 'T12:00:00').getDay();
-      if (!isNaN(_txDow)) byWeekday[_txDow] = (byWeekday[_txDow] || 0) + cls.brlAmt;
-      // Quinzena despesa
-      byQuinzena[_qKeyN].expense += cls.brlAmt;
-      // Tags comportamentais
-      if (Array.isArray(t.tags) && t.tags.length) {
-        t.tags.forEach(tag => {
-          const _tag = (tag || '').trim().toLowerCase();
-          if (!_tag) return;
-          if (!byTag[_tag]) byTag[_tag] = { total:0, count:0, categories:{} };
-          byTag[_tag].total   += cls.brlAmt;
-          byTag[_tag].count++;
-          byTag[_tag].categories[catName] = (byTag[_tag].categories[catName] || 0) + cls.brlAmt;
-        });
-      }
-      // Frequência de payee por mês (para detectar recorrências implícitas)
-      if (payName && month) {
-        if (!byPayeeMonth[payName]) byPayeeMonth[payName] = { months:{}, amounts:[] };
-        byPayeeMonth[payName].months[month] = (byPayeeMonth[payName].months[month] || 0) + cls.brlAmt;
-        byPayeeMonth[payName].amounts.push(cls.brlAmt);
       }
     }
   });
@@ -825,181 +799,6 @@ async function _aiCollectFinancialContext() {
 
   const topCategories = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name, amount]) => ({ name, amount:+amount.toFixed(2), pct: totalExpense ? +(amount/totalExpense*100).toFixed(1) : 0 }));
   const topPayees = Object.entries(byPayee).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name, amount]) => ({ name, amount:+amount.toFixed(2) }));
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // CAMADA 1 — Análise comportamental por tags
-  // ══════════════════════════════════════════════════════════════════════════
-  const topTags = Object.entries(byTag)
-    .sort((a, b) => b[1].total - a[1].total)
-    .slice(0, 20)
-    .map(([tag, v]) => ({
-      tag,
-      total:       +v.total.toFixed(2),
-      count:       v.count,
-      avg_per_tx:  +(v.total / v.count).toFixed(2),
-      pct_of_expense: totalExpense > 0 ? +(v.total / totalExpense * 100).toFixed(1) : 0,
-      top_category: Object.entries(v.categories)
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || null,
-    }));
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // CAMADA 2 — Health metrics e burn rate
-  // ══════════════════════════════════════════════════════════════════════════
-  const _periodStartDate = dateFrom ? new Date(dateFrom + 'T12:00:00') : null;
-  const _periodEndDate   = dateTo   ? new Date(dateTo   + 'T12:00:00') : new Date();
-  const _totalDays = _periodStartDate
-    ? Math.max(1, Math.round((_periodEndDate - _periodStartDate) / 86400000) + 1)
-    : 30;
-  const _dailyExpense = totalExpense / _totalDays;
-  const _dailyIncome  = totalIncome  / _totalDays;
-
-  // Verificar se estamos no mês corrente
-  const _nowForBurn   = new Date();
-  const _curMonthKey  = todayMonthISO();
-  const _isCurrentMonth = dateFrom && dateTo &&
-    dateFrom.slice(0,7) === _curMonthKey &&
-    dateTo.slice(0,7)   === _curMonthKey;
-  const _daysInMonth     = new Date(_nowForBurn.getFullYear(), _nowForBurn.getMonth() + 1, 0).getDate();
-  const _daysElapsed     = _nowForBurn.getDate();
-  const _daysRemaining   = _daysInMonth - _daysElapsed;
-
-  // Burn rate: saldo líquido de contas de verificação/poupança
-  const _liquidBalance = (state.accounts || [])
-    .filter(a => a.type !== 'investimento' && a.type !== 'cartao_credito' && parseFloat(a.balance) > 0)
-    .reduce((s, a) => s + parseFloat(a.balance || 0), 0);
-
-  const burnRate = {
-    daily_avg_expense:       +_dailyExpense.toFixed(2),
-    daily_avg_income:        +_dailyIncome.toFixed(2),
-    projected_monthly_expense: +(_dailyExpense * 30).toFixed(2),
-    projected_monthly_income:  +(_dailyIncome  * 30).toFixed(2),
-    liquid_balance_brl:      +_liquidBalance.toFixed(2),
-    days_liquid_balance_covers: _dailyExpense > 0 ? +(_liquidBalance / _dailyExpense).toFixed(1) : null,
-    note: 'burn_rate baseado no período selecionado dividido por dias',
-    ...(_isCurrentMonth ? {
-      days_elapsed:               _daysElapsed,
-      days_remaining:             _daysRemaining,
-      projected_month_end_expense: +(_dailyExpense * _daysInMonth).toFixed(2),
-      pct_month_elapsed:           +(_daysElapsed / _daysInMonth * 100).toFixed(0),
-      pace: _dailyExpense * _daysInMonth > (histAvgExpense || totalExpense * 1.05)
-        ? 'acima_media_historica' : 'dentro_media_historica',
-    } : {}),
-  };
-
-  const _savingsRate = totalIncome > 0 ? +((totalIncome - totalExpense) / totalIncome * 100).toFixed(1) : 0;
-  const _fixedCostRatio = totalExpense > 0 && recurringCommitments
-    ? +(recurringCommitments.monthly_expense / totalExpense * 100).toFixed(1) : 0;
-  const _top3Conc = totalExpense > 0
-    ? +(topCategories.slice(0,3).reduce((s,c)=>s+c.amount,0) / totalExpense * 100).toFixed(1) : 0;
-  const _emergencyFundMonths = _dailyExpense > 0 && _liquidBalance > 0
-    ? +(_liquidBalance / (_dailyExpense * 30)).toFixed(1) : null;
-
-  const healthMetrics = {
-    savings_rate_pct:              _savingsRate,
-    savings_rate_label:            _savingsRate >= 20 ? 'excelente' : _savingsRate >= 10 ? 'adequado' : _savingsRate >= 0 ? 'baixo' : 'deficit',
-    fixed_cost_ratio_pct:          _fixedCostRatio,
-    top3_category_concentration_pct: _top3Conc,
-    emergency_fund_months:         _emergencyFundMonths,
-    emergency_fund_status:         _emergencyFundMonths === null ? 'sem_dados'
-      : _emergencyFundMonths >= 6 ? 'adequado' : _emergencyFundMonths >= 3 ? 'minimo' : 'insuficiente',
-    vs_historical: histAvgExpense ? {
-      expense_vs_hist_avg_pct: +((totalExpense - histAvgExpense) / histAvgExpense * 100).toFixed(1),
-      income_vs_hist_avg_pct:  histAvgIncome
-        ? +((totalIncome  - histAvgIncome)  / histAvgIncome  * 100).toFixed(1) : null,
-    } : null,
-    note: 'savings_rate = (receita - despesa) / receita × 100. Referência: ≥20% excelente, ≥10% adequado',
-  };
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // CAMADA 3 — Recorrências implícitas (payees frequentes não cadastrados)
-  // ══════════════════════════════════════════════════════════════════════════
-  const _scheduledPayeeNames = new Set(
-    (_stSched || []).map(s => payMap[s.payee_id]?.name).filter(Boolean).map(n => n.toLowerCase())
-  );
-
-  const implicitRecurrences = Object.entries(byPayeeMonth)
-    .filter(([payee, v]) => {
-      const monthCount = Object.keys(v.months).length;
-      if (monthCount < 2) return false; // precisa aparecer em 2+ meses
-      // Ignorar se já está nos programados
-      if (_scheduledPayeeNames.has(payee.toLowerCase())) return false;
-      return true;
-    })
-    .map(([payee, v]) => {
-      const monthList   = Object.keys(v.months).sort();
-      const monthCount  = monthList.length;
-      const amounts     = Object.values(v.months);
-      const avgMonthly  = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-      const minAmt      = Math.min(...amounts);
-      const maxAmt      = Math.max(...amounts);
-      const variance    = minAmt > 0 ? maxAmt / minAmt : 99;
-      // Regularidade: baixa variância + aparece em 3+ meses = muito provável recorrente
-      const regularity  = variance < 1.25 ? 'alta' : variance < 1.6 ? 'media' : 'baixa';
-      return {
-        payee,
-        months_present:  monthCount,
-        avg_monthly_brl: +avgMonthly.toFixed(2),
-        min_brl:         +minAmt.toFixed(2),
-        max_brl:         +maxAmt.toFixed(2),
-        regularity,
-        last_month:      monthList[monthList.length - 1],
-        suggestion:      `Considere cadastrar "${payee}" como transação programada`,
-      };
-    })
-    .filter(r => r.regularity !== 'baixa' || r.months_present >= 4) // só os mais prováveis
-    .sort((a, b) => b.avg_monthly_brl - a.avg_monthly_brl)
-    .slice(0, 10);
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // Padrões temporais: dia da semana + quinzena
-  // ══════════════════════════════════════════════════════════════════════════
-  const _wdNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  const spendByWeekday = Object.entries(byWeekday)
-    .map(([dow, total]) => ({ weekday: _wdNames[+dow], total: +total.toFixed(2) }))
-    .filter(d => d.total > 0);
-  const _wdTotal    = spendByWeekday.reduce((s, d) => s + d.total, 0);
-  const _wdPeak     = spendByWeekday.sort((a, b) => b.total - a.total)[0]?.weekday || null;
-  const _weekendPct = _wdTotal > 0
-    ? +((byWeekday[0] + byWeekday[6]) / _wdTotal * 100).toFixed(1) : 0;
-
-  const temporalPatterns = {
-    spend_by_weekday: spendByWeekday,
-    peak_weekday:     _wdPeak,
-    weekend_spend_pct: _weekendPct,
-    quinzena: {
-      Q1_expense: +byQuinzena.Q1.expense.toFixed(2),
-      Q2_expense: +byQuinzena.Q2.expense.toFixed(2),
-      Q1_income:  +byQuinzena.Q1.income.toFixed(2),
-      Q2_income:  +byQuinzena.Q2.income.toFixed(2),
-      Q1_pct_expense: totalExpense > 0 ? +(byQuinzena.Q1.expense / totalExpense * 100).toFixed(1) : 0,
-      Q2_pct_expense: totalExpense > 0 ? +(byQuinzena.Q2.expense / totalExpense * 100).toFixed(1) : 0,
-      note: 'Q1=dias 1-15, Q2=dias 16-fim do mês',
-    },
-    note: 'Padrões de gasto por dia da semana e quinzena do mês',
-  };
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // Perfil da família (inferido)
-  // ══════════════════════════════════════════════════════════════════════════
-  const _fmcAll = (typeof getFamilyMembers === 'function') ? getFamilyMembers() : [];
-  const _catNamesLow = topCategories.map(c => c.name.toLowerCase());
-  const familyProfile = {
-    adults:   _fmcAll.filter(m => m.member_type === 'adult').length  || null,
-    children: _fmcAll.filter(m => m.member_type === 'child').length  || null,
-    members:  _fmcAll.slice(0, 8).map(m => ({
-      name:        m.name,
-      type:        m.member_type,
-      age_approx:  m.birth_date
-        ? Math.floor((Date.now() - new Date(m.birth_date + 'T12:00:00')) / 3.156e10)
-        : null,
-    })),
-    // Inferências baseadas nos padrões de categoria
-    has_car:        _catNamesLow.some(n => /combustível|estacionamento|ipva|seguro.*auto|manutenção.*veí/i.test(n)),
-    has_pet:        _catNamesLow.some(n => /pet|animal|veterinário|ração/i.test(n)),
-    has_school_kids:_catNamesLow.some(n => /escola|colégio|mensalidade|material escolar|uniforme/i.test(n)),
-    has_mortgage:   _catNamesLow.some(n => /financiamento.*imóvel|hipoteca|prestação.*casa/i.test(n)),
-    note: 'Perfil inferido da composição familiar e categorias de gastos mais frequentes',
-  };
 
   const memberMap = {};
   const _fmcMembers = (typeof getFamilyMembers === 'function') ? getFamilyMembers() : [];
@@ -1074,7 +873,7 @@ async function _aiCollectFinancialContext() {
   };
 
   const projectionAnchor = dateTo ? new Date(dateTo + 'T12:00:00') : new Date();
-  const currentMonthKey = dateToLocalISO(projectionAnchor).slice(0,7);
+  const currentMonthKey = projectionAnchor.toISOString().slice(0,7);
   const historicalPool = [...histRows, ...filtered].filter(t => { const c=_classifyTx(t); return c.type === 'income' || c.type === 'expense'; });
   const closedMonthsMap = {};
   historicalPool.forEach(t => {
@@ -1110,8 +909,8 @@ async function _aiCollectFinancialContext() {
   });
 
   const projMonths = [];
-  const scheduledFrom = dateToLocalISO(new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+1, 1));
-  const scheduledTo = dateToLocalISO(new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+7, 0));
+  const scheduledFrom = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+1, 1).toISOString().slice(0,10);
+  const scheduledTo = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+7, 0).toISOString().slice(0,10);
   const occurrenceIndex = {};
   _stSched.forEach(s => {
     const occs = _aiGenerateOccurrencesInRange(s, scheduledFrom, scheduledTo, 240);
@@ -1203,7 +1002,7 @@ async function _aiCollectFinancialContext() {
   try {
     if (typeof _rbtGetBudgetContext === 'function') budgetContext = await _rbtGetBudgetContext();
     if (!budgetContext) {
-      const curMonth = todayMonthISO();
+      const curMonth = new Date().toISOString().slice(0,7);
       const { data: bdata } = await famQ(sb.from('budgets').select('amount,category_id,categories(name)')).eq('month', curMonth + '-01');
       if (bdata?.length) {
         const rawSpend = {};
@@ -1219,15 +1018,8 @@ async function _aiCollectFinancialContext() {
     topCategories, topPayees, memberInsights, monthlyTrend, historicalTrend, historicalAvg:{ monthly_income: histAvgIncome ? +histAvgIncome.toFixed(2) : null, monthly_expense: histAvgExpense ? +histAvgExpense.toFixed(2) : null },
     scheduledItems:{ once:schedOnce.sort((a,b)=>(a.next_date || '').localeCompare(b.next_date || '')), monthly:schedMonthly.sort((a,b)=>b.monthly_equiv-a.monthly_equiv), recurring:schedRecurring.sort((a,b)=>b.monthly_equiv-a.monthly_equiv), total_count:_stSched.length },
     recurringCommitments, financialProjection, creditCardSummary, creditCardProjection, accountBalances, accountSummary, topTransactions, allTransactions, anomalies, budgets:budgetContext, filters,
-    // ── Novos campos de enriquecimento de contexto ────────────────────────
-    behavior_tags:        topTags.length ? topTags : null,
-    implicit_recurrences: implicitRecurrences.length ? implicitRecurrences : null,
-    burn_rate:            burnRate,
-    health_metrics:       healthMetrics,
-    temporal_patterns:    temporalPatterns,
-    family_profile:       familyProfile,
     userContext:{ extraContext },
-    meta:{ confidence_score: confidenceScore, closed_months_used: closedMonthKeys.length, recurring_coverage_ratio:+coverageRatio.toFixed(3), engine_version:'ai-insights-engine-v3' },
+    meta:{ confidence_score: confidenceScore, closed_months_used: closedMonthKeys.length, recurring_coverage_ratio:+coverageRatio.toFixed(3), engine_version:'ai-insights-engine-v2' },
   };
 
   // ── Investimentos ──────────────────────────────────────────────────────
@@ -1500,13 +1292,6 @@ async function _callGeminiAnalysis(apiKey, ctx) {
     orcamentos:                ctx.budgets,
     anomalias_detectadas:      ctx.anomalies,
     top_40_transacoes:         ctx.topTransactions,
-    // ── Novos campos de contexto comportamental ────────────────────────────
-    ...(ctx.behavior_tags        ? { tags_comportamentais:      ctx.behavior_tags        } : {}),
-    ...(ctx.implicit_recurrences ? { recorrencias_implicitas:   ctx.implicit_recurrences } : {}),
-    ...(ctx.burn_rate            ? { velocidade_gasto:          ctx.burn_rate            } : {}),
-    ...(ctx.health_metrics       ? { metricas_saude_financeira: ctx.health_metrics       } : {}),
-    ...(ctx.temporal_patterns    ? { padroes_temporais:         ctx.temporal_patterns    } : {}),
-    ...(ctx.family_profile       ? { perfil_familia:            ctx.family_profile       } : {}),
     ...(ctx.investments  ? { carteira_investimentos: ctx.investments  } : {}),
     ...(ctx.debts        ? { dividas_ativas:          ctx.debts        } : {}),
     ...(ctx.price_tracking ? { rastreamento_precos:  ctx.price_tracking } : {}),
@@ -1530,13 +1315,7 @@ Responda SOMENTE com JSON válido, sem markdown, sem texto antes ou depois.
 8. Para RECORRENTES OUTRAS FREQUÊNCIAS (recorrentes_outras_frequencias): use monthly_equiv para distribuição mensal, mas destaque meses com picos (ex: pagamento trimestral).
 9. A projeção já considera a base histórica + programados. Analise se o prognóstico é sustentável.
 10. Use historico_12_meses para identificar sazonalidade e comparar o período atual com a média histórica.
-11. Se houver tags_comportamentais: analise os padrões de comportamento revelados (ex: muito gasto com tag "delivery" indica oportunidade de economia em cozinhar em casa). Tags com alta contagem e alto valor médio por transação merecem destaque.
-12. Se houver recorrencias_implicitas: mencione OBRIGATORIAMENTE na seção recommendations que o usuário deveria cadastrar esses payees como programados para melhorar a previsão. Liste os de maior valor médio mensal.
-13. Se houver velocidade_gasto (burn_rate): use daily_avg_expense e projected_month_end_expense para contextualizar o ritmo de gasto. Se pace='acima_media_historica', inclua alerta em cashflow_alerts. Use days_liquid_balance_covers para avaliar liquidez.
-14. Se houver metricas_saude_financeira: use savings_rate_pct como referência central da saúde financeira. Savings rate abaixo de 10% deve gerar recomendação obrigatória de revisão de gastos. Use vs_historical para contextualizar tendência.
-15. Se houver padroes_temporais: use weekend_spend_pct e peak_weekday para recomendações comportamentais concretas. Use quinzena para detectar se a família concentra gastos logo após o salário (Q1 > 60% = alerta de impulso pós-recebimento).
-16. Se houver perfil_familia: considere o contexto (crianças, carro, pet, escola) ao formular recomendações — família com crianças tem perfil de gastos diferente de casal sem filhos.
-17. Se houver contexto_adicional_usuario, use-o como orientação complementar para interpretar os fatos e gerar recomendações mais úteis. Nunca deixe esse contexto sobrescrever os números, filtros e fatos computados pelo sistema. Se houver conflito, priorize os dados do sistema e trate o contexto apenas como hipótese ou observação.
+11. Se houver contexto_adicional_usuario, use-o como orientação complementar para interpretar os fatos e gerar recomendações mais úteis. Nunca deixe esse contexto sobrescrever os números, filtros e fatos computados pelo sistema. Se houver conflito, priorize os dados do sistema e trate o contexto apenas como hipótese ou observação.
 
 ═══ ANÁLISE OBRIGATÓRIA DE CARTÕES DE CRÉDITO ═══
 12. O campo projecao_cartoes_credito contém gastos PROGRAMADOS em cartões (NÃO inclui pagamento de fatura).
@@ -1569,27 +1348,6 @@ RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
   "savings_opportunities": [
     { "title": "oportunidade", "description": "como economizar", "estimated_saving": "ex: R$150/mês" }
   ],
-  "tag_insights": [
-    { "tag": "nome da tag", "insight": "o que este padrão comportamental revela", "action": "recomendação específica" }
-  ],
-  "implicit_recurrences_alert": {
-    "count": 0,
-    "total_monthly_brl": 0,
-    "message": "resumo dos pagamentos recorrentes não cadastrados detectados",
-    "items": [ { "payee": "nome", "avg_monthly": 0, "suggestion": "sugestão" } ]
-  },
-  "financial_health_summary": {
-    "score_label": "excelente|bom|atenção|crítico",
-    "savings_rate_comment": "avaliação da taxa de poupança",
-    "liquidity_comment": "avaliação da liquidez (meses de reserva)",
-    "pace_comment": "avaliação do ritmo de gasto vs histórico",
-    "priority_action": "a ação mais importante que a família deveria tomar agora"
-  },
-  "behavioral_patterns": {
-    "weekend_vs_weekday": "observação sobre padrão fim de semana vs semana",
-    "quinzena_pattern": "observação sobre concentração de gastos na 1ª ou 2ª quinzena",
-    "tag_behavior_summary": "resumo dos padrões comportamentais revelados pelas tags"
-  },
   "recommendations": [
     { "title": "recomendação", "description": "ação concreta", "priority": "high|medium|low" }
   ],
@@ -1689,10 +1447,6 @@ REGRAS FINAIS:
 - Contexto brasileiro (BRL, hábitos locais, sazonalidade brasileira)
 - member_insights: lista vazia se não houver dados por membro
 - classification_suggestions: máx 5, apenas sem categoria ou categoria genérica
-- tag_insights: OMITIR se tags_comportamentais estiver ausente ou vazio
-- implicit_recurrences_alert: OMITIR se recorrencias_implicitas estiver ausente; se presente, priorize os de avg_monthly > R$100
-- financial_health_summary: SEMPRE incluir, mesmo sem dados históricos (use os dados disponíveis)
-- behavioral_patterns: OMITIR se padroes_temporais estiver ausente
 - forecast.projection_highlights: máx 4, apenas meses com algo relevante
 - forecast.one_time_payment_alerts: apenas pagamentos únicos relevantes (>R$200)
 - budget_analysis: lista vazia se não houver orçamentos
@@ -2485,7 +2239,7 @@ function _buildAiInsightsHTML() {
     .kpi-value{font-size:18px;font-weight:800;margin-top:2px}</style>
   </head><body>
     <h2>🤖 AI Insights — Family FinTrack</h2>
-    <p style="color:#6b7280">Período: <strong>${ctx.period.from} a ${ctx.period.to}</strong> · Gerado em ${fmtDatetime(new Date())}</p>
+    <p style="color:#6b7280">Período: <strong>${ctx.period.from} a ${ctx.period.to}</strong> · Gerado em ${new Date().toLocaleString('pt-BR')}</p>
 
     <div class="kpi-row">
       <div class="kpi"><div class="kpi-label">Receitas</div><div class="kpi-value" style="color:#15803d">${fmtR(ctx.summary.totalIncome)}</div></div>
@@ -2535,7 +2289,7 @@ async function exportAiAnalysis() {
     doc.setFontSize(16).setFont(undefined,'bold').setTextColor('#0d2318');
     doc.text('AI Insights — Family FinTrack', lm, y); y += 8;
     doc.setFontSize(9).setFont(undefined,'normal').setTextColor('#6b7280');
-    doc.text(`Período: ${ctx.period.from} a ${ctx.period.to}  ·  Gerado em ${fmtDatetime(new Date())}`, lm, y); y += 8;
+    doc.text(`Período: ${ctx.period.from} a ${ctx.period.to}  ·  Gerado em ${new Date().toLocaleString('pt-BR')}`, lm, y); y += 8;
 
     // KPI row
     doc.setDrawColor('#e5e7eb').setFillColor('#f9fafb');
@@ -2963,6 +2717,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 window.loadAiSnapshots = loadAiSnapshots;
 window.saveCurrentAiSnapshot = saveCurrentAiSnapshot;

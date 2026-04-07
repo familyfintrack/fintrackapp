@@ -146,7 +146,7 @@ window.submitFeedback = async function() {
       screenshot_mime: _fbScreenMime   || null,
       status:      'new',
       priority:    0,
-      created_at:  localISOTimestamp(),
+      created_at:  new Date().toISOString(),
     };
 
     const { error } = await sb.from('app_feedback').insert(payload);
@@ -213,7 +213,7 @@ function _fbAdminCard(item) {
   const typ  = FB_TYPE_LABELS[item.type]     || item.type;
   const mod  = FB_MODULE_LABELS[item.module] || item.module;
   const dt   = item.created_at
-    ? fmtDatetime(item.created_at)
+    ? new Date(item.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
     : '—';
   const user     = item.app_users?.name || item.app_users?.email || 'Usuário';
   const userId   = item.user_id || '';
@@ -378,7 +378,7 @@ window._fbDeleteFeedback = async function(id, card) {
 
 window._fbSetStatus = async function(id, status, card) {
   try {
-    const { error } = await sb.from('app_feedback').update({ status, updated_at: localISOTimestamp() }).eq('id', id);
+    const { error } = await sb.from('app_feedback').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
     // Re-render just this card
     const { data } = await sb.from('app_feedback').select('*, app_users(name,email)').eq('id', id).single();
@@ -392,7 +392,7 @@ window._fbSetStatus = async function(id, status, card) {
 window._fbSaveComment = async function(id) {
   const txt = document.getElementById('fbcmt_' + id)?.value || '';
   try {
-    const { error } = await sb.from('app_feedback').update({ admin_comment: txt, updated_at: localISOTimestamp() }).eq('id', id);
+    const { error } = await sb.from('app_feedback').update({ admin_comment: txt, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
     if (typeof toast === 'function') toast('Comentário salvo.', 'success');
   } catch(e) {
@@ -454,7 +454,7 @@ function _updateFeedbackBadge(count) {
 function _showFeedbackLoginNotif(count) {
   // Check if dismissed today
   try {
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0,10);
     if (localStorage.getItem('notif_dismiss_fbLoginNotif') === today) return;
   } catch(_) {}
   // Don't stack multiple popups
@@ -489,7 +489,7 @@ function _showFeedbackLoginNotif(count) {
             style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);background:transparent;border-radius:8px;cursor:pointer;color:var(--text2)">
             Depois
           </button>
-          <button onclick="(typeof _dismissNotifToday==='function'?_dismissNotifToday('fbLoginNotif'):localStorage.setItem('notif_dismiss_fbLoginNotif',todayISO()));document.getElementById('fbLoginNotifPopup')?.remove()"
+          <button onclick="(typeof _dismissNotifToday==='function'?_dismissNotifToday('fbLoginNotif'):localStorage.setItem('notif_dismiss_fbLoginNotif',new Date().toISOString().slice(0,10)));document.getElementById('fbLoginNotifPopup')?.remove()"
             style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);background:transparent;border-radius:8px;cursor:pointer;color:var(--muted)">
             Não hoje
           </button>
@@ -577,7 +577,7 @@ window._fbShowUserTelemetryModal = async function(userId, userName) {
     html += '</div>';
     html += '<div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Eventos recentes</div>';
     events.slice(0,30).forEach(function(e) {
-      const dt = fmtDatetime(e.created_at);
+      const dt = new Date(e.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
       html += '<div style="display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem">'
             + '<span style="color:var(--muted);flex-shrink:0;width:100px">' + dt + '</span>'
             + '<span style="font-weight:600;color:var(--text);flex-shrink:0">' + esc(e.event_type) + '</span>'

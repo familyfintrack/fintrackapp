@@ -16,7 +16,7 @@ const _objFmtDate = iso => { if (!iso) return '—'; const [y,m,d] = iso.split('
 
 // ── Status ───────────────────────────────────────────────────────────────────
 function _objStatus(obj) {
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0,10);
   if (obj.status === 'closed') return { label:'Encerrado', cls:'obj-status-closed',  icon:'🔒' };
   if (obj.end_date && today > obj.end_date) return { label:'Expirado',  cls:'obj-status-expired', icon:'⏰' };
   if (today < obj.start_date)              return { label:'Aguardando', cls:'obj-status-waiting', icon:'📅' };
@@ -44,7 +44,7 @@ async function populateObjectiveSelect(selectId, selectedId = null, includeEmpty
   const sel = document.getElementById(selectId);
   if (!sel) return;
   await loadObjectives();
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0,10);
   const active = _objList.filter(o => o.status !== 'closed' && (!o.end_date || o.end_date >= today));
   let html = includeEmpty ? '<option value="">— Nenhum objetivo —</option>' : '';
   active.forEach(o => {
@@ -150,7 +150,7 @@ async function openObjectiveModal(id = null) {
     setVal('objId',          obj?.id || '');
     setVal('objName',        obj?.name || '');
     setVal('objDescription', obj?.description || '');
-    setVal('objStartDate',   obj?.start_date || todayISO());
+    setVal('objStartDate',   obj?.start_date || new Date().toISOString().slice(0,10));
     setVal('objEndDate',     obj?.end_date || '');
     setVal('objStatus',      obj?.status || 'active');
 
@@ -306,14 +306,14 @@ async function saveObjective() {
       end_date:     endDate,
       budget_limit: limit,
       status,
-      updated_at:   localISOTimestamp(),
+      updated_at:   new Date().toISOString(),
     };
 
     let err;
     if (id) {
       ({ error: err } = await sb.from('financial_objectives').update(payload).eq('id', id).eq('family_id', fid));
     } else {
-      payload.created_at = localISOTimestamp();
+      payload.created_at = new Date().toISOString();
       ({ error: err } = await sb.from('financial_objectives').insert(payload));
     }
     if (err) throw err;

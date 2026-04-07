@@ -294,7 +294,7 @@ async function _fpSaveToDB(famId, prefs) {
       module_dreams:      !!(prefs.modules?.dreams),
       language:           prefs.language || 'pt',
       ui_settings:        prefs.ui || {},
-      updated_at:         localISOTimestamp(),
+      updated_at:         new Date().toISOString(),
     };
     const { error } = await sb
       .from('family_preferences')

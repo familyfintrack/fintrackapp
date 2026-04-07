@@ -750,8 +750,8 @@ function renderTransactions(){
     let html = '';
     let lastDate = null;
     let bandIndex = 0;
-    const TODAY_STR = todayISO();
-    const YESTERDAY_STR = dateOffsetISO(-1);
+    const TODAY_STR = new Date().toISOString().slice(0,10);
+    const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
     // Pre-compute per-day totals for the summary
     const dayTotals = {};
     txList.forEach(tx => {
@@ -1125,7 +1125,7 @@ async function openTransactionModal(id=''){
     await loadFamilyComposition().catch(() => {});
   }
   resetTxModal();
-  document.getElementById('txDate').value=todayISO();
+  document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
   document.getElementById('txModalTitle').textContent='Nova Transação';
   if(id) {
     editTransaction(id);
@@ -1826,8 +1826,8 @@ async function fetchTxCurrencyRate() {
   if (sugg) sugg.style.display = 'none';
 
   try {
-    let txDate = document.getElementById('txDate')?.value || todayISO();
-    const todayStr = todayISO();
+    let txDate = document.getElementById('txDate')?.value || new Date().toISOString().slice(0,10);
+    const todayStr = new Date().toISOString().slice(0,10);
     if (txDate > todayStr) txDate = todayStr;
 
     const url = `${FX_API_BASE}/${txDate}?base=${fetchFrom}&to=${fetchTo}`;
@@ -1953,10 +1953,10 @@ async function fetchSuggestedFxRate() {
     // Frankfurter uses weekday rates — if date is a weekend it returns the
     // closest prior business day automatically.
     let txDate = document.getElementById('txDate').value ||
-      todayISO();
+      new Date().toISOString().slice(0, 10);
 
     // Frankfurter does not serve future dates — cap to today
-    const todayStr = todayISO();
+    const todayStr = new Date().toISOString().slice(0, 10);
     if (txDate > todayStr) txDate = todayStr;
 
     // GET /YYYY-MM-DD?base=SRC&to=DST
@@ -2235,7 +2235,7 @@ async function saveTransaction(){
     // Always write current attachment state; upload will overwrite if there's a pending file
     attachment_url:  existingUrl,
     attachment_name: existingName,
-    updated_at:localISOTimestamp(),
+    updated_at:new Date().toISOString(),
     family_id:famId(),
     family_member_ids: typeof getFmcMultiPickerSelected === 'function'
       ? getFmcMultiPickerSelected('txFamilyMemberPicker')
@@ -2296,7 +2296,7 @@ async function saveTransaction(){
           is_card_payment: data.is_card_payment,
           status: data.status,
           transfer_to_account_id: data.account_id,
-          updated_at: localISOTimestamp(),
+          updated_at: new Date().toISOString(),
         }).eq('id', orig.linked_transfer_id);
       }
     }
@@ -2318,7 +2318,7 @@ async function saveTransaction(){
         is_card_payment: data.is_card_payment,
         status: data.status,
         transfer_to_account_id: data.account_id,
-        updated_at: localISOTimestamp(),
+        updated_at: new Date().toISOString(),
         family_id: famId(),
       };
       // Try inserting with linked_transfer_id (requires migration_v3 to have been run)
@@ -2387,10 +2387,10 @@ async function saveTransaction(){
           dream_id:   _txDreamIdSelected,
           family_id:  famId(),
           amount:     _drmAmt,
-          date:       data.date || todayISO(),
+          date:       data.date || new Date().toISOString().slice(0,10),
           type:       'transaction',
           notes:      `Vinculado à transação`,
-          created_at: localISOTimestamp(),
+          created_at: new Date().toISOString(),
         });
       }
     } catch(drmErr) {
@@ -2423,7 +2423,7 @@ async function duplicateTransaction(id) {
 
 function _openTxAsCopy(orig) {
   // Build a prefilled "new" transaction from orig — no ID, today's date
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0,10);
   resetTxModal();
   document.getElementById('txDate').value = today;
   document.getElementById('txDesc').value = (orig.description || '') + ' (cópia)';
@@ -2647,7 +2647,7 @@ async function toggleTxDetailStatus() {
   if(cur === 'confirmed' && next === 'pending' && !confirm('Marcar transação como pendente?')) return;
   try {
     const { error } = await sb.from('transactions')
-      .update({ status: next, updated_at: localISOTimestamp() })
+      .update({ status: next, updated_at: new Date().toISOString() })
       .eq('id', _txDetailId);
     if (error) { toast(error.message, 'error'); return; }
     window._txDetailStatus = next;
@@ -2893,7 +2893,7 @@ async function convertTxToScheduled(txId) {
   el('ctsDesc').value    = t.description || '';
   el('ctsAmount').value  = Math.abs(t.amount || 0).toFixed(2).replace('.', ',');
   el('ctsAccount').textContent = t.accounts?.name || '—';
-  el('ctsDate').value    = t.date || todayISO();
+  el('ctsDate').value    = t.date || new Date().toISOString().slice(0,10);
   el('ctsMemo').value    = t.memo || '';
   el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
 
@@ -2949,7 +2949,7 @@ async function saveConvertToScheduled() {
     frequency: freq,
     auto_register: false,
     auto_confirm: true,
-    updated_at: localISOTimestamp(),
+    updated_at: new Date().toISOString(),
     family_id: famId(),
   };
 
@@ -2972,7 +2972,7 @@ async function setTransactionStatus(txId, status){
     }
   } catch(e) {}
   if(!sb) throw new Error('Sem conexão');
-  const { error } = await sb.from('transactions').update({ status, updated_at: localISOTimestamp() }).eq('id', txId);
+  const { error } = await sb.from('transactions').update({ status, updated_at: new Date().toISOString() }).eq('id', txId);
   if(error) throw error;
   // Refresh views
   await loadAccounts();
@@ -3046,7 +3046,7 @@ function suggestBestCard() {
   const best = ranked[0];
   const today = new Date();
   const bestPurchaseDate = new Date(today.getFullYear(), today.getMonth(), best.card.best_purchase_day);
-  const bestPurchaseFmt  = new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit'}).format(bestPurchaseDate);
+  const bestPurchaseFmt  = bestPurchaseDate.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
 
   banner.style.display = '';
   banner.innerHTML = `
@@ -3079,6 +3079,15 @@ function _applyCardSuggestion(cardId) {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._aiDismissAll                       = _aiDismissAll;

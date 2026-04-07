@@ -409,7 +409,7 @@ async function _agentBuildPlanFromEngine(userMessage, engineResult) {
       type: engineResult.intent,
       data: {
         ...data,
-        date: data.date || todayISO(),
+        date: data.date || new Date().toISOString().slice(0, 10),
       },
     }],
     // v3: HTML rico gerado pelo engine
@@ -1187,7 +1187,7 @@ async function _agentCreateTransaction(d,ctx){
   if(!Number.isFinite(amount)||!amount) throw new Error('Valor inválido.');
   if((d.type||'').toLowerCase()==='expense'&&amount>0) amount=-amount;
   if((d.type||'').toLowerCase()==='income'&&amount<0) amount=Math.abs(amount);
-  const payload={date:d.date||todayISO(),description:d.description||d.payee_name||'Lançamento via Agent',amount,account_id:account.id,category_id:catId||null,payee_id:payId||null,family_id:_agentGetFamilyId(),status:'confirmed',is_transfer:false,is_card_payment:false,updated_at:localISOTimestamp()};
+  const payload={date:d.date||new Date().toISOString().slice(0,10),description:d.description||d.payee_name||'Lançamento via Agent',amount,account_id:account.id,category_id:catId||null,payee_id:payId||null,family_id:_agentGetFamilyId(),status:'confirmed',is_transfer:false,is_card_payment:false,updated_at:new Date().toISOString()};
   const{data,error}=await sb.from('transactions').insert(payload).select('id,date,description,amount').single();
   if(error) throw new Error(error.message);
   if(typeof notifyOnTransaction==='function'){try{await notifyOnTransaction(data);}catch(_){}}
@@ -1206,7 +1206,7 @@ async function _agentCreateScheduled(d,ctx){
   let amount=Number(d.amount||0);
   if(!Number.isFinite(amount)||!amount) throw new Error('Valor inválido.');
   if((d.type||'').toLowerCase()!=='income') amount=-Math.abs(amount);
-  const payload={description:d.description||d.payee_name||'Programado via Agent',amount,type:d.type||'expense',frequency:d.frequency||'monthly',start_date:d.start_date||todayISO(),installments:d.installments??null,account_id:account.id,category_id:catId||null,payee_id:payId||null,family_id:_agentGetFamilyId(),auto_register:true,status:'active',updated_at:localISOTimestamp()};
+  const payload={description:d.description||d.payee_name||'Programado via Agent',amount,type:d.type||'expense',frequency:d.frequency||'monthly',start_date:d.start_date||new Date().toISOString().slice(0,10),installments:d.installments??null,account_id:account.id,category_id:catId||null,payee_id:payId||null,family_id:_agentGetFamilyId(),auto_register:true,status:'active',updated_at:new Date().toISOString()};
   const{error}=await sb.from('scheduled_transactions').insert(payload);
   if(error) throw new Error(error.message);
   return{ok:true,msg:`Programado **${payload.description}** (${payload.frequency})`};
@@ -1215,7 +1215,7 @@ async function _agentCreateScheduled(d,ctx){
 async function _agentCreateDebt(d){
   const amount=Math.abs(Number(d.original_amount||d.amount||0));
   if(!amount) throw new Error('Valor inválido.');
-  const payload={description:d.description||d.creditor||'Dívida via Agent',creditor:d.creditor||d.description||'Credor',original_amount:amount,current_balance:amount,currency:d.currency||'BRL',start_date:d.start_date||todayISO(),status:'active',family_id:_agentGetFamilyId(),updated_at:localISOTimestamp()};
+  const payload={description:d.description||d.creditor||'Dívida via Agent',creditor:d.creditor||d.description||'Credor',original_amount:amount,current_balance:amount,currency:d.currency||'BRL',start_date:d.start_date||new Date().toISOString().slice(0,10),status:'active',family_id:_agentGetFamilyId(),updated_at:new Date().toISOString()};
   const{error}=await sb.from('debts').insert(payload);
   if(error) throw new Error(error.message);
   return{ok:true,msg:`Dívida **${payload.description}** — ${typeof fmt==='function'?fmt(amount,'BRL'):amount.toFixed(2)}`};
@@ -1275,7 +1275,7 @@ async function _agentCreateAccount(d) {
     currency,
     family_id,
     is_active: true,
-    updated_at: localISOTimestamp(),
+    updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await sb.from('accounts').insert(payload).select('id,name,type,balance').single();
@@ -1308,7 +1308,7 @@ async function _agentCreateDream(d) {
     target_date: d.target_date || null,
     status: 'active',
     family_id,
-    updated_at: localISOTimestamp(),
+    updated_at: new Date().toISOString(),
   };
 
   const { error } = await sb.from('dreams').insert(payload);
@@ -1377,7 +1377,7 @@ async function _agentPayDebt(d) {
 
   const { error } = await sb
     .from('debts')
-    .update({ current_balance: newBalance, status: newStatus, updated_at: localISOTimestamp() })
+    .update({ current_balance: newBalance, status: newStatus, updated_at: new Date().toISOString() })
     .eq('id', debt.id);
 
   if (error) throw new Error(error.message);
@@ -1396,7 +1396,7 @@ async function _agentPayDebt(d) {
 function _agentParseBirthDate(text){
   const raw=String(text||'');
   const abs=raw.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
-  if(abs){let yy=abs[3]?Number(abs[3]):new Date().getFullYear(); if(yy<100) yy+=2000; const d=new Date(yy,Number(abs[2])-1,Number(abs[1]),12,0,0); if(!isNaN(d)) return dateToLocalISO(d);}
+  if(abs){let yy=abs[3]?Number(abs[3]):new Date().getFullYear(); if(yy<100) yy+=2000; const d=new Date(yy,Number(abs[2])-1,Number(abs[1]),12,0,0); if(!isNaN(d)) return d.toISOString().slice(0,10);}
   return null;
 }
 function _agentParseFamilyRelationship(text){
@@ -1514,8 +1514,8 @@ function _agentSuggestFieldOptions(field, query='', plan=null){
     category_name: cats,
     payee_name:    (state.payees||[]).map(p=>({value:p.name,label:p.name})),
     frequency:     [{value:'monthly',label:'Mensal'},{value:'weekly',label:'Semanal'},{value:'daily',label:'Diária'},{value:'yearly',label:'Anual'}],
-    start_date:    [{value:todayISO(),label:'Hoje'},{value:_agentDateOffset(1),label:'Amanhã'}],
-    date:          [{value:todayISO(),label:'Hoje'},{value:_agentDateOffset(-1),label:'Ontem'}],
+    start_date:    [{value:new Date().toISOString().slice(0,10),label:'Hoje'},{value:_agentDateOffset(1),label:'Amanhã'}],
+    date:          [{value:new Date().toISOString().slice(0,10),label:'Hoje'},{value:_agentDateOffset(-1),label:'Ontem'}],
     // v3: novos campos
     type:          [{value:'expense',label:'Despesa'},{value:'income',label:'Receita'}],
     currency:      [{value:'BRL',label:'BRL (R$)'},{value:'USD',label:'USD ($)'},{value:'EUR',label:'EUR (€)'}],
@@ -1536,7 +1536,7 @@ function _agentSuggestFieldOptions(field, query='', plan=null){
   if(q) opts=opts.filter(o=>_agentNormalizeName(o.label).includes(q)||_agentNormalizeName(o.value).includes(q));
   return opts;
 }
-function _agentDateOffset(days){ return dateOffsetISO(days); }
+function _agentDateOffset(days){ const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 function _agentIsSlotPayload(text){ return /^__agent_slot__:/i.test(String(text||'')); }
 function _agentApplySlotPayload(plan, payload){
   const m=String(payload||'').match(/^__agent_slot__:(.+?):(.+)$/i); if(!m) return plan;
@@ -1714,11 +1714,11 @@ async function _agentEnsureContextLoaded(){
     if((!state.scheduled||!state.scheduled.length)&&typeof loadScheduled==='function') await loadScheduled();
   }catch(e){console.warn('[agent]preload:',e?.message||e);}
 }
-function _agentBuildContext(){return{today:todayISO(),accounts:(state.accounts||[]).slice(0,30).map(a=>({id:a.id,name:a.name,type:a.type,currency:a.currency||'BRL'})),categories:(state.categories||[]).slice(0,50).map(c=>({id:c.id,name:c.name,type:c.type})),payees:(state.payees||[]).slice(0,50).map(p=>({id:p.id,name:p.name})),};}
+function _agentBuildContext(){return{today:new Date().toISOString().slice(0,10),accounts:(state.accounts||[]).slice(0,30).map(a=>({id:a.id,name:a.name,type:a.type,currency:a.currency||'BRL'})),categories:(state.categories||[]).slice(0,50).map(c=>({id:c.id,name:c.name,type:c.type})),payees:(state.payees||[]).slice(0,50).map(p=>({id:p.id,name:p.name})),};}
 
 function _agentIsConfirmation(msg){return /^(ok|pode|confirmo|confirmar|sim|manda ver|prosseguir)$/i.test(String(msg).trim());}
 function _agentParseAmount(text){const m=String(text||'').match(/(?:r\$\s*)?(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})|-?\d+(?:,\d{1,2})?|-?\d+(?:\.\d{1,2})?)/i);if(!m)return null;let v=m[1].replace(/\s/g,'');if(v.includes(',')&&v.includes('.'))v=v.replace(/\./g,'').replace(',','.');else if(v.includes(','))v=v.replace(',','.');const n=parseFloat(v);return Number.isFinite(n)?n:null;}
-function _agentParseDate(text){const msg=String(text||'').toLowerCase();const dt=new Date();if(/amanh[ãa]/.test(msg))dt.setDate(dt.getDate()+1);else if(/ontem/.test(msg))dt.setDate(dt.getDate()-1);const abs=String(text||'').match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);if(abs){let yy=abs[3]?Number(abs[3]):dt.getFullYear();if(yy<100)yy+=2000;const p=new Date(yy,Number(abs[2])-1,Number(abs[1]),12,0,0);if(!isNaN(p))return p.toISOString().slice(0,10);}return dateToLocalISO(dt);}
+function _agentParseDate(text){const msg=String(text||'').toLowerCase();const dt=new Date();if(/amanh[ãa]/.test(msg))dt.setDate(dt.getDate()+1);else if(/ontem/.test(msg))dt.setDate(dt.getDate()-1);const abs=String(text||'').match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);if(abs){let yy=abs[3]?Number(abs[3]):dt.getFullYear();if(yy<100)yy+=2000;const p=new Date(yy,Number(abs[2])-1,Number(abs[1]),12,0,0);if(!isNaN(p))return p.toISOString().slice(0,10);}return dt.toISOString().slice(0,10);}
 function _agentParseFrequency(msg){if(/seman/.test(msg))return'weekly';if(/anual|ano/.test(msg))return'yearly';if(/di[aá]ri/.test(msg))return'daily';if(/mensa|m[eê]s/.test(msg))return'monthly';return null;}
 function _agentParseInstallments(msg){const m=String(msg||'').match(/(\d+)\s*parcelas?/i);if(!m)return null;const n=Number(m[1]);return Number.isFinite(n)?n:null;}
 function _agentParseColor(msg){const map={azul:'#2563eb',verde:'#16a34a',vermelho:'#dc2626',laranja:'#f97316',roxo:'#7c3aed',amarelo:'#f59e0b',rosa:'#ec4899',cinza:'#6b7280'};return map[Object.keys(map).find(c=>msg.includes(c))||'']||'#2a6049';}
@@ -1741,14 +1741,14 @@ function _agentParseTargetDate(text) {
   if (yearsMatch) {
     const d = new Date(now);
     d.setFullYear(d.getFullYear() + Number(yearsMatch[1]));
-    return dateToLocalISO(d);
+    return d.toISOString().slice(0, 10);
   }
   // "em X meses"
   const monthsMatch = msg.match(/em\s+(\d+)\s+m[eê]ses?/);
   if (monthsMatch) {
     const d = new Date(now);
     d.setMonth(d.getMonth() + Number(monthsMatch[1]));
-    return dateToLocalISO(d);
+    return d.toISOString().slice(0, 10);
   }
   // Data explícita DD/MM/YYYY
   const abs = text.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
@@ -1756,7 +1756,7 @@ function _agentParseTargetDate(text) {
     let yy = abs[3] ? Number(abs[3]) : now.getFullYear() + 1;
     if (yy < 100) yy += 2000;
     const d = new Date(yy, Number(abs[2])-1, Number(abs[1]), 12, 0, 0);
-    if (!isNaN(d)) return dateToLocalISO(d);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
   }
   return null;
 }
@@ -1887,7 +1887,7 @@ function _agentAnswerBalance(){_agentAppend('assistant',_agentFinanceBalances())
 // ── Message rendering v4 ─────────────────────────────────────────────────
 
 function _agentFmtTime(d) {
-  return fmtTime(d || new Date());
+  return (d || new Date()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 let _agentLastMsgDate = '';
@@ -1908,7 +1908,7 @@ function _agentRenderMessage(role, text) {
   if (!feed) return;
 
   const now = new Date();
-  const dateStr = new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'numeric',month:'long'}).format(now);
+  const dateStr = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
 
   // Date separator
   if (dateStr !== _agentLastMsgDate) {

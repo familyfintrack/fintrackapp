@@ -198,7 +198,7 @@ function _backupHeader(fid, counts) {
     version: BACKUP_VERSION,
     app: 'JF Family FinTrack',
     family_id: fid,
-    exported_at: localISOTimestamp(),
+    exported_at: new Date().toISOString(),
     counts,
   };
 }
@@ -612,13 +612,13 @@ async function _restoreBackupData(d, statusEl, options = {}) {
     ? rowsByTable.categories.map(r => ({ ...r, parent_id: null }))
     : [];
   const categoriesParents = restore.categories
-    ? rowsByTable.categories.filter(r => _nonnull(r.parent_id)).map(r => ({ id: r.id, parent_id: r.parent_id, updated_at: r.updated_at || localISOTimestamp() }))
+    ? rowsByTable.categories.filter(r => _nonnull(r.parent_id)).map(r => ({ id: r.id, parent_id: r.parent_id, updated_at: r.updated_at || new Date().toISOString() }))
     : [];
   const txBase = restore.transactions
     ? rowsByTable.transactions.map(r => ({ ...r, linked_transfer_id: null, transfer_pair_id: null }))
     : [];
   const txLinks = restore.transactions
-    ? rowsByTable.transactions.filter(r => _nonnull(r.linked_transfer_id) || _nonnull(r.transfer_pair_id)).map(r => ({ id: r.id, linked_transfer_id: r.linked_transfer_id || null, transfer_pair_id: r.transfer_pair_id || null, updated_at: r.updated_at || localISOTimestamp() }))
+    ? rowsByTable.transactions.filter(r => _nonnull(r.linked_transfer_id) || _nonnull(r.transfer_pair_id)).map(r => ({ id: r.id, linked_transfer_id: r.linked_transfer_id || null, transfer_pair_id: r.transfer_pair_id || null, updated_at: r.updated_at || new Date().toISOString() }))
     : [];
 
   const plan = [
@@ -713,7 +713,7 @@ async function exportBackup() {
     const url  = URL.createObjectURL(blob);
     const a2   = document.createElement('a');
     a2.href = url;
-    a2.download = `FinTrack_Backup_${todayISO()}.json`;
+    a2.download = `FinTrack_Backup_${new Date().toISOString().slice(0, 10)}.json`;
     a2.click();
     URL.revokeObjectURL(url);
     _backupStatus(status, `✓ ${backup.counts.transactions} transações · ${(json.length / 1024).toFixed(0)} KB`, 'var(--green)');
@@ -786,7 +786,7 @@ async function createDbBackupForFamily(fid, familyName = '', label = '') {
     const famName = _familyDisplayName?.(fid, familyName || famRow?.name || '') || familyName || famRow?.name || fid;
     const row = {
       family_id: fid,
-      label: label || `Backup manual — ${famName} — ${fmtDate(new Date())} ${fmtTime(new Date())}`,
+      label: label || `Backup manual — ${famName} — ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
       created_by: currentUser?.name || currentUser?.email || 'sistema',
       payload,
       counts,
@@ -806,7 +806,7 @@ async function createDbBackupForFamily(fid, familyName = '', label = '') {
 
 function openDbBackupCreateForFamily(fid, familyName) {
   const resolved = (_familyDisplayName?.(fid, familyName || '') || familyName || fid);
-  const label = prompt('Nome/etiqueta para este backup (opcional):', `Backup — ${resolved} — ${fmtDate(new Date())}`);
+  const label = prompt('Nome/etiqueta para este backup (opcional):', `Backup — ${resolved} — ${new Date().toLocaleDateString('pt-BR')}`);
   if (label === null) return;
   createDbBackupForFamily(fid, resolved, label || '');
 }
@@ -832,7 +832,7 @@ function _renderFamilyBackupsHtml(backups, fid, familyName) {
     return `<div class="db-backup-row" style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
       <div class="db-backup-row-info">
         <div class="db-backup-row-label">${typeIcon} ${esc(b.label || 'Backup')}</div>
-        <div class="db-backup-row-meta">${fmtDatetime(dt)} · <span title="${ago}">${ago}</span> · por ${esc(b.created_by || '—')} · ${b.size_kb || '?'} KB</div>
+        <div class="db-backup-row-meta">${dt.toLocaleDateString('pt-BR')} ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · <span title="${ago}">${ago}</span> · por ${esc(b.created_by || '—')} · ${b.size_kb || '?'} KB</div>
         <div class="db-backup-row-counts">${b.counts?.transactions || 0} txs · ${b.counts?.accounts || 0} contas · ${b.counts?.categories || 0} categorias</div>
       </div>
       <div class="db-backup-row-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
@@ -932,7 +932,7 @@ async function openFamilyBackupManager(fid, familyName = '') {
     const confirmBtn = wrap.querySelector('#fbmLabelConfirm');
     const cancelBtn  = wrap.querySelector('#fbmLabelCancel');
 
-    const _defaultLabel = () => `Backup — ${resolved} — ${fmtDate(new Date())}`;
+    const _defaultLabel = () => `Backup — ${resolved} — ${new Date().toLocaleDateString('pt-BR')}`;
 
     const _doCreate = async () => {
       const label = (labelInput?.value || '').trim() || _defaultLabel();
@@ -1033,7 +1033,7 @@ async function _createDbBackup_legacy_unused(label = '') {
     const { payload, counts } = await _collectFamilyBackupPayload(fid);
     const row = {
       family_id: fid,
-      label: label || `Backup manual — ${fmtDatetime(new Date())}`,
+      label: label || `Backup manual — ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
       created_by: currentUser?.name || currentUser?.email || 'sistema',
       payload,
       counts,
@@ -1080,7 +1080,7 @@ async function loadDbBackups() {
       return `<div class="db-backup-row">
         <div class="db-backup-row-info">
           <div class="db-backup-row-label">${typeIcon} ${esc(b.label || 'Backup')}</div>
-          <div class="db-backup-row-meta">${fmtDatetime(dt)} · <span title="${ago}">${ago}</span> · por ${esc(b.created_by || '—')} · ${b.size_kb || '?'} KB</div>
+          <div class="db-backup-row-meta">${dt.toLocaleDateString('pt-BR')} ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · <span title="${ago}">${ago}</span> · por ${esc(b.created_by || '—')} · ${b.size_kb || '?'} KB</div>
           <div class="db-backup-row-counts">${b.counts?.transactions || 0} txs · ${b.counts?.accounts || 0} contas · ${b.counts?.categories || 0} categorias</div>
         </div>
         <div class="db-backup-row-actions">
@@ -1175,7 +1175,7 @@ async function deleteDbBackup(id) {
 }
 
 function openDbBackupCreate() {
-  const label = prompt('Nome/etiqueta para este backup (opcional):', `Backup — ${fmtDate(new Date())}`);
+  const label = prompt('Nome/etiqueta para este backup (opcional):', `Backup — ${new Date().toLocaleDateString('pt-BR')}`);
   if (label === null) return;
   createDbBackup(label || '');
 }
@@ -1191,7 +1191,7 @@ function _timeAgo(dt) {
   if (diff < 3600) return `${Math.floor(diff / 60)} min atrás`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
   if (diff < 604800) return `${Math.floor(diff / 86400)} dias atrás`;
-  return fmtDate(dt);
+  return dt.toLocaleDateString('pt-BR');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1257,6 +1257,15 @@ async function executeClearDatabase() {
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════
    EXPORTAÇÃO EXCEL + ZIP — Owner only
@@ -1325,7 +1334,7 @@ async function exportAllExcelZip() {
     const zip = new JSZip();
     const familyName = (currentUser?.families?.find(f => f.id === currentUser?.family_id)?.name || 'familia')
       .replace(/[^a-zA-Z0-9_\-]/g, '_');
-    const dateStr = todayISO();
+    const dateStr = new Date().toISOString().slice(0,10);
 
     for (let i = 0; i < TABLES.length; i++) {
       const t = TABLES[i];

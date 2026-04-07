@@ -742,8 +742,8 @@ const AgentGuidedUI = {
     if (field.entityList === 'payees')     return (s.payees || []).map(p => ({ value: p.name, label: p.name }));
     if (field.choices)                     return field.choices;
     if (field.key === 'date')              return [
-      { value: todayISO(), label: 'Hoje' },
-      { value: (() => { return dateOffsetISO(-1); })(), label: 'Ontem' },
+      { value: new Date().toISOString().slice(0, 10), label: 'Hoje' },
+      { value: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })(), label: 'Ontem' },
     ];
     return [];
   },
@@ -1052,7 +1052,7 @@ const AgentEngine = {
   _buildContext(agentState, appState) {
     const s = appState || {};
     return {
-      today:         todayISO(),
+      today:         new Date().toISOString().slice(0, 10),
       currentPage:   s.currentPage || window.state?.currentPage || 'dashboard',
       pendingIntent: AgentSession.state.pendingIntent,
       accounts:      (s.accounts   || []).slice(0, 20).map(a => ({ id: a.id, name: a.name, type: a.type })),

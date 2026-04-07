@@ -383,7 +383,7 @@ async function updateAllPrices() {
   const manual  = positions.filter(p => p.asset_type === 'renda_fixa' || p.asset_type === 'outro');
 
   let updated = 0, failed = 0;
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0, 10);
 
   // 1 — B3 / FIIs / BDRs via brapi.dev
   if (brapi.length) {
@@ -466,8 +466,8 @@ async function _invSavePrice(pos, price, currency, date, source) {
   await sb.from('investment_positions').update({
     current_price:    price,
     currency:         currency,
-    price_updated_at: localISOTimestamp(),
-    updated_at:       localISOTimestamp(),
+    price_updated_at: new Date().toISOString(),
+    updated_at:       new Date().toISOString(),
   }).eq('id', pos.id);
 
   // Upsert price history
@@ -570,7 +570,7 @@ function openInvTransactionModal(accountId = null, positionId = null) {
         </div>
         <div class="form-group">
           <label>Data *</label>
-          <input type="date" id="invTxDate" value="${todayISO()}">
+          <input type="date" id="invTxDate" value="${new Date().toISOString().slice(0,10)}">
         </div>
         <div class="form-group">
           <label>Código do Ativo *</label>
@@ -1005,7 +1005,7 @@ async function saveInvTransaction() {
       avg_cost:   newAvgCost,
       name:       name || position.name || ticker,
       asset_type: assetT || position.asset_type,
-      updated_at: localISOTimestamp(),
+      updated_at: new Date().toISOString(),
     };
     // Persistir corretora nas notas da posição (sem sobrescrever se já existir)
     if (broker && !position.notes?.includes(broker)) {
@@ -1045,7 +1045,7 @@ async function saveInvTransaction() {
     });
 
     // 5. Record price in history
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0, 10);
     await sb.from('investment_price_history').upsert({
       position_id: position.id,
       family_id:   famId(),
@@ -1192,7 +1192,7 @@ async function updateManualPrice(positionId) {
   if (!val || val <= 0) { toast('Preço inválido', 'error'); return; }
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) return;
-  const today = todayISO();
+  const today = new Date().toISOString().slice(0, 10);
   await _invSavePrice(pos, val, 'BRL', today, 'manual');
   await loadInvestments(true);
   _invAugmentAccountBalances();
@@ -1291,7 +1291,7 @@ async function renderInvPerformanceChart() {
 
   const labels = sortedDates.map(d => {
     const dt = new Date(d + 'T12:00:00');
-    return new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(dt).replace('.','');
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   });
   const values = sortedDates.map(d => +dateMap[d].toFixed(2));
 
@@ -1468,7 +1468,7 @@ function _renderInvGainLossChart(pos, history) {
   const cost=_invCost(pos), qty=+(pos.quantity)||0, cur=pos.currency||'BRL';
   const fC=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:cur,notation:'compact'}).format(v);
   const fF=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:cur}).format(v);
-  const labels=hist.map(h=>{const d=new Date(h.date+'T12:00:00');return new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(d).replace('.','');});
+  const labels=hist.map(h=>{const d=new Date(h.date+'T12:00:00');return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});});
   const mvData=hist.map(h=>+(h.price)*qty);
   const pnlData=mvData.map(mv=>mv-cost);
   const lp=pnlData[pnlData.length-1]??0;
@@ -1549,7 +1549,7 @@ async function deleteInvTransaction(txId, positionId) {
     const { error: posErr } = await sb.from('investment_positions').update({
       quantity:   recalcQty,
       avg_cost:   recalcCost,
-      updated_at: localISOTimestamp(),
+      updated_at: new Date().toISOString(),
     }).eq('id', positionId);
     if (posErr) throw posErr;
 
@@ -1683,7 +1683,7 @@ async function saveInvBalance(positionId) {
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   try {
-    const today = todayISO();
+    const today = new Date().toISOString().slice(0, 10);
     await _invSavePrice(pos, newPrice, pos.currency || 'BRL', today, 'manual');
     toast(`Saldo de ${esc(pos.ticker)} consolidado: ${fmt(newBalance)}`, 'success');
     closeModal('invBalanceModal');
@@ -1824,7 +1824,7 @@ async function saveInvSimple() {
       quantity: newQty, avg_cost: newAvgCost,
       name: name || position.name || ticker,
       asset_type: assetT || position.asset_type,
-      updated_at: localISOTimestamp(),
+      updated_at: new Date().toISOString(),
     }).eq('id', position.id);
     if (updErr) throw updErr;
 
@@ -1983,7 +1983,7 @@ async function saveEditInvTransaction(originalTxId, positionId) {
     const { error: posErr } = await sb.from('investment_positions').update({
       quantity:   recalcQty,
       avg_cost:   recalcCost,
-      updated_at: localISOTimestamp(),
+      updated_at: new Date().toISOString(),
     }).eq('id', positionId);
     if (posErr) throw posErr;
 

@@ -173,7 +173,7 @@ async function saveModuleFlag(key, value, famId) {
     try {
       const col = 'module_' + modKey; // ex: "module_debts"
       const { error } = await sb.from('family_preferences')
-        .upsert({ family_id: famId, [col]: !!value, updated_at: localISOTimestamp() },
+        .upsert({ family_id: famId, [col]: !!value, updated_at: new Date().toISOString() },
                  { onConflict: 'family_id' });
       if (!error) {
         // Também atualiza o cache do family_prefs service
@@ -338,7 +338,7 @@ async function testEmailJSConnection() {
       from_name:      'J.F. Family FinTrack',
       subject:        'FinTrack — Teste de conexão ✅',
       message:        'Este é um e-mail de teste enviado pelo JF Family FinTrack para confirmar que a configuração do EmailJS está correta. Se recebeu este e-mail, está tudo funcionando!',
-      report_period:  'Teste — ' + fmtDate(new Date()),
+      report_period:  'Teste — ' + new Date().toLocaleDateString('pt-BR'),
       report_view:    'Teste de conexão',
       report_income:  'R$ 1.000,00',
       report_expense: 'R$ 800,00',
@@ -796,7 +796,7 @@ async function setUserPreference(screen, key, value){
       user_id: currentUser.id,
       screen,
       preferences: prefs,
-      created_at: localISOTimestamp()
+      created_at: new Date().toISOString()
     });
   }catch(e){
     // ignore if table missing / RLS blocks
@@ -1462,9 +1462,9 @@ async function _loadNormalizeNamesInfo() {
     const val = await getAppSetting('normalize_names_last_run', null);
     if (val && typeof val === 'object' && val.ran_at) {
       const d = new Date(val.ran_at);
-      const fmt = fmtDate(d)
+      const fmt = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })
                 + ' às '
-                + fmtTime(d);
+                + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
       if (lastRunEl) {
         lastRunEl.style.display = '';
         lastRunEl.innerHTML =
@@ -1852,7 +1852,7 @@ function _telRenderDailyChart(rows, days) {
   const buckets = {};
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    buckets[dateToLocalISO(d)] = 0;
+    buckets[d.toISOString().slice(0,10)] = 0;
   }
   rows.forEach(r => { const day = (r.ts||'').slice(0,10); if (day in buckets) buckets[day]++; });
 
@@ -2361,6 +2361,15 @@ window._telCloseFamilyDetail = _telCloseFamilyDetail;
 
 
 // === PERIODICITY COLORS ===
+function getPeriodColor(period) {
+  switch((period||'').toLowerCase()) {
+    case 'daily': return '#2ecc71';
+    case 'weekly': return '#3498db';
+    case 'monthly': return '#f39c12';
+    case 'yearly': return '#9b59b6';
+    default: return '#1F6B4F';
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    TELEMETRIA — Exclusão de registros
@@ -2412,7 +2421,7 @@ window._telDelSetQuick = function(daysBack) {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
   const dateEl = document.getElementById('telDelBeforeDate');
-  if (dateEl) dateEl.value = dateToLocalISO(d);
+  if (dateEl) dateEl.value = d.toISOString().slice(0, 10);
   _telDelUpdatePreview();
 };
 
@@ -2608,7 +2617,19 @@ window.saveShowAccessRequest = async function(enabled) {
   toast(enabled ? '✓ Link de acesso ativado' : '✓ Link de acesso ocultado', 'success');
 };
 
-// _applyAccessRequestVisibility defined in auth.js
+function _applyAccessRequestVisibility(enabled) {
+  // Hide the entire wrap (button + "Não tem conta?" text) as one unit
+  const wrap = document.getElementById('loginRequestAccessWrap');
+  if (wrap) { wrap.style.display = enabled ? '' : 'none'; return; }
+  // Fallback: hide button + sibling text individually
+  const btn = document.getElementById('loginRequestAccessBtn');
+  if (btn) btn.style.display = enabled ? '' : 'none';
+  const parent = btn?.parentElement;
+  if (parent) {
+    parent.querySelectorAll('span[data-i18n="auth.no_account"]')
+      .forEach(t => { t.style.display = enabled ? '' : 'none'; });
+  }
+}
 
 // Apply on page load (called by auth.js after settings load)
 async function initAccessRequestVisibility() {
@@ -2696,7 +2717,7 @@ async function _telRenderLandingContent(el, cachedRows) {
   const dailyMap = {};
   for (let i=13; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    dailyMap[dateToLocalISO(d)] = 0;
+    dailyMap[d.toISOString().slice(0,10)] = 0;
   }
   landingRows.filter(r => r.event_type === 'page_view').forEach(r => {
     const day = (r.ts||'').slice(0,10);
