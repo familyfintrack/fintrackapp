@@ -380,7 +380,7 @@ async function openObjectiveDetail(id) {
 
   try {
     const { data: txs, error } = await sb.from('transactions')
-      .select('*, accounts(name,currency), payees(name), categories(name,color,icon), family_composition(name,avatar_emoji)')
+      .select('*, accounts!transactions_account_id_fkey(name,currency), payees(name), categories(name,color,icon), family_composition(name,avatar_emoji)')
       .eq('objective_id', id).eq('family_id', _objFamId())
       .order('date', { ascending: false });
     if (error) throw error;

@@ -411,10 +411,11 @@ async function loadCurrentReport(resetPage = false) {
   if (_rptLoading) return;                   // prevent concurrent fetches
   _rptLoading = true;
   try {
-    // For forecast view, _fcEnsureState() inside loadForecast handles dependencies
     if (rptState.view === 'regular')           await loadReports();
     else if (rptState.view === 'transactions') await loadReportTx();
     else if (rptState.view === 'forecast')     await _safeLoadForecast();
+    else if (rptState.view === 'payees')       await _rptPayeesLoad();
+    // objectives: user must select an objective first — no auto-load
   } catch(e) {
     console.warn('[reports] loadCurrentReport error:', e?.message);
   } finally {
@@ -802,8 +803,8 @@ function setReportView(view) {
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',payees:'rptBtnPayees',objectives:'rptBtnObjectives'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
-  if (view === 'payees') _rptPayeesInit();
-  if (view === 'objectives') _rptObjectivesInit();
+  if (view === 'payees') { _rptPayeesInit(); }           // sets default dates; loadCurrentReport auto-loads data below
+  if (view === 'objectives') _rptObjectivesInit();       // populates select; user triggers load manually
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
       const today=new Date().toISOString().slice(0,10);
