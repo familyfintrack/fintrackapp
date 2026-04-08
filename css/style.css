@@ -19805,14 +19805,11 @@ section[data-page="transactions"] .content {
 @keyframes lgnDotPulse { 0%, 100% { opacity: 1; } 50% { opacity: .28; } }
 .lgn-card {
   width: 100%;
-  background: rgba(4,14,8,.82);
-  backdrop-filter: blur(28px) saturate(1.3);
-  -webkit-backdrop-filter: blur(28px) saturate(1.3);
-  border: 1px solid rgba(125,194,66,.2);
-  border-top: 2.5px solid var(--lime, #7dc242);
+  background: #ffffff;
+  border-top: 3px solid var(--lime, #7dc242);
   border-radius: 0 0 22px 22px;
   padding: 32px 36px 36px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.18) inset, 0 32px 64px rgba(0,0,0,.38);
+  box-shadow: 0 32px 64px rgba(0,0,0,.38), 0 0 0 1px rgba(0,0,0,.06);
   position: relative;
 }
 .lgn-card::before {
@@ -19824,15 +19821,15 @@ section[data-page="transactions"] .content {
 }
 .lgn-form-title {
   font-family: var(--font-serif, Georgia, serif);
-  font-size: 1.55rem; font-weight: 600;
-  color: #ffffff;
+  font-size: 1.35rem; font-weight: 700;
+  color: #0a1e12;
   letter-spacing: -.02em; line-height: 1.15;
   margin-bottom: 4px;
   text-align: center;
 }
 .lgn-form-sub {
-  font-size: .8rem; color: rgba(255,255,255,.5);
-  margin-bottom: 26px; line-height: 1.5;
+  font-size: .82rem; color: #64748b;
+  margin-bottom: 22px; line-height: 1.55;
   text-align: center;
 }
 .lgn-field-group { margin-bottom: 16px; }
@@ -19846,7 +19843,7 @@ section[data-page="transactions"] .content {
 #loginScreen label.lgn-label {
   display: block;
   font-size: .66rem !important; font-weight: 700 !important;
-  color: #ffffff !important; letter-spacing: .08em !important;
+  color: #475569 !important; letter-spacing: .08em !important;
   text-transform: uppercase !important;
   margin-bottom: 6px !important;
 }
@@ -19856,35 +19853,35 @@ section[data-page="transactions"] .content {
 .lgn-input {
   width: 100%;
   padding: 12px 15px;
-  border: 1px solid rgba(125,194,66,.18);
+  border: 1.5px solid #e2e8f0;
   border-radius: 12px;
-  font-size: .9rem; font-family: inherit;
+  font-size: .92rem; font-family: inherit;
   outline: none; box-sizing: border-box;
-  background: rgba(255,255,255,.05);
-  color: rgba(255,255,255,.9);
+  background: #f8fafc;
+  color: #0f172a;
   transition: border-color .18s, box-shadow .18s, background .18s;
   -webkit-appearance: none;
 }
 .lgn-input:focus {
-  border-color: rgba(125,194,66,.5);
-  background: rgba(255,255,255,.08);
-  box-shadow: 0 0 0 3px rgba(125,194,66,.12);
+  border-color: var(--lime, #7dc242);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(125,194,66,.15);
 }
-.lgn-input::placeholder { color: rgba(200,225,210,.22); }
+.lgn-input::placeholder { color: #94a3b8; }
 /* Prevent autofill from changing label/input colors (iOS Safari + Chrome) */
 #loginScreen .lgn-input:-webkit-autofill,
 #loginScreen .lgn-input:-webkit-autofill:hover,
 #loginScreen .lgn-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px rgba(18,42,26,.95) inset !important;
-  -webkit-text-fill-color: rgba(255,255,255,.9) !important;
-  caret-color: #ffffff !important;
-  border-color: rgba(125,194,66,.3) !important;
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  border-color: var(--lime, #7dc242) !important;
 }
 .lgn-input--pwd { padding-right: 46px; }
 .lgn-pwd-toggle {
   position: absolute; right: 13px;
   background: none; border: none;
-  cursor: pointer; color: rgba(180,210,180,.5);
+  cursor: pointer; color: #94a3b8;
   padding: 4px; border-radius: 6px;
   display: flex; align-items: center;
   transition: color .15s;
@@ -19913,9 +19910,9 @@ section[data-page="transactions"] .content {
 }
 .lgn-checkbox-custom {
   width: 18px; height: 18px;
-  border: 1.5px solid rgba(125,194,66,.25);
+  border: 1.5px solid #d1d5db;
   border-radius: 5px;
-  background: rgba(255,255,255,.04);
+  background: #f8fafc;
   transition: all .18s; pointer-events: none;
 }
 .lgn-checkbox:checked ~ .lgn-checkbox-custom {
@@ -19924,7 +19921,7 @@ section[data-page="transactions"] .content {
   background-repeat: no-repeat; background-position: center; background-size: 11px;
 }
 .lgn-checkbox-label {
-  font-size: .78rem; color: rgba(255,255,255,.6); cursor: pointer;
+  font-size: .78rem; color: #64748b; cursor: pointer;
   user-select: none;
 }
 .lgn-btn-primary {
@@ -19948,36 +19945,36 @@ section[data-page="transactions"] .content {
 .lgn-features-row {
   display: flex; justify-content: center; gap: 20px;
   margin-top: 22px; padding-top: 18px;
-  border-top: 1px solid rgba(125,194,66,.1);
+  border-top: 1px solid #e2e8f0;
 }
 .lgn-feat-item {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font-size: .62rem; color: rgba(200,225,210,.3);
+  font-size: .62rem; color: #94a3b8;
   text-align: center;
 }
 .lgn-feat-item span:first-child { font-size: .95rem; }
 .lgn-subform-title {
   font-family: var(--font-serif, Georgia, serif);
-  font-size: 1.25rem; font-weight: 600;
-  color: rgba(255,255,255,.88); margin-bottom: 4px;
+  font-size: 1.2rem; font-weight: 700;
+  color: #0a1e12; margin-bottom: 4px;
 }
 .lgn-subform-sub {
-  font-size: .78rem; color: rgba(200,225,210,.42);
+  font-size: .78rem; color: #64748b;
   margin-bottom: 22px; line-height: 1.55;
 }
 .lgn-error-msg {
-  color: #fc8181; background: rgba(220,38,38,.12);
-  border: 1px solid rgba(220,38,38,.25);
+  color: #dc2626; background: #fef2f2;
+  border: 1px solid #fecaca;
   border-radius: 10px; padding: 9px 12px;
   font-size: .78rem; margin-bottom: 16px; display: none;
 }
 .lgn-btn-ghost {
-  background: none; border: 1px solid rgba(125,194,66,.22);
-  color: rgba(125,194,66,.6); padding: 11px 20px;
+  background: none; border: 1.5px solid rgba(125,194,66,.35);
+  color: #4a7a26; padding: 11px 20px;
   border-radius: 12px; font-family: inherit; font-size: .87rem;
   cursor: pointer; transition: all .18s;
 }
-.lgn-btn-ghost:hover { background: rgba(125,194,66,.07); color: var(--lime, #7dc242); }
+.lgn-btn-ghost:hover { background: rgba(125,194,66,.08); color: var(--lime, #7dc242); border-color: var(--lime, #7dc242); }
 .lgn-brand-panel { display: none !important; }
 .lgn-form-panel {
   flex: 1;
