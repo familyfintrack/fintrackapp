@@ -9,7 +9,20 @@
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: fullscreen)").matches ||
     document.referrer.includes("android-app://");
-  if(s){ window.location.replace("app.html"); }
+  if (s) {
+    // PWA: se há sessão activa vai directo para o app, senão para o login
+    try {
+      for (var k of Object.keys(localStorage)) {
+        if ((k.includes('supabase')||k.includes('sb-')) && k.includes('auth-token')) {
+          var sv = JSON.parse(localStorage.getItem(k));
+          if (sv && (sv.access_token||(sv.session&&sv.session.access_token))) {
+            window.location.replace("app.html"); return;
+          }
+        }
+      }
+    } catch(_) {}
+    window.location.replace("login.html");
+  }
 })();
 </script>
 <title>Family FinTrack — Família Inteligente, Finanças sob Controle</title>

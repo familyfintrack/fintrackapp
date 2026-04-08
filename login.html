@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Login — Family FinTrack</title>
+<meta name="theme-color" content="#0a1e12">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="robots" content="noindex,nofollow">
+
+<!-- Redirect to app if already logged in (fast path via localStorage token) -->
+<script>
+(function(){
+  // Supabase stores the session key as sb-<project>-auth-token
+  // We check localStorage for any key that looks like a Supabase session
+  try {
+    var keys = Object.keys(localStorage);
+    for (var k of keys) {
+      if ((k.includes('supabase') || k.includes('sb-')) && k.includes('auth-token')) {
+        try {
+          var s = JSON.parse(localStorage.getItem(k));
+          if (s && (s.access_token || (s.session && s.session.access_token))) {
+            // Has a token — go straight to app (auth.js will validate on load)
+            window.location.replace('app.html');
+            return;
+          }
+        } catch(_) {}
+      }
+    }
+  } catch(_) {}
+})();
+</script>
+
+<style>
+.login-bg-2 {
+  background: linear-gradient(160deg, #0d3d28 0%, #1d6b47 50%, #0e3520 100%) !important;
+}
+
+/* Névoa branca espalhada — três elipses sobrepostos */
+/* ══════════════════════════════════════════════════════════════════
+   LOGIN — Redesign Moderno / Family FinTrack
+   Desktop: dois painéis (brand esquerda + form direita)
+   Mobile:  tela verde imersiva + card branco flutuante
+   Fundo: grade quadriculada verde (mesma linguagem da landing page)
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Animações ── */
+@keyframes lgnFadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lgnOrbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(12px, -18px) scale(1.04); }
+}
+@keyframes lgnShimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+@keyframes lgnLogoPulse {
+  0%, 100% { filter: drop-shadow(0 0 24px rgba(125,194,66,.45)) drop-shadow(0 0 60px rgba(42,96,73,.3)); }
+  50%       { filter: drop-shadow(0 0 40px rgba(125,194,66,.7)) drop-shadow(0 0 80px rgba(42,96,73,.5)); }
+}
+
+/* ══ Screen — fundo verde escuro + grade quadriculada (landing page pattern) ══ */
+.lgn-screen {
+  /* MOBILE SCROLL LOCK — prevent drag/bounce on iOS Safari and Android Chrome */
+  overflow: hidden;                     /* no scrolling on the backdrop itself */
+  touch-action: none;                   /* block all touch gestures on the backdrop */
+  overscroll-behavior: none;            /* prevent rubber-band / overscroll bounce */
+  -webkit-overflow-scrolling: auto;     /* disable momentum scroll on older iOS */
+  user-select: none;                    /* prevent text selection drag gestures */
+  -webkit-user-select: none;
+  /* Layout */
+  display: flex;
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  width: 100%;
+  background: #0a1e12;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+/* Grid quadriculado — idêntico ao .hgrid da landing page */
+.lgn-screen::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(125,194,66,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,194,66,.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: lgnGridFade 14s ease-in-out infinite alternate;
+}
+@keyframes lgnGridFade { from { opacity: .85; } to { opacity: 1; } }
+/* Radial gradients — idêntico ao .hbg da landing page */
+.lgn-screen::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 100% 65% at 10% 15%, rgba(45,106,68,.30) 0%, transparent 60%),
+    radial-gradient(ellipse 70%  80% at 90% 75%, rgba(26,61,39,.25)  0%, transparent 55%),
+    radial-gradient(ellipse 55%  35% at 50%  -5%, rgba(125,194,66,.07) 0%, transparent 55%);
+  animation: lgnBgPulse 14s ease-in-out infinite alternate;
+}
+@keyframes lgnBgPulse { from { opacity: .8; } to { opacity: 1; transform: scale(1.03); } }
+.lgn-orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0;
+}
+.lgn-orb1 {
+  width: 520px; height: 520px;
+  background: rgba(45,106,68,.26);
+  top: -160px; left: -130px;
+  animation: lgnOrbDrift 24s ease-in-out infinite alternate;
+}
+.lgn-orb2 {
+  width: 380px; height: 380px;
+  background: rgba(125,194,66,.09);
+  bottom: -60px; right: -80px;
+  animation: lgnOrbDrift 18s ease-in-out infinite alternate-reverse;
+}
+.lgn-orb3 {
+  width: 260px; height: 260px;
+  background: rgba(26,61,39,.20);
+  top: 40%; left: 55%;
+  animation: lgnOrbDrift 20s ease-in-out infinite alternate;
+}
+@keyframes lgnOrbDrift {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(35px, -25px); }
+}
+.lgn-centered-wrap {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; max-width: 460px;
+  margin: auto;
+  animation: lgnFadeUp .55s cubic-bezier(.22,1,.36,1) both;
+  /* Restore touch interactivity for the form content */
+  touch-action: pan-y;        /* allow vertical scroll inside card on short screens */
+  overflow-y: auto;           /* scroll when card taller than viewport */
+  overflow-x: hidden;
+  overscroll-behavior: contain; /* don't propagate scroll to backdrop */
+  -webkit-overflow-scrolling: touch;
+  max-height: 100dvh;         /* cap height so it never exceeds viewport */
+  user-select: text;          /* allow text selection inside form */
+  -webkit-user-select: text;
+}
+@keyframes lgnFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.lgn-logo-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+  text-align: center;
+}
+.lgn-logo-img {
+  height: 110px; width: auto; object-fit: contain;
+  filter: drop-shadow(0 0 28px rgba(125,194,66,.35));
+  animation: lgnLogoPulse 4s ease-in-out infinite;
+}
+@keyframes lgnLogoPulse {
+  0%, 100% { filter: drop-shadow(0 0 28px rgba(125,194,66,.35)); }
+  50%       { filter: drop-shadow(0 0 44px rgba(125,194,66,.55)); }
+}
+.lgn-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: .62rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--lime, #7dc242);
+  background: rgba(125,194,66,.07);
+  border: 1px solid rgba(125,194,66,.22);
+  border-radius: 100px;
+  padding: 6px 16px;
+  margin-top: 10px;
+}
+.lgn-badge-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--lime, #7dc242);
+  box-shadow: 0 0 7px var(--lime, #7dc242);
+  animation: lgnDotPulse 2s ease-in-out infinite;
+}
+@keyframes lgnDotPulse { 0%, 100% { opacity: 1; } 50% { opacity: .28; } }
+.lgn-card {
+  width: 100%;
+  background: #ffffff;
+  border-top: 3px solid var(--lime, #7dc242);
+  border-radius: 0 0 22px 22px;
+  padding: 32px 36px 36px;
+  box-shadow: 0 32px 64px rgba(0,0,0,.38), 0 0 0 1px rgba(0,0,0,.06);
+  position: relative;
+}
+.lgn-card::before {
+  content: '';
+  position: absolute; top: -1px; left: 15%; right: 15%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(125,194,66,.6), transparent);
+  filter: blur(2px);
+  pointer-events: none;
+}
+.lgn-form-title {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 1.35rem; font-weight: 700;
+  color: #0a1e12;
+  letter-spacing: -.02em; line-height: 1.15;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.lgn-form-sub {
+  font-size: .82rem; color: #64748b;
+  margin-bottom: 22px; line-height: 1.55;
+  text-align: center;
+}
+.lgn-field-group { margin-bottom: 16px; }
+.lgn-field-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.lgn-label,
+#loginScreen .lgn-label,
+#loginScreen label.lgn-label {
+  display: block;
+  font-size: .66rem !important; font-weight: 700 !important;
+  color: #475569 !important; letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 6px !important;
+}
+.lgn-field-row .lgn-label { margin-bottom: 0; }
+.lgn-input-wrap { position: relative; display: flex; align-items: center; }
+.lgn-input-icon { display: none; }
+.lgn-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: .92rem; font-family: inherit;
+  outline: none; box-sizing: border-box;
+  background: #f8fafc;
+  color: #0f172a;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+  -webkit-appearance: none;
+}
+.lgn-input:focus {
+  border-color: var(--lime, #7dc242);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(125,194,66,.15);
+}
+.lgn-input::placeholder { color: #94a3b8; }
+/* Prevent autofill from changing label/input colors (iOS Safari + Chrome) */
+#loginScreen .lgn-input:-webkit-autofill,
+#loginScreen .lgn-input:-webkit-autofill:hover,
+#loginScreen .lgn-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  border-color: var(--lime, #7dc242) !important;
+}
+.lgn-input--pwd { padding-right: 46px; }
+.lgn-pwd-toggle {
+  position: absolute; right: 13px;
+  background: none; border: none;
+  cursor: pointer; color: #94a3b8;
+  padding: 4px; border-radius: 6px;
+  display: flex; align-items: center;
+  transition: color .15s;
+}
+.lgn-pwd-toggle:hover { color: var(--lime, #7dc242); }
+.lgn-link {
+  background: none; border: none;
+  color: #7dc242; font-size: .73rem;
+  font-weight: 700; cursor: pointer;
+  padding: 0; font-family: inherit;
+  transition: color .15s;
+}
+.lgn-link:hover { color: #9ed45f; }
+.lgn-remember-row {
+  display: flex; align-items: center;
+  gap: 9px; margin-bottom: 20px;
+}
+.lgn-checkbox-wrap {
+  position: relative; flex-shrink: 0;
+  width: 18px; height: 18px;
+}
+.lgn-checkbox {
+  position: absolute; opacity: 0;
+  width: 100%; height: 100%;
+  cursor: pointer; margin: 0; z-index: 1;
+}
+.lgn-checkbox-custom {
+  width: 18px; height: 18px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 5px;
+  background: #f8fafc;
+  transition: all .18s; pointer-events: none;
+}
+.lgn-checkbox:checked ~ .lgn-checkbox-custom {
+  background: var(--lime, #7dc242); border-color: var(--lime, #7dc242);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='10' viewBox='0 0 12 10'%3E%3Cpolyline points='1.5,5 4.5,8 10.5,1.5' fill='none' stroke='%230a1e12' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center; background-size: 11px;
+}
+.lgn-checkbox-label {
+  font-size: .78rem; color: #64748b; cursor: pointer;
+  user-select: none;
+}
+.lgn-btn-primary {
+  width: 100%; padding: 13px 24px;
+  font-family: inherit; font-size: .9rem; font-weight: 800;
+  color: #0a1e12;
+  background: linear-gradient(135deg, #7dc242 0%, #9ed45f 100%);
+  border: none; border-radius: 14px; cursor: pointer;
+  letter-spacing: .01em;
+  box-shadow: 0 4px 24px rgba(125,194,66,.3);
+  transition: transform .2s, box-shadow .2s;
+  animation: lgnBtnGlow 3s ease-in-out infinite;
+}
+@keyframes lgnBtnGlow {
+  0%, 100% { box-shadow: 0 4px 24px rgba(125,194,66,.28); }
+  50%       { box-shadow: 0 6px 40px rgba(125,194,66,.48); }
+}
+.lgn-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 36px rgba(125,194,66,.5); }
+.lgn-btn-primary:active { transform: translateY(0); }
+.lgn-btn-primary::after { display: none; }
+.lgn-features-row {
+  display: flex; justify-content: center; gap: 20px;
+  margin-top: 22px; padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+.lgn-feat-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: .62rem; color: #94a3b8;
+  text-align: center;
+}
+.lgn-feat-item span:first-child { font-size: .95rem; }
+.lgn-subform-title {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 1.2rem; font-weight: 700;
+  color: #0a1e12; margin-bottom: 4px;
+}
+.lgn-subform-sub {
+  font-size: .78rem; color: #64748b;
+  margin-bottom: 22px; line-height: 1.55;
+}
+.lgn-error-msg {
+  color: #dc2626; background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px; padding: 9px 12px;
+  font-size: .78rem; margin-bottom: 16px; display: none;
+}
+.lgn-btn-ghost {
+  background: none; border: 1.5px solid rgba(125,194,66,.35);
+  color: #4a7a26; padding: 11px 20px;
+  border-radius: 12px; font-family: inherit; font-size: .87rem;
+  cursor: pointer; transition: all .18s;
+}
+.lgn-btn-ghost:hover { background: rgba(125,194,66,.08); color: var(--lime, #7dc242); border-color: var(--lime, #7dc242); }
+.lgn-brand-panel { display: none !important; }
+.lgn-form-panel {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  padding: 0;
+  overflow: visible;
+}
+#loginScreen > div { animation: none !important; }
+
+
+/* 2FA */
+/* ── 2FA screen — cores para card escuro (rgba(4,14,8,.82)) ── */
+.twofa-title {
+  font-size: 1.15rem; font-weight: 800;
+  color: #0a1e12; text-align: center;
+  margin-bottom: 6px;
+  font-family: var(--font-serif, Georgia, serif);
+}
+.twofa-sub {
+  font-size: .82rem; color: #64748b;
+  text-align: center; margin-bottom: 24px;
+  line-height: 1.55;
+}
+.twofa-code-input {
+  width: 100%; text-align: center;
+  font-size: 2.2rem; font-weight: 800;
+  letter-spacing: .38em; font-variant-numeric: tabular-nums;
+  padding: 14px 16px; border: 2px solid rgba(125,194,66,.4);
+  border-radius: 14px; outline: none;
+  background: rgba(255,255,255,.07); color: #ffffff;
+  transition: border-color .18s, box-shadow .18s, background .18s;
+  margin-bottom: 20px; box-sizing: border-box;
+  font-family: 'Courier New', monospace;
+  min-height: 64px;
+}
+.twofa-code-input::placeholder { color: #94a3b8; }
+.twofa-code-input:focus {
+  border-color: rgba(125,194,66,.55);
+  background: rgba(255,255,255,.09);
+  box-shadow: 0 0 0 3px rgba(125,194,66,.13);
+}
+.twofa-actions { display: flex; flex-direction: column; gap: 10px; }
+.twofa-trust-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .78rem; color: #64748b;
+  padding: 4px 0;
+}
+.twofa-trust-row label {
+  color: #64748b;
+  cursor: pointer; user-select: none;
+  font-size: .78rem;
+}
+.twofa-resend {
+  background: none; border: none;
+  color: var(--lime, #7dc242); font-size: .82rem;
+  font-weight: 600; cursor: pointer;
+  text-align: center; padding: 4px;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+.twofa-resend:hover { opacity: .75; text-decoration: underline; }
+.twofa-back {
+  background: none; border: none;
+  color: #94a3b8; font-size: .8rem;
+  cursor: pointer; text-align: center;
+  padding: 4px; font-family: inherit;
+  transition: color .15s;
+}
+.twofa-back:hover { color: var(--lime, #7dc242); }
+
+/* Legacy compat */
+.login-hgrid, .login-orb, .login-card-a,
+.login-bg-opt1, .login-screen-shell,
+.lgn-haze, .lgn-line1, .lgn-line2, .lgn-line3 { display: none !important; }
+
+
+
+/* ════════ WINDOWS LOGIN SAFE MODE ════════ */
+html.platform-windows .auth-screen,
+html.platform-windows #authScreen {
+  background: #16301f !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 20px;
+  overflow: auto;
+  isolation: isolate;
+}
+html.platform-windows .auth-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(22,48,31,.12);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14) !important;
+  max-width: 420px;
+  width: 100%;
+  contain: layout paint;
+}
+html.platform-windows .auth-logo,
+html.platform-windows .auth-title,
+html.platform-windows .auth-sub,
+html.platform-windows .auth-field,
+html.platform-windows .auth-btn,
+html.platform-windows .auth-change-pw,
+html.platform-windows .auth-error {
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+  transition: none !important;
+  will-change: auto !important;
+  backface-visibility: hidden;
+}
+html.platform-windows .auth-logo img,
+html.platform-windows #authLogoImg {
+  content-visibility: auto;
+  contain: paint;
+  filter: none !important;
+  image-rendering: auto;
+}
+html.platform-windows .auth-title,
+html.platform-windows .auth-sub,
+html.platform-windows .auth-field label,
+html.platform-windows .auth-field input,
+html.platform-windows .auth-btn,
+html.platform-windows .auth-change-pw,
+html.platform-windows .auth-error {
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif !important;
+}
+html.platform-windows .auth-field input {
+  background: #ffffff !important;
+  border: 1px solid #d7ddd9 !important;
+  box-shadow: none !important;
+}
+html.platform-windows .auth-field input:focus {
+  border-color: #2a6049 !important;
+  box-shadow: 0 0 0 2px rgba(42,96,73,.10) !important;
+}
+html.platform-windows .auth-btn:hover,
+html.platform-windows .auth-btn:active {
+  background: #2a6049 !important;
+}
+html.platform-windows .auth-card,
+html.platform-windows .auth-card * {
+  text-shadow: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-screen, .auth-screen *, #authScreen, #authScreen * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* HARD STOP FOR WINDOWS LOGIN RENDER FLICKER */
+html.platform-windows #loginScreen,
+html.ft-platform-windows #loginScreen,
+body.platform-windows #loginScreen,
+body.ft-platform-windows #loginScreen,
+#loginScreen.platform-windows,
+#loginScreen.ft-platform-windows {
+  background: #16301f !important;
+  background-image: none !important;
+  isolation: isolate;
+}
+html.platform-windows #loginScreen *,
+html.ft-platform-windows #loginScreen *,
+body.platform-windows #loginScreen *,
+body.ft-platform-windows #loginScreen *,
+#loginScreen.platform-windows *,
+#loginScreen.ft-platform-windows * {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  will-change: auto !important;
+}
+html.platform-windows #loginScreen > div,
+html.ft-platform-windows #loginScreen > div,
+body.platform-windows #loginScreen > div,
+body.ft-platform-windows #loginScreen > div,
+#loginScreen.platform-windows > div,
+#loginScreen.ft-platform-windows > div {
+  box-shadow: 0 8px 24px rgba(0,0,0,.16) !important;
+  contain: layout paint;
+}
+html.platform-windows #loginScreen input:focus,
+html.ft-platform-windows #loginScreen input:focus,
+body.platform-windows #loginScreen input:focus,
+body.ft-platform-windows #loginScreen input:focus,
+#loginScreen.platform-windows input:focus,
+#loginScreen.ft-platform-windows input:focus {
+  outline: 2px solid rgba(42,96,73,.18) !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
+
+
+/* login.html specifics — same scroll-lock as reset-password.html */
+html, body {
+  height: 100%; overflow: hidden;
+  touch-action: none; overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+  user-select: none; -webkit-user-select: none;
+}
+
+<style>
+  /* Nuclear scoped fix: ID specificity beats all cascade overrides */
+  label,
+  .lgn-label,
+  label.lgn-label {
+    color: #475569 !important;
+    font-size: .66rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+  }
+  .lgn-input:-webkit-autofill,
+  .lgn-input:-webkit-autofill:hover,
+  .lgn-input:-webkit-autofill:focus,
+  .lgn-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #0f172a !important;
+  }
+</style>
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="lgn-screen" style="display:flex;position:fixed;inset:0;z-index:9999">
+  <!-- Orbs flutuantes -->
+    <div class="lgn-orb lgn-orb1"></div>
+    <div class="lgn-orb lgn-orb2"></div>
+    <div class="lgn-orb lgn-orb3"></div>
+
+    <!-- Opção C: Logo acima + Card abaixo -->
+    <div class="lgn-centered-wrap">
+
+      <!-- Card -->
+      <div class="lgn-card lgn-form-inner" style="position:relative">
+
+            <!-- Logo — always visible, bigger on desktop via CSS -->
+        <div class="lgn-logo-wrap">
+          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
+        </div>
+        <div class="lgn-form-title">Bem-vindo de volta</div>
+        <div class="lgn-form-sub">Entre com sua conta para continuar</div>
+      <div id="loginFormArea">
+
+        <!-- Password login panel -->
+        <div id="loginPanelPassword">
+          <div class="lgn-field-group">
+            <label class="lgn-label" data-i18n="auth.label_email">E-mail</label>
+            <input type="email" id="loginEmail" class="lgn-input" placeholder="seu@email.com" autocomplete="email"
+              onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus({preventScroll:true})">
+          </div>
+          <div class="lgn-field-group">
+            <div class="lgn-field-row">
+              <label class="lgn-label" data-i18n="auth.label_password">Senha</label>
+              <button onclick="showForgotPwdForm()" class="lgn-link" data-i18n="auth.forgot_password">Esqueci a senha</button>
+            </div>
+            <div class="lgn-input-wrap">
+              <input type="password" id="loginPassword" class="lgn-input lgn-input--pwd" placeholder="••••••••" autocomplete="current-password"
+                onkeydown="if(event.key==='Enter')doLogin()">
+              <button onclick="toggleLoginPwd()" class="lgn-pwd-toggle" title="Mostrar/ocultar senha">
+                <svg id="loginPwdEyeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="lgn-remember-row">
+            <div class="lgn-checkbox-wrap">
+              <input type="checkbox" id="rememberMe" class="lgn-checkbox">
+              <div class="lgn-checkbox-custom"></div>
+            </div>
+            <label for="rememberMe" class="lgn-checkbox-label" data-i18n="auth.remember_me">Lembrar neste dispositivo</label>
+          </div>
+          <button onclick="doLogin()" id="loginBtn" class="lgn-btn-primary">
+            <span data-i18n="auth.btn_enter">Entrar</span>
+          </button>
+        </div>
+
+        <!-- Magic link: removido -->
+
+        <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+        <div id="loginRequestAccessWrap" style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280;display:none">
+          <span data-i18n="auth.no_account">Não tem conta?</span>
+          <button id="loginRequestAccessBtn" onclick="showRegisterForm()"
+            style="display:inline-flex;align-items:center;gap:6px;
+                   padding:8px 18px;border-radius:24px;
+                   border:1.5px solid #2a6049;
+                   background:transparent;
+                   color:#2a6049;font-weight:700;cursor:pointer;
+                   font-size:.8rem;font-family:inherit;
+                   transition:all .2s;letter-spacing:.02em"
+            onmouseover="this.style.background='#2a6049';this.style.color='#fff'"
+            onmouseout="this.style.background='transparent';this.style.color='#2a6049'"
+            data-i18n="auth.request_access">
+            Solicitar acesso
+          </button>
+        </div>
+      </div>
+
+      <!-- ══ 2FA VERIFICATION AREA ══ -->
+      <div id="twoFaArea" style="display:none">
+        <div class="twofa-title">Verificação em Dois Fatores</div>
+        <div class="twofa-sub" id="twoFaSub">
+          Enviamos um código de 6 dígitos para o seu e-mail.<br>
+          Insira-o abaixo para continuar.
+        </div>
+        <input type="text" id="twoFaCode" class="twofa-code-input"
+          maxlength="6" inputmode="numeric" pattern="[0-9]*"
+          placeholder="000000"
+          onkeydown="if(event.key==='Enter')doVerify2FA()"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <div class="twofa-actions">
+          <button onclick="doVerify2FA()" id="twoFaVerifyBtn" class="lgn-btn-primary">
+            Verificar
+          </button>
+          <div class="twofa-trust-row">
+            <input type="checkbox" id="twoFaTrust" style="width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0">
+            <label for="twoFaTrust" style="flex:1">
+              Confiar neste dispositivo por 30 dias
+              <span id="twoFaTrustExpiry" style="display:none;font-size:.7rem;color:var(--muted);margin-left:4px"></span>
+            </label>
+          </div>
+          <button onclick="resend2FACode()" class="twofa-resend" id="twoFaResendBtn">
+            Reenviar código
+          </button>
+          <button onclick="showLoginFormArea()" class="twofa-back">
+            ← Voltar ao login
+          </button>
+        </div>
+        <div id="twoFaError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+      </div>
+
+      <!-- Forgot password form -->
+      <div id="forgotPwdArea" style="display:none">
+        <div class="lgn-subform-title">Recuperar Senha</div>
+        <div class="lgn-subform-sub">Informe seu e-mail e enviaremos um link de recuperação para o endereço cadastrado.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">E-mail</label>
+          <input type="email" id="forgotPwdEmail" class="lgn-input" placeholder="seu@email.com"
+            onkeydown="if(event.key==='Enter')doForgotPwd()">
+        </div>
+        <button onclick="doForgotPwd()" id="forgotPwdBtn" class="lgn-btn-primary">
+          <span data-i18n="auth.btn_send_recovery">Enviar Link de Recuperação</span>
+        </button>
+        <div id="forgotPwdError" style="margin-top:12px;font-size:.8rem;text-align:center;display:none"></div>
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
+        </div>
+      </div>
+
+      <!-- Password recovery form (shown after clicking reset link from email) -->
+      <div id="recoveryPwdArea" style="display:none">
+        <div class="lgn-subform-title">Definir Nova Senha</div>
+        <div class="lgn-subform-sub">Escolha uma senha segura para sua conta.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nova Senha</label>
+          <input type="password" id="recoveryPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwd2').focus()">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="recoveryPwd2" class="lgn-input" placeholder="Repita a nova senha" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doRecoveryPwd()">
+        </div>
+        <button onclick="doRecoveryPwd()" id="recoveryPwdBtn" class="lgn-btn-primary">
+          <span data-i18n="auth.btn_set_password">Salvar Nova Senha</span>
+        </button>
+        <div id="recoveryPwdError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+      </div>
+
+      <!-- Register form -->
+      <div id="registerFormArea" style="display:none">
+        <div class="lgn-subform-title">Solicitar Acesso</div>
+        <div class="lgn-subform-sub">Preencha os dados abaixo. Um administrador aprovará seu acesso.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nome completo</label>
+          <input type="text" id="regName" class="lgn-input" placeholder="Seu nome">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">E-mail</label>
+          <input type="email" id="regEmail" class="lgn-input" placeholder="seu@email.com">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Senha (mín. 8 caracteres)</label>
+          <input type="password" id="regPassword" class="lgn-input" placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="regPassword2" class="lgn-input" placeholder="••••••••" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')doRegister()">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label"><span data-i18n="settings.language">Idioma preferido</span></label>
+          <select id="regLanguage" class="lgn-input" style="cursor:pointer">
+            <option value="pt">🇧🇷 Português</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="fr">🇫🇷 Français</option>
+          </select>
+        </div>
+        <button onclick="doRegister()" id="regBtn" class="lgn-btn-primary">
+          <span data-i18n="register.btn_submit">Enviar Solicitação</span>
+        </button>
+        <div id="regError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="showLoginFormArea()" class="lgn-link">← Voltar ao login</button>
+        </div>
+      </div>
+
+      <!-- Pending approval screen -->
+      <div id="pendingApprovalArea" style="display:none;text-align:center">
+        <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+        <div class="lgn-subform-title">Aguardando aprovação</div>
+        <div class="lgn-subform-sub">Sua solicitação foi enviada. Um administrador precisa aprovar seu acesso antes que você possa entrar.</div>
+        <button onclick="showLoginFormArea()" class="lgn-btn-primary">Voltar ao login</button>
+      </div>
+      <!-- Change password form (shown on first login) -->
+      <div id="changePwdArea" style="display:none">
+        <div class="lgn-subform-title">Definir Senha</div>
+        <div class="lgn-subform-sub">Por segurança, escolha uma nova senha no seu primeiro acesso.</div>
+        <div class="lgn-first-login-alert">🔐 Esta é uma exigência de segurança para novos usuários.</div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Nova Senha</label>
+          <input type="password" id="newPwd1" class="lgn-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+        </div>
+        <div class="lgn-field-group">
+          <label class="lgn-label">Confirmar Senha</label>
+          <input type="password" id="newPwd2" class="lgn-input" placeholder="Repita a senha" autocomplete="new-password">
+        </div>
+        <button onclick="doChangePwd()" class="lgn-btn-primary">
+          <span data-i18n="auth.btn_set_enter">Definir Senha e Entrar</span>
+        </button>
+        <div id="changePwdError" style="margin-top:10px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
+      </div><!-- end changePwdArea -->
+
+      </div><!-- .lgn-card -->
+    </div><!-- .lgn-centered-wrap -->
+</div>
+
+<!-- Supabase + config (minimal deps for login only) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+// ── Boot login page ────────────────────────────────────────────────────────
+(async function(){
+  // Init Supabase
+  if (typeof ensureSupabaseClient === 'function') {
+    window.sb = ensureSupabaseClient();
+  }
+
+  // Apply platform mode (Windows safe mode)
+  if (typeof applyLoginPlatformMode === 'function') applyLoginPlatformMode();
+
+  // Apply access-request button visibility
+  if (typeof _applyAccessRequestVisibilityFromLocalStorage === 'function')
+    _applyAccessRequestVisibilityFromLocalStorage();
+  if (typeof _fetchAccessRequestSettingAnon === 'function')
+    _fetchAccessRequestSettingAnon();
+
+  // Init i18n if available
+  if (typeof i18nInit === 'function') await i18nInit().catch(()=>{});
+
+  // Try to restore existing session — if valid, go straight to app
+  try {
+    if (window.sb) {
+      const { data } = await window.sb.auth.getSession();
+      if (data?.session) {
+        window.location.replace('app.html');
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // No session — show login form
+  if (typeof showLoginScreen === 'function') {
+    showLoginScreen();
+  } else {
+    const ls = document.getElementById('loginScreen');
+    if (ls) ls.style.display = 'flex';
+  }
+
+  // Override bootApp: after login success, redirect to app.html instead
+  window.bootApp = async function() {
+    window.location.replace('app.html');
+  };
+})();
+</script>
+</body>
+</html>
