@@ -852,7 +852,7 @@ async function doMagicLink() {
     }
 
     // Send the magic link via Supabase OTP
-    const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const redirectTo = _getAppHtmlUrl(); // always land on app.html after magic link
     const { error } = await sb.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
@@ -1822,6 +1822,26 @@ function showForgotPwdForm() {
   focusFieldSafely('forgotPwdEmail');
 }
 
+// Returns the dedicated reset-password page URL — always used as redirectTo
+// for resetPasswordForEmail so Supabase never redirects to the landing page.
+function _getResetPasswordUrl() {
+  const { origin, pathname } = window.location;
+  const base = pathname.endsWith('/')
+    ? pathname
+    : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  return origin + base + 'reset-password.html';
+}
+
+// Returns app.html URL — used as redirectTo for magic links / OTP so the
+// user lands on the app after clicking the email link (not on the landing page).
+function _getAppHtmlUrl() {
+  const { origin, pathname } = window.location;
+  const base = pathname.endsWith('/')
+    ? pathname
+    : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  return origin + base + 'app.html';
+}
+
 async function doForgotPwd() {
   const email = (document.getElementById('forgotPwdEmail').value || '').trim().toLowerCase();
   const errEl = document.getElementById('forgotPwdError');
@@ -1837,7 +1857,7 @@ async function doForgotPwd() {
     if (!sb) {
       throw new Error('Conexão com o servidor não iniciada. Verifique a configuração do Supabase nas configurações do app.');
     }
-    const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const redirectTo = _getResetPasswordUrl();
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) throw error;
     errEl.textContent = '✅ Se este e-mail estiver cadastrado, você receberá o link de recuperação em breve. Verifique também a pasta de spam.';
@@ -3873,7 +3893,7 @@ async function _sendApprovalEmail(email, name, familyName) {
 
   // 1. Enviar link de redefinição de senha (Supabase) para o usuário definir a própria senha
   try {
-    const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    const redirectTo = _getResetPasswordUrl();
     await sb.auth.resetPasswordForEmail(email, { redirectTo });
   } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
 
@@ -4102,9 +4122,7 @@ async function doResetUserPwd() {
         }).eq('id', userId);
       } catch(_) {}
 
-      const redirectTo = typeof getAppBaseUrl === 'function'
-        ? getAppBaseUrl()
-        : (window.location.origin + window.location.pathname);
+      const redirectTo = _getResetPasswordUrl();
 
       const { error: resetErr } = await sb.auth.resetPasswordForEmail(targetEmail, { redirectTo });
 
