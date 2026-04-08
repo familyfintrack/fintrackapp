@@ -151,7 +151,7 @@
 .lgn-logo-wrap {
   display: flex; flex-direction: column; align-items: center;
   justify-content: center;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
   text-align: center;
 }
 .lgn-logo-img {
@@ -185,7 +185,7 @@
   background: #ffffff;
   border-top: 3px solid var(--lime, #7dc242);
   border-radius: 0 0 22px 22px;
-  padding: 32px 36px 36px;
+  padding: 28px 28px 28px;
   box-shadow: 0 32px 64px rgba(0,0,0,.38), 0 0 0 1px rgba(0,0,0,.06);
   position: relative;
 }
@@ -563,24 +563,54 @@ html, body {
 }
 
 <style>
-  /* Nuclear scoped fix: ID specificity beats all cascade overrides */
-  label,
-  .lgn-label,
-  label.lgn-label {
-    color: #475569 !important;
-    font-size: .66rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: .08em !important;
-  }
-  .lgn-input:-webkit-autofill,
-  .lgn-input:-webkit-autofill:hover,
-  .lgn-input:-webkit-autofill:focus,
-  .lgn-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
-    -webkit-text-fill-color: #0f172a !important;
-    caret-color: #0f172a !important;
-  }
+/* ── Overrides para card branco — dark text ─────────────────── */
+label, .lgn-label, label.lgn-label {
+  color: #475569 !important;
+  font-size: .66rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+}
+.lgn-input:-webkit-autofill,
+.lgn-input:-webkit-autofill:hover,
+.lgn-input:-webkit-autofill:focus,
+.lgn-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #f8fafc inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  border-color: var(--lime, #7dc242) !important;
+}
+.lgn-logo-wrap { background: none !important; backdrop-filter: none !important; box-shadow: none !important; border: none !important; }
+@media (max-height: 700px) { .lgn-logo-img { height: 72px !important; } .lgn-logo-wrap { margin-bottom: 12px !important; } }
+.lgn-form-title { color: #0a1e12 !important; font-size: 1.25rem !important; margin-bottom: 2px !important; }
+.lgn-form-sub { color: #64748b !important; font-size: .82rem !important; margin-bottom: 20px !important; }
+.lgn-input { background: #f8fafc !important; color: #0f172a !important; border: 1.5px solid #e2e8f0 !important; border-radius: 12px !important; padding: 12px 15px !important; }
+.lgn-input:focus { border-color: var(--lime, #7dc242) !important; background: #fff !important; box-shadow: 0 0 0 3px rgba(125,194,66,.15) !important; }
+.lgn-input::placeholder { color: #94a3b8 !important; }
+select.lgn-input { cursor: pointer; }
+.lgn-checkbox-label { color: #64748b !important; font-size: .82rem !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 400 !important; }
+.lgn-checkbox-custom { background: #f8fafc !important; border: 1.5px solid #d1d5db !important; }
+.lgn-subform-title { color: #0a1e12 !important; }
+.lgn-subform-sub { color: #64748b !important; }
+.lgn-error-msg { background: #fef2f2 !important; border-color: #fecaca !important; color: #dc2626 !important; }
+.lgn-btn-ghost { color: #4a7a26 !important; border-color: rgba(125,194,66,.35) !important; }
+.lgn-btn-ghost:hover { background: rgba(125,194,66,.08) !important; }
+.lgn-field-group { margin-bottom: 14px !important; }
+.lgn-remember-row { margin-bottom: 18px !important; }
+.lgn-features-row { border-top-color: #e2e8f0 !important; }
+.lgn-feat-item { color: #94a3b8 !important; }
+.twofa-title { color: #0a1e12 !important; }
+.twofa-sub { color: #64748b !important; }
+.twofa-code-input { background: #f8fafc !important; color: #0f172a !important; border: 2px solid #e2e8f0 !important; }
+.twofa-code-input:focus { border-color: var(--lime, #7dc242) !important; background: #fff !important; box-shadow: 0 0 0 3px rgba(125,194,66,.15) !important; }
+.twofa-trust-row, .twofa-trust-row label { color: #64748b !important; }
+.twofa-back { color: #94a3b8 !important; }
+.lgn-first-login-alert { background: #fefce8 !important; border: 1px solid #fef08a !important; color: #854d0e !important; border-radius: 10px !important; padding: 10px 14px !important; font-size: .8rem !important; margin-bottom: 16px !important; }
+.lgn-pwd-toggle { color: #94a3b8 !important; }
+.lgn-pwd-toggle:hover { color: var(--lime, #7dc242) !important; }
+#loginRequestAccessBtn { border-color: var(--lime, #7dc242) !important; color: #0a1e12 !important; }
+#loginRequestAccessBtn:hover { background: var(--lime, #7dc242) !important; color: #0a1e12 !important; }
+#loginError, [id$="Error"], [id$="error"] { color: #dc2626 !important; }
 </style>
 </style>
 </head>
@@ -595,13 +625,18 @@ html, body {
     <!-- Opção C: Logo acima + Card abaixo -->
     <div class="lgn-centered-wrap">
 
-      <!-- Card -->
+      <!-- Logo e badge acima do card (fora do card, como no reset-password.html) -->
+      <div class="lgn-logo-wrap">
+        <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
+        <div class="lgn-badge">
+          <span class="lgn-badge-dot"></span>
+          Family FinTrack
+        </div>
+      </div>
+
+      <!-- Card branco -->
       <div class="lgn-card lgn-form-inner" style="position:relative">
 
-            <!-- Logo — always visible, bigger on desktop via CSS -->
-        <div class="lgn-logo-wrap">
-          <img id="loginLogoImg" src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
-        </div>
         <div class="lgn-form-title">Bem-vindo de volta</div>
         <div class="lgn-form-sub">Entre com sua conta para continuar</div>
       <div id="loginFormArea">
@@ -805,6 +840,11 @@ html, body {
 <script src="js/config.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/i18n.js"></script>
+<!-- Dependências do 2FA: email config + autocheck config + telegram -->
+<script src="js/email.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/autocheck.js"></script>
+<script src="js/auto_register.js"></script>
 <script src="js/auth.js"></script>
 
 <script>
@@ -826,6 +866,9 @@ html, body {
 
   // Init i18n if available
   if (typeof i18nInit === 'function') await i18nInit().catch(()=>{});
+
+  // Carrega app_settings do Supabase — preenche EMAILJS_CONFIG para 2FA por e-mail funcionar
+  if (typeof loadAppSettings === 'function') loadAppSettings().catch(()=>{});
 
   // Try to restore existing session — if valid, go straight to app
   try {
