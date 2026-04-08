@@ -342,8 +342,33 @@ function _txUpdateFilterBadge() {
     ...(state.txFilter.memberIds || [])
   ].filter(Boolean).length;
   btn.classList.toggle('has-filters', activeCount > 0);
+
+  // ── Account filter badge ──────────────────────────────────────────────────
+  const badge    = document.getElementById('txAccountBadge');
+  const badgeLbl = document.getElementById('txAccountBadgeLabel');
+  const acctId   = state.txFilter.account || '';
+  if (badge) {
+    if (acctId) {
+      // Find account name from state
+      const acct = (state.accounts || []).find(a => a.id === acctId);
+      const name = acct ? acct.name : 'Conta filtrada';
+      if (badgeLbl) badgeLbl.textContent = name;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
 }
 window._txUpdateFilterBadge = _txUpdateFilterBadge;
+
+function clearTxAccountFilter() {
+  const sel = document.getElementById('txAccount');
+  if (sel) { sel.value = ''; sel.classList.remove('is-active'); }
+  state.txFilter.account = '';
+  _txUpdateFilterBadge();
+  loadTransactions();
+}
+window.clearTxAccountFilter = clearTxAccountFilter;
 
 function populateTxMonthFilter() {
   const sel = document.getElementById('txMonth');

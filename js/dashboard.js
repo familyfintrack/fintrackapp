@@ -924,6 +924,12 @@ async function _syncDashPrefsFromServer() {
 
 function _dashApplyPrefs(prefs) {
   const order = _getDashCardOrder(prefs);
+  const pairs = Array.isArray(prefs._pairs) ? prefs._pairs : [];
+
+  // Build fast lookup: cardId → paired partner id
+  const pairedWith = {};
+  pairs.forEach(([a, b]) => { pairedWith[a] = b; pairedWith[b] = a; });
+  const pairedSeconds = new Set(pairs.map(p => p[1]));
 
   // Apply visibility
   order.forEach(c => {
@@ -932,8 +938,7 @@ function _dashApplyPrefs(prefs) {
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
 
-  // Apply DOM order — find the shared parent container from the first
-  // card element that actually exists in the DOM.
+  // Apply DOM order with side-by-side pair support
   try {
     let parent = null;
     for (const c of order) {
@@ -942,15 +947,44 @@ function _dashApplyPrefs(prefs) {
     }
     if (!parent) return;
 
-    // Re-attach each card in order. Cards whose direct parent differs
-    // (e.g. were previously inside a wrapper) are moved to the shared parent.
+    // Remove any existing pair wrappers (move children out first)
+    parent.querySelectorAll('.dash-pair-wrap').forEach(wrap => {
+      while (wrap.firstChild) parent.insertBefore(wrap.firstChild, wrap);
+      wrap.remove();
+    });
+
+    // Re-attach in order, wrapping pairs
+    const processedSeconds = new Set();
     order.forEach(c => {
       const el = document.getElementById(c.el);
       if (!el) return;
-      // Move to shared parent if needed, then append to put in correct position
-      parent.appendChild(el);
+
+      // Skip second-of-pair — handled when first is processed
+      if (pairedSeconds.has(c.id) && processedSeconds.has(c.id)) return;
+
+      const partnerId = pairs.find(p => p[0] === c.id)?.[1];
+      const partnerCard = partnerId ? _DASH_CARDS.find(x => x.id === partnerId) : null;
+      const partnerEl   = partnerCard ? document.getElementById(partnerCard.el) : null;
+
+      const firstVisible  = prefs[c.id] !== false;
+      const secondVisible = partnerCard && prefs[partnerCard.id] !== false;
+
+      if (partnerId && partnerEl && firstVisible && secondVisible) {
+        // Both visible — wrap in grid
+        const wrap = document.createElement('div');
+        wrap.className = 'dash-pair-wrap';
+        // Remove mb-4/mb-6 temporarily handled by CSS
+        parent.appendChild(wrap);
+        wrap.appendChild(el);
+        wrap.appendChild(partnerEl);
+        processedSeconds.add(partnerId);
+      } else {
+        // Single card — append normally
+        parent.appendChild(el);
+        if (partnerId) processedSeconds.add(partnerId);
+      }
     });
-  } catch(_) {}
+  } catch(e) { console.warn('[dashApplyPrefs pairs]', e.message); }
 }
 
 function openDashCustomModal() {
@@ -988,10 +1022,22 @@ function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
 
-  list.innerHTML = order.map((c) => {
-    const isPinned = c.id === 'accounts';
+  const pairs = Array.isArray(prefs._pairs) ? prefs._pairs : [];
+  // Build set of ids that are the FIRST of a pair
+  const pairedFirst = new Set(pairs.map(p => p[0]));
+  // Build set of ids that are the SECOND of a pair (they show a "paired" indicator)
+  const pairedSecond = new Set(pairs.map(p => p[1]));
+
+  list.innerHTML = order.map((c, idx) => {
+    const isPinned    = c.id === 'accounts';
+    const isFirst     = pairedFirst.has(c.id);
+    const isSecond    = pairedSecond.has(c.id);
+    const isPaired    = isFirst || isSecond;
+    const canPair     = !isPinned && idx < order.length - 1 && !isSecond;
+    const nextCard    = order[idx + 1];
+
     return `
-    <div class="dcc-item${isPinned?' dcc-item--pinned':''}" data-card-id="${c.id}" draggable="${isPinned?'false':'true'}">
+    <div class="dcc-item${isPinned?' dcc-item--pinned':''}${isPaired?' dcc-item--paired':''}" data-card-id="${c.id}" draggable="${isPinned?'false':'true'}">
       <div class="dcc-handle" title="${isPinned?'Card fixo — sempre o primeiro':'Arrastar para reordenar'}"
         style="${isPinned?'opacity:.3;cursor:default;pointer-events:none;':''}">
         ${isPinned
@@ -1005,13 +1051,25 @@ function _renderDashCustomList(order, prefs) {
         <div class="dcc-sub">${c.sub}</div>
         ${isPinned ? '<span class="dcc-badge" style="background:rgba(42,96,73,.12);color:#2a6049;border-color:rgba(42,96,73,.2)">📌 fixo</span>' : ''}
         ${c.optional && !isPinned ? '<span class="dcc-badge">opcional</span>' : ''}
+        ${isFirst ? `<span class="dcc-badge dcc-badge--paired">⊞ lado a lado com ${nextCard?.icon||''} ${nextCard?.label||''}</span>` : ''}
+        ${isSecond ? '<span class="dcc-badge dcc-badge--paired">⊞ em paralelo</span>' : ''}
       </div>
-      <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
-        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
-        title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}"
-        ${isPinned?'disabled style="opacity:.5;cursor:default"':''}>
-        <span class="dcc-toggle-knob"></span>
-      </button>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${canPair ? `<button class="dcc-pair-btn${isFirst?' dcc-pair-btn--on':''}" data-card="${c.id}" data-next="${nextCard?.id||''}"
+          onclick="event.stopPropagation();_dashTogglePair('${c.id}','${nextCard?.id||''}')"
+          title="${isFirst?'Desfazer layout lado a lado':'Colocar em paralelo com o próximo card'}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <rect x="2" y="3" width="9" height="18" rx="2"/>
+            <rect x="13" y="3" width="9" height="18" rx="2"/>
+          </svg>
+        </button>` : ''}
+        <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
+          onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
+          title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}"
+          ${isPinned?'disabled style="opacity:.5;cursor:default"':''}>
+          <span class="dcc-toggle-knob"></span>
+        </button>
+      </div>
     </div>`; }).join('');
 
   _initDashDrag(list);
@@ -1236,6 +1294,33 @@ function _dashToggleCard(id, row) {
   btn.title = isOn ? 'Ocultar card' : 'Mostrar card';
 }
 
+function _dashTogglePair(firstId, secondId) {
+  if (!firstId || !secondId) return;
+  const prefs = _dashGetPrefs();
+  const pairs = Array.isArray(prefs._pairs) ? [...prefs._pairs] : [];
+
+  // Check if this pair already exists
+  const existingIdx = pairs.findIndex(p => p[0] === firstId && p[1] === secondId);
+  if (existingIdx >= 0) {
+    // Remove pair
+    pairs.splice(existingIdx, 1);
+  } else {
+    // Remove any existing pair involving either card, then add new
+    const filtered = pairs.filter(p => p[0] !== firstId && p[1] !== firstId && p[0] !== secondId && p[1] !== secondId);
+    filtered.push([firstId, secondId]);
+    pairs.splice(0, pairs.length, ...filtered);
+  }
+
+  // Save to prefs immediately so re-render picks it up
+  const updPrefs = { ...prefs, _pairs: pairs };
+  const order = _getDashCardOrder(updPrefs);
+  _renderDashCustomList(order, updPrefs);
+
+  // Store pending pairs for save
+  window._dashCustomPendingPairs = pairs;
+}
+window._dashTogglePair = _dashTogglePair;
+
 function _dashCustomSave() {
   // Start from existing prefs so we don't lose catChartType, dashForecastAccounts, etc.
   const existingPrefs = _dashGetPrefs();
@@ -1257,6 +1342,12 @@ function _dashCustomSave() {
       const accIdx = prefs._order.indexOf('accounts');
       if (accIdx > 0) { prefs._order.splice(accIdx, 1); prefs._order.unshift('accounts'); }
     }
+  }
+
+  // Save pairs configuration
+  if (window._dashCustomPendingPairs !== undefined) {
+    prefs._pairs = window._dashCustomPendingPairs;
+    window._dashCustomPendingPairs = undefined;
   }
   _dashSavePrefs(prefs);
   _dashApplyPrefs(prefs);

@@ -4775,13 +4775,42 @@ async function doVerify2FA() {
     }
 
     // Continuar fluxo de login
-    await _loadCurrentUserContext(_2fa.sessionData);
-    await onLoginSuccess();
+    // _loadCurrentUserContext pode falhar se o contexto de família não estiver
+    // ainda carregado — mas a sessão Supabase já é válida neste ponto.
+    // Em caso de falha, fazemos o redirect directamente para não deixar a
+    // página branca.
+    try {
+      await _loadCurrentUserContext(_2fa.sessionData);
+    } catch(ctxErr) {
+      console.warn('[2FA] _loadCurrentUserContext falhou — redirecionando mesmo assim:', ctxErr?.message);
+      // Sessão válida: ir directo para o app
+      if (typeof window.bootApp === 'function') {
+        window.bootApp().catch(() => { window.location.replace('app.html'); });
+      } else {
+        window.location.replace('app.html');
+      }
+      return;
+    }
+
+    try {
+      await onLoginSuccess();
+    } catch(loginErr) {
+      console.warn('[2FA] onLoginSuccess falhou — redirecionando mesmo assim:', loginErr?.message);
+      // onLoginSuccess pode falhar se algum módulo não existir em login.html
+      // mas a sessão é válida — ir para app.html
+      if (typeof window.bootApp === 'function') {
+        window.bootApp().catch(() => { window.location.replace('app.html'); });
+      } else {
+        window.location.replace('app.html');
+      }
+    }
 
   } catch(e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
-  } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✓ Verificar'; }
+  } finally {
+    // Nota: não reabilitar o botão aqui pois se chegámos ao finally após sucesso
+    // a página já está a redirecionar — só reabilitar em caso de erro (já tratado acima)
   }
 }
 
