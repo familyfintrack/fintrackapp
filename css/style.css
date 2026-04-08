@@ -19657,14 +19657,17 @@ section[data-page="transactions"] .content {
   width: 100%; max-width: 460px;
   margin: auto;
   animation: lgnFadeUp .55s cubic-bezier(.22,1,.36,1) both;
-  /* Restore touch interactivity for the form content */
-  touch-action: pan-y;        /* allow vertical scroll inside card on short screens */
-  overflow-y: auto;           /* scroll when card taller than viewport */
+  /* Touch interactivity for the form: only allow scroll when content overflows.
+     The JS _lgnTouchLock checks scrollHeight > clientHeight before allowing
+     touchmove — so when the card fits on screen, no drag is possible at all. */
+  touch-action: pan-y;          /* allow vertical scroll on tall content */
+  overflow-y: auto;             /* scroll when card taller than viewport */
   overflow-x: hidden;
-  overscroll-behavior: contain; /* don't propagate scroll to backdrop */
+  overscroll-behavior: none;    /* hard stop at boundaries — no bounce or backdrop drag */
   -webkit-overflow-scrolling: touch;
-  max-height: 100dvh;         /* cap height so it never exceeds viewport */
-  user-select: text;          /* allow text selection inside form */
+  max-height: 100dvh;           /* cap height so it never exceeds viewport */
+  padding-bottom: env(safe-area-inset-bottom, 0px); /* iPhone home bar clearance */
+  user-select: text;            /* allow text selection inside form */
   -webkit-user-select: text;
 }
 @keyframes lgnFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
@@ -19675,7 +19678,7 @@ section[data-page="transactions"] .content {
   text-align: center;
 }
 .lgn-logo-img {
-  height: 110px; width: auto; object-fit: contain;
+  height: 127px; width: auto; object-fit: contain; /* +15% from 110px */
   filter: drop-shadow(0 0 28px rgba(125,194,66,.35));
   animation: lgnLogoPulse 4s ease-in-out infinite;
 }
