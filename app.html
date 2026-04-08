@@ -1,40 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<!-- ── Session guard: redirect to login.html if no active session ────────
-     Fast check via localStorage; if not found, waits for Supabase SDK
-     (handles PKCE flow where token arrives async after redirect). ──-->
-<script>
-(function(){
-  try {
-    // Fast path: token already in localStorage (normal case)
-    var keys = Object.keys(localStorage);
-    for (var k of keys) {
-      if ((k.includes('supabase') || k.includes('sb-')) && k.includes('auth-token')) {
-        try {
-          var s = JSON.parse(localStorage.getItem(k));
-          if (s && (s.access_token || (s.session && s.session.access_token))) {
-            return; // token found — allow app to load normally
-          }
-        } catch(_) {}
-      }
-    }
-    // Also check for a short-lived redirect flag set by login.html
-    // login.html sets this flag just before redirecting to app.html
-    if (sessionStorage.getItem('ft_login_redirect') === '1') {
-      sessionStorage.removeItem('ft_login_redirect');
-      return; // came from login — allow app to load
-    }
-    // No token found — redirect to login
-    var dest = 'login.html';
-    var search = window.location.search;
-    var hash   = window.location.hash;
-    if (search || hash) dest += search + hash;
-    window.location.replace(dest);
-  } catch(e) {}
-})();
-</script>
-
+<!-- Auth check is handled by tryAutoConnect() in auth.js/app.js after scripts load -->
 <meta charset="UTF-8">
 <link rel="manifest" href="manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">

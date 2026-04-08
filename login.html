@@ -17,7 +17,6 @@
       if ((k.includes('supabase')||k.includes('sb-')) && k.includes('auth-token')) {
         var s = JSON.parse(localStorage.getItem(k));
         if (s && (s.access_token||(s.session&&s.session.access_token))) {
-          try { sessionStorage.setItem('ft_login_redirect','1'); } catch(_) {}
           window.location.replace('app.html'); return;
         }
       }
@@ -617,7 +616,6 @@ body.platform-windows .lgn-screen {
     if (window.sb) {
       const { data } = await window.sb.auth.getSession();
       if (data?.session) {
-        try { sessionStorage.setItem('ft_login_redirect', '1'); } catch(_) {}
         window.location.replace('app.html');
         return;
       }
@@ -635,7 +633,6 @@ body.platform-windows .lgn-screen {
   // Override bootApp: after login success, set flag then redirect to app.html
   // The flag tells app.html's guard that we just came from login — skip the guard.
   window.bootApp = async function() {
-    try { sessionStorage.setItem('ft_login_redirect', '1'); } catch(_) {}
     window.location.replace('app.html');
   };
 })();
