@@ -2086,6 +2086,96 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 
+/* ══════════════════════════════════════════════════════════════════
+   CATEGORY SPLIT MODAL
+   Allows a transaction to be divided across multiple categories
+══════════════════════════════════════════════════════════════════ */
+.tx-split-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tx-split-row:last-child { border-bottom: none; }
+.tx-split-cat-btn {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 7px 10px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: .82rem;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-split-cat-btn:hover { border-color: var(--accent); }
+.tx-split-amt-input {
+  width: 100px;
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: .88rem;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  text-align: right;
+  color: var(--text);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.tx-split-amt-input:focus { border-color: var(--accent); outline: none; }
+.tx-split-pct {
+  font-size: .7rem;
+  color: var(--muted);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.tx-split-del {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: .8rem;
+  flex-shrink: 0;
+}
+.tx-split-del:hover { background: var(--red-lt); color: var(--red); border-color: var(--red); }
+.tx-split-remainder {
+  font-size: .78rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.tx-split-remainder.ok   { background: rgba(22,163,74,.08); color: #16a34a; border: 1px solid rgba(22,163,74,.2); }
+.tx-split-remainder.over { background: rgba(220,38,38,.08); color: #dc2626; border: 1px solid rgba(220,38,38,.2); }
+.tx-split-preview {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.tx-split-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: .68rem;
+  font-weight: 600;
+  background: var(--accent-lt);
+  color: var(--accent);
+  border: 1px solid rgba(42,96,73,.18);
+}
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
@@ -4730,8 +4820,9 @@ html, body { overscroll-behavior: none; }
 }
 .fx-bar-inner::-webkit-scrollbar { display: none; }
 
-/* ── "CÂMBIO" label ─────────────────────────────── */
-.fx-bar-label {
+/* ── "CÂMBIO" and "FAMÍLIA" section labels ──────── */
+.fx-bar-label,
+.fx-bar-section-label {
   font-size: .6rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -4739,6 +4830,14 @@ html, body { overscroll-behavior: none; }
   color: var(--fx-text);
   flex-shrink: 0;
   opacity: .7;
+}
+.fx-bar-section-label {
+  /* FAMÍLIA label sits inside .fx-bar-family pill */
+  opacity: .65;
+  letter-spacing: .09em;
+  padding-right: 4px;
+  border-right: 1px solid rgba(22,101,52,.22);
+  margin-right: 2px;
 }
 
 /* ── Rate chips row ─────────────────────────────── */
