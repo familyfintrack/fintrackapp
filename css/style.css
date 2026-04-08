@@ -1241,34 +1241,8 @@ body.sidebar-open .fab{
 .forecast-account-header:hover { background:var(--bg2); }
 .forecast-table-wrap { border:1px solid var(--border); border-top:none; border-radius:0 0 var(--r-sm) var(--r-sm); overflow:hidden; }
 .forecast-row-past { opacity:.55; }
-/* Today: green tint — unchanged */
-.forecast-row-today { background:var(--accent-lt, rgba(42,96,73,.08))!important; font-weight:600; }
-
-/* Negative balance row: amber/red warning stripe — distinct from today's green */
-.forecast-row-negative {
-  background: rgba(220,38,38,.055)!important;
-  border-left: 2px solid rgba(220,38,38,.35);
-}
-.forecast-row-negative td { color: inherit; }
-.forecast-row-negative .forecast-run-bal,
-.forecast-row-negative td.forecast-balance {
-  color: #dc2626!important; font-weight:700;
-}
-
-/* Turning-positive row: balance crossed from negative → positive */
-.forecast-row-turning-positive {
-  background: rgba(22,163,74,.055)!important;
-  border-left: 2px solid rgba(22,163,74,.35);
-}
-.forecast-row-turning-positive .forecast-run-bal,
-.forecast-row-turning-positive td.forecast-balance {
-  color: #16a34a!important; font-weight:700;
-}
-
-/* Today + negative: today's green takes priority visually */
-.forecast-row-today.forecast-row-negative {
-  border-left: 2px solid rgba(220,38,38,.4);
-}
+.forecast-row-today { background:var(--accent-lt)!important; font-weight:600; }
+.forecast-row-negative td.forecast-balance { color:var(--red)!important; font-weight:700; }
 .forecast-balance { font-family:var(--font-serif); font-weight:500; }
 .forecast-chart-wrap { position:relative; height:220px; }
 
@@ -1909,139 +1883,6 @@ canvas { cursor: default; }
 
 
 /* ══════════════════════════════════════════════════════════════════
-   RELATÓRIO BENEFICIÁRIOS — semantic CSS classes
-   Replaces inline styles for better maintainability + mobile layout
-══════════════════════════════════════════════════════════════════ */
-
-/* KPI hero bar */
-.rpt-payee-kpi {
-  background: linear-gradient(135deg, #0d3d28, #1a6644);
-  border-radius: 14px;
-  padding: 16px 18px 14px;
-  margin-bottom: 16px;
-}
-.rpt-payee-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.rpt-payee-kpi-cell {
-  background: rgba(255,255,255,.10);
-  border-radius: 9px;
-  padding: 9px 10px;
-}
-.rpt-payee-kpi-exp { background: rgba(220,38,38,.22); border: 1px solid rgba(220,38,38,.28); }
-.rpt-payee-kpi-inc { background: rgba(22,163,74,.22);  border: 1px solid rgba(22,163,74,.28); }
-.rpt-payee-kpi-label { font-size: .52rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing:.06em; margin-bottom:2px; }
-.rpt-payee-kpi-val   { font-size: .92rem; font-weight: 800; color: #fff; }
-.rpt-kpi-exp-val { color: #fca5a5; }
-.rpt-kpi-inc-val { color: #86efac; }
-
-/* Two-column grid — desktop */
-.rpt-payee-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  align-items: start;
-}
-
-/* Mobile: single column, full width */
-@media (max-width: 767px) {
-  .rpt-payee-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .rpt-payee-kpi-cell { padding: 8px 9px; }
-  .rpt-payee-kpi-val  { font-size: .85rem; }
-  .rpt-payee-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
-
-.rpt-payee-col { min-width: 0; }
-
-.rpt-payee-col-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 2px 8px;
-  border-bottom: 2px solid transparent;
-  margin-bottom: 10px;
-}
-
-/* Payee row — details/summary pattern */
-.rpt-payee-row {
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--surface2);
-  margin-bottom: 5px;
-  border: 1px solid var(--border);
-}
-.rpt-payee-row > summary {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  cursor: pointer;
-  list-style: none;
-  -webkit-appearance: none;
-  outline: none;
-  transition: background .12s;
-}
-.rpt-payee-row > summary::-webkit-details-marker { display: none; }
-.rpt-payee-row > summary::marker { display: none; }
-.rpt-payee-row > summary:hover { background: var(--surface); }
-.rpt-payee-row[open] > summary { background: var(--surface); border-radius: 10px 10px 0 0; }
-
-/* Rank badge */
-.rpt-payee-rank {
-  width: 26px; height: 26px;
-  border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  font-size: .74rem; font-weight: 900;
-}
-.rpt-payee-info { flex: 1; min-width: 0; }
-.rpt-payee-name {
-  font-size: .86rem; font-weight: 700; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.rpt-payee-sub {
-  font-size: .66rem; color: var(--muted); margin-top: 1px;
-}
-.rpt-payee-amount {
-  font-size: .94rem; font-weight: 800;
-  font-family: var(--font-serif);
-  flex-shrink: 0; margin-left: 4px;
-  white-space: nowrap;
-}
-
-/* Chevron on summary */
-.rpt-payee-row > summary::after {
-  content: '';
-  display: inline-block;
-  width: 7px; height: 7px;
-  border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted);
-  transform: rotate(45deg);
-  flex-shrink: 0; margin-left: 4px;
-  transition: transform .2s; opacity: .5;
-}
-.rpt-payee-row[open] > summary::after { transform: rotate(-135deg); }
-
-/* Transaction list inside expanded row */
-.rpt-payee-txlist {
-  padding: 6px 13px 10px;
-  border-top: 1px solid var(--border);
-}
-.rpt-payee-txlist > div {
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background .1s;
-  padding: 5px 6px;
-}
-.rpt-payee-txlist > div:hover { background: var(--surface); }
-
-
-/* ══════════════════════════════════════════════════════════════════
    AGENT — Proactive alert card
 ══════════════════════════════════════════════════════════════════ */
 .agent-proactive-alert {
@@ -2068,113 +1909,36 @@ canvas { cursor: default; }
 
 
 /* ══════════════════════════════════════════════════════════════════
-   DATE INPUT — Estilo limpo, sem reordenação de campos
-   O formato DD/MM/AAAA é controlado pelo atributo lang="pt-BR"
-   em cada input — o browser aplica o locale correto nativamente.
-   A tentativa anterior de usar CSS order: causava as barras (/)
-   aparecerem antes dos números — removida.
+   DATE INPUT — Força exibição em formato brasileiro DD/MM/AAAA
+   Chrome/Edge usam a ordem do OS; este CSS reordena os campos
+   internos do WebKit independentemente do locale do sistema.
 ══════════════════════════════════════════════════════════════════ */
 
-/* Calendar icon styling only — sem interferir na ordem dos campos */
+/* Reordena os campos internos do date picker (Chrome/Edge/Safari) */
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+}
+input[type="date"]::-webkit-datetime-edit-day-field   { order: 1; }
+input[type="date"]::-webkit-datetime-edit-literal     { order: 2; } /* o '/' entre dia e mês */
+input[type="date"]::-webkit-datetime-edit-month-field { order: 3; }
+/* segundo literal '/' entre mês e ano — usa :nth-of-type não disponível, ok */
+input[type="date"]::-webkit-datetime-edit-year-field  { order: 5; }
+
+/* Placeholder text when no date selected */
+input[type="date"]::-webkit-datetime-edit {
+  color: var(--text);
+}
+
+/* Ensure the calendar icon stays on the right */
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  opacity: 0.55;
-  filter: invert(var(--date-icon-invert, 0));
+  opacity: 0.6;
+  margin-left: auto;
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 0.9;
+  opacity: 1;
 }
 
-
-/* ══════════════════════════════════════════════════════════════════
-   CATEGORY SPLIT MODAL
-   Allows a transaction to be divided across multiple categories
-══════════════════════════════════════════════════════════════════ */
-.tx-split-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-.tx-split-row:last-child { border-bottom: none; }
-.tx-split-cat-btn {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  padding: 7px 10px;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  font-size: .82rem;
-  color: var(--text);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tx-split-cat-btn:hover { border-color: var(--accent); }
-.tx-split-amt-input {
-  width: 100px;
-  padding: 7px 10px;
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  font-size: .88rem;
-  font-family: var(--font-serif);
-  font-weight: 600;
-  text-align: right;
-  color: var(--text);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-.tx-split-amt-input:focus { border-color: var(--accent); outline: none; }
-.tx-split-pct {
-  font-size: .7rem;
-  color: var(--muted);
-  width: 36px;
-  text-align: right;
-  flex-shrink: 0;
-}
-.tx-split-del {
-  width: 26px; height: 26px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--muted);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  font-size: .8rem;
-  flex-shrink: 0;
-}
-.tx-split-del:hover { background: var(--red-lt); color: var(--red); border-color: var(--red); }
-.tx-split-remainder {
-  font-size: .78rem;
-  padding: 8px 10px;
-  border-radius: 8px;
-  margin-top: 8px;
-  font-weight: 600;
-}
-.tx-split-remainder.ok   { background: rgba(22,163,74,.08); color: #16a34a; border: 1px solid rgba(22,163,74,.2); }
-.tx-split-remainder.over { background: rgba(220,38,38,.08); color: #dc2626; border: 1px solid rgba(220,38,38,.2); }
-.tx-split-preview {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.tx-split-preview-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 100px;
-  font-size: .68rem;
-  font-weight: 600;
-  background: var(--accent-lt);
-  color: var(--accent);
-  border: 1px solid rgba(42,96,73,.18);
-}
 
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
@@ -4820,9 +4584,8 @@ html, body { overscroll-behavior: none; }
 }
 .fx-bar-inner::-webkit-scrollbar { display: none; }
 
-/* ── "CÂMBIO" and "FAMÍLIA" section labels ──────── */
-.fx-bar-label,
-.fx-bar-section-label {
+/* ── "CÂMBIO" label ─────────────────────────────── */
+.fx-bar-label {
   font-size: .6rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -4830,14 +4593,6 @@ html, body { overscroll-behavior: none; }
   color: var(--fx-text);
   flex-shrink: 0;
   opacity: .7;
-}
-.fx-bar-section-label {
-  /* FAMÍLIA label sits inside .fx-bar-family pill */
-  opacity: .65;
-  letter-spacing: .09em;
-  padding-right: 4px;
-  border-right: 1px solid rgba(22,101,52,.22);
-  margin-right: 2px;
 }
 
 /* ── Rate chips row ─────────────────────────────── */
@@ -6659,49 +6414,15 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 /* Card: reduce base margin */
 .sc-card { margin-bottom: 6px; }
 
-/* Mobile: tighter layout, prevent overflow */
+/* Mobile: keep row layout, just tighter */
 @media (max-width: 640px) {
-  .sc-card-row {
-    padding: 9px 11px;
-    gap: 7px;
-    /* Ensure the row never exceeds screen width */
-    overflow: hidden;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .sc-card-icon { width: 26px; height: 26px; font-size: .8rem; flex-shrink: 0; }
-  .sc-card-mid  { flex: 1; min-width: 0; overflow: hidden; }
-  .sc-card-end  { max-width: 38%; flex-shrink: 0; }
-  .sc-card-title2 { font-size: .835rem; }
-  .sc-card-meta   { font-size: .68rem; }
-  .sc-card-amt    { font-size: .88rem; }
-  .sc-card-chevron { width: 12px; height: 12px; flex-shrink: 0; }
-
-  /* Action bar: wrap gracefully on very narrow screens */
-  .sc-card-actions {
-    padding: 5px 11px;
-    flex-wrap: nowrap;   /* keep on one line */
-    overflow: hidden;
-    box-sizing: border-box;
-    width: 100%;
-  }
-  .sc-reg-btn {
-    font-size: .72rem;
-    padding: 5px 8px;
-    /* Allow truncation on very narrow screens */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-  }
-  .sc-icon-btns {
-    flex-shrink: 0;
-    gap: 2px;
-  }
-  .sc-icon-btn {
-    width: 28px; height: 28px;
-    font-size: .7rem;
-  }
+  .sc-card-row { padding: 9px 12px; gap: 8px; }
+  .sc-card-actions { padding: 5px 12px; }
+  .sc-card-icon { width: 28px; height: 28px; font-size: .82rem; }
+  .sc-card-title2 { font-size: .845rem; }
+  .sc-card-meta { font-size: .7rem; }
+  .sc-card-amt { font-size: .9rem; }
+  .sc-reg-btn { font-size: .74rem; padding: 5px 10px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -19949,17 +19670,14 @@ section[data-page="transactions"] .content {
   width: 100%; max-width: 460px;
   margin: auto;
   animation: lgnFadeUp .55s cubic-bezier(.22,1,.36,1) both;
-  /* Touch interactivity for the form: only allow scroll when content overflows.
-     The JS _lgnTouchLock checks scrollHeight > clientHeight before allowing
-     touchmove — so when the card fits on screen, no drag is possible at all. */
-  touch-action: pan-y;          /* allow vertical scroll on tall content */
-  overflow-y: auto;             /* scroll when card taller than viewport */
+  /* Restore touch interactivity for the form content */
+  touch-action: pan-y;        /* allow vertical scroll inside card on short screens */
+  overflow-y: auto;           /* scroll when card taller than viewport */
   overflow-x: hidden;
-  overscroll-behavior: none;    /* hard stop at boundaries — no bounce or backdrop drag */
+  overscroll-behavior: contain; /* don't propagate scroll to backdrop */
   -webkit-overflow-scrolling: touch;
-  max-height: 100dvh;           /* cap height so it never exceeds viewport */
-  padding-bottom: env(safe-area-inset-bottom, 0px); /* iPhone home bar clearance */
-  user-select: text;            /* allow text selection inside form */
+  max-height: 100dvh;         /* cap height so it never exceeds viewport */
+  user-select: text;          /* allow text selection inside form */
   -webkit-user-select: text;
 }
 @keyframes lgnFadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
@@ -19970,7 +19688,7 @@ section[data-page="transactions"] .content {
   text-align: center;
 }
 .lgn-logo-img {
-  height: 127px; width: auto; object-fit: contain; /* +15% from 110px */
+  height: 110px; width: auto; object-fit: contain;
   filter: drop-shadow(0 0 28px rgba(125,194,66,.35));
   animation: lgnLogoPulse 4s ease-in-out infinite;
 }
