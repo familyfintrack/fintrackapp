@@ -1940,6 +1940,77 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 
+/* ══════════════════════════════════════════════════════════════════
+   TX SPLIT — Divisão por categoria e membro
+══════════════════════════════════════════════════════════════════ */
+.tx-split-subtab {
+  flex: 1; padding: 8px 10px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 10px; font-size: .78rem; font-weight: 700;
+  color: var(--muted); cursor: pointer; font-family: var(--font-sans);
+  transition: all .15s;
+}
+.tx-split-subtab.active {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff;
+}
+.tx-split-mode-btn {
+  flex: 1; padding: 7px 10px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: .75rem; font-weight: 700;
+  color: var(--muted); cursor: pointer; font-family: var(--font-sans);
+  transition: all .15s;
+}
+.tx-split-mode-btn.active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.tx-split-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 10px;
+}
+.tx-split-row-left  { flex: 1; min-width: 0; }
+.tx-split-row-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.tx-split-cat-btn {
+  width: 100%; text-align: left; padding: 5px 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; font-size: .8rem; font-weight: 600;
+  color: var(--text); cursor: pointer; font-family: var(--font-sans);
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tx-split-cat-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.tx-split-amount-input {
+  width: 90px; padding: 5px 8px;
+  border: 1.5px solid var(--border); border-radius: 7px;
+  font-size: .85rem; font-weight: 700; font-family: var(--font-serif);
+  background: var(--surface); color: var(--text);
+  text-align: right;
+}
+.tx-split-amount-input:focus { border-color: var(--accent); outline: none; }
+.tx-split-remove-btn {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: rgba(220,38,38,.1); border: none;
+  color: #dc2626; font-size: .9rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .12s;
+}
+.tx-split-remove-btn:hover { background: rgba(220,38,38,.2); }
+.tx-split-indicator {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .68rem; font-weight: 700; padding: 2px 7px;
+  border-radius: 5px; background: var(--accent); color: #fff;
+  margin-left: 6px; vertical-align: middle;
+}
+.tx-split-mem-select {
+  flex: 1; padding: 5px 8px;
+  border: 1.5px solid var(--border); border-radius: 7px;
+  font-size: .8rem; background: var(--surface); color: var(--text);
+  font-family: var(--font-sans);
+}
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
