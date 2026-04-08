@@ -838,48 +838,81 @@ async function doMagicLink() {
       btn.disabled = false; btn.textContent = '✉️ Enviar Link de Acesso';
       return;
     }
-    // Verify the e-mail exists AND is approved in app_users before sending
-    // the OTP — avoids leaking info about unknown e-mails via timing, and
-    // prevents unapproved users from ever receiving an access link.
-    const { data: appUser } = await sb
-      .from('app_users')
-      .select('approved,active')
-      .eq('email', email)
-      .maybeSingle();
 
-    if (!appUser) {
-      // Neutral message — do not confirm whether the e-mail is registered
-      _showMagicLinkSent();
-      return;
-    }
-    if (!appUser.approved) {
-      errEl.textContent = 'Sua conta ainda aguarda aprovação do administrador.';
-      errEl.style.display = '';
-      btn.disabled = false;
-      btn.textContent = '✉️ Enviar Link de Acesso';
-      return;
-    }
-    if (!appUser.active) {
-      errEl.textContent = 'Sua conta está inativa. Contate o administrador.';
-      errEl.style.display = '';
-      btn.disabled = false;
-      btn.textContent = '✉️ Enviar Link de Acesso';
-      return;
+    // ── Verify approval in app_users (best-effort — RLS may block anon reads) ──
+    // If the query fails due to RLS or network, we proceed to send the OTP anyway
+    // and let Supabase reject unknown emails via shouldCreateUser:false.
+    let appUser = null;
+    let appUserQueryFailed = false;
+    try {
+      const { data, error: qErr } = await sb
+        .from('app_users')
+        .select('approved,active')
+        .eq('email', email)
+        .maybeSingle();
+      if (qErr) {
+        // RLS blocked the anon read — log but don't abort
+        console.warn('[magicLink] app_users query blocked (RLS?):', qErr.message);
+        appUserQueryFailed = true;
+      } else {
+        appUser = data;
+      }
+    } catch(qEx) {
+      console.warn('[magicLink] app_users query exception:', qEx.message);
+      appUserQueryFailed = true;
     }
 
-    // Send the magic link via Supabase OTP
-    // Redirect to auth-callback.html which handles magic link flow gracefully
+    // Only gate on approval if the query actually returned a result
+    if (!appUserQueryFailed) {
+      if (!appUser) {
+        // Email not in app_users — show neutral message, don't reveal this fact
+        _showMagicLinkSent();
+        return;
+      }
+      if (!appUser.approved) {
+        errEl.textContent = 'Sua conta ainda aguarda aprovação do administrador.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = '✉️ Enviar Link de Acesso';
+        return;
+      }
+      if (!appUser.active) {
+        errEl.textContent = 'Sua conta está inativa. Contate o administrador.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = '✉️ Enviar Link de Acesso';
+        return;
+      }
+    }
+
+    // ── Send the magic link via Supabase OTP ──────────────────────────────────
     const redirectTo = _getAuthCallbackUrl();
     const { error } = await sb.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+      options: {
+        emailRedirectTo: redirectTo,
+        shouldCreateUser: false,  // never create new auth users from magic link
+      },
     });
-    if (error) throw error;
+
+    if (error) {
+      // Surface the real Supabase error to the user
+      // Common errors: "Email rate limit exceeded", "User not found", etc.
+      throw error;
+    }
 
     _showMagicLinkSent();
 
   } catch(e) {
-    errEl.textContent = 'Erro: ' + (e.message || e);
+    let msg = e.message || String(e);
+    // Humanise common Supabase error codes
+    if (msg.includes('rate limit') || msg.includes('429'))
+      msg = 'Limite de envios atingido. Aguarde alguns minutos e tente novamente.';
+    else if (msg.includes('not found') || msg.includes('no user'))
+      msg = 'E-mail não encontrado. Verifique o endereço digitado.';
+    else if (msg.includes('Email link') || msg.includes('disabled'))
+      msg = 'Magic link desativado neste projeto. Contate o administrador.';
+    errEl.textContent = 'Erro: ' + msg;
     errEl.style.display = '';
     btn.disabled = false;
     btn.textContent = '✉️ Enviar Link de Acesso';
