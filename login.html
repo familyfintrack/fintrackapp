@@ -119,7 +119,7 @@ html, body { height:100%; overflow:hidden; }
 }
 .lgn-logo-wrap::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  /* grid removed */
+  background-image:linear-gradient(rgba(125,194,66,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.08) 1px,transparent 1px);background-size:36px 36px;
 }
 .lgn-logo-img {
   height: 101px; width: auto; object-fit: contain;
@@ -683,10 +683,19 @@ body.platform-windows .lgn-screen {
     switchLoginTab('password');
   }
 
-  // Override bootApp: after login success, set flag then redirect to app.html
-  // The flag tells app.html's guard that we just came from login — skip the guard.
+  // Override bootApp: after login success redirect to app.html.
+  // Also expose a global fallback so any async path can reach app.html safely.
   window.bootApp = async function() {
-    window.location.replace('app.html');
+    try {
+      window.location.replace('app.html');
+    } catch(_) {
+      window.location.href = 'app.html';
+    }
+  };
+  // Safety net: if any post-login code does location.replace before bootApp
+  // is called (e.g. from a catch block), ensure it always lands on app.html
+  window._safeRedirectToApp = function() {
+    try { window.location.replace('app.html'); } catch(_) { window.location.href = 'app.html'; }
   };
 })();
 </script>
