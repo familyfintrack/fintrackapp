@@ -937,7 +937,7 @@ function openScheduledModal(id='') {
   }, 50);
 
   // Dates — usa _scSyncDate para manter os dois campos sincronizados
-  const _startDate = sc?.start_date || localDateStr();
+  const _startDate = (sc?.start_date||'').slice(0,10) || localDateStr();
   _scSyncDate(_startDate);
 
   // Frequency

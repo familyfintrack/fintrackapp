@@ -1543,7 +1543,7 @@ function resetTxModal(){
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
-  document.getElementById('txId').value=data.id;document.getElementById('txDate').value=data.date;setAmtField('txAmount', data.amount);document.getElementById('txDesc').value=data.description||'';document.getElementById('txAccountId').value=data.account_id||'';setCatPickerValue(data.category_id||null);document.getElementById('txMemo').value=data.memo||'';document.getElementById('txTags').value=(data.tags||[]).join(', ');_initTagsField(data.tags||[]);setPayeeField(data.payee_id||null,'tx');
+  document.getElementById('txId').value=data.id;document.getElementById('txDate').value=(data.date||'').slice(0,10);setAmtField('txAmount', data.amount);document.getElementById('txDesc').value=data.description||'';document.getElementById('txAccountId').value=data.account_id||'';setCatPickerValue(data.category_id||null);document.getElementById('txMemo').value=data.memo||'';document.getElementById('txTags').value=(data.tags||[]).join(', ');_initTagsField(data.tags||[]);setPayeeField(data.payee_id||null,'tx');
   // Load attachment if exists
   if (data.attachment_url) {
     document.getElementById('txAttachUrl').value        = data.attachment_url;
@@ -2905,7 +2905,7 @@ async function convertTxToScheduled(txId) {
   el('ctsDesc').value    = t.description || '';
   el('ctsAmount').value  = Math.abs(t.amount || 0).toFixed(2).replace('.', ',');
   el('ctsAccount').textContent = t.accounts?.name || '—';
-  el('ctsDate').value    = t.date || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+  el('ctsDate').value    = (t.date||'').slice(0,10) || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
   el('ctsMemo').value    = t.memo || '';
   el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
 

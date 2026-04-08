@@ -924,21 +924,32 @@ async function _syncDashPrefsFromServer() {
 
 function _dashApplyPrefs(prefs) {
   const order = _getDashCardOrder(prefs);
+
   // Apply visibility
   order.forEach(c => {
     const el = document.getElementById(c.el);
     if (!el) return;
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
-  // Apply order in DOM on all screen sizes
+
+  // Apply DOM order — find the shared parent container from the first
+  // card element that actually exists in the DOM.
   try {
-    const parent = document.getElementById(order[0]?.el)?.parentElement;
-    if (parent) {
-      order.forEach(c => {
-        const el = document.getElementById(c.el);
-        if (el && el.parentElement === parent) parent.appendChild(el);
-      });
+    let parent = null;
+    for (const c of order) {
+      const el = document.getElementById(c.el);
+      if (el) { parent = el.parentElement; break; }
     }
+    if (!parent) return;
+
+    // Re-attach each card in order. Cards whose direct parent differs
+    // (e.g. were previously inside a wrapper) are moved to the shared parent.
+    order.forEach(c => {
+      const el = document.getElementById(c.el);
+      if (!el) return;
+      // Move to shared parent if needed, then append to put in correct position
+      parent.appendChild(el);
+    });
   } catch(_) {}
 }
 

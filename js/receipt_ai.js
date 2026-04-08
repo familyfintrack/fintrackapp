@@ -333,7 +333,7 @@ function _applyResultToForm(r) {
   // data
   if (r.date) {
     const el = document.getElementById('txDate');
-    if (el) el.value = r.date;
+    if (el) el.value = (r.date||'').slice(0,10);
   }
 
   // valor — negativo para despesa, conforme padrão do app
