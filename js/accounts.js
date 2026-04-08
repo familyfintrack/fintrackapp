@@ -20,7 +20,7 @@ function openConsolidateModal(accountId) {
   balEl.textContent = fmt(a.balance, cur);
   balEl.style.color = a.balance >= 0 ? 'var(--accent)' : 'var(--red)';
   setAmtField('consolidateAmount', 0);
-  document.getElementById('consolidateDate').value = localDateStr();
+  document.getElementById('consolidateDate').value = new Date().toISOString().slice(0,10);
   document.getElementById('consolidateDesc').value = 'Consolidação de saldo';
   document.getElementById('consolidatePreview').style.display = 'none';
   document.getElementById('consolidateError').style.display = 'none';
@@ -75,7 +75,7 @@ async function saveConsolidation() {
   const errEl = document.getElementById('consolidateError');
   errEl.style.display = 'none';
   if (Math.abs(diff) < 0.005) { toast(t('toast.no_diff'), 'info'); closeModal('consolidateModal'); return; }
-  const date = document.getElementById('consolidateDate')?.value || localDateStr();
+  const date = document.getElementById('consolidateDate')?.value || new Date().toISOString().slice(0,10);
   const desc = document.getElementById('consolidateDesc')?.value?.trim() || 'Consolidação de saldo';
   const btn = document.getElementById('consolidateSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
@@ -1437,7 +1437,7 @@ async function archiveAccount(id) {
   _archiveAccId = id;
 
   // ── Check for active/future scheduled transactions ─────────────────
-  const today = localDateStr();
+  const today = new Date().toISOString().slice(0, 10);
   const { data: scData } = await famQ(
     sb.from('scheduled_transactions')
       .select('id,description,frequency,status,end_date,account_id,transfer_to_account_id')

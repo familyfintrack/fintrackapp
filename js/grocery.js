@@ -563,7 +563,7 @@ async function _callGroceryReceiptAI(apiKey, pending) {
     `${i.id}|${i.name}|${i.unit||'un'}`
   ).join('\n');
 
-  const today = localDateStr();
+  const today = new Date().toISOString().slice(0, 10);
 
   const prompt = `Você é especialista em leitura de recibos e notas fiscais brasileiras.
 Analise o recibo/nota na imagem e retorne SOMENTE um JSON válido.
@@ -675,7 +675,7 @@ async function _applyGroceryReceiptResult(result) {
     }
   }
 
-  const purchasedAt = result.date || localDateStr();
+  const purchasedAt = result.date || new Date().toISOString().slice(0, 10);
   const savedItems = [];
   const newPriceItems = [];
 

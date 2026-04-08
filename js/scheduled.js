@@ -8,13 +8,12 @@ state.scheduled = [];
  * @param {Date} [d] - Objeto Date opcional; usa new Date() se omitido.
  * @returns {string} 'YYYY-MM-DD'
  */
-// localDateStr is defined globally in utils.js — no local redefinition needed
-// (kept as alias for backward compat in case utils.js loads first)
-if (typeof localDateStr !== 'function') {
-  function localDateStr(d) {
-    const dt = (d instanceof Date) ? d : new Date();
-    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-  }
+function localDateStr(d) {
+  const dt = d || new Date();
+  const y  = dt.getFullYear();
+  const m  = String(dt.getMonth() + 1).padStart(2, '0');
+  const dy = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
 }
 
 

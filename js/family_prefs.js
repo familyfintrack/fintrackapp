@@ -194,26 +194,40 @@ async function _fpLoadFromDB(famId, background) {
   try {
     if (!window.sb) return _fpDefaultPrefs(famId);
 
-    // Tenta tabela dedicada `family_preferences` primeiro
     let prefs = null;
+
+    // Path 1: RPC get_family_preferences (SECURITY DEFINER — imune a RLS)
     try {
-      const { data, error } = await sb
-        .from('family_preferences')
-        .select('*')
-        .eq('family_id', famId)
-        .maybeSingle();
-      if (!error && data) {
-        prefs = _fpRowToPrefs(data, famId);
-      } else if (error) {
-        // Table may not exist yet — log and fall through to legacy
-        console.warn('[family_prefs] family_preferences table error (run migration?):', error.message);
+      const { data: rpcRows, error: rpcErr } = await sb
+        .rpc('get_family_preferences', { p_family_id: famId });
+      if (!rpcErr && rpcRows && rpcRows.length > 0) {
+        prefs = _fpRowToPrefs(rpcRows[0], famId);
+        console.log('[family_prefs] carregado via RPC:', prefs.modules);
       }
-    } catch(tableErr) {
-      console.warn('[family_prefs] family_preferences not available:', tableErr.message);
+    } catch(_) {}
+
+    // Path 2: SELECT direto (funciona se RLS permite ou tabela não tem RLS)
+    if (!prefs) {
+      try {
+        const { data, error } = await sb
+          .from('family_preferences')
+          .select('*')
+          .eq('family_id', famId)
+          .maybeSingle();
+        if (!error && data) {
+          prefs = _fpRowToPrefs(data, famId);
+          console.log('[family_prefs] carregado via SELECT direto:', prefs.modules);
+        } else if (error) {
+          console.warn('[family_prefs] SELECT direto falhou (rode a migration SQL):', error.message);
+        }
+      } catch(e2) {
+        console.warn('[family_prefs] SELECT exception:', e2.message);
+      }
     }
 
+    // Path 3: fallback legado — lê flags de app_settings + localStorage
     if (!prefs) {
-      // Fallback: monta preferências a partir de app_settings (legado)
+      console.warn('[family_prefs] tabela não disponível — usando legado. Execute sql/family_preferences_migration.sql no Supabase.');
       prefs = await _fpLoadFromLegacySettings(famId);
     }
 

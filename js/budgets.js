@@ -90,7 +90,7 @@ function _getSelectedPeriod() {
     const y = parseInt(document.getElementById('budgetYear')?.value) || new Date().getFullYear();
     return { year: y };
   }
-  const mv = document.getElementById('budgetMonth')?.value || localMonthStr();
+  const mv = document.getElementById('budgetMonth')?.value || new Date().toISOString().slice(0, 7);
   const [y, m] = mv.split('-');
   return { year: parseInt(y), month: parseInt(m), monthStr: mv };
 }
@@ -481,7 +481,7 @@ function openBudgetModal(id = '') {
   if (monthEl) {
     monthEl.value = existing?.month
       ? existing.month.slice(0, 7)
-      : (period.monthStr || localMonthStr(now));
+      : (period.monthStr || now.toISOString().slice(0, 7));
   }
 
   // Ano — o select já foi populado em initBudgetsPage
@@ -698,7 +698,7 @@ function switchBudgetMainTab(tab) {
 function initBudgetsPage() {
   const now     = new Date();
   const monthEl = document.getElementById('budgetMonth');
-  if (monthEl && !monthEl.value) monthEl.value = localMonthStr(now);
+  if (monthEl && !monthEl.value) monthEl.value = now.toISOString().slice(0, 7);
 
   _populateYearSelectors();
   _populateHistCat();

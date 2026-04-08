@@ -374,7 +374,7 @@ function _trExportCSV() {
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   const a    = document.createElement('a');
   a.href     = URL.createObjectURL(blob);
-  a.download = `fintrack-i18n-${localDateStr()}.csv`;
+  a.download = `fintrack-i18n-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   toast('📥 CSV exportado', 'success');
 }

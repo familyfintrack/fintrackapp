@@ -454,7 +454,7 @@ function _updateFeedbackBadge(count) {
 function _showFeedbackLoginNotif(count) {
   // Check if dismissed today
   try {
-    const today = localDateStr();
+    const today = new Date().toISOString().slice(0,10);
     if (localStorage.getItem('notif_dismiss_fbLoginNotif') === today) return;
   } catch(_) {}
   // Don't stack multiple popups
@@ -489,7 +489,7 @@ function _showFeedbackLoginNotif(count) {
             style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);background:transparent;border-radius:8px;cursor:pointer;color:var(--text2)">
             Depois
           </button>
-          <button onclick="(typeof _dismissNotifToday==='function'?_dismissNotifToday('fbLoginNotif'):localStorage.setItem('notif_dismiss_fbLoginNotif',localDateStr()));document.getElementById('fbLoginNotifPopup')?.remove()"
+          <button onclick="(typeof _dismissNotifToday==='function'?_dismissNotifToday('fbLoginNotif'):localStorage.setItem('notif_dismiss_fbLoginNotif',new Date().toISOString().slice(0,10)));document.getElementById('fbLoginNotifPopup')?.remove()"
             style="padding:7px 12px;font-size:.78rem;font-family:var(--font-sans);border:1px solid var(--border);background:transparent;border-radius:8px;cursor:pointer;color:var(--muted)">
             Não hoje
           </button>

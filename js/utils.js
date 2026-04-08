@@ -515,53 +515,6 @@ function _amtFieldInput(fieldId) {
   _amtRender(el, cents);
 }
 function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('T')[0].split('-');return`${day}/${m}/${y}`;}
-
-/* ══════════════════════════════════════════════════════════════════
-   LOCAL DATE HELPERS — always use device local time, never UTC
-   These functions replace new Date().toISOString().slice(0,10) which
-   returns UTC and causes wrong "today" for UTC+ users after 9pm, or
-   UTC- users early morning.
-══════════════════════════════════════════════════════════════════ */
-
-/**
- * Returns today's date as 'YYYY-MM-DD' in the device's local timezone.
- * Optional Date argument returns that date in local time.
- * @param {Date} [d] - optional date object (defaults to now)
- * @returns {string} 'YYYY-MM-DD'
- */
-function localDateStr(d) {
-  const dt = (d instanceof Date) ? d : new Date();
-  const y  = dt.getFullYear();
-  const m  = String(dt.getMonth() + 1).padStart(2, '0');
-  const dy = String(dt.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dy}`;
-}
-window.localDateStr = localDateStr;
-
-/**
- * Returns current month as 'YYYY-MM' in local timezone.
- * @param {Date} [d] - optional date object
- * @returns {string} 'YYYY-MM'
- */
-function localMonthStr(d) {
-  const dt = (d instanceof Date) ? d : new Date();
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
-}
-window.localMonthStr = localMonthStr;
-
-/**
- * Returns today's date at local midnight as a Date object.
- * Useful for date arithmetic that should respect local calendar days.
- * @returns {Date}
- */
-function localMidnight() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-window.localMidnight = localMidnight;
-
-
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 

@@ -237,7 +237,7 @@ async function openPayeeHistory(payeeId, payeeName) {
 
   const since = new Date();
   since.setMonth(since.getMonth() - 6);
-  const sinceStr = localDateStr(since);
+  const sinceStr = since.toISOString().slice(0,10);
 
   const { data, error } = await famQ(
     sb.from('transactions')

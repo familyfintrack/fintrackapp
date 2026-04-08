@@ -390,7 +390,7 @@ const AgentGeminiContract = {
 
   // Constrói o system instruction permanente — persona + dados da família
   buildSystemInstruction(context) {
-    const today = context.today || localDateStr();
+    const today = context.today || new Date().toISOString().slice(0, 10);
     const accs  = (context.accounts   || []).map(a =>
       `${a.name} (${a.type||'conta'}, ${a.currency||'BRL'}${a.balance!=null?', saldo '+a.balance:''})`
     ).join('; ');
@@ -799,8 +799,8 @@ const AgentGuidedUI = {
     if (field.entityList === 'payees')     return (s.payees || []).map(p => ({ value: p.name, label: p.name }));
     if (field.choices)                     return field.choices;
     if (field.key === 'date')              return [
-      { value: localDateStr(), label: 'Hoje' },
-      { value: (() => { const d = new Date(); d.setDate(d.getDate()-1); return localDateStr(d); })(), label: 'Ontem' },
+      { value: new Date().toISOString().slice(0, 10), label: 'Hoje' },
+      { value: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })(), label: 'Ontem' },
     ];
     return [];
   },
@@ -1134,7 +1134,7 @@ const AgentEngine = {
     }, 0);
 
     return {
-      today:             localDateStr(),
+      today:             new Date().toISOString().slice(0, 10),
       currentPage:       s.currentPage || 'dashboard',
       pendingIntent:     AgentSession.state.pendingIntent,
       // Entidades com saldo incluído para melhor resolução

@@ -786,7 +786,7 @@ function _agentBuildGuidedInput(step, idx) {
   }
 
   if (step.type === 'date') {
-    const today = localDateStr();
+    const today = new Date().toISOString().slice(0,10);
     return `<input type="date" lang="pt-BR" id="${id}" class="agf-input" value="${today}"
       onchange="agentGuidedInput(${idx}, this.value)"
       onkeydown="if(event.key==='Enter')agentGuidedAdvance(${idx})"
@@ -888,7 +888,7 @@ window.agentGuidedConfirm = async function() {
 
   // Normalize: if date not set, use today
   if (!data.date && !data.start_date) {
-    data.date = localDateStr();
+    data.date = new Date().toISOString().slice(0,10);
   }
 
   // Build natural-language summary

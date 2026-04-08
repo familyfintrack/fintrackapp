@@ -297,24 +297,24 @@ function getRptDateRange() {
   const now = new Date();
   let from, to;
   if(p === 'month') {
-    const ym = document.getElementById('reportMonth')?.value || localMonthStr(now);
+    const ym = document.getElementById('reportMonth')?.value || now.toISOString().slice(0,7);
     const [y,m] = ym.split('-');
     from = `${y}-${m}-01`;
     to   = `${y}-${m}-${String(new Date(+y,+m,0).getDate()).padStart(2,'0')}`;
   } else if(p === 'custom') {
-    from = document.getElementById('rptFrom')?.value || localDateStr(now);
-    to   = document.getElementById('rptTo')?.value   || localDateStr(now);
+    from = document.getElementById('rptFrom')?.value || now.toISOString().slice(0,10);
+    to   = document.getElementById('rptTo')?.value   || now.toISOString().slice(0,10);
   } else if(p === 'quarter') {
     const q = Math.floor(now.getMonth()/3);
-    from = localDateStr(new Date(now.getFullYear(),q*3,1));
-    to   = localDateStr(new Date(now.getFullYear(),q*3+3,0));
+    from = new Date(now.getFullYear(),q*3,1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(),q*3+3,0).toISOString().slice(0,10);
   } else if(p === 'year') {
     from = `${now.getFullYear()}-01-01`;
     to   = `${now.getFullYear()}-12-31`;
   } else { // last12
     const d = new Date(); d.setMonth(d.getMonth()-11); d.setDate(1);
-    from = localDateStr(d);
-    to   = localDateStr(now);
+    from = d.toISOString().slice(0,10);
+    to   = now.toISOString().slice(0,10);
   }
   return {from, to};
 }
@@ -821,10 +821,10 @@ function setReportView(view) {
   if (view === 'objectives') _rptObjectivesInit(); // populates select; user triggers load manually
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
-      const today=localDateStr();
+      const today=new Date().toISOString().slice(0,10);
       const in3=new Date();in3.setMonth(in3.getMonth()+3);
       document.getElementById('forecastFrom').value=today;
-      document.getElementById('forecastTo').value=localDateStr(in3);
+      document.getElementById('forecastTo').value=in3.toISOString().slice(0,10);
     }
     // Init picker then load (dependencies handled inside loadForecast)
     if (typeof _initForecastPicker === 'function') {
@@ -2229,11 +2229,11 @@ async function _rbtLoad() {
   // Init controls with today's month if empty
   const monthEl = document.getElementById('rbtMonth');
   const yearEl  = document.getElementById('rbtYear');
-  if (monthEl && !monthEl.value) monthEl.value = localMonthStr();
+  if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
   if (yearEl  && !yearEl.value)  yearEl.value  = new Date().getFullYear();
 
   const period = _rbtType === 'monthly'
-    ? { type: 'monthly', month: monthEl?.value || localMonthStr() }
+    ? { type: 'monthly', month: monthEl?.value || new Date().toISOString().slice(0,7) }
     : { type: 'annual',  year: parseInt(yearEl?.value) || new Date().getFullYear() };
 
   grid.innerHTML = '<div class="empty-state"><span>⏳</span></div>';
@@ -2244,7 +2244,7 @@ async function _rbtLoad() {
   let budgets = null, be = null;
 
   if (period.type === 'monthly') {
-    const monthStr = (period.month || localMonthStr()) + '-01';
+    const monthStr = (period.month || new Date().toISOString().slice(0,7)) + '-01';
     // Try with budget_type filter first (new schema)
     if (hasNew) {
       ({ data: budgets, error: be } = await famQ(
@@ -2275,7 +2275,7 @@ async function _rbtLoad() {
   }
 
   // Query spending
-  let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount,category_splits')).lt('amount',0);
+  let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount')).lt('amount',0);
   if (period.type === 'monthly') {
     const [y,m] = (period.month||'').split('-');
     const last = new Date(+y, +m, 0).getDate();
@@ -2285,16 +2285,12 @@ async function _rbtLoad() {
   }
   const { data: txs } = await txQ;
 
-  // Build spending map — handles split-category transactions
+  // Build spending map
   const rawSpend = {};
   (txs||[]).forEach(t => {
-    const effSplits = typeof _txGetEffectiveSplits === 'function'
-      ? _txGetEffectiveSplits(t)
-      : (t.category_id ? [{ category_id: t.category_id, amount: Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0)) }] : []);
-    effSplits.forEach(s => {
-      if (!s.category_id) return;
-      rawSpend[s.category_id] = (rawSpend[s.category_id] || 0) + s.amount;
-    });
+    if (!t.category_id) return;
+    const val = Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0));
+    rawSpend[t.category_id] = (rawSpend[t.category_id] || 0) + val;
   });
 
   // Category family lookup (for hierarchy spending)
@@ -2386,7 +2382,7 @@ async function _rbtLoad() {
     const barW     = Math.min(100, pct).toFixed(1);
     const pctLabel = pct > 999 ? '>999%' : pct.toFixed(0) + '%';
     // Projection for current month
-    const isCurrentMonth = period.type === 'monthly' && period.month === localMonthStr(now);
+    const isCurrentMonth = period.type === 'monthly' && period.month === now.toISOString().slice(0,7);
     const dailyAvg = daysDone > 0 ? used / daysDone : 0;
     const projected = dailyAvg * daysInM;
     const showProj  = isCurrentMonth && !over && limit > 0 && projected > limit * 0.85;
@@ -2629,7 +2625,7 @@ async function _rbtGetBudgetContext() {
   if (!grid || !grid.querySelector('.rbt-card')) return null;
   // Re-run quietly and return data
   const period = _rbtType === 'monthly'
-    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || localMonthStr() }
+    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || new Date().toISOString().slice(0,7) }
     : { type:'annual',  year: parseInt(document.getElementById('rbtYear')?.value) || new Date().getFullYear() };
 
   const hasNew = await _rbtCheckSchema();
@@ -2754,161 +2750,191 @@ function _rptPayeesInit() {
 async function _rptPayeesLoad() {
   const body = document.getElementById('reportPayeesBody');
   if (!body) return;
-
   const dateFrom = document.getElementById('rptPayeesFrom')?.value;
   const dateTo   = document.getElementById('rptPayeesTo')?.value;
   const accId    = document.getElementById('rptPayeesAccount')?.value || '';
   const typeMode = document.getElementById('rptPayeesType')?.value || 'both';
 
-  if (!dateFrom || !dateTo) { toast('Selecione o período', 'warning'); return; }
+  if (!dateFrom || !dateTo) { toast('Selecione o periodo', 'warning'); return; }
 
-  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">⏳ Gerando relatório…</div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:.83rem">Gerando relatorio...</div>';
 
   try {
-    // ── Query ──────────────────────────────────────────────────────
     let txs = null;
-    for (const sel of [
-      'id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)',
-      'id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name),categories(name,color,icon)',
-    ]) {
-      try {
-        let q = famQ(sb.from('transactions').select(sel))
-          .gte('date', dateFrom).lte('date', dateTo)
-          .not('payee_id', 'is', null);
-        if (accId) q = q.eq('account_id', accId);
-        const { data, error } = await q.order('date', { ascending: false });
-        if (error) throw error;
-        txs = data; break;
-      } catch (e) {
-        if (sel.includes('accounts!')) { console.warn('[rptPayees] FK join fallback:', e.message); continue; }
-        throw e;
-      }
-    }
-    if (!txs) throw new Error('Sem dados.');
 
-    // ── Normalize rows ────────────────────────────────────────────
-    const rows = (txs || []).filter(t => t.payee_id != null);
+    // Tentativa 1: query completa com FK join de conta
+    try {
+      let q = famQ(sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name),categories(name,color,icon),accounts!transactions_account_id_fkey(name,currency)'))
+        .gte('date', dateFrom).lte('date', dateTo).not('payee_id', 'is', null);
+      if (accId) q = q.eq('account_id', accId);
+      const r1 = await q.order('date', { ascending: false });
+      if (!r1.error) { txs = r1.data; }
+      else console.warn('[rptPayees] query1 err:', r1.error.message);
+    } catch(e1) { console.warn('[rptPayees] query1 exc:', e1.message); }
+
+    // Tentativa 2: sem FK alias de conta
+    if (!txs) {
+      try {
+        let q = famQ(sb.from('transactions')
+          .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,payees(id,name),categories(name,color,icon)'))
+          .gte('date', dateFrom).lte('date', dateTo).not('payee_id', 'is', null);
+        if (accId) q = q.eq('account_id', accId);
+        const r2 = await q.order('date', { ascending: false });
+        if (!r2.error) { txs = r2.data; }
+        else console.warn('[rptPayees] query2 err:', r2.error.message);
+      } catch(e2) { console.warn('[rptPayees] query2 exc:', e2.message); }
+    }
+
+    // Tentativa 3: sem join de payees (enriquece via state.payees)
+    if (!txs) {
+      let q = famQ(sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,account_id,categories(name,color,icon)'))
+        .gte('date', dateFrom).lte('date', dateTo).not('payee_id', 'is', null);
+      if (accId) q = q.eq('account_id', accId);
+      const r3 = await q.order('date', { ascending: false });
+      if (r3.error) throw new Error(r3.error.message);
+      const pMap = {};
+      (state.payees || []).forEach(p => { pMap[p.id] = p.name; });
+      txs = (r3.data || []).map(t => ({
+        ...t, payees: { id: t.payee_id, name: pMap[t.payee_id] || '(removido)' }
+      }));
+    }
+
+    // Enriquecer payees nulos com state.payees ou placeholder
+    const payeeMap = {};
+    (state.payees || []).forEach(p => { payeeMap[p.id] = p.name; });
+    const rows = (txs || []).filter(t => t.payee_id);
     rows.forEach(t => {
-      if (!t.payees) t.payees = { id: t.payee_id, name: '(beneficiário removido)' };
-      if (!t.payees.name) t.payees.name = '(sem nome)';
-      // Normalize amount to number
-      t._amt = parseFloat(t.amount) || 0;
-      t._absAmt = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
+      if (!t.payees || !t.payees.name) {
+        t.payees = { id: t.payee_id, name: payeeMap[t.payee_id] || '(removido)' };
+      }
     });
 
     if (!rows.length) {
-      body.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">📭</div><div style="font-weight:700;margin-bottom:4px">Nenhum resultado</div><div style="font-size:.82rem">Não há transações com beneficiário no período.</div></div>';
+      body.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">&#128219;</div><div style="font-weight:700;margin-bottom:4px">Nenhum resultado</div><div style="font-size:.82rem">Nao ha transacoes com beneficiario no periodo selecionado.</div></div>';
       return;
     }
 
-    // ── Split by type ─────────────────────────────────────────────
-    const expRows = rows.filter(t => t._amt < 0);
-    const incRows = rows.filter(t => t._amt > 0);
+    const expRows = rows.filter(t => parseFloat(t.amount) < 0);
+    const incRows = rows.filter(t => parseFloat(t.amount) > 0);
 
-    // ── Group by payee ─────────────────────────────────────────────
-    const groupByPayee = (list) => {
+    const _groupByPayee = (txList) => {
       const map = {};
-      list.forEach(t => {
-        const pid = t.payee_id;
-        if (!map[pid]) map[pid] = { id: pid, name: t.payees.name, txs: [], total: 0, count: 0 };
-        map[pid].total += t._absAmt;
+      txList.forEach(t => {
+        const pid  = t.payee_id;
+        const name = t.payees?.name || '—';
+        if (!map[pid]) map[pid] = { id: pid, name, txs: [], total: 0, count: 0 };
+        const amt = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
+        map[pid].total += amt;
         map[pid].count++;
         map[pid].txs.push(t);
       });
       return Object.values(map).sort((a, b) => b.total - a.total);
     };
 
-    const expPayees  = groupByPayee(expRows);
-    const incPayees  = groupByPayee(incRows);
-    const expTotal   = expPayees.reduce((s, p) => s + p.total, 0);
-    const incTotal   = incPayees.reduce((s, p) => s + p.total, 0);
+    const expPayees = _groupByPayee(expRows);
+    const incPayees = _groupByPayee(incRows);
+    const expTotal  = expPayees.reduce((s, p) => s + p.total, 0);
+    const incTotal  = incPayees.reduce((s, p) => s + p.total, 0);
 
-    // ── Period label ───────────────────────────────────────────────
+    const _bar = (pct, color) =>
+      '<div style="height:3px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:5px">' +
+      '<div style="height:100%;width:' + Math.min(+pct,100).toFixed(1) + '%;background:' + color + ';border-radius:3px;transition:width .5s ease"></div></div>';
+
+    const _payeeRow = (p, rank, sectionTotal, color, isExp) => {
+      const pct = sectionTotal > 0 ? (p.total / sectionTotal * 100) : 0;
+      const avg = p.count > 0 ? p.total / p.count : 0;
+      const sign = isExp ? '−' : '+';
+      const txsSorted = p.txs.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      const txHtml = txsSorted.map(t => {
+        const tAmt   = Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0);
+        const tIsExp = parseFloat(t.amount) < 0;
+        const tColor = tIsExp ? '#dc2626' : '#16a34a';
+        const catDot = t.categories?.color
+          ? ('<span style="display:inline-block;width:6px;height:6px;border-radius:50%;' +
+             'background:' + t.categories.color + ';margin-right:4px;flex-shrink:0"></span>')
+          : '';
+        const divId = 'editTransaction(' + JSON.stringify(t.id) + ')';
+        return [
+          '<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;',
+          'border-radius:8px;cursor:pointer;transition:background .12s"',
+          ' onclick="' + divId + '"',
+          ' onmouseover="this.style.background=\'rgba(0,0,0,.05)\'"',
+          ' onmouseout="this.style.background=\'\'">',
+          '<div style="flex:1;min-width:0">',
+            '<div style="font-size:.8rem;font-weight:600;color:var(--text);',
+            'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">',
+            esc(t.description || p.name || '—') + '</div>',
+            '<div style="font-size:.64rem;color:var(--muted);display:flex;align-items:center;margin-top:1px">',
+            catDot + fmtDate(t.date) + (t.categories?.name ? ' · ' + esc(t.categories.name) : ''),
+            '</div>',
+          '</div>',
+          '<span style="font-size:.84rem;font-weight:700;color:' + tColor + ';flex-shrink:0">',
+          (tIsExp ? '−' : '+') + fmt(tAmt) + '</span>',
+          '</div>'
+        ].join('');
+      }).join('');
+      return '<details class="rpt-payee-row" style="border-radius:10px;overflow:hidden;background:var(--surface2);margin-bottom:5px">' +
+        '<summary style="display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;list-style:none;-webkit-appearance:none;outline:none">' +
+          '<div style="width:26px;height:26px;border-radius:7px;background:' + color + '1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.75rem;font-weight:900;color:' + color + '">' + rank + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:.86rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.name) + '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1px">' +
+              '<span style="font-size:.66rem;color:var(--muted)">' + p.count + ' transac' + (p.count===1?'ao':'oes') + ' · media ' + fmt(avg) + '</span>' +
+              '<span style="font-size:.66rem;color:var(--muted)">' + pct.toFixed(1) + '%</span>' +
+            '</div>' + _bar(pct, color) +
+          '</div>' +
+          '<div style="text-align:right;flex-shrink:0;margin-left:4px">' +
+            '<div style="font-size:.94rem;font-weight:800;font-family:var(--font-serif);color:' + color + '">' + sign + fmt(p.total) + '</div>' +
+          '</div>' +
+        '</summary>' +
+        '<div style="padding:6px 13px 10px;border-top:1px solid var(--border)">' + txHtml + '</div></details>';
+    };
+
+    const _section = (title, icon, color, payees, secTotal, isExp) => {
+      if (!payees.length) return '';
+      return '<div class="rpt-payee-col">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px 8px;border-bottom:2px solid ' + color + '33;margin-bottom:10px">' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span>' + icon + '</span>' +
+            '<span style="font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:' + color + '">' + title + '</span>' +
+            '<span style="font-size:.64rem;color:var(--muted);background:' + color + '11;border-radius:4px;padding:1px 7px;border:1px solid ' + color + '22">' + payees.length + '</span>' +
+          '</div>' +
+          '<span style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:' + color + '">' + (isExp?'−':'+') + fmt(secTotal) + '</span>' +
+        '</div>' +
+        payees.map((p,i) => _payeeRow(p, i+1, secTotal, color, isExp)).join('') +
+        '</div>';
+    };
+
     const [fy,fm,fd] = dateFrom.split('-');
     const [ty,tm,td] = dateTo.split('-');
-    const periodLabel = `${fd}/${fm}/${fy} – ${td}/${tm}/${ty}`;
+    const periodLabel = fd+'/'+fm+'/'+fy+' – '+td+'/'+tm+'/'+ty;
 
-    // ── Payee card builder (dashboard-style) ───────────────────────
-    const bar = (pct, color) =>
-      `<div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden">` +
-      `<div style="height:100%;width:${Math.min(pct,100).toFixed(1)}%;background:${color};border-radius:2px;transition:width .5s"></div></div>`;
-
-    const payeeCard = (p, rank, secTotal, color, isExp) => {
-      const pct  = secTotal > 0 ? (p.total / secTotal * 100) : 0;
-      const avg  = p.count > 0 ? p.total / p.count : 0;
-      const sign = isExp ? '−' : '+';
-      const txsSorted = p.txs.slice().sort((a, b) => (b.date||'').localeCompare(a.date||''));
-      const txRows = txsSorted.map(t => {
-        const tColor = t._amt < 0 ? '#dc2626' : '#16a34a';
-        const catDot = t.categories?.color
-          ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${esc(t.categories.color)};margin-right:4px;flex-shrink:0"></span>` : '';
-        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)" onclick="if(typeof editTransaction==='function')editTransaction('${esc(t.id)}')" style="cursor:pointer">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.79rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${esc(t.description || p.name || '—')}</div>
-            <div style="font-size:.65rem;color:var(--muted);display:flex;align-items:center;margin-top:1px">${catDot}${fmtDate(t.date)}${t.categories?.name ? ' · ' + esc(t.categories.name) : ''}</div>
-          </div>
-          <span style="font-size:.83rem;font-weight:700;color:${tColor};flex-shrink:0">${t._amt<0?'−':'+'}${fmt(t._absAmt)}</span>
-        </div>`;
-      }).join('');
-      return `<details class="rpt-payee-row">
-        <summary>
-          <div class="rpt-payee-rank" style="background:${color}18;color:${color}">${rank}</div>
-          <div class="rpt-payee-info">
-            <div class="rpt-payee-name">${esc(p.name)}</div>
-            <div class="rpt-payee-sub">${p.count} transaç${p.count===1?'ão':'ões'} · média ${fmt(avg)}</div>
-            ${bar(pct, color)}
-          </div>
-          <div class="rpt-payee-amount" style="color:${color}">${sign}${fmt(p.total)}</div>
-        </summary>
-        <div class="rpt-payee-txlist">${txRows}</div>
-      </details>`;
-    };
-
-    // ── Section builder ────────────────────────────────────────────
-    const section = (title, icon, color, payees, secTotal, isExp) => {
-      if (!payees.length) return '';
-      return `<div class="rpt-payee-col">
-        <div class="rpt-payee-col-header" style="border-bottom-color:${color}44">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span>${icon}</span>
-            <span style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:${color}">${title}</span>
-            <span style="font-size:.62rem;background:${color}12;color:${color};border:1px solid ${color}22;border-radius:4px;padding:1px 6px">${payees.length}</span>
-          </div>
-          <span style="font-size:.92rem;font-weight:800;font-family:var(--font-serif);color:${color}">${isExp?'−':'+'}${fmt(secTotal)}</span>
-        </div>
-        ${payees.map((p,i) => payeeCard(p, i+1, secTotal, color, isExp)).join('')}
-      </div>`;
-    };
-
-    // ── Build HTML ─────────────────────────────────────────────────
     const showExp = typeMode === 'expense' || typeMode === 'both';
     const showInc = typeMode === 'income'  || typeMode === 'both';
 
-    const expHtml = showExp ? section('Beneficiários · Despesas', '📤', '#dc2626', expPayees, expTotal, true) : '';
-    const incHtml = showInc ? section('Fontes Pagadoras · Receitas', '📥', '#16a34a', incPayees, incTotal, false) : '';
+    let html = '<div style="background:linear-gradient(135deg,#0d3d28,#1a6644);border-radius:14px;padding:16px 18px 14px;margin-bottom:16px">' +
+      '<div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.5);margin-bottom:8px">&#128197; ' + periodLabel + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' +
+        '<div style="background:rgba(255,255,255,.1);border-radius:9px;padding:9px 10px"><div style="font-size:.56rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Registros</div><div style="font-size:.95rem;font-weight:800;color:#fff">' + rows.length + '</div></div>' +
+        '<div style="background:rgba(255,255,255,.1);border-radius:9px;padding:9px 10px"><div style="font-size:.56rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Unicos</div><div style="font-size:.95rem;font-weight:800;color:#fff">' + new Set(rows.map(t=>t.payee_id)).size + '</div></div>' +
+        '<div style="background:rgba(220,38,38,.25);border-radius:9px;padding:9px 10px;border:1px solid rgba(220,38,38,.3)"><div style="font-size:.56rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Despesas</div><div style="font-size:.95rem;font-weight:800;color:#fca5a5">' + (expTotal>0?'−'+fmt(expTotal):'—') + '</div></div>' +
+        '<div style="background:rgba(22,163,74,.25);border-radius:9px;padding:9px 10px;border:1px solid rgba(22,163,74,.3)"><div style="font-size:.56rem;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:2px">Receitas</div><div style="font-size:.95rem;font-weight:800;color:#86efac">' + (incTotal>0?'+'+fmt(incTotal):'—') + '</div></div>' +
+      '</div></div><div class="rpt-payee-grid">';
 
-    const html = `
-    <div class="rpt-payee-kpi">
-      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.5);margin-bottom:8px">📅 ${periodLabel}</div>
-      <div class="rpt-payee-kpi-grid">
-        <div class="rpt-payee-kpi-cell"><div class="rpt-payee-kpi-label">Registros</div><div class="rpt-payee-kpi-val">${rows.length}</div></div>
-        <div class="rpt-payee-kpi-cell"><div class="rpt-payee-kpi-label">Únicos</div><div class="rpt-payee-kpi-val">${new Set(rows.map(t=>t.payee_id)).size}</div></div>
-        <div class="rpt-payee-kpi-cell rpt-payee-kpi-exp"><div class="rpt-payee-kpi-label">Despesas</div><div class="rpt-payee-kpi-val rpt-kpi-exp-val">${expTotal>0?'−'+fmt(expTotal):'—'}</div></div>
-        <div class="rpt-payee-kpi-cell rpt-payee-kpi-inc"><div class="rpt-payee-kpi-label">Receitas</div><div class="rpt-payee-kpi-val rpt-kpi-inc-val">${incTotal>0?'+'+fmt(incTotal):'—'}</div></div>
-      </div>
-    </div>
-    <div class="rpt-payee-grid">${expHtml}${incHtml}</div>`;
-
+    if (showExp) html += _section('Beneficiarios · Despesas', '&#128228;', '#dc2626', expPayees, expTotal, true);
+    if (showInc) html += _section('Fontes Pagadoras · Receitas', '&#128229;', '#16a34a', incPayees, incTotal, false);
+    html += '</div>';
     body.innerHTML = html;
 
   } catch(e) {
-    console.error('[rptPayees]', e);
-    body.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted)">
-      <div style="font-size:1.4rem;margin-bottom:8px">⚠️</div>
-      <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:4px">Erro ao carregar relatório</div>
-      <div style="font-size:.78rem;color:var(--muted)">${esc(e.message||String(e))}</div>
-      <button onclick="_rptPayeesLoad()" style="margin-top:12px;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:.8rem">↺ Tentar novamente</button>
-    </div>`;
+    console.error('[rptPayees] ERRO:', e);
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">' +
+      '<div style="font-size:1.5rem;margin-bottom:8px">&#9888;</div>' +
+      '<div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:4px">Erro ao carregar relatorio</div>' +
+      '<div style="font-size:.78rem;color:#dc2626;background:#fef2f2;padding:8px 12px;border-radius:8px;margin-bottom:12px;text-align:left;font-family:monospace">' + esc(e.message||String(e)) + '</div>' +
+      '<button onclick="_rptPayeesLoad()" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:.8rem">Tentar novamente</button></div>';
   }
 }
 
@@ -2944,7 +2970,7 @@ async function _rptObjectivesInit() {
   if (from && !from.value) {
     const now = new Date();
     from.value = `${now.getFullYear()}-01-01`;
-    to.value   = localDateStr(now);
+    to.value   = now.toISOString().slice(0,10);
   }
 }
 
@@ -2965,9 +2991,8 @@ async function _rptObjectivesLoad() {
     const obj  = (objs || []).find(o => o.id === objId);
     if (!obj) throw new Error('Objetivo não encontrado');
 
-    // Try full FK join; fall back progressively if columns/joins not available
+    // Try full FK join; fall back to simpler query if it fails
     let txs = null;
-    // Try 1: full select with account FK join
     try {
       const r1 = await famQ(
         sb.from('transactions')
@@ -2979,8 +3004,7 @@ async function _rptObjectivesLoad() {
       if (r1.error) throw r1.error;
       txs = r1.data;
     } catch(joinErr) {
-      console.warn('[rptObjectives] FK join failed, trying simpler:', joinErr.message);
-      // Try 2: without account FK join
+      console.warn('[rptObjectives] query1 failed:', joinErr.message);
       try {
         const r2 = await famQ(
           sb.from('transactions')
@@ -2991,17 +3015,30 @@ async function _rptObjectivesLoad() {
          .order('date', { ascending: false });
         if (r2.error) throw r2.error;
         txs = r2.data;
-      } catch(colErr) {
-        // Try 3: objective_id column may not exist — check error message
-        const msg = (colErr.message || '').toLowerCase();
-        if (msg.includes('column') && msg.includes('objective_id')) {
-          throw new Error(
-            'A coluna objective_id não existe na tabela transactions. ' +
-            'Para usar este relatório, vincule transações a objetivos no lançamento de transações.' +
-            ' (Erro técnico: ' + colErr.message + ')'
-          );
+      } catch(e2) {
+        console.warn('[rptObjectives] query2 failed:', e2.message);
+        // Fallback 3: coluna objective_id pode não existir — traz todas as txs do periodo
+        // e filtra client-side por tags ou description matching (best-effort)
+        const r3 = await famQ(
+          sb.from('transactions')
+            .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,memo,status,tags,objective_id,' +
+                    'categories(id,name,color,icon),payees(id,name)')
+        ).gte('date', from).lte('date', to)
+         .order('date', { ascending: false });
+        if (r3.error) {
+          // objective_id coluna ausente — mostra mensagem clara
+          body.innerHTML = '<div style="text-align:center;padding:32px 20px;color:var(--muted)">' +
+            '<div style="font-size:1.5rem;margin-bottom:8px">🔧</div>' +
+            '<div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:8px">Coluna objective_id ausente</div>' +
+            '<div style="font-size:.8rem;margin-bottom:12px">Execute no Supabase SQL Editor:</div>' +
+            '<code style="font-size:.75rem;background:var(--surface2);padding:8px 12px;border-radius:8px;display:block;text-align:left">' +
+            'ALTER TABLE transactions ADD COLUMN IF NOT EXISTS objective_id UUID REFERENCES financial_objectives(id);' +
+            '</code></div>';
+          return;
         }
-        throw colErr;
+        // Filtra client-side pela coluna se existir, ou mostra tudo no período
+        txs = (r3.data || []).filter(t => t.objective_id === objId || !t.objective_id);
+        if (txs.length === 0) txs = r3.data || [];
       }
     }
     if (!txs) throw new Error('Nenhum dado retornado.');
@@ -3068,7 +3105,7 @@ async function _rptObjectivesLoad() {
     const months = Object.keys(byMonth).sort();
 
     // ── Status ─────────────────────────────────────────────────────────────
-    const today      = localDateStr();
+    const today      = new Date().toISOString().slice(0,10);
     const isActive   = obj.status === 'active' && (!obj.end_date || obj.end_date >= today);
     const isExpired  = obj.end_date && today > obj.end_date && obj.status !== 'closed';
     const statusLabel = obj.status==='closed' ? 'Encerrado' : isExpired ? 'Expirado' : isActive ? 'Ativo' : 'Aguardando';

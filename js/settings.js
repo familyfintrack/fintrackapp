@@ -120,12 +120,20 @@ async function _seedModulesFromFamilyPreferences() {
   if (!window.sb || !window.currentUser?.family_id) return;
   const fid = window.currentUser.family_id;
   try {
-    const { data, error } = await window.sb
-      .from('family_preferences')
-      .select('*')
-      .eq('family_id', fid)
-      .maybeSingle();
-    if (error || !data) return;
+    // Try RPC first (SECURITY DEFINER — imune a RLS)
+    let data = null;
+    try {
+      const { data: rpcRows, error: rpcErr } = await window.sb
+        .rpc('get_family_preferences', { p_family_id: fid });
+      if (!rpcErr && rpcRows && rpcRows.length > 0) data = rpcRows[0];
+    } catch(_) {}
+    // Fallback: direct SELECT
+    if (!data) {
+      const { data: row, error } = await window.sb
+        .from('family_preferences').select('*').eq('family_id', fid).maybeSingle();
+      if (!error && row) data = row;
+    }
+    if (!data) return;
     const modMap = {
       ai_insights: data.module_ai_insights,
       ai_chat:     data.module_ai_chat,
@@ -163,7 +171,7 @@ async function _seedModulesFromFamilyPreferences() {
 window._seedModulesFromFamilyPreferences = _seedModulesFromFamilyPreferences;
 
 async function saveAppSetting(key, value) {
-  // Always persist locally as fallback
+  // Sempre persiste localmente como fallback garantido
   try {
     if (typeof value === 'object') {
       localStorage.setItem(key, JSON.stringify(value));
@@ -174,19 +182,26 @@ async function saveAppSetting(key, value) {
   if (!_appSettingsCache) _appSettingsCache = {};
   _appSettingsCache[key] = value;
   if (!sb) return;
+
+  // Detecta flag de módulo (ex: "debts_enabled_<uuid>")
+  const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_|ai_insights_enabled_|ai_chat_enabled_|dreams_enabled_)(.+)$/);
+  const family_id = m ? m[2] : null;
+
+  if (family_id) {
+    // Flags de módulo: SOMENTE via RPC SECURITY DEFINER (bypassa RLS)
+    // Nunca tentar upsert direto em app_settings — RLS bloqueia para não-admin
+    try {
+      const { error: rpcErr } = await sb.rpc('set_family_feature_flag', {
+        p_family_id: family_id, p_key: key, p_value: !!value
+      });
+      if (!rpcErr) return; // sucesso via RPC
+    } catch {}
+    // RPC não existe ainda (migration pendente) — localStorage já salvo, ok
+    return;
+  }
+
+  // Config geral (não é flag de módulo): upsert em app_settings
   try {
-    const m = String(key||'').match(/^(prices_enabled_|grocery_enabled_|backup_enabled_|snapshot_enabled_|investments_enabled_|debts_enabled_|ai_insights_enabled_|ai_chat_enabled_|dreams_enabled_)(.+)$/);
-    const family_id = m ? m[2] : null;
-    // Feature flags: try RPC SECURITY DEFINER first (bypasses RLS)
-    if (family_id) {
-      try {
-        const { error: rpcErr } = await sb.rpc('set_family_feature_flag', {
-          p_family_id: family_id, p_key: key, p_value: !!value
-        });
-        if (!rpcErr) return;
-      } catch {}
-    }
-    // Standard upsert — no family_id column in payload for schema compatibility
     const { error } = await sb.from('app_settings')
       .upsert({ key, value }, { onConflict: 'key' });
     if (error) throw error;
@@ -1911,7 +1926,7 @@ function _telRenderDailyChart(rows, days) {
   const buckets = {};
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    buckets[localDateStr(d)] = 0;
+    buckets[d.toISOString().slice(0,10)] = 0;
   }
   rows.forEach(r => { const day = (r.ts||'').slice(0,10); if (day in buckets) buckets[day]++; });
 
@@ -2480,7 +2495,7 @@ window._telDelSetQuick = function(daysBack) {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
   const dateEl = document.getElementById('telDelBeforeDate');
-  if (dateEl) dateEl.value = localDateStr(d);
+  if (dateEl) dateEl.value = d.toISOString().slice(0, 10);
   _telDelUpdatePreview();
 };
 
@@ -2776,7 +2791,7 @@ async function _telRenderLandingContent(el, cachedRows) {
   const dailyMap = {};
   for (let i=13; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    dailyMap[localDateStr(d)] = 0;
+    dailyMap[d.toISOString().slice(0,10)] = 0;
   }
   landingRows.filter(r => r.event_type === 'page_view').forEach(r => {
     const day = (r.ts||'').slice(0,10);

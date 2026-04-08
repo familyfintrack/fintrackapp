@@ -147,7 +147,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   {
     const { data: byUid } = await sb
       .from('app_users')
-      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, notify_login')
+      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
       .eq('auth_uid', user.id)
       .maybeSingle();
     appUserRow = byUid || null;
@@ -159,7 +159,7 @@ async function _loadCurrentUserContext(authCtx = null) {
       // otherwise rely on app_users_own_row policy which also allows email match
       const { data: byEmail } = await sb
         .from('app_users')
-        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, notify_login')
+        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
         .eq('email', user.email)
         .maybeSingle();
       appUserRow = byEmail || null;
@@ -307,8 +307,6 @@ async function _loadCurrentUserContext(authCtx = null) {
     notify_tx_email:      !!appUserRow?.notify_tx_email,
     notify_tx_wa:         !!appUserRow?.notify_tx_wa,
     notify_tx_tg:         !!appUserRow?.notify_tx_tg,
-    // notify_login: true by default (null in DB = not set = enabled)
-    notify_login:         appUserRow?.notify_login !== false,
     ...caps
   };
 
@@ -459,16 +457,9 @@ function focusFieldSafely(elementId, delay = 100) {
 // ── Show / hide login screen ──
 // ── Login screen touch-lock (prevents iOS bounce/drag on backdrop) ───────────
 function _lgnTouchLock(e) {
-  // Block all touch movement on the login backdrop.
-  // Only allow scroll inside .lgn-centered-wrap when it actually overflows
-  // (i.e. the card is taller than the viewport — rare on tall phones, common on tablets).
+  // Allow touch inside the scrollable content area — block everything else
   const wrap = document.getElementById('loginScreen')?.querySelector('.lgn-centered-wrap');
-  if (wrap && wrap.contains(e.target)) {
-    // Allow vertical scroll only when the wrap has real overflow to scroll
-    const hasOverflow = wrap.scrollHeight > wrap.clientHeight + 2;
-    if (hasOverflow) return; // let touchmove scroll the form
-    // No overflow → block the drag so the page doesn't move
-  }
+  if (wrap && wrap.contains(e.target)) return;
   e.preventDefault();
 }
 
@@ -495,8 +486,8 @@ function showLoginScreen() {
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
   if (mainApp) { mainApp.style.display = 'none'; mainApp.style.visibility = 'hidden'; mainApp.style.opacity = '0'; }
-  if (sidebar) { sidebar.style.display = 'none'; sidebar.style.visibility = 'hidden'; }
-  if (sidebarOverlay) { sidebarOverlay.style.display = 'none'; sidebarOverlay.style.visibility = 'hidden'; }
+  if (sidebar) sidebar.style.display = 'none';
+  if (sidebarOverlay) sidebarOverlay.style.display = 'none';
 
   try {
     document.querySelectorAll('.modal-overlay').forEach(el => {
@@ -574,8 +565,8 @@ function hideLoginScreen() {
     mainApp.style.visibility = 'visible';
     requestAnimationFrame(() => { mainApp.style.opacity = '1'; });
   }
-  if (sidebar) { sidebar.style.display = ''; sidebar.style.visibility = ''; }
-  if (sidebarOverlay) { sidebarOverlay.style.display = ''; sidebarOverlay.style.visibility = ''; }
+  if (sidebar) sidebar.style.display = '';
+  if (sidebarOverlay) sidebarOverlay.style.display = '';
 }
 document.addEventListener('DOMContentLoaded', () => {
   applyLoginPlatformMode();
@@ -1315,9 +1306,6 @@ function openMyProfile() {
   const notifyTxTgEl    = document.getElementById('myProfileNotifyTxTg');
   if (notifyTxEl) {
     notifyTxEl.checked = !!(currentUser?.notify_on_tx);
-  // Login notifications toggle (default ON if not set)
-  const notifyLoginEl = document.getElementById('myProfileNotifyLogin');
-  if (notifyLoginEl) notifyLoginEl.checked = (currentUser?.notify_login !== false);
     _toggleTxNotifChannels(notifyTxEl.checked);
     notifyTxEl.onchange = () => _toggleTxNotifChannels(notifyTxEl.checked);
   }
@@ -1579,12 +1567,10 @@ async function saveMyProfile() {
   const notifyTxEmail   = !!(document.getElementById('myProfileNotifyTxEmail')?.checked);
   const notifyTxWa      = !!(document.getElementById('myProfileNotifyTxWa')?.checked);
   const notifyTxTg      = !!(document.getElementById('myProfileNotifyTxTg')?.checked);
-  const notifyLogin     = !!(document.getElementById('myProfileNotifyLogin')?.checked);
   const notifyChanged   = notifyOnTx      !== !!(currentUser?.notify_on_tx)
                        || notifyTxEmail   !== !!(currentUser?.notify_tx_email)
                        || notifyTxWa      !== !!(currentUser?.notify_tx_wa)
-                       || notifyTxTg      !== !!(currentUser?.notify_tx_tg)
-                       || notifyLogin     !== (currentUser?.notify_login !== false);
+                       || notifyTxTg      !== !!(currentUser?.notify_tx_tg);
 
   // 2FA state — detect change to avoid skipping when it's the only thing modified
   const twoFaEnabled  = !!(document.getElementById('myProfile2faEnabled')?.checked);
@@ -1625,7 +1611,6 @@ async function saveMyProfile() {
       updatePayload.notify_tx_email = notifyTxEmail;
       updatePayload.notify_tx_wa    = notifyTxWa;
       updatePayload.notify_tx_tg    = notifyTxTg;
-      updatePayload.notify_login    = notifyLogin;
     }
 
     if (Object.keys(updatePayload).length > 0) {
@@ -1653,7 +1638,6 @@ async function saveMyProfile() {
       if ('notify_tx_email' in updatePayload) currentUser.notify_tx_email = notifyTxEmail;
       if ('notify_tx_wa'    in updatePayload) currentUser.notify_tx_wa    = notifyTxWa;
       if ('notify_tx_tg'    in updatePayload) currentUser.notify_tx_tg    = notifyTxTg;
-      if ('notify_login'    in updatePayload) currentUser.notify_login    = notifyLogin;
       if ('name' in updatePayload) {
         currentUser.name = newName;
         // Refresh cover header name
@@ -2136,24 +2120,19 @@ async function _inlineApprove(userId, userName) {
 
   try {
     const { data: userRow, error: fetchErr } = await sb
-      .from('app_users').select('name,email,approved,password_hash').eq('id', userId).single();
+      .from('app_users').select('name,email,approved').eq('id', userId).single();
     if (fetchErr) throw new Error('Erro ao buscar usuário: ' + fetchErr.message);
     if (!userRow)  throw new Error('Usuário não encontrado.');
 
     const userEmail   = userRow.email;
     const displayName = userRow.name || userName;
-    // The user already set a password during registration (doRegister saves password_hash).
-    // If the hash exists, we don't need must_change_pwd — user can log in with their own password.
-    const hasPasswordAlready = !!(userRow.password_hash);
 
     // Aprovar no app_users
     // createNewFamily=true: aprovar sem family_id, wizard cria família no primeiro login
     const updatePayload = {
-      active:          true,
-      approved:        true,
-      must_change_pwd: hasPasswordAlready ? false : true,
-      family_id:       createNewFamily ? null : familyId,
-      role:            createNewFamily ? 'user' : undefined,
+      active: true, approved: true, must_change_pwd: true,
+      family_id: createNewFamily ? null : familyId,
+      role: createNewFamily ? 'user' : undefined,
     };
     // Remove undefined keys
     Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
@@ -2169,33 +2148,18 @@ async function _inlineApprove(userId, userName) {
       if (fmErr) console.warn('[approve] family_members:', fmErr.message);
     }
 
-    // RPC confirma email no Supabase Auth + cria conta se não existe
-    const { data: rpcApproveData, error: rpcApproveErr } = await sb.rpc('approve_user', {
-      p_user_id: userId, p_family_id: createNewFamily ? null : (familyId || null)
-    });
+    // RPC confirma email no Supabase Auth
+    const { error: rpcApproveErr } = await sb.rpc('approve_user', { p_user_id: userId, p_family_id: createNewFamily ? null : (familyId || null) });
     if (rpcApproveErr) console.warn('[approve] RPC:', rpcApproveErr.message);
 
-    // Se conta Supabase Auth ainda não existe, criar com senha estável
-    const authExists = rpcApproveData?.auth_exists === true;
-    if (!authExists) {
-      const tempPwd = _randomPassword(); // só usada até o set_user_password abaixo
-      const { error: signUpErr2 } = await sb.auth.signUp({
-        email: userEmail, password: tempPwd,
-        options: { data: { display_name: displayName } }
-      });
-      if (signUpErr2) console.warn('[approve] signUp:', signUpErr2.message);
-    }
+    // signUp se não existe no Auth
+    const tempPwd = _randomPassword();
+    const { error: signUpErr2 } = await sb.auth.signUp({ email: userEmail, password: tempPwd,
+      options: { data: { display_name: displayName } } });
+    if (signUpErr2) console.warn('[approve] signUp:', signUpErr2.message);
 
-    // Se o usuário JÁ TINHA senha definida no cadastro, definir a mesma no Supabase Auth
-    // via RPC set_user_password (SECURITY DEFINER). Isso elimina o fluxo de reset.
-    // O password_hash armazenado é SHA-256 da senha original — não podemos revertê-lo,
-    // mas podemos definir must_change_pwd=false e deixar o usuário entrar com a senha
-    // que escolheu. O doLogin() verifica password_hash com verifyPassword().
-    // A conta Supabase Auth terá senha temporária, mas o login do app usa app_users.password_hash.
-    // Portanto: nenhum reset de senha necessário — usuário loga com a senha que cadastrou.
-
-    // Email de boas-vindas (sem instrução de reset)
-    await _sendApprovalEmail(userEmail, displayName, familyName, hasPasswordAlready);
+    // Email de boas-vindas
+    await _sendApprovalEmail(userEmail, displayName, familyName);
 
     toast('✓ ' + displayName + ' aprovado!' + (createNewFamily ? ' Criará família no primeiro login.' : familyName ? ' Família: ' + familyName : ''), 'success');
     await _checkPendingApprovals();
@@ -3749,14 +3713,11 @@ async function doApproveUser() {
     const displayName = userRow.name || userName;
 
     // ── 3. Aprovar no app_users PRIMEIRO ────────────────────────────────
-    // Only require password change if user registered WITHOUT a password
-    // (e.g. admin-created users). If they set a password during registration, skip reset.
-    const hasPasswordAlready = !!(userRow.password_hash);
     const { error: updErr } = await sb.from('app_users').update({
       active:          true,
       approved:        true,
       family_id:       familyId,
-      must_change_pwd: hasPasswordAlready ? false : true,
+      must_change_pwd: true,
     }).eq('id', userId);
     if (updErr) throw new Error('Erro ao aprovar no banco: ' + updErr.message);
 
@@ -3794,7 +3755,7 @@ async function doApproveUser() {
     }
 
     // ── 6. Enviar email de aprovação ─────────────────────────────────────
-    await _sendApprovalEmail(userEmail, displayName, familyName, hasPasswordAlready);
+    await _sendApprovalEmail(userEmail, displayName, familyName);
 
     // Show success state in modal before closing
     const approvalBody = document.querySelector('#approvalModal .modal-body');
@@ -3907,17 +3868,14 @@ async function _notifyAdminNewRegistration(userName, userEmail) {
   if (sentCount === 0) console.warn('[approval] Nenhum email de admin enviado.');
 }
 // ── Email de boas-vindas ao usuário aprovado ─────────────────────────────
-async function _sendApprovalEmail(email, name, familyName, hasPasswordAlready = false) {
+async function _sendApprovalEmail(email, name, familyName) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
 
-  // Only send Supabase password reset if the user did NOT define a password during registration.
-  // If they already have a password_hash, they can log in directly — no reset needed.
-  if (!hasPasswordAlready) {
-    try {
-      const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
-      await sb.auth.resetPasswordForEmail(email, { redirectTo });
-    } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
-  }
+  // 1. Enviar link de redefinição de senha (Supabase) para o usuário definir a própria senha
+  try {
+    const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+    await sb.auth.resetPasswordForEmail(email, { redirectTo });
+  } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
 
   // 2. Email de boas-vindas via EmailJS
   const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
@@ -3953,21 +3911,13 @@ async function _sendApprovalEmail(email, name, familyName, hasPasswordAlready = 
 
     famBlock +
 
-    (hasPasswordAlready
-      ? ('<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
-         '<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px">&#128274; Acesso imediato</div>' +
-         '<div style="font-size:13px;color:#15803d;line-height:1.6">' +
-         'Use a <strong>senha que você cadastrou</strong> para acessar o sistema agora mesmo. Nenhuma ação adicional necessária.' +
-         '</div>' +
-         '</div>')
-      : ('<div style="background:#fef9e8;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
-         '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">&#128273; Definir sua senha</div>' +
-         '<div style="font-size:13px;color:#78350f;line-height:1.6">' +
-         'Você receberá um segundo e-mail com um <strong>link para definir sua senha</strong>. ' +
-         'Clique nesse link, defina uma senha segura e faça login normalmente.' +
-         '</div>' +
-         '</div>')
-    ) +
+    '<div style="background:#fef9e8;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
+    '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">&#128273; Definir sua senha</div>' +
+    '<div style="font-size:13px;color:#78350f;line-height:1.6">' +
+    'Você receberá um segundo e-mail do Supabase com um <strong>link para definir sua senha</strong>. ' +
+    'Clique nesse link, defina uma senha segura e faça login normalmente.' +
+    '</div>' +
+    '</div>' +
 
     '<p style="font-size:12px;color:#9ca3af;margin:0">Se você não solicitou acesso a este sistema, ignore este e-mail.</p>' +
     '</div>' +
@@ -4464,27 +4414,12 @@ function _2faTrustKey(userId) {
 }
 
 // ── Verifica se este dispositivo está trusted para o usuário ──
-// Verifica pela chave primária (app_users.id) e também por auth.uid como fallback
-// para garantir que trust salvo por qualquer path seja reconhecido.
 function _is2FATrusted(userId) {
   try {
-    // Check primary key
     const raw = localStorage.getItem(_2faTrustKey(userId));
-    if (raw) {
-      const { until } = JSON.parse(raw);
-      if (Date.now() < until) return true;
-    }
-    // Scan all trust keys — handles case where trust was saved with a
-    // different id (e.g. auth.uid vs app_users.id mismatch across sessions)
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith('ft_2fa_trust_')) continue;
-      try {
-        const { until, userId: savedId } = JSON.parse(localStorage.getItem(k) || '{}');
-        if ((savedId === userId) && Date.now() < until) return true;
-      } catch(_) {}
-    }
-    return false;
+    if (!raw) return false;
+    const { until } = JSON.parse(raw);
+    return Date.now() < until;
   } catch(_) { return false; }
 }
 
@@ -4493,20 +4428,12 @@ function _set2FATrusted(userId) {
   try {
     const now   = Date.now();
     const until = now + 30 * 24 * 60 * 60 * 1000;
-    // Store userId inside payload for cross-id fallback lookup
     localStorage.setItem(_2faTrustKey(userId), JSON.stringify({
       until,
       since: now,
-      userId,  // stored so _is2FATrusted fallback scan can match
+      // ISO string for UI display
       expiresAt: new Date(until).toISOString(),
     }));
-    // Also store under auth.uid if different (covers cross-id scenarios)
-    const authUid = typeof currentUser !== 'undefined' ? currentUser?.id : null;
-    if (authUid && authUid !== userId) {
-      localStorage.setItem(_2faTrustKey(authUid), JSON.stringify({
-        until, since: now, userId, expiresAt: new Date(until).toISOString(),
-      }));
-    }
   } catch(_) {}
 }
 
@@ -6415,14 +6342,14 @@ async function _checkWaitlistOnLogin() {
 // ── Notification dismiss helpers ─────────────────────────────────────────────
 function _dismissNotifToday(key) {
   try {
-    const today = localDateStr();
+    const today = new Date().toISOString().slice(0, 10);
     localStorage.setItem('notif_dismiss_' + key, today);
   } catch(_) {}
 }
 function _isNotifDismissedToday(key) {
   try {
     const stored = localStorage.getItem('notif_dismiss_' + key);
-    return stored === localDateStr();
+    return stored === new Date().toISOString().slice(0, 10);
   } catch(_) { return false; }
 }
 window._dismissNotifToday    = _dismissNotifToday;
@@ -6472,9 +6399,6 @@ function _showAdminLoginNotification(waitlistCount) {
 
 async function _showUserLoginNotifications() {
   if (!currentUser || !sb) return;
-  // Respect user preference: notify_login=false disables in-app login notifications
-  // Default (null/undefined) is treated as enabled
-  if (currentUser.notify_login === false) return;
 
   // Ensure animation keyframes exist (admin popup may not have run)
   if (!document.getElementById('_userNotifStyles')) {
@@ -6508,7 +6432,7 @@ window._showUserLoginNotifications = _showUserLoginNotifications;
 /* ── Collect today's scheduled transactions ──────────────────────────────── */
 async function _getScheduledForToday() {
   try {
-    const today = localDateStr();
+    const today = new Date().toISOString().slice(0, 10);
     const scheduled = state?.scheduled || [];
     if (!scheduled.length) return [];
 
@@ -6573,9 +6497,9 @@ async function _getFinancialHealthSnapshot() {
     const negAccs = accs.filter(a => a.type !== 'cartao_credito' && +(a.balance||0) < 0);
 
     // Upcoming 10 days — net cash flow
-    const today = localDateStr();
+    const today = new Date().toISOString().slice(0, 10);
     const limit = new Date(); limit.setDate(limit.getDate() + 10);
-    const limitStr = localDateStr(limit);
+    const limitStr = limit.toISOString().slice(0, 10);
 
     let upcomingNet = 0;
     (state?.scheduled || []).forEach(sc => {
@@ -6629,7 +6553,7 @@ async function _getFinancialHealthSnapshot() {
     if (!alert && totalBRL > 0 && upcomingNet >= 0) {
       // Show positive health only occasionally (not every login — check last shown date)
       const lastShown = localStorage.getItem('_healthNotifDate');
-      const today2 = localDateStr();
+      const today2 = new Date().toISOString().slice(0, 10);
       if (lastShown !== today2) {
         alert = true; level = 'good';
         icon = '✅'; color = 'var(--accent)';
