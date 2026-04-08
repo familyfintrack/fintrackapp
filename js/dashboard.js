@@ -954,40 +954,54 @@ function openDashCustomModal() {
 function _getDashCardOrder(prefs) {
   // Use saved order from prefs, fallback to _DASH_CARDS default order
   const savedOrder = prefs._order;
+  let ordered;
   if (savedOrder && Array.isArray(savedOrder)) {
-    const ordered = savedOrder
+    ordered = savedOrder
       .map(id => _DASH_CARDS.find(c => c.id === id))
       .filter(Boolean);
     // Append any new cards not in saved order
     _DASH_CARDS.forEach(c => { if (!ordered.find(x => x.id === c.id)) ordered.push(c); });
-    return ordered;
+  } else {
+    ordered = [..._DASH_CARDS];
   }
-  return [..._DASH_CARDS];
+  // 'accounts' (Saldo por Conta) is always pinned as the first card
+  const accountsIdx = ordered.findIndex(c => c.id === 'accounts');
+  if (accountsIdx > 0) {
+    const [accounts] = ordered.splice(accountsIdx, 1);
+    ordered.unshift(accounts);
+  }
+  return ordered;
 }
 
 function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
 
-  list.innerHTML = order.map((c) => `
-    <div class="dcc-item" data-card-id="${c.id}" draggable="true">
-      <div class="dcc-handle" title="Arrastar para reordenar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
+  list.innerHTML = order.map((c) => {
+    const isPinned = c.id === 'accounts';
+    return `
+    <div class="dcc-item${isPinned?' dcc-item--pinned':''}" data-card-id="${c.id}" draggable="${isPinned?'false':'true'}">
+      <div class="dcc-handle" title="${isPinned?'Card fixo — sempre o primeiro':'Arrastar para reordenar'}"
+        style="${isPinned?'opacity:.3;cursor:default;pointer-events:none;':''}">
+        ${isPinned
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`
+        }
       </div>
       <span class="dcc-icon">${c.icon}</span>
       <div class="dcc-info">
         <div class="dcc-label">${c.label}</div>
         <div class="dcc-sub">${c.sub}</div>
-        ${c.optional ? '<span class="dcc-badge">opcional</span>' : ''}
+        ${isPinned ? '<span class="dcc-badge" style="background:rgba(42,96,73,.12);color:#2a6049;border-color:rgba(42,96,73,.2)">📌 fixo</span>' : ''}
+        ${c.optional && !isPinned ? '<span class="dcc-badge">opcional</span>' : ''}
       </div>
       <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
         onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
-        title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}">
+        title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}"
+        ${isPinned?'disabled style="opacity:.5;cursor:default"':''}>
         <span class="dcc-toggle-knob"></span>
       </button>
-    </div>`).join('');
+    </div>`; }).join('');
 
   _initDashDrag(list);
 }
@@ -1002,6 +1016,7 @@ function _initDashDrag(list) {
 
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('dragstart', e => {
+      if (item.dataset.cardId === 'accounts') { e.preventDefault(); return; }
       dragSrc = item;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', item.dataset.cardId);
@@ -1037,12 +1052,18 @@ function _initDashDrag(list) {
       e.stopPropagation();
       item.classList.remove('dcc-over');
       if (dragSrc && item !== dragSrc) {
+        // Never allow dropping before or onto the pinned 'accounts' card
+        if (item.dataset.cardId === 'accounts') return;
         const allItems = [...list.querySelectorAll('.dcc-item')];
         const srcIdx  = allItems.indexOf(dragSrc);
         const tgtIdx  = allItems.indexOf(item);
         if (srcIdx < tgtIdx) item.after(dragSrc);
         else item.before(dragSrc);
-        _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+        // Ensure accounts stays first in the pending order
+        const newOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+        const accIdx = newOrder.indexOf('accounts');
+        if (accIdx > 0) { newOrder.splice(accIdx, 1); newOrder.unshift('accounts'); }
+        _dashCustomPendingOrder = newOrder;
       }
     });
   });
@@ -1076,6 +1097,8 @@ function _initDashDrag(list) {
 
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('touchstart', e => {
+      // Pinned card cannot be dragged
+      if (item.dataset.cardId === 'accounts') return;
       // Só iniciar drag se o toque for no handle ou no item fora do toggle
       const tog = e.target.closest('.dcc-toggle');
       if (tog) return;
@@ -1210,10 +1233,19 @@ function _dashCustomSave() {
     const btn = document.querySelector(`.dcc-toggle[data-card="${c.id}"]`);
     prefs[c.id] = btn ? btn.classList.contains('dcc-on') : !c.optional;
   });
-  // Save card order if user reordered
+  // Save card order if user reordered — always enforce accounts as first
   if (_dashCustomPendingOrder) {
-    prefs._order = _dashCustomPendingOrder;
+    const savedOrder = [..._dashCustomPendingOrder];
+    const accIdx = savedOrder.indexOf('accounts');
+    if (accIdx > 0) { savedOrder.splice(accIdx, 1); savedOrder.unshift('accounts'); }
+    prefs._order = savedOrder;
     _dashCustomPendingOrder = null;
+  } else {
+    // Even without a new reorder, sanitize any existing order in prefs
+    if (Array.isArray(prefs._order)) {
+      const accIdx = prefs._order.indexOf('accounts');
+      if (accIdx > 0) { prefs._order.splice(accIdx, 1); prefs._order.unshift('accounts'); }
+    }
   }
   _dashSavePrefs(prefs);
   _dashApplyPrefs(prefs);
