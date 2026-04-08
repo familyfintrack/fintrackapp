@@ -3493,7 +3493,10 @@ window._loadDashDreamsCard = _loadDashDreamsCard;
 window._loadDashDreamsCard = _loadDashDreamsCard;
 
 // ── Card: Top Beneficiários e Fontes Pagadoras ────────────────────────────
-async function _loadDashTopPayeesCard() {
+// Estado do switch: 'year' (padrão) | 'alltime'
+let _dashPayeePeriod = 'year';
+
+async function _loadDashTopPayeesCard(period) {
   const card = document.getElementById('dashCardTopPayees');
   const body = document.getElementById('dashTopPayeesBody');
   if (!card || !body) return;
@@ -3501,28 +3504,26 @@ async function _loadDashTopPayeesCard() {
   const prefs = _dashGetPrefs();
   if (prefs['toppayees'] === false) { card.style.display = 'none'; return; }
   card.style.display = '';
+
+  // Usa período passado ou o estado atual
+  if (period) _dashPayeePeriod = period;
+  const isYear = _dashPayeePeriod !== 'alltime';
+
   body.innerHTML = '<div class="dcard-loading">⏳ Carregando…</div>';
 
   try {
-    const now  = new Date();
-    const y    = now.getFullYear();
-    const m    = String(now.getMonth() + 1).padStart(2, '0');
-    const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
-    const mFrom = `${y}-${m}-01`;
-    const mTo   = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
-    const yFrom = `${y}-01-01`;
-    const yTo   = `${y}-12-31`;
-
-    // Fetch with full tx details needed for drill-down
+    const now = new Date();
+    const y   = now.getFullYear();
     const _sel = 'id,date,description,amount,brl_amount,currency,payee_id,payees(id,name,type),categories(name,color)';
-    const [{ data: txMonth }, { data: txYear }] = await Promise.all([
-      famQ(sb.from('transactions').select(_sel))
-        .gte('date', mFrom).lte('date', mTo).not('payee_id','is',null),
-      famQ(sb.from('transactions').select(_sel))
-        .gte('date', yFrom).lte('date', yTo).not('payee_id','is',null),
-    ]);
 
-    // Agregar por payee — guardar txs completas para drill-down
+    // Query: ano corrente ou todos os tempos
+    let q = famQ(sb.from('transactions').select(_sel)).not('payee_id','is',null);
+    if (isYear) {
+      q = q.gte('date', `${y}-01-01`).lte('date', `${y}-12-31`);
+    }
+    const { data: txs } = await q;
+
+    // Agrega por payee
     const _aggregate = (rows) => {
       const exp = {}, inc = {};
       (rows || []).forEach(t => {
@@ -3540,93 +3541,142 @@ async function _loadDashTopPayeesCard() {
           inc[pid].txs.push(t);
         }
       });
-      const topExp = Object.values(exp).sort((a,b)=>b.total-a.total).slice(0,10);
-      const topInc = Object.values(inc).sort((a,b)=>b.total-a.total).slice(0,5);
-      return { topExp, topInc };
+      return {
+        topExp: Object.values(exp).sort((a,b)=>b.total-a.total).slice(0,10),
+        topInc: Object.values(inc).sort((a,b)=>b.total-a.total).slice(0,10),
+      };
     };
 
-    const month = _aggregate(txMonth);
-    const year  = _aggregate(txYear);
+    const agg = _aggregate(txs);
+    // Salva para drill-down — usa mesma estrutura de antes (scope = 'year' | 'alltime')
+    const scopeKey = isYear ? 'year' : 'alltime';
+    window._dashPayeeDrillData = {};
+    window._dashPayeeDrillData[scopeKey] = agg;
+    window._dashPayeeDrillScope = scopeKey;
 
-    // Guardar dados para o drill-down (acesso pelo handler de click)
-    window._dashPayeeDrillData = { month, year };
-
-    const _payeeRow = (p, i, maxVal, isYear) => {
+    // ── Linha de payee ────────────────────────────────────────────
+    const _payeeRow = (p, i, maxVal, isInc) => {
       const bar    = maxVal > 0 ? Math.min(p.total / maxVal * 100, 100).toFixed(1) : 0;
-      const isInc  = p.type === 'fonte_pagadora';
       const color  = isInc ? '#16a34a' : 'var(--accent)';
-      const scope  = isYear ? 'year' : 'month';
-      const bucket = isInc  ? 'inc'   : 'exp';
-      return `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;
-          cursor:pointer;transition:background .12s;margin:-2px -8px"
-          onclick="_dashPayeeDrill('${esc(p.id)}','${scope}','${bucket}')"
+      const bucket = isInc ? 'inc' : 'exp';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;
+          cursor:pointer;transition:background .12s;border-radius:8px;margin:0 -4px;padding-left:4px"
+          onclick="_dashPayeeDrill('${esc(p.id)}','${scopeKey}','${bucket}')"
           onmouseover="this.style.background='var(--surface2)'"
           onmouseout="this.style.background=''">
-          <span style="font-size:.65rem;font-weight:700;color:var(--muted);width:14px;text-align:right;flex-shrink:0">${i+1}</span>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
-              <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${esc(p.name)}</span>
-              <span style="font-size:.75rem;font-weight:700;color:${isInc?'#16a34a':'var(--text)'};white-space:nowrap;margin-left:6px">${isInc?'+':'−'}${dashFmt(p.total,'BRL')}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
-                <div style="height:100%;width:${bar}%;background:${color};border-radius:2px;transition:width .5s"></div>
-              </div>
-              <span style="font-size:.6rem;color:var(--muted);flex-shrink:0">${p.count} tx</span>
-            </div>
+        <span style="font-size:.62rem;font-weight:700;color:var(--muted);width:14px;text-align:right;flex-shrink:0">${i+1}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-bottom:2px">
+            <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+            <span style="font-size:.74rem;font-weight:700;color:${isInc?'#16a34a':'var(--text)'};white-space:nowrap;flex-shrink:0">${isInc?'+':'−'}${dashFmt(p.total,'BRL')}</span>
           </div>
-          <span style="font-size:.7rem;color:var(--muted);flex-shrink:0">›</span>
-        </div>`;
+          <div style="display:flex;align-items:center;gap:5px">
+            <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${bar}%;background:${color};border-radius:2px;transition:width .5s"></div>
+            </div>
+            <span style="font-size:.58rem;color:var(--muted);flex-shrink:0">${p.count}tx</span>
+          </div>
+        </div>
+        <span style="font-size:.68rem;color:var(--muted);flex-shrink:0">›</span>
+      </div>`;
     };
 
-    const _section = (title, items, isYear) => {
-      if (!items.length) return '';
-      const max = items[0]?.total || 1;
-      return `
-        <div style="margin-bottom:14px">
-          <div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
-            color:var(--muted);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${title}</div>
-          ${items.map((p,i) => _payeeRow(p, i, max, isYear)).join('')}
-        </div>`;
+    // ── Coluna ────────────────────────────────────────────────────
+    const _col = (title, icon, items, isInc) => {
+      const maxVal = items[0]?.total || 1;
+      const totalAmt = items.reduce((s,p)=>s+p.total, 0);
+      const colorH = isInc ? '#16a34a' : 'var(--accent)';
+      const rows   = items.length
+        ? items.map((p,i) => _payeeRow(p, i, maxVal, isInc)).join('')
+        : `<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:.78rem">Nenhum registro</div>`;
+      return `<div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;
+          margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid ${colorH}33">
+          <div style="display:flex;align-items:center;gap:5px">
+            <span>${icon}</span>
+            <span style="font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:${colorH}">${title}</span>
+          </div>
+          <span style="font-size:.78rem;font-weight:800;font-family:var(--font-serif);color:${colorH}">
+            ${isInc?'+':'−'}${dashFmt(totalAmt,'BRL')}
+          </span>
+        </div>
+        ${rows}
+      </div>`;
     };
 
-    let html = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
-        <div style="padding:10px 14px;border-right:1px solid var(--border)">
-          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Despesas/mês</div>
-          <div style="font-size:1.05rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(month.topExp.reduce((s,p)=>s+p.total,0),'BRL')}</div>
-        </div>
-        <div style="padding:10px 14px">
-          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Receitas/mês</div>
-          <div style="font-size:1.05rem;font-weight:800;font-family:var(--font-serif);color:#16a34a">${dashFmt(month.topInc.reduce((s,p)=>s+p.total,0),'BRL')}</div>
-        </div>
+    // ── Rótulo do período ─────────────────────────────────────────
+    const periodLabel = isYear
+      ? `Ano ${y}`
+      : 'Todos os tempos';
+
+    // ── KPI bar ───────────────────────────────────────────────────
+    const totalExp = agg.topExp.reduce((s,p)=>s+p.total,0);
+    const totalInc = agg.topInc.reduce((s,p)=>s+p.total,0);
+
+    const kpi = `<div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
+      <div style="padding:10px 14px;border-right:1px solid var(--border)">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Top Desp. · ${periodLabel}</div>
+        <div style="font-size:1rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(totalExp,'BRL')}</div>
       </div>
-      <div style="padding:12px 14px">
-        ${_section(`Top 10 Beneficiários — ${String(now.getMonth()+1).padStart(2,'0')}/${y}`, month.topExp, false)}
-        ${_section(`Top 5 Fontes Pagadoras — ${String(now.getMonth()+1).padStart(2,'0')}/${y}`, month.topInc, false)}
-        ${_section(`Top 5 Beneficiários — Ano ${y}`, year.topExp.slice(0,5), true)}
-        ${_section(`Top 5 Fontes Pagadoras — Ano ${y}`, year.topInc.slice(0,5), true)}
+      <div style="padding:10px 14px">
+        <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Top Rec. · ${periodLabel}</div>
+        <div style="font-size:1rem;font-weight:800;font-family:var(--font-serif);color:#16a34a">${dashFmt(totalInc,'BRL')}</div>
       </div>
-      <div style="padding:2px 14px 10px;text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick="navigate('reports');setTimeout(()=>setReportView&&setReportView('payees'),300)">
-          Relatório completo →
-        </button>
+    </div>`;
+
+    // ── Switch ────────────────────────────────────────────────────
+    const switchHtml = `<div style="display:flex;align-items:center;justify-content:flex-end;
+        gap:4px;padding:8px 14px 0">
+      <button onclick="_loadDashTopPayeesCard('year')"
+        style="padding:4px 10px;border-radius:20px;font-size:.7rem;font-weight:700;
+          font-family:inherit;cursor:pointer;border:1.5px solid var(--border);
+          transition:all .15s;
+          background:${isYear?'var(--accent)':'var(--surface2)'};
+          color:${isYear?'#fff':'var(--muted)'}">
+        Ano corrente
+      </button>
+      <button onclick="_loadDashTopPayeesCard('alltime')"
+        style="padding:4px 10px;border-radius:20px;font-size:.7rem;font-weight:700;
+          font-family:inherit;cursor:pointer;border:1.5px solid var(--border);
+          transition:all .15s;
+          background:${!isYear?'var(--accent)':'var(--surface2)'};
+          color:${!isYear?'#fff':'var(--muted)'}">
+        Todos os tempos
+      </button>
+    </div>`;
+
+    // ── Layout: desktop 2-col, mobile empilhado ───────────────────
+    const gridLayout = `
+      <!-- Desktop: 2 colunas | Mobile: empilhado (beneficiários em cima) -->
+      <div class="dash-payee-grid">
+        <div class="dash-payee-col">
+          ${_col('Beneficiários', '📤', agg.topExp, false)}
+        </div>
+        <div class="dash-payee-col">
+          ${_col('Fontes Pagadoras', '📥', agg.topInc, true)}
+        </div>
       </div>`;
 
-    body.innerHTML = html;
+    body.innerHTML = kpi + switchHtml +
+      `<div style="padding:12px 14px 10px">${gridLayout}</div>`;
+
   } catch(e) {
     body.innerHTML = `<div class="dcard-loading">⚠️ ${esc(e.message)}</div>`;
   }
 }
 window._loadDashTopPayeesCard = _loadDashTopPayeesCard;
 
+
 // ── Drill-down: mostrar transações de um beneficiário/fonte ─────────────────
 function _dashPayeeDrill(payeeId, scope, bucket) {
   const data   = window._dashPayeeDrillData;
   if (!data) return;
 
-  const list   = data[scope][bucket === 'exp' ? 'topExp' : 'topInc'];
+  // Suporte ao scope dinâmico (year | alltime)
+  const scopeData = data[scope] || data[Object.keys(data)[0]];
+  if (!scopeData) return;
+
+  const list   = scopeData[bucket === 'exp' ? 'topExp' : 'topInc'];
   const entry  = list.find(p => p.id === payeeId);
   if (!entry) return;
 
@@ -3677,7 +3727,7 @@ function _dashPayeeDrill(payeeId, scope, bucket) {
           <div>
             <div style="font-size:.95rem;font-weight:800;color:var(--text)">${esc(entry.name)}</div>
             <div style="font-size:.7rem;color:var(--muted);margin-top:1px">
-              ${txs.length} transaç${txs.length===1?'ão':'ões'} · ${scope === 'year' ? 'Ano ' + new Date().getFullYear() : 'Mês atual'}
+              ${txs.length} transaç${txs.length===1?'ão':'ões'} · ${scope === 'alltime' ? 'Todos os tempos' : 'Ano ' + new Date().getFullYear()}
             </div>
           </div>
           <div style="text-align:right">
