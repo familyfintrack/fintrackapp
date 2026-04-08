@@ -66,10 +66,7 @@ html, body { height:100%; overflow:hidden; }
 /* Grid */
 .lgn-screen::before {
   content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background-image:
-    linear-gradient(rgba(125,194,66,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125,194,66,.07) 1px, transparent 1px);
-  background-size: 48px 48px;
+  /* grid removed */
   animation: lgnGridFade 14s ease-in-out infinite alternate;
 }
 /* Radial overlays */
@@ -122,10 +119,7 @@ html, body { height:100%; overflow:hidden; }
 }
 .lgn-logo-wrap::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image:
-    linear-gradient(rgba(125,194,66,.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125,194,66,.08) 1px, transparent 1px);
-  background-size: 36px 36px;
+  /* grid removed */
 }
 .lgn-logo-img {
   height: 101px; width: auto; object-fit: contain;
@@ -378,9 +372,25 @@ body.platform-windows .lgn-screen {
         <div class="lgn-form-title" style="padding-top:22px">Bem-vindo de volta</div>
         <div class="lgn-form-sub">Entre com sua conta para continuar</div>
 
+        <!-- ── Tab switcher: Senha | Link Mágico ── -->
+        <div style="display:flex;gap:6px;padding:0 28px;margin-bottom:16px">
+          <button id="loginTabPassword" onclick="switchLoginTab('password')"
+            style="flex:1;padding:9px 14px;border-radius:10px;border:1.5px solid #e2e8f0;
+              font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;
+              transition:all .18s;background:linear-gradient(135deg,#1e5c42,#2a6049);color:#fff">
+            🔑 Senha
+          </button>
+          <button id="loginTabMagic" onclick="switchLoginTab('magic')"
+            style="flex:1;padding:9px 14px;border-radius:10px;border:1.5px solid #e2e8f0;
+              font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;
+              transition:all .18s;background:transparent;color:#64748b">
+            ✉️ Link Mágico
+          </button>
+        </div>
+
         <div id="loginFormArea" style="padding:0 28px">
 
-        <!-- Password login panel -->
+        <!-- ── Painel: Login por senha ── -->
         <div id="loginPanelPassword">
           <div class="lgn-field-group">
             <label class="lgn-label" data-i18n="auth.label_email">E-mail</label>
@@ -412,7 +422,45 @@ body.platform-windows .lgn-screen {
           </button>
         </div>
 
-        <!-- Magic link: removido -->
+        <!-- ── Painel: Magic Link ── -->
+        <div id="loginPanelMagic" style="display:none">
+          <div class="lgn-field-group">
+            <label class="lgn-label">E-mail</label>
+            <input type="email" id="magicEmail" class="lgn-input" placeholder="seu@email.com"
+              autocomplete="email"
+              onkeydown="if(event.key==='Enter')doMagicLink()">
+          </div>
+
+          <!-- Informativo antes de enviar -->
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:#15803d;line-height:1.55">
+            📧 Enviaremos um link seguro para o seu e-mail. Clique nele para entrar sem precisar de senha — válido por 1 hora.
+          </div>
+
+          <!-- Botão enviar -->
+          <button onclick="doMagicLink()" id="magicLinkBtn" class="lgn-btn-primary">
+            ✉️ Enviar Link de Acesso
+          </button>
+
+          <!-- Estado: link enviado -->
+          <div id="magicLinkSent" style="display:none;margin-top:4px">
+            <div style="background:#f0fdf4;border:1.5px solid #22c55e;border-radius:12px;padding:16px;text-align:center">
+              <div style="font-size:1.6rem;margin-bottom:8px">📬</div>
+              <div style="font-weight:800;font-size:.92rem;color:#0a1e12;margin-bottom:4px">Link enviado!</div>
+              <div style="font-size:.78rem;color:#64748b;line-height:1.55;margin-bottom:12px">
+                Verifique sua caixa de entrada e clique no link para entrar.<br>
+                <span style="font-size:.72rem;color:#94a3b8">Não recebeu? Verifique o spam.</span>
+              </div>
+              <button id="magicResendBtn"
+                style="background:none;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 16px;
+                  font-family:inherit;font-size:.78rem;font-weight:600;color:#64748b;cursor:pointer;
+                  transition:all .15s"
+                onmouseover="this.style.borderColor='var(--lime, #7dc242)';this.style.color='#0a1e12'"
+                onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#64748b'">
+                ↺ Reenviar link
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div id="loginError" style="margin-top:12px;color:#dc2626;font-size:.8rem;text-align:center;display:none"></div>
         <div id="loginRequestAccessWrap" style="text-align:center;margin-top:12px;font-size:.8rem;color:#6b7280;display:none">
@@ -628,6 +676,11 @@ body.platform-windows .lgn-screen {
   } else {
     const ls = document.getElementById('loginScreen');
     if (ls) ls.style.display = 'flex';
+  }
+
+  // Initialize password tab as active
+  if (typeof switchLoginTab === 'function') {
+    switchLoginTab('password');
   }
 
   // Override bootApp: after login success, set flag then redirect to app.html
