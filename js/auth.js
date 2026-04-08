@@ -147,7 +147,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   {
     const { data: byUid } = await sb
       .from('app_users')
-      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
+      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, notify_login')
       .eq('auth_uid', user.id)
       .maybeSingle();
     appUserRow = byUid || null;
@@ -159,7 +159,7 @@ async function _loadCurrentUserContext(authCtx = null) {
       // otherwise rely on app_users_own_row policy which also allows email match
       const { data: byEmail } = await sb
         .from('app_users')
-        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg')
+        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, notify_login')
         .eq('email', user.email)
         .maybeSingle();
       appUserRow = byEmail || null;
@@ -307,6 +307,8 @@ async function _loadCurrentUserContext(authCtx = null) {
     notify_tx_email:      !!appUserRow?.notify_tx_email,
     notify_tx_wa:         !!appUserRow?.notify_tx_wa,
     notify_tx_tg:         !!appUserRow?.notify_tx_tg,
+    // notify_login: true by default (null in DB = not set = enabled)
+    notify_login:         appUserRow?.notify_login !== false,
     ...caps
   };
 
@@ -1313,6 +1315,9 @@ function openMyProfile() {
   const notifyTxTgEl    = document.getElementById('myProfileNotifyTxTg');
   if (notifyTxEl) {
     notifyTxEl.checked = !!(currentUser?.notify_on_tx);
+  // Login notifications toggle (default ON if not set)
+  const notifyLoginEl = document.getElementById('myProfileNotifyLogin');
+  if (notifyLoginEl) notifyLoginEl.checked = (currentUser?.notify_login !== false);
     _toggleTxNotifChannels(notifyTxEl.checked);
     notifyTxEl.onchange = () => _toggleTxNotifChannels(notifyTxEl.checked);
   }
@@ -1574,10 +1579,12 @@ async function saveMyProfile() {
   const notifyTxEmail   = !!(document.getElementById('myProfileNotifyTxEmail')?.checked);
   const notifyTxWa      = !!(document.getElementById('myProfileNotifyTxWa')?.checked);
   const notifyTxTg      = !!(document.getElementById('myProfileNotifyTxTg')?.checked);
+  const notifyLogin     = !!(document.getElementById('myProfileNotifyLogin')?.checked);
   const notifyChanged   = notifyOnTx      !== !!(currentUser?.notify_on_tx)
                        || notifyTxEmail   !== !!(currentUser?.notify_tx_email)
                        || notifyTxWa      !== !!(currentUser?.notify_tx_wa)
-                       || notifyTxTg      !== !!(currentUser?.notify_tx_tg);
+                       || notifyTxTg      !== !!(currentUser?.notify_tx_tg)
+                       || notifyLogin     !== (currentUser?.notify_login !== false);
 
   // 2FA state — detect change to avoid skipping when it's the only thing modified
   const twoFaEnabled  = !!(document.getElementById('myProfile2faEnabled')?.checked);
@@ -1618,6 +1625,7 @@ async function saveMyProfile() {
       updatePayload.notify_tx_email = notifyTxEmail;
       updatePayload.notify_tx_wa    = notifyTxWa;
       updatePayload.notify_tx_tg    = notifyTxTg;
+      updatePayload.notify_login    = notifyLogin;
     }
 
     if (Object.keys(updatePayload).length > 0) {
@@ -1645,6 +1653,7 @@ async function saveMyProfile() {
       if ('notify_tx_email' in updatePayload) currentUser.notify_tx_email = notifyTxEmail;
       if ('notify_tx_wa'    in updatePayload) currentUser.notify_tx_wa    = notifyTxWa;
       if ('notify_tx_tg'    in updatePayload) currentUser.notify_tx_tg    = notifyTxTg;
+      if ('notify_login'    in updatePayload) currentUser.notify_login    = notifyLogin;
       if ('name' in updatePayload) {
         currentUser.name = newName;
         // Refresh cover header name
@@ -6463,6 +6472,9 @@ function _showAdminLoginNotification(waitlistCount) {
 
 async function _showUserLoginNotifications() {
   if (!currentUser || !sb) return;
+  // Respect user preference: notify_login=false disables in-app login notifications
+  // Default (null/undefined) is treated as enabled
+  if (currentUser.notify_login === false) return;
 
   // Ensure animation keyframes exist (admin popup may not have run)
   if (!document.getElementById('_userNotifStyles')) {

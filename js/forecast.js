@@ -673,13 +673,23 @@ function renderForecastTables(allItems, accounts) {
 
     let currentDateGroup = null;
 
+    let _prevBalance = runningBalance; // track sign changes for turning-positive highlight
     const rows = txs.map(t => {
+      const balBefore = _prevBalance;
       runningBalance += parseFloat(t.amount)||0;
-      const isPast   = t.date < today;
-      const isToday  = t.date === today;
-      const isNeg    = runningBalance < 0;
-      const isPos    = runningBalance > 0;
-      const rowCls   = [isPast?'forecast-row-past':'', isToday?'forecast-row-today':'', isNeg?'forecast-row-negative':''].filter(Boolean).join(' ');
+      _prevBalance = runningBalance;
+      const isPast          = t.date < today;
+      const isToday         = t.date === today;
+      const isNeg           = runningBalance < 0;
+      const isPos           = runningBalance > 0;
+      // Turning-positive: balance crossed from negative to positive on this row
+      const isTurningPos    = balBefore < 0 && runningBalance >= 0;
+      const rowCls   = [
+        isPast  ? 'forecast-row-past' : '',
+        isToday ? 'forecast-row-today' : '',
+        isNeg   ? 'forecast-row-negative' : '',
+        (!isNeg && isTurningPos) ? 'forecast-row-turning-positive' : '',
+      ].filter(Boolean).join(' ');
       const catColor = t.categories?.color || (parseFloat(t.amount)>=0 ? 'var(--accent)' : 'var(--red)');
       const dp       = _forecastDateParts(t.date);
       const todayBadge = isToday ? '<span class="forecast-date-today">Hoje</span>' : '';
