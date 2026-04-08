@@ -25918,6 +25918,16 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   }
 }
 
+/* ── Dashboard custom modal — card fixo (pinned) ─────────────────────────── */
+.dcc-item--pinned {
+  background: linear-gradient(90deg, rgba(42,96,73,.06) 0%, transparent 100%);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  cursor: default !important;
+}
+.dcc-item--pinned .dcc-handle { cursor: default !important; }
+.dcc-item--pinned:hover { background: linear-gradient(90deg, rgba(42,96,73,.08) 0%, transparent 100%); }
+
 /* ═══════════════════════════════════════════════════════════════
    REPORTS — Transactions view redesign
 ═══════════════════════════════════════════════════════════════ */
