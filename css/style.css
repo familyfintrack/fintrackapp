@@ -2031,21 +2031,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ── Dashboard: Budgets + Dreams side-by-side grid ──────────────────────── */
-.dash-budgets-dreams-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 1.5rem;
-}
-.dash-budgets-dreams-grid > * {
-  margin-bottom: 0 !important;  /* override mb-4 inside grid */
-}
-@media (max-width: 640px) {
-  .dash-budgets-dreams-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
+/* dash-budgets-dreams-grid removed — cards are now independent */
 
 /* ── Scheduled: mobile max-width 97% ─────────────────────────────────────── */
 @media (max-width: 640px) {
