@@ -2011,6 +2011,25 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   font-family: var(--font-sans);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   DASHBOARD — Top Payees Card: 2-col desktop / stacked mobile
+══════════════════════════════════════════════════════════════════ */
+.dash-payee-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.dash-payee-col {
+  min-width: 0;
+}
+/* Mobile: single column, beneficiários (primeiro) em cima */
+@media (max-width: 600px) {
+  .dash-payee-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
 /* ════════ AUTH / LOGIN ════════ */
 .auth-screen {
   position:fixed;inset:0;z-index:9000;
