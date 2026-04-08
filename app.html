@@ -425,10 +425,10 @@
 </div>
 
 <!-- SIDEBAR OVERLAY -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()" style="display:none"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 <!-- SIDEBAR -->
-<nav class="sidebar" id="sidebar" style="display:none">
+<nav class="sidebar" id="sidebar">
 
   <!-- Header: logo + close button -->
   <div class="sb-header">
@@ -558,7 +558,7 @@
 </nav>
 
 <!-- MAIN -->
-<div class="main" id="mainApp" style="display:none;visibility:hidden;opacity:0;transition:opacity .25s ease">
+<div class="main" id="mainApp" style="visibility:hidden;opacity:0;transition:opacity .25s ease">
   <header class="topbar">
     <div class="topbar-left">
       <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
@@ -628,7 +628,6 @@
     <div class="fx-bar-inner">
       <div class="fx-bar-family" id="fxBarFamily" style="display:none">
         <svg class="fx-bar-family-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 11c1.66 0 3-1.79 3-4s-1.34-4-3-4-3 1.79-3 4 1.34 4 3 4z"/><path d="M8 11c1.66 0 3-1.79 3-4S9.66 3 8 3 5 4.79 5 7s1.34 4 3 4z"/><path d="M8 13c-2.33 0-7 1.17-7 3.5V20h14v-3.5C15 14.17 10.33 13 8 13z"/><path d="M16 13c-.29 0-.62.02-.97.05 1.16.84 1.97 1.98 1.97 3.45V20h6v-3.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-        <span class="fx-bar-section-label">Família</span>
         <span class="fx-bar-family-text" id="fxBarFamilyText">—</span>
       </div>
       <span class="fx-bar-label">Câmbio</span>
@@ -1614,9 +1613,9 @@
     <!-- CATEGORIES -->
     <div class="page" id="page-categories">
       <!-- Header -->
-      <div class="section-header mb-6" style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Categorias</span>
-        <div style="display:flex;gap:8px;margin-left:auto">
+      <div class="section-header mb-6">
+
+        <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">+ Despesa</button>
           <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','receita')">+ Receita</button>
         </div>
@@ -3402,16 +3401,15 @@
       </div>
 
         </div>
-      <div class="section-header mb-6" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <!-- Left: secondary actions -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
+      <div class="section-header mb-6">
+
+        <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openPricesStoreManager()">🏪 Estabelecimentos</button>
           <button class="btn btn-ghost btn-sm" onclick="openPxHierManager()" title="Gerenciar subcategorias e tipos">🗂️ Subcategorias</button>
           <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn" onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
+          <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()">+ Novo Item</button>
         </div>
-        <!-- Right: primary CTA -->
-        <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()" style="margin-left:auto;flex-shrink:0">+ Novo Item</button>
       </div>
 
       <!-- Receipt drop zone -->
@@ -6689,19 +6687,8 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div id="txPayeeSimilarBanner" class="payee-similar-banner" style="display:none"></div>
           </div>
           <div class="form-group" id="txCategoryGroup">
-            <label style="display:flex;align-items:center;justify-content:space-between">
-              <span>Categoria <span class="req-star">*</span></span>
-              <button type="button" id="txSplitCatBtn" onclick="openTxSplitModal()" title="Dividir em múltiplas categorias"
-                style="font-size:.68rem;font-weight:600;color:var(--accent);background:var(--accent-lt);border:1px solid var(--accent);border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit;display:none">
-                ✂️ Dividir
-              </button>
-              <button type="button" id="txSplitCatActiveBtn" onclick="openTxSplitModal()" title="Divisão ativa — clique para editar"
-                style="font-size:.68rem;font-weight:600;color:#fff;background:var(--accent);border:none;border-radius:6px;padding:2px 8px;cursor:pointer;font-family:inherit;display:none">
-                ✂️ <span id="txSplitCatCount">2</span> categorias
-              </button>
-            </label>
+            <label>Categoria <span class="req-star">*</span></label>
             <input type="hidden" id="txCategoryId">
-            <input type="hidden" id="txCategorySplits" value="[]">
             <div class="cat-picker-wrap" id="catPickerWrap">
               <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker()">
                 <span class="cat-picker-dot" id="catPickerDot" style="display:none"></span>
@@ -6761,11 +6748,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div class="form-grid">
 
           <div class="form-group" id="txFamilyMemberGroup">
-            <label style="display:flex;align-items:center;justify-content:space-between">
-              <span>Membro(s) da família <span class="opt-label">opcional</span></span>
-              <button type="button" onclick="_fmcSelectAll('txFamilyMemberPicker')" title="Marcar todos os membros"
-                style="font-size:.68rem;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;padding:0;font-weight:600">👨‍👩‍👧 Todos</button>
-            </label>
+            <label>Membro(s) da família <span class="opt-label">opcional</span></label>
             <div id="txFamilyMemberPicker" class="fmc-picker-container"><div class="fmc-picker-empty">Carregando…</div></div>
             <select id="txFamilyMember" style="display:none"></select>
           </div>
@@ -8486,20 +8469,6 @@ Se você não solicitou isso, ignore este e-mail.`,
                   <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa Chat ID abaixo)</span>
                 </label>
               </div>
-            </div>
-          </div>
-
-          <!-- Notificações de login (in-app) -->
-          <div class="prof-field" style="margin-bottom:14px;margin-top:6px">
-            <div class="prof-notif-toggle-row">
-              <div>
-                <div style="font-size:.85rem;font-weight:600;color:var(--text)">Notificações de login</div>
-                <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Exibe resumo de programados e saúde financeira ao abrir o aplicativo.</div>
-              </div>
-              <label class="toggle-switch" style="flex-shrink:0">
-                <input type="checkbox" id="myProfileNotifyLogin" checked>
-                <span class="toggle-slider"></span>
-              </label>
             </div>
           </div>
 
