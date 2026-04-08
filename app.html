@@ -6324,72 +6324,6 @@ Se você não solicitou isso, ignore este e-mail.`,
 
         </div>
       </div>
-
-      <!-- ── TAB: Divisão ──────────────────────────────────────── -->
-      <div class="tx-ctx-pane" id="txCtxDivisao" style="display:none;padding:16px">
-
-        <!-- Sub-tabs: Categorias | Membros -->
-        <div style="display:flex;gap:6px;margin-bottom:14px">
-          <button id="txSplitTabCat" class="tx-split-subtab active" onclick="txSplitShowTab('cat')">
-            🏷️ Por Categoria
-          </button>
-          <button id="txSplitTabMem" class="tx-split-subtab" onclick="txSplitShowTab('mem')">
-            👥 Por Membro
-          </button>
-        </div>
-
-        <!-- ── Categoria splits ──────────────────────────────────── -->
-        <div id="txSplitCatPane">
-          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
-            Distribua o valor da transação entre múltiplas categorias.<br>
-            O total deve ser igual ao valor da transação.
-          </div>
-          <div id="txCatSplitRows" style="display:flex;flex-direction:column;gap:8px"></div>
-          <button type="button" onclick="txCatSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
-            + Adicionar categoria
-          </button>
-          <div id="txCatSplitTotal" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="color:var(--muted);font-weight:600">Total distribuído</span>
-              <span id="txCatSplitTotalVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-              <span style="color:var(--muted);font-weight:600">Valor da transação</span>
-              <span id="txCatSplitTxVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-            </div>
-            <div id="txCatSplitDiff" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
-          </div>
-        </div>
-
-        <!-- ── Membro splits ─────────────────────────────────────── -->
-        <div id="txSplitMemPane" style="display:none">
-          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
-            Distribua o valor entre membros da família por valor ou percentual.
-          </div>
-          <!-- Mode toggle -->
-          <div style="display:flex;gap:6px;margin-bottom:12px">
-            <button id="txMemSplitModeVal" class="tx-split-mode-btn active" onclick="txMemSplitSetMode('value')">R$ Valor</button>
-            <button id="txMemSplitModePct" class="tx-split-mode-btn" onclick="txMemSplitSetMode('pct')">% Percentual</button>
-          </div>
-          <div id="txMemSplitRows" style="display:flex;flex-direction:column;gap:8px"></div>
-          <button type="button" onclick="txMemSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
-            + Adicionar membro
-          </button>
-          <div id="txMemSplitTotal" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="color:var(--muted);font-weight:600">Total distribuído</span>
-              <span id="txMemSplitTotalVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-              <span style="color:var(--muted);font-weight:600">Valor da transação</span>
-              <span id="txMemSplitTxVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-            </div>
-            <div id="txMemSplitDiff" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
-          </div>
-        </div>
-
-      </div>
-
     </div><!-- /modal-body -->
 
     <div class="modal-footer" id="scModalFooter">
@@ -6806,6 +6740,72 @@ Se você não solicitou isso, ignore este e-mail.`,
           <input type="file" id="receiptScanInput" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="onReceiptScanInput(this)">
           <div id="receiptAiResultPanel" style="display:none;margin-top:10px"></div>
         </div>
+      </div>
+
+      <!-- ── TAB: Divisão ─────────────────────────────────────── -->
+      <div class="tx-ctx-pane" id="txCtxDivisao" style="display:none;padding:16px">
+
+        <!-- Sub-tabs: Categorias | Membros -->
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <button id="txSplitTabCat" class="tx-split-subtab active" onclick="txSplitShowTab('cat')">
+            🏷️ Por Categoria
+          </button>
+          <button id="txSplitTabMem" class="tx-split-subtab" onclick="txSplitShowTab('mem')">
+            👥 Por Membro
+          </button>
+        </div>
+
+        <!-- ── Categoria splits ──────────────────────────────── -->
+        <div id="txSplitCatPane">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+            Distribua o valor da transação entre múltiplas categorias.<br>
+            O total deve ser igual ao valor da transação.
+          </div>
+          <div id="txCatSplitRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" onclick="txCatSplitAddRow()"
+            style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+            + Adicionar categoria
+          </button>
+          <div id="txCatSplitTotal" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--muted);font-weight:600">Total distribuído</span>
+              <span id="txCatSplitTotalVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="color:var(--muted);font-weight:600">Valor da transação</span>
+              <span id="txCatSplitTxVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div id="txCatSplitDiff" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
+          </div>
+        </div>
+
+        <!-- ── Membro splits ─────────────────────────────────── -->
+        <div id="txSplitMemPane" style="display:none">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+            Distribua o valor entre membros da família por valor ou percentual.
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button id="txMemSplitModeVal" class="tx-split-mode-btn active" onclick="txMemSplitSetMode('value')">R$ Valor</button>
+            <button id="txMemSplitModePct" class="tx-split-mode-btn" onclick="txMemSplitSetMode('pct')">% Percentual</button>
+          </div>
+          <div id="txMemSplitRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" onclick="txMemSplitAddRow()"
+            style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+            + Adicionar membro
+          </button>
+          <div id="txMemSplitTotal" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--muted);font-weight:600">Total distribuído</span>
+              <span id="txMemSplitTotalVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="color:var(--muted);font-weight:600">Valor da transação</span>
+              <span id="txMemSplitTxVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div id="txMemSplitDiff" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
+          </div>
+        </div>
+
       </div>
 
     </div><!-- /modal-body -->
