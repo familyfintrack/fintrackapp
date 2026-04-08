@@ -19990,12 +19990,12 @@ section[data-page="transactions"] .content {
 /* ── 2FA screen — cores para card escuro (rgba(4,14,8,.82)) ── */
 .twofa-title {
   font-size: 1.15rem; font-weight: 800;
-  color: #ffffff !important; text-align: center;
+  color: #0a1e12; text-align: center;
   margin-bottom: 6px;
   font-family: var(--font-serif, Georgia, serif);
 }
 .twofa-sub {
-  font-size: .82rem; color: rgba(200,225,210,.65);
+  font-size: .82rem; color: #64748b;
   text-align: center; margin-bottom: 24px;
   line-height: 1.55;
 }
@@ -20005,26 +20005,26 @@ section[data-page="transactions"] .content {
   letter-spacing: .38em; font-variant-numeric: tabular-nums;
   padding: 14px 16px; border: 2px solid rgba(125,194,66,.4);
   border-radius: 14px; outline: none;
-  background: rgba(255,255,255,.07); color: #ffffff;
+  background: #f8fafc; color: #0f172a;
   transition: border-color .18s, box-shadow .18s, background .18s;
   margin-bottom: 20px; box-sizing: border-box;
   font-family: 'Courier New', monospace;
   min-height: 64px;
 }
-.twofa-code-input::placeholder { color: rgba(200,225,210,.22); }
+.twofa-code-input::placeholder { color: #94a3b8; }
 .twofa-code-input:focus {
-  border-color: rgba(125,194,66,.55);
-  background: rgba(255,255,255,.09);
-  box-shadow: 0 0 0 3px rgba(125,194,66,.13);
+  border-color: var(--lime, #7dc242);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(125,194,66,.15);
 }
 .twofa-actions { display: flex; flex-direction: column; gap: 10px; }
 .twofa-trust-row {
   display: flex; align-items: center; gap: 8px;
-  font-size: .78rem; color: rgba(200,225,210,.55);
+  font-size: .78rem; color: #64748b;
   padding: 4px 0;
 }
 .twofa-trust-row label {
-  color: rgba(200,225,210,.65);
+  color: #64748b;
   cursor: pointer; user-select: none;
   font-size: .78rem;
 }
@@ -20039,7 +20039,7 @@ section[data-page="transactions"] .content {
 .twofa-resend:hover { opacity: .75; text-decoration: underline; }
 .twofa-back {
   background: none; border: none;
-  color: rgba(200,225,210,.45); font-size: .8rem;
+  color: #94a3b8; font-size: .8rem;
   cursor: pointer; text-align: center;
   padding: 4px; font-family: inherit;
   transition: color .15s;
