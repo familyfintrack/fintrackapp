@@ -3401,15 +3401,16 @@
       </div>
 
         </div>
-      <div class="section-header mb-6">
-
-        <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="section-header mb-6" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <!-- Left: secondary actions -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="openStorePayeeMap()" title="Gerenciar vínculos entre estabelecimentos e beneficiários" style="font-size:.78rem">🔗 Estab. × Benef.</button>
           <button class="btn btn-ghost btn-sm" onclick="openPricesStoreManager()">🏪 Estabelecimentos</button>
           <button class="btn btn-ghost btn-sm" onclick="openPxHierManager()" title="Gerenciar subcategorias e tipos">🗂️ Subcategorias</button>
           <button class="btn btn-ghost btn-sm" id="pricesReceiptImportBtn" onclick="openPricesReceiptScan()">📷 Importar Recibo</button>
-          <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()">+ Novo Item</button>
         </div>
+        <!-- Right: primary CTA -->
+        <button class="btn btn-primary btn-sm" onclick="openNewPriceItem()" style="margin-left:auto;flex-shrink:0">+ Novo Item</button>
       </div>
 
       <!-- Receipt drop zone -->
@@ -8469,6 +8470,20 @@ Se você não solicitou isso, ignore este e-mail.`,
                   <span style="font-size:.7rem;color:var(--muted);margin-left:4px">(usa Chat ID abaixo)</span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- Notificações de login (in-app) -->
+          <div class="prof-field" style="margin-bottom:14px;margin-top:6px">
+            <div class="prof-notif-toggle-row">
+              <div>
+                <div style="font-size:.85rem;font-weight:600;color:var(--text)">Notificações de login</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Exibe resumo de programados e saúde financeira ao abrir o aplicativo.</div>
+              </div>
+              <label class="toggle-switch" style="flex-shrink:0">
+                <input type="checkbox" id="myProfileNotifyLogin" checked>
+                <span class="toggle-slider"></span>
+              </label>
             </div>
           </div>
 
