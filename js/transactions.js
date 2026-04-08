@@ -2255,7 +2255,7 @@ async function saveTransaction(){
   if(!isTransfer && !data.payee_id) {
     if(window.Cursor) Cursor.hide();
     _txSaving = false;
-    toast('Beneficiário / Fonte é obrigatório.','error');
+    toast(t('tx.err_payee'),'error');
     // Switch to Principal tab to show the field
     if(typeof switchTxTab==='function') {
       const btn = document.querySelector('[data-tab="txCtxPrincipal"]');
@@ -2268,7 +2268,7 @@ async function saveTransaction(){
   if(!isTransfer && !data.category_id) {
     if(window.Cursor) Cursor.hide();
     _txSaving = false;
-    toast('Categoria é obrigatória.','error');
+    toast(t('tx.err_category'),'error');
     if(typeof switchTxTab==='function') {
       const btn = document.querySelector('[data-tab="txCtxPrincipal"]');
       if(btn) switchTxTab('txCtxPrincipal', btn);

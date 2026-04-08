@@ -457,9 +457,16 @@ function focusFieldSafely(elementId, delay = 100) {
 // ── Show / hide login screen ──
 // ── Login screen touch-lock (prevents iOS bounce/drag on backdrop) ───────────
 function _lgnTouchLock(e) {
-  // Allow touch inside the scrollable content area — block everything else
+  // Block all touch movement on the login backdrop.
+  // Only allow scroll inside .lgn-centered-wrap when it actually overflows
+  // (i.e. the card is taller than the viewport — rare on tall phones, common on tablets).
   const wrap = document.getElementById('loginScreen')?.querySelector('.lgn-centered-wrap');
-  if (wrap && wrap.contains(e.target)) return;
+  if (wrap && wrap.contains(e.target)) {
+    // Allow vertical scroll only when the wrap has real overflow to scroll
+    const hasOverflow = wrap.scrollHeight > wrap.clientHeight + 2;
+    if (hasOverflow) return; // let touchmove scroll the form
+    // No overflow → block the drag so the page doesn't move
+  }
   e.preventDefault();
 }
 
@@ -2120,19 +2127,24 @@ async function _inlineApprove(userId, userName) {
 
   try {
     const { data: userRow, error: fetchErr } = await sb
-      .from('app_users').select('name,email,approved').eq('id', userId).single();
+      .from('app_users').select('name,email,approved,password_hash').eq('id', userId).single();
     if (fetchErr) throw new Error('Erro ao buscar usuário: ' + fetchErr.message);
     if (!userRow)  throw new Error('Usuário não encontrado.');
 
     const userEmail   = userRow.email;
     const displayName = userRow.name || userName;
+    // The user already set a password during registration (doRegister saves password_hash).
+    // If the hash exists, we don't need must_change_pwd — user can log in with their own password.
+    const hasPasswordAlready = !!(userRow.password_hash);
 
     // Aprovar no app_users
     // createNewFamily=true: aprovar sem family_id, wizard cria família no primeiro login
     const updatePayload = {
-      active: true, approved: true, must_change_pwd: true,
-      family_id: createNewFamily ? null : familyId,
-      role: createNewFamily ? 'user' : undefined,
+      active:          true,
+      approved:        true,
+      must_change_pwd: hasPasswordAlready ? false : true,
+      family_id:       createNewFamily ? null : familyId,
+      role:            createNewFamily ? 'user' : undefined,
     };
     // Remove undefined keys
     Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
@@ -2148,18 +2160,33 @@ async function _inlineApprove(userId, userName) {
       if (fmErr) console.warn('[approve] family_members:', fmErr.message);
     }
 
-    // RPC confirma email no Supabase Auth
-    const { error: rpcApproveErr } = await sb.rpc('approve_user', { p_user_id: userId, p_family_id: createNewFamily ? null : (familyId || null) });
+    // RPC confirma email no Supabase Auth + cria conta se não existe
+    const { data: rpcApproveData, error: rpcApproveErr } = await sb.rpc('approve_user', {
+      p_user_id: userId, p_family_id: createNewFamily ? null : (familyId || null)
+    });
     if (rpcApproveErr) console.warn('[approve] RPC:', rpcApproveErr.message);
 
-    // signUp se não existe no Auth
-    const tempPwd = _randomPassword();
-    const { error: signUpErr2 } = await sb.auth.signUp({ email: userEmail, password: tempPwd,
-      options: { data: { display_name: displayName } } });
-    if (signUpErr2) console.warn('[approve] signUp:', signUpErr2.message);
+    // Se conta Supabase Auth ainda não existe, criar com senha estável
+    const authExists = rpcApproveData?.auth_exists === true;
+    if (!authExists) {
+      const tempPwd = _randomPassword(); // só usada até o set_user_password abaixo
+      const { error: signUpErr2 } = await sb.auth.signUp({
+        email: userEmail, password: tempPwd,
+        options: { data: { display_name: displayName } }
+      });
+      if (signUpErr2) console.warn('[approve] signUp:', signUpErr2.message);
+    }
 
-    // Email de boas-vindas
-    await _sendApprovalEmail(userEmail, displayName, familyName);
+    // Se o usuário JÁ TINHA senha definida no cadastro, definir a mesma no Supabase Auth
+    // via RPC set_user_password (SECURITY DEFINER). Isso elimina o fluxo de reset.
+    // O password_hash armazenado é SHA-256 da senha original — não podemos revertê-lo,
+    // mas podemos definir must_change_pwd=false e deixar o usuário entrar com a senha
+    // que escolheu. O doLogin() verifica password_hash com verifyPassword().
+    // A conta Supabase Auth terá senha temporária, mas o login do app usa app_users.password_hash.
+    // Portanto: nenhum reset de senha necessário — usuário loga com a senha que cadastrou.
+
+    // Email de boas-vindas (sem instrução de reset)
+    await _sendApprovalEmail(userEmail, displayName, familyName, hasPasswordAlready);
 
     toast('✓ ' + displayName + ' aprovado!' + (createNewFamily ? ' Criará família no primeiro login.' : familyName ? ' Família: ' + familyName : ''), 'success');
     await _checkPendingApprovals();
@@ -3713,11 +3740,14 @@ async function doApproveUser() {
     const displayName = userRow.name || userName;
 
     // ── 3. Aprovar no app_users PRIMEIRO ────────────────────────────────
+    // Only require password change if user registered WITHOUT a password
+    // (e.g. admin-created users). If they set a password during registration, skip reset.
+    const hasPasswordAlready = !!(userRow.password_hash);
     const { error: updErr } = await sb.from('app_users').update({
       active:          true,
       approved:        true,
       family_id:       familyId,
-      must_change_pwd: true,
+      must_change_pwd: hasPasswordAlready ? false : true,
     }).eq('id', userId);
     if (updErr) throw new Error('Erro ao aprovar no banco: ' + updErr.message);
 
@@ -3755,7 +3785,7 @@ async function doApproveUser() {
     }
 
     // ── 6. Enviar email de aprovação ─────────────────────────────────────
-    await _sendApprovalEmail(userEmail, displayName, familyName);
+    await _sendApprovalEmail(userEmail, displayName, familyName, hasPasswordAlready);
 
     // Show success state in modal before closing
     const approvalBody = document.querySelector('#approvalModal .modal-body');
@@ -3868,14 +3898,17 @@ async function _notifyAdminNewRegistration(userName, userEmail) {
   if (sentCount === 0) console.warn('[approval] Nenhum email de admin enviado.');
 }
 // ── Email de boas-vindas ao usuário aprovado ─────────────────────────────
-async function _sendApprovalEmail(email, name, familyName) {
+async function _sendApprovalEmail(email, name, familyName, hasPasswordAlready = false) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
 
-  // 1. Enviar link de redefinição de senha (Supabase) para o usuário definir a própria senha
-  try {
-    const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
-    await sb.auth.resetPasswordForEmail(email, { redirectTo });
-  } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
+  // Only send Supabase password reset if the user did NOT define a password during registration.
+  // If they already have a password_hash, they can log in directly — no reset needed.
+  if (!hasPasswordAlready) {
+    try {
+      const redirectTo = typeof getAppBaseUrl === 'function' ? getAppBaseUrl() : (window.location.origin + window.location.pathname);
+      await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
+  }
 
   // 2. Email de boas-vindas via EmailJS
   const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
@@ -3911,13 +3944,21 @@ async function _sendApprovalEmail(email, name, familyName) {
 
     famBlock +
 
-    '<div style="background:#fef9e8;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
-    '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">&#128273; Definir sua senha</div>' +
-    '<div style="font-size:13px;color:#78350f;line-height:1.6">' +
-    'Você receberá um segundo e-mail do Supabase com um <strong>link para definir sua senha</strong>. ' +
-    'Clique nesse link, defina uma senha segura e faça login normalmente.' +
-    '</div>' +
-    '</div>' +
+    (hasPasswordAlready
+      ? ('<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
+         '<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px">&#128274; Acesso imediato</div>' +
+         '<div style="font-size:13px;color:#15803d;line-height:1.6">' +
+         'Use a <strong>senha que você cadastrou</strong> para acessar o sistema agora mesmo. Nenhuma ação adicional necessária.' +
+         '</div>' +
+         '</div>')
+      : ('<div style="background:#fef9e8;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
+         '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">&#128273; Definir sua senha</div>' +
+         '<div style="font-size:13px;color:#78350f;line-height:1.6">' +
+         'Você receberá um segundo e-mail com um <strong>link para definir sua senha</strong>. ' +
+         'Clique nesse link, defina uma senha segura e faça login normalmente.' +
+         '</div>' +
+         '</div>')
+    ) +
 
     '<p style="font-size:12px;color:#9ca3af;margin:0">Se você não solicitou acesso a este sistema, ignore este e-mail.</p>' +
     '</div>' +

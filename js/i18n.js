@@ -167,6 +167,23 @@ const _I18N_BUILTIN = {
   'tx.income_tab':    {pt:'+ Receita',      en:'+ Income',       es:'+ Ingreso',        fr:'+ Revenu'},
   'tx.expense_tab':   {pt:'+ Despesa',      en:'+ Expense',      es:'+ Gasto',          fr:'+ Dépense'},
   'tx.transfer_tab':  {pt:'+ Transferência',en:'+ Transfer',     es:'+ Transferencia',  fr:'+ Virement'},
+  // ── Validation error messages ──────────────────────────────────────────
+  'tx.err_date_account': {pt:'Preencha a data e selecione a conta.',
+                          en:'Please fill in the date and select an account.',
+                          es:'Complete la fecha y seleccione una cuenta.',
+                          fr:'Veuillez renseigner la date et sélectionner un compte.'},
+  'tx.err_payee':        {pt:'Beneficiário / Fonte é obrigatório.',
+                          en:'Payee / Source is required.',
+                          es:'El beneficiario / fuente es obligatorio.',
+                          fr:'Le bénéficiaire / source est obligatoire.'},
+  'tx.err_category':     {pt:'Categoria é obrigatória.',
+                          en:'Category is required.',
+                          es:'La categoría es obligatoria.',
+                          fr:'La catégorie est obligatoire.'},
+  'tx.err_amount':       {pt:'Informe um valor válido.',
+                          en:'Please enter a valid amount.',
+                          es:'Ingrese un monto válido.',
+                          fr:'Veuillez saisir un montant valide.'},
 
   // ── Accounts ──────────────────────────────────────────────────────────────
   'acct.title':       {pt:'Contas',         en:'Accounts',       es:'Cuentas',          fr:'Comptes'},
