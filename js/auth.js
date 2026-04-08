@@ -472,17 +472,8 @@ function _unlockLoginScreen() {
 }
 
 function showLoginScreen() {
-  // Se estamos em app.html (não em login.html), redireciona para a página de login dedicada.
-  // Isso acontece quando a sessão expira enquanto o app está aberto.
-  if (window.location.pathname.endsWith('app.html') || window.location.pathname === '/') {
-    // Preserva params de URL caso existam (invite links, etc.)
-    const dest = 'login.html' + window.location.search + window.location.hash;
-    window.location.replace(dest);
-    return;
-  }
-
-  // Contexto de login.html — comportamento normal
-  // Ensure sb is initialized whenever login screen is shown
+  // Ensure sb is initialized whenever login screen is shown —
+  // guards against iOS/Safari timing issues where createClient failed silently
   if (!sb && typeof ensureSupabaseClient === 'function') {
     sb = ensureSupabaseClient();
   }
