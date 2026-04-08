@@ -213,7 +213,8 @@ function payeeRow(p) {
     </td>
     <td style="text-align:center">${txBadge}</td>
     <td>
-      <div class="payee-row-actions" style="display:flex;gap:4px;justify-content:flex-end">
+      <div class="payee-row-actions" style="display:flex;gap:4px;justify-content:flex-end;align-items:center">
+        <button class="py2-action-btn" onclick="event.stopPropagation();setIofPayeeTarget('${p.id}','${esc(p.name)}')" title="${window._iofPayeeId===p.id?'Beneficiário IOF padrão (clique para remover)':'Definir como beneficiário padrão do IOF'}" style="font-size:.68rem;font-weight:700;color:${window._iofPayeeId===p.id?'#dc2626':'var(--muted)'};padding:3px 7px;border-radius:6px;background:${window._iofPayeeId===p.id?'rgba(220,38,38,.1)':'var(--surface2)'}">IOF</button>
         <button class="py2-action-btn" onclick="event.stopPropagation();openPayeeModal('${p.id}')" title="Editar">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -1222,3 +1223,43 @@ window.renderPayees                        = renderPayees;
 window.savePayee                           = savePayee;
 window.searchPayeeOnMaps                   = searchPayeeOnMaps;
 window.togglePayeeCatPicker                = togglePayeeCatPicker;
+
+// ── IOF Payee Target ───────────────────────────────────────────────────────
+async function setIofPayeeTarget(payeeId, payeeName) {
+  const current = window._iofPayeeId;
+
+  if (current === payeeId) {
+    const ok = confirm(`Remover "${payeeName}" como beneficiário padrão do IOF?`);
+    if (!ok) return;
+    window._iofPayeeId = null;
+    await setIofPayeeId(null);
+    renderPayees();
+    if (typeof toast === 'function') toast('Beneficiário IOF padrão removido.', 'info');
+    return;
+  }
+
+  const hasPrevious = !!current;
+  const prevPayee = hasPrevious ? (window._payeesCache||[]).find(p=>p.id===current) : null;
+  let migrateHistory = false;
+
+  if (hasPrevious) {
+    const answer = confirm(
+      `Definir "${payeeName}" como novo beneficiário padrão do IOF?\n\n` +
+      `Anterior: "${prevPayee?.name||'Outro'}"\n\n` +
+      `Deseja transferir o histórico de transações IOF para este beneficiário?`
+    );
+    if (!answer) return;
+    migrateHistory = true;
+  }
+
+  await setIofPayeeId(payeeId);
+
+  if (migrateHistory && typeof bulkUpdateIofPayee === 'function') {
+    await bulkUpdateIofPayee(payeeId);
+  }
+
+  renderPayees();
+  if (typeof toast === 'function')
+    toast(`"${payeeName}" definido como beneficiário padrão do IOF.`, 'success');
+}
+window.setIofPayeeTarget = setIofPayeeTarget;

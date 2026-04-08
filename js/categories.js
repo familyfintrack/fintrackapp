@@ -129,6 +129,7 @@ function renderCategories() {
           <div class="cat-inline-actions">
             <button class="btn-icon" onclick="openCategoryModal('','${p.id}','${dbType}')" title="Nova subcategoria">＋ Sub</button>
             <button class="btn-icon" onclick="toggleCatFavorite('${p.id}')" title="${isCatFavorite(p.id)?'Remover favorito':'Favoritar'}" style="color:${isCatFavorite(p.id)?'var(--amber,#f59e0b)':'var(--muted)'};font-size:1.05rem">★</button>
+            <button class="btn-icon cat-iof-btn" onclick="setIofCategoryTarget('${p.id}','${esc(p.name)}')" title="${window._iofCatId===p.id?'Categoria IOF padrão (clique para remover)':'Definir como categoria padrão do IOF'}" style="color:${window._iofCatId===p.id?'#dc2626':'var(--muted)'};font-weight:700;font-size:.85rem">IOF</button>
             <button class="btn-icon" onclick="openCategoryModal('${p.id}')" title="Editar">✏️</button>
             <button class="btn-icon" onclick="deleteCategory('${p.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
           </div>
@@ -601,3 +602,45 @@ window.renderCategories                    = renderCategories;
 window.saveCategory                        = saveCategory;
 window.selectCatIcon                       = selectCatIcon;
 window.showCatIconGroup                    = showCatIconGroup;
+
+// ── IOF Category Target ────────────────────────────────────────────────────
+async function setIofCategoryTarget(catId, catName) {
+  const current = window._iofCatId;
+
+  // Toggle off if already set
+  if (current === catId) {
+    const ok = confirm(`Remover "${catName}" como categoria padrão do IOF?`);
+    if (!ok) return;
+    window._iofCatId = null;
+    await setIofCategoryId(null);
+    renderCategories();
+    if (typeof toast === 'function') toast('Categoria IOF padrão removida.', 'info');
+    return;
+  }
+
+  // Switching from another category?
+  const hasPrevious = !!current;
+  const prevCat = hasPrevious ? (state.categories||[]).find(c=>c.id===current) : null;
+  let migrateHistory = false;
+
+  if (hasPrevious) {
+    const answer = confirm(
+      `Definir "${catName}" como nova categoria padrão do IOF?\n\n` +
+      `Anterior: "${prevCat?.name||'Outra'}"\n\n` +
+      `Deseja transferir o histórico de transações IOF para esta categoria?`
+    );
+    if (!answer) return;
+    migrateHistory = true;
+  }
+
+  await setIofCategoryId(catId);
+
+  if (migrateHistory && typeof bulkUpdateIofCategory === 'function') {
+    await bulkUpdateIofCategory(catId);
+  }
+
+  renderCategories();
+  if (typeof toast === 'function')
+    toast(`"${catName}" definida como categoria padrão do IOF.`, 'success');
+}
+window.setIofCategoryTarget = setIofCategoryTarget;

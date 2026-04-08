@@ -472,6 +472,13 @@ function _unlockLoginScreen() {
 }
 
 function showLoginScreen() {
+  // Inicializar aba Senha como activa por padrão (se não estiver já)
+  if (typeof switchLoginTab === 'function') {
+    const magic = document.getElementById('loginPanelMagic');
+    if (magic && magic.style.display === 'none') { /* already on password tab */ }
+    else if (!magic) { /* panel not present yet */ }
+    // Don't force switch here — let the caller set tab if needed
+  }
   // Se estamos em app.html (não em login.html), redireciona para a página de login dedicada.
   // Isso acontece quando a sessão expira enquanto o app está aberto.
   if (window.location.pathname.endsWith('app.html') || window.location.pathname === '/') {
@@ -861,7 +868,8 @@ async function doMagicLink() {
     }
 
     // Send the magic link via Supabase OTP
-    const redirectTo = _getAppHtmlUrl(); // always land on app.html after magic link
+    // Redirect to auth-callback.html which handles magic link flow gracefully
+    const redirectTo = _getAuthCallbackUrl();
     const { error } = await sb.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
@@ -1839,6 +1847,16 @@ function _getResetPasswordUrl() {
     ? pathname
     : pathname.substring(0, pathname.lastIndexOf('/') + 1);
   return origin + base + 'reset-password.html';
+}
+
+// Returns auth-callback.html URL — used as redirectTo for magic links,
+// invite links, and email confirmations so the correct flow is handled.
+function _getAuthCallbackUrl() {
+  const { origin, pathname } = window.location;
+  const base = pathname.endsWith('/')
+    ? pathname
+    : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  return origin + base + 'auth-callback.html';
 }
 
 // Returns app.html URL — used as redirectTo for magic links / OTP so the

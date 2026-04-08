@@ -750,8 +750,8 @@ function renderTransactions(){
     let html = '';
     let lastDate = null;
     let bandIndex = 0;
-    const TODAY_STR = new Date().toISOString().slice(0,10);
-    const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const TODAY_STR = (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+    const YESTERDAY_STR = (()=>{const d=new Date();d.setDate(d.getDate()-1);return typeof localDateStr==='function'?localDateStr(d):d.toISOString().slice(0,10);})();
     // Pre-compute per-day totals for the summary
     const dayTotals = {};
     txList.forEach(tx => {
@@ -1125,7 +1125,10 @@ async function openTransactionModal(id=''){
     await loadFamilyComposition().catch(() => {});
   }
   resetTxModal();
-  document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('txDate').value=(typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+  // Show split button in footer
+  const _spBtn = document.getElementById('txSplitOpenBtn');
+  if (_spBtn) _spBtn.style.display = '';
   document.getElementById('txModalTitle').textContent='Nova Transação';
   if(id) {
     editTransaction(id);
@@ -1832,8 +1835,8 @@ async function fetchTxCurrencyRate() {
   if (sugg) sugg.style.display = 'none';
 
   try {
-    let txDate = document.getElementById('txDate')?.value || new Date().toISOString().slice(0,10);
-    const todayStr = new Date().toISOString().slice(0,10);
+    let txDate = document.getElementById('txDate')?.value || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+    const todayStr = (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
     if (txDate > todayStr) txDate = todayStr;
 
     const url = `${FX_API_BASE}/${txDate}?base=${fetchFrom}&to=${fetchTo}`;
@@ -2396,7 +2399,7 @@ async function saveTransaction(){
           dream_id:   _txDreamIdSelected,
           family_id:  famId(),
           amount:     _drmAmt,
-          date:       data.date || new Date().toISOString().slice(0,10),
+          date:       data.date || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10)),
           type:       'transaction',
           notes:      `Vinculado à transação`,
           created_at: new Date().toISOString(),
@@ -2432,7 +2435,7 @@ async function duplicateTransaction(id) {
 
 function _openTxAsCopy(orig) {
   // Build a prefilled "new" transaction from orig — no ID, today's date
-  const today = new Date().toISOString().slice(0,10);
+  const today = (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
   resetTxModal();
   document.getElementById('txDate').value = today;
   document.getElementById('txDesc').value = (orig.description || '') + ' (cópia)';
@@ -2902,7 +2905,7 @@ async function convertTxToScheduled(txId) {
   el('ctsDesc').value    = t.description || '';
   el('ctsAmount').value  = Math.abs(t.amount || 0).toFixed(2).replace('.', ',');
   el('ctsAccount').textContent = t.accounts?.name || '—';
-  el('ctsDate').value    = t.date || new Date().toISOString().slice(0,10);
+  el('ctsDate').value    = t.date || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
   el('ctsMemo').value    = t.memo || '';
   el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
 
