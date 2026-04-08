@@ -1247,14 +1247,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Previsão
           </button>
-          <button class="rpt-view-tab" id="rptBtnPayees" onclick="setReportView('payees')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Beneficiários
-          </button>
-          <button class="rpt-view-tab" id="rptBtnObjectives" onclick="setReportView('objectives')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-            Objetivos
-          </button>
+
 
         </div>
       </div>
@@ -2432,72 +2425,7 @@
 
 
       <!-- ── View: Beneficiários / Fontes Pagadoras ─────────────────────────── -->
-      <div id="reportPayeesView" style="display:none">
-        <div class="card mb-3" style="padding:14px 16px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">De</label>
-              <input lang="pt-BR" type="date" id="rptPayeesFrom" class="form-control" style="font-size:.83rem" onchange="_rptPayeesLoad()">
-            </div>
-            <div>
-              <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Até</label>
-              <input lang="pt-BR" type="date" id="rptPayeesTo" class="form-control" style="font-size:.83rem" onchange="_rptPayeesLoad()">
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Conta</label>
-              <select id="rptPayeesAccount" class="form-control" style="font-size:.83rem">
-                <option value="">Todas as contas</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Tipo</label>
-              <select id="rptPayeesType" class="form-control" style="font-size:.83rem" onchange="_rptPayeesLoad()">
-                <option value="both">Ambos (Desp. + Rec.)</option>
-                <option value="expense">Só Despesas</option>
-                <option value="income">Só Receitas</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="_rptPayeesLoad()" style="width:100%">Gerar Relatório</button>
-        </div>
-        <div id="reportPayeesBody">
-          <div style="text-align:center;padding:40px 16px;color:var(--muted)">
-            <div style="font-size:2rem;margin-bottom:8px">👥</div>
-            <div style="font-size:.85rem">Selecione o período e clique em Gerar Relatório</div>
-          </div>
-        </div>
-      </div>
 
-      <!-- ── View: Objetivos ─────────────────────────────────────────────── -->
-      <div id="reportObjectivesView" style="display:none">
-        <div class="card mb-3" style="padding:14px 16px">
-          <div style="margin-bottom:10px">
-            <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Objetivo</label>
-            <select id="rptObjSelect" class="form-control" style="font-size:.83rem" onchange="document.getElementById('rptObjFrom')?.value && document.getElementById('rptObjTo')?.value && _rptObjectivesLoad()">
-              <option value="">— Selecione um objetivo —</option>
-            </select>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">De</label>
-              <input lang="pt-BR" type="date" id="rptObjFrom" class="form-control" style="font-size:.83rem">
-            </div>
-            <div>
-              <label style="font-size:.7rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Até</label>
-              <input lang="pt-BR" type="date" id="rptObjTo" class="form-control" style="font-size:.83rem">
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="_rptObjectivesLoad()" style="width:100%">Gerar Análise</button>
-        </div>
-        <div id="reportObjectivesBody">
-          <div style="text-align:center;padding:40px 16px;color:var(--muted)">
-            <div style="font-size:2rem;margin-bottom:8px">🎯</div>
-            <div style="font-size:.85rem">Selecione um objetivo para ver a análise completa</div>
-          </div>
-        </div>
-      </div>
 
     </div>
 
@@ -6397,6 +6325,71 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
 
+      <!-- ── TAB: Divisão ──────────────────────────────────────── -->
+      <div class="tx-ctx-pane" id="txCtxDivisao" style="display:none;padding:16px">
+
+        <!-- Sub-tabs: Categorias | Membros -->
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <button id="txSplitTabCat" class="tx-split-subtab active" onclick="txSplitShowTab('cat')">
+            🏷️ Por Categoria
+          </button>
+          <button id="txSplitTabMem" class="tx-split-subtab" onclick="txSplitShowTab('mem')">
+            👥 Por Membro
+          </button>
+        </div>
+
+        <!-- ── Categoria splits ──────────────────────────────────── -->
+        <div id="txSplitCatPane">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+            Distribua o valor da transação entre múltiplas categorias.<br>
+            O total deve ser igual ao valor da transação.
+          </div>
+          <div id="txCatSplitRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" onclick="txCatSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+            + Adicionar categoria
+          </button>
+          <div id="txCatSplitTotal" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--muted);font-weight:600">Total distribuído</span>
+              <span id="txCatSplitTotalVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="color:var(--muted);font-weight:600">Valor da transação</span>
+              <span id="txCatSplitTxVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div id="txCatSplitDiff" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
+          </div>
+        </div>
+
+        <!-- ── Membro splits ─────────────────────────────────────── -->
+        <div id="txSplitMemPane" style="display:none">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+            Distribua o valor entre membros da família por valor ou percentual.
+          </div>
+          <!-- Mode toggle -->
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button id="txMemSplitModeVal" class="tx-split-mode-btn active" onclick="txMemSplitSetMode('value')">R$ Valor</button>
+            <button id="txMemSplitModePct" class="tx-split-mode-btn" onclick="txMemSplitSetMode('pct')">% Percentual</button>
+          </div>
+          <div id="txMemSplitRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button type="button" onclick="txMemSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+            + Adicionar membro
+          </button>
+          <div id="txMemSplitTotal" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--muted);font-weight:600">Total distribuído</span>
+              <span id="txMemSplitTotalVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="color:var(--muted);font-weight:600">Valor da transação</span>
+              <span id="txMemSplitTxVal" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+            </div>
+            <div id="txMemSplitDiff" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
+          </div>
+        </div>
+
+      </div>
+
     </div><!-- /modal-body -->
 
     <div class="modal-footer" id="scModalFooter">
@@ -6623,6 +6616,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <button class="tx-ctx-tab active" data-tab="txCtxPrincipal" onclick="switchTxTab('txCtxPrincipal',this)">Principal</button>
         <button class="tx-ctx-tab" data-tab="txCtxDetalhes" onclick="switchTxTab('txCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="txCtxAnexo" onclick="switchTxTab('txCtxAnexo',this)">Anexo / IA</button>
+        <button class="tx-ctx-tab" id="txTabDivisao" data-tab="txCtxDivisao" onclick="switchTxTab('txCtxDivisao',this);txSplitTabOpened()">✂️ Divisão</button>
       </div>
 
       <!-- Wizard step indicator -->
@@ -8083,6 +8077,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/categories.js"></script>
   <script src="js/payees.js"></script>
   <script src="js/transactions.js"></script>
+  <script src="js/tx_splits.js"></script>
   <script src="js/budgets.js"></script>
   <script src="js/fx_rates.js"></script>
   <script src="js/dashboard.js"></script>
