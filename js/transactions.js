@@ -1534,6 +1534,8 @@ function resetTxModal(){
   if (_objSel) _objSel.value = '';
   const _drmSel = document.getElementById('txDreamId');
   if (_drmSel) _drmSel.value = '';
+  // Reset splits de categoria e membro
+  if (typeof txSplitReset === 'function') txSplitReset();
   } catch(e) { console.error('[resetTxModal]', e); }
 }
 async function editTransaction(id){
@@ -1580,6 +1582,10 @@ async function editTransaction(id){
     populateObjectiveSelect('txObjectiveId', data.objective_id || null).catch(() => {});
   }
   _populateTxDreamSelect(data.dream_id || null).catch(() => {});
+  // Carregar splits de categoria e membro
+  if (typeof txSplitLoad === 'function') {
+    txSplitLoad(data.category_splits || [], data.member_shares || []);
+  }
   openModal('txModal');
   if (typeof initTxFormMode === 'function') initTxFormMode();
 }
@@ -2249,6 +2255,9 @@ async function saveTransaction(){
     })(),
     objective_id: document.getElementById('txObjectiveId')?.value || null,
     dream_id:     document.getElementById('txDreamId')?.value || null,
+    // Splits de categoria e membro
+    category_splits: typeof txSplitGetCategorySplits === 'function' ? txSplitGetCategorySplits() : [],
+    member_shares:   typeof txSplitGetMemberShares   === 'function' ? txSplitGetMemberShares()   : [],
   };
   if(!data.date||!data.account_id){if(window.Cursor)Cursor.hide();_txSaving=false;toast(t('tx.err_date_account'),'error');return;}
   // Beneficiário obrigatório para não-transferências

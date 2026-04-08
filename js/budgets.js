@@ -32,7 +32,16 @@ function _categoryFamily(catId) {
 function _buildRawSpending(txs) {
   const map = {};
   (txs || []).forEach(t => {
-    if (t.category_id) map[t.category_id] = (map[t.category_id] || 0) + Math.abs(t.amount);
+    // Se tem category_splits com ≥2 itens, distribui pelos splits
+    if (Array.isArray(t.category_splits) && t.category_splits.length >= 2) {
+      t.category_splits.forEach(s => {
+        if (s.category_id && s.amount > 0) {
+          map[s.category_id] = (map[s.category_id] || 0) + Math.abs(s.amount);
+        }
+      });
+    } else if (t.category_id) {
+      map[t.category_id] = (map[t.category_id] || 0) + Math.abs(t.amount);
+    }
   });
   return map;
 }
@@ -146,7 +155,7 @@ async function loadBudgets() {
   _budgetCache = budgets || [];
 
   // 2. Buscar gastos do período
-  let txQ = famQ(sb.from('transactions').select('category_id,amount')).lt('amount', 0);
+  let txQ = famQ(sb.from('transactions').select('category_id,amount,category_splits')).lt('amount', 0);
   if (_budgetView === 'monthly') {
     const y = String(period.year), m = String(period.month).padStart(2, '0');
     const last = String(_lastDayOf(y, m)).padStart(2, '0');
@@ -405,7 +414,7 @@ async function loadBudgetHistory() {
     .in('month', months);
 
   const family = _categoryFamily(catId);
-  const { data: txAll } = await famQ(sb.from('transactions').select('category_id,amount,date'))
+  const { data: txAll } = await famQ(sb.from('transactions').select('category_id,amount,date,category_splits'))
     .lt('amount', 0)
     .gte('date', firstMonth)
     .lte('date', lastDate)

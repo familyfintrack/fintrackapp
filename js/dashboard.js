@@ -1283,7 +1283,7 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
   // Índice de transações confirmadas do mês por category_id
   const txsByCat = {};
   try {
-    let q = famQ(sb.from('transactions').select('category_id,date,amount,brl_amount,currency,is_transfer,status,family_member_id'))
+    let q = famQ(sb.from('transactions').select('category_id,date,amount,brl_amount,currency,is_transfer,status,family_member_id,family_member_ids,category_splits,member_shares'))
       .gte('date', from)
       .lte('date', to)
       .eq('status', 'confirmed');
@@ -1293,9 +1293,21 @@ async function _renderDashFavCategories(totalIncome, totalExpense) {
     const { data: monthTx = [] } = q ? await q : { data: [] };
     monthTx.forEach(t => {
       const txDate = String(t.date || '').slice(0,10);
-      if (!t.category_id || t.is_transfer || txDate < from || txDate > to) return;
-      if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
-      txsByCat[t.category_id].push(t);
+      if (t.is_transfer || txDate < from || txDate > to) return;
+      // Se member_shares existe, filtrar por membro considerando proporcional
+      if (Array.isArray(t.category_splits) && t.category_splits.length >= 2) {
+        // Distribui pelos splits
+        t.category_splits.forEach(s => {
+          if (!s.category_id) return;
+          if (!txsByCat[s.category_id]) txsByCat[s.category_id] = [];
+          // Cria tx virtual com o amount do split
+          txsByCat[s.category_id].push({ ...t, amount: -Math.abs(s.amount), brl_amount: -Math.abs(s.amount), category_id: s.category_id });
+        });
+      } else {
+        if (!t.category_id) return;
+        if (!txsByCat[t.category_id]) txsByCat[t.category_id] = [];
+        txsByCat[t.category_id].push(t);
+      }
     });
   } catch (e) {
     console.warn('[dash favcats monthTx]', e?.message || e);
@@ -2869,22 +2881,29 @@ async function _loadDashBudgetsCard() {
     // We run two queries in parallel when annual budgets exist
     // Alinhar com módulo de orçamentos: sem filtro de status (inclui pending + confirmed)
     const txMonthQ = famQ(
-      sb.from('transactions').select('category_id,amount,brl_amount,currency')
+      sb.from('transactions').select('category_id,amount,brl_amount,currency,category_splits')
     ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-${String(lastDay).padStart(2,'0')}`).lt('amount', 0);
 
     const txYtdQ = hasAnnual
-      ? famQ(sb.from('transactions').select('category_id,amount,brl_amount,currency'))
+      ? famQ(sb.from('transactions').select('category_id,amount,brl_amount,currency,category_splits'))
           .gte('date', `${y}-01-01`).lte('date', `${y}-12-31`).lt('amount', 0)
       : Promise.resolve({ data: [] });
 
     const [{ data: txMonth }, { data: txYtd }] = await Promise.all([txMonthQ, txYtdQ]);
 
     const _sumBycat = (rows) => {
-      // Usar amount diretamente como o módulo de orçamentos faz (igual ao buildRawSpending)
+      // Considera category_splits igual ao _buildRawSpending do módulo de orçamentos
       const map = {};
       (rows || []).forEach(t => {
-        if (!t.category_id) return;
-        map[t.category_id] = (map[t.category_id] || 0) + Math.abs(parseFloat(t.amount) || 0);
+        if (Array.isArray(t.category_splits) && t.category_splits.length >= 2) {
+          t.category_splits.forEach(s => {
+            if (s.category_id && s.amount > 0) {
+              map[s.category_id] = (map[s.category_id] || 0) + Math.abs(s.amount);
+            }
+          });
+        } else if (t.category_id) {
+          map[t.category_id] = (map[t.category_id] || 0) + Math.abs(parseFloat(t.amount) || 0);
+        }
       });
       return map;
     };
