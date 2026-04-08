@@ -310,7 +310,7 @@ function nextScheduledDate(dateStr, sc) {
     }
     default: return null;
   }
-  return d.toISOString().slice(0,10);
+  return localDateStr(d);
 }
 
 /* ── Email Notifications ── */

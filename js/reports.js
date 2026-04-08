@@ -297,24 +297,24 @@ function getRptDateRange() {
   const now = new Date();
   let from, to;
   if(p === 'month') {
-    const ym = document.getElementById('reportMonth')?.value || now.toISOString().slice(0,7);
+    const ym = document.getElementById('reportMonth')?.value || localMonthStr(now);
     const [y,m] = ym.split('-');
     from = `${y}-${m}-01`;
     to   = `${y}-${m}-${String(new Date(+y,+m,0).getDate()).padStart(2,'0')}`;
   } else if(p === 'custom') {
-    from = document.getElementById('rptFrom')?.value || now.toISOString().slice(0,10);
-    to   = document.getElementById('rptTo')?.value   || now.toISOString().slice(0,10);
+    from = document.getElementById('rptFrom')?.value || localDateStr(now);
+    to   = document.getElementById('rptTo')?.value   || localDateStr(now);
   } else if(p === 'quarter') {
     const q = Math.floor(now.getMonth()/3);
-    from = new Date(now.getFullYear(),q*3,1).toISOString().slice(0,10);
-    to   = new Date(now.getFullYear(),q*3+3,0).toISOString().slice(0,10);
+    from = localDateStr(new Date(now.getFullYear(),q*3,1));
+    to   = localDateStr(new Date(now.getFullYear(),q*3+3,0));
   } else if(p === 'year') {
     from = `${now.getFullYear()}-01-01`;
     to   = `${now.getFullYear()}-12-31`;
   } else { // last12
     const d = new Date(); d.setMonth(d.getMonth()-11); d.setDate(1);
-    from = d.toISOString().slice(0,10);
-    to   = now.toISOString().slice(0,10);
+    from = localDateStr(d);
+    to   = localDateStr(now);
   }
   return {from, to};
 }
@@ -821,10 +821,10 @@ function setReportView(view) {
   if (view === 'objectives') _rptObjectivesInit(); // populates select; user triggers load manually
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
-      const today=new Date().toISOString().slice(0,10);
+      const today=localDateStr();
       const in3=new Date();in3.setMonth(in3.getMonth()+3);
       document.getElementById('forecastFrom').value=today;
-      document.getElementById('forecastTo').value=in3.toISOString().slice(0,10);
+      document.getElementById('forecastTo').value=localDateStr(in3);
     }
     // Init picker then load (dependencies handled inside loadForecast)
     if (typeof _initForecastPicker === 'function') {
@@ -2229,11 +2229,11 @@ async function _rbtLoad() {
   // Init controls with today's month if empty
   const monthEl = document.getElementById('rbtMonth');
   const yearEl  = document.getElementById('rbtYear');
-  if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0,7);
+  if (monthEl && !monthEl.value) monthEl.value = localMonthStr();
   if (yearEl  && !yearEl.value)  yearEl.value  = new Date().getFullYear();
 
   const period = _rbtType === 'monthly'
-    ? { type: 'monthly', month: monthEl?.value || new Date().toISOString().slice(0,7) }
+    ? { type: 'monthly', month: monthEl?.value || localMonthStr() }
     : { type: 'annual',  year: parseInt(yearEl?.value) || new Date().getFullYear() };
 
   grid.innerHTML = '<div class="empty-state"><span>⏳</span></div>';
@@ -2244,7 +2244,7 @@ async function _rbtLoad() {
   let budgets = null, be = null;
 
   if (period.type === 'monthly') {
-    const monthStr = (period.month || new Date().toISOString().slice(0,7)) + '-01';
+    const monthStr = (period.month || localMonthStr()) + '-01';
     // Try with budget_type filter first (new schema)
     if (hasNew) {
       ({ data: budgets, error: be } = await famQ(
@@ -2275,7 +2275,7 @@ async function _rbtLoad() {
   }
 
   // Query spending
-  let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount')).lt('amount',0);
+  let txQ = famQ(sb.from('transactions').select('category_id,amount,brl_amount,category_splits')).lt('amount',0);
   if (period.type === 'monthly') {
     const [y,m] = (period.month||'').split('-');
     const last = new Date(+y, +m, 0).getDate();
@@ -2285,12 +2285,16 @@ async function _rbtLoad() {
   }
   const { data: txs } = await txQ;
 
-  // Build spending map
+  // Build spending map — handles split-category transactions
   const rawSpend = {};
   (txs||[]).forEach(t => {
-    if (!t.category_id) return;
-    const val = Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0));
-    rawSpend[t.category_id] = (rawSpend[t.category_id] || 0) + val;
+    const effSplits = typeof _txGetEffectiveSplits === 'function'
+      ? _txGetEffectiveSplits(t)
+      : (t.category_id ? [{ category_id: t.category_id, amount: Math.abs(parseFloat(t.brl_amount ?? t.amount ?? 0)) }] : []);
+    effSplits.forEach(s => {
+      if (!s.category_id) return;
+      rawSpend[s.category_id] = (rawSpend[s.category_id] || 0) + s.amount;
+    });
   });
 
   // Category family lookup (for hierarchy spending)
@@ -2382,7 +2386,7 @@ async function _rbtLoad() {
     const barW     = Math.min(100, pct).toFixed(1);
     const pctLabel = pct > 999 ? '>999%' : pct.toFixed(0) + '%';
     // Projection for current month
-    const isCurrentMonth = period.type === 'monthly' && period.month === now.toISOString().slice(0,7);
+    const isCurrentMonth = period.type === 'monthly' && period.month === localMonthStr(now);
     const dailyAvg = daysDone > 0 ? used / daysDone : 0;
     const projected = dailyAvg * daysInM;
     const showProj  = isCurrentMonth && !over && limit > 0 && projected > limit * 0.85;
@@ -2625,7 +2629,7 @@ async function _rbtGetBudgetContext() {
   if (!grid || !grid.querySelector('.rbt-card')) return null;
   // Re-run quietly and return data
   const period = _rbtType === 'monthly'
-    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || new Date().toISOString().slice(0,7) }
+    ? { type:'monthly', month: document.getElementById('rbtMonth')?.value || localMonthStr() }
     : { type:'annual',  year: parseInt(document.getElementById('rbtYear')?.value) || new Date().getFullYear() };
 
   const hasNew = await _rbtCheckSchema();
@@ -2940,7 +2944,7 @@ async function _rptObjectivesInit() {
   if (from && !from.value) {
     const now = new Date();
     from.value = `${now.getFullYear()}-01-01`;
-    to.value   = now.toISOString().slice(0,10);
+    to.value   = localDateStr(now);
   }
 }
 
@@ -3064,7 +3068,7 @@ async function _rptObjectivesLoad() {
     const months = Object.keys(byMonth).sort();
 
     // ── Status ─────────────────────────────────────────────────────────────
-    const today      = new Date().toISOString().slice(0,10);
+    const today      = localDateStr();
     const isActive   = obj.status === 'active' && (!obj.end_date || obj.end_date >= today);
     const isExpired  = obj.end_date && today > obj.end_date && obj.status !== 'closed';
     const statusLabel = obj.status==='closed' ? 'Encerrado' : isExpired ? 'Expirado' : isActive ? 'Ativo' : 'Aguardando';

@@ -344,6 +344,26 @@ function _fmcChipClearAll(containerId) {
   if (all) all.classList.add('selected');
   _fmcFireCallback(containerId);
 }
+
+// Select ALL individual members (collective expense / family-wide)
+function _fmcSelectAll(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  // Deselect the 'geral' chip, select all individual member chips
+  const allChip = c.querySelector('.fmc-chip-all');
+  if (allChip) allChip.classList.remove('selected');
+  const memberChips = c.querySelectorAll('.fmc-chip:not(.fmc-chip-all)');
+  if (!memberChips.length) {
+    // No members — fall back to 'geral'
+    if (allChip) allChip.classList.add('selected');
+    toast('Nenhum membro cadastrado para selecionar.', 'info');
+    return;
+  }
+  memberChips.forEach(chip => chip.classList.add('selected'));
+  _fmcFireCallback(containerId);
+  toast('✓ Todos os membros selecionados (despesa coletiva)', 'success');
+}
+window._fmcSelectAll = _fmcSelectAll;
 function _fmcFireCallback(containerId) {
   const cb = _fmcPickerCallbacks[containerId];
   if (cb && typeof window[cb] === 'function') window[cb](true);
@@ -503,7 +523,7 @@ async function openFamilyMemberForm(memberId = null, familyId = null) {
             <div class="form-group full" id="fmcBirthDateGroup">
               <label>Data de Nascimento <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>
               <input type="date" lang="pt-BR" id="fmcBirthDate" value="${m?.birth_date ? m.birth_date.slice(0,10) : ''}"
-                style="width:100%" max="${new Date().toISOString().slice(0,10)}">
+                style="width:100%" max="${localDateStr()}">
             </div>
             <div class="form-group">
               <label>Emoji / Avatar <span style="font-size:.72rem;color:var(--muted)">(opcional)</span></label>

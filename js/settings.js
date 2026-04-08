@@ -1911,7 +1911,7 @@ function _telRenderDailyChart(rows, days) {
   const buckets = {};
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    buckets[d.toISOString().slice(0,10)] = 0;
+    buckets[localDateStr(d)] = 0;
   }
   rows.forEach(r => { const day = (r.ts||'').slice(0,10); if (day in buckets) buckets[day]++; });
 
@@ -2480,7 +2480,7 @@ window._telDelSetQuick = function(daysBack) {
   const d = new Date();
   d.setDate(d.getDate() - daysBack);
   const dateEl = document.getElementById('telDelBeforeDate');
-  if (dateEl) dateEl.value = d.toISOString().slice(0, 10);
+  if (dateEl) dateEl.value = localDateStr(d);
   _telDelUpdatePreview();
 };
 
@@ -2776,7 +2776,7 @@ async function _telRenderLandingContent(el, cachedRows) {
   const dailyMap = {};
   for (let i=13; i>=0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    dailyMap[d.toISOString().slice(0,10)] = 0;
+    dailyMap[localDateStr(d)] = 0;
   }
   landingRows.filter(r => r.event_type === 'page_view').forEach(r => {
     const day = (r.ts||'').slice(0,10);

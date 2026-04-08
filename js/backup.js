@@ -713,7 +713,7 @@ async function exportBackup() {
     const url  = URL.createObjectURL(blob);
     const a2   = document.createElement('a');
     a2.href = url;
-    a2.download = `FinTrack_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a2.download = `FinTrack_Backup_${localDateStr()}.json`;
     a2.click();
     URL.revokeObjectURL(url);
     _backupStatus(status, `✓ ${backup.counts.transactions} transações · ${(json.length / 1024).toFixed(0)} KB`, 'var(--green)');
@@ -1333,7 +1333,7 @@ async function exportAllExcelZip() {
     const zip = new JSZip();
     const familyName = (currentUser?.families?.find(f => f.id === currentUser?.family_id)?.name || 'familia')
       .replace(/[^a-zA-Z0-9_\-]/g, '_');
-    const dateStr = new Date().toISOString().slice(0,10);
+    const dateStr = localDateStr();
 
     for (let i = 0; i < TABLES.length; i++) {
       const t = TABLES[i];

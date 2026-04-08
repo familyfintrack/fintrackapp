@@ -383,7 +383,7 @@ async function updateAllPrices() {
   const manual  = positions.filter(p => p.asset_type === 'renda_fixa' || p.asset_type === 'outro');
 
   let updated = 0, failed = 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
 
   // 1 — B3 / FIIs / BDRs via brapi.dev
   if (brapi.length) {
@@ -570,7 +570,7 @@ function openInvTransactionModal(accountId = null, positionId = null) {
         </div>
         <div class="form-group">
           <label>Data *</label>
-          <input type="date" lang="pt-BR" id="invTxDate" value="${new Date().toISOString().slice(0,10)}">
+          <input type="date" lang="pt-BR" id="invTxDate" value="${localDateStr()}">
         </div>
         <div class="form-group">
           <label>Código do Ativo *</label>
@@ -1045,7 +1045,7 @@ async function saveInvTransaction() {
     });
 
     // 5. Record price in history
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     await sb.from('investment_price_history').upsert({
       position_id: position.id,
       family_id:   famId(),
@@ -1192,7 +1192,7 @@ async function updateManualPrice(positionId) {
   if (!val || val <= 0) { toast('Preço inválido', 'error'); return; }
   const pos = _inv.positions.find(p => p.id === positionId);
   if (!pos) return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   await _invSavePrice(pos, val, 'BRL', today, 'manual');
   await loadInvestments(true);
   _invAugmentAccountBalances();
@@ -1683,7 +1683,7 @@ async function saveInvBalance(positionId) {
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     await _invSavePrice(pos, newPrice, pos.currency || 'BRL', today, 'manual');
     toast(`Saldo de ${esc(pos.ticker)} consolidado: ${fmt(newBalance)}`, 'success');
     closeModal('invBalanceModal');

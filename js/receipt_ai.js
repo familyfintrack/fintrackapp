@@ -227,7 +227,7 @@ async function _callClaudeVision(apiKey, pending) {
   const catList = (state.categories || []).map(c => `${c.name}|${c.type}`).join(', ');
   const accList = (state.accounts   || []).map(a => `${a.name}|${a.currency}`).join(', ');
   const payList = (state.payees     || []).slice(0, 80).map(p => p.name).join(', ');
-  const today   = new Date().toISOString().slice(0, 10);
+  const today   = localDateStr();
 
   const storeList = typeof _px !== 'undefined' ? (_px.stores || []).slice(0,20).map(s=>s.name).join(', ') : '';
 

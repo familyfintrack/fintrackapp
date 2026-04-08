@@ -446,6 +446,10 @@ function setCatPickerValue(catId, ctx) {
     });
   }
   _closeCatPickerByCtx(ctx);
+  // Show/hide split-category button when category changes (tx context only)
+  if (ctx === 'tx' && typeof _txSplitCheckShowBtn === 'function') {
+    setTimeout(_txSplitCheckShowBtn, 60);
+  }
 }
 
 

@@ -6415,14 +6415,14 @@ async function _checkWaitlistOnLogin() {
 // ── Notification dismiss helpers ─────────────────────────────────────────────
 function _dismissNotifToday(key) {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     localStorage.setItem('notif_dismiss_' + key, today);
   } catch(_) {}
 }
 function _isNotifDismissedToday(key) {
   try {
     const stored = localStorage.getItem('notif_dismiss_' + key);
-    return stored === new Date().toISOString().slice(0, 10);
+    return stored === localDateStr();
   } catch(_) { return false; }
 }
 window._dismissNotifToday    = _dismissNotifToday;
@@ -6508,7 +6508,7 @@ window._showUserLoginNotifications = _showUserLoginNotifications;
 /* ── Collect today's scheduled transactions ──────────────────────────────── */
 async function _getScheduledForToday() {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     const scheduled = state?.scheduled || [];
     if (!scheduled.length) return [];
 
@@ -6573,9 +6573,9 @@ async function _getFinancialHealthSnapshot() {
     const negAccs = accs.filter(a => a.type !== 'cartao_credito' && +(a.balance||0) < 0);
 
     // Upcoming 10 days — net cash flow
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     const limit = new Date(); limit.setDate(limit.getDate() + 10);
-    const limitStr = limit.toISOString().slice(0, 10);
+    const limitStr = localDateStr(limit);
 
     let upcomingNet = 0;
     (state?.scheduled || []).forEach(sc => {
@@ -6629,7 +6629,7 @@ async function _getFinancialHealthSnapshot() {
     if (!alert && totalBRL > 0 && upcomingNet >= 0) {
       // Show positive health only occasionally (not every login — check last shown date)
       const lastShown = localStorage.getItem('_healthNotifDate');
-      const today2 = new Date().toISOString().slice(0, 10);
+      const today2 = localDateStr();
       if (lastShown !== today2) {
         alert = true; level = 'good';
         icon = '✅'; color = 'var(--accent)';

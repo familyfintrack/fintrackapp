@@ -964,7 +964,7 @@ function openAddPriceRecord() {
   if (el('aprItemId'))     el('aprItemId').value = item.id;
   if (el('aprPrice'))      el('aprPrice').value  = '';
   if (el('aprQty'))        el('aprQty').value    = '1';
-  if (el('aprDate'))       el('aprDate').value   = new Date().toISOString().slice(0, 10);
+  if (el('aprDate'))       el('aprDate').value   = localDateStr();
   if (el('aprStoreInput')) el('aprStoreInput').value = '';
   if (el('aprStoreId'))    el('aprStoreId').value    = '';
   const sug = el('aprStoreSuggest');
@@ -1070,7 +1070,7 @@ async function _openItemForm(item) {
   if (el('pifModalTitle')) el('pifModalTitle').textContent = item ? '✏️ Editar Item' : '🏷️ Novo Item';
   if (el('pifPrice'))      el('pifPrice').value  = '';
   if (el('pifQty'))        el('pifQty').value    = '1';
-  if (el('pifDate'))       el('pifDate').value   = new Date().toISOString().slice(0, 10);
+  if (el('pifDate'))       el('pifDate').value   = localDateStr();
   if (el('pifStoreInput')) el('pifStoreInput').value = '';
   if (el('pifStoreId'))    el('pifStoreId').value    = '';
   const sug = el('pifStoreSuggest'); if (sug) sug.style.display = 'none';
@@ -1293,7 +1293,7 @@ function _openRegisterModal(aiResult) {
   if (el('rpmStoreId'))    el('rpmStoreId').value    = '';
   if (el('rpmStoreInfo'))  { el('rpmStoreInfo').style.display = 'none'; el('rpmStoreInfo').innerHTML = ''; }
   const sug = el('rpmStoreSuggest'); if (sug) sug.style.display = 'none';
-  if (el('rpmDate'))  el('rpmDate').value  = aiResult.date || new Date().toISOString().slice(0, 10);
+  if (el('rpmDate'))  el('rpmDate').value  = aiResult.date || localDateStr();
   if (el('rpmError')) el('rpmError').style.display = 'none';
   window._rpmAiAddress = aiResult.address || null;
   window._rpmAiCnpj    = aiResult.cnpj    || null;
@@ -1859,7 +1859,7 @@ async function readPricesReceiptWithAI() {
 async function _callPricesVision(apiKey, pending) {
   const catList   = (state.categories || []).filter(c => c.type === 'expense').map(c => c.name).join(', ');
   const storeList = _px.stores.slice(0, 20).map(s => s.payees?.name ? `${s.payees.name} (${s.name})` : s.name).join(', ');
-  const today     = new Date().toISOString().slice(0, 10);
+  const today     = localDateStr();
   const prompt =
     `Você é especialista em leitura de notas fiscais e recibos brasileiros.\n` +
     `Analise a imagem e extraia TODOS os itens com preços unitários e quantidades.\n` +

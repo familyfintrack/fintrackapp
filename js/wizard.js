@@ -833,7 +833,7 @@ async function _wzRunSetup() {
       // 3. Create budgets
       if (catResults.length) {
         _wzSetStatus('wzSt_budgets', 'Criando orçamentos…', false);
-        const ym = new Date().toISOString().slice(0, 7);
+        const ym = localMonthStr();
         const [y, m] = ym.split('-');
         const monthStr = `${y}-${m}-01`;
         let budgetCount = 0;

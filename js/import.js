@@ -760,7 +760,7 @@ function parseImportDate(s) {
     const serial = parseInt(str);
     if (serial > 40000 && serial < 60000) {
       const d = new Date((serial - 25569) * 86400 * 1000);
-      return d.toISOString().slice(0,10);
+      return localDateStr(d);
     }
   }
   return null;

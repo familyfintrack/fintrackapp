@@ -417,7 +417,7 @@ async function runScheduledUpcomingNotifications() {
     _todayMidnight.setHours(0, 0, 0, 0);
     const todayStr = typeof localDateStr === 'function'
       ? localDateStr(_todayMidnight)
-      : _todayMidnight.toISOString().slice(0, 10);
+      : localDateStr(_todayMidnight);
     let sent = 0;
     for (const sc of state.scheduled) {
       if (sc.status !== 'active') continue;
@@ -435,7 +435,7 @@ async function runScheduledUpcomingNotifications() {
       _cutoffDate.setDate(_cutoffDate.getDate() + daysBefore);
       const cutoff = typeof localDateStr === 'function'
         ? localDateStr(_cutoffDate)
-        : _cutoffDate.toISOString().slice(0,10);
+        : localDateStr(_cutoffDate);
       const occDates = getScheduledDates(sc, cutoff);
       for (const d of occDates) {
         if (d < todayStr) continue;
@@ -965,7 +965,7 @@ async function notifyOnTransaction(tx, sc = null) {
     const currency = (fullTx?.currency || 'BRL').toUpperCase();
     const brl      = fullTx?.brl_amount;
     const date     = typeof fmtDate === 'function'
-      ? fmtDate(fullTx?.date || new Date().toISOString().slice(0,10))
+      ? fmtDate(fullTx?.date || localDateStr())
       : (fullTx?.date || '');
     const status   = (fullTx?.status || 'confirmed') === 'pending' ? '⏳ Pendente' : '✅ Confirmada';
     const memo     = fullTx?.memo || '';

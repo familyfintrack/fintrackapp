@@ -634,7 +634,7 @@ function openContributeModal(dreamId) {
   const d = _drm.dreams.find(x => x.id === dreamId);
   if (!d) return;
   document.querySelectorAll('#contributeModal').forEach(m => m.remove());
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
 
   const html = `
   <div id="contributeModal" class="modal-overlay active" onclick="if(event.target===this)document.getElementById('contributeModal').remove()">
@@ -1001,7 +1001,7 @@ JSON esperado (sem markdown, sem texto adicional):
       if (result.prazo_meses_sugerido) {
         const d = new Date();
         d.setMonth(d.getMonth() + result.prazo_meses_sugerido);
-        _drm.wizard.data.target_date = d.toISOString().slice(0, 10);
+        _drm.wizard.data.target_date = localDateStr(d);
       }
     }
 

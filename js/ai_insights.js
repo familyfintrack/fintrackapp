@@ -427,7 +427,7 @@ function _aiMonthBounds(ym) {
   const [y, m] = String(ym || '').split('-').map(Number);
   if (!y || !m) return null;
   const start = `${y}-${String(m).padStart(2, '0')}-01`;
-  const end = new Date(y, m, 0).toISOString().slice(0, 10);
+  const end = localDateStr(new Date(y, m, 0));
   return { start, end };
 }
 
@@ -581,8 +581,8 @@ async function _aiSaveSnapshot(ctx, result) {
     family_id: famId,
     created_by: userId,
     title: customTitle || `AI Insights ${ctx.period?.from || ''} → ${ctx.period?.to || ''}`.trim(),
-    period_from: ctx.period?.from || new Date().toISOString().slice(0,10),
-    period_to: ctx.period?.to || new Date().toISOString().slice(0,10),
+    period_from: ctx.period?.from || localDateStr(),
+    period_to: ctx.period?.to || localDateStr(),
     snapshot_type: 'analysis',
     status: 'completed',
     filters: { ...(ctx.filters || {}), snapshot_hash: snapshotHash, snapshot_custom_title: customTitle || '' },
@@ -680,12 +680,12 @@ async function _aiCollectFinancialContext() {
   if (dateFrom) {
     const histFrom = new Date(dateFrom + 'T12:00:00');
     histFrom.setMonth(histFrom.getMonth() - 12);
-    const histFromStr = histFrom.toISOString().slice(0, 10);
+    const histFromStr = localDateStr(histFrom);
     const histTo = new Date(dateFrom + 'T12:00:00');
     histTo.setDate(histTo.getDate() - 1);
     let hq = famQ(sb.from('transactions').select(
       'id,date,amount,amount_brl,brl_amount,is_transfer,is_card_payment,status,description,memo,category_id,payee_id,account_id,transfer_to_account_id,family_member_id,family_member_ids,currency,exchange_rate'
-    ).eq('status','confirmed')).gte('date', histFromStr).lte('date', histTo.toISOString().slice(0,10));
+    ).eq('status','confirmed')).gte('date', histFromStr).lte('date', localDateStr(histTo));
     if (accountOrFilter) hq = hq.or(accountOrFilter);
     if (payeeId) hq = hq.eq('payee_id', payeeId);
     if (categoryIds.length) hq = hq.in('category_id', categoryIds);
@@ -873,7 +873,7 @@ async function _aiCollectFinancialContext() {
   };
 
   const projectionAnchor = dateTo ? new Date(dateTo + 'T12:00:00') : new Date();
-  const currentMonthKey = projectionAnchor.toISOString().slice(0,7);
+  const currentMonthKey = localMonthStr(projectionAnchor);
   const historicalPool = [...histRows, ...filtered].filter(t => { const c=_classifyTx(t); return c.type === 'income' || c.type === 'expense'; });
   const closedMonthsMap = {};
   historicalPool.forEach(t => {
@@ -909,8 +909,8 @@ async function _aiCollectFinancialContext() {
   });
 
   const projMonths = [];
-  const scheduledFrom = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+1, 1).toISOString().slice(0,10);
-  const scheduledTo = new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+7, 0).toISOString().slice(0,10);
+  const scheduledFrom = localDateStr(new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+1, 1));
+  const scheduledTo = localDateStr(new Date(projectionAnchor.getFullYear(), projectionAnchor.getMonth()+7, 0));
   const occurrenceIndex = {};
   _stSched.forEach(s => {
     const occs = _aiGenerateOccurrencesInRange(s, scheduledFrom, scheduledTo, 240);
@@ -1002,7 +1002,7 @@ async function _aiCollectFinancialContext() {
   try {
     if (typeof _rbtGetBudgetContext === 'function') budgetContext = await _rbtGetBudgetContext();
     if (!budgetContext) {
-      const curMonth = new Date().toISOString().slice(0,7);
+      const curMonth = localMonthStr();
       const { data: bdata } = await famQ(sb.from('budgets').select('amount,category_id,categories(name)')).eq('month', curMonth + '-01');
       if (bdata?.length) {
         const rawSpend = {};

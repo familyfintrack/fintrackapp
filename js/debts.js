@@ -564,7 +564,7 @@ function openDebtModal(debtId = null) {
     <div class="form-group">
       <label>${t('dbt.start_date')} *</label>
       <input class="form-input" id="debtFormStartDate" type="date" lang="pt-BR"
-        value="${debt?.start_date || new Date().toISOString().slice(0,10)}">
+        value="${debt?.start_date || localDateStr()}">
     </div>
     <div class="form-group">
       <label>${t('ui.status')}</label>
@@ -952,7 +952,7 @@ function _openDebtManualEntry(debtId) {
 </div>
 <div class="form-group">
   <label>${t('ui.date')}</label>
-  <input class="form-input" type="date" lang="pt-BR" id="debtManualDate" value="${new Date().toISOString().slice(0,10)}">
+  <input class="form-input" type="date" lang="pt-BR" id="debtManualDate" value="${localDateStr()}">
 </div>
 <div class="form-group">
   <label>${t('ui.amount')} ${d => d.entry_type==='amortization'?'(positivo = reduz dívida)':''}</label>
@@ -1022,7 +1022,7 @@ async function _settleDebt(debtId) {
 
   if (prevBalance > 0) {
     await sb.from('debt_ledger').insert({
-      debt_id: debtId, entry_date: new Date().toISOString().slice(0,10),
+      debt_id: debtId, entry_date: localDateStr(),
       entry_type: 'settlement', description: t('dbt.entry_settlement'),
       amount: -prevBalance, previous_balance: prevBalance, resulting_balance: 0,
       source_type: 'manual', family_id: famId(), created_at: new Date().toISOString(),
@@ -1217,7 +1217,7 @@ async function runDebtUpdateJob(manual = true) {
     if (active.length === 0) { toast(t('dbt.no_active'), 'info'); return; }
 
     let updated = 0, failed = 0;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
     const competencePeriod = today.slice(0, 7); // YYYY-MM
 
     for (const debt of active) {
@@ -1467,7 +1467,7 @@ async function postDebtAmortizationEntry(txAmount, txDate, txId) {
   const newBalance  = Math.max(0, prevBalance - amortAmount);
 
   await sb.from('debt_ledger').insert({
-    debt_id: debtId, entry_date: txDate || new Date().toISOString().slice(0,10),
+    debt_id: debtId, entry_date: txDate || localDateStr(),
     entry_type: 'amortization',
     description: t('dbt.entry_amortization'),
     amount: -amortAmount, rate_applied: null,

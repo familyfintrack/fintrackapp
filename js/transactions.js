@@ -750,8 +750,8 @@ function renderTransactions(){
     let html = '';
     let lastDate = null;
     let bandIndex = 0;
-    const TODAY_STR = new Date().toISOString().slice(0,10);
-    const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const TODAY_STR = localDateStr();
+    const YESTERDAY_STR = (() => { const y = new Date(); y.setDate(y.getDate()-1); return localDateStr(y); })();
     // Pre-compute per-day totals for the summary
     const dayTotals = {};
     txList.forEach(tx => {
@@ -1125,7 +1125,7 @@ async function openTransactionModal(id=''){
     await loadFamilyComposition().catch(() => {});
   }
   resetTxModal();
-  document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('txDate').value=localDateStr();
   document.getElementById('txModalTitle').textContent='Nova Transação';
   if(id) {
     editTransaction(id);
@@ -1534,6 +1534,12 @@ function resetTxModal(){
   if (_objSel) _objSel.value = '';
   const _drmSel = document.getElementById('txDreamId');
   if (_drmSel) _drmSel.value = '';
+  // Reset category split state
+  const _splitsEl = document.getElementById('txCategorySplits');
+  if (_splitsEl) _splitsEl.value = '[]';
+  _txSplitRows = [];
+  _txSplitUpdateBtn([]);
+  document.getElementById('txSplitPreview')?.remove();
   } catch(e) { console.error('[resetTxModal]', e); }
 }
 async function editTransaction(id){
@@ -1571,6 +1577,22 @@ async function editTransaction(id){
       }
     }
   }, 80);
+  // Load category_splits if present
+  const _splitsEl2 = document.getElementById('txCategorySplits');
+  if (_splitsEl2) {
+    const splits = (Array.isArray(data.category_splits) && data.category_splits.length >= 2)
+      ? data.category_splits : [];
+    _splitsEl2.value = JSON.stringify(splits);
+    if (splits.length >= 2) {
+      _txSplitRows = splits.map(s => ({
+        category_id:    s.category_id,
+        category_name:  s.category_name  || '',
+        category_color: s.category_color || '',
+        amount:         parseFloat(s.amount) || 0,
+      }));
+      _txSplitUpdateBtn(splits);
+    }
+  }
   // Clear any pending debt amortization state from previous modal use
   window._pendingAmortDebtId = null;
   const _dab = document.getElementById('debtAmortizationBanner');
@@ -1783,6 +1805,8 @@ function onTxCurrencyChange() {
 }
 
 function onTxAmountInput() {
+  // Show/hide split-category button when amount changes
+  if (typeof _txSplitCheckShowBtn === 'function') _txSplitCheckShowBtn();
   if (document.getElementById('txIsInternational')?.checked) updateIofMirror();
   updateTxCurrencyPreview();
 }
@@ -1826,8 +1850,8 @@ async function fetchTxCurrencyRate() {
   if (sugg) sugg.style.display = 'none';
 
   try {
-    let txDate = document.getElementById('txDate')?.value || new Date().toISOString().slice(0,10);
-    const todayStr = new Date().toISOString().slice(0,10);
+    let txDate = document.getElementById('txDate')?.value || localDateStr();
+    const todayStr = localDateStr();
     if (txDate > todayStr) txDate = todayStr;
 
     const url = `${FX_API_BASE}/${txDate}?base=${fetchFrom}&to=${fetchTo}`;
@@ -1953,10 +1977,10 @@ async function fetchSuggestedFxRate() {
     // Frankfurter uses weekday rates — if date is a weekend it returns the
     // closest prior business day automatically.
     let txDate = document.getElementById('txDate').value ||
-      new Date().toISOString().slice(0, 10);
+      localDateStr();
 
     // Frankfurter does not serve future dates — cap to today
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localDateStr();
     if (txDate > todayStr) txDate = todayStr;
 
     // GET /YYYY-MM-DD?base=SRC&to=DST
@@ -2226,6 +2250,15 @@ async function saveTransaction(){
     account_id:document.getElementById('txAccountId').value||null,
     payee_id:isTransfer?null:(document.getElementById('txPayeeId').value||null),
     category_id:document.getElementById('txCategoryId').value||null,
+    // category_splits: array of {category_id, amount, category_name, category_color}
+    // Empty array means no split — use category_id instead
+    category_splits: (() => {
+      try {
+        const raw = document.getElementById('txCategorySplits')?.value || '[]';
+        const splits = JSON.parse(raw);
+        return (Array.isArray(splits) && splits.length >= 2) ? splits : [];
+      } catch { return []; }
+    })(),
     memo:document.getElementById('txMemo').value,
     tags:tags.length?tags:null,
     status: (document.getElementById('txStatus')?.value || 'confirmed'),
@@ -2387,7 +2420,7 @@ async function saveTransaction(){
           dream_id:   _txDreamIdSelected,
           family_id:  famId(),
           amount:     _drmAmt,
-          date:       data.date || new Date().toISOString().slice(0,10),
+          date:       data.date || localDateStr(),
           type:       'transaction',
           notes:      `Vinculado à transação`,
           created_at: new Date().toISOString(),
@@ -2423,7 +2456,7 @@ async function duplicateTransaction(id) {
 
 function _openTxAsCopy(orig) {
   // Build a prefilled "new" transaction from orig — no ID, today's date
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   resetTxModal();
   document.getElementById('txDate').value = today;
   document.getElementById('txDesc').value = (orig.description || '') + ' (cópia)';
@@ -2893,7 +2926,7 @@ async function convertTxToScheduled(txId) {
   el('ctsDesc').value    = t.description || '';
   el('ctsAmount').value  = Math.abs(t.amount || 0).toFixed(2).replace('.', ',');
   el('ctsAccount').textContent = t.accounts?.name || '—';
-  el('ctsDate').value    = t.date || new Date().toISOString().slice(0,10);
+  el('ctsDate').value    = t.date || localDateStr();
   el('ctsMemo').value    = t.memo || '';
   el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
 
@@ -3089,6 +3122,335 @@ function getPeriodColor(period) {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   TRANSACTION CATEGORY SPLIT
+   Allows distributing a transaction amount across multiple categories.
+   
+   Architecture:
+   - UI: modal with rows (category picker + amount input)
+   - Storage: txCategorySplits hidden field → JSON array [{category_id, amount, pct, note}]
+   - DB: transactions.category_splits JSONB column (requires migration)
+   - Backward compat: if no splits, category_id is used as before
+   - Reports: _txGetEffectiveSplits(t) returns [{category_id, amount}] for any tx
+══════════════════════════════════════════════════════════════════ */
+
+// ── State ─────────────────────────────────────────────────────────
+let _txSplitRows = []; // [{category_id, category_name, category_color, amount}]
+let _txSplitTotal = 0; // total transaction amount (absolute)
+
+// ── Public: open the split modal ──────────────────────────────────
+function openTxSplitModal() {
+  const totalAbs = Math.abs(getAmtField('txAmount') || 0);
+  if (!totalAbs) { toast('Informe o valor da transação primeiro.', 'warning'); return; }
+  _txSplitTotal = totalAbs;
+
+  // Load current splits or seed from current single category
+  const existing = _txGetSplitsFromForm();
+  if (existing.length >= 2) {
+    _txSplitRows = existing;
+  } else {
+    const catId    = document.getElementById('txCategoryId')?.value || null;
+    const catLabel = document.getElementById('catPickerLabel')?.textContent?.trim() || '';
+    const cleanLab = catLabel.replace(/^—.*—$/, '').trim() || '—';
+    // Seed two rows: current category + empty slot
+    _txSplitRows = [
+      { category_id: catId || null, category_name: catId ? cleanLab : '', category_color: '', amount: totalAbs },
+      { category_id: null, category_name: '', category_color: '', amount: 0 },
+    ];
+  }
+
+  _txSplitRenderModal();
+  openModal('txSplitModal');
+}
+window.openTxSplitModal = openTxSplitModal;
+
+// ── Build / show the modal ─────────────────────────────────────────
+function _txSplitRenderModal() {
+  // Create modal if it doesn't exist
+  let m = document.getElementById('txSplitModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'txSplitModal';
+    m.className = 'modal-overlay';
+    document.body.appendChild(m);
+  }
+
+  const fmtBRL = v => {
+    try { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}).format(v); }
+    catch { return 'R$ ' + Number(v).toFixed(2); }
+  };
+
+  const rowsHtml = _txSplitRows.map((r, i) => {
+    const pct = _txSplitTotal > 0 ? (r.amount / _txSplitTotal * 100).toFixed(1) : '0.0';
+    const dot = r.category_color ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.category_color};margin-right:5px;flex-shrink:0"></span>` : '';
+    return `
+    <div class="tx-split-row" id="txSplitRow${i}">
+      <button type="button" class="tx-split-cat-btn" onclick="_txSplitPickCat(${i})" title="Selecionar categoria">
+        ${dot}<span id="txSplitCatLabel${i}">${r.category_name || '— Selecionar categoria —'}</span>
+      </button>
+      <input type="text" class="tx-split-amt-input" id="txSplitAmt${i}"
+        value="${r.amount > 0 ? r.amount.toFixed(2).replace('.',',') : ''}"
+        inputmode="decimal" placeholder="0,00"
+        oninput="_txSplitAmtInput(${i}, this.value)"
+        onblur="_txSplitAmtBlur(${i}, this.value)">
+      <span class="tx-split-pct" id="txSplitPct${i}">${pct}%</span>
+      ${_txSplitRows.length > 2 ? `<button type="button" class="tx-split-del" onclick="_txSplitDelRow(${i})" title="Remover">✕</button>` : '<span style="width:26px"></span>'}
+    </div>`;
+  }).join('');
+
+  const spent = _txSplitRows.reduce((s, r) => s + (r.amount || 0), 0);
+  const rem   = _txSplitTotal - spent;
+  const remCls = Math.abs(rem) < 0.01 ? 'ok' : 'over';
+  const remMsg = Math.abs(rem) < 0.01
+    ? `✓ Distribuição completa — ${fmtBRL(_txSplitTotal)}`
+    : rem > 0
+      ? `Faltam ${fmtBRL(rem)} para distribuir`
+      : `Excesso de ${fmtBRL(Math.abs(rem))} — reduza algum valor`;
+
+  m.innerHTML = `
+  <div class="modal" style="max-width:440px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">✂️ Dividir em categorias</span>
+      <button class="modal-close" onclick="closeModal('txSplitModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:14px">
+        Total da transação: <strong style="color:var(--text)">${fmtBRL(_txSplitTotal)}</strong>
+      </div>
+      <div id="txSplitRows">${rowsHtml}</div>
+      <div class="tx-split-remainder ${remCls}" id="txSplitRemainder">${remMsg}</div>
+      <button type="button" onclick="_txSplitAddRow()"
+        style="margin-top:10px;width:100%;padding:8px;border:1.5px dashed var(--border);border-radius:8px;background:none;color:var(--muted);font-size:.8rem;cursor:pointer;font-family:inherit;transition:border-color .12s"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        + Adicionar categoria
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="_txSplitClear()">Remover divisão</button>
+      <button class="btn btn-primary" onclick="_txSplitSave()">Confirmar</button>
+    </div>
+  </div>`;
+}
+window._txSplitRenderModal = _txSplitRenderModal;
+
+// ── Row operations ─────────────────────────────────────────────────
+function _txSplitAddRow() {
+  _txSplitRows.push({ category_id: null, category_name: '', category_color: '', amount: 0 });
+  _txSplitRenderModal();
+}
+window._txSplitAddRow = _txSplitAddRow;
+
+function _txSplitDelRow(i) {
+  if (_txSplitRows.length <= 2) return;
+  _txSplitRows.splice(i, 1);
+  _txSplitRenderModal();
+}
+window._txSplitDelRow = _txSplitDelRow;
+
+function _txSplitAmtInput(i, raw) {
+  const v = parseFloat((raw || '0').replace(',', '.')) || 0;
+  _txSplitRows[i].amount = v;
+  // Update pct display live
+  const pct = _txSplitTotal > 0 ? (v / _txSplitTotal * 100).toFixed(1) : '0.0';
+  const pctEl = document.getElementById('txSplitPct' + i);
+  if (pctEl) pctEl.textContent = pct + '%';
+  // Update remainder
+  const spent = _txSplitRows.reduce((s, r) => s + (r.amount || 0), 0);
+  const rem   = _txSplitTotal - spent;
+  const remEl = document.getElementById('txSplitRemainder');
+  if (remEl) {
+    const fmtBRL = v2 => {
+      try { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}).format(v2); }
+      catch { return 'R$ ' + Number(v2).toFixed(2); }
+    };
+    remEl.className = 'tx-split-remainder ' + (Math.abs(rem) < 0.01 ? 'ok' : 'over');
+    remEl.textContent = Math.abs(rem) < 0.01
+      ? `✓ Distribuição completa — ${fmtBRL(_txSplitTotal)}`
+      : rem > 0 ? `Faltam ${fmtBRL(rem)} para distribuir` : `Excesso de ${fmtBRL(Math.abs(rem))}`;
+  }
+}
+window._txSplitAmtInput = _txSplitAmtInput;
+
+function _txSplitAmtBlur(i, raw) {
+  const v = parseFloat((raw || '0').replace(',', '.')) || 0;
+  _txSplitRows[i].amount = v;
+  const el = document.getElementById('txSplitAmt' + i);
+  if (el) el.value = v > 0 ? v.toFixed(2).replace('.', ',') : '';
+}
+window._txSplitAmtBlur = _txSplitAmtBlur;
+
+// ── Category picker for a split row ───────────────────────────────
+function _txSplitPickCat(rowIdx) {
+  // Reuse the existing cat picker but wire it back to the split row
+  window._txSplitPickingRow = rowIdx;
+  // Open a lightweight category selection: build inline dropdown
+  const cats = (state.categories || []).sort((a,b) => (a.name||'').localeCompare(b.name||'','pt-BR'));
+  if (!cats.length) { toast('Nenhuma categoria cadastrada.', 'warning'); return; }
+
+  let m2 = document.getElementById('txSplitCatPicker');
+  if (!m2) {
+    m2 = document.createElement('div');
+    m2.id = 'txSplitCatPicker';
+    m2.className = 'modal-overlay';
+    document.body.appendChild(m2);
+  }
+  const rows = cats.map(c =>
+    `<button type="button" class="tx-split-cat-option" onclick="_txSplitSelectCat('${c.id}','${(c.name||'').replace(/'/g,"\\'")}','${c.color||''}')"
+      style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;font-family:inherit;text-align:left;transition:background .1s"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c.color||'#94a3b8'};flex-shrink:0"></span>
+      <span style="font-size:.84rem;color:var(--text)">${c.name||'—'}</span>
+    </button>`
+  ).join('');
+  m2.innerHTML = `
+  <div class="modal" style="max-width:360px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">Selecionar categoria</span>
+      <button class="modal-close" onclick="closeModal('txSplitCatPicker')">✕</button>
+    </div>
+    <div style="max-height:60vh;overflow-y:auto">${rows}</div>
+  </div>`;
+  openModal('txSplitCatPicker');
+}
+window._txSplitPickCat = _txSplitPickCat;
+
+function _txSplitSelectCat(catId, catName, catColor) {
+  const i = window._txSplitPickingRow;
+  if (i != null && _txSplitRows[i]) {
+    _txSplitRows[i].category_id    = catId;
+    _txSplitRows[i].category_name  = catName;
+    _txSplitRows[i].category_color = catColor;
+    // Update the label button in the split modal
+    const lbl = document.getElementById('txSplitCatLabel' + i);
+    if (lbl) {
+      lbl.parentElement.innerHTML =
+        `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${catColor};margin-right:5px;flex-shrink:0"></span>` +
+        `<span id="txSplitCatLabel${i}">${catName}</span>`;
+    }
+  }
+  closeModal('txSplitCatPicker');
+}
+window._txSplitSelectCat = _txSplitSelectCat;
+
+// ── Save / clear ───────────────────────────────────────────────────
+function _txSplitSave() {
+  const spent = _txSplitRows.reduce((s, r) => s + (r.amount || 0), 0);
+  if (Math.abs(spent - _txSplitTotal) > 0.02) {
+    toast('Os valores não somam o total da transação. Ajuste antes de confirmar.', 'warning');
+    return;
+  }
+  const valid = _txSplitRows.filter(r => r.category_id && r.amount > 0);
+  if (valid.length < 2) {
+    toast('Adicione pelo menos 2 categorias com valores.', 'warning');
+    return;
+  }
+  // Persist to hidden field
+  const payload = valid.map(r => ({
+    category_id:    r.category_id,
+    category_name:  r.category_name,
+    category_color: r.category_color,
+    amount:         parseFloat(r.amount.toFixed(2)),
+  }));
+  const el = document.getElementById('txCategorySplits');
+  if (el) el.value = JSON.stringify(payload);
+
+  // Set primary category_id to the largest split
+  const primary = [...payload].sort((a,b) => b.amount - a.amount)[0];
+  if (primary?.category_id) {
+    setCatPickerValue(primary.category_id);
+  }
+
+  // Update button state
+  _txSplitUpdateBtn(payload);
+  closeModal('txSplitModal');
+  toast(`✓ Dividido em ${payload.length} categorias`, 'success');
+}
+window._txSplitSave = _txSplitSave;
+
+function _txSplitClear() {
+  const el = document.getElementById('txCategorySplits');
+  if (el) el.value = '[]';
+  _txSplitRows = [];
+  _txSplitUpdateBtn([]);
+  closeModal('txSplitModal');
+}
+window._txSplitClear = _txSplitClear;
+
+function _txSplitUpdateBtn(splits) {
+  const divBtn    = document.getElementById('txSplitCatBtn');
+  const activeBtn = document.getElementById('txSplitCatActiveBtn');
+  const countEl   = document.getElementById('txSplitCatCount');
+  if (!divBtn || !activeBtn) return;
+  if (splits && splits.length >= 2) {
+    divBtn.style.display    = 'none';
+    activeBtn.style.display = '';
+    if (countEl) countEl.textContent = splits.length;
+    // Show preview chips below category
+    let preview = document.getElementById('txSplitPreview');
+    if (!preview) {
+      preview = document.createElement('div');
+      preview.id = 'txSplitPreview';
+      preview.className = 'tx-split-preview';
+      const catGroup = document.getElementById('txCategoryGroup');
+      catGroup?.appendChild(preview);
+    }
+    preview.innerHTML = splits.map(s =>
+      `<span class="tx-split-preview-chip">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${s.category_color||'#94a3b8'}"></span>
+        ${s.category_name} <strong>${_txSplitFmt(s.amount)}</strong>
+      </span>`
+    ).join('');
+  } else {
+    divBtn.style.display    = 'none'; // hidden until amount is filled
+    activeBtn.style.display = 'none';
+    document.getElementById('txSplitPreview')?.remove();
+  }
+}
+
+function _txSplitFmt(v) {
+  try { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2}).format(v); }
+  catch { return 'R$ ' + Number(v).toFixed(2); }
+}
+
+// Show the "✂️ Dividir" button once there's a category AND amount
+function _txSplitCheckShowBtn() {
+  const catId  = document.getElementById('txCategoryId')?.value;
+  const amt    = getAmtField('txAmount');
+  const splits = _txGetSplitsFromForm();
+  const divBtn = document.getElementById('txSplitCatBtn');
+  if (!divBtn) return;
+  divBtn.style.display = (catId && Math.abs(amt) > 0 && splits.length < 2) ? '' : 'none';
+}
+window._txSplitCheckShowBtn = _txSplitCheckShowBtn;
+
+// ── Read splits from form ──────────────────────────────────────────
+function _txGetSplitsFromForm() {
+  try {
+    const raw = document.getElementById('txCategorySplits')?.value || '[]';
+    return JSON.parse(raw);
+  } catch { return []; }
+}
+window._txGetSplitsFromForm = _txGetSplitsFromForm;
+
+// ── GLOBAL HELPER: get effective splits for any transaction ──────
+// Used by reports/charts/budgets to handle both split and non-split tx
+// Returns [{category_id, amount}] always
+function _txGetEffectiveSplits(t) {
+  const splits = t.category_splits;
+  if (Array.isArray(splits) && splits.length >= 2) {
+    return splits.map(s => ({ category_id: s.category_id, amount: s.amount }));
+  }
+  if (t.category_id) {
+    return [{ category_id: t.category_id, amount: Math.abs(parseFloat(t.brl_amount ?? t.amount) || 0) }];
+  }
+  return [];
+}
+window._txGetEffectiveSplits = _txGetEffectiveSplits;
+
+
+
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._aiDismissAll                       = _aiDismissAll;
 window._txDetailAction                     = _txDetailAction;
@@ -3103,6 +3465,7 @@ window.fetchTxCurrencyRate                 = fetchTxCurrencyRate;
 window.filterTransactions                  = filterTransactions;
 window.loadTransactions                    = loadTransactions;
 window.openTransactionModal                = openTransactionModal;
+window.openTxSplitModal                    = openTxSplitModal;
 window.openTxClipboardImport               = openTxClipboardImport;
 window.openTxDetail                        = openTxDetail;
 window.populateTxMonthFilter               = populateTxMonthFilter;

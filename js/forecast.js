@@ -380,7 +380,7 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
   let cur = new Date(fromStr + 'T12:00:00');
   const end = new Date(toStr + 'T12:00:00');
   while (cur <= end) {
-    allDates.push(cur.toISOString().slice(0,10));
+    allDates.push(localDateStr(cur));
     cur.setDate(cur.getDate()+1);
   }
   if (!allDates.length) return;
@@ -483,7 +483,7 @@ function renderForecastChart(allItems, accounts, fromStr, toStr) {
   const datasets = [...lineDatasets, ...markerDatasets];
 
   // ── Annotations ───────────────────────────────────────────────────────────
-  const todayIdx = allDates.indexOf(new Date().toISOString().slice(0,10));
+  const todayIdx = allDates.indexOf(localDateStr());
   const annotations = {
     zeroLine: {
       type:'line', yMin:0, yMax:0,
