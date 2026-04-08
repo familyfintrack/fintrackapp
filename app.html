@@ -773,6 +773,8 @@
 
       <!-- Card: Investimentos -->
       <!-- Card: Orçamentos -->
+      <!-- Budgets + Dreams: side-by-side on desktop, stacked on mobile -->
+      <div class="dash-budgets-dreams-grid" id="dashBudgetsDreamsWrapper">
       <div id="dashCardBudgets" class="dcard mb-4" style="display:none">
         <div class="dcard-header">
           <div class="dcard-title-wrap">
@@ -780,8 +782,8 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
             <div>
-              <div class="dcard-title">Orçamentos do Mês</div>
-              <div class="dcard-sub">Progresso por categoria</div>
+              <div class="dcard-title">Orçamentos &amp; Objetivos</div>
+              <div class="dcard-sub">Progresso por categoria e objetivos ativos</div>
             </div>
           </div>
           <button class="dcard-link-btn" onclick="navigate('budgets')">Ver todos →</button>
@@ -818,6 +820,7 @@
         <div id="dashDreamsBody">
           <div class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando…</div>
         </div>
+      </div>
       </div>
 
       <!-- Card: Top Beneficiários / Fontes Pagadoras -->
@@ -1392,34 +1395,18 @@
       <!-- ── View: Transações ── -->
       <div id="reportTxView" style="display:none">
         <div class="report-kpi-grid" id="reportTxKpis"></div>
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Transações</span>
-            <span id="reportTxCount" class="badge badge-muted"></span>
+        <div class="card rpt-tx-card">
+          <div class="card-header rpt-tx-header">
+            <div class="rpt-tx-header-left">
+              <span class="card-title">Transações</span>
+              <span id="reportTxCount" class="badge badge-muted"></span>
+            </div>
+            <div class="rpt-tx-header-right">
+              <span class="rpt-tx-total-label">Total:</span>
+              <span id="reportTxTotal" class="rpt-tx-total-val"></span>
+            </div>
           </div>
-          <div class="table-wrap">
-            <table id="reportTxTable" class="resizable-table rpt-tx-table">
-              <colgroup>
-                <col class="rpt-col-date">
-                <col class="rpt-col-desc">
-                <col class="rpt-col-acct">
-                <col class="rpt-col-cat">
-                <col class="rpt-col-pay">
-                <col class="rpt-col-amt">
-              </colgroup>
-              <thead><tr>
-                <th onclick="rptSortTx('date')" style="cursor:pointer">Data <span id="rptSortDate"></span></th>
-                <th onclick="rptSortTx('description')" style="cursor:pointer">Descrição <span id="rptSortDesc"></span></th>
-                <th class="rpt-td-acct">Conta</th><th class="rpt-td-cat">Categoria</th><th class="rpt-td-pay">Beneficiário</th>
-                <th onclick="rptSortTx('amount')" style="cursor:pointer">Valor <span id="rptSortAmt"></span></th>
-              </tr></thead>
-              <tbody id="reportTxBody"></tbody>
-              <tfoot><tr style="font-weight:700;background:var(--surface2)">
-                <td colspan="5" style="padding:10px 14px">Total</td>
-                <td id="reportTxTotal" style="padding:10px 14px;font-family:var(--font-serif)"></td>
-              </tr></tfoot>
-            </table>
-          </div>
+          <div class="rpt-tx-list" id="reportTxBody"></div>
         </div>
       </div>
 
@@ -6318,7 +6305,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <button class="tx-ctx-tab active" data-tab="txCtxPrincipal" onclick="switchTxTab('txCtxPrincipal',this)">Principal</button>
         <button class="tx-ctx-tab" data-tab="txCtxDetalhes" onclick="switchTxTab('txCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="txCtxAnexo" onclick="switchTxTab('txCtxAnexo',this)">Anexo / IA</button>
-        <button class="tx-ctx-tab" id="txTabDivisao" data-tab="txCtxDivisao" onclick="switchTxTab('txCtxDivisao',this);txSplitTabOpened()">✂️ Divisão</button>
+
       </div>
 
       <!-- Wizard step indicator -->
@@ -6510,8 +6497,8 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
 
-      <!-- ── TAB: Divisão ─────────────────────────────────────── -->
-      <div class="tx-ctx-pane" id="txCtxDivisao" style="display:none;padding:16px">
+      <!-- ── SPLIT DATA CONTAINER (hidden, used by split modal) ── -->
+      <div id="txCtxDivisao" style="display:none;padding:16px">
 
         <!-- Sub-tabs: Categorias | Membros -->
         <div style="display:flex;gap:6px;margin-bottom:14px">
@@ -6581,6 +6568,9 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- Footer -->
     <div class="modal-footer" id="txModalFooter">
       <button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button>
+      <button class="btn btn-ghost" id="txSplitOpenBtn" onclick="_openSplitModal()" title="Dividir por categoria ou membro">
+        ✂️ Divisão
+      </button>
       <!-- Wizard prev/next (hidden in tabs mode) -->
       <div id="txWizardNav" style="display:none;display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" id="txWzPrev" onclick="txWizardPrev()" style="display:none">← Anterior</button>
@@ -6588,6 +6578,85 @@ Se você não solicitou isso, ignore este e-mail.`,
         <button class="btn btn-primary" id="txWzNext" onclick="txWizardNext()">Próximo →</button>
       </div>
       <button class="btn btn-primary" id="txSaveBtn" onclick="saveTransaction()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Modal: Divisão de Transação ─────────────────────────────────────── -->
+<div class="modal-overlay" id="txSplitModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">✂️ Divisão de Transação</span>
+      <button class="modal-close" onclick="closeModal('txSplitModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:70dvh;overflow-y:auto">
+
+      <!-- Sub-tabs -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <button id="txSplitModalTabCat" class="tx-split-subtab active" onclick="txSplitShowModalTab('cat')">
+          🏷️ Por Categoria
+        </button>
+        <button id="txSplitModalTabMem" class="tx-split-subtab" onclick="txSplitShowModalTab('mem')">
+          👥 Por Membro
+        </button>
+      </div>
+
+      <!-- Category splits -->
+      <div id="txSplitModalCatPane">
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+          Distribua o valor da transação entre múltiplas categorias.<br>O total deve ser igual ao valor da transação.
+        </div>
+        <div id="txCatSplitRowsM" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button type="button" onclick="txCatSplitAddRow()"
+          style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+          + Adicionar categoria
+        </button>
+        <div id="txCatSplitTotalM" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="color:var(--muted);font-weight:600">Total distribuído</span>
+            <span id="txCatSplitTotalValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+            <span style="color:var(--muted);font-weight:600">Valor da transação</span>
+            <span id="txCatSplitTxValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+          </div>
+          <div id="txCatSplitDiffM" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
+        </div>
+      </div>
+
+      <!-- Member splits -->
+      <div id="txSplitModalMemPane" style="display:none">
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+          Distribua o valor entre membros da família por valor ou percentual.
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="txMemSplitModeValM" class="tx-split-mode-btn active" onclick="txMemSplitSetMode('value')">R$ Valor</button>
+          <button id="txMemSplitModePctM" class="tx-split-mode-btn" onclick="txMemSplitSetMode('pct')">% Percentual</button>
+        </div>
+        <div id="txMemSplitRowsM" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button type="button" onclick="txMemSplitAddRow()"
+          style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+          + Adicionar membro
+        </button>
+        <div id="txMemSplitTotalM" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="color:var(--muted);font-weight:600">Total distribuído</span>
+            <span id="txMemSplitTotalValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+            <span style="color:var(--muted);font-weight:600">Valor da transação</span>
+            <span id="txMemSplitTxValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+          </div>
+          <div id="txMemSplitDiffM" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('txSplitModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('txSplitModal')">Confirmar Divisão</button>
     </div>
   </div>
 </div>
