@@ -18368,6 +18368,7 @@ section[data-page="transactions"] .content {
   min-width: 0;
 }
 .fx-bar-family-icon { color: var(--accent); flex-shrink: 0; }
+.fx-bar-family-label { font-size: .6rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
 .fx-bar-family-text { overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 .fx-bar-label,
 .fx-bar-refresh,
@@ -25969,3 +25970,92 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
 .sc-icon-antecipar { background: rgba(180,83,9,.10); color: #b45309; }
 .sc-icon-antecipar:hover { background: rgba(180,83,9,.2); }
 
+
+/* ── Transactions: account filter badge ──────────────────────────────────── */
+.tx-acct-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 12px;
+  background: linear-gradient(135deg, rgba(42,96,73,.12) 0%, rgba(42,96,73,.06) 100%);
+  border: 1.5px solid rgba(42,96,73,.3);
+  border-radius: 20px;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  animation: txBadgePop .18s ease;
+}
+.tx-acct-badge svg { opacity: .75; }
+.tx-acct-badge-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  background: rgba(42,96,73,.18);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: .65rem;
+  color: var(--accent);
+  font-family: inherit;
+  transition: background .15s;
+  padding: 0;
+  line-height: 1;
+}
+.tx-acct-badge-clear:hover { background: rgba(42,96,73,.35); }
+@keyframes txBadgePop {
+  from { opacity: 0; transform: translateY(-4px) scale(.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Dashboard: side-by-side pair wrapper ─────────────────────────────────── */
+.dash-pair-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 1.5rem;
+}
+/* Cards inside a pair don't add their own bottom margin */
+.dash-pair-wrap > * { margin-bottom: 0 !important; }
+
+@media (max-width: 700px) {
+  .dash-pair-wrap {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* ── Dashboard custom modal: pair button ─────────────────────────────────── */
+.dcc-pair-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.dcc-pair-btn:hover {
+  background: rgba(42,96,73,.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.dcc-pair-btn--on {
+  background: rgba(42,96,73,.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.dcc-badge--paired {
+  background: rgba(42,96,73,.1);
+  color: var(--accent);
+  border-color: rgba(42,96,73,.25);
+}
+.dcc-item--paired {
+  border-left: 3px solid rgba(42,96,73,.4);
+  background: linear-gradient(90deg, rgba(42,96,73,.04) 0%, transparent 100%);
+}
