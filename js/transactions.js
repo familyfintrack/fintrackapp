@@ -568,7 +568,7 @@ function txRow(t, showAccount=true, runningBalance=null) {
       ${checkboxCell}
       <td class="tx-v2-date">${dateStr}${pendDot}</td>
       <td class="tx-v2-body">
-        <div class="tx-v2-title">${titleCategoryIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}</div>
+        <div class="tx-v2-title">${titleCategoryIconHtml}<span class="tx-v2-desc-text">${esc(t.description||'—')}</span>${attach}${reconcileBadge}${typeof _txLinkFindGroup==='function'&&_txLinkFindGroup(t.id)?'<span title="Transação vinculada — somente o valor líquido conta nas estatísticas" style="display:inline-flex;align-items:center;margin-left:4px;font-size:.65rem;background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.25);border-radius:20px;padding:0 5px;line-height:1.6;flex-shrink:0">🔗</span>':''}</div>
         ${detailLines}
       </td>
       <td class="tx-v2-right" style="position:relative">
@@ -1953,6 +1953,13 @@ async function _goToSavedTransaction(txId, txData = {}) {
   // Load the page — row will now be in the DOM
   try { await loadTransactions(); } catch (_) {}
 
+  // Update account filter badge to show which account is filtered
+  try {
+    if (savedAccountId && typeof _txUpdateFilterBadge === 'function') {
+      _txUpdateFilterBadge();
+    }
+  } catch(_) {}
+
   // First scroll the content area to top so the highlight scroll is predictable
   const _contentEl = document.querySelector('.content') || document.getElementById('page-transactions');
   if (_contentEl) _contentEl.scrollTop = 0;
@@ -1972,7 +1979,7 @@ function _highlightNewTxRow(txId) {
       void row.offsetWidth;               // force reflow to restart animation
       row.classList.add('tx-row-new');
       // Remove after animation completes
-      setTimeout(() => row.classList.remove('tx-row-new'), 3000);
+      setTimeout(() => row.classList.remove('tx-row-new'), 6000);
       return true;
     }
     if (tries > 0) setTimeout(() => attempt(tries - 1), 150);
@@ -3001,6 +3008,135 @@ function ctsUpdateMode() {
     if (btn) btn.textContent = '🔄 Converter';
   }
 }
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TX LINKING — Vinculação de transações para reembolsos e compensações
+// ════════════════════════════════════════════════════════════════════════════
+const TX_LINK_KEY='tx_link_groups';
+let _txLinkCache=null;
+
+async function _txLinkLoad(){
+  try{
+    const{data}=await famQ(sb.from('app_settings').select('value')).eq('key',TX_LINK_KEY).maybeSingle();
+    _txLinkCache=JSON.parse(data?.value||'{"groups":[]}');
+    return _txLinkCache;
+  }catch(_){_txLinkCache={groups:[]};return _txLinkCache;}
+}
+async function _txLinkSave(obj){
+  _txLinkCache=obj;
+  const val=JSON.stringify(obj);
+  const{data:ex}=await famQ(sb.from('app_settings').select('id')).eq('key',TX_LINK_KEY).maybeSingle();
+  if(ex?.id){await famQ(sb.from('app_settings').update({value:val})).eq('key',TX_LINK_KEY);}
+  else{await famQ(sb.from('app_settings').insert({key:TX_LINK_KEY,value:val,family_id:famId()}));}
+}
+function _txLinkFindGroup(txId){
+  if(!_txLinkCache) return null;
+  return(_txLinkCache.groups||[]).find(g=>g.txIds.includes(txId))||null;
+}
+async function openTxLinkModal(txId){
+  if(!txId){toast('Salve a transação antes de vincular.','warning');return;}
+  if(!_txLinkCache) await _txLinkLoad();
+  const tx=(state.trans||[]).find(t=>t.id===txId)||{id:txId,description:'Transação',amount:0};
+  const existingGroup=_txLinkFindGroup(txId);
+  document.querySelectorAll('#txLinkModal').forEach(m=>m.remove());
+  const modal=document.createElement('div');
+  modal.id='txLinkModal';
+  modal.className='modal-overlay open';
+  modal.onclick=e=>{if(e.target===modal)modal.remove();};
+  const groups=(_txLinkCache.groups||[]).filter(g=>!g.txIds.includes(txId));
+  const groupOpts=groups.map(g=>`<option value="${g.id}">${esc(g.name)} (${g.txIds.length} tx)</option>`).join('');
+  const amtFormatted=typeof fmt==='function'?fmt(Math.abs(parseFloat(tx.amount)||0)):'?';
+  const isNeg=parseFloat(tx.amount||0)<0;
+  modal.innerHTML=`
+    <div class="modal" style="max-width:500px" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">🔗 Vincular Transação</span>
+        <button class="modal-close" onclick="document.getElementById('txLinkModal')?.remove()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;border:1px solid var(--border)">
+          <div style="font-size:.85rem;font-weight:700">${esc(tx.description||'—')}</div>
+          <div style="font-size:.92rem;font-weight:800;color:${isNeg?'#dc2626':'#16a34a'};margin-top:3px">${isNeg?'−':'+'}${amtFormatted}</div>
+        </div>
+        ${existingGroup?`<div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:10px 12px;font-size:.82rem">
+          <div style="font-weight:700">🔗 Grupo atual: "${esc(existingGroup.name)}"</div>
+          <div style="color:var(--muted);font-size:.78rem;margin-top:2px">${existingGroup.txIds.length} transações vinculadas</div>
+          <button style="margin-top:8px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:7px;padding:4px 10px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit"
+            onclick="_txLinkRemove('${txId}')">✕ Remover do grupo</button>
+        </div>`:''}
+        ${groups.length?`<div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Adicionar a grupo existente</div>
+          <div style="display:flex;gap:8px">
+            <select id="txLinkGroupSel" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:.82rem;font-family:inherit">
+              <option value="">— Selecionar grupo —</option>${groupOpts}
+            </select>
+            <button style="padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit"
+              onclick="_txLinkAddToGroup('${txId}')">Adicionar</button>
+          </div>
+        </div>`:''}
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Criar novo grupo</div>
+          <input id="txLinkNewName" type="text" placeholder="Ex: Reembolso viagem março, Pagamento fatura XPTO..."
+            style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:.82rem;font-family:inherit;box-sizing:border-box;margin-bottom:8px">
+          <select id="txLinkType" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:.82rem;font-family:inherit;box-sizing:border-box;margin-bottom:8px">
+            <option value="reimbursement">💰 Reembolso — somente o líquido conta nas estatísticas</option>
+            <option value="offset">⚖️ Compensação — transações que se anulam parcialmente</option>
+          </select>
+          <button style="width:100%;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit"
+            onclick="_txLinkCreate('${txId}')">+ Criar grupo e vincular</button>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:.78rem;color:#1e40af;line-height:1.55">
+          💡 Transações no mesmo grupo têm apenas o <strong>valor líquido</strong> contabilizado nas estatísticas.
+          Despesa R$1.000 + reembolso R$700 = <strong>R$300 de despesa real</strong>.
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+window.openTxLinkModal=openTxLinkModal;
+
+async function _txLinkCreate(txId){
+  const name=document.getElementById('txLinkNewName')?.value?.trim();
+  const type=document.getElementById('txLinkType')?.value||'reimbursement';
+  if(!name){toast('Informe um nome para o grupo.','warning');return;}
+  if(!_txLinkCache) await _txLinkLoad();
+  const obj=_txLinkCache;
+  obj.groups=(obj.groups||[]).map(g=>({...g,txIds:g.txIds.filter(id=>id!==txId)})).filter(g=>g.txIds.length>0);
+  obj.groups.push({id:'grp_'+Date.now().toString(36),name,type,txIds:[txId],netMode:'offset',createdAt:new Date().toISOString()});
+  await _txLinkSave(obj);
+  toast(`🔗 Grupo "${name}" criado!`,'success');
+  document.getElementById('txLinkModal')?.remove();
+}
+window._txLinkCreate=_txLinkCreate;
+
+async function _txLinkAddToGroup(txId){
+  const groupId=document.getElementById('txLinkGroupSel')?.value;
+  if(!groupId){toast('Selecione um grupo.','warning');return;}
+  if(!_txLinkCache) await _txLinkLoad();
+  const obj=_txLinkCache;
+  obj.groups=obj.groups.map(g=>({...g,txIds:g.txIds.filter(id=>id!==txId)})).filter(g=>g.txIds.length>0);
+  const target=obj.groups.find(g=>g.id===groupId);
+  if(target) target.txIds.push(txId);
+  await _txLinkSave(obj);
+  toast('🔗 Transação adicionada ao grupo.','success');
+  document.getElementById('txLinkModal')?.remove();
+}
+window._txLinkAddToGroup=_txLinkAddToGroup;
+
+async function _txLinkRemove(txId){
+  if(!confirm('Remover esta transação do grupo de vinculação?')) return;
+  if(!_txLinkCache) await _txLinkLoad();
+  const obj=_txLinkCache;
+  obj.groups=obj.groups.map(g=>({...g,txIds:g.txIds.filter(id=>id!==txId)})).filter(g=>g.txIds.length>0);
+  await _txLinkSave(obj);
+  toast('Transação desvinculada.','info');
+  document.getElementById('txLinkModal')?.remove();
+}
+window._txLinkRemove=_txLinkRemove;
+window._txLinkLoad=_txLinkLoad;
+window._txLinkFindGroup=_txLinkFindGroup;
 
 window.ctsUpdateMode = ctsUpdateMode;
 

@@ -470,7 +470,7 @@ async function fetchRptTransactions() {
 
   const {data, error} = await q;
   if(error) { toast(error.message,'error'); return []; }
-  const result = (data||[]).filter(t=>!t.is_transfer);
+  const result = (data||[]).filter(t=>!t.is_transfer && !t.is_card_payment);
 
   // Refresh tag dropdown with tags found in this period/filters
   // (do it after filter so we show tags relevant to current context)
@@ -586,7 +586,7 @@ async function loadReports() {
     allTxs.forEach(t => {
       const n = t.categories?.name || 'Sem categoria';
       const c = t.categories?.color || '#94a3b8';
-      if (t.is_transfer) {
+      if (t.is_transfer || t.is_card_payment) {
         if (!trnMap[n]) trnMap[n] = { name: n, color: c, total: 0, count: 0 };
         trnMap[n].total += (typeof txToBRL==="function"?Math.abs(txToBRL(t)):Math.abs(t.brl_amount??t.amount??0)); trnMap[n].count++;
       } else if (t.amount < 0) {
@@ -1208,7 +1208,21 @@ function _pdfCatTable(doc, y, txs) {
   const expMap = {}, incMap = {}, trnMap = {};
   txs.forEach(t => {
     const n = t.categories?.name || 'Sem categoria';
-    if (t.is_transfer) {
+    // Apply reimbursement net factor for linked transaction groups
+    if (typeof _txLinkFindGroup === 'function' && typeof _txLinkCache !== 'undefined' && _txLinkCache) {
+      const _grp = _txLinkFindGroup(t.id);
+      if (_grp && _grp.netMode === 'offset' && _grp.txIds.length > 1) {
+        const _linkedAmts = (_grp.txIds).map(id => {
+          const lt = txs.find(x => x.id === id);
+          return lt ? (parseFloat(lt.brl_amount ?? lt.amount) || 0) : 0;
+        });
+        const _netTotal = _linkedAmts.reduce((s,a) => s+a, 0);
+        const _fullAmt  = parseFloat(t.brl_amount ?? t.amount) || 0;
+        const _absSum   = _linkedAmts.reduce((s,a) => s+Math.abs(a), 0) || 1;
+        t = { ...t, brl_amount: _fullAmt === 0 ? 0 : _netTotal * (Math.abs(_fullAmt) / _absSum) };
+      }
+    }
+    if (t.is_transfer || t.is_card_payment) {
       if (!trnMap[n]) trnMap[n] = { name: n, total: 0, count: 0 };
       trnMap[n].total += (typeof txToBRL==="function"?Math.abs(txToBRL(t)):Math.abs(t.brl_amount??t.amount??0)); trnMap[n].count++;
     } else if (t.amount < 0) {

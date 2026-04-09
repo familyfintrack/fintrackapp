@@ -229,7 +229,11 @@ function renderAccountsGrouped(accs,grid){
         <span class="account-group-chevron ${isCollapsed?'':'expanded'}" style="color:${color}">▾</span>
       </div>
       <div class="account-group-body ${isCollapsed?'collapsed':''}">
-        <div class="account-grid" style="margin-top:8px">${ga.map(a=>accountCardHTML(a)).join('')}</div>
+        <div class="account-grid">${ga.map(a=>accountCardHTML(a)).join('')}</div>
+        ${ga.length>1?`<div class="account-group-footer">
+          <span>Total: <strong>${fmt(bal,currency)}</strong></span>
+          ${pos&&neg?`<span style="margin-left:auto;color:var(--green,#16a34a)">▲ ${fmt(pos,currency)}</span><span style="margin-left:8px;color:var(--red)">▼ ${fmt(Math.abs(neg),currency)}</span>`:''}
+        </div>`:''}
       </div>
     </div>`;
   }).join('')+(ungrouped.length?`<div class="account-group-section" id="grp-__none__" data-grp="__none__">
@@ -244,7 +248,7 @@ function renderAccountsGrouped(accs,grid){
       <span class="account-group-chevron ${_collapsed['__none__']?'':'expanded'}">▾</span>
     </div>
     <div class="account-group-body ${_collapsed['__none__']?'collapsed':''}">
-      <div class="account-grid" style="margin-top:8px">${ungrouped.map(a=>accountCardHTML(a)).join('')}</div>
+      <div class="account-grid">${ungrouped.map(a=>accountCardHTML(a)).join('')}</div>
     </div>
   </div>`:'');
 }

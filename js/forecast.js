@@ -696,7 +696,7 @@ function renderForecastTables(allItems, accounts) {
       const todayBadge = isToday ? '<span class="forecast-date-today">Hoje</span>' : '';
       const catLine  = t.categories?.name ? `<div class="forecast-line forecast-category" style="color:${catColor}"><span class="forecast-cat-dot" style="background:${catColor}"></span>${_fcEsc(t.categories.name)}</div>` : '';
       const paLine   = t.payees?.name ? `<div class="forecast-line forecast-payee">${_fcEsc(t.payees.name)}</div>` : '';
-      const scBadge  = t.isScheduled ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>' : '';
+      const scBadge  = '';
 
       // ── Badge de alerta inline na descrição ───────────────────────────
       const signChangeBadge = crossedToNeg

@@ -5235,6 +5235,10 @@ function _renderUserMenuFamilies() {
   if (manageFamBtn) {
     manageFamBtn.style.display = (isFamOwner || isGlobalAdmin) ? '' : 'none';
   }
+  const exportBtn = document.getElementById('umExportExcelBtn');
+  if (exportBtn) {
+    exportBtn.style.display = (isFamOwner || isGlobalAdmin) ? '' : 'none';
+  }
 
   // Ocultar switcher se só tiver 0 ou 1 família
   if (families.length <= 1) { section.style.display = 'none'; return; }

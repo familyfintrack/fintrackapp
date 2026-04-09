@@ -1125,4 +1125,71 @@ window.runScheduledUpcomingNotifications = runScheduledUpcomingNotifications;
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._sendTelegramDirect                 = _sendTelegramDirect;
+// ── Scheduled Run Log — histórico de execuções visível no painel admin ───────
+async function loadScheduledRunLog() {
+  // Update all #scheduledRunLogList instances on the page (settings + telemetry)
+  const allEls = Array.from(document.querySelectorAll('#scheduledRunLogList'));
+  const targetEl = allEls[0] || document.getElementById('telScheduledLog');
+  if (!targetEl) return;
+  const allTargets = allEls.length > 1 ? allEls : [targetEl];
+  targetEl.innerHTML = '<div style="text-align:center;padding:8px;color:var(--muted)">⏳ Carregando...</div>';
+  try {
+    // Try to load from migration_scheduled_run_logs table (may not exist yet)
+    const { data, error } = await famQ(
+      sb.from('migration_scheduled_run_logs')
+        .select('id,run_at,status,transactions_registered,error_message,triggered_by')
+    ).order('run_at', { ascending: false }).limit(20);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      // Fallback: show localStorage lastRun
+      const cfg = getAutoCheckConfig();
+      const lastRun = cfg.lastRun ? new Date(cfg.lastRun).toLocaleString('pt-BR') : 'Nunca';
+      const lastCount = cfg.lastRunCount ?? 0;
+      targetEl.innerHTML = `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center">
+          <span style="font-size:.9rem">✅</span>
+          <div>
+            <div style="font-weight:600;color:var(--text);font-size:.82rem">Última execução: ${lastRun}</div>
+            <div style="color:var(--muted);font-size:.75rem">${lastCount} transação(ões) registrada(s)</div>
+          </div>
+        </div>
+        <div style="color:var(--muted);font-size:.72rem;padding-top:6px">
+          Tabela de log detalhado não encontrada. Execute a migração para habilitar o histórico completo.
+        </div>`;
+      return;
+    }
+
+    targetEl.innerHTML = data.map(row => {
+      const dt = new Date(row.run_at).toLocaleString('pt-BR');
+      const ok = row.status === 'success';
+      const icon = ok ? '✅' : '❌';
+      const countTxt = row.transactions_registered != null
+        ? `${row.transactions_registered} tx registrada(s)` : '';
+      const trigger = row.triggered_by === 'manual' ? '▶ Manual' : '⏱ Automático';
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:.9rem;flex-shrink:0">${icon}</span>
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:600;color:var(--text);font-size:.82rem">${dt}
+            <span style="font-size:.7rem;color:var(--muted);font-weight:400;margin-left:6px">${trigger}</span>
+          </div>
+          ${countTxt ? `<div style="color:var(--accent);font-size:.75rem">${countTxt}</div>` : ''}
+          ${row.error_message ? `<div style="color:#dc2626;font-size:.75rem;margin-top:2px">⚠ ${esc(row.error_message)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(err) {
+    // Table doesn't exist yet — show last run from config
+    const cfg = getAutoCheckConfig();
+    const lastRun = cfg.lastRun ? new Date(cfg.lastRun).toLocaleString('pt-BR') : 'Nunca';
+    targetEl.innerHTML = `
+      <div style="font-size:.75rem;color:var(--muted);padding:8px 0">
+        Última execução (localStorage): <strong>${lastRun}</strong><br>
+        Para histórico detalhado, execute a migração <code>migration_scheduled_run_logs.sql</code>.
+      </div>`;
+  }
+}
+window.loadScheduledRunLog = loadScheduledRunLog;
+
 window._sendTelegramWithFallback           = _sendTelegramWithFallback;

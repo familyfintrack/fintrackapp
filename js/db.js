@@ -269,7 +269,7 @@ const _dashboard = {
 
       // Build month query with optional member filter
       let monthQ = famQ(sb.from('transactions')
-        .select('amount,brl_amount,currency,is_transfer')
+        .select('id,amount,brl_amount,currency,is_transfer,is_card_payment')
       ).gte('date', `${y}-${m}-01`).lte('date', `${y}-${m}-${String(last).padStart(2,'0')}`)
         .eq('status', 'confirmed');
       if (memberIds && memberIds.length > 0) monthQ = monthQ.in('family_member_id', memberIds);
@@ -281,7 +281,7 @@ const _dashboard = {
       ]);
 
       let income = 0, expense = 0;
-      (monthRes.data || []).filter(t => !t.is_transfer).forEach(t => {
+      (monthRes.data || []).filter(t => !t.is_transfer && !t.is_card_payment).forEach(t => {
         const brl = t.brl_amount != null ? t.brl_amount : toBRL(t.amount, t.currency || 'BRL');
         if (brl > 0) income += brl; else expense += Math.abs(brl);
       });
@@ -347,7 +347,7 @@ const _dashboard = {
 
       const { data } = await q;
       const agg = {}; // "YYYY-MM" → { inc, exp }
-      (data || []).filter(t => !t.is_transfer).forEach(t => {
+      (data || []).filter(t => !t.is_transfer && !t.is_card_payment).forEach(t => {
         const k = t.date.slice(0, 7);
         if (!agg[k]) agg[k] = { inc: 0, exp: 0 };
         const brl = t.brl_amount != null ? t.brl_amount : toBRL(t.amount, t.currency || 'BRL');

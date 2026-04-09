@@ -364,6 +364,7 @@ state.scheduled.sort((a,b) => {
     return;
   }
   filterScheduled();
+  try { if (typeof _scArLoad === "function") _scArLoad(); } catch(_) {}
 }
 
 // Active chip state (replaces old scStatusFilter select)
@@ -1050,6 +1051,24 @@ function openScheduledModal(id='') {
   }
 
   updateScPreview();
+
+  // ── Inicializar painel de Divisão ─────────────────────────────────────
+  // Carregar category_splits / member_shares existentes do registro
+  if (typeof scSplitLoad === 'function') {
+    scSplitLoad(
+      Array.isArray(sc?.category_splits) ? sc.category_splits : [],
+      Array.isArray(sc?.member_shares)    ? sc.member_shares    : []
+    );
+  }
+  // Renderizar após modal abrir (DOM precisa estar visível)
+  requestAnimationFrame(() => {
+    if (typeof _scSplitRenderCat === 'function') {
+      const scAmt = Math.abs(parseFloat(sc?.amount) || 0);
+      _scSplitRenderCat(scAmt);
+      if (typeof _scSplitRenderMem === 'function') _scSplitRenderMem(scAmt);
+    }
+  });
+
   openModal('scheduledModal');
   if (typeof initScFormMode === "function") initScFormMode();
   if (typeof initScFormMode === 'function') initScFormMode();
@@ -1589,6 +1608,18 @@ function openRegisterOcc(scId, date) {
     currLabel.style.display = scCurrency !== 'BRL' ? '' : 'none';
   }
   document.getElementById('registerOccDesc').textContent = `Registrar "${sc.description}" em ${fmtDate(date)} — isso criará uma transação real na conta ${sc.accounts?.name||''}.`;
+  // Show "Não Recebido" button only for income-type scheduled transactions
+  const _notRecBtn = document.getElementById('registerNotReceivedBtn');
+  if (_notRecBtn) {
+    const isIncome = sc.type === 'income';
+    _notRecBtn.style.display = isIncome ? '' : 'none';
+    _notRecBtn.dataset.scId = scId;
+    _notRecBtn.dataset.scDate = date;
+    _notRecBtn.dataset.scDesc = sc.description || '';
+    _notRecBtn.dataset.scAmount = String(Math.abs(parseFloat(sc.amount)||0));
+    _notRecBtn.dataset.scCurrency = sc.currency || sc.accounts?.currency || 'BRL';
+    _notRecBtn.dataset.scAccountId = sc.account_id || '';
+  }
   openModal('registerOccModal');
 }
 
@@ -1625,9 +1656,18 @@ async function confirmRegisterOccurrence() {
     return;
   }
 
-  toast('Transação registrada!', 'success');
+  toast('✓ Transação registrada!', 'success');
   closeModal('registerOccModal');
   await loadScheduled();
+  // Refresh dashboard so registered items disappear from "próximos 10 dias"
+  try {
+    if (typeof loadDashboard === 'function' && state.currentPage === 'dashboard') {
+      loadDashboard().catch(()=>{});
+    }
+    // Also refresh the próximos panel if on scheduled page
+    const proxBody = document.getElementById('scProximosBody');
+    if (proxBody && typeof _renderProximosList === 'function') _renderProximosList();
+  } catch(_) {}
 }
 
 // Payee autocomplete for SC modal uses shared onPayeeInput/selectPayee with ctx='sc'
@@ -2809,6 +2849,266 @@ function _renderCalList(list) {
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._openUpcomingIfHasEvents            = _openUpcomingIfHasEvents;
+
+// ════════════════════════════════════════════════════════════════════════════
+//  A/R — VALORES A RECEBER
+// ════════════════════════════════════════════════════════════════════════════
+const SC_AR_KEY = 'sc_ar_records';
+
+async function _scArGetRecords() {
+  try {
+    const { data } = await famQ(sb.from('app_settings').select('value'))
+      .eq('key', SC_AR_KEY).maybeSingle();
+    return JSON.parse(data?.value || '[]');
+  } catch(_) { return []; }
+}
+
+async function _scArSaveRecords(records) {
+  const val = JSON.stringify(records);
+  const { data: ex } = await famQ(sb.from('app_settings').select('id'))
+    .eq('key', SC_AR_KEY).maybeSingle();
+  if (ex?.id) {
+    await famQ(sb.from('app_settings').update({ value: val })).eq('key', SC_AR_KEY);
+  } else {
+    await famQ(sb.from('app_settings').insert({ key: SC_AR_KEY, value: val, family_id: famId() }));
+  }
+}
+
+async function registerAsNotReceived() {
+  const btn = document.getElementById('registerNotReceivedBtn');
+  if (!btn) return;
+  const record = {
+    id:          (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36),
+    sc_id:       btn.dataset.scId,
+    date:        btn.dataset.scDate,
+    description: btn.dataset.scDesc,
+    amount:      parseFloat(btn.dataset.scAmount) || 0,
+    currency:    btn.dataset.scCurrency || 'BRL',
+    account_id:  btn.dataset.scAccountId,
+    status:      'pending',
+    created_at:  new Date().toISOString(),
+  };
+  try {
+    const records = await _scArGetRecords();
+    records.push(record);
+    await _scArSaveRecords(records);
+    await ignoreOccurrence(record.sc_id, record.date, true);
+    toast('⏳ Registrado em Valores a Receber.', 'success');
+    closeModal('registerOccModal');
+    await loadScheduled();
+    _scArLoad();
+  } catch(e) { toast('Erro: ' + (e.message || e), 'error'); }
+}
+window.registerAsNotReceived = registerAsNotReceived;
+
+async function _scArLoad() {
+  const listEl  = document.getElementById('scArList');
+  const countEl = document.getElementById('scArCount');
+  const section = document.getElementById('scArSection');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px">⏳</div>';
+  const records = await _scArGetRecords();
+  const pending = records.filter(r => r.status === 'pending');
+  if (countEl) countEl.textContent = pending.length ? String(pending.length) : '';
+  if (section) section.style.display = pending.length ? '' : 'none';
+  if (!pending.length) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px">Nenhum valor pendente.</div>';
+    return;
+  }
+  listEl.innerHTML = pending.map(r => {
+    const ds = r.date ? r.date.split('-').reverse().join('/') : '—';
+    const as = (typeof fmt === 'function') ? fmt(r.amount) : r.amount.toFixed(2);
+    const cu = r.currency && r.currency !== 'BRL' ? ` <span style="font-size:.68rem;color:#1e5ba8">${r.currency}</span>` : '';
+    return `<div style="background:var(--surface);border:1px solid #fde68a;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">⏳</div>
+      <div style="flex:1;min-width:120px">
+        <div style="font-size:.85rem;font-weight:700;color:var(--text)">${esc(r.description||'—')}</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:2px">${ds}</div>
+      </div>
+      <div style="font-size:.92rem;font-weight:800;color:#d97706;flex-shrink:0">${as}${cu}</div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button style="background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;font-size:.74rem;font-weight:700;border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit"
+          onclick="_scArReceive('${r.id}')">✓ Recebido</button>
+        <button style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);font-size:.74rem;font-weight:700;border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit"
+          onclick="_scArCancel('${r.id}')">✕ Cancelado</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window._scArLoad = _scArLoad;
+
+async function _scArReceive(arId) {
+  const records = await _scArGetRecords();
+  const rec = records.find(r => r.id === arId);
+  if (!rec) return;
+  try {
+    const sc = (state.scheduled || []).find(s => s.id === rec.sc_id);
+    if (sc) {
+      await processScheduledOccurrence(sc, { scheduledDate:rec.date, date:rec.date, amount:rec.amount });
+    } else {
+      await famQ(sb.from('transactions').insert({
+        date:rec.date, amount:rec.amount, brl_amount:rec.amount, currency:rec.currency||'BRL',
+        description:rec.description, account_id:rec.account_id, type:'income', status:'confirmed', family_id:famId()
+      }));
+    }
+    rec.status='received'; rec.received_at=new Date().toISOString();
+    await _scArSaveRecords(records);
+    toast('✓ Valor registrado como recebido!', 'success');
+    _scArLoad();
+  } catch(e) { toast('Erro: ' + (e.message||e), 'error'); }
+}
+window._scArReceive = _scArReceive;
+
+async function _scArCancel(arId) {
+  if (!confirm('Marcar como cancelado / valor perdido?')) return;
+  const records = await _scArGetRecords();
+  const rec = records.find(r => r.id === arId);
+  if (!rec) return;
+  rec.status='cancelled'; rec.cancelled_at=new Date().toISOString();
+  await _scArSaveRecords(records);
+  toast('Valor marcado como cancelado.', 'info');
+  _scArLoad();
+}
+window._scArCancel = _scArCancel;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SCHEDULED RUN LOG — Histórico de execuções + trigger manual
+// ════════════════════════════════════════════════════════════════════════════
+let _scRunLogPage = 0;
+
+async function loadScheduledRunLog(append = false) {
+  const listEl   = document.getElementById('scheduledRunLogList');
+  const moreBtn  = document.getElementById('scheduledRunLogMore');
+  const statusEl = document.getElementById('scheduledLastRunStatus');
+  if (!listEl) return;
+
+  if (!append) {
+    _scRunLogPage = 0;
+    listEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted)">⏳ Carregando…</div>';
+  }
+
+  const PAGE_SIZE = 20;
+  const offset    = _scRunLogPage * PAGE_SIZE;
+
+  try {
+    let q = sb.from('scheduled_run_logs')
+      .select('id,created_at,scheduled_id,status,error_message,transaction_id,triggered_by,scheduled_transactions(description)')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    // Filter by family — try family_id first, fallback to join via scheduled
+    const fid = famId();
+    if (fid) q = q.eq('family_id', fid);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const rows = data || [];
+    if (!rows.length && !append) {
+      listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:.8rem">Nenhuma execução registrada ainda.</div>';
+      if (moreBtn) moreBtn.style.display = 'none';
+      return;
+    }
+
+    // Render the last run status banner
+    if (!append && rows.length && statusEl) {
+      const last = rows[0];
+      const ts   = last.created_at ? new Date(last.created_at).toLocaleString('pt-BR') : '—';
+      const isOk = last.status === 'success' || last.status === 'created';
+      statusEl.style.display = '';
+      statusEl.style.background = isOk ? '#dcfce7' : '#fee2e2';
+      statusEl.style.border     = `1px solid ${isOk ? '#bbf7d0' : '#fca5a5'}`;
+      statusEl.style.color      = isOk ? '#166534' : '#991b1b';
+      statusEl.innerHTML = `${isOk ? '✅' : '⚠️'} Última execução: <strong>${ts}</strong> · ${isOk ? 'Sucesso' : 'Erro: ' + (last.error_message || 'desconhecido')}`;
+    }
+
+    // Build rows HTML
+    const rowsHtml = rows.map(r => {
+      const ts    = r.created_at ? new Date(r.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const desc  = r.scheduled_transactions?.description || r.scheduled_id || '—';
+      const isOk  = r.status === 'success' || r.status === 'created';
+      const isErr = r.status === 'error' || r.status === 'failed';
+      const isSkp = r.status === 'skipped' || r.status === 'already_exists' || r.status === 'locked';
+      const by    = r.triggered_by === 'manual' ? '<span style="background:#eff6ff;color:#2563eb;border-radius:20px;padding:1px 6px;font-size:.65rem;font-weight:700">Manual</span>' :
+                    '<span style="background:#f1f5f9;color:#64748b;border-radius:20px;padding:1px 6px;font-size:.65rem;font-weight:700">Auto</span>';
+      const statusBadge = isOk ? '<span style="color:#16a34a;font-weight:700">✓</span>'
+                        : isErr ? '<span style="color:#dc2626;font-weight:700">✕</span>'
+                        : isSkp ? '<span style="color:#d97706;font-weight:700">–</span>'
+                        : '<span style="color:var(--muted)">?</span>';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.78rem">
+        <span style="flex-shrink:0;width:18px;text-align:center">${statusBadge}</span>
+        <span style="flex-shrink:0;color:var(--muted);white-space:nowrap">${ts}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${esc(String(desc))}</span>
+        <span style="flex-shrink:0">${by}</span>
+        ${isErr && r.error_message ? `<span title="${esc(r.error_message)}" style="flex-shrink:0;color:#dc2626;cursor:help">⚠️</span>` : ''}
+      </div>`;
+    }).join('');
+
+    if (append) {
+      const existing = listEl.querySelector('.sc-log-rows');
+      if (existing) existing.insertAdjacentHTML('beforeend', rowsHtml);
+      else listEl.innerHTML = `<div class="sc-log-rows">${rowsHtml}</div>`;
+    } else {
+      listEl.innerHTML = `<div class="sc-log-rows">${rowsHtml}</div>`;
+    }
+
+    _scRunLogPage++;
+    if (moreBtn) moreBtn.style.display = rows.length < PAGE_SIZE ? 'none' : '';
+
+  } catch(e) {
+    listEl.innerHTML = `<div style="color:#dc2626;padding:12px;font-size:.8rem">Erro ao carregar: ${esc(e.message || String(e))}</div>`;
+    console.warn('[loadScheduledRunLog]', e);
+  }
+}
+window.loadScheduledRunLog = loadScheduledRunLog;
+
+// Manual trigger — runs the auto-register function immediately
+async function runScheduledManual() {
+  const btn = document.getElementById('manualRunScheduledBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Executando…'; }
+
+  try {
+    if (typeof runScheduledAutoRegister !== 'function') throw new Error('Função não disponível.');
+
+    // Log the manual trigger start
+    await insertScheduledRunLog({
+      family_id:    famId(),
+      status:       'running',
+      triggered_by: 'manual',
+      created_at:   new Date().toISOString(),
+    });
+
+    const created = await runScheduledAutoRegister();
+
+    // Log completion
+    await insertScheduledRunLog({
+      family_id:    famId(),
+      status:       'success',
+      triggered_by: 'manual',
+      error_message: `${created} ocorrência(s) criada(s)`,
+      created_at:   new Date().toISOString(),
+    });
+
+    toast(`✓ Execução manual: ${created} ocorrência(s) registrada(s).`, 'success');
+    // Refresh the log
+    setTimeout(() => loadScheduledRunLog(), 800);
+
+  } catch(e) {
+    await insertScheduledRunLog({
+      family_id:    famId(),
+      status:       'error',
+      triggered_by: 'manual',
+      error_message: e.message || String(e),
+      created_at:   new Date().toISOString(),
+    });
+    toast('Erro na execução manual: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Executar Agora'; }
+  }
+}
+window.runScheduledManual = runScheduledManual;
+
 window.confirmRegisterOccurrence           = confirmRegisterOccurrence;
 window.fetchScCurrencyRate                 = fetchScCurrencyRate;
 window.fetchScSuggestedFxRate              = fetchScSuggestedFxRate;

@@ -55,7 +55,7 @@ window.txSplitShowModalTab = txSplitShowModalTab;
 function _txSplitRenderCatModal(txAmt) {
   const container = document.getElementById('txCatSplitRowsM');
   if (!container) return;
-  container.innerHTML = _txSplit.catRows.map(row => _txSplitCatRowHtml(row, txAmt)).join('');
+  container.innerHTML = _txSplit.catRows.map(row => _txSplitCatRowHtml(row, txAmt, 'M')).join('');
   _txSplitUpdateCatTotals(txAmt, 'M');
 }
 // Render member splits directly into modal pane  
@@ -167,6 +167,37 @@ function txCatSplitAutoFill() {
 }
 window.txCatSplitAutoFill = txCatSplitAutoFill;
 
+
+// Shared row HTML builder used by both inline and modal renders
+function _txSplitCatRowHtml(row, txAmt, suffix) {
+  suffix = suffix || '';
+  const hascat = !!row.category_id;
+  const dotStyle = hascat
+    ? `background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block`
+    : 'display:none';
+  const btnLabel = hascat
+    ? `<span style="${dotStyle}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(row.category_name)}</span>`
+    : `<span style="color:var(--muted)">— Selecionar categoria —</span>`;
+  const amtVal = row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '';
+  const rowId = suffix ? `txCatSplitRow${suffix}_${row.id}` : `txCatSplitRow_${row.id}`;
+  return `<div class="tx-split-row" id="${rowId}">
+      <div class="tx-split-row-left">
+        <button type="button" class="tx-split-cat-btn" onclick="txCatSplitPickCategory(${row.id})"
+          style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;padding:7px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;cursor:pointer;font-size:.8rem;font-family:inherit;text-align:left;overflow:hidden">
+          ${btnLabel}
+        </button>
+        <div class="amt-wrap" style="width:120px;flex-shrink:0">
+          <input type="text" class="tx-split-amount-input" inputmode="numeric" placeholder="0,00"
+            value="${amtVal}"
+            onchange="txCatSplitUpdateAmount(${row.id}, this.value)"
+            style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box">
+        </div>
+      </div>
+      <button type="button" onclick="txCatSplitRemoveRow(${row.id})"
+        style="padding:5px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;flex-shrink:0">✕</button>
+    </div>`;
+}
+
 function _txSplitRenderCat(txAmt) {
   const container = document.getElementById('txCatSplitRows');
   const totalEl   = document.getElementById('txCatSplitTotal');
@@ -180,32 +211,7 @@ function _txSplitRenderCat(txAmt) {
     return;
   }
 
-  container.innerHTML = _txSplit.catRows.map(row => {
-    const hascat = !!row.category_id;
-    const dotStyle = hascat
-      ? `background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block`
-      : 'display:none';
-    const btnLabel = hascat
-      ? `<span style="${dotStyle}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(row.category_name)}</span>`
-      : `<span style="color:var(--muted)">— Selecionar categoria —</span>`;
-    const amtVal = row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '';
-    return `<div class="tx-split-row" id="txCatSplitRow_${row.id}">
-      <div class="tx-split-row-left">
-        <button type="button" class="tx-split-cat-btn" onclick="txCatSplitPickCategory(${row.id})"
-          style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;overflow:hidden;white-space:nowrap">
-          ${btnLabel}
-        </button>
-      </div>
-      <div class="tx-split-row-right">
-        <input type="text" inputmode="decimal" class="tx-split-amount-input"
-          placeholder="0,00" value="${amtVal}"
-          onchange="txCatSplitUpdateAmount(${row.id},this.value)"
-          oninput="txCatSplitUpdateAmount(${row.id},this.value)">
-        <button type="button" class="tx-split-remove-btn" onclick="txCatSplitRemoveRow(${row.id})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-
+  container.innerHTML = _txSplit.catRows.map(row => _txSplitCatRowHtml(row, txAmt)).join('');
   _txSplitUpdateCatTotals(txAmt);
 }
 
