@@ -480,7 +480,6 @@ Before each release, verify:
 - `_pairs` system for side-by-side cards preserved
 - **New:** `_dashToggleLink` / `_dashApplyLinkedCards` for parallel card layout
 - **New:** "+" button on favorite account cards (`_dashFavAddTx`)
-- **New:** Família chip in topbar (`topbarFamilyChip`, `topbarFamilyName`)
 - **New:** "Ver relatório completo →" link in Top Payees card
 - Red/green colors in Top Payees card (beneficiários=red, fontes=green)
 

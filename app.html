@@ -583,10 +583,6 @@
       </button>
       <!-- User avatar button + dropdown -->
       <!-- User avatar button — dropdown rendered in <body> and positioned via JS -->
-      <div id="topbarFamilyChip" style="display:none;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--accent-lt);border:1px solid var(--accent)30;font-size:.72rem;font-weight:700;color:var(--accent);cursor:default;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="Família ativa">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span id="topbarFamilyName">Família</span>
-      </div>
       <div id="topbarUserBtn" style="display:none">
         <div class="topbar-user" onclick="toggleUserMenu(event)" id="topbarUserAvatar" title="Meu perfil">
           <span id="topbarUserAvatarInner">?</span>
@@ -6011,7 +6007,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             <label>Categoria <span class="req-star">*</span></label>
             <input type="hidden" id="scCategoryId">
             <div class="cat-picker-wrap" id="scCatPickerWrap">
-              <button type="button" class="cat-picker-btn" id="scCatPickerBtn" onclick="toggleCatPicker('sc')">
+              <button type="button" class="cat-picker-btn" id="scCatPickerBtn" onclick="typeof openCatChooser==='function'?openCatChooser('sc'):toggleCatPicker('sc')">
                 <span class="cat-picker-dot" id="scCatPickerDot" style="display:none"></span>
                 <span id="scCatPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
                 <span class="cat-picker-caret">▼</span>
@@ -6569,7 +6565,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             <label>Categoria <span class="req-star">*</span></label>
             <input type="hidden" id="txCategoryId">
             <div class="cat-picker-wrap" id="catPickerWrap">
-              <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="toggleCatPicker()">
+              <button type="button" class="cat-picker-btn" id="catPickerBtn" onclick="typeof openCatChooser==='function'?openCatChooser('tx'):toggleCatPicker()">
                 <span class="cat-picker-dot" id="catPickerDot" style="display:none"></span>
                 <span id="catPickerLabel" style="color:var(--muted)">— Sem categoria —</span>
                 <span class="cat-picker-caret">▼</span>
