@@ -3208,6 +3208,233 @@ async function openTelegramLinkFlow() {
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._applyNotifChannelVisibility        = _applyNotifChannelVisibility;
+
+// ════════════════════════════════════════════════════════════════════════════
+//  DEMO DATA IMPORT — Importador de massa de dados de demonstração
+//  Uso exclusivo do administrador global
+// ════════════════════════════════════════════════════════════════════════════
+
+async function importDemoData(userId, familyId, progressCb) {
+  if (!userId || !familyId) throw new Error('Usuário e família são obrigatórios.');
+  const log = (msg, pct) => { console.log(`[DemoImport] ${msg}`); if (progressCb) progressCb(msg, pct); };
+
+  // Generate the demo data
+  if (typeof generateDemoData !== 'function') throw new Error('Gerador de dados não disponível. Verifique demo_data_generator.js.');
+  const data = generateDemoData();
+  log(`Dados gerados: ${data._meta.txCount} transações`, 5);
+
+  // Helper to insert with error handling
+  async function ins(table, rows, label) {
+    if (!rows || !rows.length) return;
+    // Add family_id and created_at to all rows
+    const enriched = rows.map(r => ({
+      ...r,
+      family_id: familyId,
+      created_at: r.created_at || new Date().toISOString(),
+    }));
+    // Insert in batches of 50
+    for (let i = 0; i < enriched.length; i += 50) {
+      const batch = enriched.slice(i, i+50);
+      const { error } = await sb.from(table).insert(batch);
+      if (error) {
+        console.warn(`[DemoImport] ${table} batch error:`, error.message);
+        // Continue on duplicate/conflict errors
+      }
+    }
+    log(`${label}: ${rows.length} registros`, null);
+  }
+
+  // ── 1. Account Groups ─────────────────────────────────────────────────────
+  log('Criando grupos de contas…', 10);
+  await ins('account_groups', data.accountGroups, 'account_groups');
+
+  // ── 2. Accounts ──────────────────────────────────────────────────────────
+  log('Criando contas…', 15);
+  await ins('accounts', data.accounts.map(a => ({
+    ...a, active: true, is_archived: false
+  })), 'accounts');
+
+  // ── 3. Categories ─────────────────────────────────────────────────────────
+  log('Criando categorias…', 20);
+  // Insert parents first, then children
+  const parents = data.categories.filter(c => !c.parent_id);
+  const children = data.categories.filter(c => c.parent_id);
+  await ins('categories', parents, 'categories (pais)');
+  await ins('categories', children, 'categories (filhas)');
+
+  // ── 4. Payees ─────────────────────────────────────────────────────────────
+  log('Criando beneficiários…', 25);
+  await ins('payees', data.payees, 'payees');
+
+  // ── 5. Family Members ─────────────────────────────────────────────────────
+  log('Criando membros da família…', 30);
+  for (const m of data.familyMembers) {
+    await sb.from('family_members').insert({
+      family_id: familyId,
+      user_id:   userId,
+      name:      m.name,
+      role:      m.role,
+      color:     m.color,
+      icon:      m.icon,
+      created_at:new Date().toISOString(),
+    }).then(({error}) => { if(error) console.warn('family_member:', error.message); });
+  }
+
+  // ── 6. Transactions ───────────────────────────────────────────────────────
+  log('Importando transações…', 35);
+  const txCount = data.transactions.length;
+  for (let i = 0; i < data.transactions.length; i += 100) {
+    const batch = data.transactions.slice(i, i+100).map(t => ({
+      ...t, family_id: familyId, created_at: new Date().toISOString()
+    }));
+    const { error } = await sb.from('transactions').insert(batch);
+    if (error) console.warn('[DemoImport] tx batch:', error.message);
+    const pct = 35 + Math.round((i/txCount) * 30);
+    log(`Transações: ${Math.min(i+100,txCount)}/${txCount}…`, pct);
+  }
+
+  // ── 7. Scheduled Transactions ─────────────────────────────────────────────
+  log('Criando transações programadas…', 66);
+  for (const sc of data.scheduled) {
+    await sb.from('scheduled_transactions').insert({
+      ...sc, family_id: familyId, created_at: new Date().toISOString(),
+      frequency: sc.frequency || 'monthly',
+      status:    sc.status || 'active',
+    }).then(({error}) => { if(error) console.warn('scheduled:', error.message); });
+  }
+
+  // ── 8. Budgets ────────────────────────────────────────────────────────────
+  log('Criando orçamentos…', 70);
+  await ins('budgets', data.budgets, 'budgets');
+
+  // ── 9. Debts ──────────────────────────────────────────────────────────────
+  log('Criando dívidas…', 74);
+  await ins('debts', data.debts.map(d => ({
+    ...d,
+    creditor_payee_id: null,
+    family_id: familyId,
+    created_at: new Date().toISOString(),
+  })), 'debts');
+
+  // ── 10. Dreams ────────────────────────────────────────────────────────────
+  log('Criando objetivos…', 78);
+  await ins('dreams', data.dreams.map(dr => ({
+    ...dr, family_id: familyId, created_by: userId, created_at: new Date().toISOString()
+  })), 'dreams');
+
+  // ── 11. Price Items & Stores ──────────────────────────────────────────────
+  log('Criando rastreamento de preços…', 82);
+  await ins('price_items',   data.priceItems.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'price_items');
+  await ins('price_stores',  data.priceStores.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'price_stores');
+  await ins('price_history', data.priceHistory.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'price_history');
+
+  // ── 12. Grocery List ──────────────────────────────────────────────────────
+  log('Criando lista de supermercado…', 88);
+  const grocery = data.groceries;
+  await sb.from('grocery_lists').insert({ ...grocery.list, family_id:familyId, created_at:new Date().toISOString() });
+  await ins('grocery_items', grocery.items.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'grocery_items');
+
+  log('✅ Importação concluída!', 100);
+  return { success: true, txCount, message: `Dados demo importados: ${txCount} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários.` };
+}
+window.importDemoData = importDemoData;
+
+
+// ── Demo Data UI Controller ──────────────────────────────────────────────────
+async function _loadDemoSelectors() {
+  const famSel  = document.getElementById('demoFamilySelect');
+  const userSel = document.getElementById('demoUserSelect');
+  if (!famSel) return;
+
+  famSel.innerHTML = '<option value="">⏳ Carregando…</option>';
+  try {
+    const { data: families } = await sb.from('families').select('id,name').order('name');
+    famSel.innerHTML = '<option value="">— Selecionar família —</option>'
+      + (families||[]).map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+    famSel.onchange = () => _loadDemoUsers(famSel.value);
+  } catch(e) {
+    famSel.innerHTML = `<option value="">Erro: ${e.message}</option>`;
+  }
+}
+
+async function _loadDemoUsers(familyId) {
+  const userSel = document.getElementById('demoUserSelect');
+  if (!userSel) return;
+  if (!familyId) { userSel.innerHTML = '<option value="">— Selecione uma família —</option>'; return; }
+
+  userSel.innerHTML = '<option value="">⏳ Carregando…</option>';
+  try {
+    const { data: members } = await sb.from('app_users')
+      .select('id,name,email,family_id')
+      .eq('family_id', familyId);
+    userSel.innerHTML = '<option value="">— Selecionar usuário —</option>'
+      + (members||[]).map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('');
+  } catch(e) {
+    userSel.innerHTML = `<option value="">Erro: ${e.message}</option>`;
+  }
+}
+
+async function _startDemoImport() {
+  const familyId = document.getElementById('demoFamilySelect')?.value;
+  const userId   = document.getElementById('demoUserSelect')?.value;
+  const btn      = document.getElementById('demoImportBtn');
+  const progress = document.getElementById('demoImportProgress');
+  const statusEl = document.getElementById('demoImportStatus');
+  const pctEl    = document.getElementById('demoImportPct');
+  const barEl    = document.getElementById('demoImportBar');
+  const resultEl = document.getElementById('demoImportResult');
+
+  if (!familyId) { toast('Selecione uma família.','warning'); return; }
+  if (!userId)   { toast('Selecione um usuário.','warning'); return; }
+
+  const fam = document.getElementById('demoFamilySelect')?.options[document.getElementById('demoFamilySelect').selectedIndex]?.text;
+  const usr = document.getElementById('demoUserSelect')?.options[document.getElementById('demoUserSelect').selectedIndex]?.text;
+
+  if (!confirm(`⚠️ Importar dados demo para:
+
+Família: ${fam}
+Usuário: ${usr}
+
+Isso vai criar categorias, contas, transações e outros dados fictícios. Continuar?`)) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Importando…'; }
+  if (progress) progress.style.display = '';
+  if (resultEl) resultEl.style.display = 'none';
+
+  try {
+    const result = await importDemoData(userId, familyId, (msg, pct) => {
+      if (statusEl) statusEl.textContent = msg;
+      if (pct !== null && barEl) barEl.style.width = pct + '%';
+      if (pct !== null && pctEl) pctEl.textContent = pct + '%';
+    });
+
+    if (resultEl) {
+      resultEl.style.display = '';
+      resultEl.style.background = '#dcfce7';
+      resultEl.style.border = '1px solid #bbf7d0';
+      resultEl.style.color = '#166534';
+      resultEl.innerHTML = `✅ <strong>${result.message}</strong>`;
+    }
+    if (barEl) barEl.style.width = '100%';
+    toast('✅ Dados demo importados com sucesso!', 'success');
+
+  } catch(e) {
+    if (resultEl) {
+      resultEl.style.display = '';
+      resultEl.style.background = '#fee2e2';
+      resultEl.style.border = '1px solid #fca5a5';
+      resultEl.style.color = '#991b1b';
+      resultEl.innerHTML = `❌ Erro: ${esc(e.message||String(e))}`;
+    }
+    toast('Erro na importação: ' + (e.message||e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🎭 Gerar e Importar Dados Demo'; }
+  }
+}
+window._loadDemoSelectors = _loadDemoSelectors;
+window._loadDemoUsers     = _loadDemoUsers;
+window._startDemoImport   = _startDemoImport;
+
 window._load2FAIntoProfile                 = _load2FAIntoProfile;
 window.advancePinStep                      = advancePinStep;
 window.clearServiceRoleKey                 = clearServiceRoleKey;
