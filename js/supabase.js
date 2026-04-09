@@ -38,7 +38,12 @@
     if(window.sb && window.__SB_URL === cfg.url) return window.sb;
 
     const client = window.supabase.createClient(cfg.url, cfg.anon, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey: 'family-fintrack-auth'  // deve coincidir com app.js
+      }
     });
     window.sb = client;
     window.__SB_URL = cfg.url;
