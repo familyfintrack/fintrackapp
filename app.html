@@ -1601,14 +1601,7 @@
 
     <!-- CATEGORIES -->
     <div class="page" id="page-categories">
-      <!-- Header -->
-      <div class="section-header mb-6">
-
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')">+ Despesa</button>
-          <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','receita')">+ Receita</button>
-        </div>
-      </div>
+      <!-- Header: buttons moved to column title bars below -->
 
       <!-- Summary bar -->
       <div class="cat-summary-bar">
@@ -1631,7 +1624,7 @@
           <div class="cat-col-header cat-col-expense">
             <span class="cat-col-icon">💸</span>
             <span class="cat-col-title">Despesas</span>
-            <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','despesa')" style="margin-left:auto;font-size:.75rem;padding:3px 10px">+ Nova</button>
+            <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','despesa')" style="margin-left:auto;font-size:.78rem;padding:5px 12px;font-weight:700">+ Despesa</button>
           </div>
           <div id="catEditorExpense" style="padding:10px 12px"></div>
           <div class="cat-add-root" onclick="openCategoryModal('','','despesa')">+ Nova categoria de despesa</div>
@@ -1640,7 +1633,7 @@
           <div class="cat-col-header cat-col-income">
             <span class="cat-col-icon">💰</span>
             <span class="cat-col-title">Receitas</span>
-            <button class="btn btn-ghost btn-sm" onclick="openCategoryModal('','','receita')" style="margin-left:auto;font-size:.75rem;padding:3px 10px">+ Nova</button>
+            <button class="btn btn-primary btn-sm" onclick="openCategoryModal('','','receita')" style="margin-left:auto;font-size:.78rem;padding:5px 12px;font-weight:700;background:var(--green,#16a34a)">+ Receita</button>
           </div>
           <div id="catEditorIncome" style="padding:10px 12px"></div>
           <div class="cat-add-root" onclick="openCategoryModal('','','receita')">+ Nova categoria de receita</div>
