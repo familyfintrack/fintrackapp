@@ -23,9 +23,13 @@ function txSplitTabOpened() {
 
 // ── Open split modal from tx modal ────────────────────────────────────────
 function _openSplitModal() {
-  const txAmt = Math.abs(getAmtField('txAmount') || 0);
-  // Sync data from hidden container to modal containers
-  // Re-render directly into modal pane IDs
+  // Read amount robustly: try el.value first, fallback to dataset.cents
+  const el = document.getElementById('txAmount');
+  let txAmt = 0;
+  if (el) {
+    const cents = parseInt(el.dataset?.cents || '0', 10) || 0;
+    txAmt = cents > 0 ? cents / 100 : Math.abs(getAmtField('txAmount') || 0);
+  }
   _txSplit.activeTab = 'cat';
   _txSplitRenderCatModal(txAmt);
   _txSplitRenderMemModal(txAmt);
@@ -88,7 +92,9 @@ function txCatSplitAddRow(prefill) {
   // Se o split modal estiver aberto, sincronizar
   const splitModal = document.getElementById('txSplitModal');
   if (splitModal && splitModal.classList.contains('open')) {
-    const txAmt = Math.abs(getAmtField('txAmount') || 0);
+    const _el = document.getElementById('txAmount');
+    const _c  = parseInt(_el?.dataset?.cents||'0',10)||0;
+    const txAmt = _c > 0 ? _c/100 : Math.abs(getAmtField('txAmount')||0);
     if (typeof _txSplitRenderCatModal === 'function') _txSplitRenderCatModal(txAmt);
   }
   setTimeout(() => {

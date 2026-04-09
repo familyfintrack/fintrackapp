@@ -327,9 +327,20 @@ function _txToggleFilters() {
   const panel = document.getElementById('tx-filters-panel');
   const btn   = document.getElementById('txFilterToggle');
   if (!panel) return;
-  const isOpen = panel.classList.contains('open');
+  const isOpen = panel.classList.contains('open') || panel.style.display !== 'none';
   panel.classList.toggle('open', !isOpen);
+  panel.style.display = '';  // let CSS class control display
   if (btn) btn.classList.toggle('active', !isOpen);
+}
+
+function _txInitFiltersOpen() {
+  // Ensure filters start open (user preference: default open)
+  const panel = document.getElementById('tx-filters-panel');
+  const btn   = document.getElementById('txFilterToggle');
+  if (!panel) return;
+  panel.classList.add('open');
+  panel.style.display = '';
+  if (btn) btn.classList.add('active');
 }
 window._txToggleFilters = _txToggleFilters;
 

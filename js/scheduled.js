@@ -1970,8 +1970,12 @@ function _scCalBuildDayMap(year, month) {
       const isIncome   = sc.type === 'income';
       const isExpense  = !isIncome && !isTransfer;
 
-      // Resolve amount (may have currency — use brl_amount if available)
-      const amt = Math.abs(parseFloat(sc.amount) || 0);
+// Resolve amount — always convert to BRL for display
+    const scCur = sc.currency || sc.accounts?.currency || 'BRL';
+    const rawAmt = Math.abs(parseFloat(sc.amount) || 0);
+    const amt = scCur === 'BRL'
+      ? rawAmt
+      : (typeof toBRL === 'function' ? toBRL(rawAmt, scCur) : rawAmt);
 
       if (isIncome) {
         map[dateStr].totCredit += amt;
@@ -2717,7 +2721,10 @@ function _renderCalUpcoming() {
       const isExp    = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
       const isIncome = sc.type === 'income';
       const typeIcon = sc.type === 'transfer' ? '🔄' : isExp ? '💸' : '💰';
-      const amtStr   = typeof fmt === 'function' ? fmt(Math.abs(sc.amount)) : Math.abs(sc.amount).toFixed(2);
+      const _cur = sc.currency || sc.accounts?.currency || 'BRL';
+      const _raw = Math.abs(sc.amount);
+      const _brl = (_cur === 'BRL' || typeof toBRL !== 'function') ? _raw : toBRL(_raw, _cur);
+      const amtStr = typeof fmt === 'function' ? fmt(_brl) : _brl.toFixed(2);
       const pendingBadge = isPending
         ? `<span class="sc-occ-pending-dot" title="Pendente"></span>` : '';
       return `<div class="sup-item${isToday ? ' sup-item--today' : ''}">

@@ -1263,3 +1263,172 @@ async function setIofPayeeTarget(payeeId, payeeName) {
     toast(`"${payeeName}" definido como beneficiário padrão do IOF.`, 'success');
 }
 window.setIofPayeeTarget = setIofPayeeTarget;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PAYEE 360° — panorâmica completa do beneficiário / fonte pagadora
+// ════════════════════════════════════════════════════════════════════════════
+async function openPayeeDetailModal(payeeId) {
+  const payee = (state.payees||[]).find(p=>p.id===payeeId);
+  if (!payee) return;
+
+  // Remove previous instance
+  document.querySelectorAll('#payee360Modal').forEach(m=>m.remove());
+
+  // Show loading shell
+  const shell=document.createElement('div');
+  shell.id='payee360Modal';
+  shell.className='modal-overlay open';
+  shell.onclick=e=>{if(e.target===shell)shell.remove();};
+  shell.innerHTML=`
+    <div class="modal" style="max-width:640px;max-height:90dvh;overflow-y:auto">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">🔍 Carregando...</span>
+        <button class="modal-close" onclick="document.getElementById('payee360Modal')?.remove()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:20px;text-align:center;color:var(--muted)">
+        <div style="font-size:1.5rem">⏳</div>Carregando panorâmica...
+      </div>
+    </div>`;
+  document.body.appendChild(shell);
+
+  // Fetch last 6 months transactions for this payee
+  const now=new Date();
+  const from=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
+  const { data:txs=[] } = await sb.from('transactions')
+    .select('id,date,description,amount,brl_amount,currency,status,accounts(name,color),categories(name,color,icon)')
+    .eq('payee_id',payeeId)
+    .gte('date',from)
+    .order('date',{ascending:false})
+    .limit(50);
+
+  const isSource=payee.type==='fonte_pagadora';
+  const typeLabel=isSource?'Fonte Pagadora':'Beneficiário';
+  const typeColor=isSource?'#16a34a':'#dc2626';
+  const typeBg=isSource?'#dcfce7':'#fee2e2';
+
+  // KPIs
+  const totalAmt=txs.reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount||t.amount)||0),0);
+  const avgAmt=txs.length?totalAmt/txs.length:0;
+  const lastDate=txs[0]?.date||null;
+  const acctMap={};
+  txs.forEach(t=>{const n=t.accounts?.name||'—';acctMap[n]=(acctMap[n]||0)+1;});
+  const topAcct=Object.entries(acctMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+  const catMap={};
+  txs.forEach(t=>{const n=t.categories?.name||'Sem categoria';catMap[n]=(catMap[n]||0)+1;});
+  const topCat=Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+
+  // Build address / contact info
+  const addr=[payee.address,payee.city,payee.state,payee.country].filter(Boolean).join(', ');
+  const addrLine=addr?`<div style="font-size:.8rem;color:var(--muted);margin-top:4px">📍 ${esc(addr)}</div>`:'';
+  const mapLink=addr?`<a href="https://maps.google.com/?q=${encodeURIComponent(addr)}" target="_blank" rel="noopener"
+      style="display:inline-flex;align-items:center;gap:4px;font-size:.75rem;color:#2563eb;text-decoration:none;margin-top:6px;padding:3px 8px;background:#eff6ff;border-radius:6px;border:1px solid #bfdbfe">
+      🗺️ Ver no mapa</a>`:'';
+  const cnpj=payee.cnpj_cpf?`<div style="font-size:.78rem;color:var(--muted);margin-top:2px">CNPJ/CPF: ${esc(payee.cnpj_cpf)}</div>`:'';
+  const email=payee.email?`<a href="mailto:${esc(payee.email)}" style="font-size:.78rem;color:var(--accent)">✉ ${esc(payee.email)}</a>`:'';
+  const phone=payee.phone?`<div style="font-size:.78rem;color:var(--muted)">📞 ${esc(payee.phone)}</div>`:'';
+  const website=payee.website?`<a href="${esc(payee.website)}" target="_blank" rel="noopener" style="font-size:.78rem;color:#2563eb">🌐 ${esc(payee.website)}</a>`:'';
+
+  // Transactions table (last 6 months)
+  const txRows=txs.slice(0,20).map(t=>{
+    const amt=Math.abs(parseFloat(t.brl_amount||t.amount)||0);
+    const isNeg=!isSource;
+    const dateStr=t.date?t.date.split('-').reverse().join('/'):'—';
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:6px 8px;font-size:.78rem;color:var(--muted);white-space:nowrap">${dateStr}</td>
+      <td style="padding:6px 8px;font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</td>
+      <td style="padding:6px 8px;font-size:.78rem;color:var(--muted)">${esc(t.accounts?.name||'—')}</td>
+      <td style="padding:6px 8px;font-size:.82rem;font-weight:700;text-align:right;color:${isNeg?'#dc2626':'#16a34a'};white-space:nowrap">
+        ${isNeg?'−':'+'} ${fmt(amt)}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`
+    <div class="modal" style="max-width:640px;max-height:90dvh;overflow-y:auto;border-radius:18px" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-header" style="padding:14px 18px;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+          <div style="width:44px;height:44px;border-radius:12px;background:${typeBg};display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">
+            ${payee.icon||'👤'}
+          </div>
+          <div style="min-width:0">
+            <div style="font-size:1rem;font-weight:800;color:var(--text)">${esc(payee.name)}</div>
+            <span style="font-size:.72rem;font-weight:700;color:${typeColor};background:${typeBg};padding:2px 8px;border-radius:20px">${typeLabel}</span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('payee360Modal')?.remove()">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+
+        <!-- KPI cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
+          ${[
+            ['Total 6 meses', fmt(totalAmt), typeColor],
+            ['Transações', txs.length, '#2563eb'],
+            ['Ticket médio', fmt(avgAmt), '#d97706'],
+            ['Última vez', lastDate?lastDate.split('-').reverse().join('/'):'—', '#6d28d9'],
+          ].map(([label,val,color])=>`
+            <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
+              <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">${label}</div>
+              <div style="font-size:1rem;font-weight:800;color:${color}">${val}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Info: address + contact -->
+        ${(addr||cnpj||email||phone||website)?`
+        <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border)">
+          <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">📋 Dados de contato</div>
+          ${cnpj}${addrLine}${mapLink}
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">${email}${phone}${website}</div>
+        </div>`:
+        '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:8px">Nenhum dado de contato cadastrado.</div>'}
+
+        <!-- Top account / category -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Conta mais usada</div>
+            <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(topAcct)}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Categoria principal</div>
+            <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(topCat)}</div>
+          </div>
+        </div>
+
+        <!-- Transaction history -->
+        ${txs.length?`
+        <div>
+          <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">📅 Últimos 6 meses (${txs.length} tx)</div>
+          <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:var(--surface2)">
+                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:left">Data</th>
+                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:left">Descrição</th>
+                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:left">Conta</th>
+                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:right">Valor</th>
+                </tr>
+              </thead>
+              <tbody>${txRows}</tbody>
+            </table>
+          </div>
+          ${txs.length>20?`<div style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px">Mostrando 20 de ${txs.length} transações</div>`:''}
+        </div>`:'<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px">Nenhuma transação nos últimos 6 meses.</div>'}
+
+        <!-- Actions -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('payee360Modal')?.remove();openPayeeHistory('${payeeId}','${esc(payee.name)}')">
+            📋 Ver histórico completo
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('payee360Modal')?.remove();openPayeeModal('${payeeId}')">
+            ✏️ Editar
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  shell.innerHTML=html;
+}
+window.openPayeeDetailModal = openPayeeDetailModal;

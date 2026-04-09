@@ -390,7 +390,7 @@ function openDreamDetail(dreamId) {
   const aiFields   = d.ai_generated_fields_json ? (typeof d.ai_generated_fields_json === 'string' ? JSON.parse(d.ai_generated_fields_json) : d.ai_generated_fields_json) : null;
 
   const html = `
-  <div id="dreamDetailModal" class="modal-overlay active" onclick="if(event.target===this)closeDreamDetail()">
+  <div id="dreamDetailModal" class="modal-overlay open" onclick="if(event.target===this)closeDreamDetail()">
     <div class="modal drm-detail-modal" onclick="event.stopPropagation()">
       <div class="drm-detail-header">
         <div class="drm-detail-emoji">${_dreamTypeEmoji(d.dream_type)}</div>
@@ -637,7 +637,7 @@ function openContributeModal(dreamId) {
   const today = new Date().toISOString().slice(0, 10);
 
   const html = `
-  <div id="contributeModal" class="modal-overlay active" onclick="if(event.target===this)document.getElementById('contributeModal').remove()">
+  <div id="contributeModal" class="modal-overlay open" onclick="if(event.target===this)document.getElementById('contributeModal').remove()">
     <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3>💰 Registrar aporte</h3>

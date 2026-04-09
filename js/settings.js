@@ -3038,7 +3038,6 @@ function _toggle2FAPanel(enabled) {
 // ── Carregar estado 2FA atual no modal de perfil ──
 function _load2FAIntoProfile() {
   if (!currentUser?.email) return;
-  // Always query by email — currentUser.id is auth.uid, NOT app_users.id
   sb.from('app_users')
     .select('two_fa_enabled, two_fa_channel, telegram_chat_id, email')
     .eq('email', currentUser.email)
@@ -3049,14 +3048,18 @@ function _load2FAIntoProfile() {
       const channel = data.two_fa_channel || 'email';
       const hasTg   = !!data.telegram_chat_id;
 
+      // ── Sync currentUser so saveMyProfile() detects no change ───────────
+      if (currentUser) {
+        currentUser.two_fa_enabled = enabled;
+        currentUser.two_fa_channel = channel;
+      }
+
       const chk = document.getElementById('myProfile2faEnabled');
       if (chk) chk.checked = enabled;
       _toggle2FAPanel(enabled);
-      // If already enabled, hide the test section (already verified)
-      // If just enabling now (panel toggled manually), test section stays visible
+
       const testSection = document.getElementById('profile2faSection');
       if (testSection && enabled) {
-        // Show hint about re-testing being optional
         const statusEl = document.getElementById('profile2faStatus');
         if (statusEl) {
           statusEl.textContent = '✓ 2FA já ativo. Clique em "Testar 2FA" para revalidar o canal.';
@@ -3089,6 +3092,7 @@ function _load2FAIntoProfile() {
     })
     .catch(() => {});
 }
+
 
 // ── Salvar configurações 2FA (chamado junto com saveMyProfile) ──
 async function _save2FASettings(appUserId) {

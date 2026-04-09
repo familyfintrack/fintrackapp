@@ -290,7 +290,20 @@ function accountCardHTML(a, isArchived=false){
     ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.8">${esc(bankParts.join(' · '))}</div>`
     : '';
 
-  return `<div class="account-card${isArchived ? ' account-card--archived' : ''}" onclick="goToAccountTransactions('${a.id}')" style="position:relative;padding-top:38px">
+
+  const pixKeys = (Array.isArray(a.pix_keys) && a.pix_keys.length)
+    ? a.pix_keys
+    : (a.pix_key ? [{ type:'aleatoria', key:a.pix_key }] : []);
+  const pixLine = pixKeys.length
+    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:3px 7px;background:rgba(0,180,216,.08);border-radius:6px;max-width:100%;overflow:hidden">
+        <span style="font-size:.65rem;font-weight:800;color:#0ea5e9;flex-shrink:0">PIX</span>
+        <span style="font-size:.67rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${esc(pixKeys[0].key||'')}${pixKeys.length>1?` +${pixKeys.length-1}`:''}
+        </span>
+       </div>`
+    : '';
+
+    return `<div class="account-card${isArchived ? ' account-card--archived' : ''}" onclick="goToAccountTransactions('${a.id}')" style="position:relative;padding-top:38px">
     ${isArchived ? '<div class="archived-card-badge">📦 Arquivada</div>' : favStar}
     <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
     <div class="account-actions">
@@ -308,7 +321,7 @@ function accountCardHTML(a, isArchived=false){
     <div class="account-type">${accountTypeLabel(a.type)}</div>
     <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
     ${a.currency && a.currency!=='BRL' ? `<div class="account-currency">${esc(a.currency)}</div>` : ''}
-    ${bankInfoLine}
+    ${bankInfoLine}${pixLine}
     ${dueLine}
   </div>`;
 }
@@ -849,21 +862,19 @@ async function deleteGroup(id){
 
 const _GROUP_ICONS = [
   // Contas & Finanças
-  '🏦','💳','💰','💵','💴','💶','💷','🪙','💎','📈','📉','📊','🏧','💹','🏪',
+  '🏦','💳','💰','💵','💴','💶','💷','🪙','💎','📈','📉','📊','🏧','💹','🏪','💸','🤑','🏛️','💼','📱',
   // Países / Bandeiras
   '🇧🇷','🇺🇸','🇪🇺','🇬🇧','🇯🇵','🇨🇦','🇦🇺','🇨🇭','🇦🇷','🇲🇽','🇵🇹','🇫🇷','🇩🇪','🇮🇹','🇨🇳',
-  // Investimentos
-  '📊','📈','🏗️','🏢','🏠','🏡','🚗','✈️','🛳️','⚓','🌍','🌎','🌏',
+  // Investimentos & Patrimônio
+  '📊','📈','🏗️','🏢','🏠','🏡','🚗','✈️','🛳️','⚓','🌍','🌎','🌏','🏖️','🏔️','⛏️','🪨','🛢️','⚡','🌱',
   // Família & Pessoas
-  '👨‍👩‍👧‍👦','👤','👥','🧑‍💼','🧒','👴','🤝','💑','👨‍👧','👩‍👦',
+  '👨‍👩‍👧‍👦','👤','👥','🧑‍💼','🧒','👴','🤝','💑','👨‍👧','👩‍👦','👶','🧑‍🎓','🧑‍⚕️','🧑‍🏫','🧑‍🍳',
   // Categorias de gasto
-  '🛒','🍔','🍕','☕','🍷','🏥','💊','📚','🎓','🎮','🎬','🎵','⚽','🏋️','✈️','🚀',
-  // Natureza & Símbolos
-  '🌱','🌿','🌊','🔥','⚡','🌟','⭐','🌙','☀️','🎯','🔑','🏆','🎪','🎨',
-  // Negócios
-  '📁','🗂️','📂','📋','📌','📎','🖇️','📝','✏️','🖊️','🔧','⚙️','🛠️','🔩',
-  // Outros úteis
-  '🏖️','🏔️','🌆','🌇','🌃','🎠','🎡','🎢','🏰','⛰️','🗺️','🧭','🌐',
+  '🛒','🍔','🍕','🍜','☕','🎮','🎬','📚','🏋️','🎵','🎨','🏥','🚌','⛽','🔧','🛍️','🎁','🐾','🌿','✂️',
+  // Bancos e serviços
+  '🏦','💳','📲','🔐','🔑','🗝️','📋','📂','🗃️','📁','🗄️','📦','📤','📥','🔄','⚙️','🛡️','🌐','📡','🔒',
+  // Emojis gerais
+  '⭐','🌟','💫','✨','🎯','🎪','🎭','🎠','🎡','🎢','🏆','🥇','🥈','🥉','🎖️',
 ];
 
 function _populateGroupIconPicker(selectedEmoji) {

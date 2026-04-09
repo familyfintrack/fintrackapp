@@ -2734,7 +2734,8 @@ async function _openPatrimonioModal() {
       <div style="position:relative">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
           <div>
-            <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px">Patrimônio Líquido</div>
+            <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px"><span style="font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,.15)">🔍 Visão 360° • Família</span>
+            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px;margin-top:8px">Patrimônio Líquido</div>
             <div style="font-size:2rem;font-weight:900;font-family:var(--font-serif);color:#fff;line-height:1">${dashFmt(totalBRL,'BRL')}</div>
             <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div>
           </div>

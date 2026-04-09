@@ -1044,6 +1044,8 @@ function _registerMagicLinkGate() {
     // Cobre: logout remoto, expiração de refresh token, revogação de sessão.
     // Só age se o app já estava aberto (loginScreen oculto = usuário logado).
     if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+      // Se foi doLogout() quem chamou signOut(), ele mesmo fará o redirect — não agir aqui
+      if (_loginInProgress) return;
       const loginScreen = document.getElementById('loginScreen');
       const appAlreadyOpen = !loginScreen || loginScreen.style.display === 'none';
       if (appAlreadyOpen) {
@@ -1710,16 +1712,22 @@ async function saveMyProfile() {
     // Disabling or channel-only change: save directly (no test required).
     if (appRow && twoFaChanged) {
       if (twoFaEnabled && !currentUser?.two_fa_enabled) {
-        // Enabling for the first time — only allow save if test was passed
+        // Enabling for the first time — require test only if not yet verified this session
         if (!window._2faSetupVerified) {
-          if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Salvar'; }
+          // Don't block the save — just show toast and skip 2FA update
           toast('⚠️ Clique em "Testar 2FA" para verificar o canal antes de ativar.', 'warning');
-          return;
+          // Continue saving other profile fields — just skip 2FA save
+        } else {
+          // Test was passed — save 2FA
+          window._2faSetupVerified = false;
+          try {
+            await _save2FASettings(appRow.id);
+            currentUser.two_fa_enabled = twoFaEnabled;
+            currentUser.two_fa_channel = twoFaChannel;
+          } catch(e2fa) { console.warn('[2FA save]', e2fa.message); }
         }
-        // _confirm2FASetup already saved; just clear the flag
-        window._2faSetupVerified = false;
       } else {
-        // Disabling or changing channel — save directly
+        // Disabling, channel change, or no real change — save directly, no test required
         try {
           await _save2FASettings(appRow.id);
           currentUser.two_fa_enabled = twoFaEnabled;
@@ -1752,33 +1760,45 @@ async function saveMyProfile() {
 
 // ── Logout ──
 async function doLogout() {
-  try { await sb?.auth?.signOut(); } catch(e) {}
-  // Stop background timers
+  // ── Bloqueia onAuthStateChange (SIGNED_OUT) de agir em paralelo
+  _loginInProgress = true;
+
+  // ── PASSO 1 (SÍNCRONO): remover a sessão do localStorage AGORA.
+  // Feito antes de qualquer await para que, mesmo que o resto falhe,
+  // o fast-redirect em login.html não encontre sessão válida.
+  const SESSION_KEYS = [
+    'family-fintrack-auth',   // chave principal (storageKey do supabase createClient)
+    'ft_session_token',       // legado
+    'ft_user_id',             // legado
+    'ft_login_redirect',      // flag de redirect
+    'ft_remember_me_session', // sessão remember-me
+  ];
+  SESSION_KEYS.forEach(k => {
+    try { localStorage.removeItem(k); }   catch(_) {}
+    try { sessionStorage.removeItem(k); } catch(_) {}
+  });
+  // Remove também qualquer chave residual do Supabase (sb-*-auth-token)
+  try {
+    Object.keys(localStorage).forEach(k => {
+      if ((k.startsWith('sb-') || k.includes('supabase')) && k.includes('auth')) {
+        localStorage.removeItem(k);
+      }
+    });
+  } catch(_) {}
+
+  // ── PASSO 2: parar timers de background
   try { if (typeof _stopFxAutoRefresh === 'function') _stopFxAutoRefresh(); } catch(_) {}
-  localStorage.removeItem('ft_session_token');
-  localStorage.removeItem('ft_user_id');
+
+  // ── PASSO 3: notificar Supabase (fire-and-forget — não bloqueia a navegação)
+  // scope:'local' = apenas limpa storage local, sem chamada de rede (rápido)
+  try { sb?.auth?.signOut({ scope: 'local' }).catch(() => {}); } catch(_) {}
+
+  // ── PASSO 4: limpar estado em memória
   currentUser = null;
-  // Reset charts
-  Object.values(state.chartInstances||{}).forEach(c => c?.destroy?.());
-  state.chartInstances = {};
-  // Close any open modals/overlays before showing login
-  document.querySelectorAll('.modal-overlay').forEach(el => {
-    try {
-      el.classList.remove('open');
-      el.setAttribute('aria-hidden', 'true');
-      if ((el.style.display || '').trim()) el.style.removeProperty('display');
-    } catch(_) {}
-  });
-  document.querySelectorAll('.modal-backdrop').forEach(el => {
-    try { el.style.display = 'none'; } catch(_) {}
-  });
-  // Clear login form for security
-  const emailEl = document.getElementById('loginEmail');
-  const passEl = document.getElementById('loginPassword');
-  if (emailEl) emailEl.value = '';
-  if (passEl) passEl.value = '';
-  // Reload the page for a completely clean state
-  window.location.reload();
+  try { Object.values(state.chartInstances || {}).forEach(c => c?.destroy?.()); state.chartInstances = {}; } catch(_) {}
+
+  // ── PASSO 5: navegar para login com replace (evita histórico para o app)
+  window.location.replace('login.html');
 }
 
 // ── Clear App Cache ──
