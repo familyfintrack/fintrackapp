@@ -13,13 +13,21 @@
 <script>
 (function(){
   try {
+    // Verifica chave exclusiva do app (app.js usa storageKey:'family-fintrack-auth')
+    // e também o formato padrão do Supabase JS v2 (sb-xxx-auth-token) como fallback.
+    var keysToCheck = ['family-fintrack-auth'];
     for (var k of Object.keys(localStorage)) {
       if ((k.includes('supabase')||k.includes('sb-')) && k.includes('auth-token')) {
-        var s = JSON.parse(localStorage.getItem(k));
-        if (s && (s.access_token||(s.session&&s.session.access_token))) {
-          try { sessionStorage.setItem('ft_login_redirect','1'); } catch(_) {}
-          window.location.replace('app.html'); return;
-        }
+        keysToCheck.push(k);
+      }
+    }
+    for (var i = 0; i < keysToCheck.length; i++) {
+      var raw = localStorage.getItem(keysToCheck[i]);
+      if (!raw) continue;
+      var s = JSON.parse(raw);
+      if (s && (s.access_token||(s.session&&s.session.access_token))) {
+        try { sessionStorage.setItem('ft_login_redirect','1'); } catch(_) {}
+        window.location.replace('app.html'); return;
       }
     }
   } catch(_) {}
@@ -129,7 +137,7 @@ html, body { height:100%; overflow:hidden; }
   background-size: 36px 36px;
 }
 .lgn-logo-img {
-  height: 84px; width: auto; object-fit: contain;
+  height: 109px; width: auto; object-fit: contain;
   position: relative; z-index: 1;
   animation: lgnLogoPulse 4s ease-in-out infinite;
 }
@@ -332,7 +340,7 @@ select.lgn-input { cursor: pointer; }
 
 /* ── Mobile height adaptation ───────────────────────────── */
 @media (max-height: 680px) {
-  .lgn-logo-img  { height: 64px; }
+  .lgn-logo-img  { height: 83px; }
   .lgn-logo-wrap { padding: 16px 20px 14px; }
   .lgn-form-body { padding: 16px 22px 20px; }
   .lgn-form-sub  { margin-bottom: 14px; }
@@ -587,6 +595,30 @@ body.platform-windows .lgn-screen {
 <script src="js/settings.js"></script>
 <script src="js/autocheck.js"></script>
 <script src="js/auto_register.js"></script>
+<script>
+// Toast fallback para login.html (utils.js não é carregado nesta página)
+// Se window.toast já existir (carregado por outro script), não sobrescreve.
+if (typeof window.toast !== 'function') {
+  window.toast = function(msg, type) {
+    // Tenta exibir no twoFaError se estiver visível, senão usa console
+    var errEl = document.getElementById('twoFaError');
+    if (errEl) {
+      var isSuccess = (type === 'success');
+      errEl.textContent = msg;
+      errEl.style.color   = isSuccess ? '#16a34a' : (type === 'warning' ? '#b45309' : '#dc2626');
+      errEl.style.display = '';
+      if (isSuccess) {
+        setTimeout(function() {
+          errEl.style.display = 'none';
+          errEl.style.color   = '#dc2626';
+        }, 4000);
+      }
+    } else {
+      console.log('[toast ' + (type||'info') + '] ' + msg);
+    }
+  };
+}
+</script>
 <script src="js/auth.js"></script>
 
 <script>
@@ -596,6 +628,16 @@ body.platform-windows .lgn-screen {
   if (typeof ensureSupabaseClient === 'function') {
     window.sb = ensureSupabaseClient();
   }
+
+  // ── CRÍTICO: definir bootApp SINCRONAMENTE antes de qualquer await ──────
+  // O onAuthStateChange (registrado em auth.js) pode disparar a qualquer
+  // momento após o Supabase ser inicializado, inclusive antes do getSession()
+  // abaixo resolver. Se bootApp não estiver definido quando onLoginSuccess()
+  // o chamar, a tela fica branca (hideLoginScreen já rodou mas sem redirect).
+  window.bootApp = async function() {
+    try { sessionStorage.setItem('ft_login_redirect', '1'); } catch(_) {}
+    window.location.replace('app.html');
+  };
 
   // Apply platform mode (Windows safe mode)
   if (typeof applyLoginPlatformMode === 'function') applyLoginPlatformMode();
@@ -617,8 +659,8 @@ body.platform-windows .lgn-screen {
     if (window.sb) {
       const { data } = await window.sb.auth.getSession();
       if (data?.session) {
-        try { sessionStorage.setItem('ft_login_redirect', '1'); } catch(_) {}
-        window.location.replace('app.html');
+        // bootApp já está definido acima — usa ele para consistência
+        await window.bootApp();
         return;
       }
     }
@@ -631,13 +673,6 @@ body.platform-windows .lgn-screen {
     const ls = document.getElementById('loginScreen');
     if (ls) ls.style.display = 'flex';
   }
-
-  // Override bootApp: after login success, set flag then redirect to app.html
-  // The flag tells app.html's guard that we just came from login — skip the guard.
-  window.bootApp = async function() {
-    try { sessionStorage.setItem('ft_login_redirect', '1'); } catch(_) {}
-    window.location.replace('app.html');
-  };
 })();
 </script>
 </body>
