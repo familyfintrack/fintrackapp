@@ -970,7 +970,7 @@
           border-radius: var(--tx-r);
           margin-bottom: 10px;
           overflow: hidden;
-          display: none; /* hidden by default */
+          display: block; /* open by default */
         }
         #tx-filters-panel.open { display: block; }
         #tx-filters-panel-inner {
@@ -1105,12 +1105,11 @@
       </div>
 
             <!-- ── Account filter active badge ── -->
-            <div id="txAccountBadge" style="display:none;margin-bottom:8px">
-              <span class="tx-acct-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                <span id="txAccountBadgeLabel">Conta</span>
-                <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta">✕</button>
-              </span>
+            <div id="txAccountBadge" style="display:none;margin-bottom:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(125,194,66,.12),rgba(42,96,73,.08));border:1.5px solid rgba(125,194,66,.35);border-radius:12px;align-items:center;gap:10px;flex-wrap:wrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <span style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em">Filtrando conta:</span>
+              <span id="txAccountBadgeLabel" style="font-size:.88rem;font-weight:800;color:var(--text);flex:1"></span>
+              <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.3);color:var(--accent);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">✕ Limpar filtro</button>
             </div>
             <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
 
@@ -3679,37 +3678,39 @@
     ════════════════════════════════════════════════════════ -->
     <div class="page" id="page-ai_insights">
 
-      <!-- AI Insights intro banner -->
-      <div class="module-intro-banner" style="--intro-accent:#7c3aed;--intro-accent-lt:rgba(124,58,237,.07)">
-        <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
-          <i class="mib-arr">▾</i> Recolher
-        </button>
-        <div class="module-intro-badge" style="background:rgba(124,58,237,.1);color:#7c3aed">🤖 AI Insights</div>
-        <div class="module-intro-body">
-        <h3 class="module-intro-headline">Análise financeira com Inteligência Artificial</h3>
-        <p class="module-intro-text">O modelo de IA analisa seus lançamentos, identifica padrões de gasto, detecta anomalias e responde perguntas sobre suas finanças em linguagem natural.</p>
-        <div class="module-intro-chips">
-          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📊 Análise automática</span>
-          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">💬 Chat financeiro</span>
-          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📸 Snapshots históricos</span>
-          <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">🔍 Detecção de padrões</span>
+      <!-- ── AI Insights hero ── -->
+      <div class="ai-page-hero">
+        <div class="ai-page-hero__glow"></div>
+        <div class="ai-page-hero__content">
+          <div class="ai-page-hero__left">
+            <div class="ai-page-hero__badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+              AI Insights
+            </div>
+            <h1 class="ai-page-hero__title">Análise com Inteligência Artificial</h1>
+            <p class="ai-page-hero__sub">Análise automática dos seus lançamentos, detecção de padrões, previsões e chat financeiro em linguagem natural.</p>
+          </div>
+          <div class="ai-page-hero__chips">
+            <span class="ai-page-hero__chip">📊 Análise automática</span>
+            <span class="ai-page-hero__chip">💬 Chat financeiro</span>
+            <span class="ai-page-hero__chip">📸 Snapshots</span>
+            <span class="ai-page-hero__chip">🔍 Padrões</span>
+          </div>
         </div>
       </div>
-
-        </div>
       <!-- ── TAB BAR ── -->
-      <div class="ai2-tabbar">
-        <button class="ai2-tab active" id="aiTab-analysis" onclick="_aiShowTab('analysis')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          <span data-i18n="ai.analysis">Análise</span>
+      <div class="ai-pill-tabs">
+        <button class="ai-pill-tab active" id="aiTab-analysis" onclick="_aiShowTab('analysis')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Análise
         </button>
-        <button class="ai2-tab" id="aiTab-snapshots" onclick="_aiShowTab('snapshots')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <button class="ai-pill-tab" id="aiTab-snapshots" onclick="_aiShowTab('snapshots')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Snapshots
         </button>
-        <button class="ai2-tab" id="aiTab-chat" onclick="_aiShowTab('chat')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span data-i18n="ai.chat">Chat</span>
+        <button class="ai-pill-tab" id="aiTab-chat" onclick="_aiShowTab('chat')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
         </button>
       </div>
 
