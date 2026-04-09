@@ -85,25 +85,43 @@ function txCatSplitAddRow(prefill) {
     amount:         prefill?.amount         || 0,
   });
   _txSplitRenderCat();
-  // Foca no último input de valor
+  // Se o split modal estiver aberto, sincronizar
+  const splitModal = document.getElementById('txSplitModal');
+  if (splitModal && splitModal.classList.contains('open')) {
+    const txAmt = Math.abs(getAmtField('txAmount') || 0);
+    if (typeof _txSplitRenderCatModal === 'function') _txSplitRenderCatModal(txAmt);
+  }
   setTimeout(() => {
-    const inp = document.querySelector(`#txCatSplitRow_${id} .tx-split-amount-input`);
-    if (inp) inp.focus();
-  }, 50);
+    const input = document.querySelector(`#txCatSplitRow_${id} .tx-split-amount-input`)
+               || document.querySelector(`#txCatSplitRowM_${id} .tx-split-amount-input`);
+    if (input) input.focus();
+  }, 60);
 }
 window.txCatSplitAddRow = txCatSplitAddRow;
 
 function txCatSplitRemoveRow(id) {
   _txSplit.catRows = _txSplit.catRows.filter(r => r.id !== id);
   _txSplitRenderCat();
+  const splitModal = document.getElementById('txSplitModal');
+  if (splitModal && splitModal.classList.contains('open')) {
+    const txAmt = Math.abs(getAmtField('txAmount') || 0);
+    if (typeof _txSplitRenderCatModal === 'function') _txSplitRenderCatModal(txAmt);
+  }
 }
 window.txCatSplitRemoveRow = txCatSplitRemoveRow;
 
 function txCatSplitPickCategory(rowId) {
-  // Abre o cat picker do modal principal — captura a escolha via callback
-  _txSplitPendingCatRowId = rowId;
-  window._txSplitCatMode = rowId;
-  toggleCatPicker('tx');
+  // Usa o chooser modal hierárquico (funciona acima de qualquer modal)
+  if (typeof openCatChooser === 'function') {
+    openCatChooser('tx', function(catId, catName, catColor) {
+      if (typeof txCatSplitReceiveCategory === 'function')
+        txCatSplitReceiveCategory(rowId, catId, catName, catColor || '#94a3b8');
+    });
+  } else {
+    _txSplitPendingCatRowId = rowId;
+    window._txSplitCatMode = rowId;
+    toggleCatPicker('tx');
+  }
 }
 window.txCatSplitPickCategory = txCatSplitPickCategory;
 
@@ -245,12 +263,22 @@ function txMemSplitAddRow(prefill) {
     const inp = document.querySelector(`#txMemSplitRow_${id} .tx-split-amount-input`);
     if (inp) inp.focus();
   }, 50);
+  const _sm = document.getElementById('txSplitModal');
+  if (_sm && _sm.classList.contains('open')) {
+    const _a = Math.abs(getAmtField('txAmount') || 0);
+    if (typeof _txSplitRenderMemModal === 'function') _txSplitRenderMemModal(_a);
+  }
 }
 window.txMemSplitAddRow = txMemSplitAddRow;
 
 function txMemSplitRemoveRow(id) {
   _txSplit.memRows = _txSplit.memRows.filter(r => r.id !== id);
   _txSplitRenderMem();
+  const _sm2 = document.getElementById('txSplitModal');
+  if (_sm2 && _sm2.classList.contains('open')) {
+    const _a2 = Math.abs(getAmtField('txAmount') || 0);
+    if (typeof _txSplitRenderMemModal === 'function') _txSplitRenderMemModal(_a2);
+  }
 }
 window.txMemSplitRemoveRow = txMemSplitRemoveRow;
 
@@ -595,9 +623,16 @@ function scCatSplitRemoveRow(id) { _scSplit.catRows=_scSplit.catRows.filter(r=>r
 window.scCatSplitRemoveRow = scCatSplitRemoveRow;
 
 function scCatSplitPickCategory(rowId) {
-  window._scSplitCatMode = rowId;
-  _scSplitPendingCatRowId = rowId;
-  toggleCatPicker('tx');
+  if (typeof openCatChooser === 'function') {
+    openCatChooser('sc', function(catId, catName, catColor) {
+      if (typeof scCatSplitReceiveCategory === 'function')
+        scCatSplitReceiveCategory(catId, catName, catColor || '#94a3b8');
+    });
+  } else {
+    window._scSplitCatMode = rowId;
+    _scSplitPendingCatRowId = rowId;
+    toggleCatPicker('tx');
+  }
 }
 window.scCatSplitPickCategory = scCatSplitPickCategory;
 

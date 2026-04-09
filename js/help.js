@@ -1108,19 +1108,6 @@ function _helpContent() {
             fr: `<p>Cliquez sur <strong>⚙️</strong> pour personnaliser le tableau de bord. Utilisez l'icône chaîne (🔗) pour afficher des cartes côte à côte. Le bouton <strong>+</strong> vert sur les comptes favoris ouvre la fenêtre de nouvelle transaction.</p>`,
           },
         },
-        {
-          id: 'dashboard-familia-chip',
-          title: { pt: 'Chip "Família" na topbar', en: '"Family" chip in topbar', es: 'Chip "Familia" en la barra superior', fr: 'Puce "Famille" dans la barre supérieure' },
-          body: {
-            pt: `<p>O nome da <strong>família ativa</strong> é exibido como um chip discreto na barra superior, ao lado do avatar do usuário — em telas com largura ≥ 640 px.</p>
-<p>Isso facilita identificar em qual contexto de família você está quando tem acesso a mais de uma família no sistema.</p>
-<div class="help-tip">💡 Para trocar de família ativa, clique no avatar (canto superior direito) e selecione a família desejada no menu.</div>`,
-            en: `<p>The <strong>active family</strong> name is displayed as a small chip in the top bar, next to the user avatar — on screens ≥ 640 px wide.</p>
-<p>This makes it easy to identify which family context you're in when you have access to more than one family.</p>`,
-            es: `<p>El nombre de la <strong>familia activa</strong> se muestra como un chip en la barra superior, junto al avatar del usuario.</p>`,
-            fr: `<p>Le nom de la <strong>famille active</strong> s'affiche sous forme de puce dans la barre supérieure, à côté de l'avatar.</p>`,
-          },
-        },
       ],
     },
   ];

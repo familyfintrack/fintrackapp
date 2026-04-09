@@ -1116,15 +1116,6 @@ function updateUserUI() {
   // Topbar user name (hidden on mobile, visible on wider screens)
   const topbarName = document.getElementById('topbarUserName');
   if (topbarName) topbarName.textContent = (currentUser.name || currentUser.email || '').split(' ')[0];
-  // ── Chip "Família" na topbar ────────────────────────────────────────────
-  const _famChip   = document.getElementById('topbarFamilyChip');
-  const _famNameEl = document.getElementById('topbarFamilyName');
-  if (_famChip && _famNameEl) {
-    const famEntry = (currentUser.families || []).find(f => f.id === currentUser.family_id);
-    const famName  = famEntry?.name || null;
-    if (famName) { _famNameEl.textContent = famName; _famChip.style.display = 'flex'; }
-    else         { _famChip.style.display = 'none'; }
-  }
   if (emailEl) {
     const roleLabel =
       currentUser.role === 'owner' ? 'Owner' :

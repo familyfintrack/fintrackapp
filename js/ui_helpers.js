@@ -135,6 +135,194 @@ function _catSearchId(ctx) {
   return ctx === 'sc' ? 'scCatPickerSearch' : 'catPickerSearch';
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CAT CHOOSER MODAL — picker hierárquico com busca, substitui dropdown
+//  Abre como overlay de alta prioridade (z-index 10040), funciona dentro de
+//  qualquer modal sem interferência nos campos do formulário.
+// ════════════════════════════════════════════════════════════════════════════
+
+let _ccResolve  = null;   // callback para quando uma categoria for selecionada
+let _ccCtx      = null;   // contexto ('tx' | 'sc' | ...)
+let _ccType     = null;   // filtro de tipo ('despesa'|'receita'|null)
+let _ccExpanded = {};     // {parentId: bool} — grupos expandidos
+
+// Abre o modal de escolha de categoria.
+// onPick(catId, catName, catColor) é chamado quando o usuário seleciona.
+function openCatChooser(ctx, onPick) {
+  _ccCtx     = ctx || 'tx';
+  _ccResolve = onPick || null;
+
+  // Detect type filter from ctx
+  const c      = _catCtx(_ccCtx);
+  const txType = document.getElementById(c.typeId)?.value || '';
+  _ccType = txType === 'expense' ? 'despesa'
+          : txType === 'income'  ? 'receita'
+          : null;
+
+  // Current selected id (to pre-expand its group)
+  const currentId = document.getElementById(c.inputId)?.value || '';
+
+  // Get/create overlay
+  let overlay = document.getElementById('catChooserOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'catChooserOverlay';
+    overlay.style.cssText = [
+      'position:fixed','inset:0','z-index:10040',
+      'display:flex','align-items:center','justify-content:center',
+      'background:rgba(0,0,0,.45)',
+      'padding:16px','box-sizing:border-box',
+    ].join(';');
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeCatChooser(); });
+    document.body.appendChild(overlay);
+  }
+
+  // Pre-expand group of currently selected category
+  if (currentId) {
+    const cat = (state.categories||[]).find(x => x.id === currentId);
+    if (cat?.parent_id) _ccExpanded[cat.parent_id] = true;
+  }
+
+  _ccRenderChooser(overlay, currentId, '');
+  overlay.style.display = 'flex';
+  setTimeout(() => {
+    const inp = overlay.querySelector('#ccSearchInput');
+    if (inp) inp.focus();
+  }, 60);
+}
+window.openCatChooser = openCatChooser;
+
+function closeCatChooser() {
+  const overlay = document.getElementById('catChooserOverlay');
+  if (overlay) overlay.style.display = 'none';
+  _ccResolve = null; _ccCtx = null; _ccType = null;
+}
+window.closeCatChooser = closeCatChooser;
+
+function _ccRenderChooser(overlay, selectedId, query) {
+  const allCats = state.categories || [];
+  const cats    = _ccType ? allCats.filter(c => c.type === _ccType) : allCats;
+  const q       = (query || '').toLowerCase().trim();
+
+  const parents = cats
+    .filter(c => !c.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Build rows HTML
+  let rows = '';
+
+  // "Sem categoria" option
+  const noneSel = !selectedId ? ' cc-opt-selected' : '';
+  rows += `<div class="cc-none${noneSel}" onclick="event.stopPropagation();_ccPick(null)">— Sem categoria —</div>`;
+
+  parents.forEach(p => {
+    const children = cats
+      .filter(c => c.parent_id === p.id)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const color  = p.color || '#8c8278';
+    const icon   = p.icon  || '📦';
+
+    // Search filter
+    const pMatch = !q || p.name.toLowerCase().includes(q);
+    const cMatch = children.filter(c => c.name.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+    if (q && !pMatch && cMatch.length === 0) return;
+
+    const showChildren = q ? cMatch : (_ccExpanded[p.id] ? children : []);
+    const hasKids      = children.length > 0;
+    const expanded     = !!_ccExpanded[p.id] || (q && cMatch.length > 0);
+
+    // Parent row — click to expand/collapse (no select on click; use "usar" link to select)
+    rows += `<div class="cc-group" data-pid="${p.id}">`;
+    rows += `<div class="cc-group-hdr" onclick="event.stopPropagation();_ccToggle('${p.id}')">`;
+    rows += `  <span class="cc-dot" style="background:${color}"></span>`;
+    rows += `  <span class="cc-icon">${icon}</span>`;
+    rows += `  <span class="cc-label">${esc(p.name)}</span>`;
+    if (hasKids) {
+      rows += `  <span class="cc-count">${children.length}</span>`;
+      rows += `  <span class="cc-arrow${expanded?' cc-arrow-open':''}">${expanded?'▼':'▶'}</span>`;
+    }
+    rows += `  <span class="cc-usar" onclick="event.stopPropagation();_ccPick('${p.id}')">usar</span>`;
+    rows += `</div>`;
+
+    // Children rows
+    if (hasKids) {
+      rows += `<div class="cc-children" style="${expanded?'':'display:none'}">`;
+      const visKids = q ? cMatch : children;
+      visKids.forEach(c => {
+        const cc  = c.color || color;
+        const sel = c.id === selectedId ? ' cc-opt-selected' : '';
+        rows += `<div class="cc-opt${sel}" onclick="event.stopPropagation();_ccPick('${c.id}')">`;
+        rows += `  <span class="cc-dot" style="background:${cc}"></span>`;
+        rows += `  <span class="cc-icon" style="font-size:.8rem">${c.icon||'▸'}</span>`;
+        rows += `  <span>${esc(c.name)}</span>`;
+        rows += `</div>`;
+      });
+      rows += `</div>`;
+    }
+
+    rows += `</div>`; // .cc-group
+  });
+
+  overlay.innerHTML = `
+    <div class="cc-modal" onclick="event.stopPropagation()">
+      <div class="cc-header">
+        <span class="cc-title">Selecionar Categoria</span>
+        <button class="cc-close" onclick="closeCatChooser()">✕</button>
+      </div>
+      <div class="cc-search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="cc-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="ccSearchInput" type="text" class="cc-search-input"
+          placeholder="Buscar categoria..." autocomplete="off" spellcheck="false"
+          value="${query || ''}"
+          oninput="event.stopPropagation();_ccSearch(this.value)"
+          onclick="event.stopPropagation()">
+        ${query ? `<button class="cc-search-clear" onclick="event.stopPropagation();_ccSearch('')" title="Limpar">✕</button>` : ''}
+      </div>
+      <div class="cc-list">${rows}</div>
+    </div>`;
+}
+
+function _ccToggle(parentId) {
+  _ccExpanded[parentId] = !_ccExpanded[parentId];
+  const overlay = document.getElementById('catChooserOverlay');
+  if (!overlay) return;
+  const searchVal = overlay.querySelector('#ccSearchInput')?.value || '';
+  const selId = _catCtx(_ccCtx) ? (document.getElementById(_catCtx(_ccCtx).inputId)?.value||'') : '';
+  _ccRenderChooser(overlay, selId, searchVal);
+  overlay.querySelector('#ccSearchInput')?.focus();
+}
+window._ccToggle = _ccToggle;
+
+function _ccSearch(val) {
+  const overlay = document.getElementById('catChooserOverlay');
+  if (!overlay) return;
+  const selId = _catCtx(_ccCtx) ? (document.getElementById(_catCtx(_ccCtx).inputId)?.value||'') : '';
+  _ccRenderChooser(overlay, selId, val);
+  const inp = overlay.querySelector('#ccSearchInput');
+  if (inp) { inp.focus(); inp.value = val; inp.setSelectionRange(val.length, val.length); }
+}
+window._ccSearch = _ccSearch;
+
+function _ccPick(catId) {
+  const allCats = state.categories || [];
+  const cat     = catId ? allCats.find(x => x.id === catId) : null;
+
+  // Route through existing setCatPickerValue which handles split routing
+  if (typeof setCatPickerValue === 'function') {
+    setCatPickerValue(catId, _ccCtx);
+  }
+
+  // Also call onPick callback if provided (for split rows)
+  if (_ccResolve) {
+    _ccResolve(catId, cat?.name || '', cat?.color || '#94a3b8');
+    _ccResolve = null;
+  }
+
+  closeCatChooser();
+}
+window._ccPick = _ccPick;
+
 function buildCatPicker(typeFilter, ctx) {
   ctx = ctx || 'tx';
   var c = _catCtx(ctx);
