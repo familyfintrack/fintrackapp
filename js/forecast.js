@@ -674,10 +674,10 @@ function renderForecastTables(allItems, accounts) {
     let currentDateGroup = null;
 
     const rows = txs.map(t => {
+      const prevBal  = runningBalance; // saldo ANTES desta TX — deve vir antes do incremento
       runningBalance += parseFloat(t.amount)||0;
       const isPast   = t.date < today;
       const isToday  = t.date === today;
-      const prevBal  = runningBalance; // saldo ANTES desta TX
       const isNeg    = runningBalance < 0;
       const isPos    = runningBalance >= 0;
       const crossedToNeg = prevBal >= 0 && runningBalance < 0;  // pos → neg

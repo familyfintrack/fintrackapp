@@ -156,11 +156,22 @@ async function processScheduledOccurrence(sc, opts = {}) {
 
   const executionToken = reservation.executionToken;
 
+  // Moeda e conversão — preservar a moeda original da transação programada
+  const scCurrency  = sc.currency  || sc.accounts?.currency || 'BRL';
+  const scFxRate    = sc.fx_rate   || null;
+  // brl_amount: se moeda nativa, igual ao amount; se moeda estrangeira e taxa disponível, converte
+  const brlAmount   = (scCurrency === 'BRL' || !scFxRate)
+    ? finalAmount
+    : +(finalAmount * scFxRate).toFixed(2);
+
   const txPayload = {
     family_id: famId(),
     date: actualDate,
     description: sc.description,
     amount: finalAmount,
+    brl_amount: brlAmount,
+    currency: scCurrency,
+    exchange_rate: scFxRate || 1,
     account_id: sc.account_id,
     payee_id: isScTransfer ? null : (sc.payee_id || null),
     category_id: sc.category_id || null,
@@ -174,6 +185,9 @@ async function processScheduledOccurrence(sc, opts = {}) {
     // Propagate member attribution from the scheduled transaction
     family_member_id:  sc.family_member_id  || null,
     family_member_ids: sc.family_member_ids?.length ? sc.family_member_ids : [],
+    // Splits — propagar da transação programada se existirem
+    category_splits: sc.category_splits?.length ? sc.category_splits : null,
+    member_shares:   sc.member_shares?.length   ? sc.member_shares   : null,
   };
 
   const { data: txData, error: txErr } = await sb.from('transactions').insert(txPayload).select().single();
@@ -1573,6 +1587,15 @@ function openRegisterOcc(scId, date) {
   setAmtField('occAmount', sc.amount);
   document.getElementById('occMemo').value = '';
   document.getElementById('registerOccDesc').textContent = `Registrar "${sc.description}" em ${fmtDate(date)} — isso criará uma transação real na conta ${sc.accounts?.name||''}.`;
+
+  // Exibir moeda ao lado do campo de valor (evita confusão EUR/BRL)
+  const scCurrency = sc.currency || sc.accounts?.currency || 'BRL';
+  const currLabel  = document.getElementById('occAmountCurrencyLabel');
+  if (currLabel) {
+    currLabel.textContent = scCurrency;
+    currLabel.style.display = scCurrency !== 'BRL' ? '' : 'none';
+  }
+
   openModal('registerOccModal');
 }
 
