@@ -1,231 +1,198 @@
-# FinTrack — Processamento Automático de Programados no Supabase
+# FinTrack — Processamento Automático de Programados
+## 100% via Supabase Dashboard — sem CLI, sem projeto local
 
-## Visão Geral da Arquitetura
+---
+
+## Como funciona
+
+Tudo roda dentro do próprio banco de dados Supabase usando duas extensões nativas:
+
+| Extensão | Função |
+|---|---|
+| `pg_cron` | Agenda execução automática das funções SQL |
+| `pg_net` | Faz chamadas HTTP para APIs de notificação (Telegram, EmailJS, WhatsApp) diretamente do banco |
 
 ```
 06:00 UTC  ── pg_cron ──► ft_process_scheduled_transactions()
-                           ├── Insere transactions
-                           ├── Atualiza account.balance
-                           ├── Marca scheduled_occurrences como executed
-                           ├── Insere em scheduled_run_logs (auditoria)
-                           └── Enfileira scheduled_notification_logs (pending)
+                           ├── Registra transações do dia
+                           ├── Atualiza saldos das contas
+                           ├── Marca ocorrências como executadas
+                           └── Enfileira notificações (scheduled_notification_logs)
 
-06:30 UTC  ── pg_cron ──► net.http_post → Edge Function ft-send-notifications
-                           ├── Lê scheduled_notification_logs (status=pending)
-                           ├── Envia Email via EmailJS
-                           ├── Envia Telegram via Bot API
-                           └── Envia WhatsApp via Business API
+06:30 UTC  ── pg_cron ──► ft_send_pending_notifications()
+                           ├── Lê fila de notificações pendentes
+                           ├── Chama API Telegram via net.http_post()
+                           ├── Chama API EmailJS via net.http_post()
+                           └── Chama API WhatsApp via net.http_post()
 
 07:00 UTC  ── pg_cron ──► ft_queue_upcoming_notifications(3)
-                           └── Gera avisos antecipados (até 3 dias antes)
+                           └── Gera avisos antecipados (próximos 3 dias)
 ```
 
 ---
 
-## Passo 1 — Habilitar Extensões
+## Passo 1 — Habilitar extensões
 
-No **Supabase Dashboard → Database → Extensions**, habilitar:
-- `pg_cron` — necessário para agendamento
-- `pg_net` — necessário para chamar Edge Functions via cron
+Acesse **Supabase Dashboard → Database → Extensions** e habilite:
+- **pg_cron** — necessário para agendamento automático
+- **pg_net** — necessário para envio de notificações
 
 ---
 
-## Passo 2 — Executar a Migration SQL
+## Passo 2 — Executar o script SQL
 
 1. Acesse **Supabase Dashboard → SQL Editor → New Query**
-2. Cole o conteúdo de `sql/scheduled_processing_cron.sql`
-3. Clique em **Run**
-4. Verifique os jobs criados:
+2. Abra o arquivo `sql/scheduled_processing_cron.sql`
+3. Cole o conteúdo completo e clique em **Run**
 
+O script cria todas as funções e agenda os jobs automaticamente.
+
+**Verificar se os jobs foram criados:**
 ```sql
-SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobname;
+SELECT jobid, jobname, schedule, active
+FROM cron.job
+ORDER BY jobname;
 ```
 
 Resultado esperado:
 ```
-fintrack-cleanup-logs       0 2 * * 0    true
-fintrack-process-scheduled  0 6 * * *    true
-fintrack-upcoming-notifs    0 7 * * *    true
+fintrack-cleanup-logs        0 2 * * 0    true
+fintrack-process-scheduled   0 6 * * *    true
+fintrack-send-notifications  30 6 * * *   true
+fintrack-upcoming-notifs     0 7 * * *    true
 ```
 
 ---
 
-## Passo 3 — Deploy da Edge Function
+## Passo 3 — Configurar tokens de notificação (opcional)
 
-### 3.1 Instalar Supabase CLI
+Se quiser receber notificações, insira os tokens no **SQL Editor**. Execute apenas os blocos dos canais que você usa:
 
-```bash
-npm install -g supabase
-supabase login
-```
-
-### 3.2 Configurar projeto local
-
-```bash
-cd fintrackapp-main
-supabase init   # apenas se não tiver supabase/config.toml
-supabase link --project-ref wkiytjwuztnytygpxooe
-```
-
-### 3.3 Deploy da função
-
-```bash
-supabase functions deploy ft-send-notifications --no-verify-jwt
-```
-
-### 3.4 Configurar variáveis de ambiente
-
-No **Supabase Dashboard → Settings → Edge Functions**:
-
-| Variável | Valor | Obrigatório |
-|---|---|---|
-| `SUPABASE_SERVICE_KEY` | Chave `service_role` (Settings → API) | ✅ |
-| `EMAILJS_SERVICE_ID` | ID do serviço EmailJS | Para email |
-| `EMAILJS_TEMPLATE_SCHED` | ID do template para programados | Para email |
-| `EMAILJS_USER_ID` | Public Key do EmailJS | Para email |
-| `TELEGRAM_BOT_TOKEN` | Token do bot | Para Telegram |
-| `WA_API_URL` | URL da API WhatsApp Business | Para WhatsApp |
-| `WA_TOKEN` | Token de acesso WhatsApp | Para WhatsApp |
-
-### 3.5 Agendar a Edge Function via pg_cron
-
-Execute no SQL Editor após o deploy:
-
+### Telegram
 ```sql
--- Substituir <ANON_KEY> pela chave anon do projeto
--- (Supabase Dashboard → Settings → API → anon public)
-SELECT cron.schedule(
-  'fintrack-send-notifs',
-  '30 6 * * *',
-  format(
-    $q$SELECT net.http_post(
-      url := %L,
-      headers := '{"Authorization":"Bearer %s","Content-Type":"application/json"}'::jsonb,
-      body := '{}'::jsonb
-    )$q$,
-    'https://wkiytjwuztnytygpxooe.supabase.co/functions/v1/ft-send-notifications',
-    '<ANON_KEY>'
-  )
-);
+INSERT INTO public.app_settings (key, value) VALUES
+  ('notif_telegram_bot_token', '"SEU_BOT_TOKEN"')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 ```
+
+**Como obter o token:** fale com [@BotFather](https://t.me/BotFather) no Telegram → `/newbot` → copie o token gerado.
+
+### EmailJS
+```sql
+INSERT INTO public.app_settings (key, value) VALUES
+  ('notif_emailjs_service_id',  '"service_xxxxxxx"'),
+  ('notif_emailjs_template_id', '"template_xxxxxxx"'),
+  ('notif_emailjs_public_key',  '"sua_public_key"')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+```
+
+**Como obter:** acesse [emailjs.com](https://www.emailjs.com) → Dashboard → Email Services e Email Templates.
+
+### WhatsApp Business API
+```sql
+INSERT INTO public.app_settings (key, value) VALUES
+  ('notif_wa_api_url', '"https://graph.facebook.com/v19.0/SEU_PHONE_ID/messages"'),
+  ('notif_wa_token',   '"seu_access_token"')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+```
+
+**Verificar tokens configurados:**
+```sql
+SELECT key, LEFT(value::text, 15) || '...' AS valor_parcial
+FROM public.app_settings
+WHERE key LIKE 'notif_%';
+```
+
+> **Sem notificações:** se não configurar nenhum token, o processamento de transações funciona normalmente. As notificações ficam com status `skipped` na tabela de log.
 
 ---
 
-## Passo 4 — Teste Manual
+## Passo 4 — Testar manualmente
 
-### Testar processamento imediato
-
+**Testar processamento de transações:**
 ```sql
--- Executa o processamento agora (sem esperar o cron das 06:00)
 SELECT public.ft_process_scheduled_transactions();
 ```
 
-Retorno esperado:
+Resultado esperado:
 ```json
-{"families": 2, "inserted": 5, "skipped": 0, "notifications": 3, "errors": 0, "duration_ms": 142}
+{"families": 1, "inserted": 3, "skipped": 0, "notifications": 2, "errors": 0, "duration_ms": 87}
 ```
 
-### Verificar o que foi processado
-
+**Testar envio de notificações:**
 ```sql
--- Últimas 10 transações criadas pelo processador automático
-SELECT
-  t.date,
-  t.description,
-  t.amount,
-  a.name AS conta,
-  srl.created_at AS registrado_em
+SELECT public.ft_send_pending_notifications();
+```
+
+**Verificar o que foi processado hoje:**
+```sql
+SELECT t.date, t.description, t.amount, a.name AS conta
 FROM public.transactions t
 JOIN public.scheduled_run_logs srl ON srl.transaction_id = t.id
 JOIN public.accounts a ON a.id = t.account_id
-ORDER BY srl.created_at DESC
-LIMIT 10;
+WHERE srl.created_at::date = CURRENT_DATE
+ORDER BY t.created_at DESC;
 ```
 
-### Verificar notificações na fila
-
+**Ver log de execuções:**
 ```sql
-SELECT
-  snl.channel,
-  snl.notification_type,
-  snl.recipient,
-  snl.status,
-  snl.occurrence_date,
-  st.description
-FROM public.scheduled_notification_logs snl
-JOIN public.scheduled_transactions st ON st.id = snl.scheduled_id
-ORDER BY snl.created_at DESC
+SELECT * FROM public.v_scheduled_audit LIMIT 10;
+```
+
+**Ver fila de notificações:**
+```sql
+SELECT channel, notification_type, recipient, status, occurrence_date
+FROM public.scheduled_notification_logs
+ORDER BY created_at DESC
 LIMIT 20;
 ```
 
-### Ver histórico de execuções do cron
-
-```sql
-SELECT * FROM public.v_scheduled_audit LIMIT 20;
-```
-
 ---
 
-## Passo 5 — Configurar no App (opcional)
+## Referência de horários
 
-Na tela de Programados dentro do FinTrack, quando o usuário ativa `Auto-registrar`:
-- O checkbox já existe em `scAutoRegister`
-- A função `saveScheduled()` salva `auto_register: true` no banco
-- O cron do Supabase processa automaticamente sem precisar do app aberto
+| Job | Horário (UTC) | Horário Brasília | O que faz |
+|---|---|---|---|
+| `fintrack-process-scheduled` | 06:00 | 03:00 | Registra transações do dia |
+| `fintrack-send-notifications` | 06:30 | 03:30 | Envia notificações via pg_net |
+| `fintrack-upcoming-notifs` | 07:00 | 04:00 | Avisos dos próximos 3 dias |
+| `fintrack-cleanup-logs` | 02:00 dom | 23:00 sáb | Limpeza de logs > 90 dias |
 
-Para verificar se o processamento automático está funcionando, o usuário pode ver em **Configurações → Telemetria** (ou via SQL acima).
-
----
-
-## Frequência de Execução — Referência
-
-| Horário (UTC) | Horário Brasília | Job |
-|---|---|---|
-| 06:00 | 03:00 / 04:00 | Registro das transações do dia |
-| 06:30 | 03:30 / 04:30 | Envio de notificações pós-processamento |
-| 07:00 | 04:00 / 05:00 | Avisos antecipados (próximos 3 dias) |
-| 02:00 dom | 23:00 / 00:00 sáb | Limpeza de logs antigos |
-
-> **Nota de fuso:** Supabase cron usa UTC. Para horário de Brasília (UTC-3), `0 6 * * *` executa às 03:00 BRT no horário de verão e às 03:00 BRT no horário padrão. Ajuste se preferir executar mais tarde (ex: `0 9 * * *` = 06:00 BRT).
+> Para alterar os horários, basta re-executar o script com os valores desejados na expressão cron.
 
 ---
 
 ## Manutenção
 
-### Pausar um job temporariamente
-
+**Pausar um job:**
 ```sql
 SELECT cron.unschedule('fintrack-process-scheduled');
 ```
 
-### Reativar
-
+**Reativar:**
 ```sql
-SELECT cron.schedule('fintrack-process-scheduled', '0 6 * * *',
-  $$ SELECT public.ft_process_scheduled_transactions(); $$);
+SELECT cron.schedule(
+  'fintrack-process-scheduled', '0 6 * * *',
+  $$ SELECT public.ft_process_scheduled_transactions(); $$
+);
 ```
 
-### Ver transações com erro
-
+**Reprocessar uma data com erro:**
 ```sql
-SELECT * FROM public.scheduled_cron_log
-WHERE errors_count > 0
-ORDER BY run_at DESC;
-```
-
-### Forçar reprocessamento de uma data específica
-
-```sql
--- 1. Marcar a ocorrência como 'failed' para permitir reprocessamento
+-- 1. Marcar a ocorrência para retry
 UPDATE public.scheduled_occurrences
 SET execution_status = 'failed', error_message = 'manual retry'
-WHERE scheduled_id = '<uuid-do-programado>'
-  AND scheduled_date = '2025-01-15'
-  AND execution_status = 'executed';
+WHERE scheduled_id = '<uuid>'
+  AND scheduled_date = '2025-01-15';
 
--- 2. Deletar a transação gerada (se necessário)
--- DELETE FROM public.transactions WHERE id = '<uuid-da-tx>';
-
--- 3. Rodar processamento
+-- 2. Rodar processamento agora
 SELECT public.ft_process_scheduled_transactions();
+```
+
+**Ver erros recentes:**
+```sql
+SELECT run_at, errors_count, error_details
+FROM public.scheduled_cron_log
+WHERE errors_count > 0
+ORDER BY run_at DESC;
 ```
