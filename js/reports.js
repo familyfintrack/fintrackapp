@@ -777,62 +777,31 @@ function renderReportTxTable(txs) {
   const countEl=document.getElementById('reportTxCount');
   if(countEl) countEl.textContent=txs.length+' registros';
   const totEl=document.getElementById('reportTxTotal');
-  if(totEl){totEl.textContent=fmt(total);totEl.className='rpt-tx-total-num '+(total>=0?'amount-pos':'amount-neg');}
-
-  const body=document.getElementById('reportTxBody');
-  if(!txs.length){
-    body.innerHTML=`<div class="rpt-tx-empty">${t('tx.empty')}</div>`;
-    return;
-  }
-
-  // Group by date for cleaner visual structure
-  const groups={};
-  txs.forEach(tx=>{
-    const d=tx.date||'';
-    if(!groups[d]) groups[d]=[];
-    groups[d].push(tx);
-  });
-
-  body.innerHTML=Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(date=>{
-    const dayTotal=groups[date].reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
-    const dtParts=date?date.split('-'):[];
-    const dtLabel=dtParts.length===3?`${dtParts[2]}/${dtParts[1]}/${dtParts[0]}`:date;
-    const dayRows=groups[date].map(t=>{
-      const isPos=parseFloat(t.amount)>=0;
-      const catColor=t.categories?.color||'var(--muted)';
-      return `<div class="rpt-tx-row" onclick="typeof editTransaction==='function'&&editTransaction('${t.id}')" title="Clique para editar">
-        <div class="rpt-tx-row-cat-dot" style="background:${catColor}"></div>
-        <div class="rpt-tx-row-main">
-          <div class="rpt-tx-row-desc">${esc(t.description||'—')}</div>
-          <div class="rpt-tx-row-meta">
-            ${t.accounts?`<span class="rpt-tx-meta-acct">${esc(t.accounts.name)}</span>`:''}
-            ${t.categories?`<span class="rpt-tx-meta-cat" style="color:${catColor}">${esc(t.categories.name)}</span>`:''}
-            ${t.payees?`<span class="rpt-tx-meta-pay">${esc(t.payees.name)}</span>`:''}
-          </div>
-        </div>
-        <div class="rpt-tx-row-amt ${isPos?'amount-pos':'amount-neg'}">${fmt(t.amount)}</div>
-      </div>`;
-    }).join('');
-    return `<div class="rpt-tx-group">
-      <div class="rpt-tx-group-hdr">
-        <span class="rpt-tx-group-date">${dtLabel}</span>
-        <span class="rpt-tx-group-total ${dayTotal>=0?'amount-pos':'amount-neg'}">${fmt(dayTotal)}</span>
-      </div>
-      ${dayRows}
-    </div>`;
-  }).join('');
+  if(totEl){totEl.textContent=fmt(total);totEl.className=total>=0?'amount-pos':'amount-neg';}
+  document.getElementById('reportTxBody').innerHTML=txs.length
+    ? txs.map(t=>`<tr class="rpt-tx-clickable" onclick="typeof openTxDetail==='function'&&openTxDetail('${t.id}')" style="cursor:pointer" title="Clique para ver detalhes">
+        <td class="rpt-td-date">${fmtDate(t.date)}</td>
+        <td class="rpt-td-desc"><div class="rpt-desc-cell">${esc(t.description||'—')}</div></td>
+        <td class="rpt-td-acct">${esc(t.accounts?.name||'—')}</td>
+        <td class="rpt-td-cat">${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}30;font-size:.68rem;white-space:nowrap">${esc(t.categories.name)}</span>`:'—'}</td>
+        <td class="rpt-td-pay">${esc(t.payees?.name||'—')}</td>
+        <td class="rpt-td-amt ${t.amount>=0?'amount-pos':'amount-neg'}">${fmt(t.amount)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">${t('tx.empty')}</td></tr>`;
 }
 
 /* ═══ VIEW TOGGLE ═══ */
 function setReportView(view) {
   rptState.view = view;
-  document.getElementById('reportRegularView').style.display  = view==='regular'       ? '' : 'none';
-  document.getElementById('reportTxView').style.display       = view==='transactions'  ? '' : 'none';
-  document.getElementById('reportForecastView').style.display = view==='forecast'      ? '' : 'none';
+  document.getElementById('reportRegularView').style.display         = view==='regular'        ? '' : 'none';
+  document.getElementById('reportTxView').style.display              = view==='transactions'   ? '' : 'none';
+  document.getElementById('reportForecastView').style.display        = view==='forecast'       ? '' : 'none';
   document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
+  const _bvEl = document.getElementById('reportBeneficiariosView');
+  if (_bvEl) _bvEl.style.display = view==='beneficiarios' ? '' : 'none';
 
   // Hide the entire filter section (wrapper + bar) for views that don't need filters
-  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees' || view === 'objectives');
+  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees' || view === 'objectives' || view === 'beneficiarios');
   const _filterWrap = document.getElementById('rptFilterWrap');
   if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
   // Keep filter bar collapsed when switching views — user opens it manually
@@ -840,18 +809,19 @@ function setReportView(view) {
     document.getElementById('reportFilterBar').style.display = 'none';
   }
   // If not hiding, leave bar in its current collapsed/expanded state (don't force open)
-  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
+  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets','rptBtnBeneficiarios'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
-  const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets'};
+  const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',beneficiarios:'rptBtnBeneficiarios'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
+  if (view === 'beneficiarios') { rbtbInitFilters(); loadBeneficiariosReport(); }
 
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
-      const today=(typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+      const today=new Date().toISOString().slice(0,10);
       const in3=new Date();in3.setMonth(in3.getMonth()+3);
       document.getElementById('forecastFrom').value=today;
-      document.getElementById('forecastTo').value=(typeof localDateStr==='function'?localDateStr(in3):in3.toISOString().slice(0,10));
+      document.getElementById('forecastTo').value=in3.toISOString().slice(0,10);
     }
     // Init picker then load (dependencies handled inside loadForecast)
     if (typeof _initForecastPicker === 'function') {
@@ -2747,10 +2717,590 @@ function getPeriodColor(period) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  RELATÓRIO DE BENEFICIÁRIOS / FONTES PAGADORAS
+//  RELATÓRIO DE BENEFICIÁRIOS / FONTES PAGADORAS — Implementação completa
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── Estado interno ────────────────────────────────────────────────────────────
+const _rbtb = {
+  accounts:   new Set(),   // IDs selecionados (vazio = todos)
+  categories: new Set(),
+  initialized: false,
+};
 
+// ── Inicializar filtros com dados do estado ───────────────────────────────────
+function rbtbInitFilters() {
+  if (_rbtb.initialized) return;
+  _rbtb.initialized = true;
+
+  // Contas
+  const accList = document.getElementById('rbtbAccountsList');
+  if (accList) {
+    accList.innerHTML = (state.accounts || []).map(a =>
+      `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:6px;font-size:.82rem;transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <input type="checkbox" data-id="${a.id}" style="accent-color:var(--accent)" checked onchange="rbtbOnCheck('accounts')">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</span>
+        <span style="font-size:.68rem;color:var(--muted);flex-shrink:0">${a.currency||'BRL'}</span>
+      </label>`
+    ).join('');
+  }
+
+  // Categorias
+  const catList = document.getElementById('rbtbCategoriesList');
+  if (catList) {
+    catList.innerHTML = (state.categories || [])
+      .filter(c => !c.parent_id) // só pais para simplificar
+      .concat((state.categories || []).filter(c => c.parent_id))
+      .map(c => {
+        const parent = c.parent_id ? (state.categories||[]).find(x=>x.id===c.parent_id) : null;
+        const label  = parent ? `${parent.name} › ${c.name}` : c.name;
+        return `<label style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:6px;font-size:.82rem;transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          <input type="checkbox" data-id="${c.id}" style="accent-color:var(--accent)" checked onchange="rbtbOnCheck('categories')">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c.color||'#94a3b8'};flex-shrink:0"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>
+        </label>`;
+      }).join('');
+  }
+
+  // Fechar dropdowns ao clicar fora
+  document.addEventListener('click', e => {
+    ['accounts','categories'].forEach(type => {
+      const wrap = document.getElementById(`rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Wrap`);
+      const dd   = document.getElementById(`rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Dropdown`);
+      if (dd && wrap && !wrap.contains(e.target)) dd.style.display = 'none';
+    });
+  }, true);
+}
+window.rbtbInitFilters = rbtbInitFilters;
+
+function rbtbToggleMulti(type) {
+  const ddId = `rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Dropdown`;
+  const dd   = document.getElementById(ddId);
+  if (!dd) return;
+  const isOpen = dd.style.display !== 'none';
+  // close others
+  ['accounts','categories'].forEach(t => {
+    const other = document.getElementById(`rbtb${t.charAt(0).toUpperCase()+t.slice(1)}Dropdown`);
+    if (other && t !== type) other.style.display = 'none';
+  });
+  dd.style.display = isOpen ? 'none' : '';
+}
+window.rbtbToggleMulti = rbtbToggleMulti;
+
+function rbtbOnCheck(type) {
+  const listId = `rbtb${type.charAt(0).toUpperCase()+type.slice(1)}List`;
+  const labelId = `rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Label`;
+  const checked = [...document.querySelectorAll(`#${listId} input[type=checkbox]:checked`)].map(i => i.dataset.id);
+  const all     = [...document.querySelectorAll(`#${listId} input[type=checkbox]`)].map(i => i.dataset.id);
+  _rbtb[type] = checked.length === all.length ? new Set() : new Set(checked);
+  const label = document.getElementById(labelId);
+  if (label) label.textContent = (!_rbtb[type].size) ? 'Todas' : `${checked.length} selecionadas`;
+  loadBeneficiariosReport();
+}
+window.rbtbOnCheck = rbtbOnCheck;
+
+function rbtbSelectAll(type) {
+  const listId = `rbtb${type.charAt(0).toUpperCase()+type.slice(1)}List`;
+  document.querySelectorAll(`#${listId} input[type=checkbox]`).forEach(i => i.checked = true);
+  _rbtb[type] = new Set();
+  const label = document.getElementById(`rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Label`);
+  if (label) label.textContent = 'Todas';
+  loadBeneficiariosReport();
+}
+window.rbtbSelectAll = rbtbSelectAll;
+
+function rbtbClearAll(type) {
+  const listId = `rbtb${type.charAt(0).toUpperCase()+type.slice(1)}List`;
+  document.querySelectorAll(`#${listId} input[type=checkbox]`).forEach(i => i.checked = false);
+  const all = [...document.querySelectorAll(`#${listId} input[type=checkbox]`)].map(i => i.dataset.id);
+  _rbtb[type] = new Set(all); // nada selecionado = filtro exclusivo (nenhum resultado)
+  const label = document.getElementById(`rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Label`);
+  if (label) label.textContent = '0 selecionadas';
+  loadBeneficiariosReport();
+}
+window.rbtbClearAll = rbtbClearAll;
+
+function rbtbOnPeriodChange() {
+  const p = document.getElementById('rbtbPeriod')?.value;
+  const isCustom = p === 'custom';
+  document.getElementById('rbtbFromWrap').style.display = isCustom ? '' : 'none';
+  document.getElementById('rbtbToWrap').style.display   = isCustom ? '' : 'none';
+  if (!isCustom) loadBeneficiariosReport();
+}
+window.rbtbOnPeriodChange = rbtbOnPeriodChange;
+
+function rbtbResetFilters() {
+  document.getElementById('rbtbPeriod').value = 'year';
+  document.getElementById('rbtbType').value   = '';
+  document.getElementById('rbtbSort').value   = 'total_desc';
+  document.getElementById('rbtbFromWrap').style.display = 'none';
+  document.getElementById('rbtbToWrap').style.display   = 'none';
+  _rbtb.accounts   = new Set();
+  _rbtb.categories = new Set();
+  // Reset checkboxes
+  document.querySelectorAll('#rbtbAccountsList input, #rbtbCategoriesList input').forEach(i => i.checked = true);
+  document.getElementById('rbtbAccountsLabel').textContent   = 'Todas';
+  document.getElementById('rbtbCategoriesLabel').textContent = 'Todas';
+  loadBeneficiariosReport();
+}
+window.rbtbResetFilters = rbtbResetFilters;
+
+// ── Calcular datas do período ─────────────────────────────────────────────────
+function _rbtbGetDateRange() {
+  const p   = document.getElementById('rbtbPeriod')?.value || 'year';
+  const now = new Date();
+  const y   = now.getFullYear(), m = now.getMonth();
+  let from, to;
+  if (p === 'month')   { from = `${y}-${String(m+1).padStart(2,'0')}-01`; to = new Date(y,m+1,0).toISOString().slice(0,10); }
+  else if (p === 'quarter') {
+    const qStart = Math.floor(m/3)*3;
+    from = `${y}-${String(qStart+1).padStart(2,'0')}-01`;
+    to   = new Date(y, qStart+3, 0).toISOString().slice(0,10);
+  }
+  else if (p === 'year')   { from = `${y}-01-01`; to = `${y}-12-31`; }
+  else if (p === 'last12') { const d=new Date(now); d.setFullYear(d.getFullYear()-1); from=d.toISOString().slice(0,10); to=now.toISOString().slice(0,10); }
+  else { // custom
+    from = document.getElementById('rbtbFrom')?.value || `${y}-01-01`;
+    to   = document.getElementById('rbtbTo')?.value   || now.toISOString().slice(0,10);
+  }
+  return { from, to };
+}
+
+// ── Carregar e renderizar o relatório ────────────────────────────────────────
+async function loadBeneficiariosReport() {
+  const tbody   = document.getElementById('rbtbTable')?.querySelector('tbody');
+  const loading = document.getElementById('rbtbLoading');
+  const kpisEl  = document.getElementById('rbtbKpis');
+  const countEl = document.getElementById('rbtbCount');
+  const infoEl  = document.getElementById('rbtbFilterInfo');
+  if (!tbody) return;
+
+  if (loading) loading.style.display = '';
+  tbody.innerHTML = '';
+  if (kpisEl) kpisEl.innerHTML = '';
+
+  try {
+    const { from, to } = _rbtbGetDateRange();
+    const typeFilter  = document.getElementById('rbtbType')?.value || '';
+    const sortBy      = document.getElementById('rbtbSort')?.value || 'total_desc';
+
+    // Query transactions in period
+    let q = famQ(sb.from('transactions')
+      .select('id,date,amount,brl_amount,currency,payee_id,category_id,account_id,payees(id,name,type),categories(id,name,color)')
+    ).gte('date', from).lte('date', to);
+
+    // Account filter
+    if (_rbtb.accounts.size > 0) {
+      q = q.in('account_id', [..._rbtb.accounts]);
+    }
+    // Category filter
+    if (_rbtb.categories.size > 0) {
+      q = q.in('category_id', [..._rbtb.categories]);
+    }
+
+    const { data: txs, error } = await q;
+    if (error) throw error;
+
+    // Aggregate by payee
+    const payeeMap = {};
+    const noPayee  = { id: '__none__', name: '(Sem beneficiário)', type: 'sem_cadastro', total_exp: 0, total_inc: 0, count: 0, last_date: '', categories: new Set() };
+
+    (txs || []).forEach(t => {
+      const pid  = t.payee_id;
+      const amt  = parseFloat(t.brl_amount ?? t.amount) || 0;
+      const isExp = amt < 0;
+
+      if (!pid) {
+        noPayee.count++;
+        if (!noPayee.last_date || t.date > noPayee.last_date) noPayee.last_date = t.date;
+        if (t.category_id) noPayee.categories.add(t.category_id);
+        if (isExp) noPayee.total_exp += Math.abs(amt); else noPayee.total_inc += amt;
+        return;
+      }
+
+      if (!payeeMap[pid]) {
+        payeeMap[pid] = {
+          id: pid,
+          name:       t.payees?.name || pid,
+          type:       t.payees?.type || 'beneficiario',
+          total_exp:  0,
+          total_inc:  0,
+          count:      0,
+          last_date:  '',
+          categories: new Set(),
+        };
+      }
+      const p = payeeMap[pid];
+      p.count++;
+      if (!p.last_date || t.date > p.last_date) p.last_date = t.date;
+      if (t.category_id) p.categories.add(t.category_id);
+      if (isExp) p.total_exp += Math.abs(amt); else p.total_inc += amt;
+    });
+
+    // Build list
+    let list = Object.values(payeeMap);
+    if (noPayee.count > 0 && (!typeFilter || typeFilter === 'sem_cadastro')) list.push(noPayee);
+
+    // Type filter
+    if (typeFilter && typeFilter !== 'sem_cadastro') {
+      list = list.filter(p => p.type === typeFilter);
+    } else if (typeFilter === 'sem_cadastro') {
+      list = list.filter(p => p.id === '__none__');
+    }
+
+    // Sort
+    if (sortBy === 'total_desc') list.sort((a,b)=>(b.total_exp+b.total_inc)-(a.total_exp+a.total_inc));
+    else if (sortBy === 'total_asc') list.sort((a,b)=>(a.total_exp+a.total_inc)-(b.total_exp+b.total_inc));
+    else if (sortBy === 'count_desc') list.sort((a,b)=>b.count-a.count);
+    else if (sortBy === 'name_asc')  list.sort((a,b)=>a.name.localeCompare(b.name,'pt'));
+    else if (sortBy === 'last_desc') list.sort((a,b)=>(b.last_date||'').localeCompare(a.last_date||''));
+
+    // ── KPIs ─────────────────────────────────────────────────────
+    const totalExp  = list.reduce((s,p)=>s+p.total_exp,0);
+    const totalInc  = list.reduce((s,p)=>s+p.total_inc,0);
+    const totalTxs  = list.reduce((s,p)=>s+p.count,0);
+    const periodLabel = { month:'Mês', quarter:'Trimestre', year:'Ano corrente', last12:'Últimos 12 meses', custom:'Período' }[document.getElementById('rbtbPeriod')?.value||'year']||'';
+
+    if (kpisEl) {
+      const _kpi = (label, val, color='var(--text)') =>
+        `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+          <div style="font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">${label}</div>
+          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${color}">${val}</div>
+        </div>`;
+      kpisEl.innerHTML =
+        _kpi('Beneficiários / Fontes', list.length) +
+        _kpi(`Total Despesas · ${periodLabel}`, '−'+fmt(totalExp), 'var(--red,#dc2626)') +
+        _kpi(`Total Receitas · ${periodLabel}`, '+'+fmt(totalInc), '#16a34a') +
+        _kpi('Transações no período', totalTxs);
+    }
+
+    // ── Tabela ────────────────────────────────────────────────────
+    if (countEl) countEl.textContent = `${list.length} resultado${list.length!==1?'s':''}`;
+    if (infoEl)  infoEl.textContent  = `${from.split('-').reverse().join('/')} a ${to.split('-').reverse().join('/')}`;
+
+    const TYPE_LABELS = { beneficiario:'Beneficiário', fonte_pagadora:'Fonte Pagadora', ambos:'Ambos', sem_cadastro:'Sem cadastro' };
+
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Nenhum resultado para os filtros selecionados.</td></tr>`;
+    } else {
+      const maxTotal = Math.max(...list.map(p => p.total_exp + p.total_inc), 1);
+      tbody.innerHTML = list.map((p, i) => {
+        const total   = p.total_exp + p.total_inc;
+        const barPct  = (total / maxTotal * 100).toFixed(1);
+        const typeL   = TYPE_LABELS[p.type] || p.type;
+        const lastDt  = p.last_date ? p.last_date.split('-').reverse().join('/') : '—';
+        const _pDrillName = p.name.replace(/'/g,"'").replace(/"/g,'&quot;');
+        return `<tr style="cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" onclick="rbtbDrill('${esc(p.id)}','${_pDrillName}')">
+          <td style="padding:9px 12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:.62rem;font-weight:700;color:var(--muted);width:18px;text-align:right;flex-shrink:0">${i+1}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+                <div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden">
+                  <div style="height:100%;width:${barPct}%;background:var(--accent);border-radius:2px;transition:width .4s"></div>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td style="padding:9px 8px;text-align:center"><span style="font-size:.72rem;padding:2px 8px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap">${typeL}</span></td>
+          <td style="padding:9px 8px;text-align:right;font-size:.82rem;color:var(--muted)">${p.count}</td>
+          <td style="padding:9px 8px;text-align:right;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626);font-size:.88rem">${p.total_exp > 0 ? '−'+fmt(p.total_exp) : '—'}</td>
+          <td style="padding:9px 8px;text-align:right;font-weight:700;font-family:var(--font-serif);color:#16a34a;font-size:.88rem">${p.total_inc > 0 ? '+'+fmt(p.total_inc) : '—'}</td>
+          <td style="padding:9px 12px;text-align:right;font-size:.78rem;color:var(--muted)">${lastDt}</td>
+        </tr>`;
+      }).join('');
+    }
+
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--red)">${esc(e.message)}</td></tr>`;
+  } finally {
+    if (loading) loading.style.display = 'none';
+  }
+}
+window.loadBeneficiariosReport = loadBeneficiariosReport;
+
+// ── Drill-down: transações de um beneficiário ─────────────────────────────────
+// rbtbDrill: now delegates to openPayeeDetailModal which shows full profile + transactions
+async function rbtbDrill(payeeId, payeeName) {
+  if (payeeId === '__none__') return;
+  await openPayeeDetailModal(payeeId, _rbtbGetDateRange());
+}
+window.rbtbDrill = rbtbDrill;
+
+// ── openPayeeDetailModal ────────────────────────────────────────────────────
+// Panorâmica completa do beneficiário/fonte pagadora:
+//   • Cabeçalho com avatar, nome, tipo, badge de CNPJ/CPF
+//   • Dados de cadastro: telefone, whatsapp, site, notas
+//   • Endereço completo + mapa estático (Google Maps embed free) se disponível
+//   • KPIs de transações: total despesas, total receitas, nº de TXs
+//   • Listagem completa de transações com filtro de período
+//   • Botão "Editar" abre openPayeeModal (módulo payees.js)
+async function openPayeeDetailModal(payeeId, dateRange) {
+  document.getElementById('pdModal')?.remove();
+
+  // ── Buscar dados do payee ──────────────────────────────────────────────
+  let payee = (state.payees || []).find(p => p.id === payeeId);
+  if (!payee) {
+    const { data } = await famQ(sb.from('payees')
+      .select('id,name,type,notes,address,city,state_uf,zip_code,phone,whatsapp,website,cnpj_cpf,avatar_url,default_category_id,categories(name,color)')
+    ).eq('id', payeeId).maybeSingle();
+    payee = data;
+  }
+  if (!payee) { toast('Beneficiário não encontrado.', 'error'); return; }
+
+  // ── Período de transações ───────────────────────────────────────────────
+  const { from: dfFrom, to: dfTo } = dateRange || _rbtbGetDateRange();
+
+  // ── Construir HTML do modal (sem transações ainda — carrega async) ──────
+  const TYPE_LABELS = { beneficiario:'Beneficiário', fonte_pagadora:'Fonte Pagadora', ambos:'Ambos' };
+  const TYPE_COLORS = { beneficiario:'var(--blue,#1e5ba8)', fonte_pagadora:'#16a34a', ambos:'var(--amber,#b45309)' };
+  const typeLabel   = TYPE_LABELS[payee.type] || payee.type;
+  const typeColor   = TYPE_COLORS[payee.type] || 'var(--accent)';
+
+  // Avatar / iniciais
+  const initials    = (payee.name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const avatarColors= ['#2a6049','#1e5ba8','#b45309','#6d28d9','#0e7490','#be185d','#047857','#7c3aed'];
+  const avatarColor = avatarColors[(payee.name||'').charCodeAt(0) % avatarColors.length];
+  const avatarHtml  = payee.avatar_url
+    ? (payee.avatar_url.startsWith('emoji:')
+        ? `<span style="font-size:2rem">${payee.avatar_url.slice(6)}</span>`
+        : `<img src="${esc(payee.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`)
+    : `<span style="font-size:1.4rem;font-weight:800;color:${avatarColor}">${initials}</span>`;
+
+  // Endereço completo
+  const hasAddress  = !!(payee.address || payee.city || payee.state_uf);
+  const fullAddress = [payee.address, payee.city, payee.state_uf, payee.zip_code].filter(Boolean).join(', ');
+
+  // Mapa estático via OpenStreetMap (sem API key, iframe embed)
+  const mapQuery    = encodeURIComponent(fullAddress);
+  const mapHtml     = hasAddress
+    ? `<div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);height:180px;margin-top:10px;position:relative">
+        <iframe
+          src="https://www.openstreetmap.org/export/embed.html?bbox=&amp;layer=mapnik&amp;marker=&amp;query=${mapQuery}"
+          style="width:100%;height:100%;border:none"
+          title="Localização de ${esc(payee.name)}"
+          loading="lazy"
+          sandbox="allow-scripts allow-same-origin">
+        </iframe>
+        <a href="https://www.openstreetmap.org/search?query=${mapQuery}" target="_blank" rel="noopener"
+           style="position:absolute;bottom:6px;right:8px;font-size:.68rem;background:rgba(255,255,255,.9);padding:2px 8px;border-radius:10px;color:#0369a1;text-decoration:none;font-weight:600">
+          🗺 Abrir no mapa
+        </a>
+      </div>`
+    : '';
+
+  // Chips de contato
+  const contactItems = [
+    payee.phone    && { icon:'📞', label: payee.phone,    href: `tel:${payee.phone}` },
+    payee.whatsapp && { icon:'💬', label: payee.whatsapp, href: `https://wa.me/${payee.whatsapp.replace(/\D/g,'')}` },
+    payee.website  && { icon:'🌐', label: payee.website.replace(/^https?:\/\//,''), href: payee.website },
+    payee.cnpj_cpf && { icon:'🪪', label: payee.cnpj_cpf, href: null },
+  ].filter(Boolean);
+
+  const contactHtml = contactItems.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        ${contactItems.map(c => c.href
+          ? `<a href="${esc(c.href)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:.78rem;color:var(--text);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">${c.icon} <span>${esc(c.label)}</span></a>`
+          : `<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:.78rem;color:var(--text)">${c.icon} ${esc(c.label)}</span>`
+        ).join('')}
+      </div>`
+    : '';
+
+  // Categoria padrão
+  const defCat = payee.categories
+    ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.76rem;background:${payee.categories.color}18;color:${payee.categories.color};border:1px solid ${payee.categories.color}30"><span style="width:7px;height:7px;border-radius:50%;background:${payee.categories.color};display:inline-block"></span>${esc(payee.categories.name)}</span>`
+    : '';
+
+  // Período selector (sincroniza com filtro do relatório)
+  const periodOptions = [
+    ['month','Este mês'], ['quarter','Este trimestre'], ['year','Este ano'],
+    ['last12','Últimos 12 meses'], ['alltime','Todos os tempos'],
+  ];
+  const periodSel = `<select id="pdPeriodSel" onchange="pdLoadTxs('${esc(payeeId)}')"
+    style="padding:5px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.78rem;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer">
+    ${periodOptions.map(([v,l]) => `<option value="${v}"${v==='alltime'?'':''}>  ${l}</option>`).join('')}
+  </select>`;
+
+  const html = `
+  <div class="modal-overlay active" id="pdModal" onclick="if(event.target===this)document.getElementById('pdModal').remove()" style="align-items:flex-start;padding-top:40px">
+    <div class="modal" style="max-width:560px;border-radius:16px;overflow:hidden" onclick="event.stopPropagation()">
+
+      <!-- ── Header com gradiente ── -->
+      <div style="background:linear-gradient(135deg,${avatarColor}22 0%,${avatarColor}08 100%);border-bottom:1px solid var(--border);padding:20px 20px 16px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:56px;height:56px;border-radius:50%;background:${avatarColor}22;border:2px solid ${avatarColor}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">
+            ${avatarHtml}
+          </div>
+          <div style="flex:1;min-width:0">
+            <h2 style="margin:0;font-size:1.1rem;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(payee.name)}</h2>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+              <span style="font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;background:${typeColor}18;color:${typeColor};border:1px solid ${typeColor}30">${typeLabel}</span>
+              ${defCat}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+            <button class="modal-close" onclick="document.getElementById('pdModal').remove()" style="position:static">✕</button>
+            ${typeof openPayeeModal === 'function'
+              ? `<button onclick="document.getElementById('pdModal').remove();openPayeeModal('${esc(payeeId)}')"
+                  style="padding:5px 12px;border-radius:9px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s"
+                  onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+                  onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">
+                  ✏️ Editar
+                </button>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Corpo com scroll ── -->
+      <div style="overflow-y:auto;max-height:calc(90vh - 120px)">
+
+        <!-- Informações de cadastro -->
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
+          ${contactHtml}
+
+          ${hasAddress ? `
+          <div style="margin-top:12px">
+            <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">📍 Endereço</div>
+            <div style="font-size:.85rem;color:var(--text);line-height:1.5">${esc(fullAddress)}</div>
+            ${mapHtml}
+          </div>` : ''}
+
+          ${payee.notes ? `
+          <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;border-left:3px solid var(--accent)">
+            <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">📝 Observações</div>
+            <div style="font-size:.83rem;color:var(--text2);line-height:1.5">${esc(payee.notes)}</div>
+          </div>` : ''}
+        </div>
+
+        <!-- KPIs + listagem de transações -->
+        <div style="padding:14px 20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:.78rem;font-weight:700;color:var(--text)">Transações</div>
+            ${periodSel}
+          </div>
+
+          <!-- KPIs -->
+          <div id="pdKpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
+
+          <!-- Loading / lista -->
+          <div id="pdTxList" style="font-size:.82rem;text-align:center;padding:24px;color:var(--muted)">⏳ Carregando…</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // Set period default
+  const selEl = document.getElementById('pdPeriodSel');
+  if (selEl) selEl.value = 'alltime';
+
+  // Load transactions
+  await pdLoadTxs(payeeId);
+}
+window.openPayeeDetailModal = openPayeeDetailModal;
+
+// ── Carregar transações do período selecionado ───────────────────────────────
+async function pdLoadTxs(payeeId) {
+  const kpisEl  = document.getElementById('pdKpis');
+  const listEl  = document.getElementById('pdTxList');
+  if (!listEl) return;
+
+  listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Carregando…</div>';
+
+  const period  = document.getElementById('pdPeriodSel')?.value || 'alltime';
+  const now     = new Date();
+  const y       = now.getFullYear(), m = now.getMonth();
+  let from = null, to = null;
+
+  if (period === 'month') {
+    from = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    to   = new Date(y,m+1,0).toISOString().slice(0,10);
+  } else if (period === 'quarter') {
+    const qs = Math.floor(m/3)*3;
+    from = `${y}-${String(qs+1).padStart(2,'0')}-01`;
+    to   = new Date(y,qs+3,0).toISOString().slice(0,10);
+  } else if (period === 'year') {
+    from = `${y}-01-01`; to = `${y}-12-31`;
+  } else if (period === 'last12') {
+    const d = new Date(now); d.setFullYear(d.getFullYear()-1);
+    from = d.toISOString().slice(0,10); to = now.toISOString().slice(0,10);
+  }
+  // 'alltime': from/to = null
+
+  try {
+    let q = famQ(sb.from('transactions')
+      .select('id,date,description,amount,brl_amount,currency,status,accounts!transactions_account_id_fkey(name,currency),categories(name,color)')
+    ).eq('payee_id', payeeId).order('date', { ascending: false });
+
+    if (from) q = q.gte('date', from);
+    if (to)   q = q.lte('date', to);
+
+    const { data: txs, error } = await q;
+    if (error) throw error;
+
+    const totalExp = (txs||[]).filter(t=>parseFloat(t.amount)<0).reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount??t.amount)||0),0);
+    const totalInc = (txs||[]).filter(t=>parseFloat(t.amount)>=0).reduce((s,t)=>s+(parseFloat(t.brl_amount??t.amount)||0),0);
+
+    // KPIs
+    if (kpisEl) {
+      const _kpi = (label, val, color) =>
+        `<div style="padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:3px">${label}</div>
+          <div style="font-size:.95rem;font-weight:800;font-family:var(--font-serif);color:${color}">${val}</div>
+        </div>`;
+      kpisEl.innerHTML =
+        _kpi('Transações', (txs||[]).length, 'var(--text)') +
+        _kpi('Despesas', '−'+fmt(totalExp), 'var(--red,#dc2626)') +
+        _kpi('Receitas', '+'+fmt(totalInc), '#16a34a');
+    }
+
+    // Transaction list
+    if (!txs?.length) {
+      listEl.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Nenhuma transação no período.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:1px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      ${txs.map(t => {
+        const amt    = parseFloat(t.brl_amount ?? t.amount) || 0;
+        const cur    = t.currency || t.accounts?.currency || 'BRL';
+        const isNeg  = amt < 0;
+        const catDot = t.categories?.color
+          ? `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${t.categories.color};flex-shrink:0"></span>`
+          : '';
+        const pendBadge = t.status === 'pending'
+          ? '<span style="font-size:.62rem;padding:1px 5px;border-radius:20px;background:var(--amber-lt,rgba(245,158,11,.1));color:var(--amber,#b45309);border:1px solid rgba(245,158,11,.2);margin-left:4px">⏳</span>'
+          : '';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);cursor:pointer;transition:background .1s"
+                  onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"
+                  onclick="document.getElementById('pdModal').remove();editTransaction('${t.id}')">
+          <div style="flex-shrink:0;text-align:center;min-width:34px">
+            <div style="font-size:.65rem;color:var(--muted);font-weight:600">${t.date.slice(5).split('-').reverse().join('/')}</div>
+            <div style="font-size:.6rem;color:var(--muted)">${t.date.slice(0,4)}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.83rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.description||'—')}${pendBadge}</div>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:2px;flex-wrap:wrap">
+              ${catDot}<span style="font-size:.7rem;color:var(--muted)">${esc(t.categories?.name||'')}</span>
+              <span style="font-size:.7rem;color:var(--muted);opacity:.6">·</span>
+              <span style="font-size:.7rem;color:var(--muted)">${esc(t.accounts?.name||'')}</span>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-weight:700;font-family:var(--font-serif);font-size:.88rem;color:${isNeg?'var(--red,#dc2626)':'#16a34a'};white-space:nowrap">
+              ${isNeg?'−':'+'}${fmt(Math.abs(amt),'BRL')}
+            </div>
+            ${cur !== 'BRL' ? `<div style="font-size:.68rem;color:var(--muted)">${fmt(Math.abs(parseFloat(t.amount)||0),cur)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  } catch(e) {
+    listEl.innerHTML = `<div style="text-align:center;padding:24px;color:var(--red,#dc2626);font-size:.82rem">Erro: ${esc(e.message)}</div>`;
+  }
+}
+window.pdLoadTxs = pdLoadTxs;
 
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window.closeEmailPopup                     = closeEmailPopup;

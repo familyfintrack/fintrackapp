@@ -277,7 +277,7 @@ async function loadForecast() {
               currency: sc.currency || sc.accounts?.currency || 'BRL',
               account_id: sc.account_id,
               categories: sc.categories||null, payees: sc.payees||null,
-              isScheduled: true, sc_id: sc.id, scheduledId: sc.id,
+              isScheduled: true,
             });
           }
         }
@@ -289,7 +289,7 @@ async function loadForecast() {
           scheduledItems.push({
             date, description: sc.description||'', amount: creditAmt,
             currency: null, account_id: sc.transfer_to_account_id,
-            categories: sc.categories||null, payees: null, isScheduled: true, scheduledId: sc.id,
+            categories: sc.categories||null, payees: null, isScheduled: true,
           });
         }
       });
@@ -677,15 +677,37 @@ function renderForecastTables(allItems, accounts) {
       runningBalance += parseFloat(t.amount)||0;
       const isPast   = t.date < today;
       const isToday  = t.date === today;
+      const prevBal  = runningBalance; // saldo ANTES desta TX
       const isNeg    = runningBalance < 0;
-      const isPos    = runningBalance > 0;
-      const rowCls   = [isPast?'forecast-row-past':'', isToday?'forecast-row-today':'', isNeg?'forecast-row-negative':''].filter(Boolean).join(' ');
+      const isPos    = runningBalance >= 0;
+      const crossedToNeg = prevBal >= 0 && runningBalance < 0;  // pos → neg
+      const crossedToPos = prevBal < 0  && runningBalance >= 0; // neg → pos
+      const isSignChange = crossedToNeg || crossedToPos;
+      const rowCls   = [
+        isPast  ? 'forecast-row-past'  : '',
+        isToday ? 'forecast-row-today' : '',
+        isNeg   ? 'forecast-row-negative' : '',
+        crossedToNeg ? 'forecast-row-cross-neg' : '',
+        crossedToPos ? 'forecast-row-cross-pos' : '',
+      ].filter(Boolean).join(' ');
       const catColor = t.categories?.color || (parseFloat(t.amount)>=0 ? 'var(--accent)' : 'var(--red)');
       const dp       = _forecastDateParts(t.date);
       const todayBadge = isToday ? '<span class="forecast-date-today">Hoje</span>' : '';
       const catLine  = t.categories?.name ? `<div class="forecast-line forecast-category" style="color:${catColor}"><span class="forecast-cat-dot" style="background:${catColor}"></span>${_fcEsc(t.categories.name)}</div>` : '';
       const paLine   = t.payees?.name ? `<div class="forecast-line forecast-payee">${_fcEsc(t.payees.name)}</div>` : '';
       const scBadge  = t.isScheduled ? '<span style="font-size:.62rem;background:rgba(30,91,168,.12);color:#1e5ba8;border-radius:4px;padding:1px 5px;margin-left:4px">prog.</span>' : '';
+
+      // ── Badge de alerta inline na descrição ───────────────────────────
+      const signChangeBadge = crossedToNeg
+        ? '<span class="forecast-sign-badge forecast-sign-badge--neg">⚠ Fica negativa</span>'
+        : crossedToPos
+          ? '<span class="forecast-sign-badge forecast-sign-badge--pos">✓ Volta ao positivo</span>'
+          : '';
+
+      // ── Separador visual entre zonas positiva e negativa ──────────────
+      const crossDivider = isSignChange
+        ? `<tr class="forecast-cross-divider forecast-cross-divider--${crossedToNeg?'neg':'pos'}" aria-hidden="true"><td colspan="3"><div class="forecast-cross-line"><span class="forecast-cross-label">${crossedToNeg ? '⚠ Saldo fica negativo a partir daqui' : '✓ Saldo volta ao positivo a partir daqui'}</span></div></td></tr>`
+        : '';
 
       const grpHdr = currentDateGroup !== t.date
         ? (() => {
@@ -698,18 +720,17 @@ function renderForecastTables(allItems, accounts) {
       const amt = parseFloat(t.amount)||0;
       const clickAction = (!t.isScheduled && t.id)
         ? `if(typeof editTransaction==='function')editTransaction('${t.id}')`
-        : (t.sc_id || t.scheduledId)
-          ? `if(typeof openScheduledModal==='function')openScheduledModal('${t.sc_id || t.scheduledId}')`
-          : `if(typeof _forecastDrillRow==='function')_forecastDrillRow('${t.date}','${drillLabel}')`;
-      const rowTitle = t.isScheduled ? (t.sc_id ? 'Editar transação programada' : 'Ver programados desta data') : 'Editar transação';
+        : `if(typeof _forecastDrillRow==='function')_forecastDrillRow('${t.date}','${drillLabel}')`;
+      const rowTitle = t.isScheduled ? 'Ver programados desta data' : 'Editar transação';
 
-      return `${grpHdr}<tr class="${rowCls} forecast-tx-row" style="cursor:pointer" onclick="${clickAction}" title="${rowTitle}">
+      const runBalEmphasis = isSignChange ? ' forecast-run-bal--emphasis' : '';
+      return `${crossDivider}${grpHdr}<tr class="${rowCls} forecast-tx-row" style="cursor:pointer" onclick="${clickAction}" title="${rowTitle}">
         <td class="forecast-date-cell${isToday?' forecast-date-cell--today':''}"><div class="forecast-date-card forecast-date-card--compact"><div class="forecast-date-weekday">${dp.weekday}</div><div class="forecast-date-daynum">${dp.day}</div><div class="forecast-date-monthyear">${dp.monthYear}</div></div></td>
-        <td class="forecast-desc-cell"><div class="forecast-line forecast-title">${_fcEsc(t.description||'')}${scBadge}</div>${catLine}${paLine}</td>
+        <td class="forecast-desc-cell"><div class="forecast-line forecast-title">${_fcEsc(t.description||'')}${scBadge}${signChangeBadge}</div>${catLine}${paLine}</td>
         <td class="forecast-amount-cell ${amt>=0?'amount-pos':'amount-neg'}">
           <div class="forecast-amount-main">${amt>=0?'+':''}${_fcFmt(t.amount,a.currency)}</div>
           ${a.currency!=='BRL'&&t.brl_amount!=null?`<div class="forecast-amount-brl">${_fcFmt(t.brl_amount,'BRL')}</div>`:''}
-          <div class="forecast-run-bal ${isNeg?'amount-neg':isPos?'amount-pos':''}">${_fcFmt(runningBalance,a.currency)}</div>
+          <div class="forecast-run-bal ${isNeg?'amount-neg':isPos?'amount-pos':''}${runBalEmphasis}">${_fcFmt(runningBalance,a.currency)}</div>
         </td>
       </tr>`;
     }).join('');

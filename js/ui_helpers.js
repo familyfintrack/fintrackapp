@@ -372,6 +372,26 @@ function toggleCatPicker(ctx) {
   _catPickerCtx = ctx;
   dd.classList.add('open');
   btn.classList.add('open');
+  // Posicionamento fixo quando dentro de modal com overflow-y:auto
+  (function _pos() {
+    var rect = btn.getBoundingClientRect();
+    var vpH  = window.innerHeight;
+    var spB  = vpH - rect.bottom;
+    var spA  = rect.top;
+    var ddH  = Math.min(320, Math.max(spB, spA) - 8);
+    dd.style.position  = 'fixed';
+    dd.style.width     = rect.width + 'px';
+    dd.style.left      = rect.left + 'px';
+    dd.style.maxHeight = ddH + 'px';
+    dd.style.zIndex    = '9999';
+    if (spB >= 180 || spB >= spA) {
+      dd.style.top    = (rect.bottom + 4) + 'px';
+      dd.style.bottom = '';
+    } else {
+      dd.style.bottom = (vpH - rect.top + 4) + 'px';
+      dd.style.top    = '';
+    }
+  })();
   // Auto-expand group of currently selected category
   var currentId = document.getElementById(c.inputId) ? document.getElementById(c.inputId).value : '';
   if (currentId) {
@@ -382,7 +402,6 @@ function toggleCatPicker(ctx) {
       if (grp && !grp.classList.contains('open')) { grp.classList.add('open'); if (arr) arr.classList.add('open'); }
     }
   }
-  // Focus the search input after a short delay (allows dropdown animation to start)
   setTimeout(function() {
     var inp = document.getElementById(_catSearchId(ctx));
     if (inp) inp.focus();
@@ -405,21 +424,44 @@ function _closeCatPickerByCtx(ctx) {
   var c = _catCtx(ctx);
   var dd  = document.getElementById(c.ddId);
   var btn = document.getElementById(c.btnId);
-  if (dd)  dd.classList.remove('open');
-  if (btn) btn.classList.remove('open');
-  // Clear search so next open starts fresh
-  var inp = document.getElementById(_catSearchId(ctx));
-  if (inp && inp.value) {
-    inp.value = '';
-    _catPickerFilter(ctx, '');
+  if (dd) {
+    dd.classList.remove('open');
+    dd.style.position = ''; dd.style.width = ''; dd.style.left = '';
+    dd.style.top = ''; dd.style.bottom = ''; dd.style.maxHeight = ''; dd.style.zIndex = '';
   }
+  if (btn) btn.classList.remove('open');
+  var inp = document.getElementById(_catSearchId(ctx));
+  if (inp && inp.value) { inp.value = ''; _catPickerFilter(ctx, ''); }
   if (_catPickerCtx === ctx) _catPickerCtx = null;
+  // Limpar flags de modo split
+  if (ctx === 'tx') {
+    var sm = window._txSplitCatMode; var sc = window._scSplitCatMode;
+    if (sm != null) Promise.resolve().then(function(){ if(window._txSplitCatMode===sm) window._txSplitCatMode=null; });
+    if (sc != null) Promise.resolve().then(function(){ if(window._scSplitCatMode===sc) window._scSplitCatMode=null; });
+  }
 }
 
 function closeCatPicker() { _closeCatPickerByCtx('tx'); }
 
 function setCatPickerValue(catId, ctx) {
   ctx = ctx || 'tx';
+  // Routing para split TX
+  if (window._txSplitCatMode != null && ctx === 'tx') {
+    var _cat = (state.categories||[]).find(function(x){return x.id===catId;});
+    var _rowId = window._txSplitCatMode;
+    window._txSplitCatMode = null;
+    _closeCatPickerByCtx(ctx);
+    if (typeof txCatSplitReceiveCategory==='function') txCatSplitReceiveCategory(_rowId, catId, _cat?_cat.name:'', _cat?(_cat.color||'#94a3b8'):'#94a3b8');
+    return;
+  }
+  // Routing para split SC
+  if (window._scSplitCatMode != null && ctx === 'tx') {
+    var _cat2 = (state.categories||[]).find(function(x){return x.id===catId;});
+    window._scSplitCatMode = null;
+    _closeCatPickerByCtx(ctx);
+    if (typeof scCatSplitReceiveCategory==='function') scCatSplitReceiveCategory(catId, _cat2?_cat2.name:'', _cat2?(_cat2.color||'#94a3b8'):'#94a3b8');
+    return;
+  }
   var c = _catCtx(ctx);
   var input = document.getElementById(c.inputId);
   if (input) input.value = catId || '';

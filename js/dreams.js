@@ -360,10 +360,10 @@ function _renderDreamCard(d) {
 
     ${d.description ? `<div class="drm-card-desc">${_esc(d.description).slice(0,90)}${d.description.length > 90 ? '…' : ''}</div>` : ''}
 
-    <div class="drm-card-actions" onclick="event.stopPropagation()">
-      <button class="drm-action-btn" onclick="openDreamDetail('${d.id}')">Ver detalhes</button>
-      <button class="drm-action-btn" onclick="openContributeModal('${d.id}')">+ Aporte</button>
-      <button class="drm-action-btn drm-action-btn--icon" onclick="openDreamMenu('${d.id}', event)" title="Mais opções">⋯</button>
+    <div class="drm-card-actions">
+      <button class="drm-action-btn" onclick="event.stopPropagation();openDreamDetail('${d.id}')">Ver detalhes</button>
+      <button class="drm-action-btn" onclick="event.stopPropagation();openContributeModal('${d.id}')">+ Aporte</button>
+      <button class="drm-action-btn drm-action-btn--icon" onclick="event.stopPropagation();openDreamMenu('${d.id}', event)" title="Mais opções">⋯</button>
     </div>
   </div>`;
 }

@@ -593,8 +593,7 @@ function _scCardHtml(sc) {
         <div class="sc-card-meta">${freqPill}${meta ? `<span class="sc-card-meta-text">${meta}</span>` : ''}${catChip}${memberChips ? '<div class="sc-member-chips">' + memberChips + '</div>' : ''}</div>
       </div>
       <div class="sc-card-end">
-        <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount), sc.currency||acct?.currency||'BRL')}</div>
-        ${(sc.currency && sc.currency !== 'BRL' && acct?.currency !== sc.currency) ? `<div style="font-size:.66rem;color:var(--muted);text-align:right">≈ ${fmt(Math.abs(sc.amount) * (sc.fx_rate || 1), 'BRL')}</div>` : ''}
+        <div class="sc-card-amt ${isExpense?'amount-neg':'amount-pos'}">${isExpense?'−':'+'}${fmt(Math.abs(sc.amount), sc.currency||'BRL')}</div>
         <div class="sc-card-badges">${nextBadge}<span class="sc-status-badge ${st.cls}">${st.label}</span></div>
       </div>
       <svg class="sc-card-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="scChev-${sc.id}"><polyline points="6 9 12 15 18 9"/></svg>
@@ -606,9 +605,6 @@ function _scCardHtml(sc) {
         : `<span class="sc-reg-btn sc-reg-none">${totalCount} registradas</span>`
       }
       <div class="sc-icon-btns">
-        ${(sc.frequency !== 'once' && (sc.end_count || sc.end_date) && sc.status === 'active') ? `<button class="sc-icon-btn sc-icon-antecipar" onclick="openAnteciparSerie('${sc.id}')" title="Antecipar todas as parcelas pendentes" style="background:rgba(180,83,9,.10);color:#b45309">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
-        </button>` : ''}
         <button class="sc-icon-btn" onclick="toggleScStatus('${sc.id}')" title="${sc.status==='active'?'Pausar':'Reativar'}">
           ${sc.status==='active'
             ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
@@ -639,7 +635,7 @@ function _scCardHtml(sc) {
             <span class="sc-occ-label">${occ ? esc(occ.memo||sc.description) : '<span style="color:var(--muted2)">—</span>'}</span>
             <span class="sc-occ-status">
               ${occ
-                ? `<span class="sc-status-badge sc-status-finished">✓ ${fmt(occ.amount||sc.amount)}</span>`
+                ? `<span class="sc-status-badge sc-status-finished">✓ ${fmt(occ.amount||sc.amount, sc.currency||'BRL')}</span>`
                 : isPast
                   ? `<span class="sc-status-badge sc-status-overdue">Pendente</span>`
                   : `<span class="sc-status-badge" style="background:var(--bg2);color:var(--muted);border:1px solid var(--border)">Agendado</span>`
@@ -750,7 +746,7 @@ function renderUpcoming() {
           <div class="sup-acct">${esc(sc.accounts?.name||'—')}${dest?` <span class="sup-arrow">→</span> ${esc(dest.name)}`:''}</div>
         </div>
         <div class="sup-right">
-          <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(sc.amount))}</span>
+          <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(sc.amount), sc.currency||'BRL')}</span>
           <div class="sup-actions">
             <button class="sup-ignore-btn" title="Ignorar"
               onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
@@ -937,7 +933,7 @@ function openScheduledModal(id='') {
   }, 50);
 
   // Dates — usa _scSyncDate para manter os dois campos sincronizados
-  const _startDate = (sc?.start_date||'').slice(0,10) || localDateStr();
+  const _startDate = sc?.start_date || localDateStr();
   _scSyncDate(_startDate);
 
   // Frequency
@@ -1042,6 +1038,9 @@ function openScheduledModal(id='') {
   updateScPreview();
   openModal('scheduledModal');
   if (typeof initScFormMode === "function") initScFormMode();
+  // Carregar splits ao abrir modal
+  if (typeof scSplitReset === 'function') scSplitReset();
+  if (sc && typeof scSplitLoad === 'function') scSplitLoad(sc.category_splits || [], sc.member_shares || []);
   if (typeof initScFormMode === 'function') initScFormMode();
   // Apply admin notification channel visibility
   if (typeof loadNotifChannelSettings === 'function') loadNotifChannelSettings().catch(() => {});
@@ -1364,6 +1363,8 @@ async function saveScheduled() {
       }
       return null;
     })(),
+    category_splits: typeof scSplitGetCategorySplits === 'function' ? scSplitGetCategorySplits() : [],
+    member_shares:   typeof scSplitGetMemberShares   === 'function' ? scSplitGetMemberShares()   : [],
   };
 
   // ── Duplicate check for new scheduled transactions ──────────────────────
@@ -2700,7 +2701,7 @@ function _renderCalUpcoming() {
       const isExp    = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
       const isIncome = sc.type === 'income';
       const typeIcon = sc.type === 'transfer' ? '🔄' : isExp ? '💸' : '💰';
-      const amtStr   = typeof fmt === 'function' ? fmt(Math.abs(sc.amount)) : Math.abs(sc.amount).toFixed(2);
+      const amtStr   = typeof fmt === 'function' ? fmt(Math.abs(sc.amount), sc.currency||'BRL') : Math.abs(sc.amount).toFixed(2);
       const pendingBadge = isPending
         ? `<span class="sc-occ-pending-dot" title="Pendente"></span>` : '';
       return `<div class="sup-item${isToday ? ' sup-item--today' : ''}">
@@ -2803,187 +2804,3 @@ window.setScCurrencyMode                   = setScCurrencyMode;
 window.setScFxMode                         = setScFxMode;
 window.setScType                           = setScType;
 window.setScView                           = setScView;
-
-// ── Antecipar Série — Computar e consolidar todas as parcelas pendentes ───────
-
-function openAnteciparSerie(scId) {
-  const sc = state.scheduled.find(s => s.id === scId);
-  if (!sc) return;
-
-  // Compute pending occurrences (not yet registered)
-  const registered = new Set((sc.occurrences || []).map(o => o.scheduled_date));
-  const allOccs    = generateOccurrences(sc, 500);
-  const today      = localDateStr();
-  const pending    = allOccs.filter(d => !registered.has(d) && d >= today);
-
-  if (!pending.length) {
-    toast('Não há parcelas pendentes para antecipar.', 'info');
-    return;
-  }
-
-  const baseAmt    = Math.abs(parseFloat(sc.amount) || 0);
-  const totalAmt   = baseAmt * pending.length;
-  const isExpense  = sc.type === 'expense' || sc.type === 'transfer' || sc.type === 'card_payment';
-  const currency   = sc.currency || (state.accounts.find(a => a.id === sc.account_id)?.currency) || 'BRL';
-  const fmtAmt     = v => fmt(v, currency);
-
-  // Build modal HTML
-  const existing = document.getElementById('anteciparSerieModal');
-  if (existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.id = 'anteciparSerieModal';
-  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-
-  overlay.innerHTML = `
-    <div class="modal" style="max-width:480px">
-      <div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">⏩ Antecipar Parcelas</span>
-        <button class="modal-close" onclick="document.getElementById('anteciparSerieModal').remove()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
-          <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:8px">${esc(sc.description || '—')}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div>
-              <div style="font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Parcelas pendentes</div>
-              <div style="font-size:1.1rem;font-weight:800;font-family:var(--font-serif)">${pending.length}</div>
-            </div>
-            <div>
-              <div style="font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Valor por parcela</div>
-              <div style="font-size:1.1rem;font-weight:800;font-family:var(--font-serif)">${fmtAmt(baseAmt)}</div>
-            </div>
-            <div>
-              <div style="font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Total a consolidar</div>
-              <div style="font-size:1.2rem;font-weight:900;font-family:var(--font-serif);color:${isExpense?'var(--red)':'var(--accent)'}">
-                ${isExpense?'−':'+'}${fmtAmt(totalAmt)}
-              </div>
-            </div>
-            <div>
-              <div style="font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Data da transação</div>
-              <div style="font-size:1rem;font-weight:700">${fmtDate(today)}</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="background:rgba(180,83,9,.07);border:1px solid rgba(180,83,9,.22);border-radius:10px;padding:12px 14px;margin-bottom:16px">
-          <div style="font-size:.78rem;color:#b45309;font-weight:600;margin-bottom:4px">⚠️ O que acontecerá:</div>
-          <ul style="font-size:.75rem;color:#b45309;margin:0;padding-left:16px;line-height:1.7">
-            <li>Todas as ${pending.length} parcelas pendentes serão consolidadas em <strong>uma única transação</strong> com data de hoje</li>
-            <li>Valor total: <strong>${fmtAmt(totalAmt)}</strong> (${pending.length} × ${fmtAmt(baseAmt)})</li>
-            <li>A transação programada será <strong>marcada como concluída</strong></li>
-            <li>Descrição inclui detalhes das parcelas antecipadas</li>
-          </ul>
-        </div>
-
-        <div style="font-size:.78rem;color:var(--muted);margin-bottom:4px;font-weight:600">Observação adicional (opcional)</div>
-        <textarea id="anteciparMemo" rows="2"
-          placeholder="Ex: Quitação antecipada, negociação de desconto…"
-          style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.83rem;resize:vertical;background:var(--surface);color:var(--text);box-sizing:border-box"></textarea>
-
-        <div style="font-size:.72rem;color:var(--muted);margin-top:8px">
-          Parcelas: ${pending.slice(0,5).map(d=>fmtDate(d)).join(', ')}${pending.length>5?` … +${pending.length-5} mais`:''}
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="document.getElementById('anteciparSerieModal').remove()">Cancelar</button>
-        <button class="btn btn-primary" id="anteciparConfirmBtn" onclick="_confirmarAntecipacao('${scId}')">
-          ⏩ Confirmar Antecipação
-        </button>
-      </div>
-    </div>`;
-
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => overlay.classList.add('open'));
-}
-window.openAnteciparSerie = openAnteciparSerie;
-
-async function _confirmarAntecipacao(scId) {
-  const sc = state.scheduled.find(s => s.id === scId);
-  if (!sc) return;
-
-  const btn = document.getElementById('anteciparConfirmBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Processando…'; }
-
-  try {
-    const registered = new Set((sc.occurrences || []).map(o => o.scheduled_date));
-    const allOccs    = generateOccurrences(sc, 500);
-    const today      = localDateStr();
-    const pending    = allOccs.filter(d => !registered.has(d) && d >= today);
-
-    if (!pending.length) throw new Error('Nenhuma parcela pendente.');
-
-    const baseAmt   = Math.abs(parseFloat(sc.amount) || 0);
-    const totalAmt  = baseAmt * pending.length;
-    const isExpense = sc.type === 'expense' || sc.type === 'transfer' || sc.type === 'card_payment';
-    const finalAmt  = isExpense ? -totalAmt : totalAmt;
-    const currency  = sc.currency || (state.accounts.find(a => a.id === sc.account_id)?.currency) || 'BRL';
-    const extraMemo = (document.getElementById('anteciparMemo')?.value || '').trim();
-
-    // Build description with details
-    const fmtAmt  = v => fmt(v, currency);
-    const desc    = `${sc.description || 'Programado'} — Antecipação de ${pending.length} parcela${pending.length!==1?'s':''} (${fmtAmt(baseAmt)} cada)`;
-    const memo    = [
-      `Antecipação em ${fmtDate(today)}: ${pending.length} parcela${pending.length!==1?'s':''} × ${fmtAmt(baseAmt)} = ${fmtAmt(totalAmt)}`,
-      `Período: ${fmtDate(pending[0])} a ${fmtDate(pending[pending.length-1])}`,
-      `Ref. programado ID: ${scId}`,
-      extraMemo
-    ].filter(Boolean).join('\n');
-
-    // Insert consolidated transaction
-    const txPayload = {
-      family_id:    famId(),
-      date:         today,
-      description:  desc,
-      amount:       finalAmt,
-      account_id:   sc.account_id,
-      payee_id:     sc.payee_id || null,
-      category_id:  sc.category_id || null,
-      memo,
-      tags:         sc.tags || [],
-      is_transfer:  false,
-      status:       'confirmed',
-      currency:     currency,
-      updated_at:   new Date().toISOString(),
-    };
-
-    const { data: txData, error: txErr } = await sb.from('transactions').insert(txPayload).select().single();
-    if (txErr) throw txErr;
-
-    // Register all pending occurrences as executed, pointing to this tx
-    for (const d of pending) {
-      try {
-        await sb.from('scheduled_occurrences').insert({
-          scheduled_transaction_id: scId,
-          scheduled_date:  d,
-          actual_date:     today,
-          amount:          isExpense ? -baseAmt : baseAmt,
-          memo:            `Antecipada em ${fmtDate(today)}`,
-          transaction_id:  txData.id,
-          execution_status:'executed',
-          executed_at:     new Date().toISOString(),
-        });
-      } catch(occErr) {
-        console.warn('[antecipar] occurrence insert:', occErr?.message);
-      }
-    }
-
-    // Mark scheduled as finished
-    await sb.from('scheduled_transactions').update({ status: 'finished', updated_at: new Date().toISOString() }).eq('id', scId);
-
-    // Close modal and reload
-    document.getElementById('anteciparSerieModal')?.remove();
-    toast(`✅ ${pending.length} parcela${pending.length!==1?'s':''} antecipadas em uma transação de ${fmt(Math.abs(finalAmt), currency)}`, 'success');
-
-    // Reload state
-    if (typeof loadScheduled === 'function') await loadScheduled(true);
-    if (typeof renderScheduled === 'function') renderScheduled(state.scheduled || []);
-
-  } catch(e) {
-    toast('Erro na antecipação: ' + (e.message || e), 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '⏩ Confirmar Antecipação'; }
-  }
-}
-window._confirmarAntecipacao = _confirmarAntecipacao;

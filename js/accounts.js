@@ -367,7 +367,7 @@ function _onAccModalTypeChange() {
 window._onAccModalTypeChange = _onAccModalTypeChange;
 
 async function openAccountModal(id=''){
-  const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',pix_key:'',card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
+  const form={id:'',name:'',type:'corrente',currency:'BRL',initial_balance:0,icon:'',color:'#2a6049',is_brazilian:false,iof_rate:3.5,group_id:'',is_favorite:false,best_purchase_day:null,due_day:null,bank_name:'',bank_code:'',agency:'',account_number:'',iban:'',routing_number:'',swift_bic:'',pix_key:'',pix_keys:[],card_brand:'',card_limit:null,card_type:'',card_issuer:'',linked_dream_id:null,notes:''};
   if(id){
     const a = state.accounts.find(x=>x.id===id)
            || (state.archivedAccounts||[]).find(x=>x.id===id);
@@ -422,6 +422,17 @@ async function openAccountModal(id=''){
   _setVal('accountIban',         form.iban);
   _setVal('accountRoutingNumber',form.routing_number);
   _setVal('accountSwiftBic',     form.swift_bic);
+  // Chaves PIX — suporte a múltiplas chaves (pix_keys JSONB) com fallback para pix_key legado
+  (function _loadPixKeys() {
+    // Normalizar: preferir pix_keys (array), fallback pix_key (string legada)
+    let keys = [];
+    if (Array.isArray(form.pix_keys) && form.pix_keys.length > 0) {
+      keys = form.pix_keys;
+    } else if (form.pix_key) {
+      keys = [{ type: 'aleatoria', key: form.pix_key }];
+    }
+    _acmSetPixKeys(keys);
+  })();
   // If account has bank data, remember so we can switch to the bank tab after open
   const _hasBankData = !!(form.bank_name || form.bank_code || form.agency ||
                            form.account_number || form.iban || form.routing_number || form.swift_bic);
@@ -516,6 +527,9 @@ async function saveAccount(){
     iban:            _gv('accountIban'),
     routing_number:  _gv('accountRoutingNumber'),
     swift_bic:       _gv('accountSwiftBic'),
+    pix_keys:        _acmGetPixKeys(),
+    // pix_key mantido como primeira chave para compatibilidade com código legado
+    pix_key:         (_acmGetPixKeys()[0]?.key) || null,
     // Cartão
     card_brand:   isCC ? (_gv('accountCardBrand')  || null) : null,
     card_type:    isCC ? (_gv('accountCardType')   || null) : null,
@@ -1237,6 +1251,11 @@ function openAccountDetailPanel(accountId) {
     : '';
   const ibanInfo  = a.iban ? `IBAN: ${a.iban}` : (a.routing_number ? `Routing: ${a.routing_number}` : '');
   const swiftInfo = a.swift_bic ? `SWIFT: ${a.swift_bic}` : '';
+  // PIX keys — suporte a pix_keys[] e legado pix_key
+  const pixKeys = (Array.isArray(a.pix_keys) && a.pix_keys.length)
+    ? a.pix_keys
+    : (a.pix_key ? [{ type: 'aleatoria', key: a.pix_key }] : []);
+  const PIX_TYPE_LABELS = { cpf:'CPF', cnpj:'CNPJ', email:'E-mail', phone:'Telefone', aleatoria:'Chave aleatória' };
 
   const panel = document.createElement('div');
   panel.id = 'accDetailPanel';
@@ -1265,6 +1284,14 @@ function openAccountDetailPanel(accountId) {
         ${cardInfo ? `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><span style="color:var(--muted)">Cartão</span><span style="text-align:right">${esc(cardInfo)}</span></div>` : ''}
         ${ibanInfo ? `<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px"><span style="color:var(--muted)">IBAN / Routing</span><span style="font-family:monospace;font-size:.78rem;text-align:right">${esc(ibanInfo)}</span></div>` : ''}
         ${swiftInfo ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">SWIFT/BIC</span><span style="font-family:monospace;font-size:.78rem">${esc(swiftInfo)}</span></div>` : ''}
+        ${pixKeys.length ? `<div style="margin-top:6px;padding:8px 10px;background:rgba(0,180,216,.07);border:1px solid rgba(0,180,216,.2);border-radius:9px">
+          <div style="font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#0369a1;margin-bottom:6px;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;align-items:center;justify-content:center;background:#00b4d8;color:#fff;border-radius:4px;width:16px;height:16px;font-size:.6rem;font-weight:900">PIX</span> Chaves PIX</div>
+          ${pixKeys.map(p => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;padding:5px 0;border-bottom:1px solid rgba(0,180,216,.1)">
+            <span style="font-size:.72rem;color:#0369a1;font-weight:700;flex-shrink:0">${PIX_TYPE_LABELS[p.type]||p.type}</span>
+            <span style="font-family:monospace;font-size:.79rem;color:var(--text);word-break:break-all;text-align:right">${esc(p.key)}</span>
+            <button onclick="navigator.clipboard?.writeText('${p.key.replace(/'/g,"\'")}');toast('Chave copiada!','success')" title="Copiar chave" style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:.9rem;padding:2px 4px;color:#0369a1">⎘</button>
+          </div>`).join('')}
+        </div>` : ''}
         ${a.due_day ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Vencimento</span><span>Dia ${a.due_day}</span></div>` : ''}
         ${a.notes ? `<div style="margin-top:4px;padding:8px 10px;background:var(--surface2);border-radius:8px;color:var(--text2);font-size:.82rem;line-height:1.45">${esc(a.notes)}</div>` : ''}
       </div>
@@ -1566,3 +1593,148 @@ window.saveGroup               = saveGroup;
 window.deleteGroup             = deleteGroup;
 window.onAccountTypeChange     = onAccountTypeChange;
 window.initAccountsPage        = initAccountsPage;
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  CHAVES PIX — Gerenciamento de até 3 chaves por conta
+// ════════════════════════════════════════════════════════════════════════════
+
+const _PIX_TYPES = [
+  { value: 'cpf',       label: 'CPF',             placeholder: '000.000.000-00', inputmode: 'numeric' },
+  { value: 'cnpj',      label: 'CNPJ',            placeholder: '00.000.000/0001-00', inputmode: 'numeric' },
+  { value: 'email',     label: 'E-mail',           placeholder: 'seu@email.com', inputmode: 'email' },
+  { value: 'phone',     label: 'Telefone',         placeholder: '+55 11 99999-9999', inputmode: 'tel' },
+  { value: 'aleatoria', label: 'Chave aleatória',  placeholder: 'UUID gerado pelo banco', inputmode: 'text' },
+];
+const _PIX_MAX = 3;
+let _acmPixSeq = 0; // sequência para IDs únicos de linhas
+
+// ── Renderizar container de chaves ────────────────────────────────────────
+function _acmRenderPixKeys() {
+  const container = document.getElementById('accountPixKeysContainer');
+  const addBtn    = document.getElementById('acmAddPixKeyBtn');
+  if (!container) return;
+
+  const rows = container.querySelectorAll('.acm-pix-row');
+  const count = rows.length;
+
+  if (addBtn) addBtn.disabled = count >= _PIX_MAX;
+
+  if (count === 0) {
+    container.innerHTML = `<div id="acmPixEmpty" style="padding:10px 12px;border:1.5px dashed var(--border);border-radius:9px;text-align:center;font-size:.78rem;color:var(--muted)">
+      Nenhuma chave PIX. Clique em <strong>+ Adicionar</strong> para incluir.
+    </div>`;
+  } else {
+    const empty = document.getElementById('acmPixEmpty');
+    if (empty) empty.remove();
+  }
+}
+
+// ── Adicionar nova linha de chave PIX ─────────────────────────────────────
+function _acmAddPixKey(prefill) {
+  const container = document.getElementById('accountPixKeysContainer');
+  if (!container) return;
+
+  const currentRows = container.querySelectorAll('.acm-pix-row').length;
+  if (currentRows >= _PIX_MAX) {
+    toast(`Máximo de ${_PIX_MAX} chaves PIX por conta.`, 'warning');
+    return;
+  }
+
+  // Remove placeholder vazio
+  const empty = document.getElementById('acmPixEmpty');
+  if (empty) empty.remove();
+
+  const rowId  = ++_acmPixSeq;
+  const selVal = prefill?.type || 'cpf';
+  const keyVal = prefill?.key  || '';
+
+  const opts = _PIX_TYPES.map(t =>
+    `<option value="${t.value}"${t.value === selVal ? ' selected' : ''}>${t.label}</option>`
+  ).join('');
+
+  const defPh = _PIX_TYPES.find(t => t.value === selVal)?.placeholder || '';
+  const defIm = _PIX_TYPES.find(t => t.value === selVal)?.inputmode   || 'text';
+
+  const row = document.createElement('div');
+  row.className = 'acm-pix-row';
+  row.id = `acmPixRow_${rowId}`;
+  row.style.cssText = 'display:flex;gap:6px;align-items:stretch';
+  row.innerHTML = `
+    <select id="acmPixType_${rowId}"
+      style="flex-shrink:0;width:130px;padding:8px 6px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.78rem;color:var(--text);font-family:inherit;cursor:pointer"
+      onchange="_acmUpdatePixPlaceholder(${rowId})">
+      ${opts}
+    </select>
+    <input type="text" id="acmPixKey_${rowId}"
+      class="acm-input"
+      style="flex:1;font-family:monospace;font-size:.82rem"
+      placeholder="${esc(defPh)}"
+      inputmode="${defIm}"
+      value="${esc(keyVal)}"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false">
+    <button type="button"
+      onclick="_acmRemovePixKey(${rowId})"
+      title="Remover chave"
+      style="flex-shrink:0;padding:0 10px;background:transparent;border:1.5px solid var(--border);border-radius:9px;color:var(--muted);cursor:pointer;font-size:.9rem;transition:all .15s"
+      onmouseover="this.style.background='var(--danger,#dc2626)';this.style.color='#fff';this.style.borderColor='var(--danger,#dc2626)'"
+      onmouseout="this.style.background='transparent';this.style.color='var(--muted)';this.style.borderColor='var(--border)'">✕</button>`;
+
+  container.appendChild(row);
+  _acmRenderPixKeys();
+
+  // Focus no campo de valor
+  setTimeout(() => document.getElementById(`acmPixKey_${rowId}`)?.focus(), 50);
+}
+window._acmAddPixKey = _acmAddPixKey;
+
+// ── Remover linha ─────────────────────────────────────────────────────────
+function _acmRemovePixKey(rowId) {
+  document.getElementById(`acmPixRow_${rowId}`)?.remove();
+  _acmRenderPixKeys();
+}
+window._acmRemovePixKey = _acmRemovePixKey;
+
+// ── Atualizar placeholder ao trocar tipo ──────────────────────────────────
+function _acmUpdatePixPlaceholder(rowId) {
+  const sel   = document.getElementById(`acmPixType_${rowId}`);
+  const input = document.getElementById(`acmPixKey_${rowId}`);
+  if (!sel || !input) return;
+  const meta = _PIX_TYPES.find(t => t.value === sel.value);
+  if (meta) {
+    input.placeholder   = meta.placeholder;
+    input.inputMode     = meta.inputmode;
+  }
+}
+window._acmUpdatePixPlaceholder = _acmUpdatePixPlaceholder;
+
+// ── Ler todas as chaves do DOM → array para salvar ────────────────────────
+function _acmGetPixKeys() {
+  const container = document.getElementById('accountPixKeysContainer');
+  if (!container) return [];
+  const result = [];
+  container.querySelectorAll('.acm-pix-row').forEach(row => {
+    const rowId = row.id.replace('acmPixRow_', '');
+    const type  = document.getElementById(`acmPixType_${rowId}`)?.value?.trim() || 'aleatoria';
+    const key   = (document.getElementById(`acmPixKey_${rowId}`)?.value || '').trim();
+    if (key) result.push({ type, key });
+  });
+  return result;
+}
+window._acmGetPixKeys = _acmGetPixKeys;
+
+// ── Carregar array de chaves → preencher DOM ──────────────────────────────
+function _acmSetPixKeys(keys) {
+  const container = document.getElementById('accountPixKeysContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  _acmPixSeq = 0;
+
+  const arr = Array.isArray(keys) ? keys.slice(0, _PIX_MAX) : [];
+  arr.forEach(k => _acmAddPixKey(k));
+
+  if (!arr.length) _acmRenderPixKeys(); // mostra placeholder vazio
+}
+window._acmSetPixKeys = _acmSetPixKeys;

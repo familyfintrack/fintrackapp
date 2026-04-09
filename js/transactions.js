@@ -342,33 +342,8 @@ function _txUpdateFilterBadge() {
     ...(state.txFilter.memberIds || [])
   ].filter(Boolean).length;
   btn.classList.toggle('has-filters', activeCount > 0);
-
-  // ── Account filter badge ──────────────────────────────────────────────────
-  const badge    = document.getElementById('txAccountBadge');
-  const badgeLbl = document.getElementById('txAccountBadgeLabel');
-  const acctId   = state.txFilter.account || '';
-  if (badge) {
-    if (acctId) {
-      // Find account name from state
-      const acct = (state.accounts || []).find(a => a.id === acctId);
-      const name = acct ? acct.name : 'Conta filtrada';
-      if (badgeLbl) badgeLbl.textContent = name;
-      badge.style.display = '';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
 }
 window._txUpdateFilterBadge = _txUpdateFilterBadge;
-
-function clearTxAccountFilter() {
-  const sel = document.getElementById('txAccount');
-  if (sel) { sel.value = ''; sel.classList.remove('is-active'); }
-  state.txFilter.account = '';
-  _txUpdateFilterBadge();
-  loadTransactions();
-}
-window.clearTxAccountFilter = clearTxAccountFilter;
 
 function populateTxMonthFilter() {
   const sel = document.getElementById('txMonth');
@@ -775,8 +750,8 @@ function renderTransactions(){
     let html = '';
     let lastDate = null;
     let bandIndex = 0;
-    const TODAY_STR = (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
-    const YESTERDAY_STR = (()=>{const d=new Date();d.setDate(d.getDate()-1);return typeof localDateStr==='function'?localDateStr(d):d.toISOString().slice(0,10);})();
+    const TODAY_STR = new Date().toISOString().slice(0,10);
+    const YESTERDAY_STR = new Date(Date.now()-86400000).toISOString().slice(0,10);
     // Pre-compute per-day totals for the summary
     const dayTotals = {};
     txList.forEach(tx => {
@@ -1150,10 +1125,7 @@ async function openTransactionModal(id=''){
     await loadFamilyComposition().catch(() => {});
   }
   resetTxModal();
-  document.getElementById('txDate').value=(typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
-  // Show split button in footer
-  const _spBtn = document.getElementById('txSplitOpenBtn');
-  if (_spBtn) _spBtn.style.display = '';
+  document.getElementById('txDate').value=new Date().toISOString().slice(0,10);
   document.getElementById('txModalTitle').textContent='Nova Transação';
   if(id) {
     editTransaction(id);
@@ -1568,7 +1540,7 @@ function resetTxModal(){
 }
 async function editTransaction(id){
   const{data,error}=await sb.from('transactions').select('*').eq('id',id).single();if(error){toast(error.message,'error');return;}
-  document.getElementById('txId').value=data.id;document.getElementById('txDate').value=(data.date||'').slice(0,10);setAmtField('txAmount', data.amount);document.getElementById('txDesc').value=data.description||'';document.getElementById('txAccountId').value=data.account_id||'';setCatPickerValue(data.category_id||null);document.getElementById('txMemo').value=data.memo||'';document.getElementById('txTags').value=(data.tags||[]).join(', ');_initTagsField(data.tags||[]);setPayeeField(data.payee_id||null,'tx');
+  document.getElementById('txId').value=data.id;document.getElementById('txDate').value=data.date;setAmtField('txAmount', data.amount);document.getElementById('txDesc').value=data.description||'';document.getElementById('txAccountId').value=data.account_id||'';setCatPickerValue(data.category_id||null);document.getElementById('txMemo').value=data.memo||'';document.getElementById('txTags').value=(data.tags||[]).join(', ');_initTagsField(data.tags||[]);setPayeeField(data.payee_id||null,'tx');
   // Load attachment if exists
   if (data.attachment_url) {
     document.getElementById('txAttachUrl').value        = data.attachment_url;
@@ -1860,8 +1832,8 @@ async function fetchTxCurrencyRate() {
   if (sugg) sugg.style.display = 'none';
 
   try {
-    let txDate = document.getElementById('txDate')?.value || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
-    const todayStr = (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+    let txDate = document.getElementById('txDate')?.value || new Date().toISOString().slice(0,10);
+    const todayStr = new Date().toISOString().slice(0,10);
     if (txDate > todayStr) txDate = todayStr;
 
     const url = `${FX_API_BASE}/${txDate}?base=${fetchFrom}&to=${fetchTo}`;
@@ -2424,7 +2396,7 @@ async function saveTransaction(){
           dream_id:   _txDreamIdSelected,
           family_id:  famId(),
           amount:     _drmAmt,
-          date:       data.date || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10)),
+          date:       data.date || new Date().toISOString().slice(0,10),
           type:       'transaction',
           notes:      `Vinculado à transação`,
           created_at: new Date().toISOString(),
@@ -2460,7 +2432,7 @@ async function duplicateTransaction(id) {
 
 function _openTxAsCopy(orig) {
   // Build a prefilled "new" transaction from orig — no ID, today's date
-  const today = (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
+  const today = new Date().toISOString().slice(0,10);
   resetTxModal();
   document.getElementById('txDate').value = today;
   document.getElementById('txDesc').value = (orig.description || '') + ' (cópia)';
@@ -2913,91 +2885,178 @@ function applyTxCompactPreference(){
   }catch(e){}
 }
 
-// ── Feature 5: Converter transação normal em Programada ──────────────────
+// ── Feature 5: Converter transação normal em Programada (v2) ─────────────
+// Opção A (keep):    mantém TX original + cria programada a partir de data futura
+// Opção B (convert): remove TX original + cria programada a partir da data original
 async function convertTxToScheduled(txId) {
   if (!txId) return;
-  // Load full transaction data
   const { data: t, error } = await sb.from('transactions')
-    .select('*, accounts!transactions_account_id_fkey(name,currency), categories(name,color), payees(name)')
+    .select('*, accounts!transactions_account_id_fkey(name,currency), categories(name,color,icon), payees(name)')
     .eq('id', txId).single();
-  if (error || !t) { toast(t('toast.err_load_tx'), 'error'); return; }
+  if (error || !t) { toast('Erro ao carregar transação.', 'error'); return; }
 
-  // Pre-fill the convertToScheduledModal
   const el = id => document.getElementById(id);
-  if (!el('convertToScheduledModal')) { toast('Modal de programação não encontrado.', 'error'); return; }
+  if (!el('convertToScheduledModal')) { toast('Modal não encontrado.', 'error'); return; }
 
-  el('ctsTxId').value    = txId;
-  el('ctsDesc').value    = t.description || '';
-  el('ctsAmount').value  = Math.abs(t.amount || 0).toFixed(2).replace('.', ',');
-  el('ctsAccount').textContent = t.accounts?.name || '—';
-  el('ctsDate').value    = (t.date||'').slice(0,10) || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
-  el('ctsMemo').value    = t.memo || '';
-  el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
+  const txType = t.is_transfer ? 'transfer' : (parseFloat(t.amount) < 0 ? 'expense' : 'income');
+  const absAmt = Math.abs(parseFloat(t.amount) || 0);
 
-  // Pre-select account (favorites first)
+  // Hidden fields
+  el('ctsTxId').value       = txId;
+  el('ctsType').value       = txType;
+  el('ctsTxOrigDate').value = t.date || '';
+
+  // Summary
+  el('ctsTxDesc').textContent = t.description || '—';
+  el('ctsTxDate').textContent = fmtDate(t.date);
+  el('ctsTxAmt').textContent  = fmt(absAmt, t.currency||'BRL');
+  el('ctsTxAcct').textContent = t.accounts?.name || '—';
+
+  // Pre-fill form
+  el('ctsDesc').value = t.description || '';
+  setAmtField('ctsAmountInput', absAmt);
+  el('ctsMemo').value = t.memo || '';
+
+  // Account select
   const accSel = el('ctsAccountId');
   if (accSel) {
     accSel.innerHTML = (typeof _accountOptions === 'function')
       ? _accountOptions(state.accounts || [], 'Selecione a conta')
-      : (state.accounts||[]).map(a =>
-          `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`
-        ).join('');
+      : (state.accounts||[]).map(a => `<option value="${a.id}">${esc(a.name)} (${a.currency})</option>`).join('');
     if (t.account_id) accSel.value = t.account_id;
   }
-  // Note: original transaction is kept. The scheduled starts from the chosen date forward.
-  const noteEl = el('ctsNote');
-  if (noteEl) noteEl.innerHTML =
-    `<strong>Nota:</strong> A transação original de <strong>${fmtDate(t.date)}</strong> 
-     permanece lançada. A programação será criada para as próximas ocorrências a partir da data escolhida.`;
+
+  // Default date: next month same day (for "keep" mode)
+  const orig = new Date(t.date + 'T12:00:00');
+  orig.setMonth(orig.getMonth() + 1);
+  el('ctsDate').value = orig.toISOString().slice(0, 10);
+
+  // Reset mode to "keep"
+  const keepRadio = document.querySelector('input[name=ctsMode][value=keep]');
+  if (keepRadio) { keepRadio.checked = true; ctsUpdateMode(); }
 
   closeModal('txDetailModal');
   openModal('convertToScheduledModal');
 }
+window.convertTxToScheduled = convertTxToScheduled;
+
+// Atualiza UI conforme modo selecionado (keep vs convert)
+function ctsUpdateMode() {
+  const mode = document.querySelector('input[name=ctsMode]:checked')?.value || 'keep';
+  const el   = id => document.getElementById(id);
+
+  const keepLbl = el('ctsModeKeepLabel');
+  const convLbl = el('ctsModeConvertLabel');
+  if (keepLbl) keepLbl.style.borderColor = mode==='keep' ? 'var(--accent)' : 'var(--border)';
+  if (keepLbl) keepLbl.style.background  = mode==='keep' ? 'rgba(42,96,73,.06)' : 'transparent';
+  if (convLbl) convLbl.style.borderColor = mode==='convert' ? 'var(--accent)' : 'var(--border)';
+  if (convLbl) convLbl.style.background  = mode==='convert' ? 'rgba(42,96,73,.06)' : 'transparent';
+
+  const dateLabel = el('ctsDateLabel');
+  const warn      = el('ctsWarning');
+  const origDate  = el('ctsTxOrigDate')?.value || '';
+  const btn       = el('ctsSaveBtn');
+
+  if (mode === 'keep') {
+    if (dateLabel) dateLabel.textContent = 'Data de início *';
+    if (warn) { warn.style.display = 'none'; warn.textContent = ''; }
+    if (btn) btn.textContent = '📅 Criar programação';
+    // Reset to next-month date
+    if (origDate && el('ctsDate')) {
+      const d = new Date(origDate + 'T12:00:00');
+      d.setMonth(d.getMonth() + 1);
+      el('ctsDate').value = d.toISOString().slice(0, 10);
+    }
+  } else {
+    if (dateLabel) dateLabel.textContent = 'Data de início *';
+    if (origDate && el('ctsDate')) el('ctsDate').value = origDate;
+    if (warn) {
+      warn.style.display = '';
+      warn.innerHTML = '⚠️ <strong>Atenção:</strong> O lançamento original será <strong>excluído</strong> e o saldo da conta revertido. A transação passará a existir somente como programada.';
+    }
+    if (btn) btn.textContent = '🔄 Converter';
+  }
+}
+window.ctsUpdateMode = ctsUpdateMode;
 
 async function saveConvertToScheduled() {
-  const el = id => document.getElementById(id);
-  const txId   = el('ctsTxId')?.value;
-  const desc   = el('ctsDesc')?.value?.trim();
-  const amount = parseFloat((el('ctsAmountInput')?.value||'0').replace(',','.')) || 0;
-  const accId  = el('ctsAccountId')?.value;
+  const el    = id => document.getElementById(id);
+  const txId  = el('ctsTxId')?.value;
+  const mode  = document.querySelector('input[name=ctsMode]:checked')?.value || 'keep';
+  const desc  = el('ctsDesc')?.value?.trim();
+  const absAmt = getAmtField('ctsAmountInput') || 0;
+  const accId = el('ctsAccountId')?.value;
   const startDate = el('ctsDate')?.value;
-  const freq   = document.querySelector('input[name=ctsFreq]:checked')?.value || 'monthly';
-  const memo   = el('ctsMemo')?.value || '';
-  const type   = el('ctsType')?.value || 'expense';
+  const freq  = document.querySelector('input[name=ctsFreq]:checked')?.value || 'monthly';
+  const memo  = el('ctsMemo')?.value || '';
+  const type  = el('ctsType')?.value || 'expense';
 
-  if (!desc)      { toast(t('toast.err_description'),'error'); return; }
-  if (!accId)     { toast(t('toast.err_select_account'),'error'); return; }
-  if (!startDate) { toast(t('toast.err_start_date'),'error'); return; }
+  if (!desc)      { toast('Preencha a descrição.', 'error'); return; }
+  if (!accId)     { toast('Selecione a conta.', 'error'); return; }
+  if (!startDate) { toast('Informe a data de início.', 'error'); return; }
 
-  // Find original tx to copy category/payee
-  const orig = (state.transactions||[]).find(t=>t.id===txId) || {};
+  // Confirm conversion mode
+  if (mode === 'convert') {
+    if (!confirm('Confirma a conversão? O lançamento original será excluído permanentemente.')) return;
+  }
+
+  // Recover full original TX for payee/category/tags/splits
+  let orig = (state.transactions||[]).find(x => x.id === txId);
+  if (!orig) {
+    const { data: loaded } = await sb.from('transactions').select('*').eq('id', txId).maybeSingle();
+    orig = loaded || {};
+  }
 
   const data = {
-    description: desc,
+    description:  desc,
     type,
-    amount: (type==='expense') ? -Math.abs(amount) : Math.abs(amount),
-    account_id: accId,
-    payee_id: orig.payee_id || null,
-    category_id: orig.category_id || null,
+    amount:       (type === 'expense' || type === 'transfer') ? -Math.abs(absAmt) : Math.abs(absAmt),
+    account_id:   accId,
+    payee_id:     orig.payee_id   || null,
+    category_id:  orig.category_id || null,
     memo,
-    tags: orig.tags || null,
-    status: 'active',
-    start_date: startDate,
-    frequency: freq,
+    tags:         orig.tags       || [],
+    status:       'active',
+    start_date:   startDate,
+    frequency:    freq,
     auto_register: false,
-    auto_confirm: true,
-    updated_at: new Date().toISOString(),
-    family_id: famId(),
+    auto_confirm:  true,
+    currency:      orig.currency  || 'BRL',
+    category_splits: orig.category_splits || [],
+    member_shares:   orig.member_shares   || [],
+    family_member_id:  orig.family_member_id  || null,
+    family_member_ids: orig.family_member_ids || [],
+    updated_at:   new Date().toISOString(),
+    family_id:    famId(),
   };
 
-  const { error } = await sb.from('scheduled_transactions').insert(data);
-  if (error) { toast('Erro ao criar programação: ' + error.message, 'error'); return; }
+  const saveBtn = el('ctsSaveBtn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Salvando...'; }
 
-  toast(t('scheduled.saved'), 'success');
-  // No per-transaction notify for scheduled — notified at execution time
-  closeModal('convertToScheduledModal');
-  if (state.currentPage === 'scheduled') loadScheduled();
+  try {
+    const { error: scErr } = await sb.from('scheduled_transactions').insert(data);
+    if (scErr) throw new Error('Erro ao criar programação: ' + scErr.message);
+
+    if (mode === 'convert') {
+      // Remove original transaction
+      const { error: delErr } = await sb.from('transactions').delete().eq('id', txId);
+      if (delErr) throw new Error('Programação criada mas falha ao remover transação original: ' + delErr.message);
+      // Bust cache
+      DB.bustAll();
+    }
+
+    toast(mode === 'convert' ? '🔄 Transação convertida em programada!' : '📅 Programação criada com sucesso!', 'success');
+    closeModal('convertToScheduledModal');
+    if (mode === 'convert' && state.currentPage === 'transactions') loadTransactions();
+    if (state.currentPage === 'scheduled') loadScheduled();
+    if (state.currentPage === 'dashboard') loadDashboard();
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = mode==='convert'?'🔄 Converter':'📅 Criar programação'; }
+  }
 }
+window.saveConvertToScheduled = saveConvertToScheduled;
 
 // Toggle status helper used by detail view + swipe
 async function setTransactionStatus(txId, status){

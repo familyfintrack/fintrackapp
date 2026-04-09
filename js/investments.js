@@ -1737,7 +1737,7 @@ async function openEditInvTransaction(txId) {
   _invSetTxType(invTx.type);
 
   const dateEl = document.getElementById('invTxDate');
-  if (dateEl) dateEl.value = (invTx.date||'').slice(0,10);
+  if (dateEl) dateEl.value = invTx.date || '';
 
   const tickerEl = document.getElementById('invTxTicker');
   if (tickerEl) { tickerEl.value = pos.ticker; tickerEl.readOnly = true; tickerEl.style.opacity = '.6'; }

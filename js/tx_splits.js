@@ -14,54 +14,19 @@ const _txSplit = {
 let _txSplitRowSeq = 0;
 
 // ── Abertura da aba ───────────────────────────────────────────────────────
-function txSplitTabOpened() {
+function txSplitTabOpened(ctx) {
+  if (ctx === 'sc') {
+    const scAmt = Math.abs(getAmtField('scAmount') || 0);
+    if (typeof _scSplitRenderCat === 'function') _scSplitRenderCat(scAmt);
+    if (typeof _scSplitRenderMem === 'function') _scSplitRenderMem(scAmt);
+    if (typeof scSplitShowTab   === 'function') scSplitShowTab((_scSplit||{}).activeTab||'cat');
+    return;
+  }
   const txAmt = Math.abs(getAmtField('txAmount') || 0);
   _txSplitRenderCat(txAmt);
   _txSplitRenderMem(txAmt);
   txSplitShowTab(_txSplit.activeTab);
 }
-
-// ── Open split modal from tx modal ────────────────────────────────────────
-function _openSplitModal() {
-  const txAmt = Math.abs(getAmtField('txAmount') || 0);
-  // Sync data from hidden container to modal containers
-  // Re-render directly into modal pane IDs
-  _txSplit.activeTab = 'cat';
-  _txSplitRenderCatModal(txAmt);
-  _txSplitRenderMemModal(txAmt);
-  txSplitShowModalTab('cat');
-  openModal('txSplitModal');
-}
-window._openSplitModal = _openSplitModal;
-
-function txSplitShowModalTab(tab) {
-  _txSplit.activeTab = tab;
-  const cat = document.getElementById('txSplitModalCatPane');
-  const mem = document.getElementById('txSplitModalMemPane');
-  const btnCat = document.getElementById('txSplitModalTabCat');
-  const btnMem = document.getElementById('txSplitModalTabMem');
-  if (cat) cat.style.display = tab === 'cat' ? '' : 'none';
-  if (mem) mem.style.display = tab === 'mem' ? '' : 'none';
-  if (btnCat) btnCat.classList.toggle('active', tab === 'cat');
-  if (btnMem) btnMem.classList.toggle('active', tab === 'mem');
-}
-window.txSplitShowModalTab = txSplitShowModalTab;
-
-// Render category splits directly into modal pane
-function _txSplitRenderCatModal(txAmt) {
-  const container = document.getElementById('txCatSplitRowsM');
-  if (!container) return;
-  container.innerHTML = _txSplit.catRows.map(row => _txSplitCatRowHtml(row, txAmt)).join('');
-  _txSplitUpdateCatTotals(txAmt, 'M');
-}
-// Render member splits directly into modal pane  
-function _txSplitRenderMemModal(txAmt) {
-  const container = document.getElementById('txMemSplitRowsM');
-  if (!container) return;
-  container.innerHTML = _txSplit.memRows.map(row => _txSplitMemRowHtml(row, txAmt)).join('');
-  _txSplitUpdateMemTotals(txAmt, 'M');
-}
-
 window.txSplitTabOpened = txSplitTabOpened;
 
 function txSplitShowTab(tab) {
@@ -100,9 +65,9 @@ function txCatSplitRemoveRow(id) {
 window.txCatSplitRemoveRow = txCatSplitRemoveRow;
 
 function txCatSplitPickCategory(rowId) {
-  // Abre o cat picker do modal principal — captura a escolha via callback
+  window._txSplitCatMode = rowId;
   _txSplitPendingCatRowId = rowId;
-  toggleCatPicker(true); // passa flag para modo "split"
+  toggleCatPicker('tx');
 }
 window.txCatSplitPickCategory = txCatSplitPickCategory;
 
@@ -184,8 +149,7 @@ function _txSplitRenderCat(txAmt) {
   _txSplitUpdateCatTotals(txAmt);
 }
 
-function _txSplitUpdateCatTotals(txAmt, suffix) {
-  const sfx = suffix || '';
+function _txSplitUpdateCatTotals(txAmt) {
   if (!txAmt) txAmt = Math.abs(getAmtField('txAmount') || 0);
   const totalEl  = document.getElementById('txCatSplitTotal');
   const totalVal = document.getElementById('txCatSplitTotalVal');
@@ -547,3 +511,202 @@ function txSplitBadgeHtml(tx) {
   return `<span class="tx-split-indicator" title="Transação dividida">✂️ ${parts.join(' · ')}</span>`;
 }
 window.txSplitBadgeHtml = txSplitBadgeHtml;
+
+// ════════════════════════════════════════════════════════════════════════════
+//  SC SPLITS — Divisão por categoria e membro para Transações Programadas
+// ════════════════════════════════════════════════════════════════════════════
+const _scSplit = { catRows:[], memRows:[], memMode:'value', activeTab:'cat' };
+let _scSplitRowSeq = 0;
+let _scSplitPendingCatRowId = null;
+
+function scSplitShowTab(tab) {
+  _scSplit.activeTab = tab;
+  const cat=document.getElementById('scSplitCatPane'), mem=document.getElementById('scSplitMemPane');
+  const cb=document.getElementById('scSplitTabCat'), mb=document.getElementById('scSplitTabMem');
+  if(cat) cat.style.display = tab==='cat'?'':'none';
+  if(mem) mem.style.display = tab==='mem'?'':'none';
+  const on='flex:1;padding:7px 10px;font-size:.78rem;font-weight:600;border:1.5px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;transition:all .15s';
+  const off='flex:1;padding:7px 10px;font-size:.78rem;font-weight:600;border:1.5px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s';
+  if(cb) cb.style.cssText = tab==='cat'?on:off;
+  if(mb) mb.style.cssText = tab==='mem'?on:off;
+}
+window.scSplitShowTab = scSplitShowTab;
+
+function scCatSplitAddRow(prefill) {
+  const id = ++_scSplitRowSeq;
+  _scSplit.catRows.push({ id, category_id:prefill?.category_id||'', category_name:prefill?.category_name||'', category_color:prefill?.category_color||'#94a3b8', amount:prefill?.amount||0 });
+  _scSplitRenderCat();
+  setTimeout(()=>{ const i=document.querySelector(`#scCatSplitRow_${id} .tx-split-amount-input`); if(i) i.focus(); },50);
+}
+window.scCatSplitAddRow = scCatSplitAddRow;
+
+function scCatSplitRemoveRow(id) { _scSplit.catRows=_scSplit.catRows.filter(r=>r.id!==id); _scSplitRenderCat(); }
+window.scCatSplitRemoveRow = scCatSplitRemoveRow;
+
+function scCatSplitPickCategory(rowId) {
+  window._scSplitCatMode = rowId;
+  _scSplitPendingCatRowId = rowId;
+  toggleCatPicker('tx');
+}
+window.scCatSplitPickCategory = scCatSplitPickCategory;
+
+function scCatSplitReceiveCategory(catId, catName, catColor) {
+  if (_scSplitPendingCatRowId === null) return;
+  const row = _scSplit.catRows.find(r=>r.id===_scSplitPendingCatRowId);
+  if (row) { row.category_id=catId; row.category_name=catName; row.category_color=catColor||'#94a3b8'; }
+  _scSplitPendingCatRowId = null;
+  _scSplitRenderCat();
+}
+window.scCatSplitReceiveCategory = scCatSplitReceiveCategory;
+
+function scCatSplitUpdateAmount(rowId, v) {
+  const row=_scSplit.catRows.find(r=>r.id===rowId);
+  if(row) row.amount=parseFloat(String(v).replace(',','.'))||0;
+  _scSplitUpdateCatTotals_SC();
+}
+window.scCatSplitUpdateAmount = scCatSplitUpdateAmount;
+
+function scCatSplitAutoFill() {
+  const a=Math.abs(getAmtField('scAmount')||0);
+  if(!a||_scSplit.catRows.length<2) return;
+  const used=_scSplit.catRows.slice(0,-1).reduce((s,r)=>s+(r.amount||0),0);
+  _scSplit.catRows[_scSplit.catRows.length-1].amount=Math.round(Math.max(0,a-used)*100)/100;
+  _scSplitRenderCat(a);
+}
+window.scCatSplitAutoFill = scCatSplitAutoFill;
+
+function _scSplitRenderCat(scAmt) {
+  const container=document.getElementById('scCatSplitRows');
+  const totalEl=document.getElementById('scCatSplitTotal');
+  if(!container) return;
+  if(!scAmt) scAmt=Math.abs(getAmtField('scAmount')||0);
+  if(!_scSplit.catRows.length) {
+    container.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:.8rem">Nenhuma divisão. Clique em "+ Adicionar categoria".</div>';
+    if(totalEl) totalEl.style.display='none'; return;
+  }
+  container.innerHTML=_scSplit.catRows.map(row=>{
+    const has=!!row.category_id;
+    const lbl=has?`<span style="background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(row.category_name)}</span>`:`<span style="color:var(--muted)">— Selecionar categoria —</span>`;
+    const av=row.amount>0?row.amount.toFixed(2).replace('.',','):'';
+    return `<div class="tx-split-row" id="scCatSplitRow_${row.id}"><div class="tx-split-row-left"><button type="button" class="tx-split-cat-btn" onclick="scCatSplitPickCategory(${row.id})" style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;overflow:hidden;white-space:nowrap">${lbl}</button></div><div class="tx-split-row-right"><input type="text" inputmode="decimal" class="tx-split-amount-input" placeholder="0,00" value="${av}" onchange="scCatSplitUpdateAmount(${row.id},this.value)" oninput="scCatSplitUpdateAmount(${row.id},this.value)"><button type="button" class="tx-split-remove-btn" onclick="scCatSplitRemoveRow(${row.id})">✕</button></div></div>`;
+  }).join('');
+  _scSplitUpdateCatTotals_SC(scAmt);
+}
+
+function _scSplitUpdateCatTotals_SC(scAmt) {
+  if(!scAmt) scAmt=Math.abs(getAmtField('scAmount')||0);
+  const te=document.getElementById('scCatSplitTotal'), tv=document.getElementById('scCatSplitTotalVal'), tx=document.getElementById('scCatSplitTxVal'), di=document.getElementById('scCatSplitDiff');
+  if(!te) return;
+  if(_scSplit.catRows.length<2){te.style.display='none';return;}
+  te.style.display='';
+  const dist=_scSplit.catRows.reduce((s,r)=>s+(r.amount||0),0), diff=scAmt-dist, abs=Math.abs(diff);
+  if(tv) tv.textContent=typeof fmt==='function'?fmt(dist):dist.toFixed(2);
+  if(tx) tx.textContent=typeof fmt==='function'?fmt(scAmt):scAmt.toFixed(2);
+  if(di) di.innerHTML=abs<0.005?'<span style="color:#16a34a;font-weight:700">✓ Valores conferem</span>':diff>0?`<span style="color:#b45309;font-weight:700">Faltam ${typeof fmt==='function'?fmt(diff):diff.toFixed(2)}</span><button type="button" onclick="scCatSplitAutoFill()" style="margin-left:8px;font-size:.72rem;padding:2px 8px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:inherit">Auto-completar</button>`:`<span style="color:#dc2626;font-weight:700">Excedente: ${typeof fmt==='function'?fmt(abs):abs.toFixed(2)}</span>`;
+}
+
+function scMemSplitSetMode(mode) {
+  _scSplit.memMode=mode;
+  const on='flex:1;padding:6px;font-size:.74rem;font-weight:600;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit';
+  const off='flex:1;padding:6px;font-size:.74rem;font-weight:600;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit';
+  const vb=document.getElementById('scMemSplitModeVal'), pb=document.getElementById('scMemSplitModePct');
+  if(vb) vb.style.cssText=mode==='value'?on:off;
+  if(pb) pb.style.cssText=mode==='pct'?on:off;
+  _scSplitRenderMem();
+}
+window.scMemSplitSetMode = scMemSplitSetMode;
+
+function scMemSplitAddRow(prefill) {
+  const id=++_scSplitRowSeq;
+  _scSplit.memRows.push({id,member_id:prefill?.member_id||'',member_name:prefill?.member_name||'',amount:prefill?.amount||0,pct:prefill?.pct||0});
+  _scSplitRenderMem();
+  setTimeout(()=>{const i=document.querySelector(`#scMemSplitRow_${id} .tx-split-amount-input`);if(i)i.focus();},50);
+}
+window.scMemSplitAddRow = scMemSplitAddRow;
+
+function scMemSplitRemoveRow(id) { _scSplit.memRows=_scSplit.memRows.filter(r=>r.id!==id); _scSplitRenderMem(); }
+window.scMemSplitRemoveRow = scMemSplitRemoveRow;
+
+function scMemSplitUpdateMember(rowId,memberId) {
+  const row=_scSplit.memRows.find(r=>r.id===rowId); if(!row) return;
+  row.member_id=memberId;
+  const m=(typeof getFamilyMembers==='function'?getFamilyMembers():[]).find(x=>x.id===memberId);
+  row.member_name=m?m.name:'';
+  _scSplitUpdateMemTotals_SC();
+}
+window.scMemSplitUpdateMember = scMemSplitUpdateMember;
+
+function scMemSplitUpdateValue(rowId,v) {
+  const row=_scSplit.memRows.find(r=>r.id===rowId); if(!row) return;
+  const n=parseFloat(String(v).replace(',','.'))||0, a=Math.abs(getAmtField('scAmount')||0);
+  if(_scSplit.memMode==='pct'){row.pct=Math.min(100,Math.max(0,n));row.amount=a>0?Math.round(a*row.pct/100*100)/100:0;}
+  else{row.amount=n;row.pct=a>0?Math.round(n/a*10000)/100:0;}
+  _scSplitUpdateMemTotals_SC();
+}
+window.scMemSplitUpdateValue = scMemSplitUpdateValue;
+
+function scMemSplitEqualSplit() {
+  const a=Math.abs(getAmtField('scAmount')||0), n=_scSplit.memRows.length;
+  if(!n||!a) return;
+  const each=Math.round(a/n*100)/100;
+  _scSplit.memRows.forEach((r,i)=>{r.amount=i<n-1?each:Math.round((a-each*(n-1))*100)/100;r.pct=a>0?Math.round(r.amount/a*10000)/100:0;});
+  _scSplitRenderMem(a);
+}
+window.scMemSplitEqualSplit = scMemSplitEqualSplit;
+
+function scMemSplitAutoFill() {
+  const a=Math.abs(getAmtField('scAmount')||0); if(!a||_scSplit.memRows.length<2) return;
+  const used=_scSplit.memRows.slice(0,-1).reduce((s,r)=>s+(r.amount||0),0);
+  const last=_scSplit.memRows[_scSplit.memRows.length-1];
+  last.amount=Math.round(Math.max(0,a-used)*100)/100; last.pct=a>0?Math.round(last.amount/a*10000)/100:0;
+  _scSplitRenderMem(a);
+}
+window.scMemSplitAutoFill = scMemSplitAutoFill;
+
+function _scSplitRenderMem(scAmt) {
+  const container=document.getElementById('scMemSplitRows'), totalEl=document.getElementById('scMemSplitTotal');
+  if(!container) return;
+  if(!scAmt) scAmt=Math.abs(getAmtField('scAmount')||0);
+  const members=typeof getFamilyMembers==='function'?getFamilyMembers():[];
+  const opts=members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  if(!_scSplit.memRows.length) {
+    const qb=members.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${members.map(m=>`<button type="button" onclick="scMemSplitAddRow({member_id:'${m.id}',member_name:'${esc(m.name)}'})" style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:.76rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit">+ ${esc(m.name)}</button>`).join('')}</div><button type="button" onclick="scMemSplitEqualSplit()" style="margin-top:8px;width:100%;padding:8px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">⚡ Dividir igualmente</button>`:'';
+    container.innerHTML=`<div style="text-align:center;padding:16px 0;color:var(--muted);font-size:.8rem">Nenhuma divisão.${qb}</div>`;
+    if(totalEl) totalEl.style.display='none'; return;
+  }
+  const isVal=_scSplit.memMode==='value';
+  container.innerHTML=_scSplit.memRows.map(row=>{
+    const dv=isVal?(row.amount>0?row.amount.toFixed(2).replace('.',','):''):(row.pct>0?row.pct.toFixed(1).replace('.',','):'');
+    return `<div class="tx-split-row" id="scMemSplitRow_${row.id}"><div class="tx-split-row-left"><select class="tx-split-member-select" onchange="scMemSplitUpdateMember(${row.id},this.value)" style="width:100%;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;color:var(--text);font-family:inherit"><option value="">— Membro —</option>${opts}</select></div><div class="tx-split-row-right"><input type="text" inputmode="decimal" class="tx-split-amount-input" placeholder="${isVal?'0,00':'0%'}" value="${dv}" onchange="scMemSplitUpdateValue(${row.id},this.value)" oninput="scMemSplitUpdateValue(${row.id},this.value)"><button type="button" class="tx-split-remove-btn" onclick="scMemSplitRemoveRow(${row.id})">✕</button></div></div>`;
+  }).join('');
+  _scSplit.memRows.forEach(r=>{const s=document.querySelector(`#scMemSplitRow_${r.id} select`);if(s&&r.member_id)s.value=r.member_id;});
+  _scSplitUpdateMemTotals_SC(scAmt);
+}
+
+function _scSplitUpdateMemTotals_SC(scAmt) {
+  if(!scAmt) scAmt=Math.abs(getAmtField('scAmount')||0);
+  const te=document.getElementById('scMemSplitTotal'),tv=document.getElementById('scMemSplitTotalVal'),tx=document.getElementById('scMemSplitTxVal'),di=document.getElementById('scMemSplitDiff');
+  if(!te) return;
+  if(_scSplit.memRows.length<2){te.style.display='none';return;}
+  te.style.display='';
+  const dist=_scSplit.memRows.reduce((s,r)=>s+(r.amount||0),0),diff=scAmt-dist,abs=Math.abs(diff);
+  if(tv) tv.textContent=typeof fmt==='function'?fmt(dist):dist.toFixed(2);
+  if(tx) tx.textContent=typeof fmt==='function'?fmt(scAmt):scAmt.toFixed(2);
+  if(di) di.innerHTML=abs<0.005?'<span style="color:#16a34a;font-weight:700">✓ Valores conferem</span>':diff>0?`<span style="color:#b45309;font-weight:700">Faltam ${typeof fmt==='function'?fmt(diff):diff.toFixed(2)}</span><button type="button" onclick="scMemSplitAutoFill()" style="margin-left:8px;font-size:.72rem;padding:2px 8px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:inherit">Auto-completar</button>`:`<span style="color:#dc2626;font-weight:700">Excedente: ${typeof fmt==='function'?fmt(abs):abs.toFixed(2)}</span>`;
+}
+
+function scSplitGetCategorySplits() { return _scSplit.catRows.filter(r=>r.category_id&&r.amount>0).map(r=>({category_id:r.category_id,amount:r.amount})); }
+window.scSplitGetCategorySplits = scSplitGetCategorySplits;
+
+function scSplitGetMemberShares() { return _scSplit.memRows.filter(r=>r.member_id&&r.amount>0).map(r=>({member_id:r.member_id,amount:r.amount,pct:r.pct})); }
+window.scSplitGetMemberShares = scSplitGetMemberShares;
+
+function scSplitLoad(cats, mems) {
+  _scSplit.catRows=[]; _scSplit.memRows=[]; _scSplitRowSeq=0;
+  if(Array.isArray(cats)) cats.forEach(s=>{const c=(state.categories||[]).find(x=>x.id===s.category_id),id=++_scSplitRowSeq;_scSplit.catRows.push({id,category_id:s.category_id||'',category_name:c?c.name:'',category_color:c?(c.color||'#94a3b8'):'#94a3b8',amount:parseFloat(s.amount)||0});});
+  if(Array.isArray(mems)){const members=typeof getFamilyMembers==='function'?getFamilyMembers():[];mems.forEach(s=>{const m=members.find(x=>x.id===s.member_id),id=++_scSplitRowSeq;_scSplit.memRows.push({id,member_id:s.member_id||'',member_name:m?m.name:'',amount:parseFloat(s.amount)||0,pct:parseFloat(s.pct)||0});});if(_scSplit.memRows.some(r=>r.pct>0))_scSplit.memMode='pct';}
+}
+window.scSplitLoad = scSplitLoad;
+
+function scSplitReset() { _scSplit.catRows=[]; _scSplit.memRows=[]; _scSplit.memMode='value'; _scSplit.activeTab='cat'; _scSplitRowSeq=0; }
+window.scSplitReset = scSplitReset;
