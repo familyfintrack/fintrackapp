@@ -64,6 +64,19 @@ function _helpContent() {
             fr: `<p>Regroupez les comptes par banque, personne ou usage.</p><ol><li>Allez dans <strong>Comptes</strong></li><li>Cliquez sur <strong>+ Nouveau groupe</strong></li><li>Définissez le nom et la couleur</li></ol>`,
           },
         },
+
+        {
+          id: 'accounts-pix',
+          title: { pt: 'Múltiplas chaves PIX', en: 'Multiple PIX keys', es: 'Múltiples claves PIX', fr: 'Plusieurs clés PIX' },
+          body: {
+            pt: `<p>Cada conta suporta até <strong>3 chaves PIX</strong> de tipos distintos: CPF, CNPJ, e-mail, telefone ou chave aleatória.</p>
+<ol><li>Edite a conta em <strong>Contas</strong></li><li>Na seção PIX, clique em <strong>+ Adicionar</strong></li><li>Selecione o tipo e informe a chave</li></ol>
+<p>As chaves ficam visíveis nos detalhes com botão ⎘ para copiar.</p>`,
+            en: `<p>Each account supports up to <strong>3 PIX keys</strong> of different types: CPF, CNPJ, email, phone, or random key. Edit the account, click <strong>+ Add</strong> in the PIX section.</p>`,
+            es: `<p>Cada cuenta admite hasta <strong>3 claves PIX</strong> de distintos tipos. Edite la cuenta y haga clic en <strong>+ Agregar</strong> en la sección PIX.</p>`,
+            fr: `<p>Chaque compte prend en charge jusqu'à <strong>3 clés PIX</strong> de types différents. Modifiez le compte et cliquez sur <strong>+ Ajouter</strong> dans la section PIX.</p>`,
+          },
+        },
       ],
     },
     {
@@ -152,6 +165,33 @@ function _helpContent() {
             fr: `<p>Les transactions programmées automatisent l'enregistrement des transactions récurrentes.</p><ol><li>Allez dans <strong>Programmés</strong></li><li>Cliquez sur <strong>+ Nouveau programmé</strong></li><li>Remplissez les détails et définissez la fréquence</li></ol>`,
           },
         },
+
+        {
+          id: 'scheduled-splits',
+          title: { pt: 'Divisão por categoria e membro', en: 'Split by category and member', es: 'División por categoría y miembro', fr: 'Répartition par catégorie et membre' },
+          body: {
+            pt: `<p>Na aba <strong>✂️ Divisão</strong> do modal de transação programada, divida o valor por categoria ou por membro da família.</p>
+<ul><li><strong>Por categoria:</strong> distribua entre múltiplas categorias com valor exato — use <em>Auto-completar</em> para o último item</li><li><strong>Por membro:</strong> distribua por valor fixo ou percentual</li></ul>
+<p>A divisão fica salva na programação e é aplicada automaticamente em cada lançamento gerado pelo auto-registro.</p>`,
+            en: `<p>In the <strong>✂️ Split</strong> tab of the scheduled transaction modal, divide the amount by category or family member.</p>
+<p>The split is saved and applied automatically to each auto-registered occurrence.</p>`,
+            es: `<p>En la pestaña <strong>✂️ División</strong>, divida el importe por categoría o miembro. La división se aplica automáticamente en cada registro.</p>`,
+            fr: `<p>Dans l'onglet <strong>✂️ Répartition</strong>, divisez le montant par catégorie ou membre. La répartition est appliquée automatiquement.</p>`,
+          },
+        },
+        {
+          id: 'scheduled-convert',
+          title: { pt: 'Converter transação → programada', en: 'Convert transaction → scheduled', es: 'Convertir transacción → programada', fr: 'Convertir transaction → programmée' },
+          body: {
+            pt: `<p>No modal de edição de qualquer transação, clique em <strong>📅 Criar Programação</strong> e escolha:</p>
+<ul><li><strong>📌 Manter + criar próximas:</strong> original permanece, programação começa no futuro</li><li><strong>🔄 Converter:</strong> original é excluída e substituída pela programação desde a data original</li></ul>
+<div class="help-tip">💡 A confirmação de modo evita exclusões acidentais.</div>`,
+            en: `<p>In any transaction modal, click <strong>📅 Create Schedule</strong> and choose:</p>
+<ul><li><strong>📌 Keep + create next:</strong> original stays, scheduling starts from future date</li><li><strong>🔄 Convert:</strong> original deleted, schedule takes over from original date</li></ul>`,
+            es: `<p>En cualquier modal de transacción, haga clic en <strong>📅 Crear programación</strong> y elija el modo.</p>`,
+            fr: `<p>Dans n'importe quelle fenêtre de transaction, cliquez sur <strong>📅 Créer une programmation</strong> et choisissez le mode.</p>`,
+          },
+        },
       ],
     },
     {
@@ -177,6 +217,36 @@ function _helpContent() {
             en: `<p>Shows how your account balances will evolve, considering scheduled transactions.</p><ol><li>Select the forecast period</li><li>Choose which accounts to include</li><li>The app combines real transactions with future scheduled ones</li><li>The chart and table show the balance day by day</li></ol><div class="help-tip">💡 Use the forecast to identify critical months where the balance might go negative.</div>`,
             es: `<p>Muestra cómo evolucionarán los saldos de sus cuentas considerando las transacciones programadas.</p><ol><li>Seleccione el período de previsión</li><li>Elija las cuentas a incluir</li><li>La app combina transacciones reales con las programadas futuras</li></ol>`,
             fr: `<p>Montre comment les soldes évolueront en tenant compte des transactions programmées.</p><ol><li>Sélectionnez la période de prévision</li><li>Choisissez les comptes à inclure</li><li>L'app combine transactions réelles et futures programmées</li></ol>`,
+          },
+        },
+
+        {
+          id: 'reports-beneficiarios',
+          title: { pt: 'Relatório de Beneficiários', en: 'Payees Report', es: 'Informe de Beneficiarios', fr: 'Rapport Bénéficiaires' },
+          body: {
+            pt: `<p>Vá em <strong>Relatórios → aba Beneficiários 👥</strong> para ver um painel completo de gastos e receitas por beneficiário ou fonte pagadora.</p>
+<h4>Filtros</h4><ul><li>Período: este mês, trimestre, ano, últimos 12 meses ou personalizado</li><li>Contas e categorias: multi-seleção</li><li>Tipo: beneficiários / fontes pagadoras / sem cadastro</li><li>Ordenar por: maior valor, mais transações, nome, mais recente</li></ul>
+<p>Clique em qualquer linha para ver o <strong>drill-down</strong> com todas as transações no período.</p>
+<div class="help-tip">💡 Use o filtro <em>Sem cadastro</em> para encontrar lançamentos sem beneficiário e cadastrar em massa.</div>`,
+            en: `<p>Go to <strong>Reports → Payees tab 👥</strong> to see a full analytics panel of spending and income by payee or income source.</p>
+<p>Filters: period, accounts, categories, type and sort order. Click any row for a transaction drill-down.</p>`,
+            es: `<p>Vaya a <strong>Informes → pestaña Beneficiarios 👥</strong> para ver el panel analítico completo. Use los filtros de período, cuentas, categorías y tipo.</p>`,
+            fr: `<p>Allez dans <strong>Rapports → onglet Bénéficiaires 👥</strong> pour voir le panneau analytique complet. Cliquez sur une ligne pour le détail des transactions.</p>`,
+          },
+        },
+        {
+          id: 'forecast-signchange',
+          title: { pt: 'Indicadores de saldo negativo', en: 'Negative balance indicators', es: 'Indicadores de saldo negativo', fr: 'Indicateurs de solde négatif' },
+          body: {
+            pt: `<p>A previsão de fluxo de caixa marca visualmente o momento em que o saldo de uma conta cruza o zero.</p>
+<ul><li><strong>Barra vermelha ⚠:</strong> saldo fica negativo a partir daqui</li><li><strong>Barra verde ✓:</strong> saldo volta ao positivo</li><li><strong>Linha vermelha:</strong> a transação que causou o cruzamento</li><li><strong>Badge inline:</strong> exibido na descrição da transação causadora</li></ul>
+<div class="help-tip">💡 Use esses indicadores para antecipar quando precisará de uma entrada de caixa.</div>`,
+            en: `<p>The cash flow forecast visually marks when an account balance crosses zero.</p>
+<ul><li><strong>Red bar ⚠:</strong> balance goes negative from here</li><li><strong>Green bar ✓:</strong> balance returns to positive</li><li><strong>Red row:</strong> the crossing transaction</li></ul>`,
+            es: `<p>La previsión marca visualmente cuándo el saldo cruza cero.</p>
+<ul><li><strong>Barra roja ⚠:</strong> saldo negativo desde aquí</li><li><strong>Barra verde ✓:</strong> saldo vuelve a positivo</li></ul>`,
+            fr: `<p>La prévision marque visuellement quand le solde croise zéro.</p>
+<ul><li><strong>Barre rouge ⚠:</strong> solde négatif à partir d'ici</li><li><strong>Barre verte ✓:</strong> solde revient positif</li></ul>`,
           },
         },
       ],
@@ -989,6 +1059,66 @@ function _helpContent() {
   <div class="help-mini-card" style="border-left:3px solid #f59e0b"><strong>🌟 Module Rêves</strong> Cartes modernes par type, assistant 4 étapes, analyse de faisabilité par IA.</div>
   <div class="help-mini-card" style="border-left:3px solid #0284c7"><strong>📊 Rapports — Points cliquables</strong> Graphique de prévision avec points sur les jours avec transactions. Clic pour voir les détails.</div>
 </div>`,
+          },
+        },
+      ],
+    },
+
+    {
+      id: 'iof', icon: '🌍', color: '#b45309',
+      title: { pt: 'IOF Internacional', en: 'International IOF', es: 'IOF Internacional', fr: 'IOF International' },
+      articles: [
+        {
+          id: 'iof-intro',
+          title: { pt: 'IOF automático e configurável', en: 'Automatic & configurable IOF', es: 'IOF automático y configurable', fr: 'IOF automatique et configurable' },
+          body: {
+            pt: `<p>O <strong>IOF</strong> é calculado e lançado automaticamente em compras internacionais. Ative em <strong>Contas → editar → IOF Internacional</strong> e configure a taxa (padrão 4,38%).</p>
+<h4>Categoria e Beneficiário padrão do IOF</h4>
+<p>Em <strong>Categorias</strong>, clique no botão <strong>IOF</strong> em qualquer categoria para defini-la como padrão para todos os lançamentos de IOF. O mesmo vale para <strong>Beneficiários</strong> (ex: "Receita Federal").</p>
+<p>Ao trocar o padrão, o app oferece migrar <strong>todo o histórico</strong> em lote — com barra de progresso e atualização em blocos de 50.</p>
+<div class="help-tip">💡 Se usar um cartão internacional frequentemente, configure a categoria e o beneficiário do IOF uma vez e nunca mais precise ajustar manualmente.</div>`,
+            en: `<p><strong>IOF</strong> is automatically calculated and recorded on international purchases. Enable in <strong>Accounts → edit → International IOF</strong>.</p>
+<p>In <strong>Categories</strong> and <strong>Payees</strong>, click the <strong>IOF</strong> button to set the default for all IOF transactions. When changing defaults, the app offers bulk migration of all existing IOF history.</p>`,
+            es: `<p>El <strong>IOF</strong> se calcula y registra automáticamente en compras internacionales. En <strong>Categorías</strong> y <strong>Beneficiarios</strong>, haga clic en el botón <strong>IOF</strong> para definir el predeterminado.</p>`,
+            fr: `<p>L'<strong>IOF</strong> est calculé et enregistré automatiquement sur les achats internationaux. Dans <strong>Catégories</strong> et <strong>Bénéficiaires</strong>, cliquez sur le bouton <strong>IOF</strong> pour définir le défaut.</p>`,
+          },
+        },
+      ],
+    },
+    {
+      id: 'dashboard-advanced', icon: '🏠', color: '#0f766e',
+      title: { pt: 'Dashboard — Avançado', en: 'Dashboard — Advanced', es: 'Panel — Avanzado', fr: 'Tableau de bord — Avancé' },
+      articles: [
+        {
+          id: 'dashboard-personalize',
+          title: { pt: 'Personalização e cards paralelos', en: 'Customization and parallel cards', es: 'Personalización y tarjetas paralelas', fr: 'Personnalisation et cartes parallèles' },
+          body: {
+            pt: `<p>Clique em <strong>⚙️</strong> no Dashboard para personalizar quais cards exibir, sua ordem e layout.</p>
+<h4>Vincular cards lado a lado 🔗</h4>
+<p>Clique no ícone de corrente (🔗) em qualquer card no painel de personalização para exibi-lo <strong>lado a lado</strong> com o próximo card no desktop — ideal para telas largas.</p>
+<h4>Botão "+" nas contas favoritas</h4>
+<p>Cada card de conta favorita tem um botão verde <strong>+</strong> que abre o modal de nova transação <strong>pré-selecionando aquela conta</strong> — sem precisar navegar para Lançamentos.</p>
+<div class="help-tip">💡 As preferências são salvas por usuário no banco e sincronizadas entre dispositivos.</div>`,
+            en: `<p>Click <strong>⚙️</strong> on the Dashboard to customize which cards to show, their order and layout.</p>
+<h4>Link cards side by side 🔗</h4>
+<p>Click the chain icon (🔗) on any card in the customization panel to display it side-by-side with the next card on desktop.</p>
+<h4>"+" button on favorite accounts</h4>
+<p>Each favorite account card has a green <strong>+</strong> button that opens the new transaction modal with that account pre-selected.</p>`,
+            es: `<p>Haga clic en <strong>⚙️</strong> para personalizar el panel. Use el ícono de cadena (🔗) para mostrar tarjetas lado a lado. El botón <strong>+</strong> verde en cuentas favoritas abre el modal de transacción con esa cuenta preseleccionada.</p>`,
+            fr: `<p>Cliquez sur <strong>⚙️</strong> pour personnaliser le tableau de bord. Utilisez l'icône chaîne (🔗) pour afficher des cartes côte à côte. Le bouton <strong>+</strong> vert sur les comptes favoris ouvre la fenêtre de nouvelle transaction.</p>`,
+          },
+        },
+        {
+          id: 'dashboard-familia-chip',
+          title: { pt: 'Chip "Família" na topbar', en: '"Family" chip in topbar', es: 'Chip "Familia" en la barra superior', fr: 'Puce "Famille" dans la barre supérieure' },
+          body: {
+            pt: `<p>O nome da <strong>família ativa</strong> é exibido como um chip discreto na barra superior, ao lado do avatar do usuário — em telas com largura ≥ 640 px.</p>
+<p>Isso facilita identificar em qual contexto de família você está quando tem acesso a mais de uma família no sistema.</p>
+<div class="help-tip">💡 Para trocar de família ativa, clique no avatar (canto superior direito) e selecione a família desejada no menu.</div>`,
+            en: `<p>The <strong>active family</strong> name is displayed as a small chip in the top bar, next to the user avatar — on screens ≥ 640 px wide.</p>
+<p>This makes it easy to identify which family context you're in when you have access to more than one family.</p>`,
+            es: `<p>El nombre de la <strong>familia activa</strong> se muestra como un chip en la barra superior, junto al avatar del usuario.</p>`,
+            fr: `<p>Le nom de la <strong>famille active</strong> s'affiche sous forme de puce dans la barre supérieure, à côté de l'avatar.</p>`,
           },
         },
       ],

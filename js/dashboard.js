@@ -336,6 +336,11 @@ async function loadDashboard(){
           ${_brlLine}
           <div class="dash-fav-card__spacer"></div>
           <div class="dash-fav-card__actions" onclick="event.stopPropagation()">
+            <button class="dash-fav-card__btn dash-fav-card__btn--add"
+              onclick="_dashFavAddTx('${a.id}')"
+              title="Nova transação nesta conta">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
             <button class="dash-fav-card__btn"
               onclick="_openFavAccountModal('${a.id}')"
               title="Informações da conta">
@@ -919,22 +924,67 @@ async function _syncDashPrefsFromServer() {
 
 function _dashApplyPrefs(prefs) {
   const order = _getDashCardOrder(prefs);
+  const pairs = Array.isArray(prefs._pairs) ? prefs._pairs : [];
+
+  // Build fast lookup: cardId → paired partner id
+  const pairedWith = {};
+  pairs.forEach(([a, b]) => { pairedWith[a] = b; pairedWith[b] = a; });
+  const pairedSeconds = new Set(pairs.map(p => p[1]));
+
   // Apply visibility
   order.forEach(c => {
     const el = document.getElementById(c.el);
     if (!el) return;
     el.style.display = prefs[c.id] !== false ? '' : 'none';
   });
-  // Apply order in DOM on all screen sizes
+
+  // Apply DOM order with side-by-side pair support
   try {
-    const parent = document.getElementById(order[0]?.el)?.parentElement;
-    if (parent) {
-      order.forEach(c => {
-        const el = document.getElementById(c.el);
-        if (el && el.parentElement === parent) parent.appendChild(el);
-      });
+    let parent = null;
+    for (const c of order) {
+      const el = document.getElementById(c.el);
+      if (el) { parent = el.parentElement; break; }
     }
-  } catch(_) {}
+    if (!parent) return;
+
+    // Remove any existing pair wrappers (move children out first)
+    parent.querySelectorAll('.dash-pair-wrap').forEach(wrap => {
+      while (wrap.firstChild) parent.insertBefore(wrap.firstChild, wrap);
+      wrap.remove();
+    });
+
+    // Re-attach in order, wrapping pairs
+    const processedSeconds = new Set();
+    order.forEach(c => {
+      const el = document.getElementById(c.el);
+      if (!el) return;
+
+      // Skip second-of-pair — handled when first is processed
+      if (pairedSeconds.has(c.id) && processedSeconds.has(c.id)) return;
+
+      const partnerId = pairs.find(p => p[0] === c.id)?.[1];
+      const partnerCard = partnerId ? _DASH_CARDS.find(x => x.id === partnerId) : null;
+      const partnerEl   = partnerCard ? document.getElementById(partnerCard.el) : null;
+
+      const firstVisible  = prefs[c.id] !== false;
+      const secondVisible = partnerCard && prefs[partnerCard.id] !== false;
+
+      if (partnerId && partnerEl && firstVisible && secondVisible) {
+        // Both visible — wrap in grid
+        const wrap = document.createElement('div');
+        wrap.className = 'dash-pair-wrap';
+        // Remove mb-4/mb-6 temporarily handled by CSS
+        parent.appendChild(wrap);
+        wrap.appendChild(el);
+        wrap.appendChild(partnerEl);
+        processedSeconds.add(partnerId);
+      } else {
+        // Single card — append normally
+        parent.appendChild(el);
+        if (partnerId) processedSeconds.add(partnerId);
+      }
+    });
+  } catch(e) { console.warn('[dashApplyPrefs pairs]', e.message); }
 }
 
 function openDashCustomModal() {
@@ -949,40 +999,78 @@ function openDashCustomModal() {
 function _getDashCardOrder(prefs) {
   // Use saved order from prefs, fallback to _DASH_CARDS default order
   const savedOrder = prefs._order;
+  let ordered;
   if (savedOrder && Array.isArray(savedOrder)) {
-    const ordered = savedOrder
+    ordered = savedOrder
       .map(id => _DASH_CARDS.find(c => c.id === id))
       .filter(Boolean);
     // Append any new cards not in saved order
     _DASH_CARDS.forEach(c => { if (!ordered.find(x => x.id === c.id)) ordered.push(c); });
-    return ordered;
+  } else {
+    ordered = [..._DASH_CARDS];
   }
-  return [..._DASH_CARDS];
+  // 'accounts' (Saldo por Conta) is always pinned as the first card
+  const accountsIdx = ordered.findIndex(c => c.id === 'accounts');
+  if (accountsIdx > 0) {
+    const [accounts] = ordered.splice(accountsIdx, 1);
+    ordered.unshift(accounts);
+  }
+  return ordered;
 }
 
 function _renderDashCustomList(order, prefs) {
   const list = document.getElementById('dashCustomList');
   if (!list) return;
 
-  list.innerHTML = order.map((c) => `
-    <div class="dcc-item" data-card-id="${c.id}" draggable="true">
-      <div class="dcc-handle" title="Arrastar para reordenar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
+  const pairs = Array.isArray(prefs._pairs) ? prefs._pairs : [];
+  // Build set of ids that are the FIRST of a pair
+  const pairedFirst = new Set(pairs.map(p => p[0]));
+  // Build set of ids that are the SECOND of a pair (they show a "paired" indicator)
+  const pairedSecond = new Set(pairs.map(p => p[1]));
+
+  list.innerHTML = order.map((c, idx) => {
+    const isPinned    = c.id === 'accounts';
+    const isFirst     = pairedFirst.has(c.id);
+    const isSecond    = pairedSecond.has(c.id);
+    const isPaired    = isFirst || isSecond;
+    const canPair     = !isPinned && idx < order.length - 1 && !isSecond;
+    const nextCard    = order[idx + 1];
+
+    return `
+    <div class="dcc-item${isPinned?' dcc-item--pinned':''}${isPaired?' dcc-item--paired':''}" data-card-id="${c.id}" draggable="${isPinned?'false':'true'}">
+      <div class="dcc-handle" title="${isPinned?'Card fixo — sempre o primeiro':'Arrastar para reordenar'}"
+        style="${isPinned?'opacity:.3;cursor:default;pointer-events:none;':''}">
+        ${isPinned
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`
+        }
       </div>
       <span class="dcc-icon">${c.icon}</span>
       <div class="dcc-info">
         <div class="dcc-label">${c.label}</div>
         <div class="dcc-sub">${c.sub}</div>
-        ${c.optional ? '<span class="dcc-badge">opcional</span>' : ''}
+        ${isPinned ? '<span class="dcc-badge" style="background:rgba(42,96,73,.12);color:#2a6049;border-color:rgba(42,96,73,.2)">📌 fixo</span>' : ''}
+        ${c.optional && !isPinned ? '<span class="dcc-badge">opcional</span>' : ''}
+        ${isFirst ? `<span class="dcc-badge dcc-badge--paired">⊞ lado a lado com ${nextCard?.icon||''} ${nextCard?.label||''}</span>` : ''}
+        ${isSecond ? '<span class="dcc-badge dcc-badge--paired">⊞ em paralelo</span>' : ''}
       </div>
-      <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
-        onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
-        title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}">
-        <span class="dcc-toggle-knob"></span>
-      </button>
-    </div>`).join('');
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${canPair ? `<button class="dcc-pair-btn${isFirst?' dcc-pair-btn--on':''}" data-card="${c.id}" data-next="${nextCard?.id||''}"
+          onclick="event.stopPropagation();_dashTogglePair('${c.id}','${nextCard?.id||''}')"
+          title="${isFirst?'Desfazer layout lado a lado':'Colocar em paralelo com o próximo card'}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <rect x="2" y="3" width="9" height="18" rx="2"/>
+            <rect x="13" y="3" width="9" height="18" rx="2"/>
+          </svg>
+        </button>` : ''}
+        <button class="dcc-toggle ${prefs[c.id]!==false?'dcc-on':''}" data-card="${c.id}"
+          onclick="event.stopPropagation();_dashToggleCard('${c.id}',this.closest('.dcc-item'))"
+          title="${prefs[c.id]!==false?'Ocultar card':'Mostrar card'}"
+          ${isPinned?'disabled style="opacity:.5;cursor:default"':''}>
+          <span class="dcc-toggle-knob"></span>
+        </button>
+      </div>
+    </div>`; }).join('');
 
   _initDashDrag(list);
 }
@@ -997,6 +1085,7 @@ function _initDashDrag(list) {
 
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('dragstart', e => {
+      if (item.dataset.cardId === 'accounts') { e.preventDefault(); return; }
       dragSrc = item;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', item.dataset.cardId);
@@ -1032,12 +1121,18 @@ function _initDashDrag(list) {
       e.stopPropagation();
       item.classList.remove('dcc-over');
       if (dragSrc && item !== dragSrc) {
+        // Never allow dropping before or onto the pinned 'accounts' card
+        if (item.dataset.cardId === 'accounts') return;
         const allItems = [...list.querySelectorAll('.dcc-item')];
         const srcIdx  = allItems.indexOf(dragSrc);
         const tgtIdx  = allItems.indexOf(item);
         if (srcIdx < tgtIdx) item.after(dragSrc);
         else item.before(dragSrc);
-        _dashCustomPendingOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+        // Ensure accounts stays first in the pending order
+        const newOrder = [...list.querySelectorAll('.dcc-item')].map(i => i.dataset.cardId);
+        const accIdx = newOrder.indexOf('accounts');
+        if (accIdx > 0) { newOrder.splice(accIdx, 1); newOrder.unshift('accounts'); }
+        _dashCustomPendingOrder = newOrder;
       }
     });
   });
@@ -1071,6 +1166,8 @@ function _initDashDrag(list) {
 
   list.querySelectorAll('.dcc-item').forEach(item => {
     item.addEventListener('touchstart', e => {
+      // Pinned card cannot be dragged
+      if (item.dataset.cardId === 'accounts') return;
       // Só iniciar drag se o toque for no handle ou no item fora do toggle
       const tog = e.target.closest('.dcc-toggle');
       if (tog) return;
@@ -1197,6 +1294,63 @@ function _dashToggleCard(id, row) {
   btn.title = isOn ? 'Ocultar card' : 'Mostrar card';
 }
 
+// ── Toggle "vincular em paralelo" ────────────────────────────────────────
+function _dashToggleLink(cardId, btn) {
+  const prefs  = _dashGetPrefs();
+  const linked = prefs._linked || {};
+  linked[cardId] = !linked[cardId];
+  if (!linked[cardId]) delete linked[cardId];
+  if (Object.keys(linked).length) prefs._linked = linked;
+  else delete prefs._linked;
+  _dashSavePrefs(prefs);
+  btn.classList.toggle('dcc-link-on', !!linked[cardId]);
+  btn.title = linked[cardId] ? 'Desvincular do próximo card' : 'Lado a lado com próximo card (desktop)';
+  _dashApplyLinkedCards(prefs);
+}
+window._dashToggleLink = _dashToggleLink;
+
+function _dashApplyLinkedCards(prefs) {
+  if (!prefs) prefs = _dashGetPrefs();
+  const linked = prefs._linked || {};
+  if (window.innerWidth < 900) return;
+  const order = _getDashCardOrder(prefs);
+  order.forEach((c, i) => {
+    const el = document.getElementById(c.el);
+    if (!el) return;
+    if (!!linked[c.id] && prefs[c.id] !== false) el.style.gridColumn = '1';
+    else if (i > 0 && !!linked[order[i-1]?.id] && prefs[c.id] !== false) el.style.gridColumn = '2';
+    else el.style.gridColumn = '';
+  });
+}
+window._dashApplyLinkedCards = _dashApplyLinkedCards;
+
+function _dashTogglePair(firstId, secondId) {
+  if (!firstId || !secondId) return;
+  const prefs = _dashGetPrefs();
+  const pairs = Array.isArray(prefs._pairs) ? [...prefs._pairs] : [];
+
+  // Check if this pair already exists
+  const existingIdx = pairs.findIndex(p => p[0] === firstId && p[1] === secondId);
+  if (existingIdx >= 0) {
+    // Remove pair
+    pairs.splice(existingIdx, 1);
+  } else {
+    // Remove any existing pair involving either card, then add new
+    const filtered = pairs.filter(p => p[0] !== firstId && p[1] !== firstId && p[0] !== secondId && p[1] !== secondId);
+    filtered.push([firstId, secondId]);
+    pairs.splice(0, pairs.length, ...filtered);
+  }
+
+  // Save to prefs immediately so re-render picks it up
+  const updPrefs = { ...prefs, _pairs: pairs };
+  const order = _getDashCardOrder(updPrefs);
+  _renderDashCustomList(order, updPrefs);
+
+  // Store pending pairs for save
+  window._dashCustomPendingPairs = pairs;
+}
+window._dashTogglePair = _dashTogglePair;
+
 function _dashCustomSave() {
   // Start from existing prefs so we don't lose catChartType, dashForecastAccounts, etc.
   const existingPrefs = _dashGetPrefs();
@@ -1205,10 +1359,25 @@ function _dashCustomSave() {
     const btn = document.querySelector(`.dcc-toggle[data-card="${c.id}"]`);
     prefs[c.id] = btn ? btn.classList.contains('dcc-on') : !c.optional;
   });
-  // Save card order if user reordered
+  // Save card order if user reordered — always enforce accounts as first
   if (_dashCustomPendingOrder) {
-    prefs._order = _dashCustomPendingOrder;
+    const savedOrder = [..._dashCustomPendingOrder];
+    const accIdx = savedOrder.indexOf('accounts');
+    if (accIdx > 0) { savedOrder.splice(accIdx, 1); savedOrder.unshift('accounts'); }
+    prefs._order = savedOrder;
     _dashCustomPendingOrder = null;
+  } else {
+    // Even without a new reorder, sanitize any existing order in prefs
+    if (Array.isArray(prefs._order)) {
+      const accIdx = prefs._order.indexOf('accounts');
+      if (accIdx > 0) { prefs._order.splice(accIdx, 1); prefs._order.unshift('accounts'); }
+    }
+  }
+
+  // Save pairs configuration
+  if (window._dashCustomPendingPairs !== undefined) {
+    prefs._pairs = window._dashCustomPendingPairs;
+    window._dashCustomPendingPairs = undefined;
   }
   _dashSavePrefs(prefs);
   _dashApplyPrefs(prefs);
@@ -2403,10 +2572,7 @@ function _showForecastDrillModal(date, dayData) {
         ${navBtn(prevDateNav, 'Anterior', 'prev')}
         ${navBtn(nextDateNav, 'Próximo', 'next')}
       </div>
-      <button onclick="navigate('reports');setTimeout(()=>typeof setReportView==='function'&&setReportView('forecast'),300);closeModal('forecastDrillModal')"
-        style="font-size:.72rem;padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">
-        📊 Previsão completa
-      </button>
+      
     </div>`;
 
   // ── Criar / reusar modal ──────────────────────────────────────────────────
@@ -3017,9 +3183,92 @@ async function _loadDashBudgetsCard() {
         <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver orçamentos completos →</button>
       </div>`;
 
+    // ── Objetivos ativos ───────────────────────────────────────────────
+    let objHtml = '';
+    try {
+      const today = (typeof localDateStr==='function') ? localDateStr() : new Date().toISOString().slice(0,10);
+      const fid = typeof famId==='function' ? famId() : null;
+      let objs = [];
+      if (fid) {
+        // Use cached list if available (populated by objectives.js)
+        if (window._objList && window._objList.length) {
+          objs = window._objList;
+        } else {
+          const { data: objData } = await famQ(
+            sb.from('financial_objectives').select('id,name,icon,status,budget_limit,start_date,end_date')
+          ).order('start_date', { ascending: false });
+          objs = objData || [];
+          window._objList = objs;
+        }
+      }
+      const activeObjs = objs.filter(o =>
+        o.status !== 'closed' &&
+        (!o.end_date || o.end_date >= today) &&
+        today >= (o.start_date || '0000-00-00')
+      ).slice(0, 5);
+
+      if (activeObjs.length) {
+        // Fetch spending per objective
+        const objIds = activeObjs.map(o => o.id);
+        const { data: objTxs } = await famQ(
+          sb.from('transactions').select('objective_id,amount')
+        ).in('objective_id', objIds).lt('amount', 0);
+
+        const spentByObj = {};
+        (objTxs || []).forEach(t => {
+          spentByObj[t.objective_id] = (spentByObj[t.objective_id] || 0) + Math.abs(parseFloat(t.amount)||0);
+        });
+
+        const objRows = activeObjs.map(o => {
+          const spent = spentByObj[o.id] || 0;
+          const limit = o.budget_limit ? parseFloat(o.budget_limit) : 0;
+          const pct   = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+          const over  = limit > 0 && spent > limit;
+          const color = over ? '#dc2626' : 'var(--accent)';
+          const limitLine = limit > 0
+            ? `<div style="display:flex;justify-content:space-between;margin-top:2px">
+                <span style="font-size:.62rem;color:var(--muted)">${dashFmt(spent,'BRL')}</span>
+                <span style="font-size:.62rem;color:var(--muted)">${dashFmt(limit,'BRL')}</span>
+               </div>`
+            : `<div style="font-size:.62rem;color:var(--muted);margin-top:2px">${dashFmt(spent,'BRL')} gasto</div>`;
+          return `<div style="cursor:pointer;border-radius:7px;padding:4px 5px;margin:-4px -5px;transition:background .12s"
+              onclick="typeof openObjectiveDetail==='function'&&openObjectiveDetail('${o.id}')"
+              onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+              <span style="font-size:.85rem">${o.icon||'🎯'}</span>
+              <span style="font-size:.75rem;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.name||'—')}</span>
+              ${over?'<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px">estourado</span>':''}
+              ${limit>0?`<span style="font-size:.7rem;color:${pct>=90?'var(--red)':'var(--muted)'}">${pct.toFixed(0)}%</span>`:''}
+            </div>
+            ${limit>0?`<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${pct.toFixed(1)}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
+            </div>`:''}
+            ${limitLine}
+          </div>`;
+        }).join('');
+
+        objHtml = `<div class="dash-budgets-obj-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--accent)33">
+            <span style="font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)">🎯 Objetivos Ativos</span>
+            <span style="font-size:.68rem;color:var(--muted)">${activeObjs.length}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">${objRows}</div>
+          <div style="margin-top:10px;text-align:right">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('objectives')" style="font-size:.7rem">Ver objetivos →</button>
+          </div>
+        </div>`;
+      }
+    } catch(eObj) {
+      console.warn('[dash budgets] objectives:', eObj?.message);
+    }
+    // ── Wrap orçamentos + objetivos lado a lado ─────────────────────────
+    const finalHtml = objHtml
+      ? `<div class="dash-budgets-grid">${html}${objHtml}</div>`
+      : html;
+
     // Destroy previous chart BEFORE replacing innerHTML (avoids "canvas in use" error)
     if (_dashBudgetChart) { try { _dashBudgetChart.destroy(); } catch(_) {} _dashBudgetChart = null; }
-    body.innerHTML = html;
+    body.innerHTML = finalHtml;
 
     // Render donut chart
     const donutCanvas = document.getElementById('dashBudgetDonut');
@@ -3492,6 +3741,27 @@ window._loadDashDreamsCard = _loadDashDreamsCard;
 
 window._loadDashDreamsCard = _loadDashDreamsCard;
 
+// ── Open new-tx modal pre-filled with a specific account ────────────────
+function _dashFavAddTx(accountId) {
+  if (typeof openNewTxModal === 'function') {
+    openNewTxModal();
+  } else if (typeof newTransaction === 'function') {
+    newTransaction();
+  } else {
+    const btn = document.getElementById('newTxBtn') || document.querySelector('[onclick*="newTransaction"]');
+    if (btn) btn.click();
+  }
+  // Pre-fill the account after modal opens
+  requestAnimationFrame(() => setTimeout(() => {
+    const sel = document.getElementById('txAccountId');
+    if (sel && accountId) {
+      sel.value = accountId;
+      sel.dispatchEvent(new Event('change'));
+    }
+  }, 120));
+}
+window._dashFavAddTx = _dashFavAddTx;
+
 // ── Card: Top Beneficiários e Fontes Pagadoras ────────────────────────────
 // Estado do switch: 'year' (padrão) | 'alltime'
 let _dashPayeePeriod = 'year';
@@ -3557,7 +3827,7 @@ async function _loadDashTopPayeesCard(period) {
     // ── Linha de payee ────────────────────────────────────────────
     const _payeeRow = (p, i, maxVal, isInc) => {
       const bar    = maxVal > 0 ? Math.min(p.total / maxVal * 100, 100).toFixed(1) : 0;
-      const color  = isInc ? '#16a34a' : 'var(--accent)';
+      const color  = isInc ? '#16a34a' : '#dc2626';
       const bucket = isInc ? 'inc' : 'exp';
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;
           cursor:pointer;transition:background .12s;border-radius:8px;margin:0 -4px;padding-left:4px"
@@ -3568,7 +3838,7 @@ async function _loadDashTopPayeesCard(period) {
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-bottom:2px">
             <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
-            <span style="font-size:.74rem;font-weight:700;color:${isInc?'#16a34a':'var(--text)'};white-space:nowrap;flex-shrink:0">${isInc?'+':'−'}${dashFmt(p.total,'BRL')}</span>
+            <span style="font-size:.74rem;font-weight:700;color:${isInc?'#16a34a':'#dc2626'};white-space:nowrap;flex-shrink:0">${isInc?'+':'−'}${dashFmt(p.total,'BRL')}</span>
           </div>
           <div style="display:flex;align-items:center;gap:5px">
             <div style="flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden">
@@ -3585,7 +3855,7 @@ async function _loadDashTopPayeesCard(period) {
     const _col = (title, icon, items, isInc) => {
       const maxVal = items[0]?.total || 1;
       const totalAmt = items.reduce((s,p)=>s+p.total, 0);
-      const colorH = isInc ? '#16a34a' : 'var(--accent)';
+      const colorH = isInc ? '#16a34a' : '#dc2626';
       const rows   = items.length
         ? items.map((p,i) => _payeeRow(p, i, maxVal, isInc)).join('')
         : `<div style="text-align:center;padding:20px 0;color:var(--muted);font-size:.78rem">Nenhum registro</div>`;
@@ -3657,8 +3927,15 @@ async function _loadDashTopPayeesCard(period) {
         </div>
       </div>`;
 
+    const verRelatorioLink = `<div style="padding:6px 14px 10px;text-align:right">
+      <button onclick="navigate('reports');setTimeout(()=>typeof setReportView==='function'&&setReportView('beneficiarios'),300)"
+        style="background:none;border:none;cursor:pointer;font-size:.74rem;font-weight:600;color:var(--accent);font-family:inherit;padding:0;transition:opacity .15s"
+        onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
+        Ver relatório completo →
+      </button>
+    </div>`;
     body.innerHTML = kpi + switchHtml +
-      `<div style="padding:12px 14px 10px">${gridLayout}</div>`;
+      `<div style="padding:12px 14px 10px">${gridLayout}</div>` + verRelatorioLink;
 
   } catch(e) {
     body.innerHTML = `<div class="dcard-loading">⚠️ ${esc(e.message)}</div>`;

@@ -777,17 +777,50 @@ function renderReportTxTable(txs) {
   const countEl=document.getElementById('reportTxCount');
   if(countEl) countEl.textContent=txs.length+' registros';
   const totEl=document.getElementById('reportTxTotal');
-  if(totEl){totEl.textContent=fmt(total);totEl.className=total>=0?'amount-pos':'amount-neg';}
-  document.getElementById('reportTxBody').innerHTML=txs.length
-    ? txs.map(t=>`<tr class="rpt-tx-clickable" onclick="typeof openTxDetail==='function'&&openTxDetail('${t.id}')" style="cursor:pointer" title="Clique para ver detalhes">
-        <td class="rpt-td-date">${fmtDate(t.date)}</td>
-        <td class="rpt-td-desc"><div class="rpt-desc-cell">${esc(t.description||'—')}</div></td>
-        <td class="rpt-td-acct">${esc(t.accounts?.name||'—')}</td>
-        <td class="rpt-td-cat">${t.categories?`<span class="badge" style="background:${t.categories.color}18;color:${t.categories.color};border:1px solid ${t.categories.color}30;font-size:.68rem;white-space:nowrap">${esc(t.categories.name)}</span>`:'—'}</td>
-        <td class="rpt-td-pay">${esc(t.payees?.name||'—')}</td>
-        <td class="rpt-td-amt ${t.amount>=0?'amount-pos':'amount-neg'}">${fmt(t.amount)}</td>
-      </tr>`).join('')
-    : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">${t('tx.empty')}</td></tr>`;
+  if(totEl){totEl.textContent=fmt(total);totEl.className='rpt-tx-total-num '+(total>=0?'amount-pos':'amount-neg');}
+
+  const body=document.getElementById('reportTxBody');
+  if(!txs.length){
+    body.innerHTML=`<div class="rpt-tx-empty">${t('tx.empty')}</div>`;
+    return;
+  }
+
+  // Group by date for cleaner visual structure
+  const groups={};
+  txs.forEach(tx=>{
+    const d=tx.date||'';
+    if(!groups[d]) groups[d]=[];
+    groups[d].push(tx);
+  });
+
+  body.innerHTML=Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(date=>{
+    const dayTotal=groups[date].reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
+    const dtParts=date?date.split('-'):[];
+    const dtLabel=dtParts.length===3?`${dtParts[2]}/${dtParts[1]}/${dtParts[0]}`:date;
+    const dayRows=groups[date].map(t=>{
+      const isPos=parseFloat(t.amount)>=0;
+      const catColor=t.categories?.color||'var(--muted)';
+      return `<div class="rpt-tx-row" onclick="typeof editTransaction==='function'&&editTransaction('${t.id}')" title="Clique para editar">
+        <div class="rpt-tx-row-cat-dot" style="background:${catColor}"></div>
+        <div class="rpt-tx-row-main">
+          <div class="rpt-tx-row-desc">${esc(t.description||'—')}</div>
+          <div class="rpt-tx-row-meta">
+            ${t.accounts?`<span class="rpt-tx-meta-acct">${esc(t.accounts.name)}</span>`:''}
+            ${t.categories?`<span class="rpt-tx-meta-cat" style="color:${catColor}">${esc(t.categories.name)}</span>`:''}
+            ${t.payees?`<span class="rpt-tx-meta-pay">${esc(t.payees.name)}</span>`:''}
+          </div>
+        </div>
+        <div class="rpt-tx-row-amt ${isPos?'amount-pos':'amount-neg'}">${fmt(t.amount)}</div>
+      </div>`;
+    }).join('');
+    return `<div class="rpt-tx-group">
+      <div class="rpt-tx-group-hdr">
+        <span class="rpt-tx-group-date">${dtLabel}</span>
+        <span class="rpt-tx-group-total ${dayTotal>=0?'amount-pos':'amount-neg'}">${fmt(dayTotal)}</span>
+      </div>
+      ${dayRows}
+    </div>`;
+  }).join('');
 }
 
 /* ═══ VIEW TOGGLE ═══ */

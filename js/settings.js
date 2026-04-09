@@ -3038,54 +3038,54 @@ function _toggle2FAPanel(enabled) {
 // ── Carregar estado 2FA atual no modal de perfil ──
 function _load2FAIntoProfile() {
   if (!currentUser?.email) return;
-
-  const _applyToDOM = function(enabled, channel, tgChatId, email) {
-    const chk = document.getElementById('myProfile2faEnabled');
-    if (chk) chk.checked = enabled;
-    _toggle2FAPanel(enabled);
-    if (enabled) {
-      const statusEl = document.getElementById('profile2faStatus');
-      if (statusEl) {
-        statusEl.textContent = '✓ 2FA já ativo. Clique em "Testar 2FA" para revalidar o canal.';
-        statusEl.style.color = '#16a34a';
-        statusEl.style.display = '';
-      }
-    }
-    const chanEl = document.getElementById(channel === 'telegram' ? 'twoFaChanTelegram' : 'twoFaChanEmail');
-    if (chanEl) chanEl.checked = true;
-    const emailHint = document.getElementById('twoFaEmailHint');
-    if (emailHint && email) emailHint.textContent = `Código enviado para ${email}`;
-    const hasTg  = !!tgChatId;
-    const tgHint = document.getElementById('twoFaTgHint');
-    if (tgHint) tgHint.textContent = hasTg ? 'Chat ID configurado ✓' : 'Configure o Chat ID em Notificações primeiro';
-    const tgLabel = document.getElementById('twoFaChanTgLabel');
-    const tgRadio = document.getElementById('twoFaChanTelegram');
-    if (tgLabel) tgLabel.style.opacity = hasTg ? '1' : '.45';
-    if (tgRadio) tgRadio.disabled = !hasTg;
-  };
-
-  // Aplicar imediatamente do currentUser (evita flash no cálculo de twoFaChanged)
-  if (currentUser.two_fa_enabled !== undefined) {
-    _applyToDOM(
-      !!currentUser.two_fa_enabled,
-      currentUser.two_fa_channel || 'email',
-      currentUser.telegram_chat_id || null,
-      currentUser.email
-    );
-  }
-
-  // Confirmar com DB (garante dados frescos)
+  // Always query by email — currentUser.id is auth.uid, NOT app_users.id
   sb.from('app_users')
     .select('two_fa_enabled, two_fa_channel, telegram_chat_id, email')
     .eq('email', currentUser.email)
     .maybeSingle()
     .then(({ data }) => {
       if (!data) return;
-      // Sincronizar currentUser para que saveMyProfile calcule twoFaChanged corretamente
-      currentUser.two_fa_enabled = !!data.two_fa_enabled;
-      currentUser.two_fa_channel = data.two_fa_channel || 'email';
-      if (data.telegram_chat_id) currentUser.telegram_chat_id = data.telegram_chat_id;
-      _applyToDOM(!!data.two_fa_enabled, data.two_fa_channel || 'email', data.telegram_chat_id, data.email);
+      const enabled = !!data.two_fa_enabled;
+      const channel = data.two_fa_channel || 'email';
+      const hasTg   = !!data.telegram_chat_id;
+
+      const chk = document.getElementById('myProfile2faEnabled');
+      if (chk) chk.checked = enabled;
+      _toggle2FAPanel(enabled);
+      // If already enabled, hide the test section (already verified)
+      // If just enabling now (panel toggled manually), test section stays visible
+      const testSection = document.getElementById('profile2faSection');
+      if (testSection && enabled) {
+        // Show hint about re-testing being optional
+        const statusEl = document.getElementById('profile2faStatus');
+        if (statusEl) {
+          statusEl.textContent = '✓ 2FA já ativo. Clique em "Testar 2FA" para revalidar o canal.';
+          statusEl.style.color = '#16a34a';
+          statusEl.style.display = '';
+        }
+      }
+
+      const chanEl = document.getElementById(channel === 'telegram' ? 'twoFaChanTelegram' : 'twoFaChanEmail');
+      if (chanEl) chanEl.checked = true;
+
+      // Hint email
+      const emailHint = document.getElementById('twoFaEmailHint');
+      if (emailHint) emailHint.textContent = `Código enviado para ${data.email}`;
+
+      // Hint telegram
+      const tgHint = document.getElementById('twoFaTgHint');
+      if (tgHint) {
+        tgHint.textContent = hasTg
+          ? 'Chat ID configurado ✓'
+          : 'Configure o Chat ID em Notificações primeiro';
+      }
+      // Desabilitar opção telegram se não tem chat_id
+      const tgLabel = document.getElementById('twoFaChanTgLabel');
+      if (tgLabel) {
+        tgLabel.style.opacity = hasTg ? '1' : '.45';
+        const tgRadio = document.getElementById('twoFaChanTelegram');
+        if (tgRadio) tgRadio.disabled = !hasTg;
+      }
     })
     .catch(() => {});
 }

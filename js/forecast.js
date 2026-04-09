@@ -277,7 +277,7 @@ async function loadForecast() {
               currency: sc.currency || sc.accounts?.currency || 'BRL',
               account_id: sc.account_id,
               categories: sc.categories||null, payees: sc.payees||null,
-              isScheduled: true,
+              isScheduled: true, sc_id: sc.id, scheduledId: sc.id,
             });
           }
         }
@@ -289,7 +289,8 @@ async function loadForecast() {
           scheduledItems.push({
             date, description: sc.description||'', amount: creditAmt,
             currency: null, account_id: sc.transfer_to_account_id,
-            categories: sc.categories||null, payees: null, isScheduled: true,
+            categories: sc.categories||null, payees: null,
+            isScheduled: true, sc_id: sc.id, scheduledId: sc.id,
           });
         }
       });
@@ -720,8 +721,10 @@ function renderForecastTables(allItems, accounts) {
       const amt = parseFloat(t.amount)||0;
       const clickAction = (!t.isScheduled && t.id)
         ? `if(typeof editTransaction==='function')editTransaction('${t.id}')`
-        : `if(typeof _forecastDrillRow==='function')_forecastDrillRow('${t.date}','${drillLabel}')`;
-      const rowTitle = t.isScheduled ? 'Ver programados desta data' : 'Editar transação';
+        : (t.sc_id || t.scheduledId)
+          ? `if(typeof openScheduledModal==='function')openScheduledModal('${t.sc_id || t.scheduledId}')`
+          : `if(typeof _forecastDrillRow==='function')_forecastDrillRow('${t.date}','${drillLabel}')`;
+      const rowTitle = t.isScheduled ? (t.sc_id ? 'Editar transação programada' : 'Ver programados desta data') : 'Editar transação';
 
       const runBalEmphasis = isSignChange ? ' forecast-run-bal--emphasis' : '';
       return `${crossDivider}${grpHdr}<tr class="${rowCls} forecast-tx-row" style="cursor:pointer" onclick="${clickAction}" title="${rowTitle}">

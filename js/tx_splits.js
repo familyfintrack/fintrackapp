@@ -14,19 +14,54 @@ const _txSplit = {
 let _txSplitRowSeq = 0;
 
 // ── Abertura da aba ───────────────────────────────────────────────────────
-function txSplitTabOpened(ctx) {
-  if (ctx === 'sc') {
-    const scAmt = Math.abs(getAmtField('scAmount') || 0);
-    if (typeof _scSplitRenderCat === 'function') _scSplitRenderCat(scAmt);
-    if (typeof _scSplitRenderMem === 'function') _scSplitRenderMem(scAmt);
-    if (typeof scSplitShowTab   === 'function') scSplitShowTab((_scSplit||{}).activeTab||'cat');
-    return;
-  }
+function txSplitTabOpened() {
   const txAmt = Math.abs(getAmtField('txAmount') || 0);
   _txSplitRenderCat(txAmt);
   _txSplitRenderMem(txAmt);
   txSplitShowTab(_txSplit.activeTab);
 }
+
+// ── Open split modal from tx modal ────────────────────────────────────────
+function _openSplitModal() {
+  const txAmt = Math.abs(getAmtField('txAmount') || 0);
+  // Sync data from hidden container to modal containers
+  // Re-render directly into modal pane IDs
+  _txSplit.activeTab = 'cat';
+  _txSplitRenderCatModal(txAmt);
+  _txSplitRenderMemModal(txAmt);
+  txSplitShowModalTab('cat');
+  openModal('txSplitModal');
+}
+window._openSplitModal = _openSplitModal;
+
+function txSplitShowModalTab(tab) {
+  _txSplit.activeTab = tab;
+  const cat = document.getElementById('txSplitModalCatPane');
+  const mem = document.getElementById('txSplitModalMemPane');
+  const btnCat = document.getElementById('txSplitModalTabCat');
+  const btnMem = document.getElementById('txSplitModalTabMem');
+  if (cat) cat.style.display = tab === 'cat' ? '' : 'none';
+  if (mem) mem.style.display = tab === 'mem' ? '' : 'none';
+  if (btnCat) btnCat.classList.toggle('active', tab === 'cat');
+  if (btnMem) btnMem.classList.toggle('active', tab === 'mem');
+}
+window.txSplitShowModalTab = txSplitShowModalTab;
+
+// Render category splits directly into modal pane
+function _txSplitRenderCatModal(txAmt) {
+  const container = document.getElementById('txCatSplitRowsM');
+  if (!container) return;
+  container.innerHTML = _txSplit.catRows.map(row => _txSplitCatRowHtml(row, txAmt)).join('');
+  _txSplitUpdateCatTotals(txAmt, 'M');
+}
+// Render member splits directly into modal pane  
+function _txSplitRenderMemModal(txAmt) {
+  const container = document.getElementById('txMemSplitRowsM');
+  if (!container) return;
+  container.innerHTML = _txSplit.memRows.map(row => _txSplitMemRowHtml(row, txAmt)).join('');
+  _txSplitUpdateMemTotals(txAmt, 'M');
+}
+
 window.txSplitTabOpened = txSplitTabOpened;
 
 function txSplitShowTab(tab) {
@@ -65,8 +100,9 @@ function txCatSplitRemoveRow(id) {
 window.txCatSplitRemoveRow = txCatSplitRemoveRow;
 
 function txCatSplitPickCategory(rowId) {
-  window._txSplitCatMode = rowId;
+  // Abre o cat picker do modal principal — captura a escolha via callback
   _txSplitPendingCatRowId = rowId;
+  window._txSplitCatMode = rowId;
   toggleCatPicker('tx');
 }
 window.txCatSplitPickCategory = txCatSplitPickCategory;
@@ -149,7 +185,8 @@ function _txSplitRenderCat(txAmt) {
   _txSplitUpdateCatTotals(txAmt);
 }
 
-function _txSplitUpdateCatTotals(txAmt) {
+function _txSplitUpdateCatTotals(txAmt, suffix) {
+  const sfx = suffix || '';
   if (!txAmt) txAmt = Math.abs(getAmtField('txAmount') || 0);
   const totalEl  = document.getElementById('txCatSplitTotal');
   const totalVal = document.getElementById('txCatSplitTotalVal');
@@ -511,6 +548,20 @@ function txSplitBadgeHtml(tx) {
   return `<span class="tx-split-indicator" title="Transação dividida">✂️ ${parts.join(' · ')}</span>`;
 }
 window.txSplitBadgeHtml = txSplitBadgeHtml;
+
+
+function _openSplitModal() {
+  const txAmt = Math.abs(getAmtField('txAmount') || 0);
+  // Sync data from hidden container to modal containers
+  // Re-render directly into modal pane IDs
+  _txSplit.activeTab = 'cat';
+  _txSplitRenderCatModal(txAmt);
+  _txSplitRenderMemModal(txAmt);
+  txSplitShowModalTab('cat');
+  openModal('txSplitModal');
+}
+
+window._openSplitModal = _openSplitModal;
 
 // ════════════════════════════════════════════════════════════════════════════
 //  SC SPLITS — Divisão por categoria e membro para Transações Programadas

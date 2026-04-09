@@ -509,7 +509,7 @@ function _txAiApplyResult(r) {
   }
   if (r.date) {
     const dateEl = document.getElementById('txDate');
-    if (dateEl) dateEl.value = r.date;
+    if (dateEl) dateEl.value = (r.date||'').slice(0,10);
   }
   if (r.memo) {
     const memoEl = document.getElementById('txMemo');

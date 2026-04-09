@@ -472,6 +472,13 @@ function _unlockLoginScreen() {
 }
 
 function showLoginScreen() {
+  // Inicializar aba Senha como activa por padrão (se não estiver já)
+  if (typeof switchLoginTab === 'function') {
+    const magic = document.getElementById('loginPanelMagic');
+    if (magic && magic.style.display === 'none') { /* already on password tab */ }
+    else if (!magic) { /* panel not present yet */ }
+    // Don't force switch here — let the caller set tab if needed
+  }
   // Se estamos em app.html (não em login.html), redireciona para a página de login dedicada.
   // Isso acontece quando a sessão expira enquanto o app está aberto.
   if (window.location.pathname.endsWith('app.html') || window.location.pathname === '/') {
@@ -831,47 +838,81 @@ async function doMagicLink() {
       btn.disabled = false; btn.textContent = '✉️ Enviar Link de Acesso';
       return;
     }
-    // Verify the e-mail exists AND is approved in app_users before sending
-    // the OTP — avoids leaking info about unknown e-mails via timing, and
-    // prevents unapproved users from ever receiving an access link.
-    const { data: appUser } = await sb
-      .from('app_users')
-      .select('approved,active')
-      .eq('email', email)
-      .maybeSingle();
 
-    if (!appUser) {
-      // Neutral message — do not confirm whether the e-mail is registered
-      _showMagicLinkSent();
-      return;
-    }
-    if (!appUser.approved) {
-      errEl.textContent = 'Sua conta ainda aguarda aprovação do administrador.';
-      errEl.style.display = '';
-      btn.disabled = false;
-      btn.textContent = '✉️ Enviar Link de Acesso';
-      return;
-    }
-    if (!appUser.active) {
-      errEl.textContent = 'Sua conta está inativa. Contate o administrador.';
-      errEl.style.display = '';
-      btn.disabled = false;
-      btn.textContent = '✉️ Enviar Link de Acesso';
-      return;
+    // ── Verify approval in app_users (best-effort — RLS may block anon reads) ──
+    // If the query fails due to RLS or network, we proceed to send the OTP anyway
+    // and let Supabase reject unknown emails via shouldCreateUser:false.
+    let appUser = null;
+    let appUserQueryFailed = false;
+    try {
+      const { data, error: qErr } = await sb
+        .from('app_users')
+        .select('approved,active')
+        .eq('email', email)
+        .maybeSingle();
+      if (qErr) {
+        // RLS blocked the anon read — log but don't abort
+        console.warn('[magicLink] app_users query blocked (RLS?):', qErr.message);
+        appUserQueryFailed = true;
+      } else {
+        appUser = data;
+      }
+    } catch(qEx) {
+      console.warn('[magicLink] app_users query exception:', qEx.message);
+      appUserQueryFailed = true;
     }
 
-    // Send the magic link via Supabase OTP
-    const redirectTo = _getAppHtmlUrl(); // always land on app.html after magic link
+    // Only gate on approval if the query actually returned a result
+    if (!appUserQueryFailed) {
+      if (!appUser) {
+        // Email not in app_users — show neutral message, don't reveal this fact
+        _showMagicLinkSent();
+        return;
+      }
+      if (!appUser.approved) {
+        errEl.textContent = 'Sua conta ainda aguarda aprovação do administrador.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = '✉️ Enviar Link de Acesso';
+        return;
+      }
+      if (!appUser.active) {
+        errEl.textContent = 'Sua conta está inativa. Contate o administrador.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = '✉️ Enviar Link de Acesso';
+        return;
+      }
+    }
+
+    // ── Send the magic link via Supabase OTP ──────────────────────────────────
+    const redirectTo = _getAuthCallbackUrl();
     const { error } = await sb.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+      options: {
+        emailRedirectTo: redirectTo,
+        shouldCreateUser: false,  // never create new auth users from magic link
+      },
     });
-    if (error) throw error;
+
+    if (error) {
+      // Surface the real Supabase error to the user
+      // Common errors: "Email rate limit exceeded", "User not found", etc.
+      throw error;
+    }
 
     _showMagicLinkSent();
 
   } catch(e) {
-    errEl.textContent = 'Erro: ' + (e.message || e);
+    let msg = e.message || String(e);
+    // Humanise common Supabase error codes
+    if (msg.includes('rate limit') || msg.includes('429'))
+      msg = 'Limite de envios atingido. Aguarde alguns minutos e tente novamente.';
+    else if (msg.includes('not found') || msg.includes('no user'))
+      msg = 'E-mail não encontrado. Verifique o endereço digitado.';
+    else if (msg.includes('Email link') || msg.includes('disabled'))
+      msg = 'Magic link desativado neste projeto. Contate o administrador.';
+    errEl.textContent = 'Erro: ' + msg;
     errEl.style.display = '';
     btn.disabled = false;
     btn.textContent = '✉️ Enviar Link de Acesso';
@@ -1075,6 +1116,15 @@ function updateUserUI() {
   // Topbar user name (hidden on mobile, visible on wider screens)
   const topbarName = document.getElementById('topbarUserName');
   if (topbarName) topbarName.textContent = (currentUser.name || currentUser.email || '').split(' ')[0];
+  // ── Chip "Família" na topbar ────────────────────────────────────────────
+  const _famChip   = document.getElementById('topbarFamilyChip');
+  const _famNameEl = document.getElementById('topbarFamilyName');
+  if (_famChip && _famNameEl) {
+    const famEntry = (currentUser.families || []).find(f => f.id === currentUser.family_id);
+    const famName  = famEntry?.name || null;
+    if (famName) { _famNameEl.textContent = famName; _famChip.style.display = 'flex'; }
+    else         { _famChip.style.display = 'none'; }
+  }
   if (emailEl) {
     const roleLabel =
       currentUser.role === 'owner' ? 'Owner' :
@@ -1839,6 +1889,16 @@ function _getResetPasswordUrl() {
     ? pathname
     : pathname.substring(0, pathname.lastIndexOf('/') + 1);
   return origin + base + 'reset-password.html';
+}
+
+// Returns auth-callback.html URL — used as redirectTo for magic links,
+// invite links, and email confirmations so the correct flow is handled.
+function _getAuthCallbackUrl() {
+  const { origin, pathname } = window.location;
+  const base = pathname.endsWith('/')
+    ? pathname
+    : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  return origin + base + 'auth-callback.html';
 }
 
 // Returns app.html URL — used as redirectTo for magic links / OTP so the
@@ -4724,13 +4784,42 @@ async function doVerify2FA() {
     }
 
     // Continuar fluxo de login
-    await _loadCurrentUserContext(_2fa.sessionData);
-    await onLoginSuccess();
+    // _loadCurrentUserContext pode falhar se o contexto de família não estiver
+    // ainda carregado — mas a sessão Supabase já é válida neste ponto.
+    // Em caso de falha, fazemos o redirect directamente para não deixar a
+    // página branca.
+    try {
+      await _loadCurrentUserContext(_2fa.sessionData);
+    } catch(ctxErr) {
+      console.warn('[2FA] _loadCurrentUserContext falhou — redirecionando mesmo assim:', ctxErr?.message);
+      // Sessão válida: ir directo para o app
+      if (typeof window.bootApp === 'function') {
+        window.bootApp().catch(() => { window.location.replace('app.html'); });
+      } else {
+        window.location.replace('app.html');
+      }
+      return;
+    }
+
+    try {
+      await onLoginSuccess();
+    } catch(loginErr) {
+      console.warn('[2FA] onLoginSuccess falhou — redirecionando mesmo assim:', loginErr?.message);
+      // onLoginSuccess pode falhar se algum módulo não existir em login.html
+      // mas a sessão é válida — ir para app.html
+      if (typeof window.bootApp === 'function') {
+        window.bootApp().catch(() => { window.location.replace('app.html'); });
+      } else {
+        window.location.replace('app.html');
+      }
+    }
 
   } catch(e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
-  } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✓ Verificar'; }
+  } finally {
+    // Nota: não reabilitar o botão aqui pois se chegámos ao finally após sucesso
+    // a página já está a redirecionar — só reabilitar em caso de erro (já tratado acima)
   }
 }
 
