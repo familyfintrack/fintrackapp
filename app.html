@@ -1290,7 +1290,7 @@
       </div>
 
       <!-- ── Barra de filtros ── -->
-      <div class="rpt-filter-wrap mb-4">
+      <div class="rpt-filter-wrap mb-4" id="rptFilterWrap">
         <button class="rpt-filter-toggle" onclick="const b=document.getElementById('reportFilterBar');const open=b.style.display==='none';b.style.display=open?'':'none';this.querySelector('.rpt-ftoggle-arr').style.transform=open?'rotate(180deg)':''">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
           Filtros
@@ -1314,11 +1314,11 @@
         </div>
         <div id="rptFromWrap" style="display:none">
           <label>De</label>
-          <input lang="pt-BR" type="date" id="rptFrom" onchange="loadCurrentReport()">
+          <input type="date" id="rptFrom" onchange="loadCurrentReport()">
         </div>
         <div id="rptToWrap" style="display:none">
           <label>Até</label>
-          <input lang="pt-BR" type="date" id="rptTo" onchange="loadCurrentReport()">
+          <input type="date" id="rptTo" onchange="loadCurrentReport()">
         </div>
         <div>
           <label>Conta</label>
@@ -1465,11 +1465,11 @@
           <div class="fc-filter-dates">
             <div class="fc-filter-field">
               <label class="fc-filter-label">De</label>
-              <input lang="pt-BR" type="date" id="forecastFrom" class="fc-filter-input" onchange="loadForecast()">
+              <input type="date" id="forecastFrom" class="fc-filter-input" onchange="loadForecast()">
             </div>
             <div class="fc-filter-field">
               <label class="fc-filter-label">Até</label>
-              <input lang="pt-BR" type="date" id="forecastTo" class="fc-filter-input" onchange="loadForecast()">
+              <input type="date" id="forecastTo" class="fc-filter-input" onchange="loadForecast()">
             </div>
           </div>
           <div class="fc-filter-row2">
@@ -1520,11 +1520,11 @@
             </div>
             <div id="rbtbFromWrap" style="display:none;margin:0" class="form-group">
               <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">De</label>
-              <input lang="pt-BR" type="date" id="rbtbFrom" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;box-sizing:border-box">
+              <input type="date" id="rbtbFrom" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;box-sizing:border-box">
             </div>
             <div id="rbtbToWrap" style="display:none;margin:0" class="form-group">
               <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Até</label>
-              <input lang="pt-BR" type="date" id="rbtbTo" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;box-sizing:border-box">
+              <input type="date" id="rbtbTo" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;box-sizing:border-box">
             </div>
 
             <!-- Contas (multi) -->
@@ -3768,9 +3768,9 @@
             <div class="ai2-filter-group">
               <label class="ai2-filter-label">Período</label>
               <div class="ai2-date-range">
-                <input lang="pt-BR" type="date" id="aiDateFrom" class="ai2-date-input" title="Data inicial">
+                <input type="date" id="aiDateFrom" class="ai2-date-input" title="Data inicial">
                 <span class="ai2-date-sep">→</span>
-                <input lang="pt-BR" type="date" id="aiDateTo" class="ai2-date-input" title="Data final">
+                <input type="date" id="aiDateTo" class="ai2-date-input" title="Data final">
               </div>
             </div>
             <div class="ai2-filter-group">
@@ -5283,7 +5283,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div id="telDelPeriodOpts" style="display:none">
               <label style="font-size:.75rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Excluir registros anteriores a</label>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input lang="pt-BR" type="date" id="telDelBeforeDate" style="flex:1;min-width:130px;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;font-family:var(--font-sans);background:var(--surface)">
+                <input type="date" id="telDelBeforeDate" style="flex:1;min-width:130px;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;font-family:var(--font-sans);background:var(--surface)">
                 <button class="btn btn-ghost btn-sm" onclick="_telDelSetQuick(30)">-30d</button>
                 <button class="btn btn-ghost btn-sm" onclick="_telDelSetQuick(90)">-90d</button>
                 <button class="btn btn-ghost btn-sm" onclick="_telDelSetQuick(180)">-180d</button>
@@ -6031,7 +6031,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
           <div class="form-group"><label>Conta Origem <span class="req-star">*</span></label><select id="scAccountId" onchange="onScAccountChange()"></select></div>
           <div class="form-group" id="scTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="scTransferToAccountId" onchange="onScTransferAccountChange()"></select></div>
-          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input lang="pt-BR" type="date" id="scStartDatePrincipal" oninput="_scSyncDate(this.value)" onchange="_scSyncDate(this.value)"></div>
+          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input type="date" id="scStartDatePrincipal" oninput="_scSyncDate(this.value)" onchange="_scSyncDate(this.value)"></div>
           <div class="form-group"><label>Status</label><select id="scStatus"><option value="active">Ativo</option><option value="paused">Pausado</option></select></div>
           <div class="form-group" id="scPayeeGroup" style="position:relative">
             <label>Beneficiário / Fonte <span class="req-star">*</span></label>
@@ -6129,7 +6129,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <!-- ── TAB/STEP 2: Recorrência ────────────────────────────── -->
       <div class="tx-ctx-pane" id="scCtxRecorrencia" style="display:none;padding:16px">
         <div class="form-grid">
-          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input lang="pt-BR" type="date" id="scStartDate" oninput="_scSyncDate(this.value)" onchange="_scSyncDate(this.value)"></div>
+          <div class="form-group"><label>Primeira data <span class="req-star">*</span></label><input type="date" id="scStartDate" oninput="_scSyncDate(this.value)" onchange="_scSyncDate(this.value)"></div>
           <div class="form-group"></div>
 
           <div class="form-group full">
@@ -6172,7 +6172,7 @@ Se você não solicitou isso, ignore este e-mail.`,
               <span style="font-size:.78rem;color:var(--muted);margin-left:8px">repetições</span>
             </div>
             <div id="scEndDateGroup" style="display:none;margin-top:8px">
-              <input lang="pt-BR" type="date" id="scEndDate">
+              <input type="date" id="scEndDate">
             </div>
           </div>
 
@@ -6336,8 +6336,8 @@ Se você não solicitou isso, ignore este e-mail.`,
     <div class="modal-body">
       <p id="registerOccDesc" style="margin-bottom:14px;color:var(--muted);font-size:.875rem"></p>
       <div class="form-grid">
-        <div class="form-group"><label>Data real *</label><input lang="pt-BR" type="date" id="occDate"></div>
-        <div class="form-group"><label>Valor real *</label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="occAmountSignBtn" onclick="toggleAmtSign('occAmount')" aria-label="Alternar sinal">+</button><input type="text" id="occAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('occAmount')" onkeydown="_amtFieldKeydown('occAmount', event)" onblur="_amtFieldBlur('occAmount')" onfocus="_amtFieldFocus('occAmount')"></div></div>
+        <div class="form-group"><label>Data real *</label><input type="date" id="occDate"></div>
+        <div class="form-group"><label>Valor real * <span id="occAmountCurrencyLabel" style="display:none;font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:20px;background:rgba(30,91,168,.1);color:#1e5ba8;border:1px solid rgba(30,91,168,.2);margin-left:4px"></span></label><div class="amt-wrap"><button type="button" class="amt-sign-btn" id="occAmountSignBtn" onclick="toggleAmtSign('occAmount')" aria-label="Alternar sinal">+</button><input type="text" id="occAmount" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off" oninput="_amtFieldInput('occAmount')" onkeydown="_amtFieldKeydown('occAmount', event)" onblur="_amtFieldBlur('occAmount')" onfocus="_amtFieldFocus('occAmount')"></div></div>
         <div class="form-group full"><label>Memo</label><input type="text" id="occMemo" placeholder="Observação desta ocorrência"></div>
       </div>
       <input type="hidden" id="occScId">
@@ -6569,7 +6569,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
 
         <div class="form-grid" style="margin-top:14px">
-          <div class="form-group"><label>Data <span class="req-star">*</span></label><input lang="pt-BR" type="date" id="txDate"></div>
+          <div class="form-group"><label>Data <span class="req-star">*</span></label><input type="date" id="txDate"></div>
           <div class="form-group"><label>Status</label><select id="txStatus"><option value="confirmed">Confirmada</option><option value="pending">Pendente</option></select></div>
           <div class="form-group full">
             <label>Descrição <span class="opt-label">opcional</span> <span style="font-size:.68rem;color:var(--muted);font-weight:400">— gerada automaticamente se vazia</span></label>
@@ -6852,7 +6852,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       </div>
       <div class="form-group">
         <label>Data do ajuste</label>
-        <input lang="pt-BR" type="date" id="consolidateDate">
+        <input type="date" id="consolidateDate">
       </div>
       <div class="form-group">
         <label>Descrição</label>
@@ -8684,7 +8684,7 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
             <div class="form-group">
               <label>Data da Compra</label>
-              <input lang="pt-BR" type="date" id="pifDate">
+              <input type="date" id="pifDate">
             </div>
           </div>
         </div>
@@ -8777,7 +8777,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
         <div class="form-group" id="ctsDateGroup">
           <label id="ctsDateLabel">Data de início *</label>
-          <input lang="pt-BR" type="date" id="ctsDate">
+          <input type="date" id="ctsDate">
         </div>
         <div class="form-group full">
           <label>Frequência</label>
@@ -8837,7 +8837,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
           <div class="form-group" style="grid-column:1">
             <label>Data da Compra *</label>
-            <input lang="pt-BR" type="date" id="rpmDate">
+            <input type="date" id="rpmDate">
           </div>
         </div>
         <!-- Items toolbar -->
@@ -8962,7 +8962,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           </div>
           <div class="form-group full">
             <label>Data da Compra *</label>
-            <input lang="pt-BR" type="date" id="aprDate">
+            <input type="date" id="aprDate">
           </div>
         </div>
         <div id="aprError" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--r-sm);font-size:.82rem;color:#991b1b"></div>
@@ -11072,11 +11072,11 @@ body.dark .agent-welcome-card { background: var(--surface2); }
 
         <div class="form-group">
           <label>Data inicial <span class="req-star">*</span></label>
-          <input lang="pt-BR" type="date" id="objStartDate">
+          <input type="date" id="objStartDate">
         </div>
         <div class="form-group">
           <label>Data final <span class="opt-label">opcional</span></label>
-          <input lang="pt-BR" type="date" id="objEndDate">
+          <input type="date" id="objEndDate">
         </div>
 
         <div class="form-group">
