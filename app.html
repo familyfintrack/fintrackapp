@@ -3428,6 +3428,62 @@
           </div>
         </div>
 
+
+          <!-- ══ DADOS DEMO — importar massa de dados de demonstração ════════ -->
+          <div class="cfg-section-label">Dados de Demonstração</div>
+          <div class="cfg-card" id="demoDataCard">
+            <div style="padding:16px">
+              <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+                <div style="width:44px;height:44px;border-radius:12px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🎭</div>
+                <div>
+                  <div style="font-size:.88rem;font-weight:800;color:var(--text)">Importar Dados Demo</div>
+                  <div style="font-size:.78rem;color:var(--muted);margin-top:3px;line-height:1.5">
+                    Gera e importa ~800 transações fictícias de 1 ano para uma família e usuário escolhidos.
+                    Inclui contas, categorias, beneficiários, programados, dívidas, objetivos, lista de supermercado e preços.
+                    <strong style="color:#dc2626">⚠️ Use apenas em famílias/usuários de teste.</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div class="form-group">
+                  <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted)">Família destino *</label>
+                  <select id="demoFamilySelect" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:.83rem;font-family:inherit">
+                    <option value="">— Carregando famílias… —</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted)">Usuário destino *</label>
+                  <select id="demoUserSelect" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:.83rem;font-family:inherit">
+                    <option value="">— Selecione uma família primeiro —</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Progress bar -->
+              <div id="demoImportProgress" style="display:none;margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <span id="demoImportStatus" style="font-size:.78rem;color:var(--muted)">Iniciando…</span>
+                  <span id="demoImportPct" style="font-size:.78rem;font-weight:700">0%</span>
+                </div>
+                <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                  <div id="demoImportBar" style="height:100%;width:0%;background:var(--accent);border-radius:4px;transition:width .4s ease"></div>
+                </div>
+              </div>
+              <div id="demoImportResult" style="display:none;padding:10px 14px;border-radius:10px;font-size:.82rem;margin-bottom:12px"></div>
+
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary" id="demoImportBtn" onclick="_startDemoImport()">
+                  🎭 Gerar e Importar Dados Demo
+                </button>
+                <button class="btn btn-ghost btn-sm" onclick="_loadDemoSelectors()" title="Recarregar listas de família/usuário">
+                  ↻ Recarregar
+                </button>
+              </div>
+            </div>
+          </div>
+
+
         <!-- ══ PANE: FEEDBACKS (admin) ══════════════════════════════════════ -->
         <div class="cfg-pane" id="pane-feedbacks">
           <div class="cfg-pane-header">
@@ -8203,6 +8259,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/admin.js"></script>
   <script src="js/autocheck.js"></script>
   <script src="js/auto_register.js"></script>
+<script src="js/demo_data_generator.js"></script>
 <script src="js/audit.js"></script>
 <script src="js/receipt_ai.js"></script>
   <script src="js/form_mode.js"></script>
