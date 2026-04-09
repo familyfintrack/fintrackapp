@@ -600,7 +600,9 @@ async function bootApp(){
   const budEl=document.getElementById('budgetMonth');if(budEl)budEl.value=ym;
   const budInEl=document.getElementById('budgetMonthInput');if(budInEl)budInEl.value=ym;
   state.txFilter.month=ym;
-  // Navegar para dashboard
+  // Navegar para dashboard — requestAnimationFrame garante que o
+  // layout é pintado antes de iniciar as queries pesadas
+  await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
   navigate('dashboard');
   // Notificações de login para o usuário (transações do dia + saúde financeira)
   // Notifications: run after loadScheduled resolves so data is ready
@@ -990,8 +992,30 @@ function navigate(page){
   state.currentPage=page;closeSidebar();
   if (typeof i18nApplyToDOM === 'function') i18nApplyToDOM(document.getElementById('page-'+page));
   _scrollActivePageToTop(page);
-  if(page==='dashboard' && sb) loadDashboard();
-  else if(page==='transactions'){if(state.reconcileMode && typeof exitReconcileMode==='function')exitReconcileMode(false);populateTxMonthFilter();if(typeof populateSelects==='function')populateSelects();loadTransactions();}
+  if(page==='dashboard' && sb) {
+    // Fire loadDashboard — swallow errors so the page still shows
+    loadDashboard().catch(err => {
+      console.warn('[dashboard] load error:', err?.message);
+      // Retry once after a short delay
+      setTimeout(() => {
+        if (state.currentPage === 'dashboard')
+          loadDashboard().catch(() => {});
+      }, 800);
+    });
+  }
+  else if(page==='transactions'){
+    if(state.reconcileMode && typeof exitReconcileMode==='function') exitReconcileMode(false);
+    populateTxMonthFilter();
+    if(typeof populateSelects==='function') populateSelects();
+    if(typeof loadTransactions==='function') {
+      loadTransactions().catch(err => {
+        console.warn('[transactions] load error:', err?.message);
+        setTimeout(() => {
+          if(state.currentPage==='transactions') loadTransactions().catch(()=>{});
+        }, 800);
+      });
+    }
+  }
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
   else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();

@@ -218,10 +218,22 @@ async function loadDashboard(){
   // Show/hide active filter badge on dashboard KPIs
   _updateDashFilterBadge(_dashMemberIds);
 
-  const [{ income, expense, total, pendingCount: _pendCount }] = await Promise.all([
-    DB.dashboard.loadKPIs(_dashMemberIds),
-    fxPromise,
-  ]);
+  let income = 0, expense = 0, total = 0, _pendCount = 0;
+  try {
+    const [kpiResult] = await Promise.all([
+      DB.dashboard.loadKPIs(_dashMemberIds),
+      fxPromise,
+    ]);
+    if (kpiResult) {
+      income = kpiResult.income || 0;
+      expense = kpiResult.expense || 0;
+      total = kpiResult.total || 0;
+      _pendCount = kpiResult.pendingCount || 0;
+    }
+  } catch (kpiErr) {
+    console.error('[dashboard] loadKPIs failed:', kpiErr?.message);
+    // Show zeros rather than blank — user sees the page even if data failed
+  }
   const statTotalEl = document.getElementById('statTotal');
   const statIncomeEl = document.getElementById('statIncome');
   const statExpensesEl = document.getElementById('statExpenses');
