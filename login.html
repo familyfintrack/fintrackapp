@@ -47,9 +47,6 @@ body, input, button, select, textarea { font-family: 'Nunito', system-ui, -apple
 @keyframes lgnOrbDrift { 0% { transform:translate(0,0); } 100% { transform:translate(30px,-22px); } }
 @keyframes lgnGridFade { from { opacity:.8; } to { opacity:1; } }
 @keyframes lgnBgPulse  { from { opacity:.8; } to { opacity:1; transform:scale(1.03); } }
-@keyframes lgnLogoPulse {
-  0%,100% { filter: drop-shadow(0 0 22px rgba(125,194,66,.45)); }
-  50%     { filter: drop-shadow(0 0 40px rgba(125,194,66,.7)); }
 }
 @keyframes lgnDotPulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
 @keyframes lgnBtnGlow  {
@@ -132,7 +129,6 @@ html, body { height:100%; overflow:hidden; }
 .lgn-logo-img {
   height: 131px; width: auto; object-fit: contain;
   position: relative; z-index: 1;
-  animation: lgnLogoPulse 4s ease-in-out infinite;
 }
 .lgn-badge {
   position: relative; z-index: 1;
