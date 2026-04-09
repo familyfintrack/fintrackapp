@@ -28,6 +28,8 @@ const I18N_CACHE_TTL_MS   = 60 * 60 * 1000; // 1h
 // quando a tabela i18n_translations ainda não existe no Supabase.
 // Formato: { chave: { pt, en, es, fr } }
 const _I18N_BUILTIN = {
+  'profile.updated': { pt:'✓ Perfil atualizado com sucesso!', en:'✓ Profile updated successfully!' },
+  'profile.no_changes': { pt:'Nenhuma alteração detectada.', en:'No changes detected.' },
   // Navegação
   'nav.dashboard':        {pt:'Início',        en:'Home',          es:'Inicio',          fr:'Accueil'},
   'nav.transactions':     {pt:'Transações',    en:'Transactions',  es:'Transacciones',   fr:'Transactions'},

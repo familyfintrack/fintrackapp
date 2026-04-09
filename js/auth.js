@@ -1612,7 +1612,9 @@ async function saveMyProfile() {
   const tgChanged = telegramChatId !== String(currentUser.telegram_chat_id || '');
 
   const newName = (document.getElementById('myProfileNameInput')?.value || '').trim();
-  const nameChanged = newName && newName !== (currentUser?.name || '');
+  // nameChanged: true if input differs from stored name
+  // Note: allow empty name (user clearing it) only if original was not empty
+  const nameChanged = (newName !== (currentUser?.name || '')) && (newName || (currentUser?.name || ''));
   const newFormMode = document.getElementById('myProfileFormMode')?.value || 'tabs';
   const fmChanged = newFormMode !== (currentUser?.preferred_form_mode || 'tabs');
   const notifyOnTx      = !!(document.getElementById('myProfileNotifyOnTx')?.checked);
@@ -1631,6 +1633,7 @@ async function saveMyProfile() {
                      || twoFaChannel !== (currentUser?.two_fa_channel || 'email');
 
   if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged && !notifyChanged && !twoFaChanged) {
+    toast('Nenhuma alteração detectada.', 'info');
     closeModal('myProfileModal');
     return;
   }
@@ -1639,8 +1642,17 @@ async function saveMyProfile() {
 
   try {
     // 1. Avatar
-    const { data: appRow } = await sb.from('app_users').select('id').eq('email', currentUser.email).maybeSingle();
-    if (!appRow) throw new Error('Usuário não encontrado.');
+    // Try auth_uid first (RLS-native), fallback to email
+    const _authUid = (await sb.auth.getUser())?.data?.user?.id || currentUser?.auth_uid || null;
+    let { data: appRow } = _authUid
+      ? await sb.from('app_users').select('id').eq('auth_uid', _authUid).maybeSingle()
+      : await sb.from('app_users').select('id').eq('email', currentUser.email).maybeSingle();
+    if (!appRow) {
+      // Fallback: try by email
+      const { data: appRow2 } = await sb.from('app_users').select('id').eq('email', currentUser.email).maybeSingle();
+      appRow = appRow2;
+    }
+    if (!appRow) throw new Error('Usuário não encontrado. Verifique se sua sessão está ativa.');
 
     let newAvatarUrl = currentUser.avatar_url;
     if (avatarFile) {
@@ -1747,9 +1759,15 @@ async function saveMyProfile() {
       await sb.from('app_users').update({ password_hash: hash, must_change_pwd: false }).eq('id', appRow.id);
     }
 
-    toast(t('profile.updated'), 'success');
-    if (typeof _saveFormModeFromProfile === 'function') _saveFormModeFromProfile();
-    if (typeof saveAlertPrefsFromProfile === 'function') saveAlertPrefsFromProfile();
+    toast('✓ Perfil atualizado com sucesso!', 'success');
+    // Form mode already saved in updatePayload — no separate call needed
+    // Alert preferences already saved in updatePayload — sync topbar badge
+    if (typeof _checkPendingApprovals === 'function') _checkPendingApprovals().catch(()=>{});
+    // Refresh topbar display name and avatar
+    const _tbName = document.getElementById('topbarUserName') || document.querySelector('.sb-user-display-name');
+    if (_tbName && currentUser?.name) _tbName.textContent = currentUser.name;
+    const _topAvatar = document.querySelector('.topbar-avatar-img');
+    if (_topAvatar && currentUser?.avatar_url) _topAvatar.src = currentUser.avatar_url;
     closeModal('myProfileModal');
   } catch(e) {
     if (errEl) { errEl.textContent = 'Erro: ' + (e.message || e); errEl.style.display = ''; }
