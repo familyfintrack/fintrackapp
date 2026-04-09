@@ -3109,6 +3109,24 @@ async function runScheduledManual() {
 }
 window.runScheduledManual = runScheduledManual;
 
+
+// ── switchScTab: handles tab navigation inside the scheduled modal ──────────
+function switchScTab(paneId, btn) {
+  document.querySelectorAll('[id^="scCtx"]').forEach(p => { p.style.display = 'none'; });
+  const pane = document.getElementById(paneId);
+  if (pane) pane.style.display = '';
+  document.querySelectorAll('.tx-ctx-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (paneId === 'scCtxDivisao') {
+    const scAmt = Math.abs(getAmtField('scAmount') || 0);
+    if (typeof _scSplitRenderCat === 'function') _scSplitRenderCat(scAmt);
+    if (typeof _scSplitRenderMem === 'function') _scSplitRenderMem(scAmt);
+    const activeScTab = (typeof _scSplit !== 'undefined' && _scSplit.activeTab) || 'cat';
+    if (typeof scSplitShowTab === 'function') scSplitShowTab(activeScTab);
+  }
+}
+window.switchScTab = switchScTab;
+
 window.confirmRegisterOccurrence           = confirmRegisterOccurrence;
 window.fetchScCurrencyRate                 = fetchScCurrencyRate;
 window.fetchScSuggestedFxRate              = fetchScSuggestedFxRate;

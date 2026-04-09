@@ -14,11 +14,19 @@ const _txSplit = {
 let _txSplitRowSeq = 0;
 
 // ── Abertura da aba ───────────────────────────────────────────────────────
-function txSplitTabOpened() {
-  const txAmt = Math.abs(getAmtField('txAmount') || 0);
-  _txSplitRenderCat(txAmt);
-  _txSplitRenderMem(txAmt);
-  txSplitShowTab(_txSplit.activeTab);
+function txSplitTabOpened(ctx) {
+  // ctx='sc' for scheduled modal, else TX modal
+  const amtField = ctx === 'sc' ? 'scAmount' : 'txAmount';
+  const txAmt = Math.abs(getAmtField(amtField) || 0);
+  if (ctx === 'sc') {
+    _scSplitRenderCat(txAmt);
+    _scSplitRenderMem(txAmt);
+    scSplitShowTab(_scSplit.activeTab || 'cat');
+  } else {
+    _txSplitRenderCat(txAmt);
+    _txSplitRenderMem(txAmt);
+    txSplitShowTab(_txSplit.activeTab);
+  }
 }
 
 // ── Open split modal from tx modal ────────────────────────────────────────

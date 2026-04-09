@@ -8,8 +8,10 @@ function cfgShowPane(paneId) {
   const tab = paneId.replace('pane-', '');
   const btn = document.getElementById('cfgNavBtn-' + tab);
   if (btn) btn.classList.add('active');
-  if (paneId === 'pane-avancado' && typeof initTranslationsAdmin === 'function') {
-    initTranslationsAdmin();
+  if (paneId === 'pane-avancado') {
+    if (typeof initTranslationsAdmin === 'function') initTranslationsAdmin();
+    // Auto-load demo selectors when advanced pane opens
+    setTimeout(() => { try { _loadDemoSelectors(); } catch(_) {} }, 150);
   }
   if (paneId === 'pane-feedbacks' && typeof loadFeedbackReports === 'function') {
     loadFeedbackReports();
@@ -3348,9 +3350,14 @@ async function _loadDemoSelectors() {
 
   famSel.innerHTML = '<option value="">⏳ Carregando…</option>';
   try {
-    const { data: families } = await sb.from('families').select('id,name').order('name');
+    // Use service role via admin API or fallback to regular query
+    const { data: families, error: famErr } = await sb.from('families').select('id,name').order('name');
+    if (famErr || !families?.length) {
+      famSel.innerHTML = `<option value="">— Nenhuma família encontrada (${famErr?.message||'vazio'}) —</option>`;
+      return;
+    }
     famSel.innerHTML = '<option value="">— Selecionar família —</option>'
-      + (families||[]).map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+      + families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
     famSel.onchange = () => _loadDemoUsers(famSel.value);
   } catch(e) {
     famSel.innerHTML = `<option value="">Erro: ${e.message}</option>`;
