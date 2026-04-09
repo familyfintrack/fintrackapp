@@ -4758,6 +4758,31 @@ function _show2FAScreen() {
 }
 
 // ── Verificar código inserido pelo usuário ──
+
+// ── _lgnToast: safe toast for login.html context (toast may not be available) ──
+function _lgnToast(msg, type) {
+  if (typeof toast === 'function') { toast(msg, type); return; }
+  // Fallback for login.html where utils.js is not loaded
+  const errEl = document.getElementById('twoFaError') || document.getElementById('lgnError');
+  if (errEl && type === 'error') {
+    errEl.textContent = msg;
+    errEl.style.display = '';
+    return;
+  }
+  // For success/info: create a transient floating element
+  const el = document.createElement('div');
+  el.style.cssText = [
+    'position:fixed','bottom:20px','left:50%','transform:translateX(-50%)',
+    'background:' + (type==='success'?'#15803d':type==='error'?'#dc2626':'#1d4ed8'),
+    'color:#fff','padding:10px 20px','border-radius:10px',
+    'font-size:.85rem','font-weight:600','z-index:99999',
+    'box-shadow:0 4px 16px rgba(0,0,0,.25)','max-width:320px','text-align:center',
+  ].join(';');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
 async function doVerify2FA() {
   const codeInput = document.getElementById('twoFaCode');
   const errEl     = document.getElementById('twoFaError');
@@ -4809,7 +4834,7 @@ async function doVerify2FA() {
     // Salvar trusted device se solicitado
     if (trust) {
       _set2FATrusted(_2fa.userId);
-      toast('✓ Dispositivo confiável por 30 dias — não pediremos o código novamente.', 'success');
+      _lgnToast('✓ Dispositivo confiável por 30 dias — não pediremos o código novamente.', 'success');
     }
 
     // Continuar fluxo de login

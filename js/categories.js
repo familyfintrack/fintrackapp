@@ -131,7 +131,7 @@ function renderCategories() {
             <button class="btn-icon" onclick="toggleCatFavorite('${p.id}')" title="${isCatFavorite(p.id)?'Remover favorito':'Favoritar'}" style="color:${isCatFavorite(p.id)?'var(--amber,#f59e0b)':'var(--muted)'};font-size:1.05rem">★</button>
             <button class="btn-icon cat-iof-btn" onclick="setIofCategoryTarget('${p.id}','${esc(p.name)}')" title="${window._iofCatId===p.id?'Categoria IOF padrão (clique para remover)':'Definir como categoria padrão do IOF'}" style="color:${window._iofCatId===p.id?'#dc2626':'var(--muted)'};font-weight:700;font-size:.85rem">IOF</button>
             <button class="btn-icon" onclick="openCategoryModal('${p.id}')" title="Editar">✏️</button>
-            <button class="btn-ico" onclick="event.stopPropagation();openCategoryDetailModal('${p.id}')" title="Ver panorâmica 360°" style="font-size:.7rem">🔍</button>
+            <button class="btn-ico" onclick="event.stopPropagation();openCategoryDetailModal('${p.id}')" title="Ver panorâmica 360°" style="font-size:.95rem;width:28px;height:28px;display:flex;align-items:center;justify-content:center">🔍</button>
             <button class="btn-icon" onclick="deleteCategory('${p.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
           </div>
         </div>
@@ -155,7 +155,7 @@ function renderCategories() {
             <div class="cat-inline-actions">
               <button class="btn-icon" onclick="toggleCatFavorite('${c.id}')" title="${isCatFavorite(c.id)?'Remover favorito':'Favoritar'}" style="color:${isCatFavorite(c.id)?'var(--amber,#f59e0b)':'var(--muted)'};font-size:1.05rem">★</button>
               <button class="btn-icon" onclick="openCategoryModal('${c.id}')" title="Editar">✏️</button>
-              <button class="btn-ico" onclick="event.stopPropagation();openCategoryDetailModal('${c.id}')" title="Ver panorâmica 360°" style="font-size:.7rem">🔍</button>
+              <button class="btn-ico" onclick="event.stopPropagation();openCategoryDetailModal('${c.id}')" title="Ver panorâmica 360°" style="font-size:.95rem;width:28px;height:28px;display:flex;align-items:center;justify-content:center">🔍</button>
               <button class="btn-icon" onclick="deleteCategory('${c.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
             </div>
           </div>`;

@@ -282,7 +282,20 @@ const _dashboard = {
 
       let income = 0, expense = 0;
       (monthRes.data || []).filter(t => !t.is_transfer && !t.is_card_payment).forEach(t => {
-        const brl = t.brl_amount != null ? t.brl_amount : toBRL(t.amount, t.currency || 'BRL');
+        let brl = t.brl_amount != null ? t.brl_amount : toBRL(t.amount, t.currency || 'BRL');
+        // Apply linked-tx net factor (reimbursements / offsets)
+        if (typeof _txLinkFindGroup === 'function' && typeof _txLinkCache !== 'undefined' && _txLinkCache) {
+          const _grp = _txLinkFindGroup(t.id);
+          if (_grp && _grp.netMode === 'offset' && _grp.txIds.length > 1) {
+            const _linkedAmts = (_grp.txIds).map(id => {
+              const lt = (monthRes.data || []).find(x => x.id === id);
+              return lt ? (lt.brl_amount != null ? lt.brl_amount : toBRL(lt.amount, lt.currency || 'BRL')) : 0;
+            });
+            const _net  = _linkedAmts.reduce((s,a) => s+a, 0);
+            const _abs  = _linkedAmts.reduce((s,a) => s+Math.abs(a), 0) || 1;
+            brl = _net * (Math.abs(brl) / _abs);
+          }
+        }
         if (brl > 0) income += brl; else expense += Math.abs(brl);
       });
 
