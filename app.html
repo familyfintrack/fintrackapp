@@ -3206,7 +3206,35 @@
                 <div class="cfg-row-label">Última verificação</div>
                 <div class="cfg-row-sub" id="autoCheckLastRun">Nunca executada</div>
               </div>
-              <button class="btn btn-ghost btn-sm" onclick="runAutoRegister(true)">▶ Executar</button>
+              <button class="btn btn-ghost btn-sm" id="btnRunAutoRegister" onclick="runAutoRegister(true)">▶ Executar agora</button>
+            </div>
+          </div>
+
+          <!-- Run log card -->
+          <div class="cfg-card" id="scheduledRunLogCard">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div>
+                <div style="font-size:.88rem;font-weight:800;color:var(--text)">📋 Histórico de Execuções Agendadas</div>
+                <div style="font-size:.74rem;color:var(--muted);margin-top:2px">Registros das últimas execuções automáticas e manuais</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick="loadScheduledRunLog()" title="Atualizar lista">↻ Atualizar</button>
+                <button class="btn btn-primary btn-sm" id="manualRunScheduledBtn"
+                  onclick="runScheduledManual()" title="Executar agora as funções agendadas que estão pendentes">
+                  ▶ Executar Agora
+                </button>
+              </div>
+            </div>
+            <!-- Last run status -->
+            <div id="scheduledLastRunStatus" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:.78rem"></div>
+            <!-- Log list -->
+            <div id="scheduledRunLogList" style="font-size:.78rem;color:var(--muted);min-height:40px;max-height:320px;overflow-y:auto">
+              <div style="text-align:center;padding:12px">Clique em "Atualizar" para carregar o histórico.</div>
+            </div>
+            <!-- Pagination -->
+            <div id="scheduledRunLogMore" style="display:none;text-align:center;margin-top:8px">
+              <button class="btn btn-ghost btn-sm" onclick="loadScheduledRunLog(true)">Carregar mais</button>
             </div>
           </div>
         </div>
@@ -3269,7 +3297,7 @@
             </div>
           </div>
           <!-- Exportação Excel/ZIP — owner only -->
-          <div class="cfg-card" id="exportExcelSection">
+          <div class="cfg-card" id="exportExcelSection" style="display:none">
             <div class="cfg-row">
               <div class="cfg-row-icon" style="background:#f0fdf4">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -3672,6 +3700,19 @@
         <div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">⏳ Carregando…</div>
       </div>
     </div>
+
+      <!-- ══ A/R: Valores a Receber ════════════════════════════════ -->
+      <div id="scArSection" style="padding:16px 16px 0;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);display:flex;align-items:center;gap:6px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Valores a Receber
+            <span id="scArCount" style="background:#fef3c7;color:#d97706;font-size:.65rem;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #fde68a"></span>
+          </div>
+          <button onclick="_scArLoad()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:3px 9px;font-size:.72rem;color:var(--muted);cursor:pointer;font-family:inherit">↻</button>
+        </div>
+        <div id="scArList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px"></div>
+      </div>
 
     <!-- ════════════════════════════════════════════════════════
          AI INSIGHTS — Análise IA + Chat financeiro
@@ -5275,6 +5316,23 @@ Se você não solicitou isso, ignore este e-mail.`,
             </div>
           </div>
 
+          <!-- ── Histórico Execuções Agendadas ── -->
+          <div style="margin-top:20px;padding:16px 18px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div>
+                <div style="font-size:.88rem;font-weight:800;color:var(--text)">⚙️ Funções Agendadas</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:2px">Auto-registro de transações programadas</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-ghost btn-sm" onclick="loadScheduledRunLog()">📋 Ver histórico</button>
+                <button class="btn btn-primary btn-sm" onclick="runAutoRegister(true)">▶ Executar agora</button>
+              </div>
+            </div>
+            <div id="scheduledRunLogList" style="min-height:32px">
+              <div style="text-align:center;color:var(--muted);font-size:.78rem">Clique em "Ver histórico" para carregar.</div>
+            </div>
+          </div>
+
           <!-- STEP 2: Confirmação inline (sem confirm() nativo) -->
           <div id="telDelStep2" style="display:none;padding:18px 20px 20px;flex-direction:column;gap:16px">
             <div style="background:var(--red-lt,#fef2f2);border:2px solid var(--danger,#dc2626);border-radius:12px;padding:16px">
@@ -6305,6 +6363,10 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-ghost" onclick="closeModal('registerOccModal')">Cancelar</button>
+      <button class="btn btn-ghost" id="registerNotReceivedBtn" style="color:#d97706;border-color:#d97706;font-size:.82rem;display:none"
+        onclick="registerAsNotReceived()" title="Registrar que este valor não foi recebido — fica em Valores a Receber para acompanhamento">
+        ⏳ Não Recebido
+      </button>
       <!-- Feature 7: ignore single occurrence -->
       <button class="btn btn-ghost" style="color:var(--muted);font-size:.82rem"
         onclick="ignoreOccurrence(document.getElementById('occScId').value, document.getElementById('occDate').value);closeModal('registerOccModal')"
@@ -6761,6 +6823,9 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- Footer -->
     <div class="modal-footer" id="txModalFooter">
       <button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button>
+      <button class="btn btn-ghost" id="txLinkOpenBtn" onclick="typeof openTxLinkModal==='function'&&openTxLinkModal(document.getElementById('txId')?.value)" title="Vincular com outro lançamento (reembolso, compensação)" style="display:none">
+        🔗 Vincular
+      </button>
       <button class="btn btn-ghost" id="txSplitOpenBtn" onclick="_openSplitModal()" title="Dividir por categoria ou membro">
         ✂️ Divisão
       </button>
@@ -10090,6 +10155,10 @@ Se você não solicitou isso, ignore este e-mail.`,
       <button class="user-menu-item" id="umManageFamilyBtn" style="display:none"
               onclick="closeUserMenu();setTimeout(openMyFamilyMgmt,80)">
         <span>🏠</span><span data-i18n="topbar.manage_fam">Gerenciar minha família</span>
+      </button>
+      <button class="user-menu-item" id="umExportExcelBtn" style="display:none"
+              onclick="closeUserMenu();setTimeout(exportAllExcelZip,80)" title="Exportar todos os registros da família para Excel">
+        <span>📊</span><span>Exportar família para Excel</span>
       </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="dark-mode-toggle" onclick="toggleDarkMode()" id="darkModeToggleBtn" title="Alternar modo escuro">
