@@ -117,14 +117,14 @@ function txCatSplitRemoveRow(id) {
 window.txCatSplitRemoveRow = txCatSplitRemoveRow;
 
 function txCatSplitPickCategory(rowId) {
-  // Usa o chooser modal hierárquico (funciona acima de qualquer modal)
+  _txSplitPendingCatRowId = rowId;  // set BEFORE opening chooser
   if (typeof openCatChooser === 'function') {
     openCatChooser('tx', function(catId, catName, catColor) {
+      _txSplitPendingCatRowId = rowId;  // ensure still set on callback
       if (typeof txCatSplitReceiveCategory === 'function')
-        txCatSplitReceiveCategory(rowId, catId, catName, catColor || '#94a3b8');
+        txCatSplitReceiveCategory(catId, catName, catColor || '#94a3b8');
     });
   } else {
-    _txSplitPendingCatRowId = rowId;
     window._txSplitCatMode = rowId;
     toggleCatPicker('tx');
   }
@@ -189,8 +189,10 @@ function _txSplitCatRowHtml(row, txAmt, suffix) {
         <div class="amt-wrap" style="width:120px;flex-shrink:0">
           <input type="text" class="tx-split-amount-input" inputmode="numeric" placeholder="0,00"
             value="${amtVal}"
+            oninput="_txSplitAmtFmt(this)"
             onchange="txCatSplitUpdateAmount(${row.id}, this.value)"
-            style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box">
+            onblur="_txSplitAmtBlur(this)"
+            style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box;text-align:right">
         </div>
       </div>
       <button type="button" onclick="txCatSplitRemoveRow(${row.id})"
@@ -354,6 +356,51 @@ function txMemSplitAutoFill() {
 }
 window.txMemSplitAutoFill = txMemSplitAutoFill;
 
+
+// ── Shared member row HTML builder (TX modal + inline pane) ──────────────────
+function _txSplitMemRowHtml(row, txAmt, suffix) {
+  suffix = suffix || '';
+  const isPct = _txSplit.memMode === 'pct';
+  const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+  const memberOpts = members.map(m =>
+    `<option value="${m.id}" ${m.id === row.member_id ? 'selected' : ''}>${esc(m.name)}</option>`
+  ).join('');
+  const dispVal = isPct
+    ? (row.pct > 0 ? row.pct.toFixed(1).replace('.', ',') : '')
+    : (row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '');
+  const placeholder = isPct ? '0,0%' : '0,00';
+  const rowId = suffix ? `txMemSplitRow${suffix}_${row.id}` : `txMemSplitRow_${row.id}`;
+  const updateFn = suffix ? `txMemSplitUpdateValue` : `txMemSplitUpdateValue`;
+  const memberFn = `txMemSplitUpdateMember`;
+  const removeFn = `txMemSplitRemoveRow`;
+  return `<div class="tx-split-row" id="${rowId}">
+    <div class="tx-split-row-left">
+      <select class="tx-split-mem-select" onchange="${memberFn}(${row.id},this.value)"
+        style="flex:1;padding:7px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;color:var(--text);font-family:inherit;cursor:pointer">
+        <option value="">— Selecionar membro —</option>
+        ${memberOpts}
+      </select>
+    </div>
+    <div class="tx-split-row-right">
+      <div class="amt-wrap" style="width:110px;flex-shrink:0">
+        <input type="text" inputmode="decimal" class="tx-split-amount-input"
+          placeholder="${placeholder}" value="${dispVal}"
+          oninput="_txSplitAmtFmt(this)"
+          onchange="${updateFn}(${row.id},this.value)"
+          style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box;text-align:right">
+      </div>
+      <button type="button" onclick="${removeFn}(${row.id})"
+        style="padding:5px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;flex-shrink:0">✕</button>
+    </div>
+  </div>`;
+}
+
+// Auto-format amount input as user types: 1234 → 1.234,00 style
+function _txSplitAmtFmt(input) {
+  let raw = input.value.replace(/[^\d,\.]/g, '').replace(',', '.').replace(/\.(?=.*\.)/g, '');
+  input.value = raw;
+}
+
 function _txSplitRenderMem(txAmt) {
   const container = document.getElementById('txMemSplitRows');
   const totalEl   = document.getElementById('txMemSplitTotal');
@@ -386,28 +433,7 @@ function _txSplitRenderMem(txAmt) {
   }
 
   const isPct = _txSplit.memMode === 'pct';
-  container.innerHTML = _txSplit.memRows.map(row => {
-    const dispVal = isPct
-      ? (row.pct > 0 ? row.pct.toFixed(1) : '')
-      : (row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '');
-    const placeholder = isPct ? '0,0%' : '0,00';
-    return `<div class="tx-split-row" id="txMemSplitRow_${row.id}">
-      <div class="tx-split-row-left">
-        <select class="tx-split-mem-select" onchange="txMemSplitUpdateMember(${row.id},this.value)">
-          <option value="">— Selecionar membro —</option>
-          ${memberOpts}
-        </select>
-      </div>
-      <div class="tx-split-row-right">
-        <input type="text" inputmode="decimal" class="tx-split-amount-input"
-          placeholder="${placeholder}" value="${dispVal}"
-          style="width:80px"
-          onchange="txMemSplitUpdateValue(${row.id},this.value)"
-          oninput="txMemSplitUpdateValue(${row.id},this.value)">
-        <button type="button" class="tx-split-remove-btn" onclick="txMemSplitRemoveRow(${row.id})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+  container.innerHTML = _txSplit.memRows.map(row => _txSplitMemRowHtml(row, txAmt)).join('');
 
   // Restore select values
   _txSplit.memRows.forEach(row => {
@@ -635,14 +661,15 @@ function scCatSplitRemoveRow(id) { _scSplit.catRows=_scSplit.catRows.filter(r=>r
 window.scCatSplitRemoveRow = scCatSplitRemoveRow;
 
 function scCatSplitPickCategory(rowId) {
+  _scSplitPendingCatRowId = rowId;  // set BEFORE opening chooser
   if (typeof openCatChooser === 'function') {
     openCatChooser('sc', function(catId, catName, catColor) {
+      _scSplitPendingCatRowId = rowId;  // ensure still set on callback
       if (typeof scCatSplitReceiveCategory === 'function')
         scCatSplitReceiveCategory(catId, catName, catColor || '#94a3b8');
     });
   } else {
     window._scSplitCatMode = rowId;
-    _scSplitPendingCatRowId = rowId;
     toggleCatPicker('tx');
   }
 }
@@ -774,8 +801,30 @@ function _scSplitRenderMem(scAmt) {
   }
   const isVal=_scSplit.memMode==='value';
   container.innerHTML=_scSplit.memRows.map(row=>{
+    const isVal=_scSplit.memMode==='value';
+    const members=typeof getFamilyMembers==='function'?getFamilyMembers():[];
+    const opts=members.map(m=>`<option value="${m.id}" ${m.id===row.member_id?'selected':''} >${esc(m.name)}</option>`).join('');
     const dv=isVal?(row.amount>0?row.amount.toFixed(2).replace('.',','):''):(row.pct>0?row.pct.toFixed(1).replace('.',','):'');
-    return `<div class="tx-split-row" id="scMemSplitRow_${row.id}"><div class="tx-split-row-left"><select class="tx-split-member-select" onchange="scMemSplitUpdateMember(${row.id},this.value)" style="width:100%;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;color:var(--text);font-family:inherit"><option value="">— Membro —</option>${opts}</select></div><div class="tx-split-row-right"><input type="text" inputmode="decimal" class="tx-split-amount-input" placeholder="${isVal?'0,00':'0%'}" value="${dv}" onchange="scMemSplitUpdateValue(${row.id},this.value)" oninput="scMemSplitUpdateValue(${row.id},this.value)"><button type="button" class="tx-split-remove-btn" onclick="scMemSplitRemoveRow(${row.id})">✕</button></div></div>`;
+    const ph=isVal?'0,00':'0,0%';
+    return `<div class="tx-split-row" id="scMemSplitRow_${row.id}">
+      <div class="tx-split-row-left">
+        <select class="tx-split-member-select" onchange="scMemSplitUpdateMember(${row.id},this.value)"
+          style="flex:1;padding:7px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;color:var(--text);font-family:inherit">
+          <option value="">— Selecionar membro —</option>${opts}
+        </select>
+      </div>
+      <div class="tx-split-row-right">
+        <div class="amt-wrap" style="width:110px;flex-shrink:0">
+          <input type="text" inputmode="decimal" class="tx-split-amount-input"
+            placeholder="${ph}" value="${dv}"
+            oninput="_txSplitAmtFmt(this)"
+            onchange="scMemSplitUpdateValue(${row.id},this.value)"
+            style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box;text-align:right">
+        </div>
+        <button type="button" onclick="scMemSplitRemoveRow(${row.id})"
+          style="padding:5px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem">✕</button>
+      </div>
+    </div>`;
   }).join('');
   _scSplit.memRows.forEach(r=>{const s=document.querySelector(`#scMemSplitRow_${r.id} select`);if(s&&r.member_id)s.value=r.member_id;});
   _scSplitUpdateMemTotals_SC(scAmt);
@@ -794,6 +843,127 @@ function _scSplitUpdateMemTotals_SC(scAmt) {
 }
 
 function scSplitGetCategorySplits() { return _scSplit.catRows.filter(r=>r.category_id&&r.amount>0).map(r=>({category_id:r.category_id,amount:r.amount})); }
+
+// ── Financial formatting for split inputs ────────────────────────────────────
+// Called oninput: strips non-numeric, keeps one decimal point
+function _txSplitAmtFmt(input) {
+  const raw = input.value;
+  // Allow typing: digits, comma, period
+  const cleaned = raw.replace(/[^\d,.]/g, '');
+  input.value = cleaned;
+}
+
+// Called onblur: format as 2 decimal places
+function _txSplitAmtBlur(input) {
+  const raw = input.value.replace(',', '.').replace(/[^\d.]/g, '');
+  const num = parseFloat(raw);
+  if (!isNaN(num) && num > 0) {
+    input.value = num.toFixed(2).replace('.', ',');
+  }
+}
+window._txSplitAmtFmt  = _txSplitAmtFmt;
+window._txSplitAmtBlur = _txSplitAmtBlur;
+
+// ── Split total validation: called when user closes the split modal ──────────
+async function _txSplitValidateTotal(type) {
+  // type: 'cat' | 'mem'
+  const txAmt = Math.abs(getAmtField('txAmount') || 0);
+  if (!txAmt) return true; // no amount to validate against
+
+  let splitTotal = 0;
+  if (type === 'cat') {
+    splitTotal = _txSplit.catRows.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+  } else {
+    splitTotal = _txSplit.memRows.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+  }
+
+  if (splitTotal === 0) return true; // no rows filled — skip validation
+  const diff = Math.abs(txAmt - splitTotal);
+  if (diff < 0.01) return true; // match within 1 cent — OK
+
+  const label = type === 'cat' ? 'categorias' : 'membros';
+  const diffFmt = diff.toFixed(2).replace('.', ',');
+  const splitFmt = splitTotal.toFixed(2).replace('.', ',');
+  const txFmt = txAmt.toFixed(2).replace('.', ',');
+
+  return new Promise(resolve => {
+    // Build confirmation dialog
+    document.querySelectorAll('#txSplitValidationDlg').forEach(m=>m.remove());
+    const dlg = document.createElement('div');
+    dlg.id = 'txSplitValidationDlg';
+    dlg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+    dlg.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:22px 24px;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.25)">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);margin-bottom:10px">⚠️ Total não confere</div>
+      <div style="font-size:.85rem;color:var(--text2);line-height:1.6;margin-bottom:16px">
+        A soma dos ${label} é <strong>R$ ${splitFmt}</strong>,
+        mas o valor da transação é <strong>R$ ${txFmt}</strong>
+        (diferença de <strong style="color:#dc2626">R$ ${diffFmt}</strong>).
+        <br><br>O que deseja fazer?
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button style="padding:10px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit"
+          onclick="document.getElementById('txSplitValidationDlg').remove();window._splitValidResolve('replace')">
+          Substituir valor da TX por R$ ${splitFmt}
+        </button>
+        <button style="padding:10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit"
+          onclick="document.getElementById('txSplitValidationDlg').remove();window._splitValidResolve('fix')">
+          Ajustar a distribuição (ficar no modal)
+        </button>
+        <button style="padding:10px;background:none;color:var(--muted);border:none;font-size:.82rem;cursor:pointer;font-family:inherit"
+          onclick="document.getElementById('txSplitValidationDlg').remove();window._splitValidResolve('ignore')">
+          Ignorar e salvar assim mesmo
+        </button>
+      </div>
+    </div>`;
+    document.body.appendChild(dlg);
+
+    window._splitValidResolve = function(choice) {
+      if (choice === 'replace') {
+        // Update the TX amount field with the split total
+        const amt = type === 'cat'
+          ? _txSplit.catRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0)
+          : _txSplit.memRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+        try {
+          // Set the TX amount to match the split total
+          const txAmtInput = document.getElementById('txAmount');
+          if (txAmtInput) {
+            // Preserve sign
+            const isNeg = (getAmtField('txAmount')||0) < 0;
+            const newVal = isNeg ? -amt : amt;
+            if (typeof setAmtField === 'function') setAmtField('txAmount', newVal);
+          }
+        } catch(_){}
+        resolve(true);
+      } else if (choice === 'fix') {
+        resolve(false); // stay in modal
+      } else {
+        resolve(true); // ignore, save anyway
+      }
+    };
+  });
+}
+window._txSplitValidateTotal = _txSplitValidateTotal;
+
+
+// Called by "Confirmar Divisão" button — validates totals before closing
+async function _txSplitConfirmAndClose() {
+  const activeTab = _txSplit.activeTab || 'cat';
+  const hasCat = _txSplit.catRows.some(r => r.amount > 0);
+  const hasMem = _txSplit.memRows.some(r => r.amount > 0 || r.pct > 0);
+
+  let ok = true;
+  if (hasCat) {
+    ok = await _txSplitValidateTotal('cat');
+    if (!ok) return; // user chose to fix distribution
+  }
+  if (hasMem && ok) {
+    ok = await _txSplitValidateTotal('mem');
+    if (!ok) return;
+  }
+  closeModal('txSplitModal');
+}
+window._txSplitConfirmAndClose = _txSplitConfirmAndClose;
+
 window.scSplitGetCategorySplits = scSplitGetCategorySplits;
 
 function scSplitGetMemberShares() { return _scSplit.memRows.filter(r=>r.member_id&&r.amount>0).map(r=>({member_id:r.member_id,amount:r.amount,pct:r.pct})); }

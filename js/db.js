@@ -55,7 +55,7 @@ const _accounts = {
                    'active,is_favorite,best_purchase_day,due_day,iof_rate,is_brazilian,' +
                    'bank_name,bank_code,agency,account_number,iban,routing_number,swift_bic,' +
                    'card_brand,card_type,card_issuer,card_limit,linked_dream_id,notes,' +
-                   'is_archived,archived_at,archive_reason';
+                   'is_archived,archived_at,archive_reason,pix_key,pix_keys,balance';
       const [ar, gr, arr] = await Promise.all([
         famQ(sb.from('accounts').select(cols).eq('active', true).eq('is_archived', false)).order('name'),
         famQ(sb.from('account_groups').select('id,name,emoji,color,currency')).order('name'),

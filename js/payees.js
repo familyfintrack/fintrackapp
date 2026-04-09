@@ -1270,165 +1270,155 @@ window.setIofPayeeTarget = setIofPayeeTarget;
 // ════════════════════════════════════════════════════════════════════════════
 async function openPayeeDetailModal(payeeId) {
   const payee = (state.payees||[]).find(p=>p.id===payeeId);
-  if (!payee) return;
+  if (!payee) { toast('Beneficiário não encontrado.','warning'); return; }
 
-  // Remove previous instance
+  // Remove any existing instance
   document.querySelectorAll('#payee360Modal').forEach(m=>m.remove());
 
-  // Show loading shell
+  // Create shell overlay (loading state)
   const shell=document.createElement('div');
   shell.id='payee360Modal';
   shell.className='modal-overlay open';
-  shell.onclick=e=>{if(e.target===shell)shell.remove();};
-  shell.innerHTML=`
-    <div class="modal" style="max-width:640px;max-height:90dvh;overflow-y:auto">
-      <div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">🔍 Carregando...</span>
-        <button class="modal-close" onclick="document.getElementById('payee360Modal')?.remove()">✕</button>
-      </div>
-      <div class="modal-body" style="padding:20px;text-align:center;color:var(--muted)">
-        <div style="font-size:1.5rem">⏳</div>Carregando panorâmica...
-      </div>
-    </div>`;
+  shell.style.cssText='z-index:9999;';
+  shell.onclick=e=>{ if(e.target===shell) shell.remove(); };
+  shell.innerHTML=`<div class="modal" style="max-width:640px;width:100%;max-height:90dvh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-body" style="padding:32px;text-align:center;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:12px">⏳</div>
+      <div style="font-size:.85rem">Carregando panorâmica de ${esc(payee.name)}…</div>
+    </div>
+  </div>`;
   document.body.appendChild(shell);
 
-  // Fetch last 6 months transactions for this payee
-  const now=new Date();
-  const from=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
-  const { data:txs=[] } = await sb.from('transactions')
-    .select('id,date,description,amount,brl_amount,currency,status,accounts(name,color),categories(name,color,icon)')
-    .eq('payee_id',payeeId)
-    .gte('date',from)
-    .order('date',{ascending:false})
-    .limit(50);
+  try {
+    // Fetch last 6 months transactions for this payee
+    const now=new Date();
+    const from=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
+    const { data:txsRaw, error } = await famQ(
+      sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,accounts(name),categories(name,icon)')
+    ).eq('payee_id',payeeId).gte('date',from).order('date',{ascending:false}).limit(60);
 
-  const isSource=payee.type==='fonte_pagadora';
-  const typeLabel=isSource?'Fonte Pagadora':'Beneficiário';
-  const typeColor=isSource?'#16a34a':'#dc2626';
-  const typeBg=isSource?'#dcfce7':'#fee2e2';
+    if (error) throw error;
 
-  // KPIs
-  const totalAmt=txs.reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount||t.amount)||0),0);
-  const avgAmt=txs.length?totalAmt/txs.length:0;
-  const lastDate=txs[0]?.date||null;
-  const acctMap={};
-  txs.forEach(t=>{const n=t.accounts?.name||'—';acctMap[n]=(acctMap[n]||0)+1;});
-  const topAcct=Object.entries(acctMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
-  const catMap={};
-  txs.forEach(t=>{const n=t.categories?.name||'Sem categoria';catMap[n]=(catMap[n]||0)+1;});
-  const topCat=Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+    const txs = txsRaw || [];
 
-  // Build address / contact info
-  const addr=[payee.address,payee.city,payee.state,payee.country].filter(Boolean).join(', ');
-  const addrLine=addr?`<div style="font-size:.8rem;color:var(--muted);margin-top:4px">📍 ${esc(addr)}</div>`:'';
-  const mapLink=addr?`<a href="https://maps.google.com/?q=${encodeURIComponent(addr)}" target="_blank" rel="noopener"
-      style="display:inline-flex;align-items:center;gap:4px;font-size:.75rem;color:#2563eb;text-decoration:none;margin-top:6px;padding:3px 8px;background:#eff6ff;border-radius:6px;border:1px solid #bfdbfe">
-      🗺️ Ver no mapa</a>`:'';
-  const cnpj=payee.cnpj_cpf?`<div style="font-size:.78rem;color:var(--muted);margin-top:2px">CNPJ/CPF: ${esc(payee.cnpj_cpf)}</div>`:'';
-  const email=payee.email?`<a href="mailto:${esc(payee.email)}" style="font-size:.78rem;color:var(--accent)">✉ ${esc(payee.email)}</a>`:'';
-  const phone=payee.phone?`<div style="font-size:.78rem;color:var(--muted)">📞 ${esc(payee.phone)}</div>`:'';
-  const website=payee.website?`<a href="${esc(payee.website)}" target="_blank" rel="noopener" style="font-size:.78rem;color:#2563eb">🌐 ${esc(payee.website)}</a>`:'';
+    // Guard: shell may have been closed while loading
+    if (!document.getElementById('payee360Modal')) return;
 
-  // Transactions table (last 6 months)
-  const txRows=txs.slice(0,20).map(t=>{
-    const amt=Math.abs(parseFloat(t.brl_amount||t.amount)||0);
-    const isNeg=!isSource;
-    const dateStr=t.date?t.date.split('-').reverse().join('/'):'—';
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:6px 8px;font-size:.78rem;color:var(--muted);white-space:nowrap">${dateStr}</td>
-      <td style="padding:6px 8px;font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.description||'—')}</td>
-      <td style="padding:6px 8px;font-size:.78rem;color:var(--muted)">${esc(t.accounts?.name||'—')}</td>
-      <td style="padding:6px 8px;font-size:.82rem;font-weight:700;text-align:right;color:${isNeg?'#dc2626':'#16a34a'};white-space:nowrap">
-        ${isNeg?'−':'+'} ${fmt(amt)}</td>
-    </tr>`;
-  }).join('');
+    const isSource = payee.type==='fonte_pagadora';
+    const typeLabel = isSource?'Fonte Pagadora':'Beneficiário';
+    const typeColor = isSource?'#16a34a':'#dc2626';
+    const typeBg    = isSource?'#dcfce7':'#fee2e2';
+    const fmtAmt    = v => (typeof fmt==='function') ? fmt(Math.abs(v)) : Math.abs(v).toFixed(2).replace('.',',');
 
-  const html=`
-    <div class="modal" style="max-width:640px;max-height:90dvh;overflow-y:auto;border-radius:18px" onclick="event.stopPropagation()">
-      <div class="modal-handle"></div>
-      <div class="modal-header" style="padding:14px 18px;gap:10px">
-        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-          <div style="width:44px;height:44px;border-radius:12px;background:${typeBg};display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">
-            ${payee.icon||'👤'}
-          </div>
-          <div style="min-width:0">
-            <div style="font-size:1rem;font-weight:800;color:var(--text)">${esc(payee.name)}</div>
-            <span style="font-size:.72rem;font-weight:700;color:${typeColor};background:${typeBg};padding:2px 8px;border-radius:20px">${typeLabel}</span>
-          </div>
-        </div>
-        <button class="modal-close" onclick="document.getElementById('payee360Modal')?.remove()">✕</button>
-      </div>
+    // KPIs
+    const totalAmt = txs.reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount||t.amount)||0),0);
+    const avgAmt   = txs.length ? totalAmt/txs.length : 0;
+    const lastDate = txs[0]?.date || null;
 
-      <div class="modal-body" style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+    // Top account / category
+    const acctMap={}, catMap={};
+    txs.forEach(t=>{
+      const an=t.accounts?.name||'—';   acctMap[an]=(acctMap[an]||0)+1;
+      const cn=t.categories?.name||'—'; catMap[cn]=(catMap[cn]||0)+1;
+    });
+    const topAcct = Object.entries(acctMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+    const topCat  = Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
 
-        <!-- KPI cards -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">
-          ${[
-            ['Total 6 meses', fmt(totalAmt), typeColor],
-            ['Transações', txs.length, '#2563eb'],
-            ['Ticket médio', fmt(avgAmt), '#d97706'],
-            ['Última vez', lastDate?lastDate.split('-').reverse().join('/'):'—', '#6d28d9'],
-          ].map(([label,val,color])=>`
-            <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
-              <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">${label}</div>
-              <div style="font-size:1rem;font-weight:800;color:${color}">${val}</div>
-            </div>`).join('')}
-        </div>
+    // Contact/address
+    const addr=[payee.address,payee.city,payee.state,payee.country].filter(Boolean).join(', ');
+    let contactHtml='';
+    if(payee.cnpj_cpf) contactHtml+='<div style="font-size:.78rem;color:var(--muted)">CNPJ/CPF: '+esc(payee.cnpj_cpf)+'</div>';
+    if(addr)           contactHtml+='<div style="font-size:.78rem;color:var(--muted);margin-top:3px">📍 '+esc(addr)+'</div>';
+    if(addr)           contactHtml+='<a href="https://maps.google.com/?q='+encodeURIComponent(addr)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:.74rem;color:#2563eb;padding:3px 8px;background:#eff6ff;border-radius:6px;text-decoration:none">🗺️ Ver no mapa</a>';
+    if(payee.email)    contactHtml+='<div style="margin-top:4px"><a href="mailto:'+esc(payee.email)+'" style="font-size:.78rem;color:var(--accent)">✉ '+esc(payee.email)+'</a></div>';
+    if(payee.phone)    contactHtml+='<div style="font-size:.78rem;color:var(--muted);margin-top:2px">📞 '+esc(payee.phone)+'</div>';
 
-        <!-- Info: address + contact -->
-        ${(addr||cnpj||email||phone||website)?`
-        <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border)">
-          <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">📋 Dados de contato</div>
-          ${cnpj}${addrLine}${mapLink}
-          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">${email}${phone}${website}</div>
-        </div>`:
-        '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:8px">Nenhum dado de contato cadastrado.</div>'}
+    // TX rows
+    let txRowsHtml='';
+    txs.slice(0,20).forEach(t=>{
+      const amt=Math.abs(parseFloat(t.brl_amount||t.amount)||0);
+      const ds=t.date?t.date.split('-').reverse().join('/'):'—';
+      txRowsHtml+='<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="padding:5px 8px;font-size:.78rem;color:var(--muted);white-space:nowrap">'+ds+'</td>'
+        +'<td style="padding:5px 8px;font-size:.8rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.description||'—')+'</td>'
+        +'<td style="padding:5px 8px;font-size:.78rem;color:var(--muted)">'+esc(t.accounts?.name||'—')+'</td>'
+        +'<td style="padding:5px 8px;font-size:.82rem;font-weight:700;text-align:right;color:'+(isSource?'#16a34a':'#dc2626')+'">'+fmtAmt(amt)+'</td>'
+        +'</tr>';
+    });
 
-        <!-- Top account / category -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
-            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Conta mais usada</div>
-            <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(topAcct)}</div>
-          </div>
-          <div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">
-            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Categoria principal</div>
-            <div style="font-size:.88rem;font-weight:700;color:var(--text)">${esc(topCat)}</div>
-          </div>
-        </div>
+    // KPI cards
+    const kpis=[
+      ['Total 6 meses', fmtAmt(totalAmt), typeColor],
+      ['Transações',    String(txs.length), '#2563eb'],
+      ['Ticket médio',  fmtAmt(avgAmt), '#d97706'],
+      ['Última vez',    lastDate?lastDate.split('-').reverse().join('/'):'—', '#6d28d9'],
+    ];
+    const kpiHtml=kpis.map(([l,v,c])=>
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">'
+      +'<div style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">'+l+'</div>'
+      +'<div style="font-size:1rem;font-weight:800;color:'+c+'">'+v+'</div>'
+      +'</div>'
+    ).join('');
 
-        <!-- Transaction history -->
-        ${txs.length?`
-        <div>
-          <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">📅 Últimos 6 meses (${txs.length} tx)</div>
-          <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
-            <table style="width:100%;border-collapse:collapse">
-              <thead>
-                <tr style="background:var(--surface2)">
-                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:left">Data</th>
-                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:left">Descrição</th>
-                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:left">Conta</th>
-                  <th style="padding:6px 8px;font-size:.7rem;font-weight:700;color:var(--muted);text-align:right">Valor</th>
-                </tr>
-              </thead>
-              <tbody>${txRows}</tbody>
-            </table>
-          </div>
-          ${txs.length>20?`<div style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px">Mostrando 20 de ${txs.length} transações</div>`:''}
-        </div>`:'<div style="color:var(--muted);font-size:.8rem;text-align:center;padding:12px">Nenhuma transação nos últimos 6 meses.</div>'}
+    const content='<div class="modal" style="max-width:640px;width:100%;max-height:90dvh;overflow-y:auto;border-radius:18px" onclick="event.stopPropagation()">'
+      +'<div class="modal-handle"></div>'
+      +'<div class="modal-header" style="padding:14px 18px;gap:10px">'
+        +'<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">'
+          +'<div style="width:44px;height:44px;border-radius:12px;background:'+typeBg+';display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">'+(payee.icon||'👤')+'</div>'
+          +'<div style="min-width:0">'
+            +'<div style="font-size:1rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(payee.name)+'</div>'
+            +'<span style="font-size:.72rem;font-weight:700;color:'+typeColor+';background:'+typeBg+';padding:2px 8px;border-radius:20px">'+typeLabel+'</span>'
+          +'</div>'
+        +'</div>'
+        +'<button class="modal-close" onclick="document.getElementById(\'payee360Modal\')?.remove()">✕</button>'
+      +'</div>'
+      +'<div class="modal-body" style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">'+kpiHtml+'</div>'
+        +(contactHtml?'<div style="background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border)"><div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📋 Contato</div>'+contactHtml+'</div>':'')
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">'
+            +'<div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Conta mais usada</div>'
+            +'<div style="font-size:.88rem;font-weight:700;color:var(--text)">'+esc(topAcct)+'</div>'
+          +'</div>'
+          +'<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">'
+            +'<div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Categoria principal</div>'
+            +'<div style="font-size:.88rem;font-weight:700;color:var(--text)">'+esc(topCat)+'</div>'
+          +'</div>'
+        +'</div>'
+        +(txs.length
+          ? '<div>'
+            +'<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📅 Últimos 6 meses ('+txs.length+' tx)</div>'
+            +'<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">'
+              +'<table style="width:100%;border-collapse:collapse">'
+                +'<thead><tr style="background:var(--surface2)">'
+                  +'<th style="padding:6px 8px;font-size:.7rem;text-align:left;color:var(--muted);font-weight:700">Data</th>'
+                  +'<th style="padding:6px 8px;font-size:.7rem;text-align:left;color:var(--muted);font-weight:700">Descrição</th>'
+                  +'<th style="padding:6px 8px;font-size:.7rem;text-align:left;color:var(--muted);font-weight:700">Conta</th>'
+                  +'<th style="padding:6px 8px;font-size:.7rem;text-align:right;color:var(--muted);font-weight:700">Valor</th>'
+                +'</tr></thead>'
+                +'<tbody>'+txRowsHtml+'</tbody>'
+              +'</table>'
+            +'</div>'
+            +(txs.length>20?'<div style="font-size:.74rem;color:var(--muted);text-align:center;margin-top:6px">Mostrando 20 de '+txs.length+'</div>':'')
+          +'</div>'
+          : '<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">Nenhuma transação nos últimos 6 meses.</div>'
+        )
+        +'<div style="display:flex;gap:8px;padding-top:4px">'
+          +'<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'payee360Modal\')?.remove();openPayeeModal(\''+payeeId+'\')">✏️ Editar</button>'
+        +'</div>'
+      +'</div>'
+      +'</div>';
 
-        <!-- Actions -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('payee360Modal')?.remove();openPayeeHistory('${payeeId}','${esc(payee.name)}')">
-            📋 Ver histórico completo
-          </button>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('payee360Modal')?.remove();openPayeeModal('${payeeId}')">
-            ✏️ Editar
-          </button>
-        </div>
-      </div>
-    </div>`;
+    // Update shell with full content
+    const liveShell=document.getElementById('payee360Modal');
+    if(liveShell) liveShell.innerHTML=content;
 
-  shell.innerHTML=html;
+  } catch(e) {
+    const s=document.getElementById('payee360Modal');
+    if(s) s.innerHTML='<div class="modal" style="max-width:480px"><div class="modal-handle"></div><div class="modal-body" style="padding:24px;text-align:center;color:#dc2626">Erro ao carregar: '+esc(e.message||String(e))+'</div></div>';
+    console.error('[payee360]',e);
+  }
 }
-window.openPayeeDetailModal = openPayeeDetailModal;
+window.openPayeeDetailModal = openPayeeDetailModal;l;l;
