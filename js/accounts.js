@@ -113,8 +113,12 @@ function renderAccounts(ft=''){
     if(!state.groups.length){ renderAccountsFlat(accs,grid); return; }
     renderAccountsGrouped(accs,grid);
   } else if(ft==='__fav__'){
+    grid.style.gridTemplateColumns = '';
+    grid.style.gap = '';
     renderAccountsFlat(accs.filter(a=>a.is_favorite), grid);
   } else {
+    grid.style.gridTemplateColumns = '';
+    grid.style.gap = '';
     renderAccountsFlat(ft?accs.filter(a=>a.type===ft):accs,grid);
   }
   // ── Render archived accounts section below active accounts ──────────────
@@ -198,6 +202,9 @@ function renderAccountsGrouped(accs,grid){
 
   const _collapsed = JSON.parse(sessionStorage.getItem('ft_grp_collapsed')||'{}');
 
+  // Override grid to full-width stacked layout for group view
+  grid.style.gridTemplateColumns = '1fr';
+  grid.style.gap = '0';
   grid.innerHTML = sections.map(({g, accs:ga})=>{
     const currency = g.currency || 'BRL';
     // Converte contas em moeda estrangeira para a moeda do grupo (ou BRL) antes de somar
@@ -230,10 +237,7 @@ function renderAccountsGrouped(accs,grid){
       </div>
       <div class="account-group-body ${isCollapsed?'collapsed':''}">
         <div class="account-grid">${ga.map(a=>accountCardHTML(a)).join('')}</div>
-        ${ga.length>1?`<div class="account-group-footer">
-          <span>Total: <strong>${fmt(bal,currency)}</strong></span>
-          ${pos&&neg?`<span style="margin-left:auto;color:var(--green,#16a34a)">▲ ${fmt(pos,currency)}</span><span style="margin-left:8px;color:var(--red)">▼ ${fmt(Math.abs(neg),currency)}</span>`:''}
-        </div>`:''}
+
       </div>
     </div>`;
   }).join('')+(ungrouped.length?`<div class="account-group-section" id="grp-__none__" data-grp="__none__">

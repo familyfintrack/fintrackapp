@@ -1296,7 +1296,7 @@ async function openPayeeDetailModal(payeeId) {
     const from=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
     const { data:txsRaw, error } = await famQ(
       sb.from('transactions')
-        .select('id,date,description,amount,brl_amount,currency,accounts(name),categories(name,icon)')
+        .select('id,date,description,amount,brl_amount,currency,accounts!transactions_account_id_fkey(name),categories(name,icon)')
     ).eq('payee_id',payeeId).gte('date',from).order('date',{ascending:false}).limit(60);
 
     if (error) throw error;
@@ -1421,4 +1421,4 @@ async function openPayeeDetailModal(payeeId) {
     console.error('[payee360]',e);
   }
 }
-window.openPayeeDetailModal = openPayeeDetailModal;l;l;
+window.openPayeeDetailModal = openPayeeDetailModal;
