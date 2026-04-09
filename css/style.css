@@ -3973,8 +3973,9 @@ html, body { overscroll-behavior: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px 8px 14px;
   border-bottom: 1px solid var(--border);
+  min-height: 46px;
 }
 .cat-col-expense { background: #fff5f5; border-bottom-color: #fecaca; }
 .cat-col-income  { background: #f0fdf4; border-bottom-color: #bbf7d0; }
