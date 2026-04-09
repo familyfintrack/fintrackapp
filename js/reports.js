@@ -830,11 +830,9 @@ function setReportView(view) {
   document.getElementById('reportTxView').style.display              = view==='transactions'   ? '' : 'none';
   document.getElementById('reportForecastView').style.display        = view==='forecast'       ? '' : 'none';
   document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
-  const _bvEl = document.getElementById('reportBeneficiariosView');
-  if (_bvEl) _bvEl.style.display = view==='beneficiarios' ? '' : 'none';
 
   // Hide the entire filter section (wrapper + bar) for views that don't need filters
-  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees' || view === 'objectives' || view === 'beneficiarios');
+  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees');
   const _filterWrap = document.getElementById('rptFilterWrap');
   if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
   // Keep filter bar collapsed when switching views — user opens it manually
@@ -842,12 +840,11 @@ function setReportView(view) {
     document.getElementById('reportFilterBar').style.display = 'none';
   }
   // If not hiding, leave bar in its current collapsed/expanded state (don't force open)
-  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets','rptBtnBeneficiarios'].forEach(id=>
+  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',beneficiarios:'rptBtnBeneficiarios'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
-  if (view === 'beneficiarios') { rbtbInitFilters(); loadBeneficiariosReport(); }
 
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
@@ -2841,7 +2838,6 @@ function rbtbOnCheck(type) {
   _rbtb[type] = checked.length === all.length ? new Set() : new Set(checked);
   const label = document.getElementById(labelId);
   if (label) label.textContent = (!_rbtb[type].size) ? 'Todas' : `${checked.length} selecionadas`;
-  loadBeneficiariosReport();
 }
 window.rbtbOnCheck = rbtbOnCheck;
 
@@ -2851,7 +2847,6 @@ function rbtbSelectAll(type) {
   _rbtb[type] = new Set();
   const label = document.getElementById(`rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Label`);
   if (label) label.textContent = 'Todas';
-  loadBeneficiariosReport();
 }
 window.rbtbSelectAll = rbtbSelectAll;
 
@@ -2862,7 +2857,6 @@ function rbtbClearAll(type) {
   _rbtb[type] = new Set(all); // nada selecionado = filtro exclusivo (nenhum resultado)
   const label = document.getElementById(`rbtb${type.charAt(0).toUpperCase()+type.slice(1)}Label`);
   if (label) label.textContent = '0 selecionadas';
-  loadBeneficiariosReport();
 }
 window.rbtbClearAll = rbtbClearAll;
 
@@ -2871,8 +2865,8 @@ function rbtbOnPeriodChange() {
   const isCustom = p === 'custom';
   document.getElementById('rbtbFromWrap').style.display = isCustom ? '' : 'none';
   document.getElementById('rbtbToWrap').style.display   = isCustom ? '' : 'none';
-  if (!isCustom) loadBeneficiariosReport();
 }
+
 window.rbtbOnPeriodChange = rbtbOnPeriodChange;
 
 function rbtbResetFilters() {
@@ -2887,7 +2881,6 @@ function rbtbResetFilters() {
   document.querySelectorAll('#rbtbAccountsList input, #rbtbCategoriesList input').forEach(i => i.checked = true);
   document.getElementById('rbtbAccountsLabel').textContent   = 'Todas';
   document.getElementById('rbtbCategoriesLabel').textContent = 'Todas';
-  loadBeneficiariosReport();
 }
 window.rbtbResetFilters = rbtbResetFilters;
 
@@ -2913,157 +2906,6 @@ function _rbtbGetDateRange() {
 }
 
 // ── Carregar e renderizar o relatório ────────────────────────────────────────
-async function loadBeneficiariosReport() {
-  const tbody   = document.getElementById('rbtbTable')?.querySelector('tbody');
-  const loading = document.getElementById('rbtbLoading');
-  const kpisEl  = document.getElementById('rbtbKpis');
-  const countEl = document.getElementById('rbtbCount');
-  const infoEl  = document.getElementById('rbtbFilterInfo');
-  if (!tbody) return;
-
-  if (loading) loading.style.display = '';
-  tbody.innerHTML = '';
-  if (kpisEl) kpisEl.innerHTML = '';
-
-  try {
-    const { from, to } = _rbtbGetDateRange();
-    const typeFilter  = document.getElementById('rbtbType')?.value || '';
-    const sortBy      = document.getElementById('rbtbSort')?.value || 'total_desc';
-
-    // Query transactions in period
-    let q = famQ(sb.from('transactions')
-      .select('id,date,amount,brl_amount,currency,payee_id,category_id,account_id,payees(id,name,type),categories(id,name,color)')
-    ).gte('date', from).lte('date', to);
-
-    // Account filter
-    if (_rbtb.accounts.size > 0) {
-      q = q.in('account_id', [..._rbtb.accounts]);
-    }
-    // Category filter
-    if (_rbtb.categories.size > 0) {
-      q = q.in('category_id', [..._rbtb.categories]);
-    }
-
-    const { data: txs, error } = await q;
-    if (error) throw error;
-
-    // Aggregate by payee
-    const payeeMap = {};
-    const noPayee  = { id: '__none__', name: '(Sem beneficiário)', type: 'sem_cadastro', total_exp: 0, total_inc: 0, count: 0, last_date: '', categories: new Set() };
-
-    (txs || []).forEach(t => {
-      const pid  = t.payee_id;
-      const amt  = parseFloat(t.brl_amount ?? t.amount) || 0;
-      const isExp = amt < 0;
-
-      if (!pid) {
-        noPayee.count++;
-        if (!noPayee.last_date || t.date > noPayee.last_date) noPayee.last_date = t.date;
-        if (t.category_id) noPayee.categories.add(t.category_id);
-        if (isExp) noPayee.total_exp += Math.abs(amt); else noPayee.total_inc += amt;
-        return;
-      }
-
-      if (!payeeMap[pid]) {
-        payeeMap[pid] = {
-          id: pid,
-          name:       t.payees?.name || pid,
-          type:       t.payees?.type || 'beneficiario',
-          total_exp:  0,
-          total_inc:  0,
-          count:      0,
-          last_date:  '',
-          categories: new Set(),
-        };
-      }
-      const p = payeeMap[pid];
-      p.count++;
-      if (!p.last_date || t.date > p.last_date) p.last_date = t.date;
-      if (t.category_id) p.categories.add(t.category_id);
-      if (isExp) p.total_exp += Math.abs(amt); else p.total_inc += amt;
-    });
-
-    // Build list
-    let list = Object.values(payeeMap);
-    if (noPayee.count > 0 && (!typeFilter || typeFilter === 'sem_cadastro')) list.push(noPayee);
-
-    // Type filter
-    if (typeFilter && typeFilter !== 'sem_cadastro') {
-      list = list.filter(p => p.type === typeFilter);
-    } else if (typeFilter === 'sem_cadastro') {
-      list = list.filter(p => p.id === '__none__');
-    }
-
-    // Sort
-    if (sortBy === 'total_desc') list.sort((a,b)=>(b.total_exp+b.total_inc)-(a.total_exp+a.total_inc));
-    else if (sortBy === 'total_asc') list.sort((a,b)=>(a.total_exp+a.total_inc)-(b.total_exp+b.total_inc));
-    else if (sortBy === 'count_desc') list.sort((a,b)=>b.count-a.count);
-    else if (sortBy === 'name_asc')  list.sort((a,b)=>a.name.localeCompare(b.name,'pt'));
-    else if (sortBy === 'last_desc') list.sort((a,b)=>(b.last_date||'').localeCompare(a.last_date||''));
-
-    // ── KPIs ─────────────────────────────────────────────────────
-    const totalExp  = list.reduce((s,p)=>s+p.total_exp,0);
-    const totalInc  = list.reduce((s,p)=>s+p.total_inc,0);
-    const totalTxs  = list.reduce((s,p)=>s+p.count,0);
-    const periodLabel = { month:'Mês', quarter:'Trimestre', year:'Ano corrente', last12:'Últimos 12 meses', custom:'Período' }[document.getElementById('rbtbPeriod')?.value||'year']||'';
-
-    if (kpisEl) {
-      const _kpi = (label, val, color='var(--text)') =>
-        `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
-          <div style="font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">${label}</div>
-          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${color}">${val}</div>
-        </div>`;
-      kpisEl.innerHTML =
-        _kpi('Beneficiários / Fontes', list.length) +
-        _kpi(`Total Despesas · ${periodLabel}`, '−'+fmt(totalExp), 'var(--red,#dc2626)') +
-        _kpi(`Total Receitas · ${periodLabel}`, '+'+fmt(totalInc), '#16a34a') +
-        _kpi('Transações no período', totalTxs);
-    }
-
-    // ── Tabela ────────────────────────────────────────────────────
-    if (countEl) countEl.textContent = `${list.length} resultado${list.length!==1?'s':''}`;
-    if (infoEl)  infoEl.textContent  = `${from.split('-').reverse().join('/')} a ${to.split('-').reverse().join('/')}`;
-
-    const TYPE_LABELS = { beneficiario:'Beneficiário', fonte_pagadora:'Fonte Pagadora', ambos:'Ambos', sem_cadastro:'Sem cadastro' };
-
-    if (!list.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Nenhum resultado para os filtros selecionados.</td></tr>`;
-    } else {
-      const maxTotal = Math.max(...list.map(p => p.total_exp + p.total_inc), 1);
-      tbody.innerHTML = list.map((p, i) => {
-        const total   = p.total_exp + p.total_inc;
-        const barPct  = (total / maxTotal * 100).toFixed(1);
-        const typeL   = TYPE_LABELS[p.type] || p.type;
-        const lastDt  = p.last_date ? p.last_date.split('-').reverse().join('/') : '—';
-        const _pDrillName = p.name.replace(/'/g,"'").replace(/"/g,'&quot;');
-        return `<tr style="cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" onclick="rbtbDrill('${esc(p.id)}','${_pDrillName}')">
-          <td style="padding:9px 12px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-size:.62rem;font-weight:700;color:var(--muted);width:18px;text-align:right;flex-shrink:0">${i+1}</span>
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
-                <div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden">
-                  <div style="height:100%;width:${barPct}%;background:var(--accent);border-radius:2px;transition:width .4s"></div>
-                </div>
-              </div>
-            </div>
-          </td>
-          <td style="padding:9px 8px;text-align:center"><span style="font-size:.72rem;padding:2px 8px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap">${typeL}</span></td>
-          <td style="padding:9px 8px;text-align:right;font-size:.82rem;color:var(--muted)">${p.count}</td>
-          <td style="padding:9px 8px;text-align:right;font-weight:700;font-family:var(--font-serif);color:var(--red,#dc2626);font-size:.88rem">${p.total_exp > 0 ? '−'+fmt(p.total_exp) : '—'}</td>
-          <td style="padding:9px 8px;text-align:right;font-weight:700;font-family:var(--font-serif);color:#16a34a;font-size:.88rem">${p.total_inc > 0 ? '+'+fmt(p.total_inc) : '—'}</td>
-          <td style="padding:9px 12px;text-align:right;font-size:.78rem;color:var(--muted)">${lastDt}</td>
-        </tr>`;
-      }).join('');
-    }
-
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--red)">${esc(e.message)}</td></tr>`;
-  } finally {
-    if (loading) loading.style.display = 'none';
-  }
-}
-window.loadBeneficiariosReport = loadBeneficiariosReport;
 
 // ── Drill-down: transações de um beneficiário ─────────────────────────────────
 // rbtbDrill: now delegates to openPayeeDetailModal which shows full profile + transactions

@@ -2146,10 +2146,10 @@ async function _renderDashForecast() {
             padding: 14,
             font: { size: 11, family: 'Outfit, sans-serif', weight: '500' },
             color: '#6b7280',
-            filter: item => !item.text.startsWith('_marker_'),
+            filter: item => !item.text.startsWith('_marker_') && !item.text.includes('Programado'),
             generateLabels(chart) {
               return chart.data.datasets
-                .filter(ds => !ds.label.startsWith('_marker_'))
+                .filter(ds => !ds.label.startsWith('_marker_') && !ds.label.includes('Programado'))
                 .map((ds, i) => ({
                   text: ds.label,
                   fillStyle: ds.borderColor,

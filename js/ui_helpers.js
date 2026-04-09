@@ -193,6 +193,43 @@ function openCatChooser(ctx, onPick) {
 }
 window.openCatChooser = openCatChooser;
 
+
+// ── _ccCreateNew: create a new category inline from the chooser ─────────────
+async function _ccCreateNew(name) {
+  if (!name || !name.trim()) return;
+  name = name.trim();
+
+  // Determine type from context
+  const c      = _catCtx(_ccCtx || 'tx');
+  const txType = document.getElementById(c.typeId)?.value || '';
+  const dbType = txType === 'income' ? 'receita' : 'despesa';
+  const fid    = typeof famId === 'function' ? famId() : null;
+  if (!fid) { closeCatChooser(); return; }
+
+  // Pick a default color based on type
+  const color = dbType === 'receita' ? '#16a34a' : '#6366f1';
+  const icon  = dbType === 'receita' ? '💰' : '📦';
+
+  try {
+    const { data: newCat, error } = await sb.from('categories').insert({
+      family_id: fid, name, type: dbType, color, icon, parent_id: null,
+      created_at: new Date().toISOString(),
+    }).select().single();
+    if (error) throw error;
+
+    // Update state
+    if (!state.categories) state.categories = [];
+    state.categories.push(newCat);
+
+    // Select the new category immediately
+    _ccPick(newCat.id, newCat.name, newCat.color);
+    toast(`✅ Categoria "${name}" criada`, 'success');
+  } catch(e) {
+    toast('Erro ao criar categoria: ' + (e.message||e), 'error');
+  }
+}
+window._ccCreateNew = _ccCreateNew;
+
 function closeCatChooser() {
   const overlay = document.getElementById('catChooserOverlay');
   if (overlay) overlay.style.display = 'none';
@@ -215,6 +252,14 @@ function _ccRenderChooser(overlay, selectedId, query) {
   // "Sem categoria" option
   const noneSel = !selectedId ? ' cc-opt-selected' : '';
   rows += `<div class="cc-none${noneSel}" onclick="event.stopPropagation();_ccPick(null)">— Sem categoria —</div>`;
+
+  // "Create new category" shortcut — shown when query has text
+  if (q) {
+    rows += `<div class="cc-create-new" onclick="event.stopPropagation();_ccCreateNew('${q.replace(/'/g,'&apos;').replace(/"/g,'&quot;')}')">
+      <span style="font-size:.8rem">➕</span>
+      <span>Criar categoria <strong>"${esc(q)}"</strong></span>
+    </div>`;
+  }
 
   parents.forEach(p => {
     const children = cats
@@ -273,7 +318,8 @@ function _ccRenderChooser(overlay, selectedId, query) {
       <div class="cc-search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="cc-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="ccSearchInput" type="text" class="cc-search-input"
-          placeholder="Buscar categoria..." autocomplete="off" spellcheck="false"
+          placeholder="Buscar ou criar categoria…" autocomplete="off" spellcheck="false"
+          onkeydown="if(event.key==='Enter'){event.stopPropagation();const q=this.value.trim();if(q)_ccCreateNew(q);}"
           value="${query || ''}"
           oninput="event.stopPropagation();_ccSearch(this.value)"
           onclick="event.stopPropagation()">

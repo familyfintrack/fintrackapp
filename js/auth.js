@@ -310,6 +310,9 @@ async function _loadCurrentUserContext(authCtx = null) {
     ...caps
   };
 
+  // Restore intro-banner states with user-scoped keys now that currentUser is known
+  try { if (typeof _restoreModuleIntroStates === 'function') _restoreModuleIntroStates(); } catch(_) {}
+
   // Apply user language preference from DB (preferred_language column)
   // DB is authoritative — it was saved by saveMyProfile() / quickSetLang()
   const _langToApply = currentUser.preferred_language || 'pt';

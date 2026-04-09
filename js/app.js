@@ -1342,7 +1342,11 @@ window.getPeriodColor         = getPeriodColor;
 function _introKey(banner) {
   const badge = banner.querySelector('.module-intro-badge');
   const text  = (badge ? badge.textContent : '').trim().replace(/\s+/g,'_').slice(0,30);
-  return 'intro_collapsed_' + text;
+  // Scope the key to the current user so different users have independent states
+  const uid   = (typeof currentUser !== 'undefined' && currentUser?.id)
+    ? currentUser.id.slice(0,8)  // first 8 chars of UUID is enough for uniqueness
+    : 'anon';
+  return 'intro_' + uid + '_' + text;
 }
 
 function _toggleModuleIntro(btn) {

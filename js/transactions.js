@@ -1165,6 +1165,9 @@ async function openTransactionModal(id=''){
   // Show split button in footer
   const _spBtn = document.getElementById('txSplitOpenBtn');
   if (_spBtn) _spBtn.style.display = '';
+  // Show link button only for existing transactions (id present)
+  const _lnBtn = document.getElementById('txLinkOpenBtn');
+  if (_lnBtn) _lnBtn.style.display = id ? '' : 'none';
   document.getElementById('txModalTitle').textContent='Nova Transação';
   if(id) {
     editTransaction(id);

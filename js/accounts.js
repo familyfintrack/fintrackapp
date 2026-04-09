@@ -275,58 +275,67 @@ function renderAccountsSummary(){
 }
 
 function accountCardHTML(a, isArchived=false){
-  const favStar = `<span
+  const color = a.color || 'var(--accent)';
+  const bgAlpha = color.startsWith('#') ? color+'22' : 'rgba(42,96,73,.13)';
+
+  const favStar = `<span class="account-fav-star"
     onclick="event.stopPropagation();toggleAccountFavorite('${a.id}',${!!a.is_favorite})"
     title="${a.is_favorite?'Remover dos favoritos':'Adicionar aos favoritos'}"
-    style="position:absolute;top:6px;left:8px;font-size:.9rem;cursor:pointer;transition:transform .15s;z-index:2;user-select:none"
-    onmouseover="this.style.transform='scale(1.25)'" onmouseout="this.style.transform=''"
-    id="favStar-${a.id}">${a.is_favorite ? '⭐' : '<span style="opacity:.3;font-size:.8rem">☆</span>'}</span>`;
-  const dueLine = (a.type==='cartao_credito' && a.due_day)
-    ? `<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Vence dia ${a.due_day}</div>` : '';
-  // Build discreet bank info line
-  const bankParts = [];
-  if (a.bank_name) bankParts.push(a.bank_name);
-  if (a.agency)    bankParts.push(`Ag ${a.agency}`);
-  if (a.account_number) bankParts.push(a.account_number);
-  if (a.iban)      bankParts.push(`IBAN …${a.iban.slice(-6)}`);
-  if (a.card_brand) bankParts.push(a.card_brand.charAt(0).toUpperCase() + a.card_brand.slice(1));
-  const bankInfoLine = bankParts.length
-    ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.8">${esc(bankParts.join(' · '))}</div>`
+    id="favStar-${a.id}">${a.is_favorite ? '⭐' : '<span style="opacity:.25;font-size:.75rem">☆</span>'}</span>`;
+
+  // Bank info line
+  const bankParts=[];
+  if(a.bank_name) bankParts.push(a.bank_name);
+  if(a.agency) bankParts.push('Ag '+a.agency);
+  if(a.account_number) bankParts.push(a.account_number);
+  if(a.iban) bankParts.push('IBAN …'+a.iban.slice(-6));
+  if(a.card_brand) bankParts.push(a.card_brand.charAt(0).toUpperCase()+a.card_brand.slice(1));
+  const bankLine = bankParts.length
+    ? `<div style="font-size:.67rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.8;margin-top:2px">${esc(bankParts.join(' · '))}</div>`
     : '';
 
-
-  const pixKeys = (Array.isArray(a.pix_keys) && a.pix_keys.length)
-    ? a.pix_keys
-    : (a.pix_key ? [{ type:'aleatoria', key:a.pix_key }] : []);
+  // PIX
+  const pixKeys=(Array.isArray(a.pix_keys)&&a.pix_keys.length)?a.pix_keys:(a.pix_key?[{type:'aleatoria',key:a.pix_key}]:[]);
   const pixLine = pixKeys.length
-    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:3px 7px;background:rgba(0,180,216,.08);border-radius:6px;max-width:100%;overflow:hidden">
-        <span style="font-size:.65rem;font-weight:800;color:#0ea5e9;flex-shrink:0">PIX</span>
-        <span style="font-size:.67rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ${esc(pixKeys[0].key||'')}${pixKeys.length>1?` +${pixKeys.length-1}`:''}
-        </span>
-       </div>`
+    ? `<div class="account-pix-badge"><span class="pix-label">PIX</span><span class="pix-key">${esc(pixKeys[0].key||'')}${pixKeys.length>1?' +'+( pixKeys.length-1):''}</span></div>`
     : '';
 
-    return `<div class="account-card${isArchived ? ' account-card--archived' : ''}" onclick="goToAccountTransactions('${a.id}')" style="position:relative;padding-top:38px">
+  // Due day
+  const dueLine=(a.type==='cartao_credito'&&a.due_day)
+    ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px">Vence dia ${a.due_day}</div>`:'' ;
+
+  // Card limit chip
+  const limitLine=(a.type==='cartao_credito'&&a.card_limit)
+    ? `<div style="font-size:.67rem;color:var(--muted);margin-top:1px">Limite: ${fmt(a.card_limit,a.currency)}</div>`:'' ;
+
+  // Action buttons
+  const actions = isArchived ? `
+    <button class="btn-icon" title="Desarquivar" onclick="event.stopPropagation();unarchiveAccount('${a.id}')">📤</button>
+    <button class="btn-icon" title="Ver transações" onclick="event.stopPropagation();goToAccountTransactions('${a.id}')">📋</button>
+  ` : `
+    <button class="btn-icon" title="Nova transação" onclick="event.stopPropagation();state.txFilter={account:'${a.id}',month:'',type:'',status:'',categoryId:'',memberIds:[]};navigate('transactions');setTimeout(()=>{openTxModal();},350)">➕</button>
+    <button class="btn-icon" title="Ver transações" onclick="event.stopPropagation();goToAccountTransactions('${a.id}')">📋</button>
+    <button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button>
+    <button class="btn-icon" title="Editar" onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button>
+    <button class="btn-icon" title="Excluir" onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button>
+  `;
+
+  return `<div class="account-card${isArchived?' account-card--archived':''}" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
+    <div class="account-card-stripe" style="background:${color}"></div>
     ${isArchived ? '<div class="archived-card-badge">📦 Arquivada</div>' : favStar}
-    <div class="account-card-stripe" style="background:${a.color||'var(--accent)'}"></div>
-    <div class="account-actions">
-      ${isArchived ? `
-        <button class="btn-icon" title="Desarquivar conta" onclick="event.stopPropagation();unarchiveAccount('${a.id}')">📤</button>
-        <button class="btn-icon" title="Ver transações" onclick="event.stopPropagation();goToAccountTransactions('${a.id}')">📋</button>
-      ` : `
-        <button class="btn-icon" title="Consolidar saldo" onclick="event.stopPropagation();openConsolidateModal('${a.id}')">⚖️</button>
-        <button class="btn-icon" title="Editar conta"     onclick="event.stopPropagation();openAccountModal('${a.id}')">✏️</button>
-        <button class="btn-icon" title="Excluir conta"    onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button>
-      `}
+    <div class="account-card-body">
+      <div class="account-card-top">
+        <div class="account-icon-wrap" style="background:${bgAlpha}">${renderIconEl(a.icon,a.color,36)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="account-name">${esc(a.name)}</div>
+          <div class="account-type">${accountTypeLabel(a.type)}</div>
+        </div>
+      </div>
+      <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
+      ${a.currency&&a.currency!=='BRL'?`<div class="account-currency">${esc(a.currency)}</div>`:''}
+      ${bankLine}${dueLine}${limitLine}${pixLine}
     </div>
-    <div class="account-icon" style="font-size:1.6rem;margin-bottom:8px">${renderIconEl(a.icon,a.color,36)}</div>
-    <div class="account-name">${esc(a.name)}</div>
-    <div class="account-type">${accountTypeLabel(a.type)}</div>
-    <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
-    ${a.currency && a.currency!=='BRL' ? `<div class="account-currency">${esc(a.currency)}</div>` : ''}
-    ${bankInfoLine}${pixLine}
-    ${dueLine}
+    <div class="account-actions">${actions}</div>
   </div>`;
 }
 

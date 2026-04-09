@@ -3343,6 +3343,145 @@ window.importDemoData = importDemoData;
 
 
 // ── Demo Data UI Controller ──────────────────────────────────────────────────
+
+// ── deleteAllFamilyData: wipe all data for current family ───────────────────
+async function deleteAllFamilyData() {
+  const fid = typeof famId === 'function' ? famId() : null;
+  const fname = (state.families||[]).find(f=>f.id===fid)?.name || 'família atual';
+
+  if (!fid) { toast('Nenhuma família ativa.', 'warning'); return; }
+
+  // Two-step confirmation
+  const confirm1 = await new Promise(res => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+    overlay.innerHTML=`<div style="background:var(--surface);border-radius:18px;padding:28px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:2.5rem;text-align:center;margin-bottom:12px">⚠️</div>
+      <div style="font-size:1rem;font-weight:800;color:var(--text);text-align:center;margin-bottom:8px">Excluir todos os dados?</div>
+      <div style="font-size:.84rem;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:20px">
+        Você está prestes a excluir <strong>TODOS</strong> os dados da família <strong>${esc(fname)}</strong>:<br>
+        transações, contas, categorias, orçamentos, programados, dívidas, objetivos, preços, lista de supermercado e membros.<br><br>
+        <span style="color:#dc2626;font-weight:700">Esta ação é irreversível.</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button id="_delConfCancelBtn" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button id="_delConfBtn" style="flex:1;padding:12px;border-radius:10px;border:none;background:#dc2626;color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit">Sim, excluir tudo</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_delConfCancelBtn').onclick = () => { overlay.remove(); res(false); };
+    overlay.querySelector('#_delConfBtn').onclick = () => { overlay.remove(); res(true); };
+  });
+  if (!confirm1) return;
+
+  // Second confirmation — type family name
+  const typedName = window.prompt(`Para confirmar, digite o nome da família:
+"${fname}"`);
+  if (typedName?.trim() !== fname.trim()) {
+    toast('Nome incorreto — exclusão cancelada.', 'error');
+    return;
+  }
+
+  // Progress overlay
+  const prog = document.createElement('div');
+  prog.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  prog.innerHTML=`<div style="background:var(--surface);border-radius:18px;padding:28px;max-width:400px;width:100%">
+    <div style="font-size:1rem;font-weight:800;color:var(--text);margin-bottom:16px;text-align:center">🗑️ Excluindo dados…</div>
+    <div id="_delProgStatus" style="font-size:.82rem;color:var(--muted);margin-bottom:10px;text-align:center">Iniciando…</div>
+    <div style="height:10px;background:var(--border);border-radius:6px;overflow:hidden;margin-bottom:8px">
+      <div id="_delProgBar" style="height:100%;width:0%;background:#dc2626;border-radius:6px;transition:width .4s ease"></div>
+    </div>
+    <div id="_delProgPct" style="font-size:.75rem;color:var(--muted);text-align:center">0%</div>
+  </div>`;
+  document.body.appendChild(prog);
+
+  const setProgress = (msg, pct) => {
+    const s=document.getElementById('_delProgStatus'); if(s) s.textContent=msg;
+    const b=document.getElementById('_delProgBar');    if(b) b.style.width=pct+'%';
+    const p=document.getElementById('_delProgPct');    if(p) p.textContent=pct+'%';
+  };
+
+  try {
+    const tables=[
+      // AI insights
+      ['ai_insight_recommendations', 4],
+      ['ai_insight_snapshots',       7],
+      // Prices
+      ['price_history',             10],
+      // Grocery
+      ['grocery_items',             13],
+      ['grocery_lists',             16],
+      ['price_stores',              18],
+      ['price_items',               20],
+      // Debts
+      ['debt_ledger',               23],
+      ['debts',                     26],
+      // Dreams / objectives
+      ['dream_items',               29],
+      ['dream_contributions',       32],
+      ['dreams',                    35],
+      // Investments
+      ['investment_price_history',  38],
+      ['investment_transactions',   41],
+      ['investment_positions',      44],
+      // Scheduled
+      ['scheduled_occurrences',     48],
+      ['scheduled_run_logs',        51],
+      ['scheduled_transactions',    54],
+      // Budgets
+      ['budgets',                   58],
+      // Transactions
+      ['transactions',              63],
+      // Accounts + groups
+      ['accounts',                  68],
+      ['account_groups',            72],
+      // Categories & payees (beneficiários)
+      ['categories',                76],
+      ['payees',                    80],
+      // Family structure
+      ['family_composition',        85],
+      ['family_members',            90],
+      // App settings for this family
+      ['app_settings',              95],
+    ];
+
+    for (const [table, pct] of tables) {
+      setProgress(`Excluindo ${table}…`, pct);
+      const { error } = await sb.from(table).delete().eq('family_id', fid);
+      if (error) console.warn(`[deleteAll] ${table}:`, error.message);
+    }
+
+    setProgress('Finalizando…', 98);
+    await new Promise(r=>setTimeout(r,400));
+    prog.remove();
+
+    toast('✅ Todos os dados da família foram removidos com sucesso.', 'success');
+
+    // Clear all in-memory state
+    state.transactions=[];
+    state.accounts=[];
+    state.categories=[];
+    state.payees=[];
+    state.budgets=[];
+    state.dreams=[];
+    state.debts=[];
+    state.groups=[];
+    state.familyMembers=[];
+    if (typeof DB !== 'undefined' && DB._cache) DB._cache={};
+    // Navigate to dashboard and reload
+    if (typeof navigate === 'function') navigate('dashboard');
+    setTimeout(() => {
+      if (typeof loadDashboard === 'function') loadDashboard();
+    }, 300);
+
+  } catch(e) {
+    prog.remove();
+    toast('Erro ao excluir dados: '+(e.message||e), 'error');
+    console.error('[deleteAllFamilyData]', e);
+  }
+}
+window.deleteAllFamilyData = deleteAllFamilyData;
+
 async function _loadDemoSelectors() {
   const famSel  = document.getElementById('demoFamilySelect');
   const userSel = document.getElementById('demoUserSelect');
@@ -3350,34 +3489,63 @@ async function _loadDemoSelectors() {
 
   famSel.innerHTML = '<option value="">⏳ Carregando…</option>';
   try {
-    // Use service role via admin API or fallback to regular query
-    const { data: families, error: famErr } = await sb.from('families').select('id,name').order('name');
-    if (famErr || !families?.length) {
-      famSel.innerHTML = `<option value="">— Nenhuma família encontrada (${famErr?.message||'vazio'}) —</option>`;
-      return;
+    // Try from state.families first (already loaded), else query
+    let families = (state.families || []).length
+      ? state.families
+      : null;
+    if (!families) {
+      const { data, error } = await sb.from('families').select('id,name').order('name');
+      if (error) throw error;
+      families = data || [];
+    }
+    if (!families.length) {
+      // Fallback: use current user's family
+      const fid = typeof famId === 'function' ? famId() : null;
+      if (fid) {
+        famSel.innerHTML = `<option value="">— Selecionar família —</option>`;
+        const { data: f2 } = await sb.from('families').select('id,name').eq('id',fid).maybeSingle();
+        if (f2) families = [f2];
+      }
     }
     famSel.innerHTML = '<option value="">— Selecionar família —</option>'
       + families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
     famSel.onchange = () => _loadDemoUsers(famSel.value);
+    // Auto-select if only one family
+    if (families.length === 1) {
+      famSel.value = families[0].id;
+      _loadDemoUsers(families[0].id);
+    }
   } catch(e) {
     famSel.innerHTML = `<option value="">Erro: ${e.message}</option>`;
+    console.error('[_loadDemoSelectors]', e);
   }
 }
 
 async function _loadDemoUsers(familyId) {
   const userSel = document.getElementById('demoUserSelect');
   if (!userSel) return;
-  if (!familyId) { userSel.innerHTML = '<option value="">— Selecione uma família —</option>'; return; }
+  if (!familyId) { userSel.innerHTML = '<option value="">— Selecione uma família primeiro —</option>'; return; }
 
-  userSel.innerHTML = '<option value="">⏳ Carregando…</option>';
+  userSel.innerHTML = '<option value="">⏳ Carregando usuários…</option>';
   try {
-    const { data: members } = await sb.from('app_users')
+    const { data: members, error } = await sb.from('app_users')
       .select('id,name,email,family_id')
-      .eq('family_id', familyId);
+      .eq('family_id', familyId)
+      .order('name');
+    if (error) throw error;
+    const list = members || [];
     userSel.innerHTML = '<option value="">— Selecionar usuário —</option>'
-      + (members||[]).map(u => `<option value="${u.id}">${esc(u.name||u.email)}</option>`).join('');
+      + list.map(u => `<option value="${u.id}">${esc(u.name||u.email||u.id)}</option>`).join('');
+    // Auto-select current user if in this family
+    if (currentUser && currentUser.family_id === familyId) {
+      const me = list.find(u => u.id === currentUser.id);
+      if (me) userSel.value = me.id;
+    } else if (list.length === 1) {
+      userSel.value = list[0].id;
+    }
   } catch(e) {
     userSel.innerHTML = `<option value="">Erro: ${e.message}</option>`;
+    console.error('[_loadDemoUsers]', e);
   }
 }
 
