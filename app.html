@@ -1,7 +1,40 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<!-- Auth check is handled by tryAutoConnect() in auth.js/app.js after scripts load -->
+<!-- ── Session guard: redirect to login.html if no active session ────────
+     Fast check via localStorage; if not found, waits for Supabase SDK
+     (handles PKCE flow where token arrives async after redirect). ──-->
+<script>
+(function(){
+  try {
+    // Fast path: token already in localStorage (normal case)
+    var keys = Object.keys(localStorage);
+    for (var k of keys) {
+      if ((k.includes('supabase') || k.includes('sb-')) && k.includes('auth-token')) {
+        try {
+          var s = JSON.parse(localStorage.getItem(k));
+          if (s && (s.access_token || (s.session && s.session.access_token))) {
+            return; // token found — allow app to load normally
+          }
+        } catch(_) {}
+      }
+    }
+    // Also check for a short-lived redirect flag set by login.html
+    // login.html sets this flag just before redirecting to app.html
+    if (sessionStorage.getItem('ft_login_redirect') === '1') {
+      sessionStorage.removeItem('ft_login_redirect');
+      return; // came from login — allow app to load
+    }
+    // No token found — redirect to login
+    var dest = 'login.html';
+    var search = window.location.search;
+    var hash   = window.location.hash;
+    if (search || hash) dest += search + hash;
+    window.location.replace(dest);
+  } catch(e) {}
+})();
+</script>
+
 <meta charset="UTF-8">
 <link rel="manifest" href="manifest.json">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -629,7 +662,6 @@
     <div class="fx-bar-inner">
       <div class="fx-bar-family" id="fxBarFamily" style="display:none">
         <svg class="fx-bar-family-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 11c1.66 0 3-1.79 3-4s-1.34-4-3-4-3 1.79-3 4 1.34 4 3 4z"/><path d="M8 11c1.66 0 3-1.79 3-4S9.66 3 8 3 5 4.79 5 7s1.34 4 3 4z"/><path d="M8 13c-2.33 0-7 1.17-7 3.5V20h14v-3.5C15 14.17 10.33 13 8 13z"/><path d="M16 13c-.29 0-.62.02-.97.05 1.16.84 1.97 1.98 1.97 3.45V20h6v-3.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-        <span class="fx-bar-family-label">FAMÍLIA:</span>
         <span class="fx-bar-family-text" id="fxBarFamilyText">—</span>
       </div>
       <span class="fx-bar-label">Câmbio</span>
@@ -772,6 +804,7 @@
           <div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody id="recentTxBody"><tr><td colspan="4" class="text-muted" style="text-align:center;padding:24px;font-size:.83rem">Carregando...</td></tr></tbody></table></div>
       </div>
 
+      <!-- Card: Investimentos -->
       <!-- Card: Orçamentos -->
       <div id="dashCardBudgets" class="dcard mb-4" style="display:none">
         <div class="dcard-header">
@@ -780,8 +813,8 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
             <div>
-              <div class="dcard-title">Orçamentos &amp; Objetivos</div>
-              <div class="dcard-sub">Progresso por categoria e objetivos ativos</div>
+              <div class="dcard-title">Orçamentos do Mês</div>
+              <div class="dcard-sub">Progresso por categoria</div>
             </div>
           </div>
           <button class="dcard-link-btn" onclick="navigate('budgets')">Ver todos →</button>
@@ -1104,14 +1137,6 @@
         </div>
       </div>
 
-            <!-- ── Account filter active badge ── -->
-            <div id="txAccountBadge" style="display:none;margin-bottom:8px">
-              <span class="tx-acct-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                <span id="txAccountBadgeLabel">Conta</span>
-                <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta">✕</button>
-              </span>
-            </div>
             <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
 
       <!-- ── Reconcile Mode Banner ─────────────────────────────── -->
@@ -1256,7 +1281,10 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Previsão
           </button>
-
+          <button class="rpt-view-tab" id="rptBtnBeneficiarios" onclick="setReportView('beneficiarios')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Beneficiários
+          </button>
 
         </div>
       </div>
@@ -1400,18 +1428,34 @@
       <!-- ── View: Transações ── -->
       <div id="reportTxView" style="display:none">
         <div class="report-kpi-grid" id="reportTxKpis"></div>
-        <div class="card rpt-tx-card">
-          <div class="card-header rpt-tx-header">
-            <div class="rpt-tx-header-left">
-              <span class="card-title">Transações</span>
-              <span id="reportTxCount" class="badge badge-muted"></span>
-            </div>
-            <div class="rpt-tx-header-right">
-              <span class="rpt-tx-total-label">Total:</span>
-              <span id="reportTxTotal" class="rpt-tx-total-val"></span>
-            </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Transações</span>
+            <span id="reportTxCount" class="badge badge-muted"></span>
           </div>
-          <div class="rpt-tx-list" id="reportTxBody"></div>
+          <div class="table-wrap">
+            <table id="reportTxTable" class="resizable-table rpt-tx-table">
+              <colgroup>
+                <col class="rpt-col-date">
+                <col class="rpt-col-desc">
+                <col class="rpt-col-acct">
+                <col class="rpt-col-cat">
+                <col class="rpt-col-pay">
+                <col class="rpt-col-amt">
+              </colgroup>
+              <thead><tr>
+                <th onclick="rptSortTx('date')" style="cursor:pointer">Data <span id="rptSortDate"></span></th>
+                <th onclick="rptSortTx('description')" style="cursor:pointer">Descrição <span id="rptSortDesc"></span></th>
+                <th class="rpt-td-acct">Conta</th><th class="rpt-td-cat">Categoria</th><th class="rpt-td-pay">Beneficiário</th>
+                <th onclick="rptSortTx('amount')" style="cursor:pointer">Valor <span id="rptSortAmt"></span></th>
+              </tr></thead>
+              <tbody id="reportTxBody"></tbody>
+              <tfoot><tr style="font-weight:700;background:var(--surface2)">
+                <td colspan="5" style="padding:10px 14px">Total</td>
+                <td id="reportTxTotal" style="padding:10px 14px;font-family:var(--font-serif)"></td>
+              </tr></tfoot>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1453,6 +1497,157 @@
           <div class="forecast-chart-wrap"><canvas id="forecastChart"></canvas></div>
         </div>
         <div id="forecastAccountsContainer"></div>
+      </div>
+
+      <!-- ══ View: Beneficiários ══════════════════════════════════════ -->
+      <div id="reportBeneficiariosView" style="display:none">
+
+        <!-- Filtros próprios do relatório de beneficiários -->
+        <div class="rpt-benef-filters card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px">🔍 Filtros</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;align-items:end">
+
+            <!-- Período -->
+            <div class="form-group" style="margin:0">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Período</label>
+              <select id="rbtbPeriod" onchange="rbtbOnPeriodChange()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit">
+                <option value="month">Este mês</option>
+                <option value="quarter">Este trimestre</option>
+                <option value="year">Este ano</option>
+                <option value="last12">Últimos 12 meses</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            <div id="rbtbFromWrap" style="display:none;margin:0" class="form-group">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">De</label>
+              <input lang="pt-BR" type="date" id="rbtbFrom" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;box-sizing:border-box">
+            </div>
+            <div id="rbtbToWrap" style="display:none;margin:0" class="form-group">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Até</label>
+              <input lang="pt-BR" type="date" id="rbtbTo" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;box-sizing:border-box">
+            </div>
+
+            <!-- Contas (multi) -->
+            <div class="form-group" style="margin:0">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Contas</label>
+              <div id="rbtbAccountsWrap" style="position:relative">
+                <button type="button" id="rbtbAccountsBtn" onclick="rbtbToggleMulti('accounts')"
+                  style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+                  <span id="rbtbAccountsLabel">Todas</span><span style="color:var(--muted);font-size:.7rem">▼</span>
+                </button>
+                <div id="rbtbAccountsDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:var(--shadow)">
+                  <div id="rbtbAccountsList" style="padding:6px 4px"></div>
+                  <div style="padding:8px 10px;border-top:1px solid var(--border)">
+                    <button type="button" onclick="rbtbSelectAll('accounts')" style="font-size:.74rem;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;margin-right:12px">Selecionar todas</button>
+                    <button type="button" onclick="rbtbClearAll('accounts')" style="font-size:.74rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Limpar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Categorias (multi) -->
+            <div class="form-group" style="margin:0">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Categorias</label>
+              <div id="rbtbCategoriesWrap" style="position:relative">
+                <button type="button" id="rbtbCategoriesBtn" onclick="rbtbToggleMulti('categories')"
+                  style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+                  <span id="rbtbCategoriesLabel">Todas</span><span style="color:var(--muted);font-size:.7rem">▼</span>
+                </button>
+                <div id="rbtbCategoriesDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:var(--shadow)">
+                  <div id="rbtbCategoriesList" style="padding:6px 4px"></div>
+                  <div style="padding:8px 10px;border-top:1px solid var(--border)">
+                    <button type="button" onclick="rbtbSelectAll('categories')" style="font-size:.74rem;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;margin-right:12px">Selecionar todas</button>
+                    <button type="button" onclick="rbtbClearAll('categories')" style="font-size:.74rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">Limpar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tipo de beneficiário -->
+            <div class="form-group" style="margin:0">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Tipo</label>
+              <select id="rbtbType" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit">
+                <option value="">Todos</option>
+                <option value="beneficiario">Beneficiários</option>
+                <option value="fonte_pagadora">Fontes Pagadoras</option>
+                <option value="sem_cadastro">Sem cadastro</option>
+              </select>
+            </div>
+
+            <!-- Ordenação -->
+            <div class="form-group" style="margin:0">
+              <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px;display:block">Ordenar por</label>
+              <select id="rbtbSort" onchange="loadBeneficiariosReport()" style="width:100%;padding:8px 10px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;color:var(--text);font-family:inherit">
+                <option value="total_desc">Maior valor</option>
+                <option value="total_asc">Menor valor</option>
+                <option value="count_desc">Mais transações</option>
+                <option value="name_asc">Nome A→Z</option>
+                <option value="last_desc">Mais recentes</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-primary btn-sm" onclick="loadBeneficiariosReport()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Filtrar
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="rbtbResetFilters()">Limpar filtros</button>
+            <span id="rbtbFilterInfo" style="font-size:.74rem;color:var(--muted);margin-left:auto"></span>
+          </div>
+        </div>
+
+        <!-- KPIs resumo -->
+        <div id="rbtbKpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px"></div>
+
+        <!-- Tabela de beneficiários -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <span class="card-title">👥 Todos os Beneficiários / Fontes</span>
+            <span id="rbtbCount" style="font-size:.75rem;color:var(--muted);margin-left:8px"></span>
+          </div>
+          <div id="rbtbLoading" style="padding:32px;text-align:center;color:var(--muted);display:none">
+            <div style="font-size:1.5rem;margin-bottom:8px">⏳</div>
+            <div style="font-size:.85rem">Carregando...</div>
+          </div>
+          <div class="table-wrap" style="overflow-x:auto">
+            <table id="rbtbTable" style="width:100%;min-width:480px">
+              <thead><tr>
+                <th style="text-align:left;padding:9px 12px;font-size:.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Beneficiário / Fonte</th>
+                <th style="text-align:center;padding:9px 8px;font-size:.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Tipo</th>
+                <th style="text-align:right;padding:9px 8px;font-size:.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Txs</th>
+                <th style="text-align:right;padding:9px 8px;font-size:.75rem;font-weight:700;color:var(--red,#dc2626);border-bottom:1px solid var(--border);white-space:nowrap">Despesas</th>
+                <th style="text-align:right;padding:9px 8px;font-size:.75rem;font-weight:700;color:#16a34a;border-bottom:1px solid var(--border);white-space:nowrap">Receitas</th>
+                <th style="text-align:right;padding:9px 12px;font-size:.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Última TX</th>
+                <th style="text-align:right;padding:9px 12px;font-size:.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Média</th>
+                <th style="text-align:right;padding:9px 12px;font-size:.75rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">Última TX</th>
+              </tr></thead>
+              <tbody id="rbtbBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Drill: transações do beneficiário selecionado -->
+        <div id="rbtbDrill" style="display:none" class="card">
+          <div class="card-header" style="justify-content:space-between">
+            <span id="rbtbDrillTitle" class="card-title"></span>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rbtbDrill').style.display='none'">✕ Fechar</button>
+          </div>
+          <div class="table-wrap" style="overflow-x:auto">
+            <table style="width:100%;min-width:420px">
+              <thead><tr>
+                <th style="text-align:left;padding:8px 12px;font-size:.74rem;color:var(--muted);border-bottom:1px solid var(--border)">Data</th>
+                <th style="text-align:left;padding:8px 12px;font-size:.74rem;color:var(--muted);border-bottom:1px solid var(--border)">Descrição</th>
+                <th style="text-align:left;padding:8px 8px;font-size:.74rem;color:var(--muted);border-bottom:1px solid var(--border)">Categoria</th>
+                <th style="text-align:left;padding:8px 8px;font-size:.74rem;color:var(--muted);border-bottom:1px solid var(--border)">Conta</th>
+                <th style="text-align:right;padding:8px 12px;font-size:.74rem;color:var(--muted);border-bottom:1px solid var(--border)">Valor</th>
+              </tr></thead>
+              <tbody id="rbtbDrillBody"></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -5789,6 +5984,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <button class="tx-ctx-tab" data-tab="scCtxDetalhes" onclick="switchScTab('scCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="scCtxRecorrencia" onclick="switchScTab('scCtxRecorrencia',this)">Recorrência</button>
         <button class="tx-ctx-tab" data-tab="scCtxNotificacoes" onclick="switchScTab('scCtxNotificacoes',this)">Notificações</button>
+        <button class="tx-ctx-tab" id="scTabDivisao" data-tab="scCtxDivisao" onclick="switchScTab('scCtxDivisao',this);txSplitTabOpened('sc')">✂️ Divisão</button>
       </div>
 
       <!-- Wizard step indicator -->
@@ -6084,6 +6280,37 @@ Se você não solicitou isso, ignore este e-mail.`,
 
         </div>
       </div>
+
+      <!-- ══ Pane: Divisão por categoria e membro ══ -->
+      <div class="tx-ctx-pane" id="scCtxDivisao" style="display:none;padding:16px">
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="scSplitTabCat" class="tx-split-subtab active" onclick="scSplitShowTab('cat')" style="flex:1;padding:7px 10px;font-size:.78rem;font-weight:600;border:1.5px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;transition:all .15s">📂 Por Categoria</button>
+          <button id="scSplitTabMem" class="tx-split-subtab" onclick="scSplitShowTab('mem')" style="flex:1;padding:7px 10px;font-size:.78rem;font-weight:600;border:1.5px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s">👥 Por Membro</button>
+        </div>
+        <div id="scSplitCatPane">
+          <div id="scCatSplitRows"></div>
+          <div id="scCatSplitTotal" style="display:none;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:.78rem">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Distribuído:</span><span id="scCatSplitTotalVal" style="font-weight:700"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Total TX:</span><span id="scCatSplitTxVal"></span></div>
+            <div id="scCatSplitDiff"></div>
+          </div>
+          <button type="button" onclick="scCatSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;border:1.5px dashed var(--border);border-radius:9px;background:transparent;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">+ Adicionar categoria</button>
+        </div>
+        <div id="scSplitMemPane" style="display:none">
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button id="scMemSplitModeVal" onclick="scMemSplitSetMode('value')" style="flex:1;padding:6px;font-size:.74rem;font-weight:600;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit">R$ Valor</button>
+            <button id="scMemSplitModePct" onclick="scMemSplitSetMode('pct')" style="flex:1;padding:6px;font-size:.74rem;font-weight:600;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit">% Percentual</button>
+          </div>
+          <div id="scMemSplitRows"></div>
+          <div id="scMemSplitTotal" style="display:none;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:.78rem">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Distribuído:</span><span id="scMemSplitTotalVal" style="font-weight:700"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Total TX:</span><span id="scMemSplitTxVal"></span></div>
+            <div id="scMemSplitDiff"></div>
+          </div>
+          <button type="button" onclick="scMemSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;border:1.5px dashed var(--border);border-radius:9px;background:transparent;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">+ Adicionar membro</button>
+        </div>
+        <div style="margin-top:14px;padding:10px 12px;background:rgba(42,96,73,.07);border-radius:9px;font-size:.74rem;color:var(--muted);line-height:1.5">💡 Divisão salva na programação e aplicada em cada lançamento gerado.</div>
+      </div>
     </div><!-- /modal-body -->
 
     <div class="modal-footer" id="scModalFooter">
@@ -6310,7 +6537,7 @@ Se você não solicitou isso, ignore este e-mail.`,
         <button class="tx-ctx-tab active" data-tab="txCtxPrincipal" onclick="switchTxTab('txCtxPrincipal',this)">Principal</button>
         <button class="tx-ctx-tab" data-tab="txCtxDetalhes" onclick="switchTxTab('txCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="txCtxAnexo" onclick="switchTxTab('txCtxAnexo',this)">Anexo / IA</button>
-
+        <button class="tx-ctx-tab" id="txTabDivisao" data-tab="txCtxDivisao" onclick="switchTxTab('txCtxDivisao',this);txSplitTabOpened()">✂️ Divisão</button>
       </div>
 
       <!-- Wizard step indicator -->
@@ -6502,8 +6729,8 @@ Se você não solicitou isso, ignore este e-mail.`,
         </div>
       </div>
 
-      <!-- ── SPLIT DATA CONTAINER (hidden, used by split modal) ── -->
-      <div id="txCtxDivisao" style="display:none;padding:16px">
+      <!-- ── TAB: Divisão ─────────────────────────────────────── -->
+      <div class="tx-ctx-pane" id="txCtxDivisao" style="display:none;padding:16px">
 
         <!-- Sub-tabs: Categorias | Membros -->
         <div style="display:flex;gap:6px;margin-bottom:14px">
@@ -6573,9 +6800,6 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- Footer -->
     <div class="modal-footer" id="txModalFooter">
       <button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button>
-      <button class="btn btn-ghost" id="txSplitOpenBtn" onclick="_openSplitModal()" title="Dividir por categoria ou membro">
-        ✂️ Divisão
-      </button>
       <!-- Wizard prev/next (hidden in tabs mode) -->
       <div id="txWizardNav" style="display:none;display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" id="txWzPrev" onclick="txWizardPrev()" style="display:none">← Anterior</button>
@@ -6583,85 +6807,6 @@ Se você não solicitou isso, ignore este e-mail.`,
         <button class="btn btn-primary" id="txWzNext" onclick="txWizardNext()">Próximo →</button>
       </div>
       <button class="btn btn-primary" id="txSaveBtn" onclick="saveTransaction()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- ── Modal: Divisão de Transação ─────────────────────────────────────── -->
-<div class="modal-overlay" id="txSplitModal">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <span class="modal-title">✂️ Divisão de Transação</span>
-      <button class="modal-close" onclick="closeModal('txSplitModal')">✕</button>
-    </div>
-    <div class="modal-body" style="padding:16px;max-height:70dvh;overflow-y:auto">
-
-      <!-- Sub-tabs -->
-      <div style="display:flex;gap:6px;margin-bottom:14px">
-        <button id="txSplitModalTabCat" class="tx-split-subtab active" onclick="txSplitShowModalTab('cat')">
-          🏷️ Por Categoria
-        </button>
-        <button id="txSplitModalTabMem" class="tx-split-subtab" onclick="txSplitShowModalTab('mem')">
-          👥 Por Membro
-        </button>
-      </div>
-
-      <!-- Category splits -->
-      <div id="txSplitModalCatPane">
-        <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
-          Distribua o valor da transação entre múltiplas categorias.<br>O total deve ser igual ao valor da transação.
-        </div>
-        <div id="txCatSplitRowsM" style="display:flex;flex-direction:column;gap:8px"></div>
-        <button type="button" onclick="txCatSplitAddRow()"
-          style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
-          + Adicionar categoria
-        </button>
-        <div id="txCatSplitTotalM" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="color:var(--muted);font-weight:600">Total distribuído</span>
-            <span id="txCatSplitTotalValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-            <span style="color:var(--muted);font-weight:600">Valor da transação</span>
-            <span id="txCatSplitTxValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-          </div>
-          <div id="txCatSplitDiffM" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
-        </div>
-      </div>
-
-      <!-- Member splits -->
-      <div id="txSplitModalMemPane" style="display:none">
-        <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
-          Distribua o valor entre membros da família por valor ou percentual.
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:12px">
-          <button id="txMemSplitModeValM" class="tx-split-mode-btn active" onclick="txMemSplitSetMode('value')">R$ Valor</button>
-          <button id="txMemSplitModePctM" class="tx-split-mode-btn" onclick="txMemSplitSetMode('pct')">% Percentual</button>
-        </div>
-        <div id="txMemSplitRowsM" style="display:flex;flex-direction:column;gap:8px"></div>
-        <button type="button" onclick="txMemSplitAddRow()"
-          style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
-          + Adicionar membro
-        </button>
-        <div id="txMemSplitTotalM" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="color:var(--muted);font-weight:600">Total distribuído</span>
-            <span id="txMemSplitTotalValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-            <span style="color:var(--muted);font-weight:600">Valor da transação</span>
-            <span id="txMemSplitTxValM" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
-          </div>
-          <div id="txMemSplitDiffM" style="margin-top:6px;font-size:.75rem;text-align:right"></div>
-        </div>
-      </div>
-
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('txSplitModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="closeModal('txSplitModal')">Confirmar Divisão</button>
     </div>
   </div>
 </div>
@@ -7111,12 +7256,23 @@ Se você não solicitou isso, ignore este e-mail.`,
             <input type="text" id="accountNumber" class="acm-input" placeholder="Ex: 12345-6">
           </div>
           <div class="acm-field acm-field--full">
-            <label class="acm-field-label" style="display:flex;align-items:center;gap:6px">
-              <span style="display:inline-flex;align-items:center;justify-content:center;background:#00b4d8;color:#fff;border-radius:6px;width:18px;height:18px;font-size:.65rem;font-weight:900;letter-spacing:-.02em;flex-shrink:0">PIX</span>
-              Chave PIX <span class="acm-optional-badge">opcional</span>
+            <label class="acm-field-label" style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+              <span style="display:flex;align-items:center;gap:6px">
+                <span style="display:inline-flex;align-items:center;justify-content:center;background:#00b4d8;color:#fff;border-radius:6px;width:18px;height:18px;font-size:.65rem;font-weight:900;letter-spacing:-.02em;flex-shrink:0">PIX</span>
+                Chaves PIX <span class="acm-optional-badge">até 3</span>
+              </span>
+              <button type="button" id="acmAddPixKeyBtn"
+                onclick="_acmAddPixKey()"
+                style="display:flex;align-items:center;gap:4px;padding:3px 10px;font-size:.72rem;font-weight:700;border:1.5px solid var(--accent);border-radius:20px;background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;transition:all .15s"
+                onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+                onmouseout="this.style.background='transparent';this.style.color='var(--accent)'">
+                + Adicionar
+              </button>
             </label>
-            <input type="text" id="accountPixKey" class="acm-input" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" autocomplete="off">
-            <div style="font-size:.68rem;color:var(--muted);margin-top:4px">Formatos aceitos: CPF (000.000.000-00), CNPJ, e-mail, +55 11 99999-9999 ou UUID aleatório</div>
+            <div id="accountPixKeysContainer" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+            <div id="accountPixKeysHint" style="font-size:.68rem;color:var(--muted);margin-top:6px;line-height:1.5">
+              Tipos: CPF · CNPJ · E-mail · Telefone (+55...) · Chave aleatória
+            </div>
           </div>
           <div class="acm-field acm-field--full">
             <label class="acm-field-label">IBAN</label>
@@ -8562,15 +8718,45 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
-<!-- Feature 5: Converter Transação em Programada -->
+<!-- Feature 5: Converter Transação em Programada (v2 - duas opções) -->
 <div class="modal-overlay" id="convertToScheduledModal">
-  <div class="modal" style="max-width:480px"><div class="modal-handle"></div>
+  <div class="modal" style="max-width:500px"><div class="modal-handle"></div>
     <div class="modal-header">
-      <span class="modal-title">📅 Criar Programação</span>
+      <span class="modal-title">📅 Transação → Programada</span>
       <button class="modal-close" onclick="closeModal('convertToScheduledModal')">✕</button>
     </div>
-    <div class="modal-body">
-      <div id="ctsNote" style="font-size:.82rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:14px"></div>
+    <div class="modal-body" style="padding:18px 20px">
+
+      <!-- Resumo da transação original -->
+      <div id="ctsTxSummary" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:.82rem">
+        <div style="font-weight:700;color:var(--text);margin-bottom:4px" id="ctsTxDesc">—</div>
+        <div style="color:var(--muted);display:flex;gap:12px;flex-wrap:wrap">
+          <span id="ctsTxDate">—</span>
+          <span id="ctsTxAmt" style="font-weight:600;color:var(--accent)">—</span>
+          <span id="ctsTxAcct">—</span>
+        </div>
+      </div>
+
+      <!-- Escolha de modo -->
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">O que deseja fazer?</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        <label id="ctsModeKeepLabel" style="display:flex;gap:12px;padding:12px 14px;border:2px solid var(--accent);border-radius:12px;cursor:pointer;background:rgba(42,96,73,.06);transition:all .15s">
+          <input type="radio" name="ctsMode" value="keep" checked onchange="ctsUpdateMode()" style="margin-top:2px;accent-color:var(--accent);flex-shrink:0">
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:2px">📌 Manter + criar próximas</div>
+            <div style="font-size:.76rem;color:var(--muted);line-height:1.45">Mantém o lançamento atual e cria uma programação para as <strong>próximas ocorrências</strong> a partir de uma data futura.</div>
+          </div>
+        </label>
+        <label id="ctsModeConvertLabel" style="display:flex;gap:12px;padding:12px 14px;border:2px solid var(--border);border-radius:12px;cursor:pointer;background:transparent;transition:all .15s">
+          <input type="radio" name="ctsMode" value="convert" onchange="ctsUpdateMode()" style="margin-top:2px;accent-color:var(--accent);flex-shrink:0">
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:2px">🔄 Converter (mover para programada)</div>
+            <div style="font-size:.76rem;color:var(--muted);line-height:1.45">Remove o lançamento atual e cria uma programação <strong>exatamente igual</strong>, a partir da data original. O saldo da conta será revertido.</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Campos comuns -->
       <div class="form-grid">
         <div class="form-group full">
           <label>Descrição *</label>
@@ -8579,18 +8765,18 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div class="form-group">
           <label>Valor *</label>
           <div class="amt-wrap">
-            <button type="button" class="amt-sign-btn" onclick="toggleAmtSign('ctsAmountInput')">+</button>
+            <button type="button" class="amt-sign-btn" id="ctsSignBtn" onclick="toggleAmtSign('ctsAmountInput')">−</button>
             <input type="text" id="ctsAmountInput" inputmode="numeric" placeholder="0,00" pattern="[0-9.,]*" autocomplete="off"
-                oninput="_amtFieldInput('ctsAmountInput')" onkeydown="_amtFieldKeydown('ctsAmountInput', event)" onblur="_amtFieldBlur('ctsAmountInput')" onfocus="_amtFieldFocus('ctsAmountInput')"
->
+              oninput="_amtFieldInput('ctsAmountInput')" onkeydown="_amtFieldKeydown('ctsAmountInput', event)"
+              onblur="_amtFieldBlur('ctsAmountInput')" onfocus="_amtFieldFocus('ctsAmountInput')">
           </div>
         </div>
         <div class="form-group">
           <label>Conta *</label>
           <select id="ctsAccountId"></select>
         </div>
-        <div class="form-group">
-          <label>Data de início *</label>
+        <div class="form-group" id="ctsDateGroup">
+          <label id="ctsDateLabel">Data de início *</label>
           <input lang="pt-BR" type="date" id="ctsDate">
         </div>
         <div class="form-group full">
@@ -8607,12 +8793,17 @@ Se você não solicitou isso, ignore este e-mail.`,
           <input type="text" id="ctsMemo" placeholder="Observação opcional">
         </div>
       </div>
+
+      <!-- Aviso contextual -->
+      <div id="ctsWarning" style="margin-top:8px;padding:10px 12px;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.3);border-radius:9px;font-size:.78rem;color:#92400e;display:none"></div>
+
       <input type="hidden" id="ctsTxId">
       <input type="hidden" id="ctsType">
+      <input type="hidden" id="ctsTxOrigDate">
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('convertToScheduledModal')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveConvertToScheduled()">📅 Criar Programação</button>
+      <button class="btn btn-primary" id="ctsSaveBtn" onclick="saveConvertToScheduled()">📅 Confirmar</button>
     </div>
   </div>
 </div>
