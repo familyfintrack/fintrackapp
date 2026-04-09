@@ -1026,6 +1026,10 @@ function navigate(page){
 
   setTimeout(() => _scrollActivePageToTop(page), 0);
   setTimeout(() => _scrollActivePageToTop(page), 120);
+  // Restore intro banner collapsed states after page switch
+  setTimeout(() => {
+    try { _restoreModuleIntroStates(); } catch(_) {}
+  }, 50);
 }
 // Handle SW messages (e.g., deep links from notifications)
 if('serviceWorker' in navigator){

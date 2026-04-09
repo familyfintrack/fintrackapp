@@ -337,6 +337,11 @@ function goToAccountTransactions(accountId){
   const el=document.getElementById('txAccount');if(el)el.value=accountId;
   const monthEl=document.getElementById('txMonth');if(monthEl)monthEl.value='';
   navigate('transactions');
+  // Update filter badge after navigation (DOM needs to exist first)
+  requestAnimationFrame(() => {
+    if (typeof _txUpdateFilterBadge === 'function') _txUpdateFilterBadge();
+    if (typeof loadTransactions === 'function') loadTransactions();
+  });
 }
 
 function filterAccounts(type){
@@ -865,39 +870,55 @@ async function deleteGroup(id){
 }
 
 const _GROUP_ICONS = [
-  // Contas & Finanças
-  '🏦','💳','💰','💵','💴','💶','💷','🪙','💎','📈','📉','📊','🏧','💹','🏪','💸','🤑','🏛️','💼','📱',
-  // Países / Bandeiras
-  '🇧🇷','🇺🇸','🇪🇺','🇬🇧','🇯🇵','🇨🇦','🇦🇺','🇨🇭','🇦🇷','🇲🇽','🇵🇹','🇫🇷','🇩🇪','🇮🇹','🇨🇳',
-  // Investimentos & Patrimônio
-  '📊','📈','🏗️','🏢','🏠','🏡','🚗','✈️','🛳️','⚓','🌍','🌎','🌏','🏖️','🏔️','⛏️','🪨','🛢️','⚡','🌱',
-  // Família & Pessoas
-  '👨‍👩‍👧‍👦','👤','👥','🧑‍💼','🧒','👴','🤝','💑','👨‍👧','👩‍👦','👶','🧑‍🎓','🧑‍⚕️','🧑‍🏫','🧑‍🍳',
-  // Categorias de gasto
-  '🛒','🍔','🍕','🍜','☕','🎮','🎬','📚','🏋️','🎵','🎨','🏥','🚌','⛽','🔧','🛍️','🎁','🐾','🌿','✂️',
-  // Bancos e serviços
-  '🏦','💳','📲','🔐','🔑','🗝️','📋','📂','🗃️','📁','🗄️','📦','📤','📥','🔄','⚙️','🛡️','🌐','📡','🔒',
-  // Emojis gerais
-  '⭐','🌟','💫','✨','🎯','🎪','🎭','🎠','🎡','🎢','🏆','🥇','🥈','🥉','🎖️',
+  // ── Bandeiras: Américas
+  '🇧🇷','🇺🇸','🇨🇦','🇲🇽','🇦🇷','🇨🇴','🇨🇱','🇵🇾','🇺🇾','🇵🇪','🇧🇴','🇻🇪',
+  // ── Bandeiras: Europa
+  '🇪🇺','🇬🇧','🇩🇪','🇫🇷','🇮🇹','🇪🇸','🇵🇹','🇨🇭','🇦🇹','🇧🇪','🇳🇱','🇸🇪','🇳🇴','🇩🇰','🇫🇮','🇵🇱','🇨🇿','🇷🇴','🇭🇺','🇬🇷','🇮🇪','🇭🇷',
+  // ── Bandeiras: Ásia & Oceania
+  '🇯🇵','🇨🇳','🇰🇷','🇮🇳','🇸🇬','🇭🇰','🇦🇪','🇸🇦','🇮🇱','🇹🇷','🇦🇺','🇳🇿',
+  // ── Bandeiras: África
+  '🇿🇦','🇳🇬','🇪🇬','🇰🇪','🇲🇦',
+  // ── Finanças & Bancos
+  '🏦','💳','💰','💵','💴','💶','💷','🪙','💎','📈','📉','📊','🏧','💹','🏪','💸','🤑','🏛️','💼',
+  // ── Investimentos & Patrimônio
+  '🏗️','🏢','🏠','🏡','🚗','✈️','🛳️','⚓','⛏️','🛢️','⚡','🌱',
+  // ── Família & Pessoas
+  '👨‍👩‍👧‍👦','👤','👥','🧑‍💼','👶','🤝','💑',
+  // ── Categorias de gasto
+  '🛒','🍔','🍕','☕','🎮','🎬','📚','🏋️','🎵','🎨','🏥','🚌','⛽','🔧','🛍️','🎁','🐾',
+  // ── Genéricos
+  '⭐','🌟','💫','✨','🎯','🏆','🥇','🗂️','📁','📦','🔒','🛡️','🌐','⚙️','📱',
 ];
 
 function _populateGroupIconPicker(selectedEmoji) {
   const picker = document.getElementById('groupIconPicker');
   if (!picker) return;
-  picker.innerHTML = _GROUP_ICONS.map(icon => {
-    const sel = icon === selectedEmoji;
-    return `<button type="button" title="${icon}"
-      data-icon="${icon}"
-      style="width:34px;height:34px;border-radius:8px;border:2px solid ${sel?'var(--accent)':'transparent'};
-        background:${sel?'var(--accent-lt)':'transparent'};font-size:1.1rem;cursor:pointer;
-        transition:all .12s;display:flex;align-items:center;justify-content:center;padding:0"
-      onclick="_selectGroupIcon('${icon}')"
-      onmouseover="this.style.background='var(--accent-lt)'"
-      onmouseout="this.style.background=this.dataset.icon===document.getElementById('groupEmoji').value?'var(--accent-lt)':'transparent'"
-      >${icon}</button>`;
+
+  // Grouped icon sections for easier browsing
+  const sections = [
+    { label:'🌎 Américas',   icons:['🇧🇷','🇺🇸','🇨🇦','🇲🇽','🇦🇷','🇨🇴','🇨🇱','🇵🇾','🇺🇾','🇵🇪','🇧🇴','🇻🇪'] },
+    { label:'🌍 Europa',     icons:['🇪🇺','🇬🇧','🇩🇪','🇫🇷','🇮🇹','🇪🇸','🇵🇹','🇨🇭','🇦🇹','🇧🇪','🇳🇱','🇸🇪','🇳🇴','🇩🇰','🇫🇮','🇵🇱','🇨🇿','🇷🇴','🇭🇺','🇬🇷','🇮🇪'] },
+    { label:'🌏 Ásia & Oceania', icons:['🇯🇵','🇨🇳','🇰🇷','🇮🇳','🇸🇬','🇭🇰','🇦🇪','🇸🇦','🇮🇱','🇹🇷','🇦🇺','🇳🇿'] },
+    { label:'🌍 África',     icons:['🇿🇦','🇳🇬','🇪🇬','🇰🇪','🇲🇦'] },
+    { label:'🏦 Finanças',   icons:['🏦','💳','💰','💵','💴','💶','💷','🪙','💎','📈','📉','📊','🏧','💹','💸','🤑','🏛️','💼'] },
+    { label:'🏠 Patrimônio', icons:['🏗️','🏢','🏠','🏡','🚗','✈️','🛳️','⚓','⛏️','🛢️','⚡','🌱'] },
+    { label:'👥 Família',    icons:['👨‍👩‍👧‍👦','👤','👥','🧑‍💼','👶','🤝','💑'] },
+    { label:'⭐ Outros',     icons:['⭐','🌟','💫','✨','🎯','🏆','🥇','🗂️','📁','📦','🔒','🛡️','🌐','⚙️','📱','🛒','🎮','📚','🎵','🎨'] },
+  ];
+
+  picker.innerHTML = sections.map(sec => {
+    const btns = sec.icons.map(icon => {
+      const sel = icon === selectedEmoji;
+      return `<button type="button" title="${icon}" data-icon="${icon}"
+        onclick="document.getElementById('groupEmoji').value='${icon}';document.getElementById('groupEmojiPreview').textContent='${icon}';document.querySelectorAll('#groupIconPicker button').forEach(b=>b.style.background='none');this.style.background='var(--accent)22';this.style.borderColor='var(--accent)'"
+        style="width:34px;height:34px;border-radius:7px;font-size:1.1rem;border:1.5px solid ${sel ? 'var(--accent)' : 'transparent'};background:${sel ? 'var(--accent)22' : 'none'};cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center">${icon}</button>`;
+    }).join('');
+    return `<div style="margin-bottom:8px">
+      <div style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px;padding:0 2px">${sec.label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px">${btns}</div>
+    </div>`;
   }).join('');
-}
-window._populateGroupIconPicker = _populateGroupIconPicker;
+}window._populateGroupIconPicker = _populateGroupIconPicker;
 
 function _selectGroupIcon(icon) {
   const input = document.getElementById('groupEmoji');
