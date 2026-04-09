@@ -2155,11 +2155,14 @@ async function _renderDashForecast() {
                   fillStyle: ds.borderColor,
                   strokeStyle: ds.borderColor,
                   lineWidth: 2.5,
-                  hidden: !chart.isDatasetVisible(i),
+                  hidden: false,       // never hidden — scheduled always active
                   datasetIndex: i,
                 }));
             },
           },
+          // Disable legend clicks — forecast always shows all accounts + scheduled
+          onClick: () => {},
+          onHover: (e) => { e.native.target.style.cursor = 'default'; },
         },
         tooltip: {
           backgroundColor: 'rgba(13,20,15,0.97)',

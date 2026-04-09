@@ -312,6 +312,8 @@ async function _loadCurrentUserContext(authCtx = null) {
 
   // Restore intro-banner states with user-scoped keys now that currentUser is known
   try { if (typeof _restoreModuleIntroStates === 'function') _restoreModuleIntroStates(); } catch(_) {}
+  // Start realtime sync for module flags (all family members see changes immediately)
+  try { if (typeof _initModuleFlagRealtimeSync === 'function') _initModuleFlagRealtimeSync(); } catch(_) {}
 
   // Apply user language preference from DB (preferred_language column)
   // DB is authoritative — it was saved by saveMyProfile() / quickSetLang()

@@ -129,21 +129,38 @@ async function _seedModulesFromFamilyPreferences() {
         .rpc('get_family_preferences', { p_family_id: fid });
       if (!rpcErr && rpcRows && rpcRows.length > 0) data = rpcRows[0];
     } catch(_) {}
-    // Fallback: direct SELECT
+    // Fallback: direct SELECT (may be blocked by RLS for non-owners)
     if (!data) {
       const { data: row, error } = await window.sb
         .from('family_preferences').select('*').eq('family_id', fid).maybeSingle();
       if (!error && row) data = row;
     }
-    if (!data) return;
+
+    // Additional path: read module flags from app_settings cache (written by saveAppSetting)
+    // This works for ALL family members regardless of RLS on family_preferences
+    const moduleKeys = ['ai_insights','ai_chat','debts','investments','grocery','prices','dreams','backup','snapshot'];
+    const fromCache = {};
+    moduleKeys.forEach(mod => {
+      const k = mod + '_enabled_' + fid;
+      if (window._appSettingsCache && k in window._appSettingsCache) {
+        fromCache[mod] = !!window._appSettingsCache[k];
+      } else {
+        const ls = localStorage.getItem(k);
+        if (ls !== null) fromCache[mod] = ls === 'true' || ls === true;
+      }
+    });
+
+    // Merge: family_preferences wins if available, else use app_settings cache
+    if (!data && Object.keys(fromCache).length === 0) return;
+    // Build modMap: prefer family_preferences (authoritative), fall back to app_settings cache
     const modMap = {
-      ai_insights: data.module_ai_insights,
-      ai_chat:     data.module_ai_chat,
-      debts:       data.module_debts,
-      investments: data.module_investments,
-      grocery:     data.module_grocery,
-      prices:      data.module_prices,
-      dreams:      data.module_dreams,
+      ai_insights: data ? data.module_ai_insights : fromCache['ai_insights'],
+      ai_chat:     data ? data.module_ai_chat     : fromCache['ai_chat'],
+      debts:       data ? data.module_debts       : fromCache['debts'],
+      investments: data ? data.module_investments : fromCache['investments'],
+      grocery:     data ? data.module_grocery     : fromCache['grocery'],
+      prices:      data ? data.module_prices      : fromCache['prices'],
+      dreams:      data ? data.module_dreams      : fromCache['dreams'],
     };
     if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
     if (!window._appSettingsCache)    window._appSettingsCache    = {};
@@ -172,6 +189,43 @@ async function _seedModulesFromFamilyPreferences() {
 }
 window._seedModulesFromFamilyPreferences = _seedModulesFromFamilyPreferences;
 
+
+// ── Real-time sync: module flag changes propagate to all active family members ─
+function _initModuleFlagRealtimeSync() {
+  if (!sb || !currentUser?.family_id) return;
+  const fid = currentUser.family_id;
+  const modulePrefixes = ['ai_insights_enabled_','ai_chat_enabled_','debts_enabled_',
+    'investments_enabled_','grocery_enabled_','prices_enabled_','dreams_enabled_'];
+
+  try {
+    sb.channel('module_flags_' + fid)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'app_settings',
+      }, (payload) => {
+        const k = payload.new?.key || payload.old?.key || '';
+        const isModuleFlag = modulePrefixes.some(p => k.startsWith(p) && k.endsWith(fid));
+        if (!isModuleFlag) return;
+        // Update caches
+        const val = payload.eventType === 'DELETE' ? false : !!(payload.new?.value);
+        if (!window._appSettingsCache) window._appSettingsCache = {};
+        if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
+        window._appSettingsCache[k] = val;
+        window._familyFeaturesCache[k] = val;
+        try { localStorage.setItem(k, String(val)); } catch(_) {}
+        // Re-apply module visibility
+        ['applyInvestmentsFeature','applyDebtsFeature','applyDreamsFeature',
+         'applyPricesFeature','applyGroceryFeature','applyAiInsightsFeature',
+        ].forEach(fn => {
+          if (typeof window[fn] === 'function') window[fn]().catch(() => {});
+        });
+      })
+      .subscribe();
+  } catch(e) {
+    console.warn('[_initModuleFlagRealtimeSync]', e.message);
+  }
+}
+window._initModuleFlagRealtimeSync = _initModuleFlagRealtimeSync;
+
 async function saveAppSetting(key, value) {
   // Sempre persiste localmente como fallback garantido
   try {
@@ -190,15 +244,22 @@ async function saveAppSetting(key, value) {
   const family_id = m ? m[2] : null;
 
   if (family_id) {
-    // Flags de módulo: SOMENTE via RPC SECURITY DEFINER (bypassa RLS)
-    // Nunca tentar upsert direto em app_settings — RLS bloqueia para não-admin
+    // Flags de módulo: tenta RPC primeiro (bypassa RLS), depois upsert em app_settings
+    // Ambos são tentados para garantir que TODOS os membros da família leiam o estado
+    let rpcOk = false;
     try {
       const { error: rpcErr } = await sb.rpc('set_family_feature_flag', {
         p_family_id: family_id, p_key: key, p_value: !!value
       });
-      if (!rpcErr) return; // sucesso via RPC
+      if (!rpcErr) rpcOk = true;
     } catch {}
-    // RPC não existe ainda (migration pendente) — localStorage já salvo, ok
+    // Sempre também persiste em app_settings — acessível a todos os membros sem RLS
+    try {
+      await sb.from('app_settings')
+        .upsert({ key, value: !!value }, { onConflict: 'key' });
+    } catch(e2) {
+      console.warn('saveAppSetting module flag app_settings fallback:', e2?.message);
+    }
     return;
   }
 
@@ -3441,14 +3502,18 @@ async function deleteAllFamilyData() {
       // Family structure
       ['family_composition',        85],
       ['family_members',            90],
-      // App settings for this family
-      ['app_settings',              95],
+      // NOTE: app_settings is NOT deleted — it contains system config
+      // (EmailJS, module flags, etc.) that should persist across data resets
     ];
 
     for (const [table, pct] of tables) {
       setProgress(`Excluindo ${table}…`, pct);
-      const { error } = await sb.from(table).delete().eq('family_id', fid);
-      if (error) console.warn(`[deleteAll] ${table}:`, error.message);
+      try {
+        const { error } = await sb.from(table).delete().eq('family_id', fid);
+        if (error) console.warn(`[deleteAll] ${table}:`, error.message);
+      } catch(err) {
+        console.warn(`[deleteAll] ${table} exception:`, err?.message);
+      }
     }
 
     setProgress('Finalizando…', 98);
