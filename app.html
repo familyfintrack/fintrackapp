@@ -1064,10 +1064,8 @@
         </button>
         <div class="tx-fb-sep"></div>
         <!-- Filter toggle -->
-        <button class="tx-fb-btn" onclick="openBulkTxModal()" title="Lançamento em massa"
-          style="font-size:.72rem;font-weight:700;gap:4px">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-          Em Massa
+        <button class="tx-fb-btn" onclick="openBulkTxModal()" title="Lançamento em massa" aria-label="Lançamento em massa">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/><rect x="17" y="14" width="6" height="6" rx="1.5"/></svg>
         </button>
         <button class="tx-fb-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
@@ -3327,9 +3325,7 @@
                 <div>
                   <div style="font-size:.88rem;font-weight:800;color:var(--text)">Importar Dados Demo</div>
                   <div style="font-size:.78rem;color:var(--muted);margin-top:3px;line-height:1.5">
-                    Gera e importa ~800 transações fictícias de 1 ano para uma família e usuário escolhidos.
-                    Inclui contas, categorias, beneficiários, programados, dívidas, objetivos, lista de supermercado e preços.
-                    <strong style="color:#dc2626">⚠️ Use apenas em famílias/usuários de teste.</strong>
+                    Importa dados de demonstração completos: 1.200+ transações, 58 categorias, 47 beneficiários, 18 meses de histórico<strong style="color:#dc2626">⚠️ Use apenas em famílias/usuários de teste.</strong>
                   </div>
                 </div>
               </div>
@@ -5946,7 +5942,7 @@ Se você não solicitou isso, ignore este e-mail.`,
       <!-- Context tabs: Abas mode -->
       <div id="scContextTabBar" style="display:flex;margin-top:12px;padding:0 16px;gap:0">
         <button class="tx-ctx-tab active" data-tab="scCtxPrincipal" onclick="switchScTab('scCtxPrincipal',this)">Principal</button>
-        <button class="tx-ctx-tab" id="scTabDivisao" data-tab="scCtxDivisao" onclick="switchScTab('scCtxDivisao',this);txSplitTabOpened('sc')">✂️ Divisão</button>
+        
         <button class="tx-ctx-tab" data-tab="scCtxDetalhes" onclick="switchScTab('scCtxDetalhes',this)">Detalhes</button>
         <button class="tx-ctx-tab" data-tab="scCtxRecorrencia" onclick="switchScTab('scCtxRecorrencia',this)">Recorrência</button>
         <button class="tx-ctx-tab" data-tab="scCtxNotificacoes" onclick="switchScTab('scCtxNotificacoes',this)">Notificações</button>
@@ -6080,35 +6076,8 @@ Se você não solicitou isso, ignore este e-mail.`,
 
       <!-- ── TAB/STEP 1: Detalhes ───────────────────────────────── -->
 
-      <div class="tx-ctx-pane" id="scCtxDivisao" style="display:none;padding:16px">
-        <div style="display:flex;gap:6px;margin-bottom:12px">
-          <button id="scSplitTabCat" class="tx-split-subtab active" onclick="scSplitShowTab('cat')" style="flex:1;padding:7px 10px;font-size:.78rem;font-weight:600;border:1.5px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;transition:all .15s">📂 Por Categoria</button>
-          <button id="scSplitTabMem" class="tx-split-subtab" onclick="scSplitShowTab('mem')" style="flex:1;padding:7px 10px;font-size:.78rem;font-weight:600;border:1.5px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s">👥 Por Membro</button>
-        </div>
-        <div id="scSplitCatPane">
-          <div id="scCatSplitRows"></div>
-          <div id="scCatSplitTotal" style="display:none;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:.78rem">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Distribuído:</span><span id="scCatSplitTotalVal" style="font-weight:700"></span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Total TX:</span><span id="scCatSplitTxVal"></span></div>
-            <div id="scCatSplitDiff"></div>
-          </div>
-          <button type="button" onclick="scCatSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;border:1.5px dashed var(--border);border-radius:9px;background:transparent;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">+ Adicionar categoria</button>
-        </div>
-        <div id="scSplitMemPane" style="display:none">
-          <div style="display:flex;gap:6px;margin-bottom:10px">
-            <button id="scMemSplitModeVal" onclick="scMemSplitSetMode('value')" style="flex:1;padding:6px;font-size:.74rem;font-weight:600;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit">R$ Valor</button>
-            <button id="scMemSplitModePct" onclick="scMemSplitSetMode('pct')" style="flex:1;padding:6px;font-size:.74rem;font-weight:600;border:1.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:inherit">% Percentual</button>
-          </div>
-          <div id="scMemSplitRows"></div>
-          <div id="scMemSplitTotal" style="display:none;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:.78rem">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Distribuído:</span><span id="scMemSplitTotalVal" style="font-weight:700"></span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--muted)">Total TX:</span><span id="scMemSplitTxVal"></span></div>
-            <div id="scMemSplitDiff"></div>
-          </div>
-          <button type="button" onclick="scMemSplitAddRow()" style="margin-top:10px;width:100%;padding:9px;border:1.5px dashed var(--border);border-radius:9px;background:transparent;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">+ Adicionar membro</button>
-        </div>
-        <div style="margin-top:14px;padding:10px 12px;background:rgba(42,96,73,.07);border-radius:9px;font-size:.74rem;color:var(--muted);line-height:1.5">💡 Divisão salva na programação e aplicada em cada lançamento gerado.</div>
-      </div>
+      
+
 
       <div class="tx-ctx-pane" id="scCtxDetalhes" style="display:none;padding:16px">
         <div class="form-grid">
@@ -6285,11 +6254,93 @@ Se você não solicitou isso, ignore este e-mail.`,
         <span id="scWzStepLabel" style="font-size:.78rem;color:var(--muted)"></span>
         <button class="btn btn-primary" id="scWzNext" onclick="scWizardNext()">Próximo →</button>
       </div>
+      <button class="btn btn-ghost" id="scSplitBtn" onclick="openScSplitModal()" title="Dividir por categoria ou membro da família">
+        ✂️ Divisão
+      </button>
       <button class="btn btn-primary" id="scSaveBtn" onclick="saveScheduled()">Salvar</button>
     </div>
   </div>
 </div>
 
+
+
+<!-- ══ Modal: Divisão de Transação Programada ═══════════════════════════════ -->
+<div class="modal-overlay" id="scSplitModal" onclick="if(event.target===this)closeModal('scSplitModal')">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">✂️ Divisão da Transação Programada</span>
+      <button class="modal-close" onclick="closeModal('scSplitModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <!-- Total info bar -->
+      <div id="scSplitInfoBar" style="padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="font-size:.78rem;color:var(--muted)">Total da transação programada:</div>
+        <div id="scSplitTotalTx" style="font-size:1rem;font-weight:800;font-family:var(--font-serif);color:var(--accent)">R$ 0,00</div>
+      </div>
+      <!-- Sub-tabs -->
+      <div style="display:flex;padding:12px 16px 0;gap:6px">
+        <button id="scSplitBtnCat" onclick="scSplitSwitchTab('cat')"
+          style="flex:1;padding:8px 10px;border-radius:9px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">
+          🏷️ Por Categoria
+        </button>
+        <button id="scSplitBtnMem" onclick="scSplitSwitchTab('mem')"
+          style="flex:1;padding:8px 10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">
+          👥 Por Membro
+        </button>
+      </div>
+
+      <!-- ── CAT pane ─────────────────────────────────────────────────────── -->
+      <div id="scSplitPaneCat" style="padding:14px 16px">
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+          Distribua o valor entre múltiplas categorias. O total deve ser igual ao valor programado.
+        </div>
+        <div id="scSplitCatRows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button type="button" onclick="scSplitAddCatRow()"
+          style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+          + Adicionar categoria
+        </button>
+        <div id="scSplitCatSummary" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="color:var(--muted)">Distribuído:</span>
+            <span id="scSplitCatDist" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+          </div>
+          <div id="scSplitCatDiff" style="margin-top:4px;font-size:.75rem;text-align:right"></div>
+        </div>
+      </div>
+
+      <!-- ── MEM pane ─────────────────────────────────────────────────────── -->
+      <div id="scSplitPaneMem" style="display:none;padding:14px 16px">
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:10px">
+          Distribua o valor entre membros da família. O total deve ser igual ao valor programado.
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="scSplitMemModeValBtn" onclick="scSplitSetMemMode('value')"
+            style="padding:5px 14px;border-radius:7px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit">R$ Valor</button>
+          <button id="scSplitMemModePctBtn" onclick="scSplitSetMemMode('pct')"
+            style="padding:5px 14px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit">% Percentual</button>
+        </div>
+        <div id="scSplitMemRows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button type="button" onclick="scSplitAddMemRow()"
+          style="margin-top:10px;width:100%;padding:9px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:10px;color:var(--accent);font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit">
+          + Adicionar membro
+        </button>
+        <div id="scSplitMemSummary" style="margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);font-size:.82rem;display:none">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="color:var(--muted)">Distribuído:</span>
+            <span id="scSplitMemDist" style="font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+          </div>
+          <div id="scSplitMemDiff" style="margin-top:4px;font-size:.75rem;text-align:right"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="scSplitClear()">Limpar divisão</button>
+      <button class="btn btn-ghost" onclick="closeModal('scSplitModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="scSplitConfirm()">✔ Confirmar Divisão</button>
+    </div>
+  </div>
+</div>
 
 <!-- REGISTER OCCURRENCE MODAL -->
 <div class="modal-overlay" id="registerOccModal">
@@ -8207,6 +8258,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/transactions.js"></script>
   <script src="js/tx_splits.js"></script>
   <script src="js/bulk_tx.js"></script>
+  <script src="js/sc_split.js"></script>
   <script src="js/budgets.js"></script>
   <script src="js/fx_rates.js"></script>
   <script src="js/dashboard.js"></script>
