@@ -742,16 +742,17 @@
             <div>
               <div class="dcard-title">Previsão de Caixa</div>
               <div class="dcard-sub">Projeção dos próximos 90 dias</div>
+              <!-- Account filter directly below subtitle -->
+              <div class="fc-acct-picker" id="dashForecastAcctPicker" style="margin-top:6px">
+                <button type="button" class="dcard-pill-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
+                  <span id="dashForecastAcctLabel">Todas contas</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
+              </div>
             </div>
           </div>
           <div class="dcard-actions">
-            <div class="fc-acct-picker" id="dashForecastAcctPicker">
-              <button type="button" class="dcard-pill-btn" onclick="_fcPickerToggle('dashForecastAcctPicker')">
-                <span id="dashForecastAcctLabel">Todas contas</span>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="fc-acct-dropdown" id="dashForecastAcctDropdown"></div>
-            </div>
             <!-- Programados sempre inclusos — checkbox removido -->
           </div>
         </div>
