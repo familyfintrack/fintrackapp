@@ -3330,24 +3330,33 @@ async function importDemoData(userId, familyId, progressCb) {
     return out;
   }
 
-  // ── Helper: insert in batches, surface all errors ─────────────────────────
+  // ── Helper: insert in batches, collect per-table results ────────────────────
+  const tableResults = {}; // { tableName: { sent, ok, errors: [] } }
+
   async function ins(table, rows, label, batchSize = 50) {
-    if (!rows || !rows.length) { log(`${label}: 0 (skipped)`, null); return 0; }
+    if (!rows || !rows.length) {
+      tableResults[table] = { label, sent: 0, ok: 0, errors: [] };
+      log(`${label}: 0 (skipped)`, null);
+      return 0;
+    }
     const cols = COLS[table];
     const enriched = rows.map(r => {
       const base = { ...r, family_id: familyId, created_at: r.created_at || new Date().toISOString() };
       return cols ? pick(base, cols) : base;
     });
+    tableResults[table] = { label, sent: rows.length, ok: 0, errors: [] };
     let ok = 0;
     for (let i = 0; i < enriched.length; i += batchSize) {
       const batch = enriched.slice(i, i + batchSize);
       const { error } = await sb.from(table).insert(batch);
       if (error) {
-        const msg = `${table} batch ${Math.floor(i/batchSize)+1}: ${error.message}`;
-        console.error('[DemoImport]', msg, error);
-        errors.push(msg);
+        const msg = `Batch ${Math.floor(i/batchSize)+1}: ${error.message}`;
+        console.error('[DemoImport]', table, msg, error);
+        errors.push(`${table}: ${msg}`);
+        tableResults[table].errors.push(msg);
       } else {
         ok += batch.length;
+        tableResults[table].ok += batch.length;
       }
     }
     log(`${label}: ${ok}/${rows.length}`, null);
@@ -3459,13 +3468,19 @@ async function importDemoData(userId, familyId, progressCb) {
     console.warn('[DemoImport] grocery_list:', glErr.message);
   }
 
-  const errSummary = errors.length > 0 ? ` (${errors.length} aviso${errors.length>1?'s':''} — veja console)` : '';
+  // ── Track grocery manually since it uses a direct insert ────────────────
+  if (!tableResults['grocery_lists']) {
+    tableResults['grocery_lists'] = { label: 'Lista de mercado', sent: 1, ok: glErr ? 0 : 1, errors: glErr ? [glErr.message] : [] };
+  }
+
+  const errSummary = errors.length > 0 ? ` (${errors.length} erro${errors.length>1?'s':''})` : '';
   log(`Importação concluída!${errSummary}`, 100);
 
   return {
     success: true,
     txCount: txOk,
     errors,
+    tableResults,
     message: `${txOk} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários.${errSummary}`,
   };
 }
@@ -3726,15 +3741,70 @@ Isso vai criar categorias, contas, transações e outros dados fictícios. Conti
       if (pct !== null && pctEl) pctEl.textContent = pct + '%';
     });
 
+    if (barEl) barEl.style.width = '100%';
+
+    // ── Build per-table summary ──────────────────────────────────────────
+    const tr = result.tableResults || {};
+    const tableOrder = [
+      ['account_groups','Grupos de contas'],['accounts','Contas'],
+      ['categories','Categorias'],['payees','Beneficiários'],
+      ['transactions','Transações'],['scheduled_transactions','Programados'],
+      ['budgets','Orçamentos'],['debts','Dívidas'],['dreams','Sonhos'],
+      ['price_items','Itens de preço'],['price_stores','Lojas'],
+      ['price_history','Histórico de preços'],['grocery_lists','Lista mercado'],
+      ['grocery_items','Itens mercado'],
+    ];
+
+    const totalSent = Object.values(tr).reduce((s,t) => s + (t.sent||0), 0);
+    const totalOk   = Object.values(tr).reduce((s,t) => s + (t.ok||0), 0);
+    const hasErrors = result.errors && result.errors.length > 0;
+
+    const rows = tableOrder.map(([key, label]) => {
+      const t = tr[key];
+      if (!t) return '';
+      const icon = t.errors?.length ? '❌' : t.ok === 0 && t.sent === 0 ? '⚪' : '✅';
+      const errMsg = t.errors?.length ? `<div style="font-size:.67rem;color:#dc2626;margin-top:2px">${esc(t.errors[0])}</div>` : '';
+      return `<tr>
+        <td style="padding:5px 8px;font-size:.77rem;color:var(--text)">${icon} ${esc(label)}</td>
+        <td style="padding:5px 8px;font-size:.77rem;text-align:right;color:var(--muted)">${t.sent}</td>
+        <td style="padding:5px 8px;font-size:.77rem;text-align:right;font-weight:700;color:${t.ok===t.sent?'#16a34a':t.ok>0?'#d97706':'#dc2626'}">${t.ok}</td>
+        <td style="padding:5px 8px;font-size:.73rem;color:#dc2626">${t.errors?.length||''}</td>
+      </tr>` + (errMsg ? `<tr><td colspan="4" style="padding:0 8px 6px 28px">${errMsg}</td></tr>` : '');
+    }).join('');
+
     if (resultEl) {
       resultEl.style.display = '';
-      resultEl.style.background = '#dcfce7';
-      resultEl.style.border = '1px solid #bbf7d0';
-      resultEl.style.color = '#166534';
-      resultEl.innerHTML = `✅ <strong>${result.message}</strong>`;
+      resultEl.style.background = hasErrors ? '#fff7ed' : '#f0fdf4';
+      resultEl.style.border = `1px solid ${hasErrors?'#fed7aa':'#bbf7d0'}`;
+      resultEl.style.color = 'var(--text)';
+      resultEl.style.padding = '12px 14px';
+      resultEl.style.borderRadius = '10px';
+      resultEl.innerHTML = `
+        <div style="font-weight:800;font-size:.88rem;margin-bottom:10px;color:${hasErrors?'#c2410c':'#166534'}">
+          ${hasErrors?'⚠️':'✅'} ${hasErrors?'Importação com avisos':'Importação concluída!'}
+        </div>
+        <table style="width:100%;border-collapse:collapse;background:var(--surface);border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="padding:6px 8px;font-size:.68rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase">Tabela</th>
+              <th style="padding:6px 8px;font-size:.68rem;font-weight:700;color:var(--muted);text-align:right;text-transform:uppercase">Gerado</th>
+              <th style="padding:6px 8px;font-size:.68rem;font-weight:700;color:var(--muted);text-align:right;text-transform:uppercase">Inserido</th>
+              <th style="padding:6px 8px;font-size:.68rem;font-weight:700;color:var(--muted);text-align:center;text-transform:uppercase">Erros</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr style="background:var(--surface2);border-top:1.5px solid var(--border)">
+              <td style="padding:6px 8px;font-size:.77rem;font-weight:800">Total</td>
+              <td style="padding:6px 8px;font-size:.77rem;font-weight:800;text-align:right">${totalSent}</td>
+              <td style="padding:6px 8px;font-size:.77rem;font-weight:800;text-align:right;color:${hasErrors?'#d97706':'#16a34a'}">${totalOk}</td>
+              <td style="padding:6px 8px;font-size:.77rem;font-weight:800;text-align:center;color:${hasErrors?'#dc2626':'#9ca3af'}">${result.errors?.length||0}</td>
+            </tr>
+          </tfoot>
+        </table>
+        ${hasErrors ? `<div style="margin-top:8px;font-size:.72rem;color:#c2410c">Veja o console do navegador para detalhes dos erros.</div>` : ''}`;
     }
-    if (barEl) barEl.style.width = '100%';
-    toast('✅ Dados demo importados com sucesso!', 'success');
+    toast(hasErrors ? '⚠️ Importação concluída com avisos' : '✅ Dados demo importados!', hasErrors ? 'warning' : 'success');
 
   } catch(e) {
     if (resultEl) {

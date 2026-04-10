@@ -1925,6 +1925,18 @@ function _getResetPasswordUrl() {
   return origin + base + 'reset-password.html';
 }
 
+function _getRegisterUrl(email, name, userId) {
+  const { origin, pathname } = window.location;
+  const base = pathname.endsWith('/')
+    ? pathname
+    : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+  const p = new URLSearchParams();
+  if (email)  p.set('email',  email);
+  if (name)   p.set('name',   name);
+  if (userId) p.set('uid',    userId);
+  return origin + base + 'register.html?' + p.toString();
+}
+
 // Returns auth-callback.html URL — used as redirectTo for magic links,
 // invite links, and email confirmations so the correct flow is handled.
 function _getAuthCallbackUrl() {
@@ -2199,6 +2211,11 @@ async function _renderPendingTab() {
     const initials = (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
     const uid      = esc(u.id);
     const uname    = esc(u.name || u.email || '');
+    // Badge de convite enviado
+    const alreadyInvited = !!(u.invite_sent_at || u._invite_sent);
+    const invBadge = alreadyInvited
+      ? '<span style="font-size:.63rem;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px">✉️ Convite enviado</span>'
+      : '';
 
     html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px">'
       // — Linha superior: avatar + nome + idade
@@ -2282,7 +2299,7 @@ async function _inlineApprove(userId, userName) {
     if (signUpErr2) console.warn('[approve] signUp:', signUpErr2.message);
 
     // Email de boas-vindas
-    await _sendApprovalEmail(userEmail, displayName, familyName);
+    await _sendApprovalEmail(userEmail, displayName, familyName, userId);
 
     toast('✓ ' + displayName + ' aprovado!' + (createNewFamily ? ' Criará família no primeiro login.' : familyName ? ' Família: ' + familyName : ''), 'success');
     await _checkPendingApprovals();
@@ -3991,30 +4008,24 @@ async function _notifyAdminNewRegistration(userName, userEmail) {
   if (sentCount === 0) console.warn('[approval] Nenhum email de admin enviado.');
 }
 // ── Email de boas-vindas ao usuário aprovado ─────────────────────────────
-async function _sendApprovalEmail(email, name, familyName) {
+async function _sendApprovalEmail(email, name, familyName, userId) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
 
-  // 1. Enviar link de redefinição de senha (Supabase) para o usuário definir a própria senha
-  try {
-    const redirectTo = _getResetPasswordUrl();
-    await sb.auth.resetPasswordForEmail(email, { redirectTo });
-  } catch(e) { console.warn('[approval] resetPasswordForEmail:', e.message); }
+  // 1. Gerar link para register.html com dados pré-preenchidos
+  const registerUrl = _getRegisterUrl(email, name, userId);
 
-  // 2. Email de boas-vindas via EmailJS
+  // 2. Email de convite via EmailJS
   const tplId = EMAILJS_CONFIG.scheduledTemplateId || EMAILJS_CONFIG.templateId;
   if (!tplId) return;
 
-  const nameEsc  = (name  || 'Usuário').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-  const famEsc   = (familyName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const nameEsc = (name  || 'Usuário').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const famEsc  = (familyName || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
   const famBlock = familyName
     ? '<div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
-      '<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:2px">&#128106; Família vinculada</div>' +
-      '<div style="font-size:13px;color:#15803d">' + famEsc + '</div>' +
-      '</div>'
-    : '<div style="background:#f0f9ff;border-left:4px solid #38bdf8;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
-      '<div style="font-size:13px;color:#0c4a6e">Acesso liberado como <strong>administrador global</strong>.</div>' +
-      '</div>';
+      '<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:2px">&#128106; Família</div>' +
+      '<div style="font-size:13px;color:#15803d">' + famEsc + '</div></div>'
+    : '';
 
   const body =
     '<div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;padding:24px">' +
@@ -4022,31 +4033,43 @@ async function _sendApprovalEmail(email, name, familyName) {
 
     '<div style="background:linear-gradient(135deg,#1e5c42,#2a6049);padding:22px 28px">' +
     '<div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:4px">JF Family FinTrack</div>' +
-    '<div style="font-size:22px;font-weight:700;color:#fff">&#127881; Acesso aprovado!</div>' +
+    '<div style="font-size:22px;font-weight:700;color:#fff">&#127881; Chegou a sua vez!</div>' +
     '</div>' +
 
     '<div style="padding:24px 28px">' +
-    '<p style="font-size:15px;font-weight:600;color:#111827;margin:0 0 12px">Olá, ' + nameEsc + '!</p>' +
+    '<p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px">Olá, ' + nameEsc + '!</p>' +
     '<p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6">' +
-    'Sua solicitação de acesso ao <strong>JF Family FinTrack</strong> foi <strong>aprovada</strong>. ' +
-    'Você já pode acessar o sistema.' +
+    'Você foi aprovado(a) para o programa beta do <strong>JF Family FinTrack</strong>! ' +
+    'Clique no botão abaixo para finalizar seu cadastro e criar sua senha.' +
     '</p>' +
 
     famBlock +
 
+    '<div style="text-align:center;margin-bottom:24px">' +
+    '<a href="' + registerUrl + '" style="display:inline-block;padding:14px 32px;' +
+    'background:linear-gradient(135deg,#7dc242,#5aad24);color:#0a1e12;' +
+    'font-family:Arial,sans-serif;font-size:15px;font-weight:700;' +
+    'border-radius:10px;text-decoration:none;letter-spacing:-.01em">' +
+    '&#128640; Criar minha conta agora' +
+    '</a></div>' +
+
     '<div style="background:#fef9e8;border:1px solid #fcd34d;border-radius:8px;padding:14px 16px;margin-bottom:20px">' +
-    '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:6px">&#128273; Definir sua senha</div>' +
-    '<div style="font-size:13px;color:#78350f;line-height:1.6">' +
-    'Você receberá um segundo e-mail do Supabase com um <strong>link para definir sua senha</strong>. ' +
-    'Clique nesse link, defina uma senha segura e faça login normalmente.' +
-    '</div>' +
-    '</div>' +
+    '<div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">&#8987; Link válido por tempo limitado</div>' +
+    '<div style="font-size:13px;color:#78350f;line-height:1.5">' +
+    'Caso o link não funcione, acesse <strong>register.html</strong> e informe o e-mail <strong>' + nameEsc + '</strong>.' +
+    '</div></div>' +
+
+    '<div style="background:#f0f9ff;border-left:4px solid #38bdf8;border-radius:6px;padding:12px 16px;margin-bottom:20px">' +
+    '<div style="font-size:13px;font-weight:700;color:#0c4a6e;margin-bottom:4px">&#127381; Programa Beta</div>' +
+    '<div style="font-size:13px;color:#0369a1;line-height:1.5">' +
+    'O acesso é <strong>gratuito</strong>. Em troca, sua missão é testar e reportar bugs com detalhes. Juntos vamos tornar o app melhor!' +
+    '</div></div>' +
 
     '<p style="font-size:12px;color:#9ca3af;margin:0">Se você não solicitou acesso a este sistema, ignore este e-mail.</p>' +
     '</div>' +
 
     '<div style="padding:14px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">' +
-    '<div style="font-size:11px;color:#9ca3af">JF Family FinTrack &middot; Bem-vindo(a)!</div>' +
+    '<div style="font-size:11px;color:#9ca3af">JF Family FinTrack &middot; Programa Beta</div>' +
     '</div>' +
     '</div></div>';
 
@@ -4054,14 +4077,13 @@ async function _sendApprovalEmail(email, name, familyName) {
     emailjs.init(EMAILJS_CONFIG.publicKey);
     await emailjs.send(EMAILJS_CONFIG.serviceId, tplId, {
       to_email:       email,
-      report_subject: '[Family FinTrack] Acesso aprovado — Bem-vindo(a)!',
-      Subject:        '[Family FinTrack] Acesso aprovado — Bem-vindo(a)!',
+      report_subject: '[Family FinTrack] Chegou a sua vez! Complete seu cadastro 🎉',
+      Subject:        '[Family FinTrack] Chegou a sua vez! Complete seu cadastro 🎉',
       month_year:     new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       report_content: body,
     });
   } catch(e) { console.warn('[approval] _sendApprovalEmail:', e.message); }
 }
-
 
 async function _sendNewUserWelcomeEmail(email, name, familyName, tempPassword) {
   if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.publicKey) return;
