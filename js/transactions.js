@@ -3417,15 +3417,22 @@ async function markTxUnreceived(txId) {
   const tx = (state.transactions||[]).find(t => t.id === txId) || {};
   const isIncome = (tx.amount || 0) >= 0;
   if (!isIncome) { toast('Apenas receitas podem ser marcadas como "a receber".', 'warning'); return; }
-  if (!confirm('Mover esta transação para "A Receber"?\nEla será marcada como não recebida e o saldo da conta será ajustado.')) return;
+  if ((tx.status || 'confirmed') === 'pending') {
+    toast('Esta receita já está como pendente / a receber.', 'info'); return;
+  }
+  if (!confirm('Mover para "A Receber"?\nA receita ficará como pendente até ser marcada como recebida.')) return;
 
   try {
-    // Include family_id filter to satisfy RLS policies on rows created by cron/other users
-    const { error } = await sb.from('transactions')
-      .update({ status: 'unreceived', updated_at: new Date().toISOString() })
-      .eq('id', txId)
-      .eq('family_id', famId());
+    // status='pending' para income = "a receber" — sem precisar de novo valor no enum
+    const { error } = await famQ(
+      sb.from('transactions')
+        .update({ status: 'pending', updated_at: new Date().toISOString() })
+        .eq('id', txId)
+    );
     if (error) throw error;
+    // Update local state
+    const local = (state.transactions||[]).find(t => t.id === txId);
+    if (local) local.status = 'pending';
     toast('📬 Movido para "A Receber".', 'info');
     closeModal('txDetailModal');
     await loadAccounts();
@@ -3441,13 +3448,16 @@ async function markTxUnreceived(txId) {
 async function markTxReceived(txId) {
   if (!txId) return;
   try {
-    // Include family_id filter to satisfy RLS policies
-    const { error } = await sb.from('transactions')
-      .update({ status: 'confirmed', updated_at: new Date().toISOString() })
-      .eq('id', txId)
-      .eq('family_id', famId());
+    const { error } = await famQ(
+      sb.from('transactions')
+        .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+        .eq('id', txId)
+    );
     if (error) throw error;
-    toast('✅ Receita marcada como recebida!', 'success');
+    // Update local state
+    const local = (state.transactions||[]).find(t => t.id === txId);
+    if (local) local.status = 'confirmed';
+    toast('✅ Receita recebida! Lançamento confirmado.', 'success');
     await loadAccounts();
     await loadReceivables();
     if (typeof _updateReceivablesBadge === 'function') _updateReceivablesBadge().catch(()=>{});
@@ -3462,118 +3472,119 @@ async function loadReceivables() {
   const container = document.getElementById('receivablesBody');
   const totalEl   = document.getElementById('receivablesTotalAmt');
   const countEl   = document.getElementById('receivablesCount');
+  const overEl    = document.getElementById('receivablesOverdueAmt');
   if (!container) return;
 
   container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
 
   try {
-    const { data, error } = await sb.from('transactions')
-      .select('*, accounts!transactions_account_id_fkey(name,currency,color), categories(name,color,icon), payees(name)')
-      .eq('family_id', famId())
-      .eq('status', 'unreceived')
+    const { data, error } = await famQ(
+      sb.from('transactions')
+        .select('*, accounts!transactions_account_id_fkey(name,currency,color,icon), categories(name,color,icon), payees(name)')
+    ).eq('status', 'pending')
       .gte('amount', 0)
+      .not('is_transfer', 'eq', true)
       .order('date', { ascending: true });
 
     if (error) throw error;
-    const rows = data || [];
+    const rows  = data || [];
+    const today = new Date().toISOString().slice(0,10);
+
+    const total   = rows.reduce((s, r) => s + (r.amount || 0), 0);
+    const overdue = rows.filter(r => r.date < today).reduce((s, r) => s + (r.amount || 0), 0);
 
     if (countEl) countEl.textContent = rows.length;
-
-    const total = rows.reduce((s, r) => s + (r.amount || 0), 0);
     if (totalEl) totalEl.textContent = fmt(total);
+    if (overEl)  overEl.textContent  = fmt(overdue);
+    const overWrap = document.getElementById('receivablesOverdueWrap');
+    if (overWrap) overWrap.style.display = overdue > 0 ? '' : 'none';
 
     if (!rows.length) {
-      container.innerHTML = `
-        <div style="text-align:center;padding:48px 20px">
-          <div style="font-size:3rem;margin-bottom:12px">📭</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--text)">Nenhum valor a receber</div>
-          <div style="font-size:.82rem;color:var(--muted);margin-top:6px">
-            Quando você marcar uma receita como "não recebida",<br>ela aparecerá aqui.
-          </div>
-        </div>`;
+      container.innerHTML = [
+        '<div style="text-align:center;padding:48px 20px">',
+        '  <div style="font-size:3rem;margin-bottom:14px">\uD83D\uDCED</div>',
+        '  <div style="font-size:1rem;font-weight:800;color:var(--text)">Nenhum valor a receber</div>',
+        '  <div style="font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.6">',
+        '    Receitas com status <strong>Pendente</strong> aparecem aqui.<br>',
+        '    Para mover uma receita confirmada, abra a transação e clique em <strong>\uD83D\uDCEC</strong>.',
+        '  </div>',
+        '  <div style="margin-top:20px">',
+        '    <button onclick="navigate(\'transactions\')"',
+        '      style="font-family:var(--font-sans);font-size:.82rem;font-weight:700;',
+        '        padding:10px 20px;background:var(--accent);color:#fff;border:none;',
+        '        border-radius:10px;cursor:pointer">',
+        '      Ver Transações \u2192',
+        '    </button>',
+        '  </div>',
+        '</div>',
+      ].join('');
       return;
     }
 
-    container.innerHTML = rows.map(r => {
-      const isOverdue = r.date < new Date().toISOString().slice(0,10);
-      const daysLabel = (() => {
-        const diff = Math.round((new Date() - new Date(r.date)) / 86400000);
-        if (diff === 0) return 'Hoje';
-        if (diff < 0)   return 'Em ' + Math.abs(diff) + ' dia(s)';
-        return diff + ' dia(s) atrás';
-      })();
-      const catColor  = r.categories?.color || 'var(--accent)';
-      const catIcon   = r.categories?.icon  || '💰';
-      const accName   = r.accounts?.name    || '—';
-      const payName   = r.payees?.name      || '—';
-      return `
-        <div class="recv-row${isOverdue ? ' recv-row--overdue' : ''}" style="
-          display:flex;align-items:center;gap:12px;
-          padding:14px 16px;border-bottom:1px solid var(--border);
-          background:var(--surface);transition:background .15s">
-          <div style="width:42px;height:42px;border-radius:12px;background:${catColor}22;
-            display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">
-            ${catIcon}
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.9rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              ${esc(r.description || '—')}
-            </div>
-            <div style="font-size:.74rem;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">
-              <span>📅 ${fmtDate(r.date)}</span>
-              <span style="color:${isOverdue?'#dc2626':'var(--muted)'}">⏱ ${daysLabel}</span>
-              <span>🏦 ${esc(accName)}</span>
-              ${payName !== '—' ? `<span>👤 ${esc(payName)}</span>` : ''}
-            </div>
-          </div>
-          <div style="flex-shrink:0;text-align:right">
-            <div style="font-size:1rem;font-weight:800;color:var(--accent)">${fmt(r.amount)}</div>
-            <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
-              <button onclick="markTxReceived('${esc(r.id)}')"
-                style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:#fff;
-                  background:var(--accent);border:none;border-radius:8px;padding:5px 12px;cursor:pointer">
-                ✅ Recebido
-              </button>
-              <button onclick="openTxDetail('${esc(r.id)}')"
-                style="font-family:var(--font-sans);font-size:.72rem;font-weight:600;color:var(--muted);
-                  background:transparent;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer">
-                👁
-              </button>
-            </div>
-          </div>
-        </div>`;
-    }).join('');
+    const overdueRows  = rows.filter(r => r.date < today);
+    const upcomingRows = rows.filter(r => r.date >= today);
+
+    function _renderGroup(items, label, color) {
+      if (!items.length) return '';
+      const groupTotal = items.reduce((s,r) => s+(r.amount||0), 0);
+      const rowsHtml = items.map(function(r) {
+        const daysOff = Math.round((new Date(today) - new Date(r.date)) / 86400000);
+        const daysLabel = daysOff === 0 ? 'Hoje'
+          : daysOff > 0 ? daysOff + ' dia' + (daysOff>1?'s':'') + ' em atraso'
+          : Math.abs(daysOff) + ' dia' + (Math.abs(daysOff)>1?'s':'') + ' restante' + (Math.abs(daysOff)>1?'s':'');
+        const daysColor = daysOff > 0 ? '#dc2626' : daysOff === 0 ? '#d97706' : 'var(--muted)';
+        const catColor  = r.categories?.color || 'var(--accent)';
+        const catIcon   = r.categories?.icon  || '\uD83D\uDCB0';
+        const accName   = r.accounts?.name    || '\u2014';
+        const payName   = r.payees?.name      || '';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:13px 16px;'
+          + 'border-bottom:1px solid var(--border);background:var(--surface);'
+          + 'transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'"'
+          + ' onmouseout="this.style.background=\'var(--surface)\'">'
+          + '<div style="width:40px;height:40px;border-radius:11px;background:' + catColor + '18;'
+          + 'border:1.5px solid ' + catColor + '40;display:flex;align-items:center;'
+          + 'justify-content:center;font-size:1.1rem;flex-shrink:0">' + catIcon + '</div>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="font-size:.88rem;font-weight:700;color:var(--text);'
+          + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+          + esc(r.description || '\u2014') + '</div>'
+          + '<div style="font-size:.72rem;color:var(--muted);margin-top:3px;'
+          + 'display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+          + '<span>\uD83D\uDCC5 ' + fmtDate(r.date) + '</span>'
+          + '<span style="color:' + daysColor + ';font-weight:600">\u23F1 ' + daysLabel + '</span>'
+          + '<span>\uD83C\uDFE6 ' + esc(accName) + '</span>'
+          + (payName ? '<span>\uD83D\uDC64 ' + esc(payName) + '</span>' : '')
+          + '</div></div>'
+          + '<div style="flex-shrink:0;text-align:right;min-width:80px">'
+          + '<div style="font-size:.97rem;font-weight:800;color:var(--accent)">' + fmt(r.amount) + '</div>'
+          + '<div style="display:flex;gap:5px;margin-top:6px;justify-content:flex-end">'
+          + '<button onclick="markTxReceived(\'' + esc(r.id) + '\')"'
+          + ' style="font-family:var(--font-sans);font-size:.7rem;font-weight:700;color:#fff;'
+          + 'background:#16a34a;border:none;border-radius:7px;padding:4px 10px;cursor:pointer;'
+          + 'white-space:nowrap">\u2705 Recebido</button>'
+          + '<button onclick="openTxDetail(\'' + esc(r.id) + '\')"'
+          + ' style="font-family:var(--font-sans);font-size:.7rem;font-weight:600;'
+          + 'color:var(--muted);background:transparent;border:1px solid var(--border);'
+          + 'border-radius:7px;padding:4px 8px;cursor:pointer">\u270F\uFE0F</button>'
+          + '</div></div></div>';
+      }).join('');
+      return '<div style="padding:10px 16px 6px;background:var(--surface2);'
+        + 'border-bottom:1px solid var(--border);border-top:1px solid var(--border)">'
+        + '<div style="font-size:.68rem;font-weight:800;text-transform:uppercase;'
+        + 'letter-spacing:.07em;color:' + color + ';display:flex;align-items:center;gap:6px">'
+        + '<span>' + label + '</span>'
+        + '<span style="font-size:.62rem;background:' + color + '18;color:' + color + ';'
+        + 'border-radius:100px;padding:1px 7px;border:1px solid ' + color + '30">'
+        + fmt(groupTotal) + '</span></div></div>' + rowsHtml;
+    }
+
+    container.innerHTML =
+      _renderGroup(overdueRows,  '\u26A0\uFE0F Em atraso', '#dc2626') +
+      _renderGroup(upcomingRows, '\u23F3 Aguardando', '#d97706');
 
   } catch(e) {
-    container.innerHTML = `<div style="color:var(--red);padding:20px;font-size:.84rem">Erro: ${esc(e.message)}</div>`;
+    container.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.84rem;text-align:center">'
+      + '\u274C Erro: ' + esc(e.message) + '</div>';
   }
 }
 
-// ── Expor funções públicas no window ──────────────────────────────────────────
-window._aiDismissAll                       = _aiDismissAll;
-window._txDetailAction                     = _txDetailAction;
-window._txDupConfirm                       = _txDupConfirm;
-window.confirmReconcileMode                = confirmReconcileMode;
-window.confirmTxClipImport                 = confirmTxClipImport;
-window.ctsUpdateMode                       = ctsUpdateMode;
-window.editTransaction                     = editTransaction;
-window.enterReconcileMode                  = enterReconcileMode;
-window.exitReconcileMode                   = exitReconcileMode;
-window.fetchSuggestedFxRate                = fetchSuggestedFxRate;
-window.fetchTxCurrencyRate                 = fetchTxCurrencyRate;
-window.filterTransactions                  = filterTransactions;
-window.loadReceivables                     = loadReceivables;
-window.loadTransactions                    = loadTransactions;
-window.markTxUnreceived                    = markTxUnreceived;
-window.markTxReceived                      = markTxReceived;
-window.openTransactionModal                = openTransactionModal;
-window.openTxClipboardImport               = openTxClipboardImport;
-window.openTxDetail                        = openTxDetail;
-window.populateTxMonthFilter               = populateTxMonthFilter;
-window.renderTransactions                  = renderTransactions;
-window.saveConvertToScheduled              = saveConvertToScheduled;
-window.saveTransaction                     = saveTransaction;
-window.setTxType                           = setTxType;
-window.setTxView                           = setTxView;
-window.sortTx                              = sortTx;
-window.txClipPasteFromClipboard            = txClipPasteFromClipboard;

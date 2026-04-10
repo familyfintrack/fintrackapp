@@ -830,9 +830,11 @@ function setReportView(view) {
   document.getElementById('reportTxView').style.display              = view==='transactions'   ? '' : 'none';
   document.getElementById('reportForecastView').style.display        = view==='forecast'       ? '' : 'none';
   document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
+  const _benEl = document.getElementById('reportBeneficiariosView');
+  if (_benEl) _benEl.style.display = view === 'beneficiarios' ? '' : 'none';
 
   // Hide the entire filter section (wrapper + bar) for views that don't need filters
-  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees');
+  const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees' || view === 'beneficiarios');
   const _filterWrap = document.getElementById('rptFilterWrap');
   if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
   // Keep filter bar collapsed when switching views — user opens it manually
@@ -845,6 +847,7 @@ function setReportView(view) {
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',beneficiarios:'rptBtnBeneficiarios'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
+  if (view === 'beneficiarios') loadPayeeReport();
 
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
@@ -3035,3 +3038,201 @@ window.sendReportByEmail                   = sendReportByEmail;
 window.setReportView                       = setReportView;
 window.setRptCatChart                      = setRptCatChart;
 window.showEmailPopup                      = showEmailPopup;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RELATÓRIO: BENEFICIÁRIOS / FONTES PAGADORAS
+//  Ranking completo com filtro de período e toggle de modo
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _rptBenefMode = 'expense'; // 'expense' = Beneficiários | 'income' = Fontes Pagadoras
+
+function rptBenefSetMode(mode) {
+  _rptBenefMode = mode;
+  const expBtn = document.getElementById('rptBenefBtn');
+  const incBtn = document.getElementById('rptFontesBtn');
+  const isExp  = mode === 'expense';
+  if (expBtn) {
+    expBtn.style.background = isExp  ? 'var(--accent)' : 'transparent';
+    expBtn.style.color      = isExp  ? '#fff'          : 'var(--muted)';
+  }
+  if (incBtn) {
+    incBtn.style.background = !isExp ? 'var(--accent)' : 'transparent';
+    incBtn.style.color      = !isExp ? '#fff'          : 'var(--muted)';
+  }
+  loadPayeeReport();
+}
+window.rptBenefSetMode = rptBenefSetMode;
+
+function _rptBenefDateRange() {
+  const period = document.getElementById('rptBenefPeriod')?.value || 'year';
+  const now    = new Date();
+  const y      = now.getFullYear();
+  const m      = now.getMonth(); // 0-based
+
+  const customWrap = document.getElementById('rptBenefCustomWrap');
+  if (customWrap) customWrap.style.display = period === 'custom' ? 'flex' : 'none';
+
+  if (period === 'alltime') return { from: '2000-01-01', to: '2099-12-31', label: 'Todos os tempos' };
+  if (period === 'custom') {
+    const from = document.getElementById('rptBenefFrom')?.value;
+    const to   = document.getElementById('rptBenefTo')?.value;
+    if (!from || !to) return null;
+    return { from, to, label: `${fmtDate(from)} → ${fmtDate(to)}` };
+  }
+  if (period === 'month') {
+    const from = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    const to   = new Date(y, m+1, 0).toISOString().slice(0,10);
+    return { from, to, label: new Date(y, m).toLocaleDateString('pt-BR', { month:'long', year:'numeric' }) };
+  }
+  if (period === 'quarter') {
+    const q = Math.floor(m / 3);
+    const from = new Date(y, q*3, 1).toISOString().slice(0,10);
+    const to   = new Date(y, q*3+3, 0).toISOString().slice(0,10);
+    return { from, to, label: `${y} — T${q+1}` };
+  }
+  if (period === 'year') {
+    return { from: `${y}-01-01`, to: `${y}-12-31`, label: `Ano ${y}` };
+  }
+  if (period === 'last12') {
+    const from = new Date(now); from.setFullYear(from.getFullYear()-1);
+    return { from: from.toISOString().slice(0,10), to: now.toISOString().slice(0,10), label: 'Últimos 12 meses' };
+  }
+  return { from: `${y}-01-01`, to: `${y}-12-31`, label: `Ano ${y}` };
+}
+
+async function loadPayeeReport() {
+  const listEl = document.getElementById('rptBenefList');
+  const kpiEl  = document.getElementById('rptBenefKpi');
+  if (!listEl) return;
+
+  const range = _rptBenefDateRange();
+  if (!range) {
+    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Selecione um intervalo de datas válido.</div>';
+    return;
+  }
+
+  listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
+  if (kpiEl) kpiEl.innerHTML = '';
+
+  const isInc = _rptBenefMode === 'income';
+
+  try {
+    const { data: txs, error } = await famQ(
+      sb.from('transactions')
+        .select('id,date,description,amount,brl_amount,currency,payee_id,payees(id,name,type),categories(name,color,icon)')
+    ).gte('date', range.from)
+      .lte('date', range.to)
+      .eq('status', 'confirmed')
+      .not('payee_id', 'is', null);
+
+    if (error) throw error;
+
+    // Aggregate
+    const map = {};
+    (txs || []).forEach(t => {
+      const pid = t.payee_id;
+      const amt = parseFloat(t.brl_amount ?? t.amount) || 0;
+      const isThisInc = amt >= 0;
+      if (isInc  && !isThisInc) return;
+      if (!isInc &&  isThisInc) return;
+      if (!map[pid]) map[pid] = {
+        id: pid,
+        name: t.payees?.name || '—',
+        type: t.payees?.type || '',
+        catIcon: t.categories?.icon || (isInc ? '💰' : '🛒'),
+        catColor: t.categories?.color || (isInc ? 'var(--accent)' : 'var(--red)'),
+        total: 0, count: 0, txs: [],
+      };
+      map[pid].total += Math.abs(amt);
+      map[pid].count++;
+      map[pid].txs.push(t);
+    });
+
+    const ranked = Object.values(map).sort((a,b) => b.total - a.total);
+    const grandTotal = ranked.reduce((s,p) => s+p.total, 0);
+    const topAmt     = ranked[0]?.total || 1;
+
+    // ── KPI bar ────────────────────────────────────────────────────────────
+    const accentColor = isInc ? '#16a34a' : '#dc2626';
+    if (kpiEl) {
+      const avgTx = ranked.length > 0
+        ? grandTotal / ranked.reduce((s,p) => s+p.count, 0) : 0;
+      kpiEl.innerHTML = [
+        { label: isInc ? 'Total recebido' : 'Total pago', val: fmt(grandTotal), color: accentColor },
+        { label: isInc ? 'Fontes'         : 'Beneficiários', val: ranked.length, color: 'var(--text)' },
+        { label: 'Ticket médio', val: fmt(avgTx), color: 'var(--muted)' },
+      ].map(k => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">${k.label}</div>
+          <div style="font-size:1.1rem;font-weight:800;color:${k.color};font-family:var(--font-serif)">${k.val}</div>
+        </div>`).join('');
+    }
+
+    if (!ranked.length) {
+      listEl.innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:2.5rem;margin-bottom:12px">${isInc ? '📭' : '🔍'}</div>
+          <div style="font-size:.9rem;font-weight:700;color:var(--text)">Nenhum registro encontrado</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:6px">${range.label}</div>
+        </div>`;
+      return;
+    }
+
+    // ── Ranking header ─────────────────────────────────────────────────────
+    const periodBadge = `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-bottom:1px solid var(--border)">
+      <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:${accentColor}">
+        ${isInc ? '📥 Fontes Pagadoras' : '📤 Beneficiários'} · Ranking completo
+      </div>
+      <div style="font-size:.72rem;color:var(--muted)">${range.label} · ${ranked.length} registro${ranked.length>1?'s':''}</div>
+    </div>`;
+
+    // ── Rows ───────────────────────────────────────────────────────────────
+    const rows = ranked.map((p, i) => {
+      const pct    = grandTotal > 0 ? (p.total / grandTotal * 100) : 0;
+      const barW   = topAmt   > 0 ? (p.total / topAmt   * 100) : 0;
+      const medal  = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+      const rankBg = i < 3 ? `${accentColor}10` : 'transparent';
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;
+            border-bottom:1px solid var(--border);background:${rankBg};
+            transition:background .12s" onmouseover="this.style.background='var(--surface2)'"
+            onmouseout="this.style.background='${rankBg}'">
+          <!-- Rank -->
+          <div style="width:28px;text-align:center;flex-shrink:0">
+            ${medal
+              ? `<span style="font-size:1.1rem">${medal}</span>`
+              : `<span style="font-size:.7rem;font-weight:800;color:var(--muted)">${i+1}</span>`}
+          </div>
+          <!-- Icon -->
+          <div style="width:36px;height:36px;border-radius:10px;background:${p.catColor}18;
+              border:1.5px solid ${p.catColor}40;display:flex;align-items:center;
+              justify-content:center;font-size:1rem;flex-shrink:0">${p.catIcon}</div>
+          <!-- Name + bar -->
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px">
+              <span style="font-size:.84rem;font-weight:700;color:var(--text);
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+              <span style="font-size:.82rem;font-weight:800;color:${accentColor};white-space:nowrap;flex-shrink:0">
+                ${isInc?'+':'−'}${fmt(p.total)}
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+                <div style="height:100%;width:${barW.toFixed(1)}%;background:${accentColor};border-radius:2px;transition:width .6s ease"></div>
+              </div>
+              <span style="font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0">
+                ${pct.toFixed(1)}% · ${p.count}tx
+              </span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    listEl.innerHTML = periodBadge + rows;
+
+  } catch(e) {
+    listEl.innerHTML = `<div style="color:var(--red);padding:20px;font-size:.82rem;text-align:center">❌ ${esc(e.message)}</div>`;
+  }
+}
+window.loadPayeeReport  = loadPayeeReport;
+window.rptBenefSetMode  = rptBenefSetMode;
