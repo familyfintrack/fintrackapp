@@ -3307,16 +3307,16 @@ async function importDemoData(userId, familyId, progressCb) {
                      'transfer_to_account_id','payee_id','category_id','memo','tags',
                      'status','start_date','frequency','auto_register','auto_confirm',
                      'family_id','created_at'],
-    debts:          ['id','description','creditor','original_amount','current_balance','currency',
+    debts:          ['id','description','creditor_payee_id','original_amount','current_balance','currency',
                      'interest_rate','index_type','start_date','due_date',
                      'installment_amount','installment_count','installments_paid',
                      'status','notes','family_id','created_at'],
-    dreams:         ['id','title','type','target_amount','current_amount','deadline',
+    dreams:         ['id','title','type','target_amount','saved_amount','deadline',
                      'status','priority','notes','icon','family_id','created_by','created_at'],
     price_items:    ['id','name','description','unit','category_id','family_id','created_at'],
     price_stores:   ['id','name','address','family_id','created_at'],
-    price_history:  ['id','item_id','store_id','price','date','qty','family_id','created_at'],
-    grocery_lists:  ['id','name','type','status','family_id','created_at'],
+    price_history:  ['id','item_id','store_id','unit_price','purchased_at','quantity','family_id','created_at'],
+    grocery_lists:  ['id','name','status','family_id','created_at'],
     grocery_items:  ['id','list_id','name','quantity','unit','checked','estimated_price','family_id','created_at'],
     transactions:   ['id','date','description','amount','brl_amount','account_id',
                      'category_id','payee_id','is_transfer','is_card_payment',
@@ -3333,6 +3333,12 @@ async function importDemoData(userId, familyId, progressCb) {
   // ── Helper: insert in batches, collect per-table results ────────────────────
   const tableResults = {}; // { tableName: { sent, ok, errors: [] } }
 
+  // Tables where name+family_id must be unique — use upsert to skip duplicates
+  const UPSERT_TABLES = new Set([
+    'account_groups','accounts','payees','price_stores',
+    'categories','scheduled_transactions',
+  ]);
+
   async function ins(table, rows, label, batchSize = 50) {
     if (!rows || !rows.length) {
       tableResults[table] = { label, sent: 0, ok: 0, errors: [] };
@@ -3346,14 +3352,26 @@ async function importDemoData(userId, familyId, progressCb) {
     });
     tableResults[table] = { label, sent: rows.length, ok: 0, errors: [] };
     let ok = 0;
+    const useUpsert = UPSERT_TABLES.has(table);
     for (let i = 0; i < enriched.length; i += batchSize) {
       const batch = enriched.slice(i, i + batchSize);
-      const { error } = await sb.from(table).insert(batch);
+      let error;
+      if (useUpsert) {
+        // ignoreDuplicates: true = ON CONFLICT DO NOTHING
+        ({ error } = await sb.from(table).upsert(batch, { onConflict: 'id', ignoreDuplicates: true }));
+      } else {
+        ({ error } = await sb.from(table).insert(batch));
+      }
       if (error) {
+        // Retry as plain insert if upsert fails (older PostgREST)
+        if (useUpsert) {
+          const { error: e2 } = await sb.from(table).insert(batch).select('id');
+          if (!e2) { ok += batch.length; tableResults[table].ok += batch.length; continue; }
+        }
         const msg = `Batch ${Math.floor(i/batchSize)+1}: ${error.message}`;
-        console.error('[DemoImport]', table, msg, error);
-        errors.push(`${table}: ${msg}`);
+        console.warn('[DemoImport]', table, msg);
         tableResults[table].errors.push(msg);
+        errors.push(`${table}: ${msg}`);
       } else {
         ok += batch.length;
         tableResults[table].ok += batch.length;
@@ -3427,40 +3445,71 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 7. Scheduled ─────────────────────────────────────────────────────────
   log('Criando programados…', 71);
-  await ins('scheduled_transactions', data.scheduled.map(sc => ({
+  // Only insert scheduled transactions whose account_id was actually inserted
+  const insertedAccIds = new Set(data.accounts.map(a => a.id));
+  const validScheduled = data.scheduled.filter(sc => !sc.account_id || insertedAccIds.has(sc.account_id));
+  await ins('scheduled_transactions', validScheduled.map(sc => ({
     ...sc,
-    start_date:   sc.start_date || new Date().toISOString().slice(0,10),
+    start_date:    sc.start_date || new Date().toISOString().slice(0,10),
     auto_register: sc.auto_register ?? false,
     auto_confirm:  sc.auto_confirm ?? true,
   })), 'Programados', 20);
 
   // ── 8. Budgets ───────────────────────────────────────────────────────────
   log('Criando orçamentos…', 74);
-  await ins('budgets', data.budgets, 'Orçamentos');
+  await ins('budgets', data.budgets.map(b => ({
+    ...b,
+    // DB column is date type — needs YYYY-MM-DD, not YYYY-MM
+    month: b.month && b.month.length === 7 ? b.month + '-01' : b.month,
+  })), 'Orçamentos');
 
   // ── 9. Debts ─────────────────────────────────────────────────────────────
   log('Criando dívidas…', 77);
+  // debts: 'creditor' text col doesn't exist; creditor is a payee FK (creditor_payee_id)
+  // We skip the creditor_payee_id for demo data since payees use demo UUIDs
+  // We insert debts without creditor FK — use description for creditor name in notes
   await ins('debts', data.debts.map(d => ({
     ...d,
-    description: d.description || d.name || '',
-    creditor: typeof d.creditor === 'object' ? (d.creditor?.name || '') : (d.creditor || ''),
+    description:       d.description || d.name || '',
+    notes:             d.notes ? d.notes + ' | Credor: ' + (typeof d.creditor === 'object' ? d.creditor?.name : d.creditor || '') : 'Credor: ' + (typeof d.creditor === 'object' ? d.creditor?.name : d.creditor || ''),
+    creditor_payee_id: undefined,  // remove FK that would violate constraint
+    creditor:          undefined,  // remove non-existent column
   })), 'Dívidas');
 
   // ── 10. Dreams ───────────────────────────────────────────────────────────
   log('Criando objetivos…', 80);
-  await ins('dreams', data.dreams.map(dr => ({ ...dr, created_by: userId })), 'Sonhos');
+  await ins('dreams', data.dreams.map(dr => ({
+    ...dr,
+    created_by:     userId,
+    saved_amount:   dr.saved_amount ?? dr.current_amount ?? 0,  // remap column name
+    current_amount: undefined,  // remove if doesn't exist in schema
+  })), 'Sonhos');
 
   // ── 11. Prices ───────────────────────────────────────────────────────────
   log('Criando preços…', 83);
-  await ins('price_items',   data.priceItems,   'Itens');
+  const insertedCatIds = new Set(data.categories.map(c => c.id));
+  const validPriceItems = data.priceItems.map(pi => ({
+    ...pi,
+    category_id: insertedCatIds.has(pi.category_id) ? pi.category_id : null,
+  }));
+  await ins('price_items', validPriceItems, 'Itens de preço');
   await ins('price_stores',  data.priceStores,  'Lojas');
-  await ins('price_history', data.priceHistory, 'Histórico');
+  await ins('price_history', data.priceHistory.map(ph => ({
+    ...ph,
+    purchased_at: ph.purchased_at || ph.date,  // remap date -> purchased_at
+    unit_price:   ph.unit_price   || ph.price, // remap price -> unit_price
+    quantity:     ph.quantity     || ph.qty    || 1,
+    date:         undefined, price: undefined, qty: undefined,
+  })), 'Histórico');
 
   // ── 12. Grocery ──────────────────────────────────────────────────────────
   log('Criando mercado…', 88);
   const grocery = data.groceries;
-  const glBase = pick({ ...grocery.list, family_id: familyId, created_at: new Date().toISOString() }, COLS['grocery_lists']);
-  const { error: glErr } = await sb.from('grocery_lists').insert(glBase);
+  // grocery_lists: 'type' column doesn't exist in schema — remove it
+  const glRaw = { ...grocery.list, family_id: familyId, created_at: new Date().toISOString() };
+  delete glRaw.type;  // column doesn't exist
+  const glBase = pick(glRaw, COLS['grocery_lists'].filter(c => c !== 'type'));
+  const { error: glErr } = await sb.from('grocery_lists').upsert(glBase, { onConflict: 'id', ignoreDuplicates: true });
   if (!glErr) {
     await ins('grocery_items', grocery.items.map(x => ({ ...x, list_id: grocery.list.id })), 'Itens mercado');
   } else {

@@ -2159,7 +2159,7 @@ function switchUATab(tab) {
   if (pane) { pane.style.display = 'flex'; pane.style.flexDirection = 'column'; }
   const tabId = 'uaTab' + tab.charAt(0).toUpperCase() + tab.slice(1);
   document.getElementById(tabId)?.classList.add('active');
-  if (tab === 'pending')  { if (typeof loadPendingApprovals === 'function') loadPendingApprovals(); }
+  if (tab === 'pending')  { _renderPendingTab(); }
   if (tab === 'users')    { if (typeof loadUserAdmin === 'function') loadUserAdmin(); }
   if (tab === 'families') { if (typeof loadFamiliesAdmin === 'function') loadFamiliesAdmin(); }
   if (tab === 'waitlist') { if (typeof loadWaitlist === 'function') loadWaitlist(); }
@@ -2651,6 +2651,16 @@ async function loadFamiliesList() {
     const { data: rpcData, error: rpcErr } = await sb.rpc('get_manageable_families');
     if (!rpcErr && Array.isArray(rpcData)) {
       families = rpcData;
+      // If RPC doesn't return is_demo, enrich from direct query
+      const hasDemoCol = families.length === 0 || 'is_demo' in families[0];
+      if (!hasDemoCol) {
+        try {
+          const { data: rawFams } = await sb.from('families').select('id,is_demo').in('id', families.map(f => f.id));
+          const demoMap = {};
+          (rawFams || []).forEach(r => { demoMap[r.id] = !!r.is_demo; });
+          families = families.map(f => ({ ...f, is_demo: demoMap[f.id] ?? false }));
+        } catch(_) {}
+      }
     } else {
       const { data, error } = await sb.from('families').select('*').order('name');
       if (error) throw error;
@@ -2998,11 +3008,22 @@ function showFamilyForm(id='') {
   if (demoChk) demoChk.checked = false;
 
   if (id) {
-    const f = _families.find(x => x.id === id) || (currentUser?.families || []).find(x => x.id === id);
+    // Always read from _families (freshly loaded) first, fallback to currentUser.families
+    const f = (_families || []).find(x => x.id === id)
+           || (currentUser?.families || []).find(x => x.id === id);
     if (f) {
       document.getElementById('fName').value = _familyDisplayName(id, f.name || '');
-      document.getElementById('fDesc').value = f.description||'';
-      if (demoChk && isAdmin) demoChk.checked = !!(f.is_demo);
+      document.getElementById('fDesc').value = f.description || '';
+      if (demoChk && isAdmin) {
+        // If is_demo not in cache yet, fetch directly
+        if (f.is_demo === undefined) {
+          sb.from('families').select('is_demo').eq('id', id).maybeSingle()
+            .then(({ data }) => { if (demoChk) demoChk.checked = !!(data?.is_demo); })
+            .catch(() => {});
+        } else {
+          demoChk.checked = !!(f.is_demo);
+        }
+      }
     }
   }
 }
@@ -3041,31 +3062,42 @@ async function saveFamily() {
   }
   if (error) { toast('Erro: ' + error.message,'error'); return; }
 
-  // Persist is_demo flag — admin only, via dedicated RPC
+  // Persist is_demo flag — admin only
   if (isGlobalAdmin && id) {
+    let demoSaved = false;
+    // Try admin_set_family_demo (SECURITY DEFINER, doesn't need RLS)
     try {
-      const { error: demoErr } = await sb.rpc('set_family_demo_flag', {
-        p_family_id: id,
-        p_is_demo: isDemo,
-      });
-      if (demoErr) {
-        // Fallback: direct update (works if RLS allows admin)
-        await sb.from('families').update({ is_demo: isDemo }).eq('id', id);
-      }
-    } catch(e) {
-      console.warn('[saveFamily] is_demo update:', e.message);
-    }
-  } else if (isGlobalAdmin && !id) {
-    // For new families: update is_demo after creation
-    setTimeout(async () => {
+      const { error: e1 } = await sb.rpc('admin_set_family_demo', { p_family_id: id, p_is_demo: isDemo });
+      if (!e1) demoSaved = true;
+    } catch(_) {}
+    // Fallback: older RPC
+    if (!demoSaved) {
       try {
-        const newFam2 = (_families || []).find(f => f.name === name);
-        if (newFam2?.id && isDemo) {
-          await sb.rpc('set_family_demo_flag', { p_family_id: newFam2.id, p_is_demo: true })
-            .catch(() => sb.from('families').update({ is_demo: true }).eq('id', newFam2.id));
-        }
+        const { error: e2 } = await sb.rpc('set_family_demo_flag', { p_family_id: id, p_is_demo: isDemo });
+        if (!e2) demoSaved = true;
       } catch(_) {}
-    }, 1500);
+    }
+    // Fallback: direct update
+    if (!demoSaved) {
+      try {
+        await sb.from('families').update({ is_demo: isDemo }).eq('id', id);
+      } catch(e) {
+        console.warn('[saveFamily] is_demo update failed:', e.message);
+      }
+    }
+    // Update local cache regardless
+    const famCached = (_families || []).find(f => f.id === id);
+    if (famCached) famCached.is_demo = isDemo;
+  } else if (isGlobalAdmin && !id) {
+    // New family: apply is_demo after creation if needed
+    if (isDemo) {
+      setTimeout(async () => {
+        try {
+          const newFam2 = (_families || []).find(f => f.name === name);
+          if (newFam2?.id) await _toggleFamilyDemo(newFam2.id, true);
+        } catch(_) {}
+      }, 1500);
+    }
   }
 
   toast(id ? '✓ Família atualizada!' : '✓ Família criada! Iniciando configuração…','success');
@@ -3084,28 +3116,59 @@ async function saveFamily() {
 
 // ── Toggle família demo (admin only) ─────────────────────────────────────────
 async function _toggleFamilyDemo(familyId, setDemo) {
-  if (currentUser?.role !== 'admin') { toast('Apenas administradores podem alterar esta configuração.', 'error'); return; }
+  if (currentUser?.role !== 'admin') {
+    toast('Apenas administradores podem alterar esta configuração.', 'error');
+    return;
+  }
   try {
-    // Try RPC first (SECURITY DEFINER bypasses RLS)
-    const { error: rpcErr } = await sb.rpc('set_family_demo_flag', {
-      p_family_id: familyId,
-      p_is_demo:   setDemo,
-    });
-    if (rpcErr) {
-      // Fallback: direct update
-      const { error: upErr } = await sb.from('families').update({ is_demo: setDemo }).eq('id', familyId);
-      if (upErr) throw upErr;
-    }
-    // Update local cache
-    const fam = _families.find(f => f.id === familyId);
+    // Update local cache immediately (optimistic)
+    const fam = (_families || []).find(f => f.id === familyId);
     if (fam) fam.is_demo = setDemo;
-    toast(setDemo ? '🎭 Família marcada como demonstração.' : '✓ Flag de demonstração removida.', 'success');
+
+    // 1. Try simple SECURITY DEFINER RPC (admin_set_family_demo)
+    let saved = false;
+    try {
+      const { error: rpcErr } = await sb.rpc('admin_set_family_demo', {
+        p_family_id: familyId,
+        p_is_demo:   setDemo,
+      });
+      if (!rpcErr) saved = true;
+      else console.debug('[toggleDemo] admin_set_family_demo:', rpcErr.message);
+    } catch(_) {}
+
+    // 2. Fallback: try older RPC name
+    if (!saved) {
+      try {
+        const { error: rpcErr2 } = await sb.rpc('set_family_demo_flag', {
+          p_family_id: familyId,
+          p_is_demo:   setDemo,
+        });
+        if (!rpcErr2) saved = true;
+        else console.debug('[toggleDemo] set_family_demo_flag:', rpcErr2.message);
+      } catch(_) {}
+    }
+
+    // 3. Last resort: direct UPDATE (works when admin RLS policy is present)
+    if (!saved) {
+      const { error: upErr } = await sb.from('families')
+        .update({ is_demo: setDemo })
+        .eq('id', familyId);
+      if (upErr) throw new Error('Não foi possível salvar: ' + upErr.message + '. Execute families_is_demo_rls_fix.sql no Supabase.');
+    }
+
+    toast(setDemo ? '🎭 Família marcada como demonstração.' : '✓ Flag demo removida.', 'success');
+    // Reload to confirm persisted state
     await loadFamiliesList();
   } catch(e) {
     toast('Erro: ' + e.message, 'error');
+    // Revert optimistic update on error
+    const fam = (_families || []).find(f => f.id === familyId);
+    if (fam) fam.is_demo = !setDemo;
   }
 }
-window._toggleFamilyDemo = _toggleFamilyDemo;
+window._toggleFamilyDemo   = _toggleFamilyDemo;
+// Alias expected by tab switcher
+window.loadPendingApprovals = _renderPendingTab;
 
 async function deleteFamily(id, name) {
   const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
@@ -5463,12 +5526,15 @@ function _roleLabel(role) {
 // ── Receivables badge update ──────────────────────────────────────────────────
 async function _updateReceivablesBadge() {
   try {
-    const { count } = await famQ(
-      sb.from('transactions')
-        .select('id', { count: 'exact', head: true })
-    ).eq('status', 'pending')
+    const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
+    if (!fid || !sb) return;
+    const { count } = await sb
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('family_id', fid)
+      .eq('status', 'pending')
       .gte('amount', 0)
-      .not('is_transfer', 'eq', true);
+      .eq('is_transfer', false);
     const badge = document.getElementById('receivablesBadge');
     if (!badge) return;
     if (count > 0) {

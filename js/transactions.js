@@ -3477,13 +3477,22 @@ async function loadReceivables() {
 
   container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
 
+  if (!sb || !currentUser) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Aguardando conexão…</div>';
+    return;
+  }
+
   try {
-    const { data, error } = await famQ(
-      sb.from('transactions')
-        .select('*, accounts!transactions_account_id_fkey(name,currency,color,icon), categories(name,color,icon), payees(name)')
-    ).eq('status', 'pending')
+    const fid = typeof famId === 'function' ? famId() : null;
+    if (!fid) throw new Error('Família não identificada. Faça login novamente.');
+
+    const { data, error } = await sb
+      .from('transactions')
+      .select('id,date,description,amount,brl_amount,currency,status,is_transfer,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name,currency,color,icon),categories(name,color,icon),payees(name)')
+      .eq('family_id', fid)
+      .eq('status', 'pending')
       .gte('amount', 0)
-      .not('is_transfer', 'eq', true)
+      .eq('is_transfer', false)
       .order('date', { ascending: true });
 
     if (error) throw error;
