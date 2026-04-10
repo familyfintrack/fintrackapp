@@ -3052,7 +3052,7 @@ async function _openPatrimonioModal() {
     <span style="font-size:.9rem">🤖</span>
     <span style="font-size:.8rem;font-weight:700;color:var(--text);flex:1">Análise Patrimonial com Gemini</span>
     <button id="patAiBtn"
-      onclick="_patAnalyzeWithGemini(${JSON.stringify({totalAtivos,totalPassivos,patrimonioTotal,debtTotal,totalCartNeg,liquidTotal,invTotal,endividamento,healthScore,debtsCount:debts.length,accsCount:accs.length,hLabel})})"
+      onclick="_patAnalyzeWithGemini()"
       style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">
       ✨ Analisar
     </button>
@@ -3076,13 +3076,20 @@ async function _openPatrimonioModal() {
     </div>`;
     document.body.appendChild(modal);
   }
+  // Store metrics for Gemini analysis (avoids JSON-in-onclick issues)
+  window._patMetrics = {
+    totalAtivos, totalPassivos, patrimonioTotal, debtTotal, totalCartNeg,
+    liquidTotal, invTotal, endividamento, healthScore,
+    debtsCount: debts.length, accsCount: accs.length, hLabel
+  };
   document.getElementById('patrimonioModalBody').innerHTML = html;
   openModal('patrimonioModal');
 }
 window._openPatrimonioModal = _openPatrimonioModal;
 
 // ── Análise patrimonial com Gemini ────────────────────────────────────────
-async function _patAnalyzeWithGemini(metrics) {
+async function _patAnalyzeWithGemini() {
+  const metrics = window._patMetrics || {};
   const btn = document.getElementById('patAiBtn');
   const result = document.getElementById('patAiResult');
   if (!btn || !result) return;
@@ -3106,7 +3113,7 @@ async function _patAnalyzeWithGemini(metrics) {
   const prompt = `Analise o patrimônio financeiro desta família em EXATAMENTE 2 parágrafos curtos em português brasileiro.
 
 Dados do patrimônio:
-- Patrimônio líquido: R$ ${metrics.patrimonioLiq.toFixed(2)}
+- Patrimônio líquido: R$ ${(metrics.patrimonioTotal || metrics.patrimonioLiq || 0).toFixed(2)}
 - Total de ativos: R$ ${metrics.totalAtivos.toFixed(2)} (contas: R$ ${metrics.liquidTotal.toFixed(2)}, investimentos: R$ ${metrics.invTotal.toFixed(2)})
 - Total de passivos: R$ ${metrics.totalPassivos.toFixed(2)} (dívidas: R$ ${metrics.debtTotal.toFixed(2)}, faturas cartão: R$ ${metrics.cardDebt.toFixed(2)})
 - Endividamento: ${(metrics.endividamento * 100).toFixed(1)}%
