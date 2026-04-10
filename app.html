@@ -1105,11 +1105,13 @@
       </div>
 
             <!-- ── Account filter active badge ── -->
-            <div id="txAccountBadge" style="display:none;margin-bottom:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(125,194,66,.12),rgba(42,96,73,.08));border:1.5px solid rgba(125,194,66,.35);border-radius:12px;align-items:center;gap:10px;flex-wrap:wrap">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-              <span style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em">Filtrando conta:</span>
-              <span id="txAccountBadgeLabel" style="font-size:.88rem;font-weight:800;color:var(--text);flex:1"></span>
-              <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.3);color:var(--accent);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">✕ Limpar filtro</button>
+            <div id="txAccountBadge" style="display:none;margin-bottom:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(125,194,66,.12),rgba(42,96,73,.08));border:1.5px solid rgba(125,194,66,.35);border-radius:12px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                <span style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">Filtrando:</span>
+                <span id="txAccountBadgeLabel" style="font-size:.88rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0"></span>
+                <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.3);color:var(--accent);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">✕ Limpar</button>
+              </div>
             </div>
             <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
 
@@ -3105,6 +3107,26 @@
             </div>
           </div>
           <div id="settingsVisibilitySection" style="display:none"></div>
+
+          <!-- ══ ZONA DE PERIGO — owner da família apenas ══════════════════════ -->
+          <div id="familyDangerZone" style="display:none">
+            <div class="cfg-section-label">⚠️ Zona de Perigo</div>
+            <div class="cfg-card" style="border-color:rgba(220,38,38,.25)">
+              <div style="padding:16px">
+                <div style="display:flex;align-items:flex-start;gap:12px">
+                  <div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🗑️</div>
+                  <div style="flex:1">
+                    <div style="font-size:.88rem;font-weight:800;color:#dc2626;margin-bottom:4px">Excluir Todos os Dados da Família</div>
+                    <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:12px">Remove permanentemente todas as transações, contas, categorias, orçamentos, programados, dívidas, objetivos, preços e outros dados desta família. <strong style="color:#dc2626">Esta ação não pode ser desfeita.</strong></div>
+                    <button class="btn btn-sm" onclick="deleteAllFamilyData()" style="background:#fee2e2;color:#dc2626;border:1.5px solid rgba(220,38,38,.3);font-weight:700;border-radius:9px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:.82rem">
+                      🗑️ Excluir Todos os Dados da Família
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- ══ PANE: DADOS ══════════════════════════════════════════════════ -->
@@ -3181,24 +3203,7 @@
         </div>
 
 
-          <!-- Zona de perigo: excluir todos os dados da família -->
-          <div class="cfg-section-label">⚠️ Zona de Perigo</div>
-          <div class="cfg-card" style="border-color:rgba(220,38,38,.25)">
-            <div style="padding:16px">
-              <div style="display:flex;align-items:flex-start;gap:12px">
-                <div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🗑️</div>
-                <div style="flex:1">
-                  <div style="font-size:.88rem;font-weight:800;color:#dc2626;margin-bottom:4px">Excluir Todos os Dados</div>
-                  <div style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:12px">Remove permanentemente todas as transações, contas, categorias, orçamentos, programados, dívidas, objetivos, preços e outros dados da família atual. <strong style="color:#dc2626">Esta ação não pode ser desfeita.</strong></div>
-                  <button class="btn btn-sm" onclick="deleteAllFamilyData()" style="background:#fee2e2;color:#dc2626;border:1.5px solid rgba(220,38,38,.3);font-weight:700;border-radius:9px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:.82rem">
-                    🗑️ Excluir Todos os Dados da Família
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
+          
         <!-- ══ PANE: APARÊNCIA (admin) ══════════════════════════════════════ -->
         <div class="cfg-pane" id="pane-aparencia">
           <div class="cfg-pane-header">
