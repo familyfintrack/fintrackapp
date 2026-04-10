@@ -47,7 +47,7 @@ async function _createPairedTransferLeg(originTx, sc, actualDate, memoOverride=n
     return null;
   }
   // Back-link origin to paired (best-effort)
-  await sb.from('transactions').update({linked_transfer_id: pairedResult.id}).eq('id', originTx.id).then(()=>{}).catch(()=>{});
+  try { await sb.from('transactions').update({linked_transfer_id: pairedResult.id}).eq('id', originTx.id).then(()=>{}); } catch(_) {};
   return pairedResult;
 }
 
@@ -1671,7 +1671,39 @@ function openRegisterOcc(scId, date) {
   document.getElementById('occDate').value = date;
   setAmtField('occAmount', sc.amount);
   document.getElementById('occMemo').value = '';
-  document.getElementById('registerOccDesc').textContent = `Registrar "${sc.description}" em ${fmtDate(date)} — isso criará uma transação real na conta ${sc.accounts?.name||''}.`;
+
+  // Populate the hero header
+  const isIncome = sc.type === 'income';
+  const isExpense = sc.type === 'expense' || sc.type === 'card_payment';
+  const typeEmoji = isIncome ? '💰' : isExpense ? '💸' : '↔';
+
+  const nameEl  = document.getElementById('occModalName');
+  const metaEl  = document.getElementById('occModalMeta');
+  const amtEl   = document.getElementById('occModalOriginalAmt');
+  const iconEl  = document.getElementById('occModalTypeIcon');
+  const acctEl  = document.getElementById('occAccountDisplay');
+  const hintEl  = document.getElementById('occAmountHint');
+
+  if (nameEl) nameEl.textContent = sc.description || '—';
+  if (iconEl) iconEl.textContent = typeEmoji;
+  if (amtEl)  amtEl.textContent  = (isExpense ? '−' : '+') + fmt(Math.abs(sc.amount), sc.currency || 'BRL');
+  if (amtEl)  amtEl.style.color  = isIncome ? '#7dc242' : '#fca5a5';
+  if (acctEl) acctEl.textContent = sc.accounts?.name || '—';
+  if (hintEl) hintEl.textContent = `Valor original: ${fmt(Math.abs(sc.amount), sc.currency||'BRL')} — ajuste se houver juros ou correção`;
+
+  // Meta chips: frequency · account · category
+  if (metaEl) {
+    const freqMap = { daily:'Diário', weekly:'Semanal', biweekly:'Quinzenal',
+                      monthly:'Mensal', bimonthly:'Bimestral', quarterly:'Trimestral',
+                      semiannual:'Semestral', annual:'Anual', once:'Único' };
+    const parts = [
+      freqMap[sc.frequency] || sc.frequency,
+      sc.accounts?.name,
+      sc.payees?.name,
+    ].filter(Boolean);
+    metaEl.innerHTML = parts.map(p => `<span style="background:rgba(255,255,255,.12);padding:2px 7px;border-radius:100px">${esc(p)}</span>`).join('');
+  }
+
   // Show/hide the "Não Recebido" button — only for income type
   _scArShowBtn(sc);
   openModal('registerOccModal');

@@ -4387,7 +4387,7 @@ async function _loadDashTopPayeesCard(period) {
       </div>`;
 
     const verRelatorioLink = `<div style="padding:6px 14px 10px;text-align:right">
-      <button onclick="navigate('reports');setTimeout(()=>typeof setReportView==='function'&&setReportView('beneficiarios'),300)"
+      <button onclick="navigate('payees');setTimeout(()=>typeof setPayeesTab==='function'&&setPayeesTab('report'),300)"
         style="background:none;border:none;cursor:pointer;font-size:.74rem;font-weight:600;color:var(--accent);font-family:inherit;padding:0;transition:opacity .15s"
         onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
         Ver relatório completo →

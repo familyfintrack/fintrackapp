@@ -774,11 +774,11 @@ async function doLogin() {
       // Store Supabase Auth UID in app_users for RLS policies
       // This is the critical bridge: app_users.auth_uid = auth.uid()
       if (_pwRow?.id && authData?.user?.id) {
-        await sb.from('app_users')
-          .update({ auth_uid: authData.user.id })
-          .eq('id', _pwRow.id)
-          .then(() => {})  // fire-and-forget, non-blocking
-          .catch(() => {}); // ignore error if column doesn't exist yet
+        try {
+          await sb.from('app_users')
+            .update({ auth_uid: authData.user.id })
+            .eq('id', _pwRow.id);
+        } catch(_) {} // ignore error if column doesn't exist yet
       }
     } catch(_) {} // non-blocking — upgrade is best-effort
     await _loadCurrentUserContext(authData);
@@ -2358,10 +2358,9 @@ async function _sendPendingInviteLink(userId, userName, userEmail) {
     toast('✉️ Link de cadastro enviado para ' + (name || email) + '!', 'success');
 
     // Mark invite_sent_at in app_users if column exists
-    await sb.from('app_users')
+    try { await sb.from('app_users')
       .update({ invite_sent_at: new Date().toISOString() })
-      .eq('id', userId)
-      .catch(() => {});
+      .eq('id', userId); } catch(_) {};
 
     await _renderPendingTab();
   } catch(e) {

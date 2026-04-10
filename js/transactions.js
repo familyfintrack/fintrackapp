@@ -2567,7 +2567,7 @@ async function saveTransaction(){
         toast('Transferência salva, mas erro ao criar lançamento de entrada: ' + pairedErr.message, 'warning');
       } else if(pairedResult?.id) {
         // Back-link origin row to paired row (best-effort)
-        await sb.from('transactions').update({linked_transfer_id: pairedResult.id}).eq('id', txResult.id).then(()=>{}).catch(()=>{});
+        try { await sb.from('transactions').update({linked_transfer_id: pairedResult.id}).eq('id', txResult.id).then(()=>{}); } catch(_) {};
       }
     }
   }
@@ -3887,6 +3887,48 @@ function _buildRecv(rows, today) {
 
   html += card('👤', 'Por Devedor', debtors.length + ' fonte' + (debtors.length > 1 ? 's' : ''), debtorRows);
 
+  // ── Statistical consolidation by payee (accumulated receivables) ────────────
+  if (debtors.length > 0) {
+    const totalPending = total;
+    const topDebtors   = debtors.slice(0, 5);
+    const topDebtorsTotal = topDebtors.reduce((s, d) => s + d.total, 0);
+    const othersTotal    = total - topDebtorsTotal;
+
+    // Risk classification
+    const riskRows = topDebtors.map((d, i) => {
+      const share = total > 0 ? (d.total / total * 100).toFixed(0) : 0;
+      const concentrated = share > 50;
+      const riskColor = concentrated ? '#dc2626' : share > 30 ? '#d97706' : 'var(--accent)';
+      const oldest = rows.filter(r => (r.payee_id || '__none__') === (Object.keys(byPayee)[i] || '__none__'))
+        .reduce((oldest, r) => r.date < oldest ? r.date : oldest, today);
+      const daysPending = Math.round((new Date(today) - new Date(oldest)) / 86400000);
+      const concentration = concentrated ? '⚠ Concentrado' : share > 30 ? '● Relevante' : '● Normal';
+      return '<div style="display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border)">' +
+        '<div style="min-width:0">' +
+          '<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(d.name) + '</div>' +
+          '<div style="font-size:.65rem;color:var(--muted);margin-top:1px">' + d.count + ' lançamento' + (d.count>1?'s':'') + ' · ' + daysPending + 'd pendente</div>' +
+        '</div>' +
+        '<div style="font-size:.62rem;font-weight:700;padding:1px 6px;border-radius:100px;background:' + riskColor + '18;color:' + riskColor + ';white-space:nowrap">' + concentration + '</div>' +
+        '<div style="font-size:.7rem;color:var(--muted);text-align:right">' + share + '%</div>' +
+        '<div style="font-size:.82rem;font-weight:800;color:var(--accent);text-align:right;white-space:nowrap">+' + fmtV(d.total) + '</div>' +
+      '</div>';
+    }).join('');
+
+    // Concentration warning
+    const maxShare = debtors.length > 0 ? (debtors[0].total / total * 100) : 0;
+    const concentrationWarning = maxShare > 50
+      ? '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:8px 12px;margin:10px 14px 0;font-size:.74rem;color:#dc2626;font-weight:600">⚠️ <strong>' + debtors[0].name + '</strong> concentra ' + maxShare.toFixed(0) + '% das pendências — alto risco de inadimplência</div>'
+      : '';
+
+    const summaryFooter = '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--surface2);font-size:.72rem;color:var(--muted)">' +
+      '<span>' + debtors.length + ' fonte' + (debtors.length>1?'s pagadoras':'') + ' · ' + rows.length + ' recebimento' + (rows.length>1?'s':'') + ' pendente' + (rows.length>1?'s':'') + '</span>' +
+      '<span style="font-weight:800;color:var(--accent)">Total: +' + fmtV(total) + '</span>' +
+    '</div>';
+
+    html += card('📊', 'Consolidação por Fonte', 'concentração de risco',
+      concentrationWarning + riskRows + summaryFooter);
+  }
+
   // ── Detail rows: overdue then upcoming ──────────────────────────────────
   function txRow(r) {
     const catIcon  = r.categories?.icon  || '💰';
@@ -4017,10 +4059,13 @@ function closeReceivablesModal() {
 
 // Sync the badge on the Programados access button
 function _syncReceivablesBadge(count) {
-  const btn = document.getElementById('scArBadgeBtn');
-  const old = document.getElementById('receivablesBadge');
-  if (btn) { btn.textContent = count; btn.style.display = count > 0 ? '' : 'none'; }
-  if (old) { old.textContent = count; old.style.display = count > 0 ? '' : 'none'; }
+  const ids = ['scArBadgeBtn','receivablesBadge','scHeaderArBadge','scMobileArBadge'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = count > 0 ? count : '';
+    el.style.display = count > 0 ? (id.includes('Header') || id.includes('Mobile') ? 'flex' : '') : 'none';
+  });
 }
 
 window.openReceivablesModal  = openReceivablesModal;

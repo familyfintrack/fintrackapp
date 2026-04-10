@@ -3512,11 +3512,12 @@ async function importDemoData(userId, familyId, progressCb) {
       const demoCatId    = p.category_id || p.default_category_id;
       const realCatId    = demoCatId ? remap(catIdMap, demoCatId) : null;
       if (realPayeeId && realCatId && realCatId !== demoCatId) {
-        await sb.from('payees')
-          .update({ default_category_id: realCatId })
-          .eq('id', realPayeeId)
-          .eq('family_id', familyId)
-          .catch(() => {});
+        try {
+          await sb.from('payees')
+            .update({ default_category_id: realCatId })
+            .eq('id', realPayeeId)
+            .eq('family_id', familyId);
+        } catch(_) {}
       }
     }
   }
