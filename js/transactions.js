@@ -224,6 +224,8 @@ async function confirmTxClipImport() {
 }
 
 async function loadTransactions(){
+  // Restore collapsed/expanded state of filter panel
+  if (typeof _txRestoreFilterPanel === 'function') _txRestoreFilterPanel();
   try {
     const result = await DB.transactions.load({
       filter:    state.txFilter,
@@ -324,14 +326,37 @@ function filterTransactions(immediate = false){
 
 // ── Collapsible filter panel ──────────────────────────────────────────────
 function _txToggleFilters() {
-  const panel = document.getElementById('tx-filters-panel');
-  const btn   = document.getElementById('txFilterToggle');
+  const panel  = document.getElementById('tx-filters-panel');
+  const btn    = document.getElementById('txFilterToggle');
+  const hdr    = document.getElementById('tx-filters-panel-header');
   if (!panel) return;
   const isOpen = panel.classList.contains('open');
-  panel.classList.toggle('open', !isOpen);
-  if (btn) btn.classList.toggle('active', !isOpen);
+  const nowOpen = !isOpen;
+  panel.classList.toggle('open', nowOpen);
+  if (btn) btn.classList.toggle('active', nowOpen);
+  if (hdr) hdr.setAttribute('aria-expanded', String(nowOpen));
+  // Persist state
+  try { localStorage.setItem('tx_filters_open', String(nowOpen)); } catch(_) {}
 }
 window._txToggleFilters = _txToggleFilters;
+
+// Restore filter panel state on load
+function _txRestoreFilterPanel() {
+  try {
+    const saved = localStorage.getItem('tx_filters_open');
+    // Default: open if there are active filters, collapsed otherwise
+    const panel = document.getElementById('tx-filters-panel');
+    const btn   = document.getElementById('txFilterToggle');
+    const hdr   = document.getElementById('tx-filters-panel-header');
+    if (!panel) return;
+    // If user explicitly saved a preference, use it; otherwise default closed
+    const shouldOpen = saved === 'true';
+    panel.classList.toggle('open', shouldOpen);
+    if (btn) btn.classList.toggle('active', shouldOpen);
+    if (hdr) hdr.setAttribute('aria-expanded', String(shouldOpen));
+  } catch(_) {}
+}
+window._txRestoreFilterPanel = _txRestoreFilterPanel;
 
 function _txUpdateFilterBadge() {
   const btn = document.getElementById('txFilterToggle');
@@ -358,8 +383,19 @@ function _txUpdateFilterBadge() {
       badge.style.display = 'none';
     }
   }
-}
-window._txUpdateFilterBadge = _txUpdateFilterBadge;
+  // Update the header badge showing active filter count
+  const _headerBadge = document.getElementById('tx-filters-badge');
+  const _headerTitle = document.getElementById('tx-filters-panel-title');
+  if (_headerBadge) {
+    _headerBadge.textContent = activeCount || '';
+    _headerBadge.classList.toggle('visible', activeCount > 0);
+  }
+  if (_headerTitle) {
+    _headerTitle.textContent = activeCount > 0 ? `Filtros ativos` : 'Filtros';
+    _headerTitle.style.color = activeCount > 0 ? 'var(--accent)' : 'var(--text2)';
+  }
+
+}window._txUpdateFilterBadge = _txUpdateFilterBadge;
 
 function clearTxAccountFilter() {
   const sel = document.getElementById('txAccount');

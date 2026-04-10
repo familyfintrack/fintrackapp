@@ -1600,6 +1600,8 @@ function openRegisterOcc(scId, date) {
   setAmtField('occAmount', sc.amount);
   document.getElementById('occMemo').value = '';
   document.getElementById('registerOccDesc').textContent = `Registrar "${sc.description}" em ${fmtDate(date)} — isso criará uma transação real na conta ${sc.accounts?.name||''}.`;
+  // Show/hide the "Não Recebido" button — only for income type
+  _scArShowBtn(sc);
   openModal('registerOccModal');
 }
 
@@ -2886,151 +2888,171 @@ window.ignoreOccurrence                    = ignoreOccurrence;
 // Guarda num store scoped por família em app_settings
 // ═══════════════════════════════════════════════════════════════════════════
 
-const _SC_AR_KEY = 'sc_ar_records';
+// ════════════════════════════════════════════════════════════════════════════
+// VALORES A RECEBER — Supabase-backed (scheduled_ar_records)
+// ════════════════════════════════════════════════════════════════════════════
 
-function _scArGetRecs() {
+async function _scArFetch(statusFilter) {
   try {
     const fid = typeof famId === 'function' ? famId() : null;
-    const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
-    return JSON.parse(localStorage.getItem(scopedKey) || '[]');
-  } catch(_) { return []; }
-}
-function _scArSaveRecs(records) {
-  try {
-    const fid = typeof famId === 'function' ? famId() : null;
-    const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
-    localStorage.setItem(scopedKey, JSON.stringify(records));
-  } catch(_) {}
+    if (!fid) return [];
+    let q = sb.from('scheduled_ar_records')
+      .select('*')
+      .eq('family_id', fid)
+      .order('date', { ascending: true });
+    if (statusFilter && statusFilter.length === 1) {
+      q = q.eq('status', statusFilter[0]);
+    } else if (statusFilter && statusFilter.length > 1) {
+      q = q.in('status', statusFilter);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.warn('[scAr] fetch error:', e?.message);
+    return [];
+  }
 }
 
-// Called by "⏳ Não Recebido" button in registerOccModal
 async function registerAsNotReceived() {
-  const scId  = document.getElementById('occScId')?.value;
-  const date  = document.getElementById('occDate')?.value;
-  const amtRaw= document.getElementById('occAmount')?.value;
-  const memo  = document.getElementById('occMemo')?.value?.trim() || '';
+  const scId   = document.getElementById('occScId')?.value;
+  const date   = document.getElementById('occDate')?.value;
+  const memo   = document.getElementById('occMemo')?.value?.trim() || '';
 
-  if (!scId || !date) { if (typeof toast==='function') toast('Preencha a data.','warning'); return; }
+  if (!scId || !date) { toast('Preencha a data.', 'warning'); return; }
 
-  const sc = (state.scheduled||[]).find(s=>s.id===scId);
-  const amount = Math.abs(parseFloat(String(amtRaw).replace(',','.')) || parseFloat(sc?.amount)||0);
-  const desc = sc?.description || 'Valor a receber';
+  const sc     = (state.scheduled || []).find(s => s.id === scId);
+  const amount = Math.abs(getAmtField('occAmount') || parseFloat(sc?.amount) || 0);
+  const desc   = sc?.description || 'Valor a receber';
+  const fid    = typeof famId === 'function' ? famId() : null;
+  if (!fid) { toast('Familia nao identificada.', 'error'); return; }
 
   try {
-    const recs = _scArGetRecs();
-    recs.push({
-      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    const { error } = await sb.from('scheduled_ar_records').insert({
+      family_id:   fid,
       sc_id:       scId,
       description: desc,
       date,
       amount,
-      memo,
-      status:      'pending',  // pending | received | cancelled
-      created_at:  new Date().toISOString(),
+      memo:        memo || null,
+      status:      'pending',
     });
-    _scArSaveRecs(recs);
-    if (typeof closeModal==='function') closeModal('registerOccModal');
-    if (typeof toast==='function') toast('⏳ Registrado em Valores a Receber','info');
+    if (error) throw error;
+    closeModal('registerOccModal');
+    toast('Registrado em Valores a Receber', 'info');
     _scArLoad();
-  } catch(e) {
-    if (typeof toast==='function') toast('Erro ao registrar: '+(e.message||e),'error');
+  } catch (e) {
+    toast('Erro ao registrar: ' + (e.message || e), 'error');
   }
 }
-window.registerAsNotReceived = registerAsNotReceived;
 
-// Load and render the A/R section
 async function _scArLoad() {
   const section = document.getElementById('scArSection');
   const list    = document.getElementById('scArList');
   const cntEl   = document.getElementById('scArCount');
   if (!section || !list) return;
 
-  const recs = _scArGetRecs();
-  const pending = recs.filter(r => r.status === 'pending');
+  const pending = await _scArFetch(['pending']);
 
-  // Show/hide section
   section.style.display = pending.length ? '' : 'none';
   if (cntEl) cntEl.textContent = pending.length || '';
-
-  if (!pending.length) { list.innerHTML=''; return; }
+  if (!pending.length) { list.innerHTML = ''; return; }
 
   list.innerHTML = pending.map(r => {
-    const dt = r.date ? r.date.split('-').reverse().join('/') : '—';
-    const amt = typeof fmt === 'function' ? fmt(r.amount||0) : 'R$ '+(r.amount||0).toFixed(2);
-    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid #fde68a;border-radius:10px">
+    const dt  = r.date ? r.date.split('-').reverse().join('/') : '--';
+    const amt = typeof fmt === 'function' ? fmt(r.amount || 0) : 'R$ ' + (+(r.amount || 0)).toFixed(2);
+    return `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+      background:var(--surface);border:1px solid #fde68a;border-radius:10px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:.83rem;font-weight:700;color:var(--text)">${typeof esc==='function'?esc(r.description):r.description}</div>
+        <div style="font-size:.83rem;font-weight:700;color:var(--text)">${esc(r.description)}</div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap">
           <span style="font-size:.78rem;color:var(--muted)">${dt}</span>
           <span style="font-size:.83rem;font-weight:800;color:#d97706">${amt}</span>
-          ${r.memo?`<span style="font-size:.72rem;color:var(--muted);font-style:italic">${typeof esc==='function'?esc(r.memo):r.memo}</span>`:''}
+          ${r.memo ? '<span style="font-size:.72rem;color:var(--muted);font-style:italic">'+esc(r.memo)+'</span>' : ''}
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button onclick="_scArReceive('${r.id}')"
-          style="padding:5px 10px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
-          ✅ Recebido
+          style="padding:5px 10px;background:#dcfce7;color:#15803d;border:1px solid #86efac;
+            border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+          Recebido
         </button>
         <button onclick="_scArCancel('${r.id}')"
-          style="padding:5px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">
-          ✕
+          style="padding:5px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);
+            border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">
+          X
         </button>
       </div>
     </div>`;
   }).join('');
 }
-window._scArLoad = _scArLoad;
 
-// Mark a pending A/R as received — opens the TX modal pre-filled
 async function _scArReceive(arId) {
-  const recs = _scArGetRecs();
-  const rec = recs.find(r=>r.id===arId);
-  if (!rec) return;
+  try {
+    const { data, error } = await sb.from('scheduled_ar_records')
+      .update({
+        status:      'received',
+        received_at: new Date().toISOString(),
+        updated_at:  new Date().toISOString(),
+      })
+      .eq('id', arId)
+      .select()
+      .single();
+    if (error) throw error;
 
-  // Mark as received
-  rec.status = 'received';
-  rec.received_at = new Date().toISOString();
-  _scArSaveRecs(recs);
+    const rec = data;
+    _scArLoad();
 
-  // Open TX modal pre-filled with this amount as income
-  if (typeof openTransactionModal === 'function') {
-    openTransactionModal();
-    setTimeout(() => {
-      const sc = (state.scheduled||[]).find(s=>s.id===rec.sc_id);
-      if (typeof setTxType==='function') setTxType('income');
-      const dtEl=document.getElementById('txDate'); if(dtEl) dtEl.value=rec.date;
-      const descEl=document.getElementById('txDesc'); if(descEl) descEl.value=rec.description;
-      if (typeof setAmtField==='function') setAmtField('txAmount', Math.abs(rec.amount||0));
-      if (sc?.account_id && document.getElementById('txAccountId')) {
-        document.getElementById('txAccountId').value=sc.account_id;
-      }
-    }, 200);
+    // Abre modal de TX pre-preenchido
+    if (typeof openTransactionModal === 'function') {
+      openTransactionModal();
+      setTimeout(() => {
+        const sc = (state.scheduled || []).find(s => s.id === rec.sc_id);
+        if (typeof setTxType === 'function') setTxType('income');
+        const dtEl   = document.getElementById('txDate');
+        const descEl = document.getElementById('txDesc');
+        if (dtEl)   dtEl.value  = rec.date;
+        if (descEl) descEl.value = rec.description;
+        if (typeof setAmtField === 'function') setAmtField('txAmount', Math.abs(rec.amount || 0));
+        if (sc && sc.account_id) {
+          const accEl = document.getElementById('txAccountId');
+          if (accEl) accEl.value = sc.account_id;
+        }
+      }, 200);
+    }
+    toast('Marcado como recebido', 'success');
+  } catch (e) {
+    toast('Erro: ' + (e.message || e), 'error');
   }
-  _scArLoad();
-  if (typeof toast==='function') toast('✅ Marcado como recebido — confira o lançamento','success');
 }
-window._scArReceive = _scArReceive;
 
-// Cancel / dismiss a pending A/R
 async function _scArCancel(arId) {
-  const recs = _scArGetRecs();
-  const idx = recs.findIndex(r=>r.id===arId);
-  if (idx<0) return;
-  recs[idx].status = 'cancelled';
-  recs[idx].cancelled_at = new Date().toISOString();
-  _scArSaveRecs(recs);
-  _scArLoad();
-  if (typeof toast==='function') toast('Registro removido de Valores a Receber','info');
+  try {
+    const { error } = await sb.from('scheduled_ar_records')
+      .update({
+        status:       'cancelled',
+        cancelled_at: new Date().toISOString(),
+        updated_at:   new Date().toISOString(),
+      })
+      .eq('id', arId);
+    if (error) throw error;
+    _scArLoad();
+    toast('Registro removido de Valores a Receber', 'info');
+  } catch (e) {
+    toast('Erro: ' + (e.message || e), 'error');
+  }
 }
-window._scArCancel = _scArCancel;
 
-// Show the "⏳ Não Recebido" button only for income scheduled transactions
 function _scArShowBtn(sc) {
   const btn = document.getElementById('registerNotReceivedBtn');
   if (!btn) return;
-  const isIncome = sc?.type === 'income';
-  btn.style.display = isIncome ? '' : 'none';
+  btn.style.display = sc && sc.type === 'income' ? '' : 'none';
 }
+
+window._scArLoad    = _scArLoad;
+window._scArReceive = _scArReceive;
+window._scArCancel  = _scArCancel;
 window._scArShowBtn = _scArShowBtn;
 
 window.loadScheduled                       = loadScheduled;
