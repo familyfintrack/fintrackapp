@@ -2632,10 +2632,10 @@ async function _openPatrimonioModal() {
   }
   if (!accs.length) { toast('Nenhuma conta encontrada', 'info'); return; }
 
-  // ── Calcular totais — idêntico ao KPI ──────────────────────────────────
-  const accsLiquid  = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
-  const accsInvest  = accs.filter(a => a.type === 'investimento');
-  const accsCard    = accs.filter(a => a.type === 'cartao_credito');
+  /* ── Calcular totais ────────────────────────────────────────── */
+  const accsLiquid = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
+  const accsInvest = accs.filter(a => a.type === 'investimento');
+  const accsCard   = accs.filter(a => a.type === 'cartao_credito');
 
   const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
   const invTotal    = accsInvest.reduce((s,a) => {
@@ -2646,7 +2646,6 @@ async function _openPatrimonioModal() {
   const accountTotal = liquidTotal + invTotal + cardTotal;
   const cardDebt    = Math.abs(Math.min(0, cardTotal));
 
-  // Posições de investimento por tipo
   const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
   const invByType = {};
   invPositions.forEach(p => {
@@ -2657,350 +2656,486 @@ async function _openPatrimonioModal() {
     invByType[k].total += mv;
   });
 
-  // Dívidas ativas
   let debtTotal = 0, debts = [];
   try {
     const { data: dd, error: de } = await famQ(
-      sb.from('debts').select('id,name,current_balance,original_amount,currency,status,fixed_rate,adjustment_type,creditor:payees!debts_creditor_payee_id_fkey(id,name)')
+      sb.from('debts').select('id,name,description,current_balance,original_amount,currency,status,fixed_rate,adjustment_type,creditor')
     ).eq('status','active').order('current_balance',{ascending:false});
-    if (de) throw de;
-    debts = dd || [];
-    debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance??d.original_amount)||0, d.currency||'BRL'), 0);
-  } catch(_) {
-    try {
-      const { data: ds } = await famQ(sb.from('debts').select('id,name,current_balance,original_amount,currency,status')).eq('status','active');
-      debts = ds || [];
-      debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance??d.original_amount)||0, d.currency||'BRL'), 0);
-    } catch(__) {}
-  }
+    if (!de) { debts = dd || []; }
+  } catch(_) {}
+  debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance??d.original_amount)||0, d.currency||'BRL'), 0);
 
   const totalPassivos = debtTotal + cardDebt;
-  const totalBRL      = accountTotal - debtTotal;
+  const totalLiquido  = accountTotal - debtTotal;
   const ativosBase    = Math.max(accountTotal, 0.01);
 
-  // ── Helpers ────────────────────────────────────────────────────────────
-  const _pct  = (val, base) => base > 0 ? Math.min(100, Math.abs(val / base * 100)).toFixed(1) : '0.0';
+  const _pct = (val, base) => base > 0 ? Math.min(100, Math.abs(val / base * 100)) : 0;
+  const _pctStr = (val, base) => _pct(val, base).toFixed(1);
   const _isFX = (cur) => cur && cur !== 'BRL';
-
   const _invTypeLabel = { acao_br:'Ações BR', fii:'FII', etf_br:'ETF BR', acao_us:'Ações US',
-    etf_us:'ETF US', bdr:'BDR', fundo:'Fundos', crypto:'Criptomoeda', renda_fixa:'Renda Fixa', outro:'Outros' };
+    etf_us:'ETF US', bdr:'BDR', fundo:'Fundos', crypto:'Criptomoedas', renda_fixa:'Renda Fixa', outro:'Outros' };
   const _invTypeEmoji = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
     bdr:'🌐', fundo:'🏦', crypto:'₿', renda_fixa:'💰', outro:'📌' };
-  const _adjLabel     = { fixed:'Fixo', selic:'SELIC', ipca:'IPCA', igpm:'IGP-M', cdi:'CDI', poupanca:'Poupança', custom:'Personalizado' };
 
-  // Barra de progresso proporcional
-  const _bar = (pct, color, h = 3) =>
-    `<div style="height:${h}px;border-radius:${h}px;background:var(--border);margin:3px 12px;overflow:hidden">
-      <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:${h}px;transition:width .45s ease"></div>
-    </div>`;
+  /* ── Score de saúde patrimonial (0–100) ─────────────────────── */
+  const endividamento = accountTotal > 0 ? totalPassivos / accountTotal : 0;
+  const diversificacao = [liquidTotal > 0, invTotal > 0, debts.length === 0].filter(Boolean).length;
+  const healthScore = Math.round(
+    Math.max(0, Math.min(100,
+      70 * (1 - Math.min(endividamento, 1)) +
+      20 * (diversificacao / 3) +
+      10 * (totalLiquido > 0 ? 1 : 0)
+    ))
+  );
+  const healthLabel = healthScore >= 80 ? ['Excelente','#10b981'] : healthScore >= 60 ? ['Bom','#f59e0b'] : healthScore >= 40 ? ['Atenção','#f97316'] : ['Crítico','#ef4444'];
 
-  // Linha de conta
-  const _accountRow = (a, bal, balBRL, pct, cur, color, onclick) => {
-    const isFX   = _isFX(cur);
-    const isNeg  = balBRL < 0;
-    const dispBal = isFX ? dashFmt(Math.abs(bal), cur) : dashFmt(Math.abs(balBRL), 'BRL');
-    const subBRL  = isFX ? `<span style="font-size:.7rem;color:var(--muted)">= ${dashFmt(Math.abs(balBRL),'BRL')}</span>` : '';
+  /* ── Donut SVG ──────────────────────────────────────────────── */
+  const donutSegments = [
+    { label:'Contas', value: Math.max(0, liquidTotal), color:'#10b981' },
+    { label:'Investimentos', value: Math.max(0, invTotal), color:'#3b82f6' },
+    { label:'Cartões +', value: Math.max(0, cardTotal), color:'#8b5cf6' },
+    { label:'Passivos', value: totalPassivos, color:'#ef4444' },
+  ].filter(s => s.value > 0);
+  const donutTotal = donutSegments.reduce((s,g) => s + g.value, 0) || 1;
+  const R = 52, CX = 64, CY = 64, SW = 14;
+  let cumAngle = -90;
+  const donutPaths = donutSegments.map(seg => {
+    const angle = (seg.value / donutTotal) * 360;
+    const start = cumAngle; cumAngle += angle;
+    if (angle >= 360) {
+      return `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${SW}" stroke-dasharray="326.7 0"/>`;
+    }
+    const a1 = start * Math.PI / 180, a2 = cumAngle * Math.PI / 180;
+    const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1);
+    const x2 = CX + R * Math.cos(a2), y2 = CY + R * Math.sin(a2);
+    const lg = angle > 180 ? 1 : 0;
+    return `<path fill="none" stroke="${seg.color}" stroke-width="${SW}" stroke-linecap="butt"
+      d="M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}"/>`;
+  }).join('');
+
+  /* ── Barra de progresso colorida ────────────────────────────── */
+  const _bar = (pct, color) =>
+    `<div style="height:3px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:5px">
+       <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
+     </div>`;
+
+  /* ── Linha de conta ─────────────────────────────────────────── */
+  const _row = (icon_html, name, type_label, bal, balBRL, cur, color, pct, onclick, isNeg=false) => {
+    const isFX = _isFX(cur);
+    const disp = isFX ? dashFmt(Math.abs(bal), cur) : dashFmt(Math.abs(balBRL), 'BRL');
     return `
-      <div class="pat-account-row" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
-        background:var(--surface2);cursor:${onclick?'pointer':'default'};transition:background .12s;margin-bottom:3px"
-        ${onclick ? `onclick="${onclick}" onmouseover="this.style.background='rgba(0,0,0,.04)'" onmouseout="this.style.background='var(--surface2)'"` : ''}>
-        <div style="width:34px;height:34px;border-radius:9px;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          ${_dashRenderIcon(a.icon, a.color, 17)}
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span style="font-size:.68rem;color:var(--muted)">${(typeof accountTypeLabel==='function'?accountTypeLabel(a.type):a.type)||''}</span>
-            ${isFX ? `<span style="font-size:.65rem;font-weight:700;color:var(--muted);background:rgba(0,0,0,.06);border-radius:4px;padding:1px 5px">${cur}</span>` : ''}
-            ${subBRL}
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:${isNeg?'var(--red,#dc2626)':'var(--text)'}">${isNeg?'−':''}${dispBal}</div>
-          <div style="font-size:.65rem;color:var(--muted);margin-top:1px">${pct}% do patrimônio</div>
-        </div>
+    <div onclick="${onclick||''}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;
+      border-radius:12px;cursor:${onclick?'pointer':'default'};transition:background .13s;margin-bottom:2px"
+      ${onclick?`onmouseover="this.style.background='var(--surface3,rgba(0,0,0,.04))'" onmouseout="this.style.background=''"`:''}>
+      <div style="width:36px;height:36px;border-radius:10px;background:${color}22;flex-shrink:0;
+        display:flex;align-items:center;justify-content:center">${icon_html}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.845rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:1px">${type_label}${isFX?` · ${cur}`:''}</div>
+        ${_bar(pct, isNeg ? '#ef4444' : color)}
       </div>
-      ${_bar(pct, color || 'var(--accent)')}`;
+      <div style="text-align:right;flex-shrink:0;min-width:64px">
+        <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);
+          color:${isNeg?'#ef4444':'var(--text)'}">
+          ${isNeg?'−':''}${disp}
+        </div>
+        ${isFX?`<div style="font-size:.65rem;color:var(--muted)">≈ ${dashFmt(Math.abs(balBRL),'BRL')}</div>`:''}
+        <div style="font-size:.62rem;color:var(--muted)">${pct.toFixed(1)}%</div>
+      </div>
+    </div>`;
   };
 
-  // ── Seção: cabeçalho colapsável ──
-  const _sectionHeader = (id, emoji, title, total, color, extra='') =>
-    `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 8px;border-bottom:2px solid ${color}22;margin-bottom:10px;cursor:pointer"
-      onclick="document.getElementById('pat-sec-${id}').classList.toggle('pat-collapsed')">
-      <div style="display:flex;align-items:center;gap:7px">
-        <span style="font-size:.9rem">${emoji}</span>
-        <span style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${color}">${title}</span>
-        ${extra}
+  /* ── Seção colapsável ───────────────────────────────────────── */
+  const _section = (id, emoji, title, total, color, content) => `
+  <div style="margin-bottom:6px;border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--surface)">
+    <div onclick="const b=document.getElementById('psec-${id}');const c=document.getElementById('pchev-${id}');
+      const open=b.style.display!=='none';b.style.display=open?'none':'block';c.style.transform=open?'rotate(-90deg)':'rotate(0)'"
+      style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;
+        background:var(--surface);transition:background .13s;user-select:none"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+      <div style="width:32px;height:32px;border-radius:9px;background:${color}18;flex-shrink:0;
+        display:flex;align-items:center;justify-content:center;font-size:1rem">${emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:800;color:var(--text)">${title}</div>
+        <div style="height:3px;border-radius:3px;background:var(--border);margin-top:5px;overflow:hidden;width:100%">
+          <div style="height:100%;width:${_pctStr(total,ativosBase)}%;background:${color};border-radius:3px"></div>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:${color}">${dashFmt(total,'BRL')}</span>
-        <span style="font-size:.75rem;color:var(--muted)" id="pat-chev-${id}">▾</span>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.92rem;font-weight:800;font-family:var(--font-serif);color:${color}">${dashFmt(Math.abs(total),'BRL')}</div>
+        <div style="font-size:.62rem;color:var(--muted)">${_pctStr(total,ativosBase)}% dos ativos</div>
       </div>
-    </div>`;
+      <span id="pchev-${id}" style="color:var(--muted);font-size:.75rem;transition:transform .2s;margin-left:2px">▾</span>
+    </div>
+    <div id="psec-${id}" style="border-top:1px solid var(--border);padding:6px 0 8px">${content}</div>
+  </div>`;
 
-  // ══════════════════════════════════════════════════════
-  // BUILD HTML
-  // ══════════════════════════════════════════════════════
-  let html = `
-  <style>
-    .pat-collapsed > .pat-body { display:none !important; }
-    .pat-collapsed { }
-  </style>
-  <div style="padding:0 0 24px">
+  /* ══════════════════════════════════════════════════════════════
+     BUILD HTML
+  ══════════════════════════════════════════════════════════════ */
+  const html = `
+<style>
+  #patrimonioModalBody { font-family: var(--font-sans, system-ui, sans-serif); }
+  #patrimonioModalBody .pat-tab { padding:7px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:700;
+    cursor:pointer;font-family:inherit;transition:all .15s;color:var(--text2);background:transparent }
+  #patrimonioModalBody .pat-tab.active { background:var(--accent);color:#fff }
+  #patrimonioModalBody .pat-tab-pane { display:none }
+  #patrimonioModalBody .pat-tab-pane.active { display:block }
+</style>
 
-    <!-- ── HERO ─────────────────────────────────────────────────── -->
-    <div style="background:linear-gradient(145deg,#0d3d28,#1a6644,#0f4a31);padding:22px 20px 20px;position:relative;overflow:hidden">
-      <div style="position:absolute;inset:0;background:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2280%22 cy=%2220%22 r=%2250%22 fill=%22rgba(255,255,255,.04)%22/><circle cx=%2210%22 cy=%2280%22 r=%2240%22 fill=%22rgba(255,255,255,.03)%22/></svg>') no-repeat center/cover"></div>
-      <div style="position:relative">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
-          <div>
-            <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px"><span style="font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,.15)">🔍 Visão 360° • Família</span>
-            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-bottom:6px;margin-top:8px">Patrimônio Líquido</div>
-            <div style="font-size:2rem;font-weight:900;font-family:var(--font-serif);color:#fff;line-height:1">${dashFmt(totalBRL,'BRL')}</div>
-            <div style="font-size:.72rem;color:rgba(255,255,255,.55);margin-top:5px">Posição em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div>
-          </div>
-          <button onclick="closeModal('patrimonioModal')"
-            style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:34px;height:34px;font-size:.85rem;cursor:pointer;color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;flex-shrink:0;backdrop-filter:blur(4px)">✕</button>
-        </div>
+<!-- ── HERO ──────────────────────────────────────────────────────────── -->
+<div style="background:linear-gradient(150deg,#0a2e1e 0%,#0f4a31 45%,#1a6644 100%);
+  padding:24px 20px 20px;position:relative;overflow:hidden">
+  <!-- Noise texture overlay -->
+  <div style="position:absolute;inset:0;opacity:.04;background:url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"></div>
+  <!-- Decorative circles -->
+  <div style="position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;border:1px solid rgba(255,255,255,.06)"></div>
+  <div style="position:absolute;right:10px;top:10px;width:90px;height:90px;border-radius:50%;border:1px solid rgba(255,255,255,.04)"></div>
 
-        <!-- Barra ativos vs passivos -->
-        <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;display:flex;gap:1px;margin-bottom:10px">
-          <div style="flex:${Math.max(accountTotal,0)};background:rgba(100,220,140,.85);border-radius:4px 0 0 4px;min-width:4px;transition:flex .5s"></div>
-          ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:rgba(240,80,80,.8);border-radius:0 4px 4px 0;min-width:4px;transition:flex .5s"></div>` : ''}
-        </div>
-
-        <!-- Grid KPIs -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px)">
-            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);margin-bottom:3px">Ativos</div>
-            <div style="font-size:.88rem;font-weight:800;color:#7ef5a8">${dashFmt(accountTotal,'BRL')}</div>
-          </div>
-          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px)">
-            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);margin-bottom:3px">Passivos</div>
-            <div style="font-size:.88rem;font-weight:800;color:${totalPassivos>0?'#fca5a5':'rgba(255,255,255,.7)'}">−${dashFmt(totalPassivos,'BRL')}</div>
-          </div>
-          <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 10px;backdrop-filter:blur(4px)">
-            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);margin-bottom:3px">Endivid.</div>
-            <div style="font-size:.88rem;font-weight:800;color:${accountTotal>0&&(totalPassivos/accountTotal)>0.5?'#fca5a5':accountTotal>0&&(totalPassivos/accountTotal)>0.2?'#fcd34d':'rgba(255,255,255,.8)'}">
-              ${accountTotal > 0 ? (totalPassivos/accountTotal*100).toFixed(1) : '0.0'}%
-            </div>
-          </div>
-        </div>
+  <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
+        color:rgba(255,255,255,.45);margin-bottom:6px">🔍 Patrimônio 360° · Família</div>
+      <div style="font-size:2.1rem;font-weight:900;font-family:var(--font-serif);
+        color:#fff;line-height:1;letter-spacing:-.02em">${dashFmt(totalLiquido,'BRL')}</div>
+      <div style="font-size:.7rem;color:rgba(255,255,255,.45);margin-top:5px">
+        Patrimônio líquido · ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}
       </div>
     </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <!-- Score badge -->
+      <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+        border-radius:12px;padding:7px 12px;backdrop-filter:blur(4px);text-align:center">
+        <div style="font-size:1.1rem;font-weight:900;color:${healthLabel[1]}">${healthScore}</div>
+        <div style="font-size:.58rem;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em">${healthLabel[0]}</div>
+      </div>
+      <button onclick="closeModal('patrimonioModal')"
+        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+          border-radius:50%;width:34px;height:34px;cursor:pointer;color:rgba(255,255,255,.7);
+          font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+  </div>
 
-    <!-- ── CORPO ──────────────────────────────────────────────────── -->
-    <div style="padding:18px 16px 0">
+  <!-- KPI chips -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+    <div style="background:rgba(255,255,255,.09);border-radius:11px;padding:10px 11px;backdrop-filter:blur(4px)">
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:4px">Ativos</div>
+      <div style="font-size:.88rem;font-weight:800;color:#7ef5a8;font-family:var(--font-serif)">${dashFmt(accountTotal,'BRL')}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.09);border-radius:11px;padding:10px 11px;backdrop-filter:blur(4px)">
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:4px">Passivos</div>
+      <div style="font-size:.88rem;font-weight:800;color:${totalPassivos>0?'#fca5a5':'rgba(255,255,255,.5)'};font-family:var(--font-serif)">
+        ${totalPassivos > 0 ? '−'+dashFmt(totalPassivos,'BRL') : 'Nenhum'}
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.09);border-radius:11px;padding:10px 11px;backdrop-filter:blur(4px)">
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:4px">Endividamento</div>
+      <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);
+        color:${endividamento>0.4?'#fca5a5':endividamento>0.2?'#fde68a':'rgba(255,255,255,.7)'}">${(endividamento*100).toFixed(1)}%</div>
+    </div>
+  </div>
 
-      <!-- ═══ CONTAS LÍQUIDAS ════════════════════════════════════════ -->
-      ${accsLiquid.length ? `
-      <div class="pat-section" style="margin-bottom:18px">
-        ${_sectionHeader('liquid','💳','Contas', liquidTotal, '#1a6644')}
-        <div id="pat-sec-liquid" class=""><div class="pat-body">
-          ${accsLiquid.sort((a,b)=>Math.abs(toBRL(parseFloat(b.balance)||0,b.currency||'BRL'))-Math.abs(toBRL(parseFloat(a.balance)||0,a.currency||'BRL'))).map(a => {
-            const bal    = parseFloat(a.balance)||0;
-            const balBRL = toBRL(bal, a.currency||'BRL');
-            return _accountRow(a, bal, balBRL, _pct(Math.abs(balBRL), ativosBase), a.currency||'BRL', a.color||'var(--accent)', `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
-          }).join('')}
-        </div></div>
-      </div>` : ''}
+  <!-- Barra ativos vs passivos -->
+  <div style="height:5px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.1);display:flex;gap:1px">
+    <div style="flex:${Math.max(accountTotal,0.01)};background:rgba(100,220,140,.9);min-width:${totalPassivos?'3px':'0'}"></div>
+    ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:rgba(239,68,68,.8)"></div>` : ''}
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-top:5px">
+    <span style="font-size:.6rem;color:rgba(255,255,255,.35)">▪ Ativos: ${_pctStr(accountTotal,accountTotal+totalPassivos)}%</span>
+    ${totalPassivos>0?`<span style="font-size:.6rem;color:rgba(239,68,68,.5)">▪ Passivos: ${_pctStr(totalPassivos,accountTotal+totalPassivos)}%</span>`:''}
+  </div>
+</div>
 
-      <!-- ═══ INVESTIMENTOS ══════════════════════════════════════════ -->
-      ${accsInvest.length ? `
-      <div class="pat-section" style="margin-bottom:18px">
-        ${_sectionHeader('invest','📊','Investimentos', invTotal, '#1e5ba8')}
-        <div id="pat-sec-invest" class=""><div class="pat-body">
-          ${Object.keys(invByType).length > 0 ? `
-            ${Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => {
-              const emoji = _invTypeEmoji[k]||'📌';
-              const label = _invTypeLabel[k]||k;
-              const typePct = _pct(grp.total, ativosBase);
-              return `
-                <details style="border-radius:10px;overflow:hidden;background:var(--surface2);margin-bottom:3px">
-                  <summary style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;list-style:none;-webkit-appearance:none">
-                    <div style="width:34px;height:34px;border-radius:9px;background:#1e5ba822;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">${emoji}</div>
-                    <div style="flex:1;min-width:0">
-                      <div style="font-size:.84rem;font-weight:700;color:var(--text)">${label}</div>
-                      <div style="font-size:.68rem;color:var(--muted)">${grp.positions.length} ativo${grp.positions.length!==1?'s':''} · ${typePct}% do patrimônio</div>
-                    </div>
-                    <div style="text-align:right;flex-shrink:0">
-                      <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--text)">${dashFmt(grp.total,'BRL')}</div>
-                      <div style="font-size:.65rem;color:var(--muted);margin-top:1px">▾ expandir</div>
-                    </div>
-                  </summary>
-                  ${_bar(typePct,'#1e5ba8')}
-                  <div style="padding:4px 12px 10px;border-top:1px solid var(--border)">
-                    ${grp.positions.sort((a,b)=>b._mv-a._mv).map(p => {
-                      const mv      = p._mv || 0;
-                      const cost    = (+(p.quantity||0)) * (+(p.avg_cost||0));
-                      const pnl     = mv - cost;
-                      const pnlPct  = cost > 0 ? (pnl/cost*100) : 0;
-                      const isFX    = _isFX(p.currency);
-                      const cur     = p.currency || 'BRL';
-                      const posPct  = _pct(mv, ativosBase);
-                      return `
-                        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-                          <div style="flex:1;min-width:0">
-                            <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-                              <span style="font-size:.84rem;font-weight:800;color:var(--text)">${esc(p.ticker)}</span>
-                              ${isFX?`<span style="font-size:.62rem;font-weight:700;background:rgba(0,0,0,.07);border-radius:4px;padding:1px 5px;color:var(--muted)">${cur}</span>`:''}
-                              <span style="font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">${esc(p.name||'')}</span>
-                            </div>
-                            <div style="font-size:.67rem;color:var(--muted);margin-top:2px">${(+(p.quantity||0)).toLocaleString('pt-BR',{maximumFractionDigits:6})} un · PM ${dashFmt(+(p.avg_cost||0),cur)}</div>
-                          </div>
-                          <div style="text-align:right;flex-shrink:0">
-                            <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(mv,'BRL')}</div>
-                            ${isFX?`<div style="font-size:.67rem;color:var(--muted)">${dashFmt(mv/Math.max(toBRL(1,cur),0.0001),cur)} ${cur}</div>`:''}
-                            <div style="font-size:.67rem;color:${pnl>=0?'#16a34a':'#dc2626'};margin-top:1px">${pnl>=0?'▲':'▼'}${Math.abs(pnlPct).toFixed(1)}% ${pnl>=0?'+':''}${dashFmt(pnl,'BRL')}</div>
-                          </div>
-                        </div>`;
-                    }).join('')}
-                    <div style="display:flex;justify-content:flex-end;padding-top:6px">
-                      <span style="font-size:.72rem;font-weight:700;color:#1e5ba8">${dashFmt(grp.total,'BRL')}</span>
-                    </div>
-                  </div>
-                </details>`;
-            }).join('')}
-          ` : `
-            ${accsInvest.map(a => {
-              const bal    = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
-              const balBRL = toBRL(bal, a.currency||'BRL');
-              return _accountRow(a, bal, balBRL, _pct(balBRL,ativosBase), a.currency||'BRL', a.color||'#1e5ba8', `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
-            }).join('')}
-          `}
-        </div></div>
-      </div>` : ''}
+<!-- ── TABS ───────────────────────────────────────────────────────────── -->
+<div style="display:flex;gap:4px;padding:12px 16px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface)">
+  ${['Visão Geral','Ativos','Passivos','Composição'].map((t,i) =>
+    `<button class="pat-tab${i===0?' active':''}" onclick="
+      document.querySelectorAll('#patrimonioModalBody .pat-tab').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      document.querySelectorAll('#patrimonioModalBody .pat-tab-pane').forEach(p=>p.classList.remove('active'));
+      document.getElementById('ptab-${i}').classList.add('active')">${t}</button>`
+  ).join('')}
+</div>
 
-      <!-- ═══ CARTÕES COM SALDO POSITIVO ════════════════════════════ -->
-      ${accsCard.some(a=>(parseFloat(a.balance)||0)>0) ? `
-      <div class="pat-section" style="margin-bottom:18px">
-        ${_sectionHeader('cards-pos','💳','Cartões com Saldo', Math.max(0,cardTotal), '#0284c7')}
-        <div id="pat-sec-cards-pos" class=""><div class="pat-body">
-          ${accsCard.filter(a=>(parseFloat(a.balance)||0)>0).map(a => {
-            const bal    = parseFloat(a.balance)||0;
-            const balBRL = toBRL(bal, a.currency||'BRL');
-            return _accountRow(a, bal, balBRL, _pct(balBRL,ativosBase), a.currency||'BRL', a.color||'#0284c7', `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
-          }).join('')}
-        </div></div>
-      </div>` : ''}
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 0 — VISÃO GERAL
+════════════════════════════════════════════════════════════════════ -->
+<div id="ptab-0" class="pat-tab-pane active" style="padding:16px">
 
-      <!-- ═══ PASSIVOS ═══════════════════════════════════════════════ -->
-      ${totalPassivos > 0 ? `
-      <div style="border-top:1px dashed var(--border);padding-top:16px;margin-bottom:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 8px;border-bottom:2px solid rgba(220,38,38,.25);margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:7px">
-            <span style="font-size:.9rem">📉</span>
-            <span style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--red,#dc2626)">Passivos</span>
-            <span style="font-size:.65rem;color:var(--muted);background:rgba(220,38,38,.08);border-radius:4px;padding:2px 6px">${_pct(totalPassivos,ativosBase)}% dos ativos</span>
-          </div>
-          <span style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(totalPassivos,'BRL')}</span>
-        </div>
+  <!-- Donut + legenda lado a lado -->
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
+    padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
+    <svg viewBox="0 0 128 128" width="100" height="100" style="flex-shrink:0;overflow:visible">
+      ${donutPaths}
+      <circle cx="64" cy="64" r="${R-SW/2-1}" fill="var(--surface2)"/>
+      <text x="64" y="60" text-anchor="middle" font-size="11" font-weight="900"
+        fill="var(--text)" font-family="var(--font-serif)">${(endividamento<0.01?'100':(100-endividamento*100).toFixed(0))}%</text>
+      <text x="64" y="74" text-anchor="middle" font-size="6.5" fill="var(--muted)" font-family="inherit">Saudável</text>
+    </svg>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
+      ${donutSegments.map(s => `
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:8px;height:8px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
+        <div style="font-size:.75rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.label}</div>
+        <div style="font-size:.78rem;font-weight:700;font-family:var(--font-serif);color:var(--text);white-space:nowrap">${dashFmt(s.value,'BRL')}</div>
+      </div>`).join('')}
+    </div>
+  </div>
 
-        <!-- Faturas CC -->
-        ${accsCard.some(a=>(parseFloat(a.balance)||0)<0) ? `
-        <div style="margin-bottom:12px">
-          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;padding-left:2px">Faturas em Aberto</div>
-          ${accsCard.filter(a=>(parseFloat(a.balance)||0)<0).map(a => {
-            const bal    = Math.abs(parseFloat(a.balance)||0);
-            const balBRL = toBRL(bal, a.currency||'BRL');
-            const isFX   = _isFX(a.currency||'BRL');
-            const pct    = _pct(balBRL, ativosBase);
-            return `
-              <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.12);cursor:pointer;margin-bottom:3px;transition:background .12s"
-                onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
-                onmouseover="this.style.background='rgba(220,38,38,.1)'" onmouseout="this.style.background='rgba(220,38,38,.05)'">
-                <div style="width:34px;height:34px;border-radius:9px;background:rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">${_dashRenderIcon(a.icon,a.color,17)}</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}</div>
-                  <div style="font-size:.67rem;color:var(--muted)">Fatura em aberto${isFX?` · ${a.currency}`:''} · ${pct}% dos ativos</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0">
-                  <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(bal, a.currency||'BRL')}</div>
-                  ${isFX?`<div style="font-size:.67rem;color:var(--muted)">= −${dashFmt(balBRL,'BRL')}</div>`:''}
-                </div>
-              </div>
-              ${_bar(pct,'#dc2626')}`;
-          }).join('')}
-        </div>` : ''}
+  <!-- Score de saúde -->
+  <div style="padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border);margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:.78rem;font-weight:700;color:var(--text)">Score de Saúde Patrimonial</span>
+      <span style="font-size:1.1rem;font-weight:900;color:${healthLabel[1]}">${healthScore} <span style="font-size:.7rem;font-weight:600">${healthLabel[0]}</span></span>
+    </div>
+    <div style="height:7px;border-radius:7px;background:var(--border);overflow:hidden">
+      <div style="height:100%;width:${healthScore}%;border-radius:7px;
+        background:linear-gradient(90deg,#ef4444 0%,#f59e0b 40%,#10b981 70%);
+        transition:width .8s ease"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span style="font-size:.62rem;color:var(--muted)">Crítico</span>
+      <span style="font-size:.62rem;color:var(--muted)">Excelente</span>
+    </div>
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">
+      ${[
+        [endividamento < 0.3, 'Endividamento controlado', endividamento >= 0.3, `${(endividamento*100).toFixed(0)}% de endividamento`],
+        [invTotal > 0, 'Tem investimentos', invTotal === 0, 'Sem investimentos'],
+        [liquidTotal > 0, 'Liquidez disponível', liquidTotal <= 0, 'Sem liquidez'],
+        [debts.length === 0, 'Sem dívidas', debts.length > 0, `${debts.length} dívida${debts.length>1?'s':''} ativa${debts.length>1?'s':''}`],
+      ].map(([ok, goodText, bad, badText]) => `
+        <span style="font-size:.68rem;padding:3px 8px;border-radius:20px;font-weight:600;
+          background:${ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.08)'};
+          color:${ok?'#10b981':'#ef4444'}">
+          ${ok?'✓':bad?'✗':''} ${ok?goodText:badText}
+        </span>`).join('')}
+    </div>
+  </div>
 
-        <!-- Dívidas -->
-        ${debts.length ? `
-        <div>
-          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;padding-left:2px">Dívidas Ativas</div>
-          ${debts.map(d => {
-            const bal    = parseFloat(d.current_balance??d.original_amount)||0;
-            const balBRL = toBRL(bal, d.currency||'BRL');
-            const orig   = parseFloat(d.original_amount)||0;
-            const progPct = orig > 0 ? Math.max(0,Math.min(100,((orig-bal)/orig)*100)).toFixed(0) : null;
-            const isFX   = _isFX(d.currency||'BRL');
-            const pct    = _pct(balBRL, ativosBase);
-            const sub    = [d.creditor?.name, _adjLabel[d.adjustment_type], d.fixed_rate?`${(+d.fixed_rate).toFixed(2)}% a.m.`:null].filter(Boolean).join(' · ');
-            return `
-              <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(220,38,38,.05);border:1px solid rgba(220,38,38,.12);margin-bottom:3px">
-                <div style="width:34px;height:34px;border-radius:9px;background:rgba(220,38,38,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem">💸</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Dívida')}</div>
-                  ${sub?`<div style="font-size:.67rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sub)}</div>`:''}
-                  ${progPct!==null?`
-                  <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
-                    <div style="flex:1;height:3px;border-radius:3px;background:var(--border);overflow:hidden">
-                      <div style="height:100%;width:${progPct}%;background:var(--accent);border-radius:3px;transition:width .4s"></div>
-                    </div>
-                    <span style="font-size:.62rem;color:var(--muted);white-space:nowrap">${progPct}% quitado</span>
-                  </div>`:''}
-                </div>
-                <div style="text-align:right;flex-shrink:0">
-                  <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:var(--red,#dc2626)">−${dashFmt(bal,d.currency||'BRL')}</div>
-                  ${isFX?`<div style="font-size:.67rem;color:var(--muted)">= −${dashFmt(balBRL,'BRL')}</div>`:''}
-                  <div style="font-size:.62rem;color:var(--muted)">${pct}% dos ativos</div>
-                </div>
-              </div>
-              ${_bar(pct,'#dc2626')}`;
-          }).join('')}
-        </div>` : ''}
-      </div>` : ''}
+  <!-- Destaques -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${(() => {
+      const allPos = [...accsLiquid,...accsInvest,...accsCard.filter(a=>(parseFloat(a.balance)||0)>0)];
+      const top = allPos.sort((a,b)=>toBRL(Math.abs(parseFloat(b.balance)||0),b.currency||'BRL')-toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL'))[0];
+      const topBRL = top ? toBRL(Math.abs(parseFloat(top.balance)||0),top.currency||'BRL') : 0;
+      return `
+      <div style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15);border-radius:12px;padding:12px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Maior ativo</div>
+        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${top ? esc(top.name) : '—'}</div>
+        <div style="font-size:.75rem;font-weight:800;color:#10b981;margin-top:3px;font-family:var(--font-serif)">${dashFmt(topBRL,'BRL')}</div>
+      </div>`;
+    })()}
+    ${(() => {
+      const topDebt = debts[0];
+      const topCard = accsCard.filter(a=>(parseFloat(a.balance)||0)<0).sort((a,b)=>parseFloat(a.balance)-parseFloat(b.balance))[0];
+      const item = topDebt || topCard;
+      const brl = topDebt ? toBRL(parseFloat(topDebt.current_balance||topDebt.original_amount)||0,topDebt.currency||'BRL')
+        : topCard ? toBRL(Math.abs(parseFloat(topCard.balance)||0),topCard.currency||'BRL') : 0;
+      return `
+      <div style="background:${item?'rgba(239,68,68,.06)':'rgba(16,185,129,.07)'};border:1px solid ${item?'rgba(239,68,68,.15)':'rgba(16,185,129,.15)'};border-radius:12px;padding:12px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Maior passivo</div>
+        ${item ? `
+        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.name||item.description||'—')}</div>
+        <div style="font-size:.75rem;font-weight:800;color:#ef4444;margin-top:3px;font-family:var(--font-serif)">−${dashFmt(brl,'BRL')}</div>
+        ` : `<div style="font-size:.78rem;color:#10b981;font-weight:700">✓ Patrimônio livre</div>`}
+      </div>`;
+    })()}
+  </div>
+</div>
 
-      <!-- ═══ RODAPÉ LÍQUIDO ═════════════════════════════════════════ -->
-      <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:.8rem;font-weight:800;color:var(--text)">Patrimônio Líquido Total</span>
-          <span style="font-size:1.2rem;font-weight:900;font-family:var(--font-serif);color:${totalBRL>=0?'var(--accent)':'var(--red,#dc2626)'}">${dashFmt(totalBRL,'BRL')}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-          <div style="background:rgba(26,102,68,.07);border-radius:10px;padding:10px 12px">
-            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Maior ativo</div>
-            ${(() => {
-              const all = [...accsLiquid,...accsInvest,...accsCard.filter(a=>(parseFloat(a.balance)||0)>0)];
-              const top = all.sort((a,b)=>toBRL(Math.abs(parseFloat(b.balance)||0),b.currency||'BRL')-toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL'))[0];
-              if (!top) return `<div style="font-size:.8rem;color:var(--muted)">—</div>`;
-              const brl = toBRL(Math.abs(parseFloat(top.balance)||0),top.currency||'BRL');
-              return `<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(top.name)}</div>
-                      <div style="font-size:.7rem;color:var(--accent);font-weight:700">${dashFmt(brl,'BRL')}</div>`;
-            })()}
-          </div>
-          <div style="background:${totalPassivos>0?'rgba(220,38,38,.06)':'rgba(26,102,68,.07)'};border-radius:10px;padding:10px 12px">
-            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">
-              ${totalPassivos>0?'Maior passivo':'Sem passivos'}
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 1 — ATIVOS
+════════════════════════════════════════════════════════════════════ -->
+<div id="ptab-1" class="pat-tab-pane" style="padding:16px;display:flex;flex-direction:column;gap:8px">
+
+  ${accsLiquid.length ? _section('liquid','🏦','Contas & Carteiras', liquidTotal, '#10b981',
+    accsLiquid.sort((a,b)=>toBRL(Math.abs(parseFloat(b.balance)||0),b.currency||'BRL')-toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL')).map(a => {
+      const bal = parseFloat(a.balance)||0, balBRL = toBRL(bal, a.currency||'BRL');
+      const icon = `<div style="width:18px;height:18px">${_dashRenderIcon(a.icon,a.color,17)}</div>`;
+      const typeL = typeof accountTypeLabel === 'function' ? accountTypeLabel(a.type) : a.type;
+      return _row(icon, a.name, typeL, bal, balBRL, a.currency||'BRL', a.color||'#10b981', _pct(Math.abs(balBRL),ativosBase),
+        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
+    }).join('')) : ''}
+
+  ${accsInvest.length ? _section('invest','📊','Investimentos', invTotal, '#3b82f6',
+    Object.keys(invByType).length > 0
+      ? Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => `
+        <details style="margin:4px 8px;border-radius:10px;background:var(--surface2);overflow:hidden">
+          <summary style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none">
+            <span style="font-size:1rem">${_invTypeEmoji[k]||'📌'}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:.83rem;font-weight:700;color:var(--text)">${_invTypeLabel[k]||k}</div>
+              <div style="font-size:.67rem;color:var(--muted)">${grp.positions.length} ativo${grp.positions.length!==1?'s':''}</div>
             </div>
-            ${totalPassivos > 0 ? (() => {
-              const top = [...debts].sort((a,b)=>toBRL(parseFloat(b.current_balance||b.original_amount)||0,b.currency||'BRL')-toBRL(parseFloat(a.current_balance||a.original_amount)||0,a.currency||'BRL'))[0];
-              const topCard = accsCard.filter(a=>(parseFloat(a.balance)||0)<0).sort((a,b)=>Math.abs(parseFloat(b.balance)||0)-Math.abs(parseFloat(a.balance)||0))[0];
-              const item = top || topCard;
-              if (!item) return `<div style="font-size:.8rem;color:var(--muted)">—</div>`;
-              const brl = top ? toBRL(parseFloat(top.current_balance||top.original_amount)||0,top.currency||'BRL') : toBRL(Math.abs(parseFloat(topCard.balance)||0),topCard.currency||'BRL');
-              const name = top ? top.name : topCard.name;
-              return `<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
-                      <div style="font-size:.7rem;color:var(--red,#dc2626);font-weight:700">−${dashFmt(brl,'BRL')}</div>`;
-            })() : `<div style="font-size:.8rem;color:var(--accent);font-weight:600">✓ Patrimônio livre</div>`}
+            <div style="text-align:right">
+              <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(grp.total,'BRL')}</div>
+              <div style="font-size:.63rem;color:var(--muted)">${_pctStr(grp.total,ativosBase)}%</div>
+            </div>
+            <span style="color:var(--muted);font-size:.7rem;margin-left:4px">▾</span>
+          </summary>
+          ${_bar(_pctStr(grp.total,ativosBase),'#3b82f6')}
+          <div style="padding:6px 12px 10px;border-top:1px solid var(--border)">
+            ${grp.positions.sort((a,b)=>b._mv-a._mv).map(p => {
+              const mv = p._mv||0, cost = (+p.quantity||0)*(+p.avg_cost||0);
+              const pnl = mv-cost, pnlPct = cost>0?(pnl/cost*100):0;
+              return `
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:5px">
+                    <span style="font-size:.84rem;font-weight:800;color:var(--text)">${esc(p.ticker)}</span>
+                    ${_isFX(p.currency)?`<span style="font-size:.6rem;font-weight:700;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;color:var(--muted)">${p.currency}</span>`:''}
+                  </div>
+                  <div style="font-size:.67rem;color:var(--muted)">${(+(p.quantity||0)).toLocaleString('pt-BR',{maximumFractionDigits:4})} un.</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(mv,'BRL')}</div>
+                  <div style="font-size:.65rem;color:${pnl>=0?'#10b981':'#ef4444'}">${pnl>=0?'▲':'▼'} ${Math.abs(pnlPct).toFixed(1)}%</div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </details>`)
+      .join('')
+      : accsInvest.map(a => {
+          const bal = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
+          const balBRL = toBRL(bal, a.currency||'BRL');
+          return _row(`<div style="width:18px;height:18px">${_dashRenderIcon(a.icon,a.color,17)}</div>`,
+            a.name, 'Investimento', bal, balBRL, a.currency||'BRL', '#3b82f6', _pct(balBRL,ativosBase),
+            `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
+        }).join('')
+  ) : ''}
+
+  ${!accsLiquid.length && !accsInvest.length ? `
+  <div style="text-align:center;padding:40px 20px;color:var(--muted)">
+    <div style="font-size:2rem;margin-bottom:8px">📭</div>
+    <div style="font-size:.85rem">Nenhum ativo encontrado</div>
+  </div>` : ''}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 2 — PASSIVOS
+════════════════════════════════════════════════════════════════════ -->
+<div id="ptab-2" class="pat-tab-pane" style="padding:16px;display:flex;flex-direction:column;gap:8px">
+
+  ${totalPassivos > 0 ? `
+
+  <!-- Faturas CC -->
+  ${accsCard.some(a=>(parseFloat(a.balance)||0)<0) ? _section('cc-debt','💳','Faturas em Aberto', cardDebt, '#8b5cf6',
+    accsCard.filter(a=>(parseFloat(a.balance)||0)<0).map(a => {
+      const bal = Math.abs(parseFloat(a.balance)||0), balBRL = toBRL(bal, a.currency||'BRL');
+      return _row(`<div style="width:18px;height:18px">${_dashRenderIcon(a.icon,a.color,17)}</div>`,
+        a.name, `Fatura em aberto · vence dia ${a.due_day||'—'}`, bal, balBRL, a.currency||'BRL', '#8b5cf6',
+        _pct(balBRL,ativosBase), `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`, true);
+    }).join('')) : ''}
+
+  <!-- Dívidas -->
+  ${debts.length ? _section('debts','📉','Dívidas Ativas', debtTotal, '#ef4444',
+    debts.map(d => {
+      const bal = parseFloat(d.current_balance??d.original_amount)||0;
+      const balBRL = toBRL(bal, d.currency||'BRL');
+      const orig = parseFloat(d.original_amount)||0;
+      const quitPct = orig > 0 ? Math.max(0,Math.min(100,((orig-bal)/orig)*100)) : 0;
+      return `
+      <div style="padding:11px 14px;margin-bottom:2px">
+        <div style="display:flex;align-items:center;gap:11px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,.12);flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;font-size:1rem">📋</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||d.description||'—')}</div>
+            <div style="font-size:.67rem;color:var(--muted);margin-top:1px">${d.creditor?.name||d.creditor||''}${d.fixed_rate?` · ${(+d.fixed_rate).toFixed(2)}% a.m.`:''}</div>
+            ${orig > 0 ? `
+            <div style="margin-top:6px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:.62rem;color:var(--muted)">Progresso de quitação</span>
+                <span style="font-size:.62rem;font-weight:700;color:var(--accent)">${quitPct.toFixed(0)}% quitado</span>
+              </div>
+              <div style="height:4px;border-radius:4px;background:var(--border);overflow:hidden">
+                <div style="height:100%;width:${quitPct}%;background:linear-gradient(90deg,#ef4444,#f97316,#10b981);border-radius:4px;transition:width .5s"></div>
+              </div>
+            </div>` : ''}
+          </div>
+          <div style="text-align:right;flex-shrink:0;min-width:72px">
+            <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:#ef4444">−${dashFmt(balBRL,'BRL')}</div>
+            <div style="font-size:.63rem;color:var(--muted)">${_pctStr(balBRL,ativosBase)}% dos ativos</div>
           </div>
         </div>
-        <div style="font-size:.68rem;color:var(--muted);text-align:center">
-          ${accs.length} conta${accs.length!==1?'s':''} · ${invPositions.length} posição${invPositions.length!==1?'ões':''} de investimento · ${debts.length} dívida${debts.length!==1?'s':''}
+      </div>`;
+    }).join('')) : ''}
+
+  ` : `
+  <div style="text-align:center;padding:48px 20px">
+    <div style="font-size:3rem;margin-bottom:12px">🎉</div>
+    <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:6px">Patrimônio livre de passivos</div>
+    <div style="font-size:.78rem;color:var(--muted);line-height:1.6">Você não tem dívidas nem faturas em aberto.<br>Continue assim!</div>
+  </div>`}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB 3 — COMPOSIÇÃO
+════════════════════════════════════════════════════════════════════ -->
+<div id="ptab-3" class="pat-tab-pane" style="padding:16px">
+
+  <!-- Barras de composição horizontal -->
+  <div style="margin-bottom:14px;padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
+    <div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:12px">Distribuição por tipo</div>
+    ${[
+      ['🏦 Contas', liquidTotal, '#10b981', ativosBase],
+      ['📊 Investimentos', invTotal, '#3b82f6', ativosBase],
+      ['💳 Cartões +', Math.max(0,cardTotal), '#8b5cf6', ativosBase],
+    ].filter(([,v]) => v > 0).map(([label, val, color, base]) => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:.77rem;color:var(--text);font-weight:600">${label}</span>
+        <div style="text-align:right">
+          <span style="font-size:.77rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(val,'BRL')}</span>
+          <span style="font-size:.65rem;color:var(--muted);margin-left:5px">${_pctStr(val,base)}%</span>
         </div>
       </div>
+      <div style="height:8px;border-radius:8px;background:var(--border);overflow:hidden">
+        <div style="height:100%;width:${_pctStr(val,base)}%;background:${color};border-radius:8px;transition:width .6s ease"></div>
+      </div>
+    </div>`).join('')}
+  </div>
 
-    </div><!-- /padding -->
-  </div>`; // /container
+  <!-- Composição dos investimentos por tipo -->
+  ${Object.keys(invByType).length > 0 ? `
+  <div style="padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border);margin-bottom:14px">
+    <div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:12px">Carteira de investimentos</div>
+    ${Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:.77rem;color:var(--text);font-weight:600">${_invTypeEmoji[k]||'📌'} ${_invTypeLabel[k]||k}</span>
+        <div style="text-align:right">
+          <span style="font-size:.77rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(grp.total,'BRL')}</span>
+          <span style="font-size:.65rem;color:var(--muted);margin-left:5px">${_pctStr(grp.total,invTotal||1)}%</span>
+        </div>
+      </div>
+      <div style="height:6px;border-radius:6px;background:var(--border);overflow:hidden">
+        <div style="height:100%;width:${_pctStr(grp.total,invTotal||1)}%;background:#3b82f6;border-radius:6px;
+          opacity:${0.5+0.5*(grp.total/(Object.values(invByType).sort((a,b)=>b.total-a.total)[0]?.total||1))};transition:width .6s ease"></div>
+      </div>
+    </div>`).join('')}
+  </div>` : ''}
+
+  <!-- Resumo numérico final -->
+  <div style="padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
+    <div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:10px">Resumo numérico</div>
+    ${[
+      ['Total de ativos',         dashFmt(accountTotal,'BRL'), '#10b981'],
+      ['Total de passivos',       totalPassivos > 0 ? '−'+dashFmt(totalPassivos,'BRL') : 'Nenhum', totalPassivos > 0 ? '#ef4444' : '#10b981'],
+      ['Patrimônio líquido',      dashFmt(totalLiquido,'BRL'), totalLiquido >= 0 ? 'var(--accent)' : '#ef4444'],
+      ['Nível de endividamento',  (endividamento*100).toFixed(1)+'%', endividamento>0.4?'#ef4444':endividamento>0.2?'#f59e0b':'#10b981'],
+      ['Contas',                  `${accs.length} conta${accs.length!==1?'s':''}`, 'var(--muted)'],
+      ['Posições de investimento',`${invPositions.length} ativo${invPositions.length!==1?'s':''}`, 'var(--muted)'],
+    ].map(([label, value, color]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.78rem;color:var(--muted)">${label}</span>
+      <span style="font-size:.82rem;font-weight:800;color:${color};font-family:var(--font-serif)">${value}</span>
+    </div>`).join('')}
+  </div>
+</div>`;
 
   let modal = document.getElementById('patrimonioModal');
   if (!modal) {
@@ -3008,7 +3143,10 @@ async function _openPatrimonioModal() {
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding:0;border-radius:18px"><div class="modal-handle"></div><div id="patrimonioModalBody"></div></div>`;
+    modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:90dvh;overflow-y:auto;
+      -webkit-overflow-scrolling:touch;padding:0;border-radius:20px 20px 16px 16px">
+      <div id="patrimonioModalBody"></div>
+    </div>`;
     document.body.appendChild(modal);
   }
   document.getElementById('patrimonioModalBody').innerHTML = html;
