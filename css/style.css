@@ -27533,3 +27533,37 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
   transition: all .12s;
 }
 .bulk-del-btn:hover { background: rgba(220,38,38,.1); color: #dc2626; }
+
+/* ── Scheduled: reduced width on mobile ───────────────────────────────────── */
+@media (max-width: 640px) {
+  #scheduledList,
+  .sc-list-view {
+    padding: 0 10px !important;
+    box-sizing: border-box;
+  }
+  .sc-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .sc-card-row {
+    padding: 10px 11px 9px !important;
+    gap: 8px !important;
+  }
+  .sc-card-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: .82rem !important;
+    flex-shrink: 0 !important;
+  }
+  .sc-card-title2 {
+    font-size: .83rem !important;
+  }
+  .sc-card-amt {
+    font-size: .86rem !important;
+  }
+  .sc-card-meta {
+    font-size: .68rem !important;
+  }
+}
