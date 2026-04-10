@@ -1257,27 +1257,36 @@
       <!-- Hero header -->
       <div style="background:linear-gradient(135deg,#1e5c42 0%,#2a7550 60%,#1a5c38 100%);padding:24px 20px 20px;position:relative;overflow:hidden">
         <div style="position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(125,194,66,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.08) 1px,transparent 1px);background-size:32px 32px"></div>
-        <div style="position:relative;z-index:1">
-          <div style="font-size:1.2rem;font-weight:800;color:#fff;letter-spacing:-.02em;display:flex;align-items:center;gap:10px">
-            📬 A Receber
-            <span id="receivablesCount" style="font-size:.78rem;font-weight:700;background:rgba(255,255,255,.15);color:#fff;border-radius:100px;padding:2px 10px">0</span>
-          </div>
-          <div style="font-size:.8rem;color:rgba(255,255,255,.65);margin-top:4px">Receitas lançadas mas ainda não recebidas</div>
-        </div>
-        <!-- Total card -->
-        <div style="margin-top:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between">
           <div>
-            <div style="font-size:.72rem;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em">Total a receber</div>
-            <div id="receivablesTotalAmt" style="font-size:1.6rem;font-weight:800;color:#7dc242;margin-top:2px">R$ 0,00</div>
+            <div style="font-size:1.2rem;font-weight:800;color:#fff;letter-spacing:-.02em;display:flex;align-items:center;gap:10px">
+              📬 A Receber
+              <span id="receivablesCount" style="font-size:.78rem;font-weight:700;background:rgba(255,255,255,.15);color:#fff;border-radius:100px;padding:2px 10px">0</span>
+            </div>
+            <div style="font-size:.8rem;color:rgba(255,255,255,.65);margin-top:4px">Receitas pendentes de recebimento</div>
           </div>
-          <div style="font-size:2rem;opacity:.5">💰</div>
+          <button onclick="loadReceivables()"
+            style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:9px;padding:7px 12px;font-family:var(--font-sans);font-size:.75rem;font-weight:700;cursor:pointer">
+            ↻ Atualizar
+          </button>
+        </div>
+        <!-- KPI cards -->
+        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 16px">
+            <div style="font-size:.65rem;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em">Total a receber</div>
+            <div id="receivablesTotalAmt" style="font-size:1.4rem;font-weight:800;color:#7dc242;margin-top:2px">—</div>
+          </div>
+          <div id="receivablesOverdueWrap" style="background:rgba(220,38,38,.18);border:1px solid rgba(220,38,38,.35);border-radius:14px;padding:12px 16px;display:none">
+            <div style="font-size:.65rem;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em">⚠️ Em atraso</div>
+            <div id="receivablesOverdueAmt" style="font-size:1.4rem;font-weight:800;color:#fca5a5;margin-top:2px">—</div>
+          </div>
         </div>
       </div>
 
       <!-- Info bar -->
       <div style="background:#fef9c3;border-bottom:1px solid #fcd34d;padding:10px 16px;font-size:.78rem;color:#92400e;display:flex;align-items:flex-start;gap:8px">
         <span style="flex-shrink:0">💡</span>
-        <span>Aqui ficam receitas marcadas como <strong>não recebidas</strong>. Para mover uma receita para cá, abra a transação e clique em <strong>📬</strong> no detalhe. Clique em <strong>✅ Recebido</strong> quando o valor entrar na conta.</span>
+        <span>Receitas com status <strong>Pendente</strong> ficam aqui até serem recebidas. Para mover uma receita confirmada para cá, abra a transação e clique em <strong>📬</strong>.</span>
       </div>
 
       <!-- List -->
@@ -1361,9 +1370,10 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Previsão
           </button>
-
-
-        </div>
+          <button class="rpt-view-tab" id="rptBtnBeneficiarios" onclick="setReportView('beneficiarios')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Beneficiários
+          </button>
       </div>
 
       <!-- ── Barra de filtros ── -->
@@ -2529,7 +2539,62 @@
 
 
       <!-- ── View: Beneficiários / Fontes Pagadoras ─────────────────────────── -->
+      <div id="reportBeneficiariosView" style="display:none">
 
+        <!-- Toolbar -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
+
+          <!-- Toggle: Beneficiários / Fontes -->
+          <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;flex-shrink:0">
+            <button id="rptBenefBtn" onclick="rptBenefSetMode('expense')"
+              style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;background:var(--accent);color:#fff">
+              📤 Beneficiários
+            </button>
+            <button id="rptFontesBtn" onclick="rptBenefSetMode('income')"
+              style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;background:transparent;color:var(--muted)">
+              📥 Fontes Pagadoras
+            </button>
+          </div>
+
+          <!-- Period -->
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
+            <label style="font-size:.72rem;font-weight:700;color:var(--muted);white-space:nowrap">Período</label>
+            <select id="rptBenefPeriod" onchange="loadPayeeReport()"
+              style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
+              <option value="month">Este mês</option>
+              <option value="quarter">Este trimestre</option>
+              <option value="year" selected>Este ano</option>
+              <option value="last12">Últimos 12 meses</option>
+              <option value="custom">Intervalo livre</option>
+              <option value="alltime">Todos os tempos</option>
+            </select>
+          </div>
+
+          <!-- Custom range -->
+          <div id="rptBenefCustomWrap" style="display:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="date" id="rptBenefFrom" onchange="loadPayeeReport()"
+              style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
+            <span style="font-size:.78rem;color:var(--muted)">até</span>
+            <input type="date" id="rptBenefTo" onchange="loadPayeeReport()"
+              style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
+          </div>
+
+          <!-- Refresh -->
+          <button onclick="loadPayeeReport()"
+            style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:9px;cursor:pointer;flex-shrink:0">
+            ↻ Atualizar
+          </button>
+        </div>
+
+        <!-- KPI bar -->
+        <div id="rptBenefKpi" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+
+        <!-- Ranking list -->
+        <div id="rptBenefList" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:120px">
+          <div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>
+        </div>
+
+      </div>
 
     </div>
 
