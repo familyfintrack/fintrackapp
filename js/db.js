@@ -67,6 +67,10 @@ const _accounts = {
       state.archivedAccounts = arr.data || [];
       state.groups           = gr.data  || [];
       state.accountGroups    = state.groups;
+      // Apply per-member account restrictions (set by family owner)
+      if (typeof filterAllowedAccounts === 'function') {
+        state.accounts = filterAllowedAccounts(state.accounts);
+      }
       _touch('accounts');
       await _accounts.recalcBalances();
     }));

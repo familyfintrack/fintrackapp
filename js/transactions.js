@@ -3475,32 +3475,28 @@ async function loadReceivables() {
   const overEl    = document.getElementById('receivablesOverdueAmt');
   if (!container) return;
 
-  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">\u29D6 Carregando\u2026</div>';
 
   if (!sb || !currentUser) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Aguardando conexão…</div>';
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Aguardando conex\u00e3o\u2026</div>';
     return;
   }
 
   try {
     const fid = typeof famId === 'function' ? famId() : null;
-    if (!fid) throw new Error('Família não identificada. Faça login novamente.');
+    if (!fid) throw new Error('Fam\u00edlia n\u00e3o identificada.');
 
-    const { data, error } = await sb
-      .from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,status,is_transfer,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name,currency,color,icon),categories(name,color,icon),payees(name)')
-      .eq('family_id', fid)
-      .eq('status', 'pending')
-      .gte('amount', 0)
-      .eq('is_transfer', false)
+    const { data, error } = await sb.from('transactions')
+      .select('id,date,description,amount,brl_amount,currency,status,is_transfer,account_id,category_id,payee_id,'
+        + 'accounts!transactions_account_id_fkey(name,currency,color,icon),categories(name,color,icon),payees(name)')
+      .eq('family_id', fid).eq('status','pending').gte('amount',0).eq('is_transfer',false)
       .order('date', { ascending: true });
 
     if (error) throw error;
     const rows  = data || [];
     const today = new Date().toISOString().slice(0,10);
-
-    const total   = rows.reduce((s, r) => s + (r.amount || 0), 0);
-    const overdue = rows.filter(r => r.date < today).reduce((s, r) => s + (r.amount || 0), 0);
+    const total   = rows.reduce((s,r) => s+(r.amount||0), 0);
+    const overdue = rows.filter(r => r.date < today).reduce((s,r) => s+(r.amount||0), 0);
 
     if (countEl) countEl.textContent = rows.length;
     if (totalEl) totalEl.textContent = fmt(total);
@@ -3509,91 +3505,246 @@ async function loadReceivables() {
     if (overWrap) overWrap.style.display = overdue > 0 ? '' : 'none';
 
     if (!rows.length) {
-      container.innerHTML = [
-        '<div style="text-align:center;padding:48px 20px">',
-        '  <div style="font-size:3rem;margin-bottom:14px">\uD83D\uDCED</div>',
-        '  <div style="font-size:1rem;font-weight:800;color:var(--text)">Nenhum valor a receber</div>',
-        '  <div style="font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.6">',
-        '    Receitas com status <strong>Pendente</strong> aparecem aqui.<br>',
-        '    Para mover uma receita confirmada, abra a transação e clique em <strong>\uD83D\uDCEC</strong>.',
-        '  </div>',
-        '  <div style="margin-top:20px">',
-        '    <button onclick="navigate(\'transactions\')"',
-        '      style="font-family:var(--font-sans);font-size:.82rem;font-weight:700;',
-        '        padding:10px 20px;background:var(--accent);color:#fff;border:none;',
-        '        border-radius:10px;cursor:pointer">',
-        '      Ver Transações \u2192',
-        '    </button>',
-        '  </div>',
-        '</div>',
-      ].join('');
+      container.innerHTML =
+        '<div style="text-align:center;padding:48px 20px">' +
+        '<div style="font-size:3rem;margin-bottom:14px">\uD83D\uDCED</div>' +
+        '<div style="font-size:1rem;font-weight:800;color:var(--text)">Nenhum valor a receber</div>' +
+        '<div style="font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.6">' +
+        'Receitas com status <strong>Pendente</strong> aparecem aqui.</div>' +
+        '<div style="margin-top:20px"><button onclick="navigate(\'transactions\')" ' +
+        'style="font-family:var(--font-sans);font-size:.82rem;font-weight:700;padding:10px 20px;' +
+        'background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer">' +
+        'Ver Transa\u00e7\u00f5es \u2192</button></div></div>';
       return;
     }
 
-    const overdueRows  = rows.filter(r => r.date < today);
-    const upcomingRows = rows.filter(r => r.date >= today);
-
-    function _renderGroup(items, label, color) {
-      if (!items.length) return '';
-      const groupTotal = items.reduce((s,r) => s+(r.amount||0), 0);
-      const rowsHtml = items.map(function(r) {
-        const daysOff = Math.round((new Date(today) - new Date(r.date)) / 86400000);
-        const daysLabel = daysOff === 0 ? 'Hoje'
-          : daysOff > 0 ? daysOff + ' dia' + (daysOff>1?'s':'') + ' em atraso'
-          : Math.abs(daysOff) + ' dia' + (Math.abs(daysOff)>1?'s':'') + ' restante' + (Math.abs(daysOff)>1?'s':'');
-        const daysColor = daysOff > 0 ? '#dc2626' : daysOff === 0 ? '#d97706' : 'var(--muted)';
-        const catColor  = r.categories?.color || 'var(--accent)';
-        const catIcon   = r.categories?.icon  || '\uD83D\uDCB0';
-        const accName   = r.accounts?.name    || '\u2014';
-        const payName   = r.payees?.name      || '';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:13px 16px;'
-          + 'border-bottom:1px solid var(--border);background:var(--surface);'
-          + 'transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'"'
-          + ' onmouseout="this.style.background=\'var(--surface)\'">'
-          + '<div style="width:40px;height:40px;border-radius:11px;background:' + catColor + '18;'
-          + 'border:1.5px solid ' + catColor + '40;display:flex;align-items:center;'
-          + 'justify-content:center;font-size:1.1rem;flex-shrink:0">' + catIcon + '</div>'
-          + '<div style="flex:1;min-width:0">'
-          + '<div style="font-size:.88rem;font-weight:700;color:var(--text);'
-          + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
-          + esc(r.description || '\u2014') + '</div>'
-          + '<div style="font-size:.72rem;color:var(--muted);margin-top:3px;'
-          + 'display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-          + '<span>\uD83D\uDCC5 ' + fmtDate(r.date) + '</span>'
-          + '<span style="color:' + daysColor + ';font-weight:600">\u23F1 ' + daysLabel + '</span>'
-          + '<span>\uD83C\uDFE6 ' + esc(accName) + '</span>'
-          + (payName ? '<span>\uD83D\uDC64 ' + esc(payName) + '</span>' : '')
-          + '</div></div>'
-          + '<div style="flex-shrink:0;text-align:right;min-width:80px">'
-          + '<div style="font-size:.97rem;font-weight:800;color:var(--accent)">' + fmt(r.amount) + '</div>'
-          + '<div style="display:flex;gap:5px;margin-top:6px;justify-content:flex-end">'
-          + '<button onclick="markTxReceived(\'' + esc(r.id) + '\')"'
-          + ' style="font-family:var(--font-sans);font-size:.7rem;font-weight:700;color:#fff;'
-          + 'background:#16a34a;border:none;border-radius:7px;padding:4px 10px;cursor:pointer;'
-          + 'white-space:nowrap">\u2705 Recebido</button>'
-          + '<button onclick="openTxDetail(\'' + esc(r.id) + '\')"'
-          + ' style="font-family:var(--font-sans);font-size:.7rem;font-weight:600;'
-          + 'color:var(--muted);background:transparent;border:1px solid var(--border);'
-          + 'border-radius:7px;padding:4px 8px;cursor:pointer">\u270F\uFE0F</button>'
-          + '</div></div></div>';
-      }).join('');
-      return '<div style="padding:10px 16px 6px;background:var(--surface2);'
-        + 'border-bottom:1px solid var(--border);border-top:1px solid var(--border)">'
-        + '<div style="font-size:.68rem;font-weight:800;text-transform:uppercase;'
-        + 'letter-spacing:.07em;color:' + color + ';display:flex;align-items:center;gap:6px">'
-        + '<span>' + label + '</span>'
-        + '<span style="font-size:.62rem;background:' + color + '18;color:' + color + ';'
-        + 'border-radius:100px;padding:1px 7px;border:1px solid ' + color + '30">'
-        + fmt(groupTotal) + '</span></div></div>' + rowsHtml;
-    }
-
-    container.innerHTML =
-      _renderGroup(overdueRows,  '\u26A0\uFE0F Em atraso', '#dc2626') +
-      _renderGroup(upcomingRows, '\u23F3 Aguardando', '#d97706');
-
+    container.innerHTML = _buildReceivablesDashboard(rows, today);
   } catch(e) {
-    container.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.84rem;text-align:center">'
-      + '\u274C Erro: ' + esc(e.message) + '</div>';
+    container.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.84rem;text-align:center">' +
+      '\u274C Erro: ' + esc(e.message) + '</div>';
   }
 }
+
+function _buildReceivablesDashboard(rows, today) {
+  const now = new Date(today);
+
+  // ── Debtors ────────────────────────────────────────────────────────────
+  const byPayee = {};
+  rows.forEach(r => {
+    const pid = r.payee_id || '__no__';
+    if (!byPayee[pid]) byPayee[pid] = {
+      name: r.payees?.name || 'Sem devedor', total: 0, count: 0, items: [],
+      oldest: r.date, newest: r.date
+    };
+    byPayee[pid].total += (r.amount||0); byPayee[pid].count++;
+    byPayee[pid].items.push(r);
+    if (r.date < byPayee[pid].oldest) byPayee[pid].oldest = r.date;
+    if (r.date > byPayee[pid].newest) byPayee[pid].newest = r.date;
+  });
+  const debtors = Object.values(byPayee).sort((a,b) => b.total - a.total);
+  const maxD = debtors[0]?.total || 1;
+
+  // ── Categories ────────────────────────────────────────────────────────
+  const byCat = {};
+  rows.forEach(r => {
+    const cid = r.category_id || '__no__';
+    if (!byCat[cid]) byCat[cid] = {
+      name: r.categories?.name || 'Sem categoria',
+      color: r.categories?.color || 'var(--accent)',
+      icon:  r.categories?.icon  || '\uD83D\uDCB0',
+      total: 0, count: 0
+    };
+    byCat[cid].total += (r.amount||0); byCat[cid].count++;
+  });
+  const cats = Object.values(byCat).sort((a,b) => b.total - a.total);
+  const maxC = cats[0]?.total || 1;
+  const total = rows.reduce((s,r) => s+(r.amount||0), 0);
+
+  // ── Aging ─────────────────────────────────────────────────────────────
+  const buckets = [
+    { label:'A vencer',        color:'#16a34a', items: rows.filter(r => r.date > today) },
+    { label:'Vence hoje',      color:'#d97706', items: rows.filter(r => r.date === today) },
+    { label:'1–7 dias',        color:'#ea580c', items: rows.filter(r => { const d=Math.round((now-new Date(r.date))/86400000); return d>=1&&d<=7; }) },
+    { label:'8–30 dias',       color:'#dc2626', items: rows.filter(r => { const d=Math.round((now-new Date(r.date))/86400000); return d>=8&&d<=30; }) },
+    { label:'31–90 dias',      color:'#991b1b', items: rows.filter(r => { const d=Math.round((now-new Date(r.date))/86400000); return d>=31&&d<=90; }) },
+    { label:'Mais de 90 dias', color:'#7f1d1d', items: rows.filter(r => Math.round((now-new Date(r.date))/86400000)>90) },
+  ].filter(b => b.items.length);
+  const maxA = buckets.reduce((m,b) => Math.max(m, b.items.reduce((s,r)=>s+(r.amount||0),0)), 1);
+
+  const out = [];
+
+  // ── Aging card ─────────────────────────────────────────────────────────
+  const overdueItems  = rows.filter(r => r.date < today);
+  const overdueAmt    = overdueItems.reduce((s,r) => s+(r.amount||0), 0);
+  const overdoePct    = total > 0 ? (overdueAmt/total*100).toFixed(0) : 0;
+  out.push(
+    _recvCard('\u23F1 Antigüidade dos Valores',
+      overdueItems.length + ' em atraso \u2022 ' + overdoePct + '%',
+      buckets.map(b => {
+        const bAmt = b.items.reduce((s,r)=>s+(r.amount||0),0);
+        const bW   = (bAmt/maxA*100).toFixed(1);
+        const bPct = total > 0 ? (bAmt/total*100).toFixed(1) : 0;
+        return '<div style="display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="font-size:.77rem;font-weight:700;color:'+b.color+'">' + b.label + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            '<div style="flex:1;height:5px;border-radius:3px;background:var(--border)">' +
+              '<div style="height:100%;width:'+bW+'%;background:'+b.color+';border-radius:3px;transition:width .5s"></div>' +
+            '</div>' +
+            '<span style="font-size:.62rem;color:var(--muted);white-space:nowrap">'+b.items.length+'×</span>' +
+          '</div>' +
+          '<div style="text-align:right">' +
+            '<div style="font-size:.8rem;font-weight:800;color:'+b.color+'">'+fmt(bAmt)+'</div>' +
+            '<div style="font-size:.6rem;color:var(--muted)">'+bPct+'%</div>' +
+          '</div></div>';
+      }).join('')
+    )
+  );
+
+  // ── Debtors card ───────────────────────────────────────────────────────
+  out.push(
+    _recvCard('\uD83D\uDC64 Por Devedor / Fonte',
+      debtors.length + ' devedor' + (debtors.length>1?'es':''),
+      debtors.map((d,i) => {
+        const bW    = (d.total/maxD*100).toFixed(1);
+        const pct   = total > 0 ? (d.total/total*100).toFixed(1) : 0;
+        const days  = Math.max(0, Math.round((now-new Date(d.oldest))/86400000));
+        const dclr  = days > 30 ? '#dc2626' : days > 7 ? '#d97706' : 'var(--muted)';
+        const medal = ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][i] || null;
+        const idStr = d.items.map(r=>r.id).join(',');
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="width:22px;text-align:center;flex-shrink:0">' +
+            (medal?'<span style="font-size:.9rem">'+medal+'</span>'
+                  :'<span style="font-size:.67rem;font-weight:800;color:var(--muted)">'+(i+1)+'</span>') +
+          '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:3px">' +
+              '<span style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.name)+'</span>' +
+              '<span style="font-size:.82rem;font-weight:800;color:var(--accent);white-space:nowrap;flex-shrink:0">+'+fmt(d.total)+'</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">' +
+              '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)">' +
+                '<div style="height:100%;width:'+bW+'%;background:var(--accent);border-radius:2px;transition:width .6s"></div>' +
+              '</div>' +
+              '<span style="font-size:.6rem;color:var(--muted);white-space:nowrap">'+pct+'% \u00b7 '+d.count+'×</span>' +
+            '</div>' +
+            '<div style="font-size:.68rem;color:'+dclr+';font-weight:'+(days>30?'700':'400')+'">' +
+              (days===0?'Vence hoje':days>0?'\u26A0\uFE0F '+days+'d em aberto':'A vencer') +
+              ' \u00b7 '+d.count+' cobran\u00e7a'+(d.count>1?'s':'') +
+            '</div>' +
+          '</div>' +
+          '<button onclick="_recvMarkAllReceived(\''+idStr+'\')" ' +
+            'style="font-family:var(--font-sans);font-size:.67rem;font-weight:700;color:#fff;' +
+            'background:#16a34a;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0">' +
+            '\u2705 Recebido</button>' +
+        '</div>';
+      }).join('')
+    )
+  );
+
+  // ── Categories card ────────────────────────────────────────────────────
+  out.push(
+    _recvCard('\uD83C\uDFF7\uFE0F Por Tipo / Categoria', cats.length + ' categoria' + (cats.length>1?'s':''),
+      cats.map(c => {
+        const bW  = (c.total/maxC*100).toFixed(1);
+        const pct = total > 0 ? (c.total/total*100).toFixed(1) : 0;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="width:30px;height:30px;border-radius:8px;background:'+c.color+'18;border:1.5px solid '+c.color+'40;' +
+            'display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0">'+c.icon+'</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:3px">' +
+              '<span style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name)+'</span>' +
+              '<span style="font-size:.82rem;font-weight:800;color:'+c.color+';white-space:nowrap">+'+fmt(c.total)+'</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)">' +
+                '<div style="height:100%;width:'+bW+'%;background:'+c.color+';border-radius:2px;transition:width .6s"></div>' +
+              '</div>' +
+              '<span style="font-size:.6rem;color:var(--muted);white-space:nowrap">'+pct+'% \u00b7 '+c.count+'×</span>' +
+            '</div>' +
+          '</div></div>';
+      }).join('')
+    )
+  );
+
+  // ── Detail list card ───────────────────────────────────────────────────
+  function _txRow(r) {
+    const days   = Math.round((now - new Date(r.date)) / 86400000);
+    const dLabel = days===0?'Hoje':days>0?days+'d em atraso':Math.abs(days)+'d restante'+(Math.abs(days)>1?'s':'');
+    const dColor = days>0?'#dc2626':days===0?'#d97706':'var(--muted)';
+    const cColor = r.categories?.color||'var(--accent)';
+    const cIcon  = r.categories?.icon||'\uD83D\uDCB0';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">' +
+      '<div style="width:32px;height:32px;border-radius:8px;background:'+cColor+'18;border:1.5px solid '+cColor+'40;' +
+        'display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">'+cIcon+'</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.description||'\u2014')+'</div>' +
+        '<div style="font-size:.68rem;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">' +
+          '<span>\uD83D\uDCC5 '+(fmtDate?fmtDate(r.date):r.date)+'</span>' +
+          '<span style="color:'+dColor+';font-weight:600">\u23F1 '+dLabel+'</span>' +
+          (r.payees?.name?'<span>\uD83D\uDC64 '+esc(r.payees.name)+'</span>':'') +
+          (r.accounts?.name?'<span>\uD83C\uDFE6 '+esc(r.accounts.name)+'</span>':'') +
+        '</div>' +
+      '</div>' +
+      '<div style="flex-shrink:0;text-align:right">' +
+        '<div style="font-size:.88rem;font-weight:800;color:var(--accent)">'+fmt(r.amount)+'</div>' +
+        '<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">' +
+          '<button onclick="markTxReceived(\''+esc(r.id)+'\')" style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;' +
+            'color:#fff;background:#16a34a;border:none;border-radius:6px;padding:3px 7px;cursor:pointer">\u2705</button>' +
+          '<button onclick="openTxDetail(\''+esc(r.id)+'\')" style="font-family:var(--font-sans);font-size:.65rem;' +
+            'color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer">\u270F\uFE0F</button>' +
+        '</div>' +
+      '</div></div>';
+  }
+
+  const overdueList  = rows.filter(r => r.date < today);
+  const pendingList  = rows.filter(r => r.date >= today);
+
+  if (overdueList.length) {
+    const oAmt = overdueList.reduce((s,r)=>s+(r.amount||0),0);
+    out.push(_recvCard('\u26A0\uFE0F Em atraso \u00b7 '+overdueList.length+' lançamento'+(overdueList.length>1?'s':''),
+      fmt(oAmt), overdueList.map(_txRow).join(''), '#dc2626'));
+  }
+  if (pendingList.length) {
+    const pAmt = pendingList.reduce((s,r)=>s+(r.amount||0),0);
+    out.push(_recvCard('\u23F3 Aguardando \u00b7 '+pendingList.length+' lançamento'+(pendingList.length>1?'s':''),
+      fmt(pAmt), pendingList.map(_txRow).join(''), '#d97706'));
+  }
+
+  return out.join('');
+}
+
+function _recvCard(title, sub, body, accentColor) {
+  const color = accentColor || 'var(--accent)';
+  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px">' +
+    '<div style="padding:11px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:'+color+'">'+title+'</div>' +
+      '<div style="font-size:.71rem;color:var(--muted)">'+sub+'</div>' +
+    '</div>' +
+    '<div style="padding:2px 16px 6px">'+body+'</div>' +
+  '</div>';
+}
+
+async function _recvMarkAllReceived(idsStr) {
+  const ids = idsStr.split(',').filter(Boolean);
+  if (!ids.length) return;
+  const lbl = ids.length===1?'1 valor':ids.length+' valores';
+  if (!confirm('Marcar '+lbl+' como recebido(s)?')) return;
+  try {
+    const fid = typeof famId==='function'?famId():null;
+    const { error } = await sb.from('transactions')
+      .update({ status:'confirmed', updated_at: new Date().toISOString() })
+      .in('id', ids).eq('family_id', fid);
+    if (error) throw error;
+    toast('\u2705 '+lbl+' marcado(s) como recebido(s)!', 'success');
+    await loadAccounts();
+    await loadReceivables();
+    if (typeof _updateReceivablesBadge==='function') _updateReceivablesBadge().catch(()=>{});
+    if (state.currentPage==='dashboard') loadDashboard();
+  } catch(e) {
+    toast('Erro: '+e.message, 'error');
+  }
+}
+window._recvMarkAllReceived = _recvMarkAllReceived;
+
+
 

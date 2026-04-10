@@ -1004,6 +1004,11 @@ async function onLoginSuccess() {
     await _acceptPendingInvite().catch(() => {});
   }
 
+  // Load per-member access restrictions (module/account restrictions set by owner)
+  if (typeof loadMyAccessRestrictions === 'function') {
+    loadMyAccessRestrictions().catch(() => {});
+  }
+
   const platformInfo = (typeof detectLoginPlatform === 'function') ? detectLoginPlatform() : { isWindows:false };
   const loginLogo = document.getElementById('loginLogoImg');
   if (loginLogo && !platformInfo.isWindows) loginLogo.classList.add('exiting');
@@ -2791,11 +2796,19 @@ async function loadFamiliesList() {
     }).join('');
 
     // Members compact list
+    const isOwnerOrAdmin = currentUser?.role === 'admin' ||
+      (currentUser?.families||[]).some(x => x.id === fid && ['owner','admin'].includes(x.role));
+
     const memHtml = members.length
       ? members.map(m => {
           const roleOpts = ['owner','admin','user','viewer'].map(r =>
             `<option value="${r}" ${m.member_role===r?'selected':''}>${{owner:'👑',admin:'🔧',user:'👤',viewer:'👁'}[r]} ${r}</option>`
           ).join('');
+          const accessBtn = isOwnerOrAdmin && m.member_role !== 'owner'
+            ? `<button title="Controle de acesso" onclick="openMemberAccessModal('${fid}','${esc(m.user_id)}','${fmcE(m.user_name||m.user_email)}')"
+                style="background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;
+                  color:var(--accent);font-size:.75rem;padding:2px 7px;white-space:nowrap">🔐</button>`
+            : '';
           return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
             <div style="flex:1;min-width:0">
               <div style="font-size:.8rem;font-weight:600;color:var(--text)">${esc(m.user_name||'—')}</div>
@@ -2805,6 +2818,7 @@ async function loadFamiliesList() {
                 onchange="updateMemberRole(this)" style="font-size:.72rem;padding:3px 6px">
               ${roleOpts}
             </select>
+            ${accessBtn}
             <button title="Remover" onclick="removeUserFromFamily('${m.user_id}','${fmcE(m.user_name||m.user_email)}','${fmcE(f.name||'')}','${fid}')"
               style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.8rem;padding:2px 5px">✕</button>
           </div>`;

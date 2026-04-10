@@ -848,12 +848,6 @@ function setReportView(view) {
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
   if (view === 'beneficiarios') {
-    // Sync date range from main report filters so "year" tab shows same data
-    const { from, to } = _getRptRange();
-    const periodSel = document.getElementById('rptBenefPeriod');
-    if (periodSel && periodSel.value === 'year') {
-      // keep as is — will use current year
-    }
     loadPayeeReport();
   }
 

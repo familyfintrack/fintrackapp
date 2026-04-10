@@ -922,6 +922,12 @@ function navigate(page){
     return;
   }
 
+  // Guard: per-member module restrictions (set by family owner)
+  if (typeof isModuleAllowed === 'function' && !isModuleAllowed(page)) {
+    toast('🔐 Acesso a este módulo foi restringido pelo administrador da família.', 'warning');
+    return;
+  }
+
   // Track history — skip duplicate consecutive
   if (_navHistory[_navHistory.length-1] !== page) {
     _navHistory.push(page);
