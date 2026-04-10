@@ -1162,8 +1162,9 @@
             </select>
           </div>
           <button class="tx-chip-select" id="txClearFiltersBtn" onclick="clearAllTxFilters()"
-            style="background:rgba(220,38,38,.08);color:#dc2626;border-color:rgba(220,38,38,.25);white-space:nowrap;cursor:pointer;font-size:.75rem;font-weight:700;padding:5px 10px;border-radius:7px;font-family:inherit">
-            ✕ Limpar Filtros
+            style="background:rgba(220,38,38,.08);color:#dc2626;border-color:rgba(220,38,38,.25);white-space:nowrap;cursor:pointer;padding:5px 8px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;line-height:1"
+            title="Limpar todos os filtros">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <button class="tx-chip-select" onclick="loadTransactions()"
             style="background:var(--surface2);color:var(--text2);border-color:var(--border);white-space:nowrap;cursor:pointer;font-size:.75rem;font-weight:600;padding:5px 10px;border-radius:7px;font-family:inherit"
@@ -1180,7 +1181,7 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 <span style="font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">Filtrando:</span>
                 <span id="txAccountBadgeLabel" style="font-size:.88rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0"></span>
-                <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.3);color:var(--accent);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">✕ Limpar</button>
+                <button class="tx-acct-badge-clear" onclick="clearTxAccountFilter()" title="Limpar filtro de conta" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:20px;background:rgba(125,194,66,.15);border:1px solid rgba(125,194,66,.3);color:var(--accent);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               </div>
             </div>
             <div id="txSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
@@ -1386,10 +1387,6 @@
           <button class="rpt-view-tab" id="rptBtnForecast" onclick="setReportView('forecast')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Previsão
-          </button>
-          <button class="rpt-view-tab" id="rptBtnBeneficiarios" onclick="setReportView('beneficiarios')">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Beneficiários &amp; Fontes
           </button>
         </div><!-- /rpt-view-tabs -->
       </div><!-- /rpt-page-header -->
@@ -1907,9 +1904,35 @@
 
       <!-- Summary chips -->
       <div id="payeeSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
-      <!-- Grouped containers -->
+      <div style="display:flex;gap:4px;margin-bottom:14px;background:var(--surface2);border-radius:12px;padding:4px">
+        <button id="payeesTabCad" onclick="setPayeesTab('cadastro')" style="flex:1;font-family:var(--font-sans);font-size:.8rem;font-weight:700;padding:7px 12px;border-radius:9px;border:none;cursor:pointer;transition:all .15s;background:var(--accent);color:#fff">👥 Cadastro</button>
+        <button id="payeesTabRpt" onclick="setPayeesTab('relatorio')" style="flex:1;font-family:var(--font-sans);font-size:.8rem;font-weight:700;padding:7px 12px;border-radius:9px;border:none;cursor:pointer;transition:all .15s;background:transparent;color:var(--muted)">📊 Beneficiários &amp; Fontes</button>
+      </div>
       <div id="payeeGroups"></div>
-    </div>
+      <div id="payeesReportPanel" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
+          <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;flex-shrink:0">
+            <button id="rptBenefBtn" onclick="rptBenefSetMode('expense')" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff">📤 Beneficiários</button>
+            <button id="rptFontesBtn" onclick="rptBenefSetMode('income')" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--muted)">📥 Fontes</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
+            <label style="font-size:.72rem;font-weight:700;color:var(--muted);white-space:nowrap">Período</label>
+            <select id="rptBenefPeriod" onchange="loadPayeeReport()" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
+              <option value="month">Este mês</option><option value="quarter">Este trimestre</option>
+              <option value="year" selected>Este ano</option><option value="last12">Últimos 12 meses</option>
+              <option value="alltime">Todos os tempos</option><option value="custom">Intervalo livre</option>
+            </select>
+          </div>
+          <div id="rptBenefCustomWrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="date" id="rptBenefFrom" onchange="loadPayeeReport()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
+            <span style="font-size:.78rem;color:var(--muted)">até</span>
+            <input type="date" id="rptBenefTo" onchange="loadPayeeReport()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
+          </div>
+          <button onclick="loadPayeeReport()" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:9px;cursor:pointer;flex-shrink:0">↻ Atualizar</button>
+        </div>
+        <div id="rptBenefKpi" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+        <div id="rptBenefList" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:120px"><div style="text-align:center;padding:40px;color:var(--muted)">Clique em Atualizar para carregar.</div></div>
+      </div>
 
     <!-- SCHEDULED TRANSACTIONS -->
     <div class="page" id="page-scheduled">
@@ -2000,8 +2023,9 @@
           </select>
           <div style="display:flex;gap:6px;margin-top:4px">
             <button onclick="clearAllScFilters()"
-              style="flex:1;padding:6px 10px;background:rgba(220,38,38,.08);color:#dc2626;border:1px solid rgba(220,38,38,.25);border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">
-              ✕ Limpar Filtros
+              style="padding:7px 10px;background:rgba(220,38,38,.08);color:#dc2626;border:1px solid rgba(220,38,38,.25);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"
+              title="Limpar filtros">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
             <button onclick="loadScheduled().then(filterScheduled)"
               style="flex:1;padding:6px 10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">
@@ -2556,67 +2580,6 @@
       </div>
 
 
-      <!-- ── View: Beneficiários & Fontes ──────────────────────────────────── -->
-      <div id="reportBeneficiariosView" style="display:none">
-
-        <!-- Toolbar -->
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
-
-          <!-- Toggle: Beneficiários / Fontes -->
-          <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;flex-shrink:0">
-            <button id="rptBenefBtn" onclick="rptBenefSetMode('expense')"
-              style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;background:var(--accent);color:#fff">
-              📤 Beneficiários
-            </button>
-            <button id="rptFontesBtn" onclick="rptBenefSetMode('income')"
-              style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;background:transparent;color:var(--muted)">
-              📥 Fontes
-            </button>
-          </div>
-
-          <!-- Period -->
-          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
-            <label style="font-size:.72rem;font-weight:700;color:var(--muted);white-space:nowrap">Período</label>
-            <select id="rptBenefPeriod" onchange="loadPayeeReport()"
-              style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
-              <option value="month">Este mês</option>
-              <option value="quarter">Este trimestre</option>
-              <option value="year" selected>Este ano</option>
-              <option value="last12">Últimos 12 meses</option>
-              <option value="custom">Intervalo livre</option>
-              <option value="alltime">Todos os tempos</option>
-            </select>
-          </div>
-
-          <!-- Custom range -->
-          <div id="rptBenefCustomWrap" style="display:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <input type="date" id="rptBenefFrom" onchange="loadPayeeReport()"
-              style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
-            <span style="font-size:.78rem;color:var(--muted)">até</span>
-            <input type="date" id="rptBenefTo" onchange="loadPayeeReport()"
-              style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
-          </div>
-
-          <!-- Refresh -->
-          <button onclick="loadPayeeReport()"
-            style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:9px;cursor:pointer;flex-shrink:0">
-            ↻ Atualizar
-          </button>
-        </div>
-
-        <!-- KPI bar -->
-        <div id="rptBenefKpi" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
-
-        <!-- Ranking list -->
-        <div id="rptBenefList" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:120px">
-          <div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>
-        </div>
-
-      </div>
-
-    </div>
-
-    <!-- SETTINGS PAGE -->
     <div class="page" id="page-settings">
       <style>
         /* ══ SETTINGS v2 — Modern pill-tab design ══════════════════════════ */
