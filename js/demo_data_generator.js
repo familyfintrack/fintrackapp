@@ -553,13 +553,13 @@ function generateDemoData() {
 
   /* ── Dreams ───────────────────────────────────────────────────────────── */
   const dreams = [
-    { id:uid(), title:'Carro Novo — Corolla', dream_type:'automovel', target_amount:120000, saved_amount:28000,
+    { id:uid(), title:'Carro Novo — Corolla', dream_type:'automovel', target_amount:120000,
       target_date:`${Y+3}-06-01`, status:'active', priority:1, notes:'Toyota Corolla XEi 2027', icon:'🚗' },
-    { id:uid(), title:'Apartamento Próprio', dream_type:'imovel', target_amount:380000, saved_amount:62000,
+    { id:uid(), title:'Apartamento Próprio', dream_type:'imovel', target_amount:380000,
       target_date:`${Y+6}-01-01`, status:'active', priority:2, notes:'3 quartos, até 500k', icon:'🏠' },
-    { id:uid(), title:'Viagem Disney Orlando', dream_type:'viagem', target_amount:35000, saved_amount:8500,
+    { id:uid(), title:'Viagem Disney Orlando', dream_type:'viagem', target_amount:35000,
       target_date:`${Y+2}-07-01`, status:'active', priority:3, notes:'Família toda — 10 dias', icon:'✈️' },
-    { id:uid(), title:'Reserva de Emergência', dream_type:'outro', target_amount:60000, saved_amount:22000,
+    { id:uid(), title:'Reserva de Emergência', dream_type:'outro', target_amount:60000,
       target_date:`${Y+2}-12-01`, status:'active', priority:4, notes:'6 meses de despesas', icon:'🏦' },
   ];
 
@@ -606,18 +606,18 @@ function generateDemoData() {
   const groceries = {
     list: { id: uid(), name: 'Compras semana — modelo', status: 'open' },
     items: [
-      {id:uid(), list_id:'__replace__', name:'Arroz Camil 5kg',        quantity:1, unit:'pct', checked:false, estimated_price:25.90},
-      {id:uid(), list_id:'__replace__', name:'Feijão carioca 1kg',     quantity:2, unit:'pct', checked:false, estimated_price:8.99},
-      {id:uid(), list_id:'__replace__', name:'Frango inteiro',         quantity:2, unit:'kg',  checked:false, estimated_price:18.90},
-      {id:uid(), list_id:'__replace__', name:'Ovos (bandeja 30)',       quantity:1, unit:'un',  checked:false, estimated_price:28.50},
-      {id:uid(), list_id:'__replace__', name:'Leite integral 1L',      quantity:6, unit:'un',  checked:false, estimated_price:6.49},
-      {id:uid(), list_id:'__replace__', name:'Pão de forma integral',  quantity:2, unit:'pct', checked:false, estimated_price:9.90},
-      {id:uid(), list_id:'__replace__', name:'Azeite extra virgem',    quantity:1, unit:'un',  checked:false, estimated_price:32.90},
-      {id:uid(), list_id:'__replace__', name:'Tomate',                 quantity:1, unit:'kg',  checked:false, estimated_price:7.90},
-      {id:uid(), list_id:'__replace__', name:'Alface crespa',          quantity:2, unit:'un',  checked:false, estimated_price:3.50},
-      {id:uid(), list_id:'__replace__', name:'Detergente Ypê 500ml',   quantity:3, unit:'un',  checked:false, estimated_price:4.50},
-      {id:uid(), list_id:'__replace__', name:'Shampoo Pantene',        quantity:1, unit:'un',  checked:false, estimated_price:19.90},
-      {id:uid(), list_id:'__replace__', name:'Papel higiênico 16un',   quantity:1, unit:'pct', checked:true,  estimated_price:32.90},
+      {id:uid(), list_id:'__replace__', name:'Arroz Camil 5kg',        qty:1, unit:'pct', checked:false, suggested_price:25.90},
+      {id:uid(), list_id:'__replace__', name:'Feijão carioca 1kg',     qty:2, unit:'pct', checked:false, suggested_price:8.99},
+      {id:uid(), list_id:'__replace__', name:'Frango inteiro',         qty:2, unit:'kg',  checked:false, suggested_price:18.90},
+      {id:uid(), list_id:'__replace__', name:'Ovos (bandeja 30)',       qty:1, unit:'un',  checked:false, suggested_price:28.50},
+      {id:uid(), list_id:'__replace__', name:'Leite integral 1L',      qty:6, unit:'un',  checked:false, suggested_price:6.49},
+      {id:uid(), list_id:'__replace__', name:'Pão de forma integral',  qty:2, unit:'pct', checked:false, suggested_price:9.90},
+      {id:uid(), list_id:'__replace__', name:'Azeite extra virgem',    qty:1, unit:'un',  checked:false, suggested_price:32.90},
+      {id:uid(), list_id:'__replace__', name:'Tomate',                 qty:1, unit:'kg',  checked:false, suggested_price:7.90},
+      {id:uid(), list_id:'__replace__', name:'Alface crespa',          qty:2, unit:'un',  checked:false, suggested_price:3.50},
+      {id:uid(), list_id:'__replace__', name:'Detergente Ypê 500ml',   qty:3, unit:'un',  checked:false, suggested_price:4.50},
+      {id:uid(), list_id:'__replace__', name:'Shampoo Pantene',        qty:1, unit:'un',  checked:false, suggested_price:19.90},
+      {id:uid(), list_id:'__replace__', name:'Papel higiênico 16un',   qty:1, unit:'pct', checked:true,  suggested_price:32.90},
     ],
   };
 
