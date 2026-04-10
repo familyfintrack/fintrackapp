@@ -25501,7 +25501,7 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
 .acm-pane.active {
   display: block;
   pointer-events: auto; /* restore interactivity when visible */
-  animation: acmPaneFade .18s ease both;
+  animation: acmPaneFade .18s ease forwards;
 }
 /* Garantia extra: inputs/selects/textareas dentro do pane ativo são sempre interativos */
 .acm-pane.active input,
