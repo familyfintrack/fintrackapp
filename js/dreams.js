@@ -159,7 +159,8 @@ async function initDreamsPage() {
       <div style="font-size:.95rem;font-weight:600;color:var(--text)">Carregando sonhos…</div>
     </div>`;
   }
-  await loadDreams();
+  // Always force-reload on page navigation (avoids stale cache from previous errors)
+  await loadDreams(true);
   renderDreamsPage();
 }
 window.initDreamsPage = initDreamsPage;
@@ -168,9 +169,20 @@ window.initDreamsPage = initDreamsPage;
 async function loadDreams(force = false) {
   if (_drm.loaded && !force) return;
   try {
-    const { data, error } = await famQ(
-      sb.from('dreams').select('*')
-    ).order('priority', { ascending: true }).order('created_at', { ascending: false });
+    const fid2 = typeof famId === 'function' ? famId() : (typeof currentUser !== 'undefined' ? currentUser?.family_id : null);
+    let data, error;
+    if (fid2) {
+      // Direct query with explicit family_id — avoids famQ() chain issues
+      ({ data, error } = await sb.from('dreams').select('*')
+        .eq('family_id', fid2)
+        .order('priority', { ascending: true })
+        .order('created_at', { ascending: false }));
+    } else {
+      // Fallback to famQ
+      ({ data, error } = await famQ(
+        sb.from('dreams').select('*')
+      ).order('priority', { ascending: true }).order('created_at', { ascending: false }));
+    }
 
     // Se a tabela não existe ainda (código 42P01), avisa no container
     if (error) {
@@ -222,7 +234,7 @@ async function loadDreams(force = false) {
   } catch (e) {
     console.warn('[Dreams] loadDreams error:', e?.message || e);
     _drm.dreams = [];
-    _drm.loaded = true;
+    _drm.loaded = false;  // Don't mark as loaded on error — allow retry on next navigation
   }
 }
 

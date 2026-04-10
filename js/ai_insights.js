@@ -1457,35 +1457,96 @@ REGRAS FINAIS:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 6000,
-        temperature: 0.2,
-        responseMimeType: 'application/json',  // force pure JSON — no markdown, no preamble
-      },
-    }),
-  });
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: 8000,
+      temperature: 0.2,
+      responseMimeType: 'application/json',
+    },
+  };
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    const msg = err?.error?.message || `HTTP ${resp.status}`;
-    if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde alguns segundos.');
-    throw new Error(msg);
+  // Retry helper — models can be overloaded or return 503 transiently
+  async function _callWithRetry(body, maxRetries = 2) {
+    let lastErr;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        const delay = attempt * 8000; // 8s, 16s
+        console.warn(`[AIInsights] Retry ${attempt} after ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+      let resp;
+      try {
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      } catch(networkErr) {
+        lastErr = new Error('Erro de rede: ' + networkErr.message);
+        continue;
+      }
+
+      if (resp.ok) return await resp.json();
+
+      const errBody = await resp.json().catch(() => ({}));
+      const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
+
+      if (resp.status === 429 || resp.status === 503) {
+        lastErr = new Error(
+          resp.status === 429
+            ? 'Limite de requisições atingido. Aguarde alguns segundos e tente novamente.'
+            : 'Modelo temporariamente sobrecarregado (alta demanda). Tentando novamente…'
+        );
+        // Only retry on 503/429
+        continue;
+      }
+
+      // 400 = unsupported config (e.g. responseMimeType not supported by this model)
+      if (resp.status === 400 && body.generationConfig?.responseMimeType) {
+        console.warn('[AIInsights] responseMimeType not supported, retrying without it');
+        const fallbackBody = { ...body, generationConfig: { ...body.generationConfig } };
+        delete fallbackBody.generationConfig.responseMimeType;
+        return await _callWithRetry(fallbackBody, 0);
+      }
+
+      throw new Error(errMsg);
+    }
+    throw lastErr || new Error('Falha após múltiplas tentativas. Tente novamente mais tarde.');
   }
 
-  const data = await resp.json();
-  // Collect all text parts (model may split across multiple parts)
-  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const data = await _callWithRetry(requestBody);
+
+  // ── Parse the response ──────────────────────────────────────────────────
+  const candidate = data?.candidates?.[0];
+
+  // Check finishReason — truncated/blocked responses can't be parsed
+  const finishReason = candidate?.finishReason || '';
+  if (finishReason === 'MAX_TOKENS') {
+    throw new Error('Resposta truncada (período muito longo). Reduza o intervalo de datas e tente novamente.');
+  }
+  if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+    throw new Error('Resposta bloqueada pelo modelo de segurança da IA. Altere o contexto e tente novamente.');
+  }
+  if (!candidate || !candidate.content) {
+    // Check for promptFeedback blockReason
+    const blockReason = data?.promptFeedback?.blockReason;
+    if (blockReason) throw new Error('Prompt bloqueado: ' + blockReason);
+    throw new Error('O modelo não retornou resposta. Tente novamente ou use um modelo diferente.');
+  }
+
+  // Collect all text parts
+  const parts = candidate.content?.parts || [];
   const raw   = parts.map(p => p.text || '').join('');
 
-  // Strip markdown fences and any leading/trailing non-JSON content
+  if (!raw.trim()) {
+    throw new Error('O modelo retornou resposta vazia. Tente novamente.');
+  }
+
+  // Strip markdown fences
   let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 
-  // Robust extraction: find outermost { ... }
+  // Extract outermost { ... }
   const jsonStart = clean.indexOf('{');
   const jsonEnd   = clean.lastIndexOf('}');
   if (jsonStart !== -1 && jsonEnd > jsonStart) {
@@ -1496,14 +1557,15 @@ REGRAS FINAIS:
   try {
     parsed = JSON.parse(clean);
   } catch(parseErr) {
-    // Last resort: try to salvage a partial response by finding the largest valid JSON object
-    console.warn('[AIInsights] JSON parse failed, attempting recovery:', parseErr.message);
+    console.warn('[AIInsights] JSON parse failed:', parseErr.message, '\nRaw (first 500):', raw.slice(0, 500));
     const match = clean.match(/\{[\s\S]+\}/);
     if (match) {
       try { parsed = JSON.parse(match[0]); }
-      catch { throw new Error('Resposta inválida da IA — o modelo não retornou JSON válido. Tente novamente ou reduza o período selecionado.'); }
+      catch {
+        throw new Error('Resposta inválida da IA. O modelo retornou texto que não é JSON. Tente reduzir o período ou use outro modelo.');
+      }
     } else {
-      throw new Error('Resposta inválida da IA — o modelo não retornou JSON válido. Tente novamente ou reduza o período selecionado.');
+      throw new Error('Resposta inválida da IA. O modelo retornou texto que não é JSON. Tente reduzir o período ou use outro modelo.');
     }
   }
 
