@@ -2658,12 +2658,24 @@ async function _openPatrimonioModal() {
 
   let debtTotal = 0, debts = [];
   try {
-    const { data: dd, error: de } = await famQ(
-      sb.from('debts').select('id,name,description,current_balance,original_amount,currency,status,fixed_rate,adjustment_type,creditor')
-    ).eq('status','active').order('current_balance',{ascending:false});
-    if (!de) { debts = dd || []; }
+    // Use already-loaded debts from the debts module if available
+    if (typeof _dbt !== 'undefined' && _dbt.loaded && Array.isArray(_dbt.debts)) {
+      debts = _dbt.debts.filter(d => d.status === 'active');
+    } else {
+      // Fallback: fresh query with creditor join
+      const { data: dd, error: de } = await famQ(
+        sb.from('debts')
+          .select('id,description,name,current_balance,original_amount,currency,status,fixed_rate,adjustment_type,creditor:payees!debts_creditor_payee_id_fkey(id,name)')
+      ).eq('status', 'active').order('current_balance', { ascending: false });
+      if (!de) { debts = dd || []; }
+      else {
+        // RLS fallback: simpler query
+        const { data: ds } = await famQ(sb.from('debts').select('*')).eq('status', 'active');
+        debts = ds || [];
+      }
+    }
   } catch(_) {}
-  debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance??d.original_amount)||0, d.currency||'BRL'), 0);
+  debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance ?? d.original_amount) || 0, d.currency || 'BRL'), 0);
 
   const totalPassivos = debtTotal + cardDebt;
   const totalLiquido  = accountTotal - debtTotal;
@@ -3034,7 +3046,7 @@ async function _openPatrimonioModal() {
             display:flex;align-items:center;justify-content:center;font-size:1rem">📋</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||d.description||'—')}</div>
-            <div style="font-size:.67rem;color:var(--muted);margin-top:1px">${d.creditor?.name||d.creditor||''}${d.fixed_rate?` · ${(+d.fixed_rate).toFixed(2)}% a.m.`:''}</div>
+            <div style="font-size:.67rem;color:var(--muted);margin-top:1px">${(()=>{ const cr=d.creditor; return (typeof cr==='object'?cr?.name:cr)||d.creditor_name||''; })()}${d.fixed_rate?` · ${(+d.fixed_rate).toFixed(2)}% a.m.`:''}</div>
             ${orig > 0 ? `
             <div style="margin-top:6px">
               <div style="display:flex;justify-content:space-between;margin-bottom:3px">
