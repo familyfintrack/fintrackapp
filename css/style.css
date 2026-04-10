@@ -7098,18 +7098,25 @@ tr.tx-pending { background: rgba(251,191,36,.05); }
 .forecast-table-wrap table { width:100%; table-layout:fixed; }
 .forecast-tx-row td { padding:7px 10px; vertical-align:middle; }
 .forecast-date-cell {
-  width: 10%;
-  min-width: 62px;
-  max-width: 90px;
+  width: 7%;
+  min-width: 52px;
+  max-width: 72px;
   padding: 4px 6px;
   color: var(--muted);
   vertical-align: middle;
-  border-right: 1px solid var(--border);
-  position: sticky;
-  left: 0;
-  background: var(--surface);
-  z-index: 1;
+  border-right: none;
   white-space: nowrap;
+}
+.forecast-date-simple {
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.forecast-date-cell--today .forecast-date-simple {
+  color: var(--accent);
+  font-weight: 700;
 }
 .forecast-head-date {
   width: 10%;
@@ -18242,18 +18249,7 @@ section[data-page="transactions"] .content {
   padding-right:2px !important;
   vertical-align:top;
 }
-.forecast-date-card{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  min-height:44px;
-  padding:3px 2px;
-  border-radius:8px;
-  background:transparent;
-  border:none;
-  box-shadow:none;
-}
+/* .forecast-date-card removed — replaced by .forecast-date-simple */
 /* Highlight only today's date row */
 .forecast-date-cell--today .forecast-date-card{
   background:rgba(42,96,73,.08);
