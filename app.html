@@ -2381,6 +2381,21 @@
         <div id="upcomingCardArrow" style="display:none"></div>
         <div id="scheduledUpcomingTitle" style="display:none"></div>
       </div>
+
+      <!-- ══ A/R: Valores a Receber ════════════════════════════════ -->
+      <div id="scArSection" style="padding:16px 16px 0;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);display:flex;align-items:center;gap:6px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Valores a Receber
+            <span id="scArCount" style="background:#fef3c7;color:#d97706;font-size:.65rem;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #fde68a"></span>
+          </div>
+          <button onclick="_scArLoad()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:3px 9px;font-size:.72rem;color:var(--muted);cursor:pointer;font-family:inherit">↻</button>
+        </div>
+        <div id="scArList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px"></div>
+      </div>
+
+    
     </div>    <!-- IMPORT / BACKUP PAGE -->
     <!-- Feature 4: Lista de Mercado -->
     <div class="page" id="page-grocery">
@@ -3936,32 +3951,7 @@
       </div>
     </div>
 
-      <!-- ── A Receber button: opens modal with full receivables view ──────── -->
-      <div id="scArAccessBar" style="padding:10px 14px 4px">
-        <button onclick="openReceivablesModal()" style="
-          width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
-          padding:11px 16px;border-radius:12px;border:1.5px dashed var(--accent);
-          background:color-mix(in srgb,var(--accent) 5%,var(--surface));
-          color:var(--accent);font-family:var(--font-sans);font-size:.82rem;
-          font-weight:700;cursor:pointer;transition:all .15s">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          📬 A Receber
-          <span id="scArBadgeBtn" style="display:none;background:#dc2626;color:#fff;font-size:.65rem;font-weight:800;border-radius:100px;padding:1px 7px;margin-left:4px">0</span>
-        </button>
-      </div>
-
-      <!-- ══ A/R: Valores a Receber ════════════════════════════════ -->
-      <div id="scArSection" style="padding:16px 16px 0;display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);display:flex;align-items:center;gap:6px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Valores a Receber
-            <span id="scArCount" style="background:#fef3c7;color:#d97706;font-size:.65rem;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #fde68a"></span>
-          </div>
-          <button onclick="_scArLoad()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:3px 9px;font-size:.72rem;color:var(--muted);cursor:pointer;font-family:inherit">↻</button>
-        </div>
-        <div id="scArList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:16px"></div>
-      </div>
+      
 
     <!-- ════════════════════════════════════════════════════════
          AI INSIGHTS — Análise IA + Chat financeiro
@@ -10987,68 +10977,6 @@ window.openMyProfile = function(...args) {
   </script>
 
 <!-- ══ AGENT PANEL — FinTrack Copiloto v4 ══════════════════════════════════ -->
-<!-- ── A Receber modal (slide-up from Programados) ─────────────────────── -->
-<div id="receivablesModal" onclick="if(event.target===this)closeReceivablesModal()" style="
-  display:none;position:fixed;inset:0;z-index:9800;
-  background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center">
-  <div id="receivablesModalSheet" style="
-    width:100%;max-width:600px;
-    background:var(--surface);border-radius:20px 20px 0 0;
-    max-height:90dvh;display:flex;flex-direction:column;
-    box-shadow:0 -16px 50px rgba(0,0,0,.3)">
-    <div style="display:flex;align-items:center;justify-content:space-between;
-      padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:10px;
-          background:linear-gradient(135deg,#1e5c42,#2a7550);
-          display:flex;align-items:center;justify-content:center;font-size:1.1rem">📬</div>
-        <div>
-          <div style="font-size:.92rem;font-weight:800;color:var(--text)">A Receber</div>
-          <div style="font-size:.72rem;color:var(--muted)">Receitas pendentes de recebimento</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button onclick="loadReceivables()" style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">↻</button>
-        <button onclick="closeReceivablesModal()" style="width:30px;height:30px;border-radius:8px;border:none;background:var(--surface2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);flex-shrink:0">
-      <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)">
-        <div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total</div>
-        <div id="receivablesTotalAmt" style="font-size:1.05rem;font-weight:800;color:var(--accent)">—</div>
-      </div>
-      <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)" id="receivablesOverdueWrap">
-        <div style="font-size:.6rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.06em">⚠ Atraso</div>
-        <div id="receivablesOverdueAmt" style="font-size:1.05rem;font-weight:800;color:#dc2626">—</div>
-      </div>
-      <div style="padding:10px 14px;text-align:center">
-        <div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Itens</div>
-        <div id="receivablesCount" style="font-size:1.05rem;font-weight:800;color:var(--text)">0</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:6px;padding:10px 14px 6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
-      <button class="recv-ftab active" id="recvFiltAll"      onclick="_recvFilter('all',this)">Todos</button>
-      <button class="recv-ftab"        id="recvFiltOver"     onclick="_recvFilter('overdue',this)">⚠️ Atraso</button>
-      <button class="recv-ftab"        id="recvFiltToday"    onclick="_recvFilter('today',this)">Hoje</button>
-      <button class="recv-ftab"        id="recvFiltUpcoming" onclick="_recvFilter('upcoming',this)">A vencer</button>
-      <button class="recv-ftab"        id="recvFiltTx"       onclick="_recvFilter('tx',this)">Transações</button>
-      <button class="recv-ftab"        id="recvFiltAr"       onclick="_recvFilter('ar',this)">Programados</button>
-    </div>
-    <div id="receivablesBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--surface)">
-      <div style="text-align:center;padding:48px;color:var(--muted)">⏳ Carregando…</div>
-    </div>
-    <div style="padding:10px 14px 12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
-      <button onclick="_recvAddManual()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-sans);font-size:.78rem;font-weight:600;cursor:pointer">✏️ Lançar manual</button>
-      <button onclick="closeReceivablesModal();navigate('receivables')" style="padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:var(--font-sans);font-size:.78rem;font-weight:700;cursor:pointer">Tela completa →</button>
-    </div>
-  </div>
-</div>
-<style>
-#receivablesModal.rm-open { display:flex; }
-#receivablesModal.rm-open #receivablesModalSheet { animation: rmSlideUp .28s cubic-bezier(.4,0,.2,1); }
-@keyframes rmSlideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
-</style>
-
 <div id="agentPanel" class="agent-panel" style="display:none">
 
   <!-- ── Header ── -->
@@ -11343,6 +11271,70 @@ window.openMyProfile = function(...args) {
   .agent-panel { border-radius: 18px 18px 0 0; }
   .ag-bubble { max-width: calc(100% - 48px); }
 }
+</style>
+
+
+
+<!-- ── A Receber modal (slide-up from Programados) ─────────────────────── -->
+<div id="receivablesModal" onclick="if(event.target===this)closeReceivablesModal()" style="
+  display:none;position:fixed;inset:0;z-index:9800;
+  background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center">
+  <div id="receivablesModalSheet" style="
+    width:100%;max-width:600px;
+    background:var(--surface);border-radius:20px 20px 0 0;
+    max-height:90dvh;display:flex;flex-direction:column;
+    box-shadow:0 -16px 50px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;
+      padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:10px;
+          background:linear-gradient(135deg,#1e5c42,#2a7550);
+          display:flex;align-items:center;justify-content:center;font-size:1.1rem">📬</div>
+        <div>
+          <div style="font-size:.92rem;font-weight:800;color:var(--text)">A Receber</div>
+          <div style="font-size:.72rem;color:var(--muted)">Receitas pendentes de recebimento</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="loadReceivables()" style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer">↻</button>
+        <button onclick="closeReceivablesModal()" style="width:30px;height:30px;border-radius:8px;border:none;background:var(--surface2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)">
+        <div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total</div>
+        <div id="receivablesTotalAmt" style="font-size:1.05rem;font-weight:800;color:var(--accent)">—</div>
+      </div>
+      <div style="padding:10px 14px;text-align:center;border-right:1px solid var(--border)" id="receivablesOverdueWrap">
+        <div style="font-size:.6rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.06em">⚠ Atraso</div>
+        <div id="receivablesOverdueAmt" style="font-size:1.05rem;font-weight:800;color:#dc2626">—</div>
+      </div>
+      <div style="padding:10px 14px;text-align:center">
+        <div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Itens</div>
+        <div id="receivablesCount" style="font-size:1.05rem;font-weight:800;color:var(--text)">0</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;padding:10px 14px 6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0">
+      <button class="recv-ftab active" id="recvFiltAll"      onclick="_recvFilter('all',this)">Todos</button>
+      <button class="recv-ftab"        id="recvFiltOver"     onclick="_recvFilter('overdue',this)">⚠️ Atraso</button>
+      <button class="recv-ftab"        id="recvFiltToday"    onclick="_recvFilter('today',this)">Hoje</button>
+      <button class="recv-ftab"        id="recvFiltUpcoming" onclick="_recvFilter('upcoming',this)">A vencer</button>
+      <button class="recv-ftab"        id="recvFiltTx"       onclick="_recvFilter('tx',this)">Transações</button>
+      <button class="recv-ftab"        id="recvFiltAr"       onclick="_recvFilter('ar',this)">Programados</button>
+    </div>
+    <div id="receivablesBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--surface)">
+      <div style="text-align:center;padding:48px;color:var(--muted)">⏳ Carregando…</div>
+    </div>
+    <div style="padding:10px 14px 12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
+      <button onclick="_recvAddManual()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-sans);font-size:.78rem;font-weight:600;cursor:pointer">✏️ Lançar manual</button>
+      <button onclick="closeReceivablesModal();navigate('receivables')" style="padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:var(--font-sans);font-size:.78rem;font-weight:700;cursor:pointer">Tela completa →</button>
+    </div>
+  </div>
+</div>
+<style>
+#receivablesModal.rm-open { display:flex; }
+#receivablesModal.rm-open #receivablesModalSheet { animation: rmSlideUp .28s cubic-bezier(.4,0,.2,1); }
+@keyframes rmSlideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
 </style>
 
 </body>
