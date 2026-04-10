@@ -6305,6 +6305,11 @@ Se você não solicitou isso, ignore este e-mail.`,
         <span id="scWzStepLabel" style="font-size:.78rem;color:var(--muted)"></span>
         <button class="btn btn-primary" id="scWzNext" onclick="scWizardNext()">Próximo →</button>
       </div>
+      <button class="btn btn-ghost" id="scReimbBtn" onclick="openReimbModal('sc', document.getElementById('scId')?.value||'')"
+        title="Vincular reembolso" style="display:none;gap:5px;align-items:center;font-size:.78rem">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Reembolso
+      </button>
       <button class="btn btn-ghost" id="scSplitBtn" onclick="openScSplitModal()" title="Dividir por categoria ou membro da família">
         ✂️ Divisão
       </button>
@@ -6883,8 +6888,10 @@ Se você não solicitou isso, ignore este e-mail.`,
     <!-- Footer -->
     <div class="modal-footer" id="txModalFooter">
       <button class="btn btn-ghost" onclick="closeModal('txModal')">Cancelar</button>
-      <button class="btn btn-ghost" id="txLinkOpenBtn" onclick="typeof openTxLinkModal==='function'&&openTxLinkModal(document.getElementById('txId')?.value)" title="Vincular com outro lançamento (reembolso, compensação)" style="display:none">
-        🔗 Vincular
+      <button class="btn btn-ghost" id="txReimbBtn" onclick="openReimbModal('tx', document.getElementById('txId')?.value||'_new_')"
+        title="Vincular reembolso" style="display:none;gap:5px;align-items:center;font-size:.78rem">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Reembolso
       </button>
       <button class="btn btn-ghost" id="txSplitOpenBtn" onclick="_openSplitModal()" title="Dividir por categoria ou membro">
         ✂️ Divisão
@@ -8310,6 +8317,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/tx_splits.js"></script>
   <script src="js/bulk_tx.js"></script>
   <script src="js/sc_split.js"></script>
+  <script src="js/tx_reimb.js"></script>
   <script src="js/budgets.js"></script>
   <script src="js/fx_rates.js"></script>
   <script src="js/dashboard.js"></script>
@@ -11454,6 +11462,19 @@ body.dark .agent-welcome-card { background: var(--surface2); }
 </style>
 
   <script src="js/objectives.js"></script>
+
+<!-- ══ Modal: Vínculo de Reembolso ═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="reimbModal" onclick="if(event.target===this)closeModal('reimbModal')">
+  <div class="modal" style="max-width:460px;padding:0;border-radius:14px;overflow:hidden;max-height:85dvh;display:flex;flex-direction:column">
+    <div class="modal-handle"></div>
+    <div class="modal-header" style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <span class="modal-title">🔗 Vincular Reembolso</span>
+      <button class="modal-close" onclick="closeModal('reimbModal')">✕</button>
+    </div>
+    <div id="reimbModalBody" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+  </div>
+</div>
+
 </body>
 </html>
 
