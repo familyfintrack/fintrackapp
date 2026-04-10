@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cadastro Beta — Family FinTrack</title>
+<meta name="theme-color" content="#0a1e12">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="robots" content="noindex,nofollow">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body,input,button,select,textarea{font-family:'Nunito',system-ui,-apple-system,sans-serif}
+
+@keyframes lgnFadeUp   {from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lgnOrbDrift {0%{transform:translate(0,0)}100%{transform:translate(30px,-22px)}}
+@keyframes lgnBgPulse  {from{opacity:.8}to{opacity:1;transform:scale(1.03)}}
+@keyframes lgnBtnGlow  {0%,100%{box-shadow:0 4px 24px rgba(125,194,66,.28)}50%{box-shadow:0 6px 40px rgba(125,194,66,.50)}}
+@keyframes lgnPulse    {0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes betaGlow    {0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
+
+html,body{height:100%;overflow:hidden}
+.lgn-screen{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:20px 16px;height:100dvh;width:100%;background:#0a1e12;
+  overflow:hidden;touch-action:none;overscroll-behavior:none;
+  -webkit-overflow-scrolling:auto;user-select:none;-webkit-user-select:none
+}
+.lgn-screen::after{
+  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 65% at 10% 15%,rgba(45,106,68,.30) 0%,transparent 60%),
+    radial-gradient(ellipse  70% 80% at 90% 75%,rgba(26,61,39,.25) 0%,transparent 55%),
+    radial-gradient(ellipse  55% 35% at 50% -5%,rgba(125,194,66,.07) 0%,transparent 55%);
+  animation:lgnBgPulse 14s ease-in-out infinite alternate
+}
+.lgn-orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0}
+.lgn-orb1{width:500px;height:500px;background:rgba(45,106,68,.26);top:-150px;left:-120px;animation:lgnOrbDrift 24s ease-in-out infinite alternate}
+.lgn-orb2{width:360px;height:360px;background:rgba(125,194,66,.09);bottom:-60px;right:-80px;animation:lgnOrbDrift 18s ease-in-out infinite alternate-reverse}
+
+.lgn-centered-wrap{
+  position:relative;z-index:1;width:100%;max-width:420px;
+  max-height:calc(100dvh - 32px);overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch
+}
+.lgn-centered-wrap::-webkit-scrollbar{display:none}
+
+.lgn-card{
+  width:100%;background:#ffffff;border-radius:20px;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06);
+  animation:lgnFadeUp .48s cubic-bezier(.22,.68,0,1.2) both
+}
+
+.lgn-logo-wrap{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px 20px 16px;
+  background:linear-gradient(160deg,#0a2010 0%,#0d3d28 55%,#1a5c38 100%);
+  position:relative
+}
+.lgn-logo-wrap::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(125,194,66,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(125,194,66,.08) 1px,transparent 1px);
+  background-size:36px 36px
+}
+.lgn-logo-img{height:90px;width:auto;object-fit:contain;position:relative;z-index:1}
+.lgn-badge{
+  position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;
+  margin-top:8px;font-size:.58rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.55);background:rgba(255,255,255,.06);border-radius:100px;
+  padding:5px 12px;border:1px solid rgba(255,255,255,.1)
+}
+.lgn-badge-dot{width:6px;height:6px;border-radius:50%;background:#7dc242;flex-shrink:0;animation:lgnPulse 2s infinite}
+
+/* ── Beta badge ── */
+.beta-arrived{
+  margin:0 24px 0;padding:14px 18px;border-radius:12px 12px 0 0;
+  background:linear-gradient(135deg,#1e5c42,#2a7550);
+  text-align:center
+}
+.beta-arrived-label{font-size:.6rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px}
+.beta-arrived-title{font-size:1.35rem;font-weight:900;color:#fff;letter-spacing:-.02em}
+.beta-arrived-sub{font-size:.8rem;color:rgba(255,255,255,.65);margin-top:3px}
+
+.lgn-form-body{padding:18px 24px 22px;overflow-x:hidden}
+
+.lgn-form-title{
+  font-size:1.1rem;font-weight:700;color:#0a1e12;
+  letter-spacing:-.02em;margin-bottom:3px;text-align:center
+}
+.lgn-form-sub{font-size:.78rem;color:#64748b;text-align:center;margin-bottom:16px;line-height:1.5}
+
+.lgn-field-group{margin-bottom:13px}
+.lgn-label{
+  display:block!important;font-size:.65rem!important;font-weight:700!important;
+  color:#475569!important;letter-spacing:.06em!important;text-transform:uppercase!important;
+  margin-bottom:5px!important
+}
+.lgn-input{
+  width:100%;padding:11px 14px;
+  border:1.5px solid #e2e8f0;border-radius:10px;
+  font-size:.88rem;font-family:inherit;color:#111827;
+  background:#f8fafc;outline:none;transition:border-color .18s,box-shadow .18s
+}
+.lgn-input:focus{border-color:#2a6049;box-shadow:0 0 0 3px rgba(42,96,73,.12);background:#fff}
+.lgn-input::placeholder{color:#94a3b8}
+
+.lgn-btn-primary{
+  width:100%;padding:12px 24px;
+  font-family:inherit;font-size:.9rem;font-weight:800;
+  color:#0a1e12;
+  background:linear-gradient(135deg,#7dc242 0%,#5aad24 100%);
+  border:none;border-radius:11px;cursor:pointer;
+  box-shadow:0 4px 24px rgba(125,194,66,.28);
+  animation:lgnBtnGlow 3s ease-in-out infinite;
+  transition:opacity .18s,transform .18s;
+  margin-top:4px
+}
+.lgn-btn-primary:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+.lgn-btn-primary:disabled{opacity:.6;cursor:default;animation:none}
+
+.lgn-link{
+  background:none;border:none;cursor:pointer;font-family:inherit;
+  font-size:.8rem;font-weight:700;color:#2a6049;text-decoration:underline;
+  padding:0;transition:color .14s
+}
+.lgn-link:hover{color:#1a5c38}
+
+.lgn-error{color:#dc2626;font-size:.8rem;text-align:center;display:none;margin-top:10px}
+.lgn-success{color:#16a34a;font-size:.82rem;text-align:center;display:none;margin-top:10px;font-weight:700}
+
+/* ── Termos de uso ── */
+.terms-box{
+  background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;
+  padding:14px 16px;font-size:.76rem;color:#475569;line-height:1.65;
+  max-height:140px;overflow-y:auto;margin-bottom:10px;scrollbar-width:thin
+}
+.terms-box strong{color:#0a1e12}
+.terms-accept{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:.8rem;color:#374151;cursor:pointer;margin-bottom:14px
+}
+.terms-accept input[type=checkbox]{
+  width:16px;height:16px;accent-color:#2a6049;cursor:pointer;flex-shrink:0;margin-top:2px
+}
+
+/* ── Dados pré-preenchidos ── */
+.prefill-badge{
+  display:inline-flex;align-items:center;gap:5px;font-size:.65rem;font-weight:700;
+  color:#2a6049;background:rgba(42,96,73,.1);border:1px solid rgba(42,96,73,.2);
+  border-radius:6px;padding:2px 8px;margin-top:3px
+}
+
+/* ── Sucesso ── */
+.success-panel{display:none;text-align:center;padding:8px 0 16px}
+.success-icon{font-size:3rem;margin-bottom:12px}
+.success-title{font-size:1.05rem;font-weight:800;color:#0a1e12;margin-bottom:6px}
+.success-sub{font-size:.82rem;color:#64748b;line-height:1.55}
+
+@media(max-width:480px){
+  .lgn-form-body{padding:14px 18px 18px}
+  .beta-arrived{margin:0 16px 0}
+}
+</style>
+</head>
+<body>
+<div class="lgn-screen">
+  <div class="lgn-orb lgn-orb1"></div>
+  <div class="lgn-orb lgn-orb2"></div>
+
+  <div class="lgn-centered-wrap">
+    <div class="lgn-card">
+
+      <!-- Logo header -->
+      <div class="lgn-logo-wrap">
+        <img src="logo_glow_soft.png" alt="Family FinTrack" class="lgn-logo-img">
+        <div class="lgn-badge"><span class="lgn-badge-dot"></span>FAMILY FINTRACK · BETA</div>
+      </div>
+
+      <!-- Chegou a sua vez! -->
+      <div class="beta-arrived">
+        <div class="beta-arrived-label">🎉 Convite especial</div>
+        <div class="beta-arrived-title">Chegou a sua vez!</div>
+        <div class="beta-arrived-sub">Você foi convidado(a) para o programa beta</div>
+      </div>
+
+      <div class="lgn-form-body">
+
+        <!-- Formulário de cadastro -->
+        <div id="regFormArea">
+          <div class="lgn-form-title">Finalizar cadastro</div>
+          <div class="lgn-form-sub" id="regFormSub">
+            Confirme seus dados e crie sua senha para começar.
+          </div>
+
+          <div class="lgn-field-group">
+            <label class="lgn-label">Nome completo</label>
+            <input type="text" id="regName" class="lgn-input" placeholder="Seu nome completo" autocomplete="name">
+          </div>
+
+          <div class="lgn-field-group">
+            <label class="lgn-label">E-mail</label>
+            <input type="email" id="regEmail" class="lgn-input" placeholder="seu@email.com" autocomplete="email">
+            <span class="prefill-badge" id="emailPrefillBadge" style="display:none">✓ Confirmado pelo convite</span>
+          </div>
+
+          <div class="lgn-field-group">
+            <label class="lgn-label">Crie sua senha (mín. 8 caracteres)</label>
+            <input type="password" id="regPwd" class="lgn-input" placeholder="••••••••" autocomplete="new-password">
+          </div>
+
+          <div class="lgn-field-group">
+            <label class="lgn-label">Confirmar senha</label>
+            <input type="password" id="regPwd2" class="lgn-input" placeholder="••••••••" autocomplete="new-password"
+              onkeydown="if(event.key==='Enter')_regSubmit()">
+          </div>
+
+          <!-- Termos de uso Beta -->
+          <div style="margin-bottom:14px">
+            <div class="lgn-label" style="margin-bottom:8px">Termos de Uso — Versão Beta</div>
+            <div class="terms-box">
+              <strong>Programa Beta — JF Family FinTrack</strong><br><br>
+              Bem-vindo(a) ao programa beta do Family FinTrack! Ao se cadastrar, você aceita as condições abaixo:<br><br>
+              <strong>1. Uso gratuito.</strong> O acesso ao app durante a fase beta é totalmente gratuito e sem compromisso de contratação futura.<br><br>
+              <strong>2. Software em testes.</strong> Este sistema está em fase de desenvolvimento ativo. Podem ocorrer instabilidades, lentidões ou comportamentos inesperados.<br><br>
+              <strong>3. Risco de perda de dados.</strong> Não nos responsabilizamos por eventual perda ou corrompimento de dados decorrente de bugs. <strong>Recomendamos fortemente</strong> o uso regular das ferramentas de backup disponíveis no aplicativo para proteger suas informações.<br><br>
+              <strong>4. Sua contribuição é valiosa.</strong> Em contrapartida, esperamos que você reporte anomalias, bugs e oportunidades de melhoria com o máximo de detalhes possível — o que aconteceu, como reproduzir, prints se possível. Isso é fundamental para evoluirmos o produto.<br><br>
+              <strong>5. Privacidade.</strong> Seus dados financeiros são armazenados com segurança no Supabase (criptografia em trânsito e em repouso) e jamais são compartilhados com terceiros.
+            </div>
+            <label class="terms-accept">
+              <input type="checkbox" id="termsCheck">
+              <span>Li e aceito os <strong>Termos de Uso Beta</strong>. Entendo que a ferramenta está em fase de testes e comprometo-me a reportar problemas encontrados.</span>
+            </label>
+          </div>
+
+          <button class="lgn-btn-primary" id="regBtn" onclick="_regSubmit()" disabled>
+            Criar minha conta
+          </button>
+
+          <div class="lgn-error" id="regError"></div>
+
+          <div style="text-align:center;margin-top:14px">
+            <a href="login.html" class="lgn-link">← Já tenho conta — fazer login</a>
+          </div>
+        </div>
+
+        <!-- Sucesso -->
+        <div class="success-panel" id="regSuccess">
+          <div class="success-icon">🎉</div>
+          <div class="success-title">Cadastro concluído!</div>
+          <div class="success-sub" id="regSuccessMsg">
+            Sua conta foi criada com sucesso.<br>
+            Você receberá um e-mail para definir sua senha.<br>Após isso, já pode fazer login!
+          </div>
+          <div style="margin-top:20px">
+            <a href="login.html">
+              <button class="lgn-btn-primary" style="max-width:240px;margin:0 auto">Ir para o login →</button>
+            </a>
+          </div>
+        </div>
+
+      </div><!-- /lgn-form-body -->
+    </div><!-- /lgn-card -->
+
+    <div style="text-align:center;margin-top:14px;font-size:.72rem;color:rgba(255,255,255,.35)">
+      JF Family FinTrack · Programa Beta · Acesso por convite
+    </div>
+  </div>
+</div>
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" crossorigin="anonymous"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/settings.js"></script>
+
+<script>
+/* ══ Register page logic ══════════════════════════════════════════════════ */
+const _REG = { token: null, email: null, name: null, userId: null };
+
+// ── Init: parse URL params ───────────────────────────────────────────────
+(function _regInit() {
+  const p = new URLSearchParams(window.location.search);
+  _REG.token  = p.get('token')  || '';
+  _REG.email  = p.get('email')  || '';
+  _REG.name   = p.get('name')   || '';
+  _REG.userId = p.get('uid')    || '';
+
+  if (_REG.email) {
+    const emailEl = document.getElementById('regEmail');
+    if (emailEl) {
+      emailEl.value    = decodeURIComponent(_REG.email);
+      emailEl.readOnly = true;
+      emailEl.style.background = '#f0fdf4';
+      emailEl.style.color      = '#15803d';
+    }
+    const badge = document.getElementById('emailPrefillBadge');
+    if (badge) badge.style.display = '';
+  }
+  if (_REG.name) {
+    const nameEl = document.getElementById('regName');
+    if (nameEl) nameEl.value = decodeURIComponent(_REG.name);
+  }
+  if (_REG.email || _REG.name) {
+    const sub = document.getElementById('regFormSub');
+    if (sub) sub.textContent = 'Seus dados foram pré-preenchidos. Crie uma senha e aceite os termos.';
+  }
+
+  // Enable button only when terms are checked
+  const check = document.getElementById('termsCheck');
+  const btn   = document.getElementById('regBtn');
+  if (check && btn) {
+    check.addEventListener('change', () => { btn.disabled = !check.checked; });
+  }
+})();
+
+// ── Submit registration ──────────────────────────────────────────────────
+async function _regSubmit() {
+  const errEl = document.getElementById('regError');
+  errEl.style.display = 'none';
+
+  const name   = document.getElementById('regName').value.trim();
+  const email  = document.getElementById('regEmail').value.trim().toLowerCase();
+  const pwd    = document.getElementById('regPwd').value;
+  const pwd2   = document.getElementById('regPwd2').value;
+  const terms  = document.getElementById('termsCheck').checked;
+  const btn    = document.getElementById('regBtn');
+
+  if (!name)          return _regErr('Informe seu nome completo.');
+  if (!email)         return _regErr('Informe seu e-mail.');
+  if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) return _regErr('E-mail inválido.');
+  if (pwd.length < 8) return _regErr('Senha mínima: 8 caracteres.');
+  if (pwd !== pwd2)   return _regErr('As senhas não conferem.');
+  if (!terms)         return _regErr('Você precisa aceitar os Termos de Uso para continuar.');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Criando conta…';
+
+  try {
+    // 1. Hash password (same as main app)
+    const pwdHash = await _regSha256(pwd);
+
+    // 2. Validate token + register via RPC
+    const rpcPayload = {
+      p_name:          name,
+      p_email:         email,
+      p_password_hash: pwdHash,
+      p_token:         _REG.token  || null,
+      p_user_id:       _REG.userId || null,
+    };
+
+    // Try dedicated invite registration RPC first
+    let regErr = null;
+    try {
+      const { error } = await sb.rpc('register_invited_user', rpcPayload);
+      regErr = error;
+    } catch(_) {
+      // Fallback: use existing register_pending_user RPC (marks as approved)
+      try {
+        const { error } = await sb.rpc('register_pending_user', {
+          p_name:          name,
+          p_email:         email,
+          p_password_hash: pwdHash,
+          p_lang:          'pt',
+        });
+        // Then mark as approved if userId provided
+        if (!error && _REG.userId) {
+          await sb.from('app_users').update({ approved: true, active: true, name })
+            .eq('id', _REG.userId).eq('email', email);
+        }
+        regErr = error;
+      } catch(e2) { regErr = e2; }
+    }
+
+    if (regErr) {
+      const msg = regErr.message || String(regErr);
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('existe')) {
+        return _regErr('Este e-mail já possui uma conta. Faça login normalmente.');
+      }
+      throw regErr;
+    }
+
+    // 3. Create Supabase Auth account
+    try {
+      const { error: authErr } = await sb.auth.signUp({ email, password: pwd,
+        options: { data: { display_name: name } } });
+      if (authErr) {
+        const m = (authErr.message||'').toLowerCase();
+        if (!m.includes('already') && !m.includes('registered')) {
+          console.warn('[register] auth signUp:', authErr.message);
+        }
+      }
+    } catch(e) { console.warn('[register] signUp fallback:', e?.message); }
+
+    // 4. Show success
+    document.getElementById('regFormArea').style.display = 'none';
+    const successEl = document.getElementById('regSuccess');
+    successEl.style.display = '';
+    document.getElementById('regSuccessMsg').innerHTML =
+      `Olá, <strong>${_regEsc(name)}</strong>! Sua conta foi criada com sucesso.<br>` +
+      `Verifique seu e-mail — você receberá um link para confirmar o acesso e definir uma senha permanente.<br>` +
+      `<span style="font-size:.75rem;color:#9ca3af;display:block;margin-top:8px">Pode demorar alguns minutos. Verifique também a pasta de spam.</span>`;
+
+  } catch(e) {
+    _regErr('Erro ao criar conta: ' + (e?.message || String(e)));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Criar minha conta';
+  }
+}
+
+function _regErr(msg) {
+  const el = document.getElementById('regError');
+  el.textContent = msg; el.style.display = '';
+}
+
+function _regEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function _regSha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+</script>
+</body>
+</html>
