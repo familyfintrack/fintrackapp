@@ -1678,9 +1678,15 @@ async function renderDashboardUpcoming(memberIds = null) {
 
   (state.scheduled || []).forEach(sc => {
     if (sc.status === 'paused') return;
+    // Dates explicitly ignored — must NOT appear
+    const skippedDates = new Set(
+      (sc.occurrences || [])
+        .filter(o => o.execution_status === 'skipped')
+        .map(o => o.scheduled_date)
+    );
     const pendingDates = new Set(
       (sc.occurrences || [])
-        .filter(o => (o.execution_status === 'pending' || o.execution_status === 'skipped') && o.scheduled_date >= today && o.scheduled_date <= limitStr)
+        .filter(o => o.execution_status === 'pending' && o.scheduled_date >= today && o.scheduled_date <= limitStr)
         .map(o => o.scheduled_date)
     );
     const executedDates = new Set(
@@ -1694,14 +1700,16 @@ async function renderDashboardUpcoming(memberIds = null) {
     const maxCount = sc.end_count || 999;
     const endDate = sc.end_date || '2099-12-31';
     while (cur && cur <= limitStr && count < maxCount && cur <= endDate) {
-      if (cur >= today && !executedDates.has(cur)) pushOccurrence(sc, cur, pendingDates.has(cur));
+      if (cur >= today && !executedDates.has(cur) && !skippedDates.has(cur))
+        pushOccurrence(sc, cur, pendingDates.has(cur));
       count++;
       if (sc.frequency === 'once') break;
       cur = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
       if (!cur) break;
     }
     pendingDates.forEach(date => {
-      if (date >= today && date <= limitStr && !executedDates.has(date) && !upcoming.some(x => x.sc.id === sc.id && x.date === date)) {
+      if (date >= today && date <= limitStr && !executedDates.has(date) && !skippedDates.has(date)
+          && !upcoming.some(x => x.sc.id === sc.id && x.date === date)) {
         pushOccurrence(sc, date, true);
       }
     });
@@ -3124,8 +3132,9 @@ async function _patAnalyzeWithGemini() {
   btn.textContent = '⏳ Analisando…';
   result.innerHTML = '<span style="color:var(--muted)">Consultando Gemini…</span>';
 
-  // Use stable model — avoid RECEIPT_AI_MODEL which may be unavailable in some regions
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
+  // Use admin-configured model; fall back to stable default
+  const _patModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${_patModel}:generateContent?key=${apiKey}`;
 
   // Safe coercion — avoids TypeError when a metric field is undefined
   const _safe = v => (typeof v === 'number' && isFinite(v)) ? v : 0;

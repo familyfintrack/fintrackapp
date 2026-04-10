@@ -257,7 +257,13 @@ async function loadForecast() {
       let occ;
       try { occ = generateOccurrences(sc, 200); } catch(_) { return; }
 
-      const registered    = new Set((sc.occurrences||[]).map(o => o.scheduled_date));
+      const registered = new Set((sc.occurrences||[]).map(o => o.scheduled_date));
+      // Dates explicitly ignored — exclude from forecast projections
+      const skipped    = new Set(
+        (sc.occurrences||[])
+          .filter(o => o.execution_status === 'skipped')
+          .map(o => o.scheduled_date)
+      );
       const isTransfer    = sc.type === 'transfer' || sc.type === 'card_payment';
       const isIncome      = sc.type === 'income';
       const isExpense     = sc.type === 'expense';
@@ -265,7 +271,7 @@ async function loadForecast() {
       const baseAmt       = Math.abs(parseFloat(sc.amount)||0);
 
       occ.forEach(date => {
-        if (date < fromStr || date > toStr || registered.has(date)) return;
+        if (date < fromStr || date > toStr || registered.has(date) || skipped.has(date)) return;
 
         if (!accIds.length || accIds.includes(sc.account_id)) {
           let originAmt = 0;

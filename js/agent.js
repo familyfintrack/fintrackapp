@@ -405,7 +405,7 @@ function _agInvalidateCtx() { _ag.ctxTs = 0; }
    CHAMADA AO GEMINI (Function Calling)
 ════════════════════════════════════════════════════════════════════════════ */
 async function _agCallGemini(userText, ctx, toolResultParts) {
-  const model = typeof RECEIPT_AI_MODEL !== 'undefined' ? RECEIPT_AI_MODEL : 'gemini-2.5-flash-lite';
+  const model = (typeof getGeminiModel === 'function') ? await getGeminiModel() : (typeof RECEIPT_AI_MODEL !== 'undefined' ? RECEIPT_AI_MODEL : 'gemini-2.5-flash');
   const url   = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${_ag.apiKey}`;
 
   // Adiciona turno do usuário ao histórico (somente na primeira chamada do turno)

@@ -716,12 +716,24 @@ async function confirmReconcileMode() {
   const confirmBtn = document.getElementById('btnConfirmReconcile');
   if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Salvando…'; }
   try {
-    // Batch: update all checked as reconciled + confirmed
-    const { error } = await famQ(
+    // Try with is_reconciled first; if column missing fall back to status-only update
+    let error = null;
+    ({ error } = await famQ(
       sb.from('transactions')
         .update({ is_reconciled: true, status: 'confirmed' })
         .in('id', ids)
-    );
+    ));
+    if (error && (error.message?.includes('is_reconciled') || error.code === '42703')) {
+      // Column doesn't exist yet — update only status and warn
+      const { error: e2 } = await famQ(
+        sb.from('transactions').update({ status: 'confirmed' }).in('id', ids)
+      );
+      if (e2) throw e2;
+      toast(`✓ ${ids.length} transaç${ids.length !== 1 ? 'ões confirmadas' : 'ão confirmada'} (execute reconciliation_migration.sql para habilitar marcação)`, 'warning');
+      exitReconcileMode(true);
+      await loadTransactions();
+      return;
+    }
     if (error) throw error;
     toast(`✓ ${ids.length} transaç${ids.length !== 1 ? 'ões reconciliadas' : 'ão reconciliada'}`, 'success');
     exitReconcileMode(true);

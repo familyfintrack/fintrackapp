@@ -5,8 +5,35 @@
    Custo estimado: ~US$0,001–0,003 por leitura (Haiku)
 ═══════════════════════════════════════════════════════════════════════════ */
 
-const RECEIPT_AI_KEY_SETTING = 'gemini_api_key';
-const RECEIPT_AI_MODEL       = 'gemini-2.5-flash-lite';
+const RECEIPT_AI_KEY_SETTING   = 'gemini_api_key';
+const GEMINI_MODEL_SETTING     = 'gemini_model';
+const GEMINI_MODEL_DEFAULT     = 'gemini-2.5-flash';   // stable, widely available
+
+// ── RECEIPT_AI_MODEL: dynamic global — reads configured model at call time ──
+// All modules that reference RECEIPT_AI_MODEL as a plain variable automatically
+// pick up the admin-configured model without any code changes.
+// Falls back to GEMINI_MODEL_DEFAULT if not yet configured.
+Object.defineProperty(window, 'RECEIPT_AI_MODEL', {
+  get() {
+    return (window._appSettingsCache && window._appSettingsCache[GEMINI_MODEL_SETTING])
+      || GEMINI_MODEL_DEFAULT;
+  },
+  configurable: true,
+  enumerable:   true,
+});
+
+// async helper — use this when you need to ensure the value is loaded from DB
+async function getGeminiModel() {
+  const fromCache = window._appSettingsCache?.[GEMINI_MODEL_SETTING];
+  if (fromCache) return fromCache;
+  try {
+    const val = (typeof getAppSetting === 'function')
+      ? await getAppSetting(GEMINI_MODEL_SETTING, GEMINI_MODEL_DEFAULT)
+      : GEMINI_MODEL_DEFAULT;
+    return val || GEMINI_MODEL_DEFAULT;
+  } catch(_) { return GEMINI_MODEL_DEFAULT; }
+}
+window.getGeminiModel = getGeminiModel;
 const PDFJS_CDN_JS  = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_CDN_WK  = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -18,25 +45,46 @@ window._receiptAiPending = null; // { base64, mediaType, fileName }
 // ══════════════════════════════════════════════════════════════════════════
 
 async function showAiConfig() {
-  const val = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const val   = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const model = await getGeminiModel();
   const inp = document.getElementById('anthropicApiKeyInput');
   if (inp) { inp.value = val || ''; inp.type = 'password'; }
   const tog = document.getElementById('aiKeyToggle');
   if (tog) tog.textContent = '👁';
+  // Pre-select configured model
+  const modelSel = document.getElementById('geminiModelSelect');
+  if (modelSel) {
+    // If model in list — select it; otherwise add as custom option
+    const opt = Array.from(modelSel.options).find(o => o.value === model);
+    if (opt) {
+      modelSel.value = model;
+    } else if (model) {
+      const custom = new Option(model + ' (personalizado)', model);
+      modelSel.add(custom);
+      modelSel.value = model;
+    }
+  }
   openModal('aiConfigModal');
 }
 
 async function saveAiConfig() {
-  const inp = document.getElementById('anthropicApiKeyInput');
-  const key = (inp?.value || '').trim();
+  const inp      = document.getElementById('anthropicApiKeyInput');
+  const modelSel = document.getElementById('geminiModelSelect');
+  const key      = (inp?.value || '').trim();
+  const model    = (modelSel?.value || GEMINI_MODEL_DEFAULT).trim();
+
   if (key && !key.startsWith('AIza')) {
     toast('Chave inválida — deve começar com AIza…', 'error');
     return;
   }
   await saveAppSetting(RECEIPT_AI_KEY_SETTING, key);
+  await saveAppSetting(GEMINI_MODEL_SETTING, model);
+  // Update cache immediately so all modules pick up the new model at once
+  if (!window._appSettingsCache) window._appSettingsCache = {};
+  window._appSettingsCache[GEMINI_MODEL_SETTING] = model;
   _updateAiStatusBadge();
   closeModal('aiConfigModal');
-  toast(key ? '✅ Chave Anthropic salva!' : 'Chave removida', key ? 'success' : 'info');
+  toast(key ? '✅ Configuração de IA salva!' : 'Modelo salvo (sem chave)', key ? 'success' : 'info');
 }
 
 function toggleAiKeyVisibility() {
@@ -48,15 +96,16 @@ function toggleAiKeyVisibility() {
 }
 
 async function _updateAiStatusBadge() {
-  const key = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
-  const ok  = !!(key && key.startsWith('AIza'));
-  const dot = document.getElementById('aiStatusDot');
-  const sub = document.getElementById('aiSettingsSub');
+  const key   = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const model = await getGeminiModel();
+  const ok    = !!(key && key.startsWith('AIza'));
+  const dot   = document.getElementById('aiStatusDot');
+  const sub   = document.getElementById('aiSettingsSub');
   if (dot) {
     dot.style.cssText = `width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${ok ? 'var(--green,#22c55e)' : '#d1d5db'}`;
   }
   if (sub) sub.textContent = ok
-    ? '✓ Configurado — leitura de recibos com IA ativa'
+    ? `✓ Configurado · modelo: ${model}`
     : 'Configure para habilitar leitura automática de recibos';
 }
 

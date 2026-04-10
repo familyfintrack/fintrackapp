@@ -707,23 +707,34 @@ function renderUpcoming() {
   const _srcList = state._scFiltered || state.scheduled;
   _srcList.forEach(sc => {
     if(sc.status === 'paused') return;
-    const pendingDates=new Set(
+    // Dates that are explicitly skipped (ignored) — must NOT appear in upcoming
+    const skippedDates = new Set(
       (sc.occurrences||[])
-        .filter(o=>(o.execution_status==='pending'||o.execution_status==='skipped')&&o.scheduled_date>=today&&o.scheduled_date<=limitStr)
-        .map(o=>o.scheduled_date)
+        .filter(o => o.execution_status === 'skipped')
+        .map(o => o.scheduled_date)
     );
-    const executedDates=new Set(
+    const pendingDates = new Set(
       (sc.occurrences||[])
-        .filter(o=>o.execution_status==='executed'||o.execution_status==='processing')
-        .map(o=>o.scheduled_date)
+        .filter(o => o.execution_status === 'pending' && o.scheduled_date >= today && o.scheduled_date <= limitStr)
+        .map(o => o.scheduled_date)
     );
-    const occ=generateOccurrences(sc,30);
-    occ.forEach(date=>{
-      if(date>=today&&date<=limitStr&&!executedDates.has(date))
-        upcoming.push({sc,date,isPending:pendingDates.has(date)});
+    const executedDates = new Set(
+      (sc.occurrences||[])
+        .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing')
+        .map(o => o.scheduled_date)
+    );
+    const occ = generateOccurrences(sc, 30);
+    occ.forEach(date => {
+      // Skip: outside window, already executed, or explicitly ignored
+      if (date < today || date > limitStr) return;
+      if (executedDates.has(date)) return;
+      if (skippedDates.has(date)) return;
+      upcoming.push({sc, date, isPending: pendingDates.has(date)});
     });
-    pendingDates.forEach(date=>{
-      if(!occ.includes(date)) upcoming.push({sc,date,isPending:true});
+    // Also show pending occurrences that aren't in the generated list (edge case)
+    pendingDates.forEach(date => {
+      if (!occ.includes(date) && !skippedDates.has(date))
+        upcoming.push({sc, date, isPending: true});
     });
   });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
@@ -2946,16 +2957,37 @@ async function registerAsNotReceived() {
   if (!fid) { toast('Familia nao identificada.', 'error'); return; }
 
   try {
-    const { error } = await sb.from('scheduled_ar_records').insert({
-      family_id:   fid,
-      sc_id:       scId,
-      description: desc,
-      date,
-      amount,
-      memo:        memo || null,
-      status:      'pending',
-    });
-    if (error) throw error;
+    // Tenta via RPC SECURITY DEFINER primeiro — bypassa edge cases de RLS
+    let insertOk = false;
+    try {
+      const { error: rpcErr } = await sb.rpc('insert_scheduled_ar_record', {
+        p_family_id:   fid,
+        p_sc_id:       scId,
+        p_description: desc,
+        p_date:        date,
+        p_amount:      amount,
+        p_memo:        memo || null,
+      });
+      if (!rpcErr) insertOk = true;
+      else console.warn('[scAr] RPC insert_scheduled_ar_record:', rpcErr.message);
+    } catch(rpcEx) {
+      console.warn('[scAr] RPC exception:', rpcEx?.message);
+    }
+
+    // Fallback: INSERT direto (funciona se RLS estiver configurada corretamente)
+    if (!insertOk) {
+      const { error } = await sb.from('scheduled_ar_records').insert({
+        family_id:   fid,
+        sc_id:       scId,
+        description: desc,
+        date,
+        amount,
+        memo:        memo || null,
+        status:      'pending',
+      });
+      if (error) throw error;
+    }
+
     closeModal('registerOccModal');
     toast('Registrado em Valores a Receber', 'info');
     _scArLoad();
@@ -3008,6 +3040,7 @@ async function _scArLoad() {
 
 async function _scArReceive(arId) {
   try {
+    const fid = typeof famId === 'function' ? famId() : null;
     const { data, error } = await sb.from('scheduled_ar_records')
       .update({
         status:      'received',
@@ -3015,6 +3048,7 @@ async function _scArReceive(arId) {
         updated_at:  new Date().toISOString(),
       })
       .eq('id', arId)
+      .eq('family_id', fid)
       .select()
       .single();
     if (error) throw error;
@@ -3047,13 +3081,15 @@ async function _scArReceive(arId) {
 
 async function _scArCancel(arId) {
   try {
+    const fid = typeof famId === 'function' ? famId() : null;
     const { error } = await sb.from('scheduled_ar_records')
       .update({
         status:       'cancelled',
         cancelled_at: new Date().toISOString(),
         updated_at:   new Date().toISOString(),
       })
-      .eq('id', arId);
+      .eq('id', arId)
+      .eq('family_id', fid);
     if (error) throw error;
     _scArLoad();
     toast('Registro removido de Valores a Receber', 'info');

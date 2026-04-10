@@ -13,7 +13,8 @@
 
 const IMPORT_AI_MAX_ROWS   = 60;   // linhas enviadas para análise
 const IMPORT_AI_MIN_CONF   = 0.70; // confiança mínima para auto-avançar
-const IMPORT_AI_MODEL      = 'gemini-2.5-flash-lite';
+// IMPORT_AI_MODEL is now dynamic — uses getGeminiModel() at call time
+const IMPORT_AI_MODEL_FALLBACK = 'gemini-2.5-flash';
 
 // Estado da análise IA atual
 window._importAiResult = null;
@@ -124,7 +125,8 @@ REGRAS DE ANÁLISE:
 - Se não conseguir identificar: preset="generic", confidence=0.3, notes explicando
 - Arquivo: ${fileName}`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${IMPORT_AI_MODEL}:generateContent?key=${apiKey}`;
+  const _impModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : IMPORT_AI_MODEL_FALLBACK;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${_impModel}:generateContent?key=${apiKey}`;
 
   const resp = await fetch(url, {
     method: 'POST',

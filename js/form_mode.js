@@ -449,7 +449,7 @@ Responda SOMENTE com JSON válido, sem explicações:
   "confidence": "high"
 }`;
 
-  const model = window.RECEIPT_AI_MODEL || 'gemini-2.5-flash-lite';
+  const model = (typeof getGeminiModel === 'function') ? await getGeminiModel() : (window.RECEIPT_AI_MODEL || 'gemini-2.5-flash');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const resp = await fetch(url, {
     method: 'POST',

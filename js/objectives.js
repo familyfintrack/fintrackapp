@@ -228,7 +228,8 @@ Escolha entre emojis comuns como: 🎯 🏠 ✈️ 🚗 💒 🎓 💻 📱 🏋
 Responda somente com o emoji, sem texto adicional.`;
 
     // Try models in order — same fallback chain as agent.js
-    const MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const _cfgModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
+    const MODELS = [_cfgModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v,i,a) => a.indexOf(v) === i);
     let data = null;
     for (const model of MODELS) {
       const resp = await fetch(

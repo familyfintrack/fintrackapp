@@ -898,7 +898,8 @@ Supermercado do Décio no Pão de Açúcar
 Farmácia na Drogasil
 Presente da Chloe na Amazon`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+    const _utilModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${_utilModel}:generateContent?key=${apiKey}`;
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
