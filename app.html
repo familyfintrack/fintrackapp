@@ -1824,30 +1824,31 @@
   <!-- ── Painel: Objetivos ── -->
   <div id="budgetPanelObjectives" style="display:none">
 
-    <!-- Intro banner -->
-    <div class="module-intro-banner" style="--intro-accent:#7c3aed;--intro-accent-lt:rgba(124,58,237,.08)">
-      <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
-        <i class="mib-arr">▾</i> Recolher
-      </button>
-      <div class="module-intro-badge" style="background:rgba(124,58,237,.1);color:#7c3aed">🎯 Objetivos</div>
-      <div class="module-intro-body">
-      <h3 class="module-intro-headline">Monitoramento por projeto ou evento</h3>
-      <p class="module-intro-text">Crie objetivos para rastrear gastos de projetos específicos — reformas, viagens, casamentos, festas. Vincule transações e veja o breakdown completo.</p>
-      <div class="module-intro-chips">
-        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">📦 Por categoria</span>
-        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">🏪 Por beneficiário</span>
-        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">👥 Por membro</span>
-        <span class="module-intro-chip" style="background:rgba(124,58,237,.08);color:#7c3aed">✨ IA sugere ícone</span>
+    <!-- Hero header matching app style -->
+    <div class="obj-panel-hero">
+      <div class="obj-panel-hero-left">
+        <div class="obj-panel-hero-icon">🎯</div>
+        <div>
+          <div class="obj-panel-hero-title">Objetivos & Projetos</div>
+          <div class="obj-panel-hero-sub">Monitore gastos por projeto, evento ou meta pessoal</div>
+        </div>
       </div>
+      <button class="btn btn-primary btn-sm obj-panel-new-btn" onclick="openObjectiveModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo
+      </button>
     </div>
 
-      </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-      <button class="btn btn-primary btn-sm" onclick="openObjectiveModal()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Novo objetivo
-      </button>
+    <!-- Feature chips -->
+    <div class="obj-panel-chips">
+      <span class="obj-panel-chip">📦 Por categoria</span>
+      <span class="obj-panel-chip">🏪 Por beneficiário</span>
+      <span class="obj-panel-chip">👥 Por membro</span>
+      <span class="obj-panel-chip">📊 Breakdown completo</span>
+      <span class="obj-panel-chip">✨ IA sugere ícone</span>
     </div>
+
+    <!-- Objectives grid -->
     <div id="objectivesGrid" class="obj-grid"></div>
   </div>
 
@@ -2323,6 +2324,19 @@
       <!-- Summary bar (kept for compatibility, hidden in new layout) -->
       <div id="scheduledSummaryBar" class="sc-summary-bar" style="display:none"></div>
 
+      <!-- ── Tab navigation: Programados | A Receber ─────────────────────── -->
+      <div class="sc-tab-bar" id="scTabBar">
+        <button class="sc-tab active" id="scTabScheduled" onclick="_scSwitchTab('scheduled')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Programados
+        </button>
+        <button class="sc-tab" id="scTabReceivables" onclick="_scSwitchTab('receivables')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          A Receber
+          <span id="scTabArBadge" style="display:none;background:#dc2626;color:#fff;font-size:.6rem;font-weight:800;border-radius:100px;padding:1px 6px;margin-left:2px">0</span>
+        </button>
+      </div>
+
       <!-- Desktop split layout / Mobile timeline -->
       <div id="scListView" class="sc-list-view">
 
@@ -2383,7 +2397,44 @@
           <div class="sc-panel__body" id="scheduledList"></div>
         </div>
 
-      </div>
+      </div><!-- /scListView -->
+
+      <!-- ── A Receber inline tab content ─────────────────────────────────── -->
+      <div id="scArTabContent" style="display:none;padding:0 0 80px">
+        <!-- KPI strip -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border);background:var(--surface);margin-bottom:12px">
+          <div style="padding:12px 10px;text-align:center;border-right:1px solid var(--border)">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Total</div>
+            <div id="scArTabTotal" style="font-size:1.1rem;font-weight:800;color:var(--accent)">—</div>
+          </div>
+          <div style="padding:12px 10px;text-align:center;border-right:1px solid var(--border)">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#dc2626">⚠ Atraso</div>
+            <div id="scArTabOverdue" style="font-size:1.1rem;font-weight:800;color:#dc2626">—</div>
+          </div>
+          <div style="padding:12px 10px;text-align:center">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Itens</div>
+            <div id="scArTabCount" style="font-size:1.1rem;font-weight:800;color:var(--text)">0</div>
+          </div>
+        </div>
+        <!-- Filter tabs -->
+        <div style="display:flex;gap:6px;padding:0 12px 10px;overflow-x:auto;scrollbar-width:none">
+          <button class="recv-ftab active" id="scArFiltAll"      onclick="_recvFilter('all',this)">Todos</button>
+          <button class="recv-ftab"        id="scArFiltOver"     onclick="_recvFilter('overdue',this)">⚠️ Atraso</button>
+          <button class="recv-ftab"        id="scArFiltToday"    onclick="_recvFilter('today',this)">Hoje</button>
+          <button class="recv-ftab"        id="scArFiltUpcoming" onclick="_recvFilter('upcoming',this)">A vencer</button>
+          <button class="recv-ftab"        id="scArFiltTx"       onclick="_recvFilter('tx',this)">Transações</button>
+          <button class="recv-ftab"        id="scArFiltArRec"    onclick="_recvFilter('ar',this)">Programados</button>
+        </div>
+        <!-- Content (shared with modal via _recvRenderFiltered) -->
+        <div id="scArTabBody" style="padding:0 12px">
+          <div style="text-align:center;padding:48px;color:var(--muted)">⏳ Carregando…</div>
+        </div>
+        <!-- Quick add -->
+        <div style="padding:12px;display:flex;gap:8px">
+          <button onclick="_recvAddManual()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-family:var(--font-sans);font-size:.78rem;font-weight:600;cursor:pointer">✏️ Lançar manual</button>
+          <button onclick="navigate('receivables')" style="padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:var(--font-sans);font-size:.78rem;font-weight:700;cursor:pointer">Tela completa →</button>
+        </div>
+      </div><!-- /scArTabContent -->
 
       <!-- Legacy upcoming card (hidden — kept for JS compat) -->
       <div id="scheduledUpcomingCard" style="display:none">
