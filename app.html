@@ -486,6 +486,12 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </span><span data-i18n="nav.scheduled">Programados
       </button>
+      <button class="nav-item" onclick="navigate('receivables')" id="receivablesNav" data-nav="receivables">
+        <span class="ni-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </span><span>A Receber
+        <span id="receivablesBadge" style="display:none;background:#dc2626;color:#fff;font-size:.58rem;font-weight:800;border-radius:100px;padding:1px 5px;margin-left:4px;vertical-align:middle">0</span>
+      </button>
     </div>
 
     <div class="nav-section">
@@ -666,7 +672,7 @@
           <div class="card-header">
             <span class="card-title">Fluxo de Caixa (6 meses)</span>
             <select id="cashflowAccountFilter" onchange="renderCashflowChart(_getDashMemberIds())"
-              style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:160px">
+              style="font-size:.75rem;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);max-width:120px;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               <option value="" data-i18n="tx.all_accounts">Todas as contas</option>
             </select>
           </div>
@@ -1244,6 +1250,40 @@
     <!-- INVESTMENTS -->
     <div class="page" id="page-debts" style="display:none">
       <!-- Rendered by debts.js renderDebtsPage() -->
+    </div>
+
+    <!-- ── A Receber ──────────────────────────────────────────────────────── -->
+    <div class="page" id="page-receivables" style="display:none">
+      <!-- Hero header -->
+      <div style="background:linear-gradient(135deg,#1e5c42 0%,#2a7550 60%,#1a5c38 100%);padding:24px 20px 20px;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(125,194,66,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.08) 1px,transparent 1px);background-size:32px 32px"></div>
+        <div style="position:relative;z-index:1">
+          <div style="font-size:1.2rem;font-weight:800;color:#fff;letter-spacing:-.02em;display:flex;align-items:center;gap:10px">
+            📬 A Receber
+            <span id="receivablesCount" style="font-size:.78rem;font-weight:700;background:rgba(255,255,255,.15);color:#fff;border-radius:100px;padding:2px 10px">0</span>
+          </div>
+          <div style="font-size:.8rem;color:rgba(255,255,255,.65);margin-top:4px">Receitas lançadas mas ainda não recebidas</div>
+        </div>
+        <!-- Total card -->
+        <div style="margin-top:16px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em">Total a receber</div>
+            <div id="receivablesTotalAmt" style="font-size:1.6rem;font-weight:800;color:#7dc242;margin-top:2px">R$ 0,00</div>
+          </div>
+          <div style="font-size:2rem;opacity:.5">💰</div>
+        </div>
+      </div>
+
+      <!-- Info bar -->
+      <div style="background:#fef9c3;border-bottom:1px solid #fcd34d;padding:10px 16px;font-size:.78rem;color:#92400e;display:flex;align-items:flex-start;gap:8px">
+        <span style="flex-shrink:0">💡</span>
+        <span>Aqui ficam receitas marcadas como <strong>não recebidas</strong>. Para mover uma receita para cá, abra a transação e clique em <strong>📬</strong> no detalhe. Clique em <strong>✅ Recebido</strong> quando o valor entrar na conta.</span>
+      </div>
+
+      <!-- List -->
+      <div id="receivablesBody" style="background:var(--surface)">
+        <div style="text-align:center;padding:48px;color:var(--muted)">⏳ Carregando…</div>
+      </div>
     </div>
 
     <div class="page" id="page-investments">
@@ -3383,7 +3423,7 @@
 
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
                 <div class="form-group">
-                  <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted)">Família destino *</label>
+                  <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted)">Família destino * <span style="font-weight:400;text-transform:none;color:var(--muted)">(somente 🎭 Demo)</span></label>
                   <select id="demoFamilySelect" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:.83rem;font-family:inherit">
                     <option value="">— Carregando famílias… —</option>
                   </select>
@@ -3395,6 +3435,8 @@
                   </select>
                 </div>
               </div>
+              <!-- Hint when no demo family is configured -->
+              <div id="demoFamilyHint" style="display:none;margin-bottom:12px;padding:10px 14px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:9px;font-size:.78rem;color:#92400e"></div>
 
               <!-- Progress bar -->
               <div id="demoImportProgress" style="display:none;margin-bottom:12px">
@@ -5446,6 +5488,7 @@ Se você não solicitou isso, ignore este e-mail.`,
               <select id="uaWlFilter" onchange="loadWaitlist()" class="ua-select">
                 <option value="pending">⏳ Aguardando</option>
                 <option value="invited">✉️ Convidados</option>
+                <option value="registered">✅ Registrados</option>
                 <option value="all">Todos</option>
               </select>
               <button class="ua-icon-btn" onclick="loadWaitlist()" title="Recarregar">
@@ -5576,6 +5619,16 @@ Se você não solicitou isso, ignore este e-mail.`,
                 <label>Descrição</label>
                 <input type="text" id="fDesc" placeholder="Opcional" class="ua-input">
               </div>
+            </div>
+            <!-- is_demo flag — only visible to global admin -->
+            <div id="fDemoRow" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:10px">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+                <input type="checkbox" id="fIsDemo" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer">
+                <div>
+                  <div style="font-size:.84rem;font-weight:700;color:var(--text)">🎭 Família de Demonstração</div>
+                  <div style="font-size:.73rem;color:var(--muted);margin-top:1px">Aparece no seletor de importação de dados demo. Visível apenas para administradores.</div>
+                </div>
+              </label>
             </div>
             <div class="ua-form-footer">
               <button class="btn btn-ghost btn-sm" onclick="document.getElementById('familyFormArea').style.display='none'">Cancelar</button>
@@ -6544,6 +6597,7 @@ Se você não solicitou isso, ignore este e-mail.`,
           <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDelBtn" onclick="_txDetailAction('del')" style="color:var(--red)" title="Excluir">🗑️</button>
           <button class="btn btn-ghost tx-detail-action-btn" id="txDetailDupBtn" onclick="_txDetailAction('dup')" title="Duplicar">📋</button>
           <button class="btn btn-ghost tx-detail-action-btn" id="txDetailSchedBtn" onclick="_txDetailAction('makeScheduled')" title="Programar">📅</button>
+          <button class="btn btn-ghost tx-detail-action-btn" id="txDetailUnrecvBtn" onclick="_txDetailAction('makeUnreceived')" title="Mover para A Receber" style="display:none">📬</button>
           <button class="btn btn-primary" id="txDetailEditBtn" onclick="_txDetailAction('edit')" style="white-space:nowrap">✏️ Editar</button>
         </div>
       </div>

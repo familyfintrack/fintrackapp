@@ -395,7 +395,16 @@ async function _regSubmit() {
       }
     } catch(e) { console.warn('[register] signUp fallback:', e?.message); }
 
-    // 4. Show success
+    // 4. Mark waitlist entry as registered (remove from pending queue)
+    try {
+      if (_REG.email) {
+        await sb.from('waitlist')
+          .update({ status: 'registered', updated_at: new Date().toISOString() })
+          .eq('email', _REG.email.toLowerCase().trim());
+      }
+    } catch(wlErr) { console.debug('[register] waitlist update:', wlErr?.message); }
+
+    // 5. Show success
     document.getElementById('regFormArea').style.display = 'none';
     const successEl = document.getElementById('regSuccess');
     successEl.style.display = '';
