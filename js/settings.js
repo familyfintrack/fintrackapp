@@ -3398,13 +3398,40 @@ async function importDemoData(userId, familyId, progressCb) {
   const groupIdMap = await buildIdMap('account_groups', data.accountGroups, 'name');
   console.log('[DemoImport] groupIdMap entries:', Object.keys(groupIdMap).length);
 
-  // ── 2. Accounts (with remapped group_id) ──────────────────────────────────
+  // ── 2. Accounts (with remapped group_id, row-by-row to handle FK gracefully) ──
   log('Criando contas…', 14);
-  const accountsRemapped = data.accounts.map(a => ({
-    ...a,
-    group_id: a.group_id ? (groupIdMap[a.group_id] || null) : null,
-  }));
-  await ins('accounts', accountsRemapped, 'Contas');
+  {
+    let accountsInserted = 0;
+    const accountErrors = [];
+    for (const a of data.accounts) {
+      const realGroupId = a.group_id ? (groupIdMap[a.group_id] || null) : null;
+      const acctRow = {
+        ...a, family_id: familyId,
+        group_id: realGroupId,
+        created_at: a.created_at || new Date().toISOString(),
+      };
+      // Remove columns not in schema
+      const cols = ['id','name','type','currency','initial_balance','icon','color',
+                    'group_id','is_favorite','due_day','best_purchase_day','card_limit',
+                    'notes','family_id','created_at'];
+      const row = Object.fromEntries(cols.filter(c => c in acctRow).map(c => [c, acctRow[c]]));
+
+      let { error: ae } = await sb.from('accounts').upsert(row, { onConflict: 'id', ignoreDuplicates: true });
+      if (!ae) { accountsInserted++; continue; }
+
+      // FK error on group_id → retry without group_id
+      if (ae.message?.includes('group_id') || ae.message?.includes('accounts_group_id')) {
+        const rowNoGroup = { ...row }; delete rowNoGroup.group_id;
+        const { error: ae2 } = await sb.from('accounts').upsert(rowNoGroup, { onConflict: 'id', ignoreDuplicates: true });
+        if (!ae2) { accountsInserted++; continue; }
+        ae = ae2;
+      }
+      accountErrors.push(a.name + ': ' + ae.message);
+    }
+    tableResults['accounts'] = { label: 'Contas', sent: data.accounts.length, ok: accountsInserted, errors: accountErrors.slice(0,2) };
+    if (accountErrors.length) errors.push('accounts: ' + accountErrors[0]);
+    log('Contas: ' + accountsInserted + '/' + data.accounts.length, null);
+  }
 
   // ── 3. Categories (parents first) ─────────────────────────────────────────
   log('Criando categorias…', 20);
@@ -3440,17 +3467,22 @@ async function importDemoData(userId, familyId, progressCb) {
   log('Mapeando IDs reais do banco…', 35);
 
   // Helper: query name→id for a table
+  // Tries with family_id first; falls back to no filter if empty (handles global tables)
   async function buildIdMap(table, demoRows, nameCol) {
     const names = demoRows.map(r => r[nameCol]).filter(Boolean);
     if (!names.length) return {};
     try {
-      const { data: rows, error: mapErr } = await sb.from(table)
+      // Try with family_id filter
+      let { data: rows, error: mapErr } = await sb.from(table)
         .select('id,' + nameCol)
         .eq('family_id', familyId)
         .in(nameCol, names);
-      if (mapErr) {
-        console.warn('[DemoImport] buildIdMap', table, ':', mapErr.message);
-        return {};
+      if (mapErr || !rows?.length) {
+        // Fallback: query without family_id (table may not have the column)
+        const { data: rows2 } = await sb.from(table)
+          .select('id,' + nameCol)
+          .in(nameCol, names);
+        rows = rows2 || [];
       }
       const byName = {};
       (rows || []).forEach(r => { byName[r[nameCol]] = r.id; });
@@ -3459,7 +3491,7 @@ async function importDemoData(userId, familyId, progressCb) {
       demoRows.forEach(r => {
         if (r[nameCol] && byName[r[nameCol]]) { map[r.id] = byName[r[nameCol]]; mapped++; }
       });
-      console.log('[DemoImport] buildIdMap', table + ':', mapped + '/' + demoRows.length, 'mapped');
+      console.log('[DemoImport] buildIdMap', table + ':', mapped + '/' + demoRows.length, 'mapped', JSON.stringify(map).slice(0,120));
       return map;
     } catch(e) {
       console.warn('[DemoImport] buildIdMap exception', table, ':', e.message);
@@ -3592,13 +3624,18 @@ async function importDemoData(userId, familyId, progressCb) {
       const tryRow = { ...row, created_by: dreamsAuthUid };
       const { error: de } = await sb.from('dreams').insert(tryRow);
       if (!de) { dreamOk++; continue; }
-      // If RLS blocks, try without created_by (some schemas don't require it)
-      if (de.code === '42501' || de.message?.includes('policy')) {
+      // If RLS blocks, try strategies
+      if (de.code === '42501' || de.message?.includes('policy') || de.message?.includes('row-level')) {
+        // Strategy 2: null created_by
         const { error: de2 } = await sb.from('dreams').insert({ ...tryRow, created_by: null });
         if (!de2) { dreamOk++; continue; }
-        dreamErrors.push(de2.message);
+        // Strategy 3: strip demo UUID, let DB auto-generate id
+        const { id: _skip, ...rowNoId } = tryRow;
+        const { error: de3 } = await sb.from('dreams').insert({ ...rowNoId, created_by: dreamsAuthUid });
+        if (!de3) { dreamOk++; continue; }
+        dreamErrors.push(de.message.slice(0, 80));
       } else {
-        dreamErrors.push(de.message);
+        dreamErrors.push(de.message.slice(0, 80));
       }
     }
     tableResults['dreams'] = { label: 'Sonhos', sent: dreamRows.length, ok: dreamOk, errors: dreamErrors.slice(0,2) };

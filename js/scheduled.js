@@ -3140,6 +3140,11 @@ window._scArShowBtn = _scArShowBtn;
 window.loadScheduled                       = loadScheduled;
 // Auto-load A/R section after scheduled loads
 _scArLoad && setTimeout(_scArLoad, 500);
+// Show A Receber access button in Programados page
+setTimeout(() => {
+  const bar = document.getElementById('scArAccessBar');
+  if (bar) bar.style.display = '';
+}, 100);
 window.openRegisterOcc                     = openRegisterOcc;
 
 // ── switchScTab: handles tab navigation inside the scheduled modal ──────────

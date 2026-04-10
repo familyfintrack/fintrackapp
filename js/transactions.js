@@ -3666,6 +3666,7 @@ async function loadReceivables() {
     const onTime = total - overdue;
     if (countEl) countEl.textContent = rows.length;
     if (totalEl) totalEl.textContent = typeof fmt === 'function' ? fmt(total) : total.toFixed(2);
+    if (typeof _syncReceivablesBadge === 'function') _syncReceivablesBadge(rows.length);
     if (overEl)  overEl.textContent  = typeof fmt === 'function' ? fmt(overdue) : overdue.toFixed(2);
     const overWrap   = document.getElementById('receivablesOverdueWrap');
     const okKpi      = document.getElementById('receivablesKpiOk');
@@ -3705,8 +3706,10 @@ let _recvAllRows = [];
 
 function _recvFilter(filter, btnEl) {
   _recvCurrentFilter = filter;
-  // Update button states
-  document.querySelectorAll('.recv-ftab').forEach(b => b.classList.remove('active'));
+  // Update only tabs in the same container as the clicked button
+  // (avoids cross-contamination between modal tabs and page tabs)
+  const container = btnEl?.closest('#receivablesModal, #page-receivables') || document;
+  container.querySelectorAll('.recv-ftab').forEach(b => b.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
   // Re-render with filter
   _recvRenderFiltered();
@@ -3995,3 +3998,31 @@ window._updateReceivablesBadge = _updateReceivablesBadge;
 
 // Client-side cache for include_in_patrimonio (avoids SELECT on potentially missing column)
 var _recvPatMap = {};
+
+/* ── A Receber modal (opened from Programados page) ──────────────────────── */
+function openReceivablesModal() {
+  const modal = document.getElementById('receivablesModal');
+  if (!modal) { navigate('receivables'); return; }
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => modal.classList.add('rm-open'));
+  loadReceivables();
+}
+
+function closeReceivablesModal() {
+  const modal = document.getElementById('receivablesModal');
+  if (!modal) return;
+  modal.classList.remove('rm-open');
+  setTimeout(() => { modal.style.display = 'none'; }, 280);
+}
+
+// Sync the badge on the Programados access button
+function _syncReceivablesBadge(count) {
+  const btn = document.getElementById('scArBadgeBtn');
+  const old = document.getElementById('receivablesBadge');
+  if (btn) { btn.textContent = count; btn.style.display = count > 0 ? '' : 'none'; }
+  if (old) { old.textContent = count; old.style.display = count > 0 ? '' : 'none'; }
+}
+
+window.openReceivablesModal  = openReceivablesModal;
+window.closeReceivablesModal = closeReceivablesModal;
+window._syncReceivablesBadge = _syncReceivablesBadge;
