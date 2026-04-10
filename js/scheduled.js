@@ -708,9 +708,16 @@ function renderUpcoming() {
   _srcList.forEach(sc => {
     if(sc.status === 'paused') return;
     // Dates that are explicitly skipped (ignored) — must NOT appear in upcoming
+    // EXCEPTION: dates with an AR record ('ar_pending') DO appear, but with special UI
+    const arPending = state._arPendingKeys || new Set();
     const skippedDates = new Set(
       (sc.occurrences||[])
-        .filter(o => o.execution_status === 'skipped')
+        .filter(o => o.execution_status === 'skipped' && !arPending.has(sc.id + '|' + o.scheduled_date))
+        .map(o => o.scheduled_date)
+    );
+    const arPendingDates = new Set(
+      (sc.occurrences||[])
+        .filter(o => o.execution_status === 'skipped' && arPending.has(sc.id + '|' + o.scheduled_date))
         .map(o => o.scheduled_date)
     );
     const pendingDates = new Set(
@@ -729,12 +736,18 @@ function renderUpcoming() {
       if (date < today || date > limitStr) return;
       if (executedDates.has(date)) return;
       if (skippedDates.has(date)) return;
-      upcoming.push({sc, date, isPending: pendingDates.has(date)});
+      upcoming.push({sc, date, isPending: pendingDates.has(date),
+                     isArPending: arPendingDates.has(date)});
     });
     // Also show pending occurrences that aren't in the generated list (edge case)
     pendingDates.forEach(date => {
       if (!occ.includes(date) && !skippedDates.has(date))
-        upcoming.push({sc, date, isPending: true});
+        upcoming.push({sc, date, isPending: true, isArPending: false});
+    });
+    // Also show AR-pending dates that may be outside the normal occurrence window
+    arPendingDates.forEach(date => {
+      if (date >= today && date <= limitStr && !occ.includes(date))
+        upcoming.push({sc, date, isPending: false, isArPending: true});
     });
   });
   upcoming.sort((a, b) => a.date.localeCompare(b.date));
@@ -788,6 +801,37 @@ function renderUpcoming() {
         ? `<span class="sup-manual-badge">Manual</span>` : '';
       const pendingBadge = isPending
         ? `<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>` : '';
+
+      // AR-pending row: special styling + Receive/Cancel buttons
+      if (isArPending) {
+        const arRecord = (state._arPendingKeys ? [...(state._arPendingKeys)] : [])
+          .find(k => k === sc.id + '|' + date);
+        // Fetch arId from loaded records for action buttons
+        const arRec = (window._scArRecordsCache || []).find(r => r.sc_id === sc.id && r.date === date);
+        const arId  = arRec?.id || '';
+        return `<div class="sup-item sup-item--ar-pending${isToday?' sup-item--today':''}">
+          <div class="sup-icon" style="background:rgba(251,191,36,.15);color:#d97706;font-size:.9rem">📬</div>
+          <div class="sup-body">
+            <div class="sup-desc" style="color:var(--text)">${esc(sc.description)}
+              <span class="sup-ar-badge">📬 A Receber</span>
+            </div>
+            <div class="sup-acct" style="color:var(--muted)">${esc(sc.accounts?.name||'—')} · ${fmtDate(date)}</div>
+            <div style="font-size:.72rem;color:#d97706;margin-top:2px">⏳ Aguardando confirmação de recebimento</div>
+          </div>
+          <div class="sup-right">
+            <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(sc.amount))}</span>
+            <div class="sup-actions" style="gap:5px">
+              ${arId ? `<button onclick="event.stopPropagation();_scArReceive('${arId}')"
+                style="padding:4px 8px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:7px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✅ Receber</button>
+              <button onclick="event.stopPropagation();_scArCancelFromUpcoming('${arId}','${sc.id}','${date}')"
+                style="padding:4px 8px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:7px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit">🗑</button>` :
+              `<button onclick="event.stopPropagation();openReceivablesModal()"
+                style="padding:4px 8px;background:rgba(251,191,36,.15);color:#d97706;border:1px solid rgba(251,191,36,.4);border-radius:7px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit">Ver →</button>`}
+            </div>
+          </div>
+        </div>`;
+      }
+
       return `<div class="sup-item${isToday?' sup-item--today':''}">
         <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
         <div class="sup-body">
@@ -2936,7 +2980,15 @@ async function _scArFetch(statusFilter) {
     }
     const { data, error } = await q;
     if (error) throw error;
-    return data || [];
+    const rows = data || [];
+    // Rebuild ar_pending keys for renderUpcoming cross-reference
+    if (!statusFilter || statusFilter.includes('pending')) {
+      state._arPendingKeys = new Set(
+        rows.filter(r => r.status === 'pending' && r.sc_id && r.date)
+            .map(r => r.sc_id + '|' + r.date)
+      );
+    }
+    return rows;
   } catch (e) {
     console.warn('[scAr] fetch error:', e?.message);
     return [];
@@ -2955,6 +3007,35 @@ async function registerAsNotReceived() {
   const desc   = sc?.description || 'Valor a receber';
   const fid    = typeof famId === 'function' ? famId() : null;
   if (!fid) { toast('Familia nao identificada.', 'error'); return; }
+
+  // ── Duplicate detection ────────────────────────────────────────────────────
+  try {
+    const { data: existing } = await sb.from('scheduled_ar_records')
+      .select('id,date,amount,description,status')
+      .eq('family_id', fid)
+      .eq('sc_id',     scId)
+      .eq('status',   'pending');
+    if (existing?.length) {
+      // Already has a pending AR for this scheduled item
+      const dup = existing[0];
+      const dupDate = typeof fmtDate === 'function' ? fmtDate(dup.date) : dup.date;
+      const sameDateDup = existing.find(r => r.date === date);
+      if (sameDateDup) {
+        // Exact duplicate: same scheduled item, same date
+        toast(`⚠️ Já existe um registro de A Receber para esta data (${dupDate}). Verifique em A Receber.`, 'warning');
+        return;
+      }
+      // Different date but same sc — warn but allow
+      if (!confirm(`⚠️ Este programado já tem um registro pendente em A Receber (${dupDate}).
+
+Deseja adicionar mais uma entrada para ${typeof fmtDate === 'function' ? fmtDate(date) : date}?`)) {
+        return;
+      }
+    }
+  } catch (_dupErr) {
+    // Non-critical — proceed even if duplicate check fails
+    console.warn('[scAr] Duplicate check failed:', _dupErr?.message);
+  }
 
   try {
     // Tenta via RPC SECURITY DEFINER primeiro — bypassa edge cases de RLS
@@ -2988,7 +3069,8 @@ async function registerAsNotReceived() {
       if (error) throw error;
     }
 
-    // Mark this occurrence as skipped so it disappears from upcoming list
+    // Mark occurrence as 'ar_pending' (stored as 'skipped' in DB — no schema change)
+    // renderUpcoming detects ar_pending by cross-referencing state._arPendingKeys
     try {
       await sb.from('scheduled_occurrences')
         .upsert({
@@ -2998,16 +3080,19 @@ async function registerAsNotReceived() {
           execution_status: 'skipped',
           updated_at:       new Date().toISOString(),
         }, { onConflict: 'sc_id,scheduled_date' });
-      // Update local cache so renderUpcoming reflects it immediately
-      const sc = (state.scheduled || []).find(s => s.id === scId);
-      if (sc) {
-        if (!sc.occurrences) sc.occurrences = [];
-        const existing = sc.occurrences.find(o => o.scheduled_date === date);
+      // Update local cache
+      const scLocal = (state.scheduled || []).find(s => s.id === scId);
+      if (scLocal) {
+        if (!scLocal.occurrences) scLocal.occurrences = [];
+        const existing = scLocal.occurrences.find(o => o.scheduled_date === date);
         if (existing) existing.execution_status = 'skipped';
-        else sc.occurrences.push({ sc_id: scId, scheduled_date: date, execution_status: 'skipped', family_id: fid });
+        else scLocal.occurrences.push({ sc_id: scId, scheduled_date: date, execution_status: 'skipped', family_id: fid });
       }
+      // Track ar_pending keys so renderUpcoming can show them as "awaiting" rows
+      if (!state._arPendingKeys) state._arPendingKeys = new Set();
+      state._arPendingKeys.add(scId + '|' + date);
     } catch(skipErr) {
-      console.warn('[scAr] Could not mark occurrence as skipped:', skipErr?.message);
+      console.warn('[scAr] Could not mark occurrence as ar_pending:', skipErr?.message);
     }
 
     closeModal('registerOccModal');
@@ -3033,6 +3118,7 @@ async function _scArLoad() {
   }
 
   const pending = await _scArFetch(['pending']);
+  window._scArRecordsCache = pending;  // cache for renderUpcoming inline buttons
 
   section.style.display = pending.length ? '' : 'none';
   if (cntEl) cntEl.textContent = pending.length || '';
@@ -3109,6 +3195,10 @@ async function _scArReceive(arId) {
 async function _scArCancel(arId) {
   try {
     const fid = typeof famId === 'function' ? famId() : null;
+    // Load the AR record first so we can restore the occurrence
+    const { data: rec } = await sb.from('scheduled_ar_records')
+      .select('sc_id,date').eq('id', arId).maybeSingle();
+
     const { error } = await sb.from('scheduled_ar_records')
       .update({
         status:       'cancelled',
@@ -3118,8 +3208,29 @@ async function _scArCancel(arId) {
       .eq('id', arId)
       .eq('family_id', fid);
     if (error) throw error;
-    _scArLoad();
-    toast('Registro removido de Valores a Receber', 'info');
+
+    // Restore occurrence: remove skipped status so it reappears in upcoming
+    if (rec?.sc_id && rec?.date) {
+      await sb.from('scheduled_occurrences')
+        .delete()
+        .eq('sc_id', rec.sc_id)
+        .eq('scheduled_date', rec.date)
+        .eq('execution_status', 'skipped')
+        .eq('family_id', fid);
+      // Update local cache
+      const sc = (state.scheduled || []).find(s => s.id === rec.sc_id);
+      if (sc?.occurrences) {
+        sc.occurrences = sc.occurrences.filter(
+          o => !(o.scheduled_date === rec.date && o.execution_status === 'skipped')
+        );
+      }
+      // Remove from pending keys
+      if (state._arPendingKeys) state._arPendingKeys.delete(rec.sc_id + '|' + rec.date);
+    }
+
+    await _scArLoad();
+    renderUpcoming();
+    toast('📅 Transação restaurada para Programados', 'info');
   } catch (e) {
     toast('Erro: ' + (e.message || e), 'error');
   }
@@ -3131,6 +3242,14 @@ function _scArShowBtn(sc) {
   btn.style.display = sc && sc.type === 'income' ? '' : 'none';
 }
 
+
+
+// Cancel AR from the upcoming panel row (faster than going through scArSection)
+async function _scArCancelFromUpcoming(arId, scId, date) {
+  if (!confirm('Remover de A Receber e restaurar em Programados?')) return;
+  await _scArCancel(arId);
+}
+window._scArCancelFromUpcoming = _scArCancelFromUpcoming;
 window._scArLoad              = _scArLoad;
 window._scArReceive           = _scArReceive;
 window.registerAsNotReceived  = registerAsNotReceived;
