@@ -24,11 +24,25 @@ async function _iofReadFromDB(key) {
 // ── Escrita directa no Supabase (família-scoped) ───────────────────────────────
 async function _iofWriteToDB(key, value) {
   if (!window.sb) return;
+  const fid = typeof famId === 'function' ? famId() : null;
   try {
+    // Try with family_id scope first (if app_settings has family_id column)
+    const row = fid
+      ? { key, value: value || '', family_id: fid }
+      : { key, value: value || '' };
     const { error } = await window.sb
       .from('app_settings')
-      .upsert({ key, value: value || '' }, { onConflict: 'key' });
-    if (error) console.warn('[IOF] _iofWriteToDB:', error.message);
+      .upsert(row, { onConflict: 'key' });
+    if (error) {
+      // Fallback: without family_id (simpler schema)
+      if (error.message?.includes('family_id')) {
+        const { error: e2 } = await window.sb
+          .from('app_settings').upsert({ key, value: value||'' }, { onConflict: 'key' });
+        if (e2) console.warn('[IOF] _iofWriteToDB fallback:', e2.message);
+      } else {
+        console.warn('[IOF] _iofWriteToDB:', error.message);
+      }
+    }
   } catch(e) { console.warn('[IOF] _iofWriteToDB exception:', e.message); }
 }
 

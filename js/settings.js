@@ -3424,6 +3424,39 @@ async function importDemoData(userId, familyId, progressCb) {
     }
   }
 
+  // ── 5b. Build ID remap tables — CRITICAL for FK consistency ──────────────
+  // When upsert skips a duplicate (family+name exists), the DB keeps the OLD uuid.
+  // Transactions/scheduled reference the NEW demo UUIDs → FK fails.
+  // Fix: query actual IDs by name after insert, remap all FKs.
+  log('Mapeando IDs reais do banco…', 35);
+
+  // Helper: query name→id for a table
+  async function buildIdMap(table, demoRows, nameCol) {
+    const names = demoRows.map(r => r[nameCol]).filter(Boolean);
+    if (!names.length) return {};
+    try {
+      const { data: rows } = await sb.from(table)
+        .select('id,' + nameCol)
+        .eq('family_id', familyId)
+        .in(nameCol, names);
+      const byName = {};
+      (rows || []).forEach(r => { byName[r[nameCol]] = r.id; });
+      const map = {};
+      demoRows.forEach(r => {
+        if (r[nameCol] && byName[r[nameCol]]) map[r.id] = byName[r[nameCol]];
+      });
+      return map;
+    } catch(_) { return {}; }
+  }
+
+  const accIdMap  = await buildIdMap('accounts',   data.accounts,    'name');
+  const payIdMap  = await buildIdMap('payees',      data.payees,      'name');
+  const catIdMap  = await buildIdMap('categories',  data.categories,  'name');
+  log('Mapas de IDs prontos', 36);
+
+  // Remap helper: translate demo UUID → actual DB UUID (or keep original if already ok)
+  function remap(map, id) { return (id && map[id]) ? map[id] : id; }
+
   // ── 6. Transactions ───────────────────────────────────────────────────────
   log('Importando transações…', 37);
   const txTotal = data.transactions.length;
@@ -3434,6 +3467,11 @@ async function importDemoData(userId, familyId, progressCb) {
       const base = {
         ...t,
         family_id:  familyId,
+        // Remap account/payee/category to actual DB IDs
+        account_id:            remap(accIdMap,  t.account_id),
+        transfer_to_account_id: t.transfer_to_account_id ? remap(accIdMap, t.transfer_to_account_id) : null,
+        payee_id:              remap(payIdMap,  t.payee_id),
+        category_id:           remap(catIdMap,  t.category_id),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         brl_amount: t.brl_amount ?? (typeof toBRL === 'function' ? toBRL(t.amount, t.currency || 'BRL') : t.amount),
@@ -3442,26 +3480,29 @@ async function importDemoData(userId, familyId, progressCb) {
     });
     const { error } = await sb.from('transactions').insert(batch);
     if (error) {
-      errors.push(`transactions batch ${Math.floor(i/100)+1}: ${error.message}`);
+      errors.push('transactions batch ' + (Math.floor(i/100)+1) + ': ' + error.message);
       console.error('[DemoImport]', error.message, error);
     } else {
       txOk += batch.length;
     }
-    log(`Transações: ${Math.min(i+100,txTotal)}/${txTotal}…`, 37 + Math.round(Math.min(i+100,txTotal)/txTotal*32));
+    log('Transações: ' + Math.min(i+100,txTotal) + '/' + txTotal + '…', 37 + Math.round(Math.min(i+100,txTotal)/txTotal*32));
   }
-  log(`Transações: ${txOk}/${txTotal} inseridas`, 69);
+  log('Transações: ' + txOk + '/' + txTotal + ' inseridas', 69);
 
   // ── 7. Scheduled ─────────────────────────────────────────────────────────
   log('Criando programados…', 71);
-  // Only insert scheduled transactions whose account_id was actually inserted
-  const insertedAccIds = new Set(data.accounts.map(a => a.id));
-  const validScheduled = data.scheduled.filter(sc => !sc.account_id || insertedAccIds.has(sc.account_id));
-  await ins('scheduled_transactions', validScheduled.map(sc => ({
+  // Remap account/payee/category IDs and skip rows whose account doesn't exist
+  const scheduledRemapped = data.scheduled.map(sc => ({
     ...sc,
+    account_id:            remap(accIdMap, sc.account_id),
+    transfer_to_account_id: sc.transfer_to_account_id ? remap(accIdMap, sc.transfer_to_account_id) : null,
+    payee_id:              remap(payIdMap,  sc.payee_id),
+    category_id:           remap(catIdMap,  sc.category_id),
     start_date:    sc.start_date || new Date().toISOString().slice(0,10),
     auto_register: sc.auto_register ?? false,
     auto_confirm:  sc.auto_confirm ?? true,
-  })), 'Programados', 20);
+  }));
+  await ins('scheduled_transactions', scheduledRemapped, 'Programados', 20);
 
   // ── 8. Budgets ───────────────────────────────────────────────────────────
   log('Criando orçamentos…', 74);
@@ -3480,9 +3521,13 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 10. Dreams ───────────────────────────────────────────────────────────
   log('Criando objetivos…', 80);
+  // dreams: created_by must match auth.uid() for RLS — use currentUser.auth_uid
+  const dreamsAuthUid = (typeof currentUser !== 'undefined' && currentUser?.auth_uid)
+    || (typeof currentUser !== 'undefined' && currentUser?.id)
+    || userId;
   await ins('dreams', data.dreams.map(dr => ({
     ...dr,
-    created_by:  userId,
+    created_by:  dreamsAuthUid,
     dream_type:  dr.dream_type || dr.type || 'outro',
     target_date: dr.target_date || dr.deadline || null,
     updated_at:  new Date().toISOString(),
@@ -3494,28 +3539,30 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 11. Prices ───────────────────────────────────────────────────────────
   log('Criando preços…', 83);
-  const insertedCatIds = new Set(data.categories.map(c => c.id));
+  // Remap category_id in price_items using catIdMap
   const validPriceItems = data.priceItems.map(pi => ({
     ...pi,
-    category_id: insertedCatIds.has(pi.category_id) ? pi.category_id : null,
+    category_id: remap(catIdMap, pi.category_id) || null,
   }));
   await ins('price_items', validPriceItems, 'Itens de preço');
-  await ins('price_stores',  data.priceStores,  'Lojas');
-  // price_history: filter to only items and stores that were actually inserted
-  const insertedStoreIds = new Set(data.priceStores.map(s => s.id));
-  const insertedItemIds  = new Set(data.priceItems.map(i => i.id));
+  await ins('price_stores', data.priceStores, 'Lojas');
+
+  // Build actual ID maps for price_items and price_stores after insert
+  const piIdMap = await buildIdMap('price_items',  data.priceItems,  'name');
+  const psIdMap = await buildIdMap('price_stores',  data.priceStores, 'name');
+
   await ins('price_history', data.priceHistory
-    .filter(ph =>
-      (!ph.store_id || insertedStoreIds.has(ph.store_id)) &&
-      (!ph.item_id  || insertedItemIds.has(ph.item_id))
-    )
     .map(ph => ({
       ...ph,
+      item_id:      remap(piIdMap, ph.item_id),
+      store_id:     remap(psIdMap, ph.store_id),
       purchased_at: ph.purchased_at || ph.date,
       unit_price:   ph.unit_price   || ph.price,
       quantity:     ph.quantity     || ph.qty || 1,
       date:         undefined, price: undefined, qty: undefined,
-    })), 'Histórico');
+    }))
+    .filter(ph => ph.item_id),   // skip entries with no resolvable item
+    'Histórico');
 
   // ── 12. Grocery ──────────────────────────────────────────────────────────
   log('Criando mercado…', 88);

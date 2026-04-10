@@ -93,7 +93,7 @@ function _drillOpenModal(opts) {
           <div class="drill-tx-dot" style="background:${catColor}"></div>
           <div class="drill-tx-body">
             <div class="drill-tx-desc">${esc2(t.description||'—')}</div>
-            <div class="drill-tx-meta">${fmtDate(t.date)||''}${t.categories?.name?' · '+esc2(t.categories.name):''}${t.payees?.name?' · '+esc2(t.payees.name):''}</div>
+            <div class="drill-tx-meta">${t.date||''}${t.categories?.name?' · '+esc2(t.categories.name):''}${t.payees?.name?' · '+esc2(t.payees.name):''}</div>
           </div>
           <div class="drill-tx-amt ${isNeg?'neg':'pos'}">${isNeg?'−':'+'}${fmt2(Math.abs(parseFloat(t.amount)||0))}</div>
         </div>`;
@@ -830,10 +830,13 @@ function setReportView(view) {
   document.getElementById('reportTxView').style.display              = view==='transactions'   ? '' : 'none';
   document.getElementById('reportForecastView').style.display        = view==='forecast'       ? '' : 'none';
   document.getElementById('reportBudgetView')?.style && (document.getElementById('reportBudgetView').style.display = view==='budgets' ? '' : 'none');
-  const _benEl = document.getElementById('reportBeneficiariosView');
-  if (_benEl) _benEl.style.display = view === 'beneficiarios' ? '' : 'none';
 
   // Hide the entire filter section (wrapper + bar) for views that don't need filters
+  // Beneficiarios view
+  const _benEl = document.getElementById('reportBeneficiariosView');
+  if (_benEl) _benEl.style.display = (view === 'beneficiarios') ? '' : 'none';
+  if (view === 'beneficiarios' && typeof loadPayeeReport === 'function') loadPayeeReport();
+
   const _hideFilters = (view === 'forecast' || view === 'budgets' || view === 'payees' || view === 'beneficiarios');
   const _filterWrap = document.getElementById('rptFilterWrap');
   if (_filterWrap) _filterWrap.style.display = _hideFilters ? 'none' : '';
@@ -842,14 +845,11 @@ function setReportView(view) {
     document.getElementById('reportFilterBar').style.display = 'none';
   }
   // If not hiding, leave bar in its current collapsed/expanded state (don't force open)
-  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets'].forEach(id=>
+  ['rptBtnRegular','rptBtnTx','rptBtnForecast','rptBtnBudgets','rptBtnBeneficiarios'].forEach(id=>
     document.getElementById(id)?.classList.remove('active'));
   const map={regular:'rptBtnRegular',transactions:'rptBtnTx',forecast:'rptBtnForecast',budgets:'rptBtnBudgets',beneficiarios:'rptBtnBeneficiarios'};
   document.getElementById(map[view])?.classList.add('active');
   if (view === 'budgets') _rbtLoad();
-  if (view === 'beneficiarios') {
-    loadPayeeReport();
-  }
 
   if(view==='forecast'){
     if(!document.getElementById('forecastFrom').value){
@@ -1773,7 +1773,7 @@ function exportReportCSV() {
   const BOM = '\uFEFF';
   const headers = ['Data','Descrição','Conta','Moeda','Categoria','Beneficiário','Tags','Valor','Tipo','Memo'];
   const rows = txs.map(t => [
-    fmtDate(t.date),
+    t.date,
     `"${(t.description||'').replace(/"/g,'""')}"`,
     `"${(t.accounts?.name||'').replace(/"/g,'""')}"`,
     t.accounts?.currency || 'BRL',
@@ -3041,65 +3041,35 @@ window.setReportView                       = setReportView;
 window.setRptCatChart                      = setRptCatChart;
 window.showEmailPopup                      = showEmailPopup;
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  RELATÓRIO: BENEFICIÁRIOS / FONTES PAGADORAS
-//  Ranking completo com filtro de período e toggle de modo
-// ═══════════════════════════════════════════════════════════════════════════
 
-let _rptBenefMode = 'expense'; // 'expense' = Beneficiários | 'income' = Fontes Pagadoras
+// ═══════════════════════════════════════════════════════════════════
+//  BENEFICIARIOS & FONTES
+// ═══════════════════════════════════════════════════════════════════
+
+let _rptBenefMode = 'expense';
 
 function rptBenefSetMode(mode) {
   _rptBenefMode = mode;
-  const expBtn = document.getElementById('rptBenefBtn');
-  const incBtn = document.getElementById('rptFontesBtn');
-  const isExp  = mode === 'expense';
-  if (expBtn) {
-    expBtn.style.background = isExp  ? 'var(--accent)' : 'transparent';
-    expBtn.style.color      = isExp  ? '#fff'          : 'var(--muted)';
-  }
-  if (incBtn) {
-    incBtn.style.background = !isExp ? 'var(--accent)' : 'transparent';
-    incBtn.style.color      = !isExp ? '#fff'          : 'var(--muted)';
-  }
+  const eB = document.getElementById('rptBenefBtn');
+  const iB = document.getElementById('rptFontesBtn');
+  if (eB) { eB.style.background = mode==='expense'?'var(--accent)':'transparent'; eB.style.color=mode==='expense'?'#fff':'var(--muted)'; }
+  if (iB) { iB.style.background = mode==='income'?'var(--accent)':'transparent';  iB.style.color=mode==='income'?'#fff':'var(--muted)'; }
   loadPayeeReport();
 }
 window.rptBenefSetMode = rptBenefSetMode;
 
 function _rptBenefDateRange() {
-  const period = document.getElementById('rptBenefPeriod')?.value || 'year';
-  const now    = new Date();
-  const y      = now.getFullYear();
-  const m      = now.getMonth(); // 0-based
-
-  const customWrap = document.getElementById('rptBenefCustomWrap');
-  if (customWrap) customWrap.style.display = period === 'custom' ? 'flex' : 'none';
-
-  if (period === 'alltime') return { from: '2000-01-01', to: '2099-12-31', label: 'Todos os tempos' };
-  if (period === 'custom') {
-    const from = document.getElementById('rptBenefFrom')?.value;
-    const to   = document.getElementById('rptBenefTo')?.value;
-    if (!from || !to) return null;
-    return { from, to, label: `${fmtDate(from)} → ${fmtDate(to)}` };
-  }
-  if (period === 'month') {
-    const from = `${y}-${String(m+1).padStart(2,'0')}-01`;
-    const to   = new Date(y, m+1, 0).toISOString().slice(0,10);
-    return { from, to, label: new Date(y, m).toLocaleDateString('pt-BR', { month:'long', year:'numeric' }) };
-  }
-  if (period === 'quarter') {
-    const q = Math.floor(m / 3);
-    const from = new Date(y, q*3, 1).toISOString().slice(0,10);
-    const to   = new Date(y, q*3+3, 0).toISOString().slice(0,10);
-    return { from, to, label: `${y} — T${q+1}` };
-  }
-  if (period === 'year') {
-    return { from: `${y}-01-01`, to: `${y}-12-31`, label: `Ano ${y}` };
-  }
-  if (period === 'last12') {
-    const from = new Date(now); from.setFullYear(from.getFullYear()-1);
-    return { from: from.toISOString().slice(0,10), to: now.toISOString().slice(0,10), label: 'Últimos 12 meses' };
-  }
-  return { from: `${y}-01-01`, to: `${y}-12-31`, label: `Ano ${y}` };
+  const p = document.getElementById('rptBenefPeriod')?.value || 'year';
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const cw = document.getElementById('rptBenefCustomWrap');
+  if (cw) cw.style.display = p==='custom'?'flex':'none';
+  if (p==='alltime') return { from:'2000-01-01', to:'2099-12-31', label:'Todos os tempos' };
+  if (p==='month')   { return { from:y+'-'+String(m+1).padStart(2,'0')+'-01', to:new Date(y,m+1,0).toISOString().slice(0,10), label:new Date(y,m).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) }; }
+  if (p==='quarter') { const q=Math.floor(m/3); return { from:new Date(y,q*3,1).toISOString().slice(0,10), to:new Date(y,q*3+3,0).toISOString().slice(0,10), label:y+' - T'+(q+1) }; }
+  if (p==='year')    return { from:y+'-01-01', to:y+'-12-31', label:'Ano '+y };
+  if (p==='last12')  { const f=new Date(now); f.setFullYear(y-1); return { from:f.toISOString().slice(0,10), to:now.toISOString().slice(0,10), label:'Ultimos 12 meses' }; }
+  if (p==='custom')  { const fr=document.getElementById('rptBenefFrom')?.value, to=document.getElementById('rptBenefTo')?.value; if (!fr||!to) return null; return { from:fr, to:to, label:fr+' ate '+to }; }
+  return { from:y+'-01-01', to:y+'-12-31', label:'Ano '+y };
 }
 
 async function loadPayeeReport() {
@@ -3107,174 +3077,145 @@ async function loadPayeeReport() {
   const kpiEl  = document.getElementById('rptBenefKpi');
   if (!listEl) return;
 
+  const E = function(s) { return typeof esc==='function'?esc(s):String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  const F = function(v) { return typeof fmt==='function'?fmt(v):'R$'+Number(v).toFixed(2); };
+
+  listEl.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Carregando...</div>';
+  if (kpiEl) kpiEl.innerHTML = '';
+
   if (!sb || !currentUser) {
-    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Aguardando conexão…</div>';
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Aguardando conexao...</div>';
+    return;
+  }
+
+  const fid = typeof famId==='function' ? famId() : (currentUser && currentUser.family_id);
+  if (!fid) {
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Familia nao identificada.</div>';
     return;
   }
 
   const range = _rptBenefDateRange();
   if (!range) {
-    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Selecione um intervalo de datas válido.</div>';
+    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Selecione um intervalo valido.</div>';
     return;
   }
 
-  const isInc = _rptBenefMode === 'income';
-  const fmtV  = v => typeof fmt === 'function' ? fmt(v) : 'R$ ' + (+v).toFixed(2);
-  const escV  = s => typeof esc === 'function' ? esc(s) : String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const isInc  = (_rptBenefMode === 'income');
+  const accent = isInc ? '#16a34a' : '#dc2626';
+  var txs = [];
 
-  // ── Strategy: use state.transactions (already in memory) first ──────────
-  // Falls back to direct Supabase query if state is empty or range doesn't match
-  let txs = [];
-
-  const stTxs = state.transactions || [];
-  const stFrom = rptState.from, stTo = rptState.to;
-  const rangeMatch = stTxs.length > 0
-    && stFrom && stTo
-    && stFrom <= range.from && stTo >= range.to;
-
-  if (rangeMatch) {
-    // Filter cached transactions to the beneficiários range
-    txs = stTxs.filter(t =>
-      t.date >= range.from && t.date <= range.to &&
-      t.payee_id &&
-      (t.status === 'confirmed' || t.status === 'pending')
-    );
-  } else if (rptState.txData && rptState.txData.length > 0) {
-    // Use report-loaded data
-    txs = rptState.txData.filter(t =>
-      t.date >= range.from && t.date <= range.to && t.payee_id
-    );
-  } else {
-    // Direct fetch — explicit family_id, no wrapper chain
-    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
-    if (kpiEl) kpiEl.innerHTML = '';
-    try {
-      const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
-      if (!fid) throw new Error('Família não identificada');
-
-      // Fetch in two passes to avoid URL length issues
-      const pageSize = 500;
-      let allTxs = [], page = 0, done = false;
-      while (!done) {
-        const { data, error } = await sb
-          .from('transactions')
-          .select('id,date,amount,brl_amount,payee_id,payees(id,name,type),categories(name,color,icon)')
-          .eq('family_id', fid)
-          .gte('date', range.from)
-          .lte('date', range.to)
-          .in('status', ['confirmed','pending'])
-          .not('payee_id', 'is', null)
-          .order('date', { ascending: false })
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-
-        if (error) throw error;
-        if (!data || data.length === 0) { done = true; break; }
-        allTxs = allTxs.concat(data);
-        if (data.length < pageSize) done = true;
-        page++;
-      }
-      txs = allTxs;
-    } catch(e) {
-      listEl.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.82rem;text-align:center">❌ ' + escV(e.message) + '</div>';
-      return;
+  try {
+    var PG = 500;
+    for (var page = 0; ; page++) {
+      var res = await sb
+        .from('transactions')
+        .select('id,amount,brl_amount,payee_id,payees(id,name),categories(name,color,icon)')
+        .eq('family_id', fid)
+        .eq('status', 'confirmed')
+        .eq('is_transfer', false)
+        .gte('date', range.from)
+        .lte('date', range.to)
+        .range(page * PG, (page+1)*PG - 1);
+      if (res.error) throw res.error;
+      if (!res.data || res.data.length === 0) break;
+      txs = txs.concat(res.data);
+      if (res.data.length < PG) break;
     }
+  } catch(e) {
+    listEl.innerHTML = '<div style="color:#dc2626;padding:24px;text-align:center;font-size:.84rem">Erro ao carregar: ' + E(e.message) + '</div>';
+    return;
   }
 
-  // ── Aggregate by payee ─────────────────────────────────────────────────
-  const map = {};
-  txs.forEach(t => {
+  var map = {}, grandTotal = 0, txCount = 0;
+  txs.forEach(function(t) {
+    var raw = parseFloat(t.brl_amount != null ? t.brl_amount : t.amount) || 0;
+    if (isInc  && raw <= 0) return;
+    if (!isInc && raw >= 0) return;
     if (!t.payee_id) return;
-    const amt  = parseFloat(t.brl_amount ?? t.amount) || 0;
-    const isThisInc = amt >= 0;
-    if (isInc && !isThisInc) return;
-    if (!isInc && isThisInc) return;
-    const pid  = t.payee_id;
-    const name = t.payees?.name || pid;
-    const icon = t.categories?.icon  || (isInc ? '💰' : '🛒');
-    const clr  = t.categories?.color || (isInc ? 'var(--accent)' : 'var(--red)');
-    if (!map[pid]) map[pid] = { id:pid, name, icon, color:clr, total:0, count:0 };
-    map[pid].total += Math.abs(amt);
+    var abs = Math.abs(raw);
+    var pid = t.payee_id;
+    if (!map[pid]) {
+      map[pid] = {
+        name:  (t.payees && t.payees.name) || '(sem nome)',
+        icon:  (t.categories && t.categories.icon) || (isInc ? '💰' : '🛒'),
+        color: (t.categories && t.categories.color) || accent,
+        total: 0, count: 0
+      };
+    }
+    map[pid].total += abs;
     map[pid].count++;
+    grandTotal += abs;
+    txCount++;
   });
 
-  const ranked     = Object.values(map).sort((a,b) => b.total - a.total);
-  const grandTotal = ranked.reduce((s,p) => s+p.total, 0);
-  const topAmt     = ranked[0]?.total || 1;
-  const txCount    = ranked.reduce((s,p) => s+p.count, 0);
-  const accentColor = isInc ? '#16a34a' : '#dc2626';
+  var ranked = Object.values(map).sort(function(a,b) { return b.total - a.total; });
+  var topAmt = (ranked[0] && ranked[0].total) || 1;
 
-  // ── KPI bar ─────────────────────────────────────────────────────────────
   if (kpiEl) {
-    kpiEl.innerHTML = [
-      { label: isInc ? 'Total recebido' : 'Total pago',    val: fmtV(grandTotal), color: accentColor },
-      { label: isInc ? 'Fontes'         : 'Beneficiários', val: ranked.length,    color: 'var(--text)' },
-      { label: 'Ticket médio', val: fmtV(txCount > 0 ? grandTotal / txCount : 0), color: 'var(--muted)' },
-    ].map(k =>
-      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px">' +
-      '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">' + k.label + '</div>' +
-      '<div style="font-size:1.1rem;font-weight:800;color:' + k.color + ';font-family:var(--font-serif)">' + k.val + '</div>' +
-      '</div>'
-    ).join('');
+    var kpiData = [
+      { label: isInc?'Total recebido':'Total pago', val:F(grandTotal), clr:accent },
+      { label: isInc?'Fontes':'Beneficiarios',       val:ranked.length, clr:'var(--text)' },
+      { label: 'Ticket medio', val:F(txCount>0?grandTotal/txCount:0), clr:'var(--muted)' },
+    ];
+    kpiEl.innerHTML = kpiData.map(function(k) {
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px">' +
+        '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">' + k.label + '</div>' +
+        '<div style="font-size:1.1rem;font-weight:800;color:' + k.clr + ';font-family:var(--font-serif)">' + k.val + '</div>' +
+        '</div>';
+    }).join('');
   }
 
   if (!ranked.length) {
     listEl.innerHTML =
-      '<div style="text-align:center;padding:40px 20px">' +
-      '<div style="font-size:2.5rem;margin-bottom:12px">' + (isInc ? '📭' : '🔍') + '</div>' +
-      '<div style="font-size:.9rem;font-weight:700;color:var(--text)">Nenhum registro encontrado</div>' +
-      '<div style="font-size:.78rem;color:var(--muted);margin-top:6px">' + range.label + '</div>' +
+      '<div style="text-align:center;padding:56px 20px">' +
+      '<div style="font-size:3rem;margin-bottom:14px">' + (isInc?'📭':'🔍') + '</div>' +
+      '<div style="font-size:.92rem;font-weight:700;color:var(--text)">Nenhum registro no periodo</div>' +
+      '<div style="font-size:.78rem;color:var(--muted);margin-top:8px">' + E(range.label) + '</div>' +
+      (txs.length ? '<div style="font-size:.75rem;color:var(--muted);margin-top:6px">' + txs.length + ' transacoes sem beneficiario associado</div>' : '') +
       '</div>';
     return;
   }
 
-  // ── Header ───────────────────────────────────────────────────────────────
-  const header =
-    '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;' +
+  var html =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;' +
     'background:var(--surface2);border-bottom:1px solid var(--border)">' +
-    '<div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + accentColor + '">' +
-    (isInc ? '📥 Fontes Pagadoras' : '📤 Beneficiários') + ' · Ranking completo</div>' +
-    '<div style="font-size:.72rem;color:var(--muted)">' + range.label + ' · ' + ranked.length + ' registro' + (ranked.length > 1 ? 's' : '') + '</div>' +
+    '<div style="font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + accent + '">' +
+    (isInc ? '📥 Fontes Pagadoras' : '📤 Beneficiarios') +
+    ' - ' + ranked.length + ' registro' + (ranked.length>1?'s':'') + '</div>' +
+    '<div style="font-size:.71rem;color:var(--muted)">' + E(range.label) + ' - ' + txCount + ' tx</div>' +
     '</div>';
 
-  // ── Rows ─────────────────────────────────────────────────────────────────
-  const rows = ranked.map(function(p, i) {
-    const pct   = grandTotal > 0 ? (p.total / grandTotal * 100) : 0;
-    const barW  = topAmt    > 0 ? (p.total / topAmt    * 100) : 0;
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
-    const bg    = i < 3 ? accentColor + '10' : 'transparent';
-    return (
-      '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' +
-      'border-bottom:1px solid var(--border);background:' + bg + ';' +
-      'transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'"' +
-      ' onmouseout="this.style.background=\'' + bg + '\'">' +
-      '<div style="width:28px;text-align:center;flex-shrink:0">' +
-        (medal ? '<span style="font-size:1.1rem">' + medal + '</span>'
-               : '<span style="font-size:.7rem;font-weight:800;color:var(--muted)">' + (i+1) + '</span>') +
+  ranked.forEach(function(p, i) {
+    var pct   = grandTotal > 0 ? (p.total/grandTotal*100).toFixed(1) : '0.0';
+    var barW  = (p.total/topAmt*100).toFixed(1);
+    var medals = ['🥇','🥈','🥉'];
+    var medal  = medals[i] || null;
+    var bgTop3 = i < 3 ? 'background:' + accent + '0d;' : '';
+
+    html +=
+      '<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);' + bgTop3 + '">' +
+      '<div style="width:24px;text-align:center;flex-shrink:0">' +
+        (medal
+          ? '<span style="font-size:1rem">' + medal + '</span>'
+          : '<span style="font-size:.67rem;font-weight:800;color:var(--muted)">' + (i+1) + '</span>') +
       '</div>' +
-      '<div style="width:36px;height:36px;border-radius:10px;background:' + p.color + '18;' +
+      '<div style="width:34px;height:34px;border-radius:9px;background:' + p.color + '18;' +
         'border:1.5px solid ' + p.color + '40;display:flex;align-items:center;' +
-        'justify-content:center;font-size:1rem;flex-shrink:0">' + p.icon + '</div>' +
+        'justify-content:center;font-size:.95rem;flex-shrink:0">' + p.icon + '</div>' +
       '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px">' +
-          '<span style="font-size:.84rem;font-weight:700;color:var(--text);' +
-            'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(p.name) + '</span>' +
-          '<span style="font-size:.82rem;font-weight:800;color:' + accentColor + ';white-space:nowrap;flex-shrink:0">' +
-            (isInc ? '+' : '−') + fmtV(p.total) + '</span>' +
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:5px">' +
+          '<span style="font-size:.85rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + E(p.name) + '</span>' +
+          '<span style="font-size:.85rem;font-weight:800;color:' + accent + ';white-space:nowrap;flex-shrink:0">' + (isInc?'+':'-') + F(p.total) + '</span>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
-          '<div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">' +
-            '<div style="height:100%;width:' + barW.toFixed(1) + '%;background:' + accentColor + ';border-radius:2px;transition:width .6s ease"></div>' +
+          '<div style="flex:1;height:5px;border-radius:3px;background:var(--border);overflow:hidden">' +
+            '<div style="height:100%;width:' + barW + '%;background:' + accent + ';border-radius:3px"></div>' +
           '</div>' +
-          '<span style="font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0">' +
-            pct.toFixed(1) + '% · ' + p.count + 'tx</span>' +
+          '<span style="font-size:.63rem;color:var(--muted);white-space:nowrap">' + pct + '% - ' + p.count + 'tx</span>' +
         '</div>' +
-      '</div>' +
-      '</div>'
-    );
-  }).join('');
+      '</div></div>';
+  });
 
-  listEl.innerHTML = header + rows;
+  listEl.innerHTML = html;
 }
-
-window.loadPayeeReport  = loadPayeeReport;
-window.rptBenefSetMode  = rptBenefSetMode;
+window.loadPayeeReport = loadPayeeReport;

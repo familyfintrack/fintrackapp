@@ -3359,9 +3359,10 @@ async function markTxUnreceived(txId) {
   if ((tx.status||'confirmed') === 'pending') { toast('Esta receita já está pendente.','info'); return; }
   if (!confirm('Mover para "A Receber"?\nA receita ficará pendente até ser marcada como recebida.')) return;
   try {
-    const { error } = await famQ(
-      sb.from('transactions').update({ status:'pending', updated_at:new Date().toISOString() }).eq('id',txId)
-    );
+    const fid2 = typeof famId==='function' ? famId() : currentUser?.family_id;
+    const { error } = await sb.from('transactions')
+      .update({ status:'pending', updated_at:new Date().toISOString() })
+      .eq('id', txId).eq('family_id', fid2);
     if (error) throw error;
     const local = (state.transactions||[]).find(t=>t.id===txId);
     if (local) local.status = 'pending';
@@ -3592,30 +3593,33 @@ async function loadReceivables() {
     return;
   }
 
-  try {
-    const fid = typeof famId==='function' ? famId() : null;
-    if (!fid) throw new Error('Família não identificada.');
+  const fid = typeof famId === 'function' ? famId() : null;
+  if (!fid) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Aguardando dados da família…</div>';
+    return;
+  }
 
+  try {
     const { data, error } = await sb.from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,status,is_transfer,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name,currency,color,icon),categories(name,color,icon),payees(name)')
-      .eq('family_id',fid).eq('status','pending').gte('amount',0).eq('is_transfer',false)
-      .order('date',{ascending:true});
+      .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name),categories(name,color,icon),payees(name)')
+      .eq('family_id', fid)
+      .eq('status', 'pending')
+      .gte('amount', 0)
+      .eq('is_transfer', false)
+      .order('date', { ascending: true });
+
     if (error) throw error;
 
     const rows  = data || [];
-
-    // include_in_patrimonio: read from client-side state cache (_recvPatMap)
-    // to avoid SELECT errors when migration hasn't been run yet
-    rows.forEach(r => { r.include_in_patrimonio = !!(_recvPatMap && _recvPatMap[r.id]); });
-    const today = new Date().toISOString().slice(0,10);
-    const total   = rows.reduce((s,r)=>s+(r.amount||0),0);
-    const overdue = rows.filter(r=>r.date<today).reduce((s,r)=>s+(r.amount||0),0);
+    const today = new Date().toISOString().slice(0, 10);
+    const total   = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const overdue = rows.filter(r => r.date < today).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
     if (countEl) countEl.textContent = rows.length;
-    if (totalEl) totalEl.textContent = fmt(total);
-    if (overEl)  overEl.textContent  = fmt(overdue);
+    if (totalEl) totalEl.textContent = typeof fmt === 'function' ? fmt(total) : total.toFixed(2);
+    if (overEl)  overEl.textContent  = typeof fmt === 'function' ? fmt(overdue) : overdue.toFixed(2);
     const overWrap = document.getElementById('receivablesOverdueWrap');
-    if (overWrap) overWrap.style.display = overdue>0?'':'none';
+    if (overWrap) overWrap.style.display = overdue > 0 ? '' : 'none';
 
     if (!rows.length) {
       container.innerHTML =
@@ -3623,224 +3627,236 @@ async function loadReceivables() {
         '<div style="font-size:3rem;margin-bottom:14px">📭</div>' +
         '<div style="font-size:1rem;font-weight:800;color:var(--text)">Nenhum valor a receber</div>' +
         '<div style="font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.6">' +
-        'Receitas com status <strong>Pendente</strong> aparecem aqui.</div>' +
+        'Transações de receita com status <strong>Pendente</strong> aparecem aqui.</div>' +
         '<div style="margin-top:20px"><button onclick="navigate(\'transactions\')" ' +
-        'style="font-family:var(--font-sans);font-size:.82rem;font-weight:700;padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer">' +
+        'style="font-family:var(--font-sans);font-size:.82rem;font-weight:700;padding:10px 20px;' +
+        'background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer">' +
         'Ver Transações →</button></div></div>';
       return;
     }
 
-    container.innerHTML = _buildReceivablesDashboard(rows, today);
+    container.innerHTML = _buildRecv(rows, today);
+
   } catch(e) {
-    container.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.84rem;text-align:center">❌ Erro: '+esc(e.message)+'</div>';
+    container.innerHTML =
+      '<div style="color:var(--red);padding:24px;font-size:.84rem;text-align:center">❌ ' +
+      (typeof esc === 'function' ? esc(e.message) : e.message) + '</div>';
   }
 }
 window.loadReceivables = loadReceivables;
 
-function _buildReceivablesDashboard(rows, today) {
-  const now = new Date(today);
-  const total = rows.reduce((s,r)=>s+(r.amount||0),0);
+function _buildRecv(rows, today) {
+  const now   = new Date(today);
+  const fmtV  = v => typeof fmt === 'function' ? fmt(v) : 'R$ ' + parseFloat(v).toFixed(2);
+  const escV  = s => typeof esc === 'function' ? esc(s) : String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const fmtD  = d => typeof fmtDate === 'function' ? fmtDate(d) : d;
+  const total = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
-  // Debtors
-  const byPayee = {};
-  rows.forEach(r => {
-    const pid = r.payee_id||'__no__';
-    if (!byPayee[pid]) byPayee[pid] = {name:r.payees?.name||'Sem devedor',total:0,count:0,items:[],oldest:r.date};
-    byPayee[pid].total+=(r.amount||0); byPayee[pid].count++;
-    byPayee[pid].items.push(r);
-    if(r.date<byPayee[pid].oldest) byPayee[pid].oldest=r.date;
-  });
-  const debtors = Object.values(byPayee).sort((a,b)=>b.total-a.total);
-  const maxD = debtors[0]?.total||1;
-
-  // Categories
-  const byCat = {};
-  rows.forEach(r => {
-    const cid = r.category_id||'__no__';
-    if (!byCat[cid]) byCat[cid]={name:r.categories?.name||'Sem categoria',color:r.categories?.color||'var(--accent)',icon:r.categories?.icon||'💰',total:0,count:0};
-    byCat[cid].total+=(r.amount||0); byCat[cid].count++;
-  });
-  const cats = Object.values(byCat).sort((a,b)=>b.total-a.total);
-  const maxC = cats[0]?.total||1;
-
-  // Aging
-  const buckets=[
-    {label:'A vencer',color:'#16a34a',items:rows.filter(r=>r.date>today)},
-    {label:'Vence hoje',color:'#d97706',items:rows.filter(r=>r.date===today)},
-    {label:'1–7 dias',color:'#ea580c',items:rows.filter(r=>{const d=Math.round((now-new Date(r.date))/86400000);return d>=1&&d<=7;})},
-    {label:'8–30 dias',color:'#dc2626',items:rows.filter(r=>{const d=Math.round((now-new Date(r.date))/86400000);return d>=8&&d<=30;})},
-    {label:'31–90 dias',color:'#991b1b',items:rows.filter(r=>{const d=Math.round((now-new Date(r.date))/86400000);return d>=31&&d<=90;})},
-    {label:'Mais de 90 dias',color:'#7f1d1d',items:rows.filter(r=>Math.round((now-new Date(r.date))/86400000)>90)},
-  ].filter(b=>b.items.length);
-  const maxA = buckets.reduce((m,b)=>Math.max(m,b.items.reduce((s,r)=>s+(r.amount||0),0)),1);
-
-  const out = [];
-  const overdueAmt = rows.filter(r=>r.date<today).reduce((s,r)=>s+(r.amount||0),0);
-  const overdoePct = total>0?(overdueAmt/total*100).toFixed(0):0;
-
-  // Card helper
-  function _card(title, sub, body, color) {
-    const c = color||'var(--accent)';
-    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px">'+
-      '<div style="padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'+
-        '<div style="font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:'+c+'">'+title+'</div>'+
-        '<div style="font-size:.71rem;color:var(--muted)">'+sub+'</div>'+
-      '</div><div style="padding:2px 16px 6px">'+body+'</div></div>';
+  function daysOld(dateStr) {
+    return Math.round((now - new Date(dateStr)) / 86400000);
   }
 
-  // Aging card
-  out.push(_card('⏱ Antiguidade',rows.filter(r=>r.date<today).length+' em atraso · '+overdoePct+'%',
-    buckets.map(b=>{
-      const bAmt=b.items.reduce((s,r)=>s+(r.amount||0),0);
-      const bW=(bAmt/maxA*100).toFixed(1), bPct=total>0?(bAmt/total*100).toFixed(1):0;
-      return '<div style="display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">'+
-        '<div style="font-size:.77rem;font-weight:700;color:'+b.color+'">'+b.label+'</div>'+
-        '<div style="display:flex;align-items:center;gap:6px">'+
-          '<div style="flex:1;height:5px;border-radius:3px;background:var(--border)">'+
-            '<div style="height:100%;width:'+bW+'%;background:'+b.color+';border-radius:3px;transition:width .5s"></div></div>'+
-          '<span style="font-size:.62rem;color:var(--muted);white-space:nowrap">'+b.items.length+'×</span>'+
-        '</div>'+
-        '<div style="text-align:right"><div style="font-size:.8rem;font-weight:800;color:'+b.color+'">'+fmt(bAmt)+'</div>'+
-          '<div style="font-size:.6rem;color:var(--muted)">'+bPct+'%</div></div></div>';
-    }).join('')
-  ));
+  function dLabel(dateStr) {
+    const d = daysOld(dateStr);
+    if (d < 0)  return Math.abs(d) + 'd para vencer';
+    if (d === 0) return 'Vence hoje';
+    return d + 'd em atraso';
+  }
 
-  // Debtors card
-  out.push(_card('👤 Por Devedor / Fonte',debtors.length+' devedor'+(debtors.length>1?'es':''),
-    debtors.map((d,i)=>{
-      const bW=(d.total/maxD*100).toFixed(1), pct=total>0?(d.total/total*100).toFixed(1):0;
-      const days=Math.max(0,Math.round((now-new Date(d.oldest))/86400000));
-      const dclr=days>30?'#dc2626':days>7?'#d97706':'var(--muted)';
-      const medal=['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][i]||null;
-      const idStr=d.items.map(r=>r.id).join(',');
-      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
-        '<div style="width:22px;text-align:center;flex-shrink:0">'+(medal?'<span style="font-size:.9rem">'+medal+'</span>':'<span style="font-size:.67rem;font-weight:800;color:var(--muted)">'+(i+1)+'</span>')+'</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:3px">'+
-            '<span style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.name)+'</span>'+
-            '<span style="font-size:.82rem;font-weight:800;color:var(--accent);white-space:nowrap;flex-shrink:0">+'+fmt(d.total)+'</span>'+
-          '</div>'+
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'+
-            '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)"><div style="height:100%;width:'+bW+'%;background:var(--accent);border-radius:2px;transition:width .6s"></div></div>'+
-            '<span style="font-size:.6rem;color:var(--muted);white-space:nowrap">'+pct+'% · '+d.count+'×</span>'+
-          '</div>'+
-          '<div style="font-size:.68rem;color:'+dclr+';font-weight:'+(days>30?'700':'400')+'">'+
-            (days===0?'Vence hoje':days>0?'⚠️ '+days+'d em aberto':'A vencer')+' · '+d.count+' cobrança'+(d.count>1?'s':'')+'</div>'+
-        '</div>'+
-        '<button onclick="_recvMarkAllReceived(\''+idStr+'\')" style="font-family:var(--font-sans);font-size:.67rem;font-weight:700;color:#fff;background:#16a34a;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0">✅ Recebido</button>'+
+  function dColor(dateStr) {
+    const d = daysOld(dateStr);
+    if (d < 0)  return 'var(--accent)';
+    if (d === 0) return '#d97706';
+    if (d <= 7)  return '#ea580c';
+    return '#dc2626';
+  }
+
+  // ── Aging buckets ───────────────────────────────────────────────────────
+  const buckets = [
+    { label:'A vencer',        color:'#16a34a', items: rows.filter(r => r.date > today) },
+    { label:'Vence hoje',      color:'#d97706', items: rows.filter(r => r.date === today) },
+    { label:'1–7 dias',        color:'#ea580c', items: rows.filter(r => { const d=daysOld(r.date); return d>=1&&d<=7; }) },
+    { label:'8–30 dias',       color:'#dc2626', items: rows.filter(r => { const d=daysOld(r.date); return d>=8&&d<=30; }) },
+    { label:'+30 dias',        color:'#7f1d1d', items: rows.filter(r => daysOld(r.date) > 30) },
+  ].filter(b => b.items.length);
+  const maxAge = buckets.reduce((m, b) => Math.max(m, b.items.reduce((s, r) => s + (parseFloat(r.amount)||0), 0)), 1);
+
+  // ── By debtor ───────────────────────────────────────────────────────────
+  const byPayee = {};
+  rows.forEach(r => {
+    const k = r.payee_id || '__none__';
+    if (!byPayee[k]) byPayee[k] = { name: r.payees?.name || 'Sem devedor', total: 0, count: 0, ids: [] };
+    byPayee[k].total += parseFloat(r.amount) || 0;
+    byPayee[k].count++;
+    byPayee[k].ids.push(r.id);
+  });
+  const debtors = Object.values(byPayee).sort((a, b) => b.total - a.total);
+  const maxD = debtors[0]?.total || 1;
+
+  let html = '';
+
+  // ── Card helper ─────────────────────────────────────────────────────────
+  function card(icon, title, sub, body) {
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px">' +
+      '<div style="padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);' +
+        'display:flex;align-items:center;justify-content:space-between">' +
+        '<div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)">' +
+          icon + ' ' + title + '</div>' +
+        '<div style="font-size:.71rem;color:var(--muted)">' + sub + '</div>' +
+      '</div>' +
+      '<div style="padding:4px 0">' + body + '</div>' +
       '</div>';
-    }).join('')
-  ));
+  }
 
-  // Categories card
-  out.push(_card('🏷️ Por Tipo / Categoria',cats.length+' categoria'+(cats.length>1?'s':''),
-    cats.map(c=>{
-      const bW=(c.total/maxC*100).toFixed(1), pct=total>0?(c.total/total*100).toFixed(1):0;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'+
-        '<div style="width:30px;height:30px;border-radius:8px;background:'+c.color+'18;border:1.5px solid '+c.color+'40;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0">'+c.icon+'</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:3px">'+
-            '<span style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name)+'</span>'+
-            '<span style="font-size:.82rem;font-weight:800;color:'+c.color+';white-space:nowrap">+'+fmt(c.total)+'</span>'+
-          '</div>'+
-          '<div style="display:flex;align-items:center;gap:8px">'+
-            '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)"><div style="height:100%;width:'+bW+'%;background:'+c.color+';border-radius:2px;transition:width .6s"></div></div>'+
-            '<span style="font-size:.6rem;color:var(--muted);white-space:nowrap">'+pct+'% · '+c.count+'×</span>'+
-          '</div>'+
-        '</div></div>';
-    }).join('')
-  ));
+  // ── Aging card ──────────────────────────────────────────────────────────
+  const agingRows = buckets.map(b => {
+    const bAmt = b.items.reduce((s, r) => s + (parseFloat(r.amount)||0), 0);
+    const bW   = (bAmt / maxAge * 100).toFixed(1);
+    const pct  = total > 0 ? (bAmt / total * 100).toFixed(0) : 0;
+    return '<div style="display:grid;grid-template-columns:110px 1fr auto;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border)">' +
+      '<div style="font-size:.77rem;font-weight:700;color:' + b.color + '">' + b.label + '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+        '<div style="flex:1;height:5px;border-radius:3px;background:var(--border)">' +
+          '<div style="height:100%;width:' + bW + '%;background:' + b.color + ';border-radius:3px"></div></div>' +
+        '<span style="font-size:.62rem;color:var(--muted)">' + b.items.length + '×</span>' +
+      '</div>' +
+      '<div style="text-align:right">' +
+        '<div style="font-size:.8rem;font-weight:800;color:' + b.color + '">' + fmtV(bAmt) + '</div>' +
+        '<div style="font-size:.6rem;color:var(--muted)">' + pct + '%</div>' +
+      '</div></div>';
+  }).join('');
 
-  // Detail groups
-  function _txRow(r) {
-    const days=Math.round((now-new Date(r.date))/86400000);
-    const dLabel=days===0?'Hoje':days>0?days+'d em atraso':Math.abs(days)+'d restante'+(Math.abs(days)>1?'s':'');
-    const dColor=days>0?'#dc2626':days===0?'#d97706':'var(--muted)';
-    const cColor=r.categories?.color||'var(--accent)';
-    const cIcon=r.categories?.icon||'💰';
-    const inPat=!!r.include_in_patrimonio;
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'+
-      '<div style="width:32px;height:32px;border-radius:8px;background:'+cColor+'18;border:1.5px solid '+cColor+'40;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">'+cIcon+'</div>'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.description||'—')+'</div>'+
-        '<div style="font-size:.68rem;color:var(--muted);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">'+
-          '<span>📅 '+(fmtDate?fmtDate(r.date):r.date)+'</span>'+
-          '<span style="color:'+dColor+';font-weight:600">⏱ '+dLabel+'</span>'+
-          (r.payees?.name?'<span>👤 '+esc(r.payees.name)+'</span>':'')+
-          (r.accounts?.name?'<span>🏦 '+esc(r.accounts.name)+'</span>':'')+
-        '</div>'+
-      '</div>'+
-      '<div style="flex-shrink:0;text-align:right">'+
-        '<div style="font-size:.88rem;font-weight:800;color:var(--accent)">'+fmt(r.amount)+'</div>'+
-        '<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">'+
-          '<button onclick="markTxReceived(\''+esc(r.id)+'\')" style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;border:none;border-radius:6px;padding:3px 7px;cursor:pointer">✅ Recebido</button>'+
-          '<button onclick="openTxDetail(\''+esc(r.id)+'\')" style="font-family:var(--font-sans);font-size:.65rem;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer">✏️</button>'+
-        '</div>'+
-        '<label style="display:flex;align-items:center;gap:4px;margin-top:5px;justify-content:flex-end;cursor:pointer" title="Incluir no patrimônio familiar">'+
-          '<input type="checkbox" '+(inPat?'checked':'')+' onchange="_recvTogglePatrimonio(\''+esc(r.id)+'\',this.checked)" style="width:12px;height:12px;accent-color:var(--accent);cursor:pointer">'+
-          '<span style="font-size:.6rem;color:var(--muted);white-space:nowrap">🏦 Patrim.</span>'+
-        '</label>'+
+  const overdueN = rows.filter(r => r.date < today).length;
+  html += card('⏱', 'Antiguidade', overdueN + ' em atraso', agingRows);
+
+  // ── By debtor card ──────────────────────────────────────────────────────
+  const debtorRows = debtors.map((d, i) => {
+    const bW  = (d.total / maxD * 100).toFixed(1);
+    const pct = total > 0 ? (d.total / total * 100).toFixed(1) : 0;
+    const idsStr = d.ids.join(',');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">' +
+      '<div style="width:22px;text-align:center;flex-shrink:0;font-size:.68rem;font-weight:800;color:var(--muted)">' + (i+1) + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+          '<span style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(d.name) + '</span>' +
+          '<span style="font-size:.83rem;font-weight:800;color:var(--accent);white-space:nowrap;margin-left:8px">+' + fmtV(d.total) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)">' +
+            '<div style="height:100%;width:' + bW + '%;background:var(--accent);border-radius:2px"></div></div>' +
+          '<span style="font-size:.6rem;color:var(--muted)">' + pct + '% · ' + d.count + '×</span>' +
+        '</div>' +
+      '</div>' +
+      '<button onclick="_recvMarkAllReceived(\'' + escV(idsStr) + '\')" ' +
+        'style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;' +
+        'border:none;border-radius:6px;padding:4px 9px;cursor:pointer;flex-shrink:0">✅ Receber</button>' +
+      '</div>';
+  }).join('');
+
+  html += card('👤', 'Por Devedor', debtors.length + ' fonte' + (debtors.length > 1 ? 's' : ''), debtorRows);
+
+  // ── Detail rows: overdue then upcoming ──────────────────────────────────
+  function txRow(r) {
+    const catIcon  = r.categories?.icon  || '💰';
+    const catColor = r.categories?.color || 'var(--accent)';
+    const dl       = dLabel(r.date);
+    const dc       = dColor(r.date);
+    const inPat    = !!(_recvPatMap && _recvPatMap[r.id]);
+
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">' +
+      '<div style="width:32px;height:32px;border-radius:8px;background:' + catColor + '18;border:1.5px solid ' + catColor + '40;' +
+        'display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">' + catIcon + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+          escV(r.description || '—') + '</div>' +
+        '<div style="font-size:.68rem;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">' +
+          '<span>📅 ' + fmtD(r.date) + '</span>' +
+          '<span style="color:' + dc + ';font-weight:600">⏱ ' + dl + '</span>' +
+          (r.payees?.name ? '<span>👤 ' + escV(r.payees.name) + '</span>' : '') +
+          (r.accounts?.name ? '<span>🏦 ' + escV(r.accounts.name) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="flex-shrink:0;text-align:right">' +
+        '<div style="font-size:.88rem;font-weight:800;color:var(--accent)">+' + fmtV(r.amount) + '</div>' +
+        '<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">' +
+          '<button onclick="markTxReceived(\'' + escV(r.id) + '\')" ' +
+            'style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;' +
+            'border:none;border-radius:6px;padding:3px 7px;cursor:pointer">✅</button>' +
+          '<button onclick="openTxDetail(\'' + escV(r.id) + '\')" ' +
+            'style="font-family:var(--font-sans);font-size:.65rem;color:var(--muted);background:transparent;' +
+            'border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer">✏️</button>' +
+        '</div>' +
+        '<label style="display:flex;align-items:center;gap:4px;margin-top:4px;justify-content:flex-end;cursor:pointer" title="Incluir no patrimônio">' +
+          '<input type="checkbox" ' + (inPat ? 'checked' : '') + ' onchange="_recvTogglePatrimonio(\'' + escV(r.id) + '\',this.checked)" ' +
+            'style="width:11px;height:11px;accent-color:var(--accent);cursor:pointer">' +
+          '<span style="font-size:.58rem;color:var(--muted)">🏦 Patrim.</span>' +
+        '</label>' +
       '</div></div>';
   }
 
-  function _groupCard(items, label, color) {
-    if (!items.length) return '';
-    const gAmt=items.reduce((s,r)=>s+(r.amount||0),0);
-    return _card(label+' · '+items.length+' lançamento'+(items.length>1?'s':''),fmt(gAmt),items.map(_txRow).join(''),color);
+  const overdueRows  = rows.filter(r => r.date <  today);
+  const upcomingRows = rows.filter(r => r.date >= today);
+
+  if (overdueRows.length) {
+    html += card('⚠️', 'Em Atraso · ' + overdueRows.length, fmtV(overdueRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0)), overdueRows.map(txRow).join(''));
+  }
+  if (upcomingRows.length) {
+    html += card('⏳', 'Aguardando · ' + upcomingRows.length, fmtV(upcomingRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0)), upcomingRows.map(txRow).join(''));
   }
 
-  out.push(_groupCard(rows.filter(r=>r.date<today),'⚠️ Em atraso','#dc2626'));
-  out.push(_groupCard(rows.filter(r=>r.date>=today),'⏳ Aguardando','#d97706'));
-  return out.filter(Boolean).join('');
+  return html;
 }
 
-// ── Mark all for a debtor via receipt modal ───────────────────────────────
 async function _recvMarkAllReceived(idsStr) {
-  const ids = idsStr.split(',').filter(Boolean);
+  const ids = String(idsStr).split(',').filter(Boolean);
   if (!ids.length) return;
-  if (ids.length === 1) {
-    // Single item — open full receipt modal
-    const tx = (state.transactions||[]).find(t=>t.id===ids[0]);
-    markTxReceived(ids[0]);
-    return;
-  }
-  // Multiple items — confirm bulk
-  const lbl = ids.length+' valores';
-  if (!confirm('Registrar '+lbl+' como recebidos?\nSerão confirmados na conta original de cada transação.')) return;
+  if (ids.length === 1) { markTxReceived(ids[0]); return; }
+  if (!confirm('Registrar ' + ids.length + ' valores como recebidos?\nSerão confirmados na conta original.')) return;
   try {
-    const fid = typeof famId==='function'?famId():null;
+    const fid = typeof famId === 'function' ? famId() : null;
     const { error } = await sb.from('transactions')
-      .update({status:'confirmed',updated_at:new Date().toISOString()})
-      .in('id',ids).eq('family_id',fid);
+      .update({ status:'confirmed', updated_at: new Date().toISOString() })
+      .in('id', ids).eq('family_id', fid);
     if (error) throw error;
-    toast('✅ '+lbl+' confirmados!','success');
-    await loadAccounts(); await loadReceivables();
-    if (typeof _updateReceivablesBadge==='function') _updateReceivablesBadge().catch(()=>{});
-    if (state.currentPage==='dashboard') loadDashboard();
-  } catch(e) { toast('Erro: '+e.message,'error'); }
+    toast('✅ ' + ids.length + ' valores confirmados!', 'success');
+    await loadReceivables();
+    if (typeof _updateReceivablesBadge === 'function') _updateReceivablesBadge().catch(() => {});
+    if (state.currentPage === 'dashboard') loadDashboard();
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }
 window._recvMarkAllReceived = _recvMarkAllReceived;
 
 async function _recvTogglePatrimonio(txId, include) {
-  // Update client-side cache immediately (works even without DB column)
-  _recvPatMap[txId] = include;
+  if (_recvPatMap) _recvPatMap[txId] = include;
   try {
-    const fid = typeof famId==='function'?famId():null;
+    const fid = typeof famId === 'function' ? famId() : null;
     const { error } = await sb.from('transactions')
-      .update({include_in_patrimonio:include,updated_at:new Date().toISOString()})
-      .eq('id',txId).eq('family_id',fid);
-    if (error) {
-      if (error.message?.includes('include_in_patrimonio')||error.code==='42703') {
-        // Column missing — works client-side only until migration is run
-        toast(include?'🏦 Marcado (local — execute a migration para persistir)':'Removido','info');
-        return;
-      }
-      throw error;
+      .update({ include_in_patrimonio: include, updated_at: new Date().toISOString() })
+      .eq('id', txId).eq('family_id', fid);
+    if (error && (error.message?.includes('include_in_patrimonio') || error.code === '42703')) {
+      toast(include ? '🏦 Marcado (execute a migration para persistir)' : 'Desmarcado', 'info');
+      return;
     }
-    toast(include?'🏦 Incluído no patrimônio':'Removido do patrimônio','info');
-  } catch(e) { toast('Erro: '+e.message,'error'); }
+    if (error) throw error;
+    toast(include ? '🏦 Incluído no patrimônio' : 'Removido do patrimônio', 'info');
+  } catch(e) { toast('Erro: ' + e.message, 'error'); }
 }
 window._recvTogglePatrimonio = _recvTogglePatrimonio;
 
-// Client-side cache for include_in_patrimonio flag (avoids SELECT on potentially missing column)
-const _recvPatMap = {};
+async function _updateReceivablesBadge() {
+  try {
+    const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
+    if (!fid || !sb) return;
+    const { count } = await sb.from('transactions')
+      .select('id', { count:'exact', head:true })
+      .eq('family_id', fid).eq('status', 'pending').gte('amount', 0).eq('is_transfer', false);
+    const badge = document.getElementById('receivablesBadge');
+    if (!badge) return;
+    if ((count || 0) > 0) { badge.textContent = count; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  } catch(_) {}
+}
+window._updateReceivablesBadge = _updateReceivablesBadge;
+
+// Client-side cache for include_in_patrimonio (avoids SELECT on potentially missing column)
+var _recvPatMap = {};
