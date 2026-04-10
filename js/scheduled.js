@@ -294,6 +294,22 @@ function scStatusLabel(sc) {
 }
 
 // ── Load & Render ──────────────────────────────────────
+
+// ── clearAllScFilters: reset all scheduled filters ──────────────────────────
+function clearAllScFilters() {
+  const searchEl = document.getElementById('scSearch');
+  if (searchEl) searchEl.value = '';
+  const typeEl = document.getElementById('scTypeFilter');
+  if (typeEl) typeEl.value = '';
+  // Reset chip to "Todos"
+  document.querySelectorAll('.sc-mf-chip').forEach(b => b.classList.remove('active'));
+  const allChip = document.getElementById('scChipAll');
+  if (allChip) allChip.classList.add('active');
+  if (typeof filterScheduled === 'function') filterScheduled();
+  if (typeof toast === 'function') toast('Filtros limpos', 'info');
+}
+window.clearAllScFilters = clearAllScFilters;
+
 async function loadScheduled() {
   // Recuperar view preferida — padrão: lista (carrega mais rápido, sem flash)
   const _savedView = (() => {
@@ -1585,6 +1601,61 @@ async function confirmRegisterOccurrence() {
   const amount = getAmtField('occAmount') || Math.abs(sc.amount);
   const memo = document.getElementById('occMemo').value;
 
+  // ── Duplicate detection against existing transactions ──────────────────
+  try {
+    const signedAmt = (sc.type === 'expense' || sc.type === 'transfer' || sc.type === 'card_payment')
+      ? -Math.abs(amount) : Math.abs(amount);
+
+    // Query: same date + account + amount
+    const { data: dupes } = await sb.from('transactions')
+      .select('id,date,description,amount,account_id')
+      .eq('family_id', famId())
+      .eq('date', actualDate)
+      .eq('account_id', sc.account_id)
+      .eq('amount', signedAmt);
+
+    if (dupes && dupes.length > 0) {
+      // Determine match quality
+      const exactMatch = dupes.find(d =>
+        d.description?.toLowerCase() === (sc.description || '').toLowerCase()
+      );
+      const msgLines = [
+        exactMatch
+          ? '⚠️ <strong>Transação idêntica já existe</strong> — mesma data, valor, conta e descrição:'
+          : '⚠️ <strong>Possível duplicata detectada</strong> — mesma data, valor e conta:',
+        '',
+        ...dupes.slice(0,3).map(d =>
+          `• ${d.date} | ${d.description || '—'} | ${typeof fmt==='function'?fmt(d.amount,'BRL'):d.amount}`
+        ),
+      ];
+
+      const confirmed = await new Promise(res => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+        overlay.innerHTML=`<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+          <div style="font-size:1.3rem;text-align:center;margin-bottom:10px">⚠️</div>
+          <div style="font-size:.9rem;color:var(--text);line-height:1.6;margin-bottom:16px">${msgLines.join('<br>')}</div>
+          <div style="display:flex;gap:10px">
+            <button id="_dupCancelBtn" style="flex:1;padding:11px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">
+              ✕ Cancelar
+            </button>
+            <button id="_dupConfirmBtn" style="flex:1;padding:11px;border-radius:9px;border:none;background:#d97706;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">
+              Registrar mesmo assim
+            </button>
+          </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#_dupCancelBtn').onclick  = () => { overlay.remove(); res(false); };
+        overlay.querySelector('#_dupConfirmBtn').onclick = () => { overlay.remove(); res(true);  };
+      });
+
+      if (!confirmed) return;
+    }
+  } catch(dupErr) {
+    console.warn('[dup-check]', dupErr?.message); // non-fatal — proceed
+  }
+  // ── End duplicate detection ────────────────────────────────────────────
+
   const result = await processScheduledOccurrence(sc, {
     scheduledDate: schedDate,
     actualDate,
@@ -1611,6 +1682,13 @@ async function confirmRegisterOccurrence() {
   toast('Transação registrada!', 'success');
   closeModal('registerOccModal');
   await loadScheduled();
+  // Refresh dashboard upcoming list if visible so registered tx disappears immediately
+  if (typeof renderDashboardUpcoming === 'function' && typeof state !== 'undefined' && state.currentPage === 'dashboard') {
+    renderDashboardUpcoming().catch(() => {});
+  } else if (typeof renderDashboardUpcoming === 'function') {
+    // Always refresh upcoming section so changes are reflected
+    setTimeout(() => renderDashboardUpcoming().catch(() => {}), 300);
+  }
 }
 
 // Payee autocomplete for SC modal uses shared onPayeeInput/selectPayee with ctx='sc'

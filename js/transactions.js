@@ -462,6 +462,30 @@ async function buildAccountRunningBalanceMap(accountId) {
   });
   return map;
 }
+
+// ── quickToggleTxStatus: toggle confirmed ↔ pending without opening modal ──
+async function quickToggleTxStatus(txId, newStatus) {
+  if (!txId) return;
+  const btn = document.querySelector(`[data-tx-id="${txId}"] .tx-status-toggle-btn`);
+  if (btn) { btn.style.opacity = '0.5'; btn.disabled = true; }
+  try {
+    const { error } = await sb.from('transactions').update({ status: newStatus })
+      .eq('id', txId).eq('family_id', famId());
+    if (error) throw error;
+    // Update state cache
+    const tx = (state.transactions || []).find(t => t.id === txId);
+    if (tx) tx.status = newStatus;
+    toast(newStatus === 'confirmed' ? '✅ Transação confirmada' : '⏳ Marcada como pendente', 'success');
+    // Refresh the list in place
+    if (typeof loadTransactions === 'function') await loadTransactions();
+    if (state.currentPage === 'dashboard' && typeof loadDashboard === 'function') loadDashboard();
+  } catch(e) {
+    toast('Erro ao atualizar status: ' + (e.message || e), 'error');
+    if (btn) { btn.style.opacity = '1'; btn.disabled = false; }
+  }
+}
+window.quickToggleTxStatus = quickToggleTxStatus;
+
 function txRow(t, showAccount=true, runningBalance=null) {
   const isPending = (t.status||'confirmed') === 'pending';
 
@@ -580,6 +604,11 @@ function txRow(t, showAccount=true, runningBalance=null) {
     <td class="tx-v2-right" style="position:relative">
       <div class="tx-v2-amt-wrap">${amtHtml}</div>
       ${balHtml}
+      <button class="tx-status-toggle-btn" title="${isPending ? 'Marcar como confirmada' : 'Marcar como pendente'}"
+        onclick="event.stopPropagation();quickToggleTxStatus('${t.id}','${isPending?'confirmed':'pending'}')"
+        aria-label="${isPending ? 'Confirmar' : 'Pendente'}"
+        style="opacity:${isPending?'1':'0'};pointer-events:${isPending?'auto':'auto'}"
+      >${isPending ? '✅' : '⏳'}</button>
       <button class="tx-edit-btn" title="Editar transação"
         onclick="event.stopPropagation();editTransaction('${t.id}')"
         aria-label="Editar">✏️</button>
@@ -1143,6 +1172,36 @@ window._tagsAdd    = _tagsAdd;
 window._tagsRemove = _tagsRemove;
 window._tagsSetActive = _tagsSetActive;
 
+
+// ── swapTxAccounts: invert origin ↔ destination accounts in transfer ──────
+function swapTxAccounts() {
+  const srcSel = document.getElementById('txAccountId');
+  const dstSel = document.getElementById('txTransferTo');
+  if (!srcSel || !dstSel) return;
+  const srcVal = srcSel.value;
+  const dstVal = dstSel.value;
+  if (!srcVal || !dstVal) return;
+  // Swap
+  srcSel.value = dstVal;
+  dstSel.value = srcVal;
+  srcSel.dispatchEvent(new Event('change'));
+  dstSel.dispatchEvent(new Event('change'));
+  // Brief visual feedback
+  const btn = document.querySelector('#txSwapAccountsBtn button');
+  if (btn) {
+    btn.style.background = 'var(--accent-lt,rgba(42,96,73,.1))';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    setTimeout(() => {
+      btn.style.background = 'var(--surface2)';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--text2)';
+    }, 350);
+  }
+}
+window.swapTxAccounts = swapTxAccounts;
+
+
 async function openTransactionModal(id=''){
   try {
   // Ensure family composition is loaded so the member picker renders with actual members
@@ -1151,9 +1210,11 @@ async function openTransactionModal(id=''){
   }
   resetTxModal();
   document.getElementById('txDate').value=(typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
-  // Show split button in footer
+  // Show split button and +1 button in footer (new tx only)
   const _spBtn = document.getElementById('txSplitOpenBtn');
   if (_spBtn) _spBtn.style.display = '';
+  const _addBtn = document.getElementById('txSaveAndAddBtn');
+  if (_addBtn) _addBtn.style.display = '';
   document.getElementById('txModalTitle').textContent='Nova Transação';
   if(id) {
     editTransaction(id);
@@ -1645,6 +1706,8 @@ function setTxType(type){
   const isCardPayment = type==='card_payment';
   const isPureTransfer = type==='transfer';
   document.getElementById('txTransferToGroup').style.display=isTransfer?'':'none';
+  const _swapBtn=document.getElementById('txSwapAccountsBtn');
+  if(_swapBtn) _swapBtn.style.display=isTransfer?'flex':'none';
   document.getElementById('txPayeeGroup').style.display=isTransfer?'none':'';
   // Show category for expense, income and card_payment; hide only for pure transfer
   document.getElementById('txCategoryGroup').style.display=isPureTransfer?'none':'';
@@ -2107,6 +2170,49 @@ async function _txDupConfirm({ payeeName, catLabel, amtFmt, dateLabel, level = '
 // ── Duplicate transaction guard ─────────────────────────────────────────────
 let _txSaving = false; // re-entrancy guard against concurrent double-clicks
 
+
+// ── saveTransactionAndAddNew: save current tx then immediately open new form ──
+
+// ── clearAllTxFilters: reset all tx filters and reload ──────────────────────
+function clearAllTxFilters() {
+  // Reset filter state
+  state.txFilter = { month: '', account: '', type: '', status: '', categoryId: '', memberIds: [] };
+  // Reset UI controls
+  const controls = [
+    ['txMonth',''],['txAccount',''],['txCategoryFilter',''],
+    ['txType',''],['txStatusFilter',''],['txMemberPicker',''],
+  ];
+  controls.forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+  // Hide account badge
+  const badge = document.getElementById('txAccountBadge');
+  if (badge) badge.style.display = 'none';
+  // Update filter toggle badge
+  if (typeof _txUpdateFilterBadge === 'function') _txUpdateFilterBadge();
+  // Reload
+  if (typeof loadTransactions === 'function') loadTransactions();
+  if (typeof toast === 'function') toast('Filtros limpos', 'info');
+}
+window.clearAllTxFilters = clearAllTxFilters;
+
+async function saveTransactionAndAddNew() {
+  // Guard: only works for NEW transactions (not edits)
+  const currentId = document.getElementById('txId')?.value;
+  if (currentId) { await saveTransaction(); return; }
+
+  // Save the current transaction
+  await saveTransaction();
+
+  // After save, re-open the modal for a new entry
+  // Small delay ensures the previous save completes and toasts are shown
+  setTimeout(() => {
+    if (typeof openTransactionModal === 'function') openTransactionModal();
+  }, 300);
+}
+window.saveTransactionAndAddNew = saveTransactionAndAddNew;
+
 async function saveTransaction(){
   // ── Duplicate detection ──────────────────────────────────────────────────
   const _isEdit = !!document.getElementById('txId').value;
@@ -2183,6 +2289,25 @@ async function saveTransaction(){
   let amount=getAmtField('txAmount');
   const isTransfer = type==='transfer' || type==='card_payment';
   const isCardPayment = type==='card_payment';
+
+  // ── Validation: transfer must be between different accounts ──
+  if (isTransfer) {
+    const srcAccId = document.getElementById('txAccountId')?.value;
+    const dstAccId = document.getElementById('txTransferTo')?.value;
+    if (!dstAccId) {
+      toast('Selecione a conta de destino.', 'error');
+      _txSaving = false;
+      if (window.Cursor) Cursor.hide();
+      return;
+    }
+    if (srcAccId && dstAccId && srcAccId === dstAccId) {
+      toast('A conta de origem e a conta de destino não podem ser a mesma.', 'error');
+      _txSaving = false;
+      if (window.Cursor) Cursor.hide();
+      return;
+    }
+  }
+
   if(type==='expense')amount=-Math.abs(amount);
   else if(type==='income')amount=Math.abs(amount);
   else if(isTransfer)amount=-Math.abs(amount); // debit origin account
@@ -2237,16 +2362,31 @@ async function saveTransaction(){
   const txDescEl = document.getElementById('txDesc');
   let autoTxDesc = txDescEl?.value?.trim() || '';
   if (!autoTxDesc) {
-    // Auto-generate from payee name + category name
-    const payeeName    = document.getElementById('txPayeeName')?.value?.trim() || '';
-    const catLabel     = document.getElementById('catPickerLabel')?.textContent?.trim() || '';
-    const cleanCat     = catLabel.replace(/^—.*—$/, '').trim();
-    if (payeeName && cleanCat && cleanCat.length > 0) {
-      autoTxDesc = payeeName + ' — ' + cleanCat;
-    } else if (payeeName) {
-      autoTxDesc = payeeName;
-    } else if (typeof ensureTransactionDescription === 'function') {
-      autoTxDesc = (await ensureTransactionDescription(txDescEl)).trim();
+    if (isTransfer) {
+      // Auto-generate transfer/card-payment description from account names
+      const _srcAccId = document.getElementById('txAccountId')?.value;
+      const _dstAccId = document.getElementById('txTransferTo')?.value;
+      const _srcAcc   = (state.accounts || []).find(a => a.id === _srcAccId);
+      const _dstAcc   = (state.accounts || []).find(a => a.id === _dstAccId);
+      const _srcName  = _srcAcc?.name || 'Origem';
+      const _dstName  = _dstAcc?.name || 'Destino';
+      if (isCardPayment) {
+        autoTxDesc = `Pagamento Cartão ${_dstName}`;
+      } else {
+        autoTxDesc = `Transferência ${_srcName} para ${_dstName}`;
+      }
+    } else {
+      // Auto-generate from payee name + category name
+      const payeeName    = document.getElementById('txPayeeName')?.value?.trim() || '';
+      const catLabel     = document.getElementById('catPickerLabel')?.textContent?.trim() || '';
+      const cleanCat     = catLabel.replace(/^—.*—$/, '').trim();
+      if (payeeName && cleanCat && cleanCat.length > 0) {
+        autoTxDesc = payeeName + ' — ' + cleanCat;
+      } else if (payeeName) {
+        autoTxDesc = payeeName;
+      } else if (typeof ensureTransactionDescription === 'function') {
+        autoTxDesc = (await ensureTransactionDescription(txDescEl)).trim();
+      }
     }
     if (txDescEl && autoTxDesc) txDescEl.value = autoTxDesc;
   }

@@ -159,7 +159,13 @@ window.txCatSplitReceiveCategory = txCatSplitReceiveCategory;
 function txCatSplitUpdateAmount(rowId, rawVal) {
   const row = _txSplit.catRows.find(r => r.id === rowId);
   if (!row) return;
-  row.amount = parseFloat(String(rawVal).replace(',', '.')) || 0;
+  // Read from data-cents (set by BRL mask) if available; else parse the displayed value
+  const el = document.querySelector(`#txCatSplitRow_${rowId} .tx-split-amount-input`) ||
+             document.querySelector(`#txCatSplitRowM_${rowId} .tx-split-amount-input`);
+  const cents = el ? parseInt(el.dataset.cents || '0', 10) : 0;
+  row.amount = cents
+    ? cents / 100
+    : Math.abs(parseFloat(String(rawVal).replace(/\./g,'').replace(',','.')) || 0);
   _txSplitUpdateCatTotals();
 }
 window.txCatSplitUpdateAmount = txCatSplitUpdateAmount;
@@ -193,7 +199,8 @@ function _txSplitCatRowHtml(row, txAmt, suffix) {
   const btnLabel = hascat
     ? `<span style="${dotStyle}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(_catLabel)}</span>`
     : `<span style="color:var(--muted)">— Selecionar categoria —</span>`;
-  const amtVal = row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '';
+  const _amtCents = Math.round((row.amount || 0) * 100);
+  const amtVal = _amtCents > 0 ? Math.floor(_amtCents/100).toLocaleString('pt-BR') + ',' + String(_amtCents%100).padStart(2,'0') : '';
   const rowId = suffix ? `txCatSplitRow${suffix}_${row.id}` : `txCatSplitRow_${row.id}`;
   return `<div class="tx-split-row" id="${rowId}">
       <div class="tx-split-row-left">
@@ -204,9 +211,9 @@ function _txSplitCatRowHtml(row, txAmt, suffix) {
         <div class="amt-wrap" style="width:120px;flex-shrink:0">
           <input type="text" class="tx-split-amount-input" inputmode="numeric" placeholder="0,00"
             value="${amtVal}"
-            oninput="_txSplitAmtFmt(this)"
-            onchange="txCatSplitUpdateAmount(${row.id}, this.value)"
-            onblur="_txSplitAmtBlur(this)"
+            data-cents="${_amtCents}"
+            oninput="_txSplitAmtFmt(this);txCatSplitUpdateAmount(${row.id},this.value)"
+            onblur="_txSplitAmtBlur(this);txCatSplitUpdateAmount(${row.id},this.value)"
             style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box;text-align:right">
         </div>
       </div>
@@ -386,9 +393,10 @@ function _txSplitMemRowHtml(row, txAmt, suffix) {
         ? '' // already used in another row
         : `<option value="${m.id}">${esc(m.name)}</option>`
   ).join('');
+  const _memCents = Math.round((row.amount || 0) * 100);
   const dispVal = isPct
     ? (row.pct > 0 ? row.pct.toFixed(1).replace('.', ',') : '')
-    : (row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '');
+    : (_memCents > 0 ? Math.floor(_memCents/100).toLocaleString('pt-BR') + ',' + String(_memCents%100).padStart(2,'0') : '');
   const placeholder = isPct ? '0,0%' : '0,00';
   const rowId = suffix ? `txMemSplitRow${suffix}_${row.id}` : `txMemSplitRow_${row.id}`;
   const updateFn = suffix ? `txMemSplitUpdateValue` : `txMemSplitUpdateValue`;
@@ -406,8 +414,8 @@ function _txSplitMemRowHtml(row, txAmt, suffix) {
       <div class="amt-wrap" style="width:110px;flex-shrink:0">
         <input type="text" inputmode="decimal" class="tx-split-amount-input"
           placeholder="${placeholder}" value="${dispVal}"
-          oninput="_txSplitAmtFmt(this)"
-          onchange="${updateFn}(${row.id},this.value)"
+          oninput="_txSplitAmtFmt(this);${updateFn}(${row.id},this.value)"
+          onblur="_txSplitAmtBlur(this);${updateFn}(${row.id},this.value)"
           style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;background:var(--surface);color:var(--text);font-family:inherit;box-sizing:border-box;text-align:right">
       </div>
       <button type="button" onclick="${removeFn}(${row.id})"
@@ -707,12 +715,16 @@ function scCatSplitReceiveCategory(catId, catName, catColor) {
 }
 window.scCatSplitReceiveCategory = scCatSplitReceiveCategory;
 
-function scCatSplitUpdateAmount(rowId, v) {
-  const row=_scSplit.catRows.find(r=>r.id===rowId);
-  if(row) row.amount=parseFloat(String(v).replace(',','.'))||0;
+function scCatSplitUpdateAmount(rowId, rawVal) {
+  const row = _scSplit.catRows.find(r => r.id === rowId);
+  if (!row) return;
+  const el = document.querySelector(`#scCatSplitRow_${rowId} .tx-split-amount-input`);
+  const cents = el ? parseInt(el.dataset.cents || '0', 10) : 0;
+  row.amount = cents
+    ? cents / 100
+    : Math.abs(parseFloat(String(rawVal).replace(/\./g,'').replace(',','.')) || 0);
   _scSplitUpdateCatTotals_SC();
-}
-window.scCatSplitUpdateAmount = scCatSplitUpdateAmount;
+}window.scCatSplitUpdateAmount = scCatSplitUpdateAmount;
 
 function scCatSplitAutoFill() {
   const a=Math.abs(getAmtField('scAmount')||0);
@@ -736,8 +748,9 @@ function _scSplitRenderCat(scAmt) {
     const has=!!row.category_id;
     const _catDisplayName = has?(row.category_parent_name?row.category_parent_name+'  ›  '+row.category_name:row.category_name):'';
     const lbl=has?`<span style="background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(_catDisplayName)}</span>`:`<span style="color:var(--muted)">— Selecionar categoria —</span>`;
-    const av=row.amount>0?row.amount.toFixed(2).replace('.',','):'';
-    return `<div class="tx-split-row" id="scCatSplitRow_${row.id}"><div class="tx-split-row-left"><button type="button" class="tx-split-cat-btn" onclick="scCatSplitPickCategory(${row.id})" style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;overflow:hidden;white-space:nowrap">${lbl}</button></div><div class="tx-split-row-right"><input type="text" inputmode="decimal" class="tx-split-amount-input" placeholder="0,00" value="${av}" onchange="scCatSplitUpdateAmount(${row.id},this.value)" oninput="scCatSplitUpdateAmount(${row.id},this.value)"><button type="button" class="tx-split-remove-btn" onclick="scCatSplitRemoveRow(${row.id})">✕</button></div></div>`;
+    const _scCents=Math.round((row.amount||0)*100);
+    const av=_scCents>0?Math.floor(_scCents/100).toLocaleString('pt-BR')+','+String(_scCents%100).padStart(2,'0'):'';
+    return `<div class="tx-split-row" id="scCatSplitRow_${row.id}"><div class="tx-split-row-left"><button type="button" class="tx-split-cat-btn" onclick="scCatSplitPickCategory(${row.id})" style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;overflow:hidden;white-space:nowrap">${lbl}</button></div><div class="tx-split-row-right"><input type="text" inputmode="decimal" class="tx-split-amount-input" placeholder="0,00" value="${av}" data-cents="${_scCents}" oninput="_txSplitAmtFmt(this);scCatSplitUpdateAmount(${row.id},this.value)" onblur="_txSplitAmtBlur(this);scCatSplitUpdateAmount(${row.id},this.value)"><button type="button" class="tx-split-remove-btn" onclick="scCatSplitRemoveRow(${row.id})">✕</button></div></div>`;
   }).join('');
   _scSplitUpdateCatTotals_SC(scAmt);
 }
@@ -787,7 +800,7 @@ window.scMemSplitUpdateMember = scMemSplitUpdateMember;
 
 function scMemSplitUpdateValue(rowId,v) {
   const row=_scSplit.memRows.find(r=>r.id===rowId); if(!row) return;
-  const n=parseFloat(String(v).replace(',','.'))||0, a=Math.abs(getAmtField('scAmount')||0);
+  const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'))||0, a=Math.abs(getAmtField('scAmount')||0);
   if(_scSplit.memMode==='pct'){row.pct=Math.min(100,Math.max(0,n));row.amount=a>0?Math.round(a*row.pct/100*100)/100:0;}
   else{row.amount=n;row.pct=a>0?Math.round(n/a*10000)/100:0;}
   _scSplitUpdateMemTotals_SC();

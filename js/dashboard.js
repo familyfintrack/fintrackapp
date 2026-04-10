@@ -3764,22 +3764,22 @@ window._loadDashDreamsCard = _loadDashDreamsCard;
 
 // ── Open new-tx modal pre-filled with a specific account ────────────────
 function _dashFavAddTx(accountId) {
-  if (typeof openNewTxModal === 'function') {
-    openNewTxModal();
-  } else if (typeof newTransaction === 'function') {
-    newTransaction();
-  } else {
-    const btn = document.getElementById('newTxBtn') || document.querySelector('[onclick*="newTransaction"]');
-    if (btn) btn.click();
+  // Open the transaction modal — pre-fill the account
+  if (typeof openTransactionModal === 'function') {
+    openTransactionModal();
+  } else if (typeof openTxModal === 'function') {
+    openTxModal();
   }
-  // Pre-fill the account after modal opens
+  // Pre-fill the origin account after the modal has rendered
   requestAnimationFrame(() => setTimeout(() => {
     const sel = document.getElementById('txAccountId');
     if (sel && accountId) {
       sel.value = accountId;
       sel.dispatchEvent(new Event('change'));
     }
-  }, 120));
+    // Also set the account filter so navigating to transactions keeps context
+    if (state && accountId) state.txFilter = { ...state.txFilter, account: accountId };
+  }, 200));
 }
 window._dashFavAddTx = _dashFavAddTx;
 
