@@ -553,14 +553,14 @@ function generateDemoData() {
 
   /* ── Dreams ───────────────────────────────────────────────────────────── */
   const dreams = [
-    { id:uid(), title:'Carro Novo — Corolla', type:'automovel', target_amount:120000, current_amount:28000,
-      deadline:`${Y+3}-06-01`, status:'active', priority:1, notes:'Toyota Corolla XEi 2027', icon:'🚗' },
-    { id:uid(), title:'Apartamento Próprio', type:'imovel', target_amount:380000, current_amount:62000,
-      deadline:`${Y+6}-01-01`, status:'active', priority:2, notes:'3 quartos, até 500k', icon:'🏠' },
-    { id:uid(), title:'Viagem Disney Orlando', type:'viagem', target_amount:35000, current_amount:8500,
-      deadline:`${Y+2}-07-01`, status:'active', priority:3, notes:'Família toda — 10 dias', icon:'✈️' },
-    { id:uid(), title:'Reserva de Emergência', type:'outro', target_amount:60000, current_amount:22000,
-      deadline:`${Y+2}-12-01`, status:'active', priority:4, notes:'6 meses de despesas', icon:'🏦' },
+    { id:uid(), title:'Carro Novo — Corolla', dream_type:'automovel', target_amount:120000, saved_amount:28000,
+      target_date:`${Y+3}-06-01`, status:'active', priority:1, notes:'Toyota Corolla XEi 2027', icon:'🚗' },
+    { id:uid(), title:'Apartamento Próprio', dream_type:'imovel', target_amount:380000, saved_amount:62000,
+      target_date:`${Y+6}-01-01`, status:'active', priority:2, notes:'3 quartos, até 500k', icon:'🏠' },
+    { id:uid(), title:'Viagem Disney Orlando', dream_type:'viagem', target_amount:35000, saved_amount:8500,
+      target_date:`${Y+2}-07-01`, status:'active', priority:3, notes:'Família toda — 10 dias', icon:'✈️' },
+    { id:uid(), title:'Reserva de Emergência', dream_type:'outro', target_amount:60000, saved_amount:22000,
+      target_date:`${Y+2}-12-01`, status:'active', priority:4, notes:'6 meses de despesas', icon:'🏦' },
   ];
 
   /* ── Price Items & Stores ─────────────────────────────────────────────── */
@@ -604,7 +604,7 @@ function generateDemoData() {
 
   /* ── Grocery List ─────────────────────────────────────────────────────── */
   const groceries = {
-    list: { id: uid(), name: 'Compras semana — modelo', type: 'generic', status: 'active' },
+    list: { id: uid(), name: 'Compras semana — modelo', status: 'open' },
     items: [
       {id:uid(), list_id:'__replace__', name:'Arroz Camil 5kg',        quantity:1, unit:'pct', checked:false, estimated_price:25.90},
       {id:uid(), list_id:'__replace__', name:'Feijão carioca 1kg',     quantity:2, unit:'pct', checked:false, estimated_price:8.99},
@@ -623,14 +623,14 @@ function generateDemoData() {
 
   /* ── Debts ────────────────────────────────────────────────────────────── */
   const debts = [
-    { id:uid(), description:'Financiamento Carro (Toyota Corolla)', creditor:'Toyota Financial Services',
-      original_amount:65000, current_balance:42000, interest_rate:1.2, index_type:'prefixado',
-      start_date:mth(14,1), due_date:mth(-36,1), installment_count:60, installments_paid:14,
-      installment_amount:1340, status:'active', notes:'Parcelas vencem todo dia 1' },
-    { id:uid(), description:'Empréstimo pessoal CAIXA', creditor:'Caixa Econômica Federal',
-      original_amount:15000, current_balance:7800, interest_rate:2.1, index_type:'prefixado',
-      start_date:mth(8,15), due_date:mth(-16,15), installment_count:24, installments_paid:8,
-      installment_amount:780, status:'active', notes:null },
+    { id:uid(), name:'Financiamento Carro (Toyota Corolla)',
+      original_amount:65000, current_balance:42000, adjustment_type:'none',
+      periodicity:'monthly', start_date:mth(14,1), status:'active',
+      notes:'Credor: Toyota Financial Services. Parcelas vencem todo dia 1.' },
+    { id:uid(), name:'Empréstimo pessoal CAIXA',
+      original_amount:15000, current_balance:7800, adjustment_type:'none',
+      periodicity:'monthly', start_date:mth(8,15), status:'active',
+      notes:'Credor: Caixa Econômica Federal.' },
   ];
 
   return {

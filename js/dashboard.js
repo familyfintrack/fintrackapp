@@ -2846,13 +2846,28 @@ async function _openPatrimonioModal() {
 
   const accountTotal = accountRows.reduce((s,a) => s + a._balBRL, 0);
 
+  // ── RECEIVABLES FLAGGED FOR PATRIMÔNIO ────────────────────────────────
+  // Load pending income transactions flagged to include in patrimônio
+  let recvTotal = 0, recvRows = [];
+  try {
+    const fid = typeof famId === 'function' ? famId() : null;
+    if (fid) {
+      const { data: rv } = await sb.from('transactions')
+        .select('id,description,amount,brl_amount,currency,date,payees(name)')
+        .eq('family_id', fid).eq('status','pending').gte('amount',0)
+        .eq('is_transfer',false).eq('include_in_patrimonio',true);
+      recvRows = rv || [];
+      recvTotal = recvRows.reduce((s,r) => s + (parseFloat(r.brl_amount ?? r.amount)||0), 0);
+    }
+  } catch(_) {}
+
   // ── PATRIMÔNIO TOTAL (idêntico ao dashboard KPI) ──
-  const patrimonioTotal = accountTotal - debtTotal;
+  const patrimonioTotal = accountTotal - debtTotal + recvTotal;
 
   // Componentes positivos vs negativos
   const ativoRows    = accountRows.filter(a => a._balBRL > 0);
   const passivoRows  = accountRows.filter(a => a._balBRL < 0); // cartões negativos
-  const totalAtivos  = ativoRows.reduce((s,a)=>s+a._balBRL, 0);
+  const totalAtivos  = ativoRows.reduce((s,a)=>s+a._balBRL, 0) + recvTotal;
   const totalCartNeg = passivoRows.reduce((s,a)=>s+Math.abs(a._balBRL), 0);
   const totalPassivos = totalCartNeg + debtTotal;
 
@@ -3178,6 +3193,23 @@ async function _openPatrimonioModal() {
       <span style="font-size:.72rem;font-weight:700;color:#8b5cf6">💳 Cartões — Crédito Disponível — ${dashFmt(accsCardPos.reduce((s,a)=>s+a._balBRL,0),'BRL')}</span>
     </div>
     ${cardPosHtml}
+  </div>` : ''}
+
+  ${recvRows.length ? `
+  <div style="border-bottom:1px solid var(--border)">
+    <div style="padding:7px 14px;background:rgba(30,92,66,.06)">
+      <span style="font-size:.72rem;font-weight:700;color:var(--accent)">📬 A Receber (incluído no patrimônio) — +${dashFmt(recvTotal,'BRL')}</span>
+    </div>
+    ${recvRows.map(r => {
+      const rAmt = parseFloat(r.brl_amount ?? r.amount)||0;
+      return `<div onclick="navigate('receivables');closeModal('patrimonioModal')" style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.description||'—')}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${fmtDate?fmtDate(r.date):r.date}${r.payees?.name?' · '+esc(r.payees.name):''}</div>
+        </div>
+        <span style="font-size:.85rem;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:10px">+${dashFmt(rAmt,'BRL')}</span>
+      </div>`;
+    }).join('')}
   </div>` : ''}
 
   <!-- PASSIVOS -->

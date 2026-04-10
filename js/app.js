@@ -928,6 +928,12 @@ function navigate(page){
     return;
   }
 
+  // Hide the AR (valores a receber) section when leaving the scheduled page
+  if (page !== 'scheduled') {
+    const scArSec = document.getElementById('scArSection');
+    if (scArSec) scArSec.style.display = 'none';
+  }
+
   // Track history — skip duplicate consecutive
   if (_navHistory[_navHistory.length-1] !== page) {
     _navHistory.push(page);

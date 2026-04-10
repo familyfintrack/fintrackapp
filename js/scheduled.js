@@ -3002,6 +3002,12 @@ async function _scArLoad() {
   const cntEl   = document.getElementById('scArCount');
   if (!section || !list) return;
 
+  // Only show on the scheduled page
+  if (state.currentPage !== 'scheduled') {
+    section.style.display = 'none';
+    return;
+  }
+
   const pending = await _scArFetch(['pending']);
 
   section.style.display = pending.length ? '' : 'none';
@@ -3039,43 +3045,40 @@ async function _scArLoad() {
 }
 
 async function _scArReceive(arId) {
+  // Load ar_record details then open the receipt modal
   try {
-    const fid = typeof famId === 'function' ? famId() : null;
-    const { data, error } = await sb.from('scheduled_ar_records')
-      .update({
-        status:      'received',
-        received_at: new Date().toISOString(),
-        updated_at:  new Date().toISOString(),
-      })
-      .eq('id', arId)
-      .eq('family_id', fid)
-      .select()
-      .single();
-    if (error) throw error;
+    const { data: rec, error } = await sb.from('scheduled_ar_records')
+      .select('*, scheduled_transactions(account_id,category_id,payee_id,currency,accounts!scheduled_transactions_account_id_fkey(name))')
+      .eq('id', arId).maybeSingle();
+    if (error || !rec) throw error || new Error('Registro não encontrado');
 
-    const rec = data;
-    _scArLoad();
-
-    // Abre modal de TX pre-preenchido
-    if (typeof openTransactionModal === 'function') {
-      openTransactionModal();
-      setTimeout(() => {
-        const sc = (state.scheduled || []).find(s => s.id === rec.sc_id);
-        if (typeof setTxType === 'function') setTxType('income');
-        const dtEl   = document.getElementById('txDate');
-        const descEl = document.getElementById('txDesc');
-        if (dtEl)   dtEl.value  = rec.date;
-        if (descEl) descEl.value = rec.description;
-        if (typeof setAmtField === 'function') setAmtField('txAmount', Math.abs(rec.amount || 0));
-        if (sc && sc.account_id) {
-          const accEl = document.getElementById('txAccountId');
-          if (accEl) accEl.value = sc.account_id;
-        }
-      }, 200);
+    const sc = rec.scheduled_transactions;
+    // Open the unified receipt modal
+    if (typeof _openReceiptModal === 'function') {
+      _openReceiptModal({
+        type:        'ar_record',
+        id:          arId,
+        description: rec.description || '—',
+        amount:      rec.amount || 0,
+        currency:    sc?.currency || 'BRL',
+        date:        new Date().toISOString().slice(0,10),
+        accountId:   sc?.account_id || '',
+        categoryId:  sc?.category_id || null,
+        payeeId:     sc?.payee_id    || null,
+        memo:        rec.memo || '',
+      });
+    } else {
+      // Fallback: direct confirm without modal
+      const fid = typeof famId === 'function' ? famId() : null;
+      const { error: upErr } = await sb.from('scheduled_ar_records')
+        .update({ status:'received', received_at:new Date().toISOString(), updated_at:new Date().toISOString() })
+        .eq('id', arId).eq('family_id', fid);
+      if (upErr) throw upErr;
+      _scArLoad();
+      toast('Marcado como recebido','success');
     }
-    toast('Marcado como recebido', 'success');
-  } catch (e) {
-    toast('Erro: ' + (e.message || e), 'error');
+  } catch(e) {
+    toast('Erro: '+(e.message||e),'error');
   }
 }
 

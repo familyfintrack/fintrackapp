@@ -3307,11 +3307,9 @@ async function importDemoData(userId, familyId, progressCb) {
                      'transfer_to_account_id','payee_id','category_id','memo','tags',
                      'status','start_date','frequency','auto_register','auto_confirm',
                      'family_id','created_at'],
-    debts:          ['id','description','creditor_payee_id','original_amount','current_balance','currency',
-                     'interest_rate','index_type','start_date','due_date',
-                     'installment_amount','installment_count','installments_paid',
-                     'status','notes','family_id','created_at'],
-    dreams:         ['id','title','type','target_amount','saved_amount','deadline',
+    debts:          ['id','name','creditor_payee_id','original_amount','current_balance','currency',
+                     'adjustment_type','periodicity','start_date','status','notes','family_id','created_at'],
+    dreams:         ['id','title','dream_type','target_amount','saved_amount','target_date',
                      'status','priority','notes','icon','family_id','created_by','created_at'],
     price_items:    ['id','name','description','unit','category_id','family_id','created_at'],
     price_stores:   ['id','name','address','family_id','created_at'],
@@ -3465,24 +3463,34 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 9. Debts ─────────────────────────────────────────────────────────────
   log('Criando dívidas…', 77);
-  // debts: 'creditor' text col doesn't exist; creditor is a payee FK (creditor_payee_id)
-  // We skip the creditor_payee_id for demo data since payees use demo UUIDs
-  // We insert debts without creditor FK — use description for creditor name in notes
+  // debts: use 'name' col (not description); remove creditor FK for demo data
   await ins('debts', data.debts.map(d => ({
     ...d,
-    description:       d.description || d.name || '',
-    notes:             d.notes ? d.notes + ' | Credor: ' + (typeof d.creditor === 'object' ? d.creditor?.name : d.creditor || '') : 'Credor: ' + (typeof d.creditor === 'object' ? d.creditor?.name : d.creditor || ''),
-    creditor_payee_id: undefined,  // remove FK that would violate constraint
-    creditor:          undefined,  // remove non-existent column
+    name:              d.name || d.description || 'Dívida demo',
+    notes:             [d.notes, d.creditor ? 'Credor: ' + (typeof d.creditor==='object'?d.creditor?.name:d.creditor) : null].filter(Boolean).join(' | ') || null,
+    description:       undefined,  // column is 'name' in this table
+    creditor_payee_id: undefined,  // skip FK for demo
+    creditor:          undefined,  // not a column
+    // Map remaining fields to actual schema
+    adjustment_type:   d.index_type || 'none',
+    periodicity:       'monthly',
+    index_type:        undefined,
+    interest_rate:     undefined,
+    installment_amount: undefined,
+    installment_count:  undefined,
+    installments_paid:  undefined,
+    due_date:           undefined,
   })), 'Dívidas');
 
   // ── 10. Dreams ───────────────────────────────────────────────────────────
   log('Criando objetivos…', 80);
   await ins('dreams', data.dreams.map(dr => ({
     ...dr,
-    created_by:     userId,
-    saved_amount:   dr.saved_amount ?? dr.current_amount ?? 0,  // remap column name
-    current_amount: undefined,  // remove if doesn't exist in schema
+    created_by:    userId,
+    dream_type:    dr.dream_type || dr.type || 'outro',
+    target_date:   dr.target_date || dr.deadline || null,
+    saved_amount:  dr.saved_amount ?? dr.current_amount ?? 0,
+    type:          undefined, deadline: undefined, current_amount: undefined,
   })), 'Sonhos');
 
   // ── 11. Prices ───────────────────────────────────────────────────────────
@@ -3494,20 +3502,25 @@ async function importDemoData(userId, familyId, progressCb) {
   }));
   await ins('price_items', validPriceItems, 'Itens de preço');
   await ins('price_stores',  data.priceStores,  'Lojas');
-  await ins('price_history', data.priceHistory.map(ph => ({
-    ...ph,
-    purchased_at: ph.purchased_at || ph.date,  // remap date -> purchased_at
-    unit_price:   ph.unit_price   || ph.price, // remap price -> unit_price
-    quantity:     ph.quantity     || ph.qty    || 1,
-    date:         undefined, price: undefined, qty: undefined,
-  })), 'Histórico');
+  // price_history: only include entries whose store_id was actually inserted
+  const insertedStoreIds = new Set(data.priceStores.map(s => s.id));
+  await ins('price_history', data.priceHistory
+    .filter(ph => !ph.store_id || insertedStoreIds.has(ph.store_id))
+    .map(ph => ({
+      ...ph,
+      purchased_at: ph.purchased_at || ph.date,
+      unit_price:   ph.unit_price   || ph.price,
+      quantity:     ph.quantity     || ph.qty || 1,
+      date:         undefined, price: undefined, qty: undefined,
+    })), 'Histórico');
 
   // ── 12. Grocery ──────────────────────────────────────────────────────────
   log('Criando mercado…', 88);
   const grocery = data.groceries;
-  // grocery_lists: 'type' column doesn't exist in schema — remove it
-  const glRaw = { ...grocery.list, family_id: familyId, created_at: new Date().toISOString() };
-  delete glRaw.type;  // column doesn't exist
+  // grocery_lists: 'type' col doesn't exist; status must be 'open' (not 'active')
+  const glRaw = { ...grocery.list, family_id: familyId, created_at: new Date().toISOString(),
+    status: 'open' };  // DB check constraint: status IN ('open','done',...)
+  delete glRaw.type;
   const glBase = pick(glRaw, COLS['grocery_lists'].filter(c => c !== 'type'));
   const { error: glErr } = await sb.from('grocery_lists').upsert(glBase, { onConflict: 'id', ignoreDuplicates: true });
   if (!glErr) {
