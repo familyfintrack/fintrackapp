@@ -3294,14 +3294,50 @@ async function importDemoData(userId, familyId, progressCb) {
   const data = generateDemoData();
   log(`Dados gerados: ${data._meta.txCount} transações, ${data._meta.catCount} categorias`, 3);
 
-  // ── Helper: insert in batches, log all errors ──────────────────────────
+  // ── Column whitelists — only send columns that exist in each table ────────
+  const COLS = {
+    account_groups: ['id','name','icon','color','currency','family_id','created_at'],
+    accounts:       ['id','name','type','currency','initial_balance','icon','color',
+                     'group_id','is_favorite','due_day','best_purchase_day','card_limit',
+                     'notes','family_id','created_at'],
+    categories:     ['id','name','type','parent_id','icon','color','family_id','created_at'],
+    payees:         ['id','name','type','default_category_id','notes','family_id','created_at'],
+    budgets:        ['id','month','category_id','amount','auto_reset','notes','family_id','created_at'],
+    scheduled_transactions: ['id','description','type','amount','currency','account_id',
+                     'transfer_to_account_id','payee_id','category_id','memo','tags',
+                     'status','start_date','frequency','auto_register','auto_confirm',
+                     'family_id','created_at'],
+    debts:          ['id','description','creditor','original_amount','current_balance','currency',
+                     'interest_rate','index_type','start_date','due_date',
+                     'installment_amount','installment_count','installments_paid',
+                     'status','notes','family_id','created_at'],
+    dreams:         ['id','title','type','target_amount','current_amount','deadline',
+                     'status','priority','notes','icon','family_id','created_by','created_at'],
+    price_items:    ['id','name','description','unit','category_id','family_id','created_at'],
+    price_stores:   ['id','name','address','family_id','created_at'],
+    price_history:  ['id','item_id','store_id','price','date','qty','family_id','created_at'],
+    grocery_lists:  ['id','name','type','status','family_id','created_at'],
+    grocery_items:  ['id','list_id','name','quantity','unit','checked','estimated_price','family_id','created_at'],
+    transactions:   ['id','date','description','amount','brl_amount','account_id',
+                     'category_id','payee_id','is_transfer','is_card_payment',
+                     'transfer_to_account_id','status','currency','memo',
+                     'family_id','created_at','updated_at'],
+  };
+
+  function pick(row, cols) {
+    const out = {};
+    cols.forEach(c => { if (c in row) out[c] = row[c]; });
+    return out;
+  }
+
+  // ── Helper: insert in batches, surface all errors ─────────────────────────
   async function ins(table, rows, label, batchSize = 50) {
     if (!rows || !rows.length) { log(`${label}: 0 (skipped)`, null); return 0; }
-    const enriched = rows.map(r => ({
-      ...r,
-      family_id:  familyId,
-      created_at: r.created_at || new Date().toISOString(),
-    }));
+    const cols = COLS[table];
+    const enriched = rows.map(r => {
+      const base = { ...r, family_id: familyId, created_at: r.created_at || new Date().toISOString() };
+      return cols ? pick(base, cols) : base;
+    });
     let ok = 0;
     for (let i = 0; i < enriched.length; i += batchSize) {
       const batch = enriched.slice(i, i + batchSize);
@@ -3314,142 +3350,123 @@ async function importDemoData(userId, familyId, progressCb) {
         ok += batch.length;
       }
     }
-    log(`${label}: ${ok}/${rows.length} inseridos`, null);
+    log(`${label}: ${ok}/${rows.length}`, null);
     return ok;
   }
 
-  // ── 1. Account Groups ─────────────────────────────────────────────────
+  // ── 1. Account Groups ─────────────────────────────────────────────────────
   log('Criando grupos de contas…', 8);
-  await ins('account_groups', data.accountGroups, 'Grupos de contas');
+  await ins('account_groups', data.accountGroups, 'Grupos');
 
-  // ── 2. Accounts — needs auth_uid for RLS ─────────────────────────────
+  // ── 2. Accounts ───────────────────────────────────────────────────────────
   log('Criando contas…', 14);
-  await ins('accounts', data.accounts.map(a => ({
-    ...a,
-    active:      true,
-    is_archived: false,
-    auth_uid:    userId,     // required by RLS
-  })), 'Contas');
+  await ins('accounts', data.accounts, 'Contas');
 
-  // ── 3. Categories — parents first ────────────────────────────────────
+  // ── 3. Categories (parents first) ─────────────────────────────────────────
   log('Criando categorias…', 20);
-  const parents  = data.categories.filter(c => !c.parent_id);
-  const children = data.categories.filter(c =>  c.parent_id);
-  await ins('categories', parents,  'Categorias (pais)');
-  await ins('categories', children, 'Categorias (filhas)');
+  await ins('categories', data.categories.filter(c => !c.parent_id),  'Cats (pais)');
+  await ins('categories', data.categories.filter(c =>  c.parent_id), 'Cats (filhas)');
 
-  // ── 4. Payees ─────────────────────────────────────────────────────────
+  // ── 4. Payees ─────────────────────────────────────────────────────────────
   log('Criando beneficiários…', 27);
-  await ins('payees', data.payees, 'Beneficiários');
+  // Remap category_id → default_category_id
+  await ins('payees', data.payees.map(p => ({
+    ...p,
+    default_category_id: p.category_id || p.default_category_id || null,
+  })), 'Beneficiários');
 
-  // ── 5. Family Members ─────────────────────────────────────────────────
-  log('Criando membros da família…', 32);
+  // ── 5. Family Members ─────────────────────────────────────────────────────
+  log('Criando membros…', 32);
   for (const m of data.familyMembers) {
     const { error } = await sb.from('family_members').insert({
-      family_id:  familyId,
-      user_id:    userId,
-      name:       m.name,
-      role:       m.role || 'viewer',
-      color:      m.color,
-      icon:       m.icon,
+      family_id: familyId, user_id: userId,
+      name: m.name, role: m.role || 'viewer',
+      color: m.color, icon: m.icon,
       created_at: new Date().toISOString(),
     });
-    if (error) {
-      console.warn('[DemoImport] family_member:', error.message);
+    if (error && !error.message.includes('duplicate')) {
       errors.push(`family_member ${m.name}: ${error.message}`);
     }
   }
 
-  // ── 6. Transactions ───────────────────────────────────────────────────
+  // ── 6. Transactions ───────────────────────────────────────────────────────
   log('Importando transações…', 37);
-  const txCount = data.transactions.length;
+  const txTotal = data.transactions.length;
   let txOk = 0;
-  for (let i = 0; i < data.transactions.length; i += 100) {
+  const txCols = COLS['transactions'];
+  for (let i = 0; i < txTotal; i += 100) {
     const batch = data.transactions.slice(i, i + 100).map(t => {
-      // Ensure no stray 'type' column — table uses is_transfer / is_card_payment
-      const { type: _type, ...rest } = t;
-      return {
-        ...rest,
-        family_id:   familyId,
-        created_at:  new Date().toISOString(),
-        updated_at:  new Date().toISOString(),
-        brl_amount:  t.brl_amount ?? (typeof toBRL === 'function' ? toBRL(t.amount, t.currency || 'BRL') : t.amount),
+      const base = {
+        ...t,
+        family_id:  familyId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        brl_amount: t.brl_amount ?? (typeof toBRL === 'function' ? toBRL(t.amount, t.currency || 'BRL') : t.amount),
       };
+      return pick(base, txCols);
     });
     const { error } = await sb.from('transactions').insert(batch);
     if (error) {
-      const msg = `transactions batch ${Math.floor(i/100)+1}: ${error.message}`;
-      console.error('[DemoImport]', msg, error);
-      errors.push(msg);
+      errors.push(`transactions batch ${Math.floor(i/100)+1}: ${error.message}`);
+      console.error('[DemoImport]', error.message, error);
     } else {
       txOk += batch.length;
     }
-    const pct = 37 + Math.round((Math.min(i + 100, txCount) / txCount) * 32);
-    log(`Transações: ${Math.min(i+100,txCount)}/${txCount}…`, pct);
+    log(`Transações: ${Math.min(i+100,txTotal)}/${txTotal}…`, 37 + Math.round(Math.min(i+100,txTotal)/txTotal*32));
   }
-  log(`Transações: ${txOk}/${txCount} inseridas`, 69);
+  log(`Transações: ${txOk}/${txTotal} inseridas`, 69);
 
-  // ── 7. Scheduled Transactions ─────────────────────────────────────────
+  // ── 7. Scheduled ─────────────────────────────────────────────────────────
   log('Criando programados…', 71);
   await ins('scheduled_transactions', data.scheduled.map(sc => ({
     ...sc,
-    family_id:  familyId,
-    frequency:  sc.frequency || 'monthly',
-    status:     sc.status    || 'active',
-    created_at: new Date().toISOString(),
+    start_date:   sc.start_date || new Date().toISOString().slice(0,10),
+    auto_register: sc.auto_register ?? false,
+    auto_confirm:  sc.auto_confirm ?? true,
   })), 'Programados', 20);
 
-  // ── 8. Budgets ────────────────────────────────────────────────────────
+  // ── 8. Budgets ───────────────────────────────────────────────────────────
   log('Criando orçamentos…', 74);
   await ins('budgets', data.budgets, 'Orçamentos');
 
-  // ── 9. Debts ──────────────────────────────────────────────────────────
+  // ── 9. Debts ─────────────────────────────────────────────────────────────
   log('Criando dívidas…', 77);
   await ins('debts', data.debts.map(d => ({
     ...d,
-    creditor_payee_id: null,
-    family_id:         familyId,
-    created_at:        new Date().toISOString(),
+    description: d.description || d.name || '',
+    creditor: typeof d.creditor === 'object' ? (d.creditor?.name || '') : (d.creditor || ''),
   })), 'Dívidas');
 
-  // ── 10. Dreams ────────────────────────────────────────────────────────
+  // ── 10. Dreams ───────────────────────────────────────────────────────────
   log('Criando objetivos…', 80);
-  await ins('dreams', data.dreams.map(dr => ({
-    ...dr,
-    family_id:  familyId,
-    created_by: userId,
-    created_at: new Date().toISOString(),
-  })), 'Sonhos');
+  await ins('dreams', data.dreams.map(dr => ({ ...dr, created_by: userId })), 'Sonhos');
 
-  // ── 11. Prices ────────────────────────────────────────────────────────
+  // ── 11. Prices ───────────────────────────────────────────────────────────
   log('Criando preços…', 83);
-  await ins('price_items',   data.priceItems.map(x  => ({...x,  family_id: familyId, created_at: new Date().toISOString()})), 'Preços');
-  await ins('price_stores',  data.priceStores.map(x => ({...x,  family_id: familyId, created_at: new Date().toISOString()})), 'Lojas');
-  await ins('price_history', data.priceHistory.map(x => ({...x, family_id: familyId, created_at: new Date().toISOString()})), 'Histórico preços');
+  await ins('price_items',   data.priceItems,   'Itens');
+  await ins('price_stores',  data.priceStores,  'Lojas');
+  await ins('price_history', data.priceHistory, 'Histórico');
 
-  // ── 12. Grocery ───────────────────────────────────────────────────────
-  log('Criando lista de mercado…', 88);
+  // ── 12. Grocery ──────────────────────────────────────────────────────────
+  log('Criando mercado…', 88);
   const grocery = data.groceries;
-  const { error: glErr } = await sb.from('grocery_lists').insert({
-    ...grocery.list, family_id: familyId, created_at: new Date().toISOString()
-  });
+  const glBase = pick({ ...grocery.list, family_id: familyId, created_at: new Date().toISOString() }, COLS['grocery_lists']);
+  const { error: glErr } = await sb.from('grocery_lists').insert(glBase);
   if (!glErr) {
-    await ins('grocery_items', grocery.items.map(x => ({
-      ...x, list_id: grocery.list.id, family_id: familyId, created_at: new Date().toISOString()
-    })), 'Itens mercado');
+    await ins('grocery_items', grocery.items.map(x => ({ ...x, list_id: grocery.list.id })), 'Itens mercado');
   } else {
-    console.warn('[DemoImport] grocery_list:', glErr.message);
     errors.push(`grocery_list: ${glErr.message}`);
+    console.warn('[DemoImport] grocery_list:', glErr.message);
   }
 
-  const errSummary = errors.length > 0 ? ` (${errors.length} avisos — veja console)` : '';
-  log(`✅ Importação concluída!${errSummary}`, 100);
+  const errSummary = errors.length > 0 ? ` (${errors.length} aviso${errors.length>1?'s':''} — veja console)` : '';
+  log(`Importação concluída!${errSummary}`, 100);
 
   return {
     success: true,
     txCount: txOk,
     errors,
-    message: `${txOk} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários importados.${errSummary}`,
+    message: `${txOk} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários.${errSummary}`,
   };
 }
 window.importDemoData = importDemoData;
