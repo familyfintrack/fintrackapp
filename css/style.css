@@ -27601,3 +27601,155 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
     font-size: .68rem !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SCHEDULED CARDS — MOBILE FIX (definitive)
+   Reorganiza o card em 2 linhas para evitar overflow horizontal.
+   Linha 1: ícone + título + meta (cresce)
+   Linha 2: valor + badges (alinhado à direita) + chevron
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Container: sem overflow, width total */
+  #page-scheduled .sc-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Header row: 2-column grid — (icon+text) | (amount+chevron) */
+  #page-scheduled .sc-card-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto auto !important;
+    /* icon | mid | end | chevron */
+    grid-template-areas: "icon mid end chev" !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  #page-scheduled .sc-card-icon {
+    grid-area: icon !important;
+    width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0 !important;
+    border-radius: 10px !important;
+  }
+
+  #page-scheduled .sc-card-mid {
+    grid-area: mid !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #page-scheduled .sc-card-title2 {
+    font-size: .84rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  #page-scheduled .sc-card-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 3px 5px !important;
+    font-size: .68rem !important;
+    margin-top: 2px !important;
+    overflow: hidden !important;
+  }
+
+  /* End column: amount + badges */
+  #page-scheduled .sc-card-end {
+    grid-area: end !important;
+    max-width: 120px !important;
+    min-width: 0 !important;
+    flex-shrink: 0 !important;
+    text-align: right !important;
+    overflow: hidden !important;
+  }
+
+  #page-scheduled .sc-card-amt {
+    font-size: .9rem !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    display: block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 120px !important;
+  }
+
+  #page-scheduled .sc-card-badges {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 3px !important;
+    justify-content: flex-end !important;
+    margin-top: 3px !important;
+    max-width: 120px !important;
+  }
+
+  #page-scheduled .sc-next-pill,
+  #page-scheduled .sc-status-badge {
+    font-size: .6rem !important;
+    padding: 1px 5px !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Chevron column */
+  #page-scheduled .sc-card-chevron {
+    grid-area: chev !important;
+    flex-shrink: 0 !important;
+    color: var(--muted) !important;
+  }
+
+  /* Actions bar: register button + icon buttons */
+  #page-scheduled .sc-card-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-top: 1px solid var(--border) !important;
+    background: var(--surface2) !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  #page-scheduled .sc-reg-btn {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    padding: 9px 10px !important;
+    font-size: .78rem !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    border-radius: 10px !important;
+    background: var(--accent) !important;
+    color: #fff !important;
+  }
+
+  #page-scheduled .sc-icon-btns {
+    display: flex !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  #page-scheduled .sc-icon-btn {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 9px !important;
+    flex-shrink: 0 !important;
+  }
+}
