@@ -3107,7 +3107,6 @@ async function loadPayeeReport() {
   const kpiEl  = document.getElementById('rptBenefKpi');
   if (!listEl) return;
 
-  // Guard: requires login
   if (!sb || !currentUser) {
     listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.82rem">Aguardando conexão…</div>';
     return;
@@ -3119,142 +3118,162 @@ async function loadPayeeReport() {
     return;
   }
 
-  listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
-  if (kpiEl) kpiEl.innerHTML = '';
-
   const isInc = _rptBenefMode === 'income';
   const fmtV  = v => typeof fmt === 'function' ? fmt(v) : 'R$ ' + (+v).toFixed(2);
   const escV  = s => typeof esc === 'function' ? esc(s) : String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 
-  try {
-    // ── Strategy: use already-loaded rptState.txData when range matches,
-    //    otherwise fetch directly with simple family_id filter (no famQ chain) ──
-    let txs = [];
-    const cached = rptState.txData || [];
+  // ── Strategy: use state.transactions (already in memory) first ──────────
+  // Falls back to direct Supabase query if state is empty or range doesn't match
+  let txs = [];
 
-    // Check if cached data covers the requested range
-    const cacheOk = cached.length > 0 && rptState.from === range.from && rptState.to === range.to;
+  const stTxs = state.transactions || [];
+  const stFrom = rptState.from, stTo = rptState.to;
+  const rangeMatch = stTxs.length > 0
+    && stFrom && stTo
+    && stFrom <= range.from && stTo >= range.to;
 
-    if (cacheOk) {
-      txs = cached;
-    } else {
-      // Direct query — explicit family_id filter, no chaining complexity
+  if (rangeMatch) {
+    // Filter cached transactions to the beneficiários range
+    txs = stTxs.filter(t =>
+      t.date >= range.from && t.date <= range.to &&
+      t.payee_id &&
+      (t.status === 'confirmed' || t.status === 'pending')
+    );
+  } else if (rptState.txData && rptState.txData.length > 0) {
+    // Use report-loaded data
+    txs = rptState.txData.filter(t =>
+      t.date >= range.from && t.date <= range.to && t.payee_id
+    );
+  } else {
+    // Direct fetch — explicit family_id, no wrapper chain
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
+    if (kpiEl) kpiEl.innerHTML = '';
+    try {
       const fid = typeof famId === 'function' ? famId() : currentUser?.family_id;
       if (!fid) throw new Error('Família não identificada');
 
-      const { data, error } = await sb
-        .from('transactions')
-        .select('id,date,amount,brl_amount,payee_id,payees(id,name,type),categories(name,color,icon)')
-        .eq('family_id', fid)
-        .gte('date', range.from)
-        .lte('date', range.to)
-        .eq('status', 'confirmed')
-        .not('payee_id', 'is', null);
+      // Fetch in two passes to avoid URL length issues
+      const pageSize = 500;
+      let allTxs = [], page = 0, done = false;
+      while (!done) {
+        const { data, error } = await sb
+          .from('transactions')
+          .select('id,date,amount,brl_amount,payee_id,payees(id,name,type),categories(name,color,icon)')
+          .eq('family_id', fid)
+          .gte('date', range.from)
+          .lte('date', range.to)
+          .in('status', ['confirmed','pending'])
+          .not('payee_id', 'is', null)
+          .order('date', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (error) throw error;
-      txs = data || [];
-    }
-
-    // ── Aggregate by payee ─────────────────────────────────────────────────
-    const map = {};
-    txs.forEach(t => {
-      if (!t.payee_id) return;
-      const amt  = parseFloat(t.brl_amount ?? t.amount) || 0;
-      const isThisInc = amt >= 0;
-      if (isInc && !isThisInc) return;
-      if (!isInc && isThisInc) return;
-      const pid  = t.payee_id;
-      const name = t.payees?.name || pid;
-      const icon = t.categories?.icon  || (isInc ? '💰' : '🛒');
-      const clr  = t.categories?.color || (isInc ? 'var(--accent)' : 'var(--red)');
-      if (!map[pid]) map[pid] = { id:pid, name, icon, color:clr, total:0, count:0 };
-      map[pid].total += Math.abs(amt);
-      map[pid].count++;
-    });
-
-    const ranked    = Object.values(map).sort((a,b) => b.total - a.total);
-    const grandTotal = ranked.reduce((s,p) => s+p.total, 0);
-    const topAmt    = ranked[0]?.total || 1;
-    const txCount   = ranked.reduce((s,p) => s+p.count, 0);
-
-    // ── KPI bar ────────────────────────────────────────────────────────────
-    const accentColor = isInc ? '#16a34a' : '#dc2626';
-    if (kpiEl) {
-      kpiEl.innerHTML = [
-        { label: isInc ? 'Total recebido' : 'Total pago',    val: fmtV(grandTotal), color: accentColor },
-        { label: isInc ? 'Fontes'         : 'Beneficiários', val: ranked.length,    color: 'var(--text)' },
-        { label: 'Ticket médio',                              val: fmtV(txCount > 0 ? grandTotal / txCount : 0), color: 'var(--muted)' },
-      ].map(k =>
-        '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px">' +
-        '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">' + k.label + '</div>' +
-        '<div style="font-size:1.1rem;font-weight:800;color:' + k.color + ';font-family:var(--font-serif)">' + k.val + '</div>' +
-        '</div>'
-      ).join('');
-    }
-
-    if (!ranked.length) {
-      listEl.innerHTML =
-        '<div style="text-align:center;padding:40px 20px">' +
-        '<div style="font-size:2.5rem;margin-bottom:12px">' + (isInc ? '📭' : '🔍') + '</div>' +
-        '<div style="font-size:.9rem;font-weight:700;color:var(--text)">Nenhum registro encontrado</div>' +
-        '<div style="font-size:.78rem;color:var(--muted);margin-top:6px">' + range.label + '</div>' +
-        '</div>';
+        if (error) throw error;
+        if (!data || data.length === 0) { done = true; break; }
+        allTxs = allTxs.concat(data);
+        if (data.length < pageSize) done = true;
+        page++;
+      }
+      txs = allTxs;
+    } catch(e) {
+      listEl.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.82rem;text-align:center">❌ ' + escV(e.message) + '</div>';
       return;
     }
-
-    // ── Header ─────────────────────────────────────────────────────────────
-    const header =
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;' +
-      'background:var(--surface2);border-bottom:1px solid var(--border)">' +
-      '<div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + accentColor + '">' +
-      (isInc ? '📥 Fontes Pagadoras' : '📤 Beneficiários') + ' · Ranking completo</div>' +
-      '<div style="font-size:.72rem;color:var(--muted)">' + range.label + ' · ' + ranked.length + ' registro' + (ranked.length > 1 ? 's' : '') + '</div>' +
-      '</div>';
-
-    // ── Rows ───────────────────────────────────────────────────────────────
-    const rows = ranked.map(function(p, i) {
-      const pct   = grandTotal > 0 ? (p.total / grandTotal * 100) : 0;
-      const barW  = topAmt    > 0 ? (p.total / topAmt    * 100) : 0;
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
-      const bg    = i < 3 ? accentColor + '10' : 'transparent';
-      return (
-        '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' +
-        'border-bottom:1px solid var(--border);background:' + bg + ';' +
-        'transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'"' +
-        ' onmouseout="this.style.background=\'' + bg + '\'">' +
-        '<div style="width:28px;text-align:center;flex-shrink:0">' +
-          (medal ? '<span style="font-size:1.1rem">' + medal + '</span>'
-                 : '<span style="font-size:.7rem;font-weight:800;color:var(--muted)">' + (i+1) + '</span>') +
-        '</div>' +
-        '<div style="width:36px;height:36px;border-radius:10px;background:' + p.color + '18;' +
-          'border:1.5px solid ' + p.color + '40;display:flex;align-items:center;' +
-          'justify-content:center;font-size:1rem;flex-shrink:0">' + p.icon + '</div>' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px">' +
-            '<span style="font-size:.84rem;font-weight:700;color:var(--text);' +
-              'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(p.name) + '</span>' +
-            '<span style="font-size:.82rem;font-weight:800;color:' + accentColor + ';white-space:nowrap;flex-shrink:0">' +
-              (isInc ? '+' : '−') + fmtV(p.total) + '</span>' +
-          '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            '<div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">' +
-              '<div style="height:100%;width:' + barW.toFixed(1) + '%;background:' + accentColor + ';border-radius:2px;transition:width .6s ease"></div>' +
-            '</div>' +
-            '<span style="font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0">' +
-              pct.toFixed(1) + '% · ' + p.count + 'tx</span>' +
-          '</div>' +
-        '</div>' +
-        '</div>'
-      );
-    }).join('');
-
-    listEl.innerHTML = header + rows;
-
-  } catch(e) {
-    console.error('[loadPayeeReport]', e);
-    listEl.innerHTML = '<div style="color:var(--red);padding:20px;font-size:.82rem;text-align:center">' +
-      '❌ ' + (typeof esc === 'function' ? esc(e.message) : e.message) + '</div>';
   }
+
+  // ── Aggregate by payee ─────────────────────────────────────────────────
+  const map = {};
+  txs.forEach(t => {
+    if (!t.payee_id) return;
+    const amt  = parseFloat(t.brl_amount ?? t.amount) || 0;
+    const isThisInc = amt >= 0;
+    if (isInc && !isThisInc) return;
+    if (!isInc && isThisInc) return;
+    const pid  = t.payee_id;
+    const name = t.payees?.name || pid;
+    const icon = t.categories?.icon  || (isInc ? '💰' : '🛒');
+    const clr  = t.categories?.color || (isInc ? 'var(--accent)' : 'var(--red)');
+    if (!map[pid]) map[pid] = { id:pid, name, icon, color:clr, total:0, count:0 };
+    map[pid].total += Math.abs(amt);
+    map[pid].count++;
+  });
+
+  const ranked     = Object.values(map).sort((a,b) => b.total - a.total);
+  const grandTotal = ranked.reduce((s,p) => s+p.total, 0);
+  const topAmt     = ranked[0]?.total || 1;
+  const txCount    = ranked.reduce((s,p) => s+p.count, 0);
+  const accentColor = isInc ? '#16a34a' : '#dc2626';
+
+  // ── KPI bar ─────────────────────────────────────────────────────────────
+  if (kpiEl) {
+    kpiEl.innerHTML = [
+      { label: isInc ? 'Total recebido' : 'Total pago',    val: fmtV(grandTotal), color: accentColor },
+      { label: isInc ? 'Fontes'         : 'Beneficiários', val: ranked.length,    color: 'var(--text)' },
+      { label: 'Ticket médio', val: fmtV(txCount > 0 ? grandTotal / txCount : 0), color: 'var(--muted)' },
+    ].map(k =>
+      '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px">' +
+      '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">' + k.label + '</div>' +
+      '<div style="font-size:1.1rem;font-weight:800;color:' + k.color + ';font-family:var(--font-serif)">' + k.val + '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  if (!ranked.length) {
+    listEl.innerHTML =
+      '<div style="text-align:center;padding:40px 20px">' +
+      '<div style="font-size:2.5rem;margin-bottom:12px">' + (isInc ? '📭' : '🔍') + '</div>' +
+      '<div style="font-size:.9rem;font-weight:700;color:var(--text)">Nenhum registro encontrado</div>' +
+      '<div style="font-size:.78rem;color:var(--muted);margin-top:6px">' + range.label + '</div>' +
+      '</div>';
+    return;
+  }
+
+  // ── Header ───────────────────────────────────────────────────────────────
+  const header =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;' +
+    'background:var(--surface2);border-bottom:1px solid var(--border)">' +
+    '<div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + accentColor + '">' +
+    (isInc ? '📥 Fontes Pagadoras' : '📤 Beneficiários') + ' · Ranking completo</div>' +
+    '<div style="font-size:.72rem;color:var(--muted)">' + range.label + ' · ' + ranked.length + ' registro' + (ranked.length > 1 ? 's' : '') + '</div>' +
+    '</div>';
+
+  // ── Rows ─────────────────────────────────────────────────────────────────
+  const rows = ranked.map(function(p, i) {
+    const pct   = grandTotal > 0 ? (p.total / grandTotal * 100) : 0;
+    const barW  = topAmt    > 0 ? (p.total / topAmt    * 100) : 0;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+    const bg    = i < 3 ? accentColor + '10' : 'transparent';
+    return (
+      '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' +
+      'border-bottom:1px solid var(--border);background:' + bg + ';' +
+      'transition:background .12s" onmouseover="this.style.background=\'var(--surface2)\'"' +
+      ' onmouseout="this.style.background=\'' + bg + '\'">' +
+      '<div style="width:28px;text-align:center;flex-shrink:0">' +
+        (medal ? '<span style="font-size:1.1rem">' + medal + '</span>'
+               : '<span style="font-size:.7rem;font-weight:800;color:var(--muted)">' + (i+1) + '</span>') +
+      '</div>' +
+      '<div style="width:36px;height:36px;border-radius:10px;background:' + p.color + '18;' +
+        'border:1.5px solid ' + p.color + '40;display:flex;align-items:center;' +
+        'justify-content:center;font-size:1rem;flex-shrink:0">' + p.icon + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px">' +
+          '<span style="font-size:.84rem;font-weight:700;color:var(--text);' +
+            'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(p.name) + '</span>' +
+          '<span style="font-size:.82rem;font-weight:800;color:' + accentColor + ';white-space:nowrap;flex-shrink:0">' +
+            (isInc ? '+' : '−') + fmtV(p.total) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden">' +
+            '<div style="height:100%;width:' + barW.toFixed(1) + '%;background:' + accentColor + ';border-radius:2px;transition:width .6s ease"></div>' +
+          '</div>' +
+          '<span style="font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0">' +
+            pct.toFixed(1) + '% · ' + p.count + 'tx</span>' +
+        '</div>' +
+      '</div>' +
+      '</div>'
+    );
+  }).join('');
+
+  listEl.innerHTML = header + rows;
 }
 
 window.loadPayeeReport  = loadPayeeReport;

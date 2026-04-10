@@ -3597,12 +3597,16 @@ async function loadReceivables() {
     if (!fid) throw new Error('Família não identificada.');
 
     const { data, error } = await sb.from('transactions')
-      .select('id,date,description,amount,brl_amount,currency,status,is_transfer,include_in_patrimonio,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name,currency,color,icon),categories(name,color,icon),payees(name)')
+      .select('id,date,description,amount,brl_amount,currency,status,is_transfer,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name,currency,color,icon),categories(name,color,icon),payees(name)')
       .eq('family_id',fid).eq('status','pending').gte('amount',0).eq('is_transfer',false)
       .order('date',{ascending:true});
     if (error) throw error;
 
     const rows  = data || [];
+
+    // include_in_patrimonio: read from client-side state cache (_recvPatMap)
+    // to avoid SELECT errors when migration hasn't been run yet
+    rows.forEach(r => { r.include_in_patrimonio = !!(_recvPatMap && _recvPatMap[r.id]); });
     const today = new Date().toISOString().slice(0,10);
     const total   = rows.reduce((s,r)=>s+(r.amount||0),0);
     const overdue = rows.filter(r=>r.date<today).reduce((s,r)=>s+(r.amount||0),0);
@@ -3818,13 +3822,25 @@ async function _recvMarkAllReceived(idsStr) {
 window._recvMarkAllReceived = _recvMarkAllReceived;
 
 async function _recvTogglePatrimonio(txId, include) {
+  // Update client-side cache immediately (works even without DB column)
+  _recvPatMap[txId] = include;
   try {
     const fid = typeof famId==='function'?famId():null;
     const { error } = await sb.from('transactions')
       .update({include_in_patrimonio:include,updated_at:new Date().toISOString()})
       .eq('id',txId).eq('family_id',fid);
-    if (error) throw error;
+    if (error) {
+      if (error.message?.includes('include_in_patrimonio')||error.code==='42703') {
+        // Column missing — works client-side only until migration is run
+        toast(include?'🏦 Marcado (local — execute a migration para persistir)':'Removido','info');
+        return;
+      }
+      throw error;
+    }
     toast(include?'🏦 Incluído no patrimônio':'Removido do patrimônio','info');
   } catch(e) { toast('Erro: '+e.message,'error'); }
 }
 window._recvTogglePatrimonio = _recvTogglePatrimonio;
+
+// Client-side cache for include_in_patrimonio flag (avoids SELECT on potentially missing column)
+const _recvPatMap = {};

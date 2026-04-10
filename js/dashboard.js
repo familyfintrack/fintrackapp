@@ -249,6 +249,31 @@ async function loadDashboard(){
       _tc.title = 'Ver composição do patrimônio';
       _tc.onclick = () => _openPatrimonioModal();
     }
+    // ── Health score badge ──────────────────────────────────────────────
+    const hs = kpiResult?.healthScore ?? null;
+    if (hs !== null) {
+      const [hsLabel, hsBg, hsClr] = hs >= 80 ? ['Excelente','rgba(16,185,129,.12)','#10b981']
+        : hs >= 60 ? ['Bom','rgba(245,158,11,.12)','#f59e0b']
+        : hs >= 40 ? ['Atenção','rgba(249,115,22,.12)','#f97316']
+        : ['Crítico','rgba(239,68,68,.12)','#ef4444'];
+      let scoreBadge = document.getElementById('dashPatrimonioScore');
+      if (!scoreBadge) {
+        scoreBadge = document.createElement('span');
+        scoreBadge.id = 'dashPatrimonioScore';
+        scoreBadge.style.cssText =
+          'display:inline-flex;align-items:center;gap:3px;margin-left:8px;' +
+          'padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:800;' +
+          'letter-spacing:.04em;cursor:pointer;vertical-align:middle;' +
+          'border:1px solid transparent;transition:all .2s';
+        scoreBadge.title = 'Score de saúde patrimonial — clique para ver detalhes';
+        scoreBadge.onclick = e => { e.stopPropagation(); _openPatrimonioModal(); };
+        statTotalEl.after(scoreBadge);
+      }
+      scoreBadge.textContent = hs + ' ' + hsLabel;
+      scoreBadge.style.background = hsBg;
+      scoreBadge.style.color      = hsClr;
+      scoreBadge.style.borderColor = hsClr + '33';
+    }
   }
   if (statIncomeEl){
     statIncomeEl.textContent=dashFmt(income,'BRL');
@@ -2847,16 +2872,21 @@ async function _openPatrimonioModal() {
   const accountTotal = accountRows.reduce((s,a) => s + a._balBRL, 0);
 
   // ── RECEIVABLES FLAGGED FOR PATRIMÔNIO ────────────────────────────────
-  // Load pending income transactions flagged to include in patrimônio
   let recvTotal = 0, recvRows = [];
   try {
     const fid = typeof famId === 'function' ? famId() : null;
     if (fid) {
+      // Fetch all pending income, then filter by client-side _recvPatMap
+      // Avoids SELECT/WHERE on include_in_patrimonio which may not exist yet
       const { data: rv } = await sb.from('transactions')
         .select('id,description,amount,brl_amount,currency,date,payees(name)')
         .eq('family_id', fid).eq('status','pending').gte('amount',0)
-        .eq('is_transfer',false).eq('include_in_patrimonio',true);
-      recvRows = rv || [];
+        .eq('is_transfer',false);
+      // Filter: either column exists in response OR use client-side map
+      recvRows = (rv || []).filter(r =>
+        r.include_in_patrimonio === true ||
+        (typeof _recvPatMap !== 'undefined' && _recvPatMap[r.id] === true)
+      );
       recvTotal = recvRows.reduce((s,r) => s + (parseFloat(r.brl_amount ?? r.amount)||0), 0);
     }
   } catch(_) {}

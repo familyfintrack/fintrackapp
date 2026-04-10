@@ -144,7 +144,17 @@ function renderCategories() {
           <div class="cat-inline-actions">
             <button class="btn-icon" onclick="openCategoryModal('','${p.id}','${dbType}')" title="Nova subcategoria">＋ Sub</button>
             <button class="btn-icon" onclick="toggleCatFavorite('${p.id}')" title="${isCatFavorite(p.id)?'Remover favorito':'Favoritar'}" style="color:${isCatFavorite(p.id)?'var(--amber,#f59e0b)':'var(--muted)'};font-size:1.05rem">★</button>
-            <button class="btn-icon cat-iof-btn" onclick="setIofCategoryTarget('${p.id}','${esc(p.name)}')" title="${window._iofCatId===p.id?'Categoria IOF padrão (clique para remover)':'Definir como categoria padrão do IOF'}" style="color:${window._iofCatId===p.id?'#dc2626':'var(--muted)'};font-weight:700;font-size:.85rem">IOF</button>
+            ${(() => {
+              const _isActive  = window._iofCatId === p.id;
+              const _hasOther  = !!window._iofCatId && window._iofCatId !== p.id;
+              const _color     = _isActive ? '#dc2626' : _hasOther ? 'var(--border)' : 'var(--muted)';
+              const _bg        = _isActive ? 'rgba(220,38,38,.1)' : 'transparent';
+              const _cursor    = _hasOther ? 'not-allowed' : 'pointer';
+              const _opacity   = _hasOther ? '0.35' : '1';
+              const _title     = _isActive ? 'IOF ativo (clique para liberar seleção)' : _hasOther ? 'Desative o IOF atual para selecionar outro' : 'Definir como categoria padrão do IOF';
+              const _events    = _hasOther ? 'none' : 'auto';
+              return `<button class="btn-icon cat-iof-btn" onclick="setIofCategoryTarget('${p.id}','${esc(p.name)}')" title="${_title}" style="color:${_color};font-weight:700;font-size:.85rem;background:${_bg};cursor:${_cursor};opacity:${_opacity};pointer-events:${_events}">IOF</button>`;
+            })()}
             <button class="btn-icon" onclick="openCategoryModal('${p.id}')" title="Editar">✏️</button>
             <button class="btn-ico" onclick="event.stopPropagation();openCategoryDetailModal('${p.id}')" title="Ver panorâmica 360°" style="font-size:.95rem;width:28px;height:28px;display:flex;align-items:center;justify-content:center">🔍</button>
             <button class="btn-icon" onclick="deleteCategory('${p.id}')" title="Excluir" style="color:var(--red)">🗑️</button>

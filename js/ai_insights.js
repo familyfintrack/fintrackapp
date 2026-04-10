@@ -1462,7 +1462,11 @@ REGRAS FINAIS:
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 6000, temperature: 0.2 },
+      generationConfig: {
+        maxOutputTokens: 6000,
+        temperature: 0.2,
+        responseMimeType: 'application/json',  // force pure JSON — no markdown, no preamble
+      },
     }),
   });
 
@@ -1473,13 +1477,35 @@ REGRAS FINAIS:
     throw new Error(msg);
   }
 
-  const data  = await resp.json();
-  const text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/g, '').trim();
+  const data = await resp.json();
+  // Collect all text parts (model may split across multiple parts)
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const raw   = parts.map(p => p.text || '').join('');
+
+  // Strip markdown fences and any leading/trailing non-JSON content
+  let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Robust extraction: find outermost { ... }
+  const jsonStart = clean.indexOf('{');
+  const jsonEnd   = clean.lastIndexOf('}');
+  if (jsonStart !== -1 && jsonEnd > jsonStart) {
+    clean = clean.slice(jsonStart, jsonEnd + 1);
+  }
 
   let parsed;
-  try { parsed = JSON.parse(clean); }
-  catch { throw new Error('Resposta inválida da IA'); }
+  try {
+    parsed = JSON.parse(clean);
+  } catch(parseErr) {
+    // Last resort: try to salvage a partial response by finding the largest valid JSON object
+    console.warn('[AIInsights] JSON parse failed, attempting recovery:', parseErr.message);
+    const match = clean.match(/\{[\s\S]+\}/);
+    if (match) {
+      try { parsed = JSON.parse(match[0]); }
+      catch { throw new Error('Resposta inválida da IA — o modelo não retornou JSON válido. Tente novamente ou reduza o período selecionado.'); }
+    } else {
+      throw new Error('Resposta inválida da IA — o modelo não retornou JSON válido. Tente novamente ou reduza o período selecionado.');
+    }
+  }
 
   return parsed;
 }
