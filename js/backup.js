@@ -174,7 +174,7 @@ async function _collectFamilyBackupPayload(fid) {
     qf('ai_insight_snapshots').catch(() => ({ data: [] })),
     qf('ai_insight_recommendations').catch(() => ({ data: [] })),
     qf('financial_objectives').catch(() => ({ data: [] })),
-    sb.from('family_preferences').select('*').eq('family_id', fid).catch(() => ({ data: [] })),
+    Promise.resolve(sb.from('family_preferences').select('*').eq('family_id', fid)).catch(() => ({ data: [] })),
     qf('attachments').catch(() => ({ data: [] })),
   ]);
 
