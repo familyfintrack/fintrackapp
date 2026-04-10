@@ -1064,6 +1064,11 @@
         </button>
         <div class="tx-fb-sep"></div>
         <!-- Filter toggle -->
+        <button class="tx-fb-btn" onclick="openBulkTxModal()" title="Lançamento em massa"
+          style="font-size:.72rem;font-weight:700;gap:4px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          Em Massa
+        </button>
         <button class="tx-fb-btn" id="txFilterToggle" onclick="_txToggleFilters()" title="Filtros">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
         </button>
@@ -1101,6 +1106,15 @@
               <option value="">👤 Todos</option>
             </select>
           </div>
+          <button class="tx-chip-select" id="txClearFiltersBtn" onclick="clearAllTxFilters()"
+            style="background:rgba(220,38,38,.08);color:#dc2626;border-color:rgba(220,38,38,.25);white-space:nowrap;cursor:pointer;font-size:.75rem;font-weight:700;padding:5px 10px;border-radius:7px;font-family:inherit">
+            ✕ Limpar Filtros
+          </button>
+          <button class="tx-chip-select" onclick="loadTransactions()"
+            style="background:var(--surface2);color:var(--text2);border-color:var(--border);white-space:nowrap;cursor:pointer;font-size:.75rem;font-weight:600;padding:5px 10px;border-radius:7px;font-family:inherit"
+            title="Recarregar transações sem filtros">
+            ↻ Recarregar
+          </button>
         </div>
       </div>
 
@@ -1867,6 +1881,16 @@
             <option value="transfer">🔄 Transferências</option>
             <option value="card_payment">💳 Pgto. Cartão</option>
           </select>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button onclick="clearAllScFilters()"
+              style="flex:1;padding:6px 10px;background:rgba(220,38,38,.08);color:#dc2626;border:1px solid rgba(220,38,38,.25);border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">
+              ✕ Limpar Filtros
+            </button>
+            <button onclick="loadScheduled().then(filterScheduled)"
+              style="flex:1;padding:6px 10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">
+              ↻ Recarregar
+            </button>
+          </div>
         </div>
       </div>
 
@@ -6751,6 +6775,9 @@ Se você não solicitou isso, ignore este e-mail.`,
       <button class="btn btn-ghost" id="txSplitOpenBtn" onclick="_openSplitModal()" title="Dividir por categoria ou membro">
         ✂️ Divisão
       </button>
+      <button class="btn btn-ghost" id="txSaveAndAddBtn" onclick="saveTransactionAndAddNew()" title="Salvar e incluir nova transação" style="white-space:nowrap;font-weight:600">
+        + Salvar e +1
+      </button>
       <!-- Wizard prev/next (hidden in tabs mode) -->
       <div id="txWizardNav" style="display:none;display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" id="txWzPrev" onclick="txWizardPrev()" style="display:none">← Anterior</button>
@@ -8040,6 +8067,67 @@ Se você não solicitou isso, ignore este e-mail.`,
   </div>
 </div>
 
+
+<!-- ══ Modal: Lançamento em Massa ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="bulkTxModal" onclick="if(event.target===this)closeModal('bulkTxModal')">
+  <div class="modal bulk-tx-modal" style="max-width:900px;width:96vw">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title">📋 Lançamento em Massa</span>
+      <button class="modal-close" onclick="closeModal('bulkTxModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+
+      <!-- Summary bar -->
+      <div style="padding:8px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span id="bulkTxTotalCount" style="font-size:.8rem;font-weight:700;color:var(--text)">0 linhas</span>
+          <span id="bulkTxTotalAmt" style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">R$ 0,00</span>
+        </div>
+        <button onclick="bulkTxAddRow()"
+          style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">
+          ➕ Adicionar linha
+        </button>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto;max-height:55vh;overflow-y:auto">
+        <table class="bulk-tx-table">
+          <thead>
+            <tr>
+              <th style="width:80px">Tipo</th>
+              <th style="width:110px">Data</th>
+              <th>Descrição</th>
+              <th style="width:100px">Valor</th>
+              <th style="width:130px">Conta</th>
+              <th style="width:120px">Categoria</th>
+              <th style="width:80px">Status</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="bulkTxTbody">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Progress bar (hidden until save) -->
+      <div id="bulkTxProgress" style="display:none;padding:12px 16px;border-top:1px solid var(--border)">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px" id="bulkTxProgressLabel">Preparando…</div>
+        <div style="height:8px;background:var(--border);border-radius:5px;overflow:hidden">
+          <div id="bulkTxProgressBar" style="height:100%;width:0%;background:var(--accent);border-radius:5px;transition:width .3s ease"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bulkTxModal')">Cancelar</button>
+      <button class="btn btn-primary" id="bulkTxSaveBtn" onclick="executeBulkTxSave()"
+        style="min-width:160px">
+        💾 Salvar Todas as Transações
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <!-- PAYEE REASSIGN MODAL -->
@@ -8106,6 +8194,7 @@ Se você não solicitou isso, ignore este e-mail.`,
   <script src="js/payees.js"></script>
   <script src="js/transactions.js"></script>
   <script src="js/tx_splits.js"></script>
+  <script src="js/bulk_tx.js"></script>
   <script src="js/budgets.js"></script>
   <script src="js/fx_rates.js"></script>
   <script src="js/dashboard.js"></script>
