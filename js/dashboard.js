@@ -4510,6 +4510,51 @@ window._dashGetPrefs                       = _dashGetPrefs;
 window._dashSavePrefs                      = _dashSavePrefs;
 window._renderDashFavCategories            = _renderDashFavCategories;
 window.closeCatDetail                      = closeCatDetail;
+
+/* ── Chart type and mode toggles (called from HTML) ─────────────────────── */
+function _setCatChartType(type) {
+  _catChartType = type;
+  // Update button states
+  const bar = document.getElementById('catChartTypeBar');
+  const pie = document.getElementById('catChartTypePie');
+  if (bar) bar.classList.toggle('active', type === 'bar');
+  if (pie) pie.classList.toggle('active', type === 'doughnut');
+  // Re-render with new type
+  if (type === 'doughnut') {
+    if (typeof _renderCatChartDoughnut === 'function') _renderCatChartDoughnut();
+  } else {
+    if (typeof _renderCatChartBar === 'function') _renderCatChartBar();
+  }
+  // Save to prefs
+  try {
+    const prefs = _dashGetPrefs() || {};
+    prefs.catChartType = type;
+    _dashSavePrefs(prefs);
+  } catch(_) {}
+}
+
+function _setDashCatMode(mode) {
+  // mode: 'expense' | 'income'
+  const expBtn = document.getElementById('dashCatModeExp');
+  const incBtn = document.getElementById('dashCatModeInc');
+  if (expBtn) expBtn.classList.toggle('active', mode === 'expense');
+  if (incBtn) incBtn.classList.toggle('active', mode === 'income');
+  // Switch the data source
+  if (mode === 'income') {
+    _catChartEntries = window._catChartIncEntries || [];
+  } else {
+    _catChartEntries = window._catChartExpEntriesRaw || [];
+  }
+  // Re-render
+  if (_catChartType === 'doughnut') {
+    if (typeof _renderCatChartDoughnut === 'function') _renderCatChartDoughnut();
+  } else {
+    if (typeof _renderCatChartBar === 'function') _renderCatChartBar();
+  }
+}
+
+window._setCatChartType = _setCatChartType;
+window._setDashCatMode  = _setDashCatMode;
 window.loadDashboard                       = loadDashboard;
 window.loadDashboardRecent                 = loadDashboardRecent;
 window.openDashCustomModal                 = openDashCustomModal;

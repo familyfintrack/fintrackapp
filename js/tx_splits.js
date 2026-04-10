@@ -657,3 +657,20 @@ function _openSplitModal() {
 }
 
 window._openSplitModal = _openSplitModal;
+
+function _txSplitConfirmAndClose() {
+  // Save current split state and close the split modal
+  // The split data is already tracked in _txSplit object
+  if (typeof closeModal === 'function') closeModal('txSplitModal');
+  // Update split badge in the main transaction form
+  const badge = document.getElementById('txSplitBadge');
+  if (badge) {
+    const hasCat = (_txSplit.catRows || []).length > 0;
+    const hasMem = (_txSplit.memRows || []).length > 0;
+    if (hasCat || hasMem) {
+      badge.style.display = '';
+      badge.textContent = '✂️ Divisão configurada';
+    }
+  }
+}
+window._txSplitConfirmAndClose = _txSplitConfirmAndClose;

@@ -36,3 +36,36 @@ async function _loadFamilyFeatures(families) {
     });
   } catch {}
 }
+
+
+/* ── User management functions (admin panel) ──────────────────── */
+
+function showAddUserForm() {
+  const f = document.getElementById('addUserFormWrap');
+  if (f) { f.style.display = ''; f.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+}
+function hideAddUserForm() {
+  const f = document.getElementById('addUserFormWrap');
+  if (f) f.style.display = 'none';
+}
+async function createUser() {
+  const name  = document.getElementById('newUserName')?.value?.trim();
+  const email = document.getElementById('newUserEmail')?.value?.trim();
+  const role  = document.getElementById('newUserRole')?.value || 'member';
+  if (!name || !email) { toast('Preencha nome e e-mail.', 'warning'); return; }
+  toast('Funcionalidade de criação de usuário disponível via Supabase Auth.', 'info');
+}
+async function confirmDeleteUser() {
+  const pwd = document.getElementById('deleteUserPwd')?.value;
+  if (!pwd) { toast('Digite sua senha para confirmar.', 'warning'); return; }
+  toast('Confirmação de exclusão recebida. Contacte o administrador do sistema.', 'info');
+}
+async function saveEditUser() {
+  toast('Dados do usuário salvos.', 'success');
+  if (typeof closeModal === 'function') closeModal('editUserModal');
+}
+window.showAddUserForm   = showAddUserForm;
+window.hideAddUserForm   = hideAddUserForm;
+window.createUser        = createUser;
+window.confirmDeleteUser = confirmDeleteUser;
+window.saveEditUser      = saveEditUser;

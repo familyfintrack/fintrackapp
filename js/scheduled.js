@@ -3353,3 +3353,64 @@ async function _confirmarAntecipacao(scId) {
   }
 }
 window._confirmarAntecipacao = _confirmarAntecipacao;
+
+/* ── ctsUpdateMode: visual toggle for Convert-to-Scheduled modal ─────────── */
+function ctsUpdateMode() {
+  const sel = document.querySelector('input[name="ctsMode"]:checked')?.value || 'keep';
+  const keepLabel    = document.getElementById('ctsModeKeepLabel');
+  const convertLabel = document.getElementById('ctsModeConvertLabel');
+  const dateLabel    = document.getElementById('ctsDateLabel');
+  const warning      = document.getElementById('ctsWarning');
+  const accent       = 'var(--accent)';
+  const border       = 'var(--border)';
+
+  if (keepLabel) {
+    keepLabel.style.borderColor  = sel === 'keep' ? accent : border;
+    keepLabel.style.background   = sel === 'keep' ? 'rgba(42,96,73,.06)' : 'transparent';
+  }
+  if (convertLabel) {
+    convertLabel.style.borderColor = sel === 'convert' ? accent : border;
+    convertLabel.style.background  = sel === 'convert' ? 'rgba(42,96,73,.06)' : 'transparent';
+  }
+  if (dateLabel) dateLabel.textContent = sel === 'keep' ? 'Data de início (próxima) *' : 'Data original *';
+
+  if (warning) {
+    if (sel === 'convert') {
+      warning.textContent = '⚠️ O lançamento original será deletado e o saldo da conta revertido. Esta ação cria uma programação equivalente a partir da data original.';
+      warning.style.display = '';
+    } else {
+      warning.style.display = 'none';
+    }
+  }
+}
+window.ctsUpdateMode = ctsUpdateMode;
+
+/* ── runScheduledManual: trigger pending auto-register immediately ─────────── */
+async function runScheduledManual() {
+  if (typeof runAutoRegister === 'function') {
+    toast('▶ Executando transações agendadas…', 'info');
+    try {
+      await runAutoRegister(true);
+      toast('✅ Transações agendadas processadas.', 'success');
+    } catch(e) {
+      toast('Erro ao executar: ' + (e.message||e), 'error');
+    }
+  } else if (typeof runScheduledAutoRegister === 'function') {
+    toast('▶ Executando transações agendadas…', 'info');
+    try {
+      await runScheduledAutoRegister();
+      toast('✅ Transações agendadas processadas.', 'success');
+    } catch(e) {
+      toast('Erro ao executar: ' + (e.message||e), 'error');
+    }
+  } else {
+    toast('Função de auto-registro não disponível.', 'warning');
+  }
+}
+window.runScheduledManual = runScheduledManual;
+
+
+function syncScheduledAutomationSummary() {
+  if (typeof _updateAutoConfirmHint === 'function') _updateAutoConfirmHint();
+}
+window.syncScheduledAutomationSummary = syncScheduledAutomationSummary;
