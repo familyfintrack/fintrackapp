@@ -2727,6 +2727,15 @@ async function openTxDetail(id) {
   const amtClass  = isIncome ? 'amount-pos' : 'amount-neg';
   const typeLabel = t.is_card_payment ? '💳 Pgto. Cartão' : t.is_transfer ? '🔄 Transferência' : isIncome ? '📈 Receita' : '📉 Despesa';
   const catColor  = t.categories?.color || 'var(--muted)';
+
+  // Show/hide "📬 A Receber" button — only for confirmed income (not transfers, not card payments)
+  const unrecvBtn = document.getElementById('txDetailUnrecvBtn');
+  if (unrecvBtn) {
+    const canMarkUnreceived = isIncome && !t.is_transfer && !t.is_card_payment
+      && (t.status || 'confirmed') === 'confirmed';
+    unrecvBtn.style.display = canMarkUnreceived ? '' : 'none';
+    unrecvBtn.title = 'Mover para A Receber (valor não recebido)';
+  }
   // Resolver nome do objetivo (se vinculado)
   const _objName = t.objective_id
     ? ((window._objList || []).find(o => o.id === t.objective_id)?.name || '🎯 Objetivo vinculado')
@@ -2855,7 +2864,8 @@ async function openTxDetail(id) {
 
 function _txDetailAction(action) {
   if (!_txDetailId) return;
-  if (action === 'makeScheduled') { convertTxToScheduled(_txDetailId); return; }
+  if (action === 'makeScheduled')  { convertTxToScheduled(_txDetailId); return; }
+  if (action === 'makeUnreceived') { markTxUnreceived(_txDetailId); return; }
   closeModal('txDetailModal');
   if (action === 'edit') editTransaction(_txDetailId);
   else if (action === 'dup') duplicateTransaction(_txDetailId);
@@ -3106,21 +3116,49 @@ async function convertTxToScheduled(txId) {
   const { data: t, error } = await sb.from('transactions')
     .select('*, accounts!transactions_account_id_fkey(name,currency), categories(name,color), payees(name)')
     .eq('id', txId).single();
-  if (error || !t) { toast(t('toast.err_load_tx'), 'error'); return; }
+  if (error || !t) { toast('Erro ao carregar transação.', 'error'); return; }
 
   // Pre-fill the convertToScheduledModal
   const el = id => document.getElementById(id);
   if (!el('convertToScheduledModal')) { toast('Modal de programação não encontrado.', 'error'); return; }
 
-  el('ctsTxId').value    = txId;
-  el('ctsDesc').value    = t.description || '';
-  el('ctsAmount').value  = Math.abs(t.amount || 0).toFixed(2).replace('.', ',');
-  el('ctsAccount').textContent = t.accounts?.name || '—';
-  el('ctsDate').value    = (t.date||'').slice(0,10) || (typeof localDateStr==='function'?localDateStr():new Date().toISOString().slice(0,10));
-  el('ctsMemo').value    = t.memo || '';
-  el('ctsType').value    = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
+  const txType = t.is_transfer ? 'transfer' : (t.amount < 0 ? 'expense' : 'income');
+  const txDate = (t.date||'').slice(0,10) || new Date().toISOString().slice(0,10);
+  const txAmt  = Math.abs(t.amount || 0);
+  const accName = t.accounts?.name || '—';
 
-  // Pre-select account (favorites first)
+  // Hidden fields
+  if (el('ctsTxId'))       el('ctsTxId').value       = txId;
+  if (el('ctsType'))       el('ctsType').value        = txType;
+  if (el('ctsTxOrigDate')) el('ctsTxOrigDate').value  = txDate;
+
+  // Summary block — ids used by the v2 modal HTML
+  if (el('ctsTxDesc')) el('ctsTxDesc').textContent = t.description || '—';
+  if (el('ctsTxDate')) el('ctsTxDate').textContent = fmtDate(txDate);
+  if (el('ctsTxAmt'))  el('ctsTxAmt').textContent  =
+    (txType === 'expense' ? '−' : '+') + fmt(txAmt);
+  if (el('ctsTxAmt'))  el('ctsTxAmt').style.color =
+    txType === 'expense' ? 'var(--red)' : 'var(--accent)';
+  if (el('ctsTxAcct')) el('ctsTxAcct').textContent = accName;
+
+  // Editable fields
+  if (el('ctsDesc'))  el('ctsDesc').value  = t.description || '';
+  if (el('ctsMemo'))  el('ctsMemo').value  = t.memo || '';
+  if (el('ctsDate'))  el('ctsDate').value  = txDate;
+
+  // Amount field — use setAmtField if available, fallback to raw input
+  const amtRaw = txAmt.toFixed(2).replace('.', ',');
+  if (typeof setAmtField === 'function') {
+    setAmtField('ctsAmountInput', txAmt);
+  } else if (el('ctsAmountInput')) {
+    el('ctsAmountInput').value = amtRaw;
+  }
+
+  // Sign button colour
+  const signBtn = el('ctsSignBtn');
+  if (signBtn) signBtn.textContent = txType === 'income' ? '+' : '−';
+
+  // Account select
   const accSel = el('ctsAccountId');
   if (accSel) {
     accSel.innerHTML = (typeof _accountOptions === 'function')
@@ -3130,61 +3168,109 @@ async function convertTxToScheduled(txId) {
         ).join('');
     if (t.account_id) accSel.value = t.account_id;
   }
-  // Note: original transaction is kept. The scheduled starts from the chosen date forward.
-  const noteEl = el('ctsNote');
-  if (noteEl) noteEl.innerHTML =
-    `<strong>Nota:</strong> A transação original de <strong>${fmtDate(t.date)}</strong> 
-     permanece lançada. A programação será criada para as próximas ocorrências a partir da data escolhida.`;
+
+  // Reset mode radios to default (keep)
+  const keepRadio = document.querySelector('input[name="ctsMode"][value="keep"]');
+  if (keepRadio) { keepRadio.checked = true; ctsUpdateMode(); }
 
   closeModal('txDetailModal');
   openModal('convertToScheduledModal');
+}
+
+// ── ctsUpdateMode: sincroniza UI do modal com o radio selecionado ────────
+function ctsUpdateMode() {
+  const mode = document.querySelector('input[name="ctsMode"]:checked')?.value || 'keep';
+  const el   = id => document.getElementById(id);
+  const keepLbl    = el('ctsModeKeepLabel');
+  const convertLbl = el('ctsModeConvertLabel');
+  const dateLabel  = el('ctsDateLabel');
+  const warning    = el('ctsWarning');
+  const origDate   = el('ctsTxOrigDate')?.value || '';
+
+  // Highlight selected option
+  if (keepLbl)    keepLbl.style.border    = mode === 'keep'    ? '2px solid var(--accent)' : '2px solid var(--border)';
+  if (keepLbl)    keepLbl.style.background = mode === 'keep'   ? 'rgba(42,96,73,.06)' : 'transparent';
+  if (convertLbl) convertLbl.style.border  = mode === 'convert' ? '2px solid var(--accent)' : '2px solid var(--border)';
+  if (convertLbl) convertLbl.style.background = mode === 'convert' ? 'rgba(42,96,73,.06)' : 'transparent';
+
+  if (mode === 'keep') {
+    if (dateLabel) dateLabel.textContent = 'Data de início *';
+    if (warning)   warning.style.display = 'none';
+  } else {
+    if (dateLabel) dateLabel.textContent = 'Data da programação *';
+    if (origDate && el('ctsDate')) el('ctsDate').value = origDate;
+    if (warning) {
+      warning.style.display = '';
+      warning.innerHTML = '⚠️ O lançamento original de <strong>' + fmtDate(origDate) + '</strong> será <strong>excluído</strong> e substituído pela programação. O saldo da conta será revertido.';
+    }
+  }
 }
 
 async function saveConvertToScheduled() {
   const el = id => document.getElementById(id);
   const txId   = el('ctsTxId')?.value;
   const desc   = el('ctsDesc')?.value?.trim();
-  const amount = parseFloat((el('ctsAmountInput')?.value||'0').replace(',','.')) || 0;
+  const mode   = document.querySelector('input[name="ctsMode"]:checked')?.value || 'keep';
+  const amount = typeof getAmtField === 'function'
+    ? getAmtField('ctsAmountInput')
+    : parseFloat((el('ctsAmountInput')?.value||'0').replace(',','.')) || 0;
   const accId  = el('ctsAccountId')?.value;
   const startDate = el('ctsDate')?.value;
   const freq   = document.querySelector('input[name=ctsFreq]:checked')?.value || 'monthly';
   const memo   = el('ctsMemo')?.value || '';
   const type   = el('ctsType')?.value || 'expense';
 
-  if (!desc)      { toast(t('toast.err_description'),'error'); return; }
-  if (!accId)     { toast(t('toast.err_select_account'),'error'); return; }
-  if (!startDate) { toast(t('toast.err_start_date'),'error'); return; }
+  if (!desc)      { toast('Informe a descrição.','error'); return; }
+  if (!accId)     { toast('Selecione a conta.','error'); return; }
+  if (!startDate) { toast('Informe a data de início.','error'); return; }
 
-  // Find original tx to copy category/payee
-  const orig = (state.transactions||[]).find(t=>t.id===txId) || {};
+  const btn = el('ctsSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
 
-  const data = {
-    description: desc,
-    type,
-    amount: (type==='expense') ? -Math.abs(amount) : Math.abs(amount),
-    account_id: accId,
-    payee_id: orig.payee_id || null,
-    category_id: orig.category_id || null,
-    memo,
-    tags: orig.tags || null,
-    status: 'active',
-    start_date: startDate,
-    frequency: freq,
-    auto_register: false,
-    auto_confirm: true,
-    updated_at: new Date().toISOString(),
-    family_id: famId(),
-  };
+  try {
+    // Find original tx to copy category/payee
+    const orig = (state.transactions||[]).find(x=>x.id===txId) || {};
 
-  const { error } = await sb.from('scheduled_transactions').insert(data);
-  if (error) { toast('Erro ao criar programação: ' + error.message, 'error'); return; }
+    const data = {
+      description:  desc,
+      type,
+      amount: (type === 'expense') ? -Math.abs(amount) : Math.abs(amount),
+      account_id:   accId,
+      payee_id:     orig.payee_id     || null,
+      category_id:  orig.category_id  || null,
+      memo,
+      tags:         orig.tags         || null,
+      status:       'active',
+      start_date:   startDate,
+      frequency:    freq,
+      auto_register: false,
+      auto_confirm:  true,
+      updated_at:   new Date().toISOString(),
+      family_id:    famId(),
+    };
 
-  toast(t('scheduled.saved'), 'success');
-  // No per-transaction notify for scheduled — notified at execution time
-  closeModal('convertToScheduledModal');
-  if (state.currentPage === 'scheduled') loadScheduled();
+    const { error } = await sb.from('scheduled_transactions').insert(data);
+    if (error) throw new Error('Erro ao criar programação: ' + error.message);
+
+    // mode=convert → excluir a transação original
+    if (mode === 'convert' && txId) {
+      const { error: delErr } = await sb.from('transactions').delete().eq('id', txId);
+      if (delErr) console.warn('[ctsConvert] delete original:', delErr.message);
+      else toast('🔄 Transação convertida em programada com sucesso!', 'success');
+    } else {
+      toast('📅 Programação criada! A transação original foi mantida.', 'success');
+    }
+
+    closeModal('convertToScheduledModal');
+    await loadTransactions();
+    if (state.currentPage === 'scheduled') loadScheduled();
+
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📅 Confirmar'; }
+  }
 }
-
 // Toggle status helper used by detail view + swipe
 async function setTransactionStatus(txId, status){
   // Extra confirmation when switching from Confirmada -> Pendente
@@ -3312,19 +3398,162 @@ function getPeriodColor(period) {
   }
 }
 
+// ── Feature: Marcar transação como "A Receber" (não recebido) ────────────
+
+async function markTxUnreceived(txId) {
+  if (!txId) return;
+  const tx = (state.transactions||[]).find(t => t.id === txId) || {};
+  const isIncome = (tx.amount || 0) >= 0;
+  if (!isIncome) { toast('Apenas receitas podem ser marcadas como "a receber".', 'warning'); return; }
+  if (!confirm('Mover esta transação para "A Receber"?\nEla será marcada como não recebida e o saldo da conta será ajustado.')) return;
+
+  try {
+    // Include family_id filter to satisfy RLS policies on rows created by cron/other users
+    const { error } = await sb.from('transactions')
+      .update({ status: 'unreceived', updated_at: new Date().toISOString() })
+      .eq('id', txId)
+      .eq('family_id', famId());
+    if (error) throw error;
+    toast('📬 Movido para "A Receber".', 'info');
+    closeModal('txDetailModal');
+    await loadAccounts();
+    await loadTransactions();
+    if (typeof _updateReceivablesBadge === 'function') _updateReceivablesBadge().catch(()=>{});
+    if (state.currentPage === 'dashboard') loadDashboard();
+    if (state.currentPage === 'receivables') loadReceivables();
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function markTxReceived(txId) {
+  if (!txId) return;
+  try {
+    // Include family_id filter to satisfy RLS policies
+    const { error } = await sb.from('transactions')
+      .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+      .eq('id', txId)
+      .eq('family_id', famId());
+    if (error) throw error;
+    toast('✅ Receita marcada como recebida!', 'success');
+    await loadAccounts();
+    await loadReceivables();
+    if (typeof _updateReceivablesBadge === 'function') _updateReceivablesBadge().catch(()=>{});
+    if (state.currentPage === 'dashboard') loadDashboard();
+    if (state.currentPage === 'transactions') loadTransactions();
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function loadReceivables() {
+  const container = document.getElementById('receivablesBody');
+  const totalEl   = document.getElementById('receivablesTotalAmt');
+  const countEl   = document.getElementById('receivablesCount');
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
+
+  try {
+    const { data, error } = await sb.from('transactions')
+      .select('*, accounts!transactions_account_id_fkey(name,currency,color), categories(name,color,icon), payees(name)')
+      .eq('family_id', famId())
+      .eq('status', 'unreceived')
+      .gte('amount', 0)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+    const rows = data || [];
+
+    if (countEl) countEl.textContent = rows.length;
+
+    const total = rows.reduce((s, r) => s + (r.amount || 0), 0);
+    if (totalEl) totalEl.textContent = fmt(total);
+
+    if (!rows.length) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:48px 20px">
+          <div style="font-size:3rem;margin-bottom:12px">📭</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--text)">Nenhum valor a receber</div>
+          <div style="font-size:.82rem;color:var(--muted);margin-top:6px">
+            Quando você marcar uma receita como "não recebida",<br>ela aparecerá aqui.
+          </div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = rows.map(r => {
+      const isOverdue = r.date < new Date().toISOString().slice(0,10);
+      const daysLabel = (() => {
+        const diff = Math.round((new Date() - new Date(r.date)) / 86400000);
+        if (diff === 0) return 'Hoje';
+        if (diff < 0)   return 'Em ' + Math.abs(diff) + ' dia(s)';
+        return diff + ' dia(s) atrás';
+      })();
+      const catColor  = r.categories?.color || 'var(--accent)';
+      const catIcon   = r.categories?.icon  || '💰';
+      const accName   = r.accounts?.name    || '—';
+      const payName   = r.payees?.name      || '—';
+      return `
+        <div class="recv-row${isOverdue ? ' recv-row--overdue' : ''}" style="
+          display:flex;align-items:center;gap:12px;
+          padding:14px 16px;border-bottom:1px solid var(--border);
+          background:var(--surface);transition:background .15s">
+          <div style="width:42px;height:42px;border-radius:12px;background:${catColor}22;
+            display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">
+            ${catIcon}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.9rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${esc(r.description || '—')}
+            </div>
+            <div style="font-size:.74rem;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">
+              <span>📅 ${fmtDate(r.date)}</span>
+              <span style="color:${isOverdue?'#dc2626':'var(--muted)'}">⏱ ${daysLabel}</span>
+              <span>🏦 ${esc(accName)}</span>
+              ${payName !== '—' ? `<span>👤 ${esc(payName)}</span>` : ''}
+            </div>
+          </div>
+          <div style="flex-shrink:0;text-align:right">
+            <div style="font-size:1rem;font-weight:800;color:var(--accent)">${fmt(r.amount)}</div>
+            <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
+              <button onclick="markTxReceived('${esc(r.id)}')"
+                style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;color:#fff;
+                  background:var(--accent);border:none;border-radius:8px;padding:5px 12px;cursor:pointer">
+                ✅ Recebido
+              </button>
+              <button onclick="openTxDetail('${esc(r.id)}')"
+                style="font-family:var(--font-sans);font-size:.72rem;font-weight:600;color:var(--muted);
+                  background:transparent;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer">
+                👁
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--red);padding:20px;font-size:.84rem">Erro: ${esc(e.message)}</div>`;
+  }
+}
+
 // ── Expor funções públicas no window ──────────────────────────────────────────
 window._aiDismissAll                       = _aiDismissAll;
 window._txDetailAction                     = _txDetailAction;
 window._txDupConfirm                       = _txDupConfirm;
 window.confirmReconcileMode                = confirmReconcileMode;
 window.confirmTxClipImport                 = confirmTxClipImport;
+window.ctsUpdateMode                       = ctsUpdateMode;
 window.editTransaction                     = editTransaction;
 window.enterReconcileMode                  = enterReconcileMode;
 window.exitReconcileMode                   = exitReconcileMode;
 window.fetchSuggestedFxRate                = fetchSuggestedFxRate;
 window.fetchTxCurrencyRate                 = fetchTxCurrencyRate;
 window.filterTransactions                  = filterTransactions;
+window.loadReceivables                     = loadReceivables;
 window.loadTransactions                    = loadTransactions;
+window.markTxUnreceived                    = markTxUnreceived;
+window.markTxReceived                      = markTxReceived;
 window.openTransactionModal                = openTransactionModal;
 window.openTxClipboardImport               = openTxClipboardImport;
 window.openTxDetail                        = openTxDetail;

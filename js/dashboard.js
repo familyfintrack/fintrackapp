@@ -2171,18 +2171,35 @@ async function _renderDashForecast() {
             padding: 14,
             font: { size: 11, family: 'Outfit, sans-serif', weight: '500' },
             color: '#6b7280',
-            filter: item => !item.text.startsWith('_marker_') && !item.text.includes('Programado'),
+            filter: item => !item.text.startsWith('_marker_') && item.text !== '_skip_',
             generateLabels(chart) {
-              return chart.data.datasets
+              const accItems = chart.data.datasets
                 .filter(ds => !ds.label.startsWith('_marker_') && !ds.label.includes('Programado'))
                 .map((ds, i) => ({
                   text: ds.label,
                   fillStyle: ds.borderColor,
                   strokeStyle: ds.borderColor,
                   lineWidth: 2.5,
-                  hidden: false,       // never hidden — scheduled always active
+                  hidden: false,
                   datasetIndex: i,
                 }));
+              // Add "Progs" legend entry for the blue-triangle scheduled marker
+              const hasScheduled = chart.data.datasets.some(ds =>
+                ds.label.startsWith('_marker_') &&
+                ds.data.some(p => p?._isSched || p?._isMixed)
+              );
+              if (hasScheduled) {
+                accItems.push({
+                  text: 'Progs',
+                  fillStyle: '#1d4ed8',
+                  strokeStyle: '#1d4ed8',
+                  lineWidth: 0,
+                  hidden: false,
+                  pointStyle: 'triangle',
+                  datasetIndex: -1,
+                });
+              }
+              return accItems;
             },
           },
           // Disable legend clicks — forecast always shows all accounts + scheduled
@@ -3107,24 +3124,41 @@ async function _patAnalyzeWithGemini() {
   btn.textContent = '⏳ Analisando…';
   result.innerHTML = '<span style="color:var(--muted)">Consultando Gemini…</span>';
 
-  const model = typeof RECEIPT_AI_MODEL !== 'undefined' ? RECEIPT_AI_MODEL : 'gemini-2.5-flash-lite';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // Use stable model — avoid RECEIPT_AI_MODEL which may be unavailable in some regions
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
+
+  // Safe coercion — avoids TypeError when a metric field is undefined
+  const _safe = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
+  const _patLiq    = _safe(metrics.patrimonioTotal);
+  const _totalAtiv = _safe(metrics.totalAtivos);
+  const _liquidAmt = _safe(metrics.liquidTotal);
+  const _invAmt    = _safe(metrics.invTotal);
+  const _totalPass = _safe(metrics.totalPassivos);
+  const _debtAmt   = _safe(metrics.debtTotal);
+  const _cardDebt  = _safe(metrics.totalCartNeg);   // stored as totalCartNeg
+  const _endivPct  = _safe(metrics.endividamento);
+  const _score     = _safe(metrics.healthScore);
+  const _nAccs     = _safe(metrics.accsCount);
+  const _nDebts    = _safe(metrics.debtsCount);
 
   const prompt = `Analise o patrimônio financeiro desta família em EXATAMENTE 2 parágrafos curtos em português brasileiro.
 
 Dados do patrimônio:
-- Patrimônio líquido: R$ ${(metrics.patrimonioTotal || metrics.patrimonioLiq || 0).toFixed(2)}
-- Total de ativos: R$ ${metrics.totalAtivos.toFixed(2)} (contas: R$ ${metrics.liquidTotal.toFixed(2)}, investimentos: R$ ${metrics.invTotal.toFixed(2)})
-- Total de passivos: R$ ${metrics.totalPassivos.toFixed(2)} (dívidas: R$ ${metrics.debtTotal.toFixed(2)}, faturas cartão: R$ ${metrics.cardDebt.toFixed(2)})
-- Endividamento: ${(metrics.endividamento * 100).toFixed(1)}%
-- Score de saúde: ${metrics.healthScore}/100
-- Número de contas: ${metrics.accsCount}
-- Dívidas ativas: ${metrics.debtsCount}
+- Patrimônio líquido: R$ ${_patLiq.toFixed(2)}
+- Total de ativos: R$ ${_totalAtiv.toFixed(2)} (contas: R$ ${_liquidAmt.toFixed(2)}, investimentos: R$ ${_invAmt.toFixed(2)})
+- Total de passivos: R$ ${_totalPass.toFixed(2)} (dívidas: R$ ${_debtAmt.toFixed(2)}, faturas cartão: R$ ${_cardDebt.toFixed(2)})
+- Endividamento: ${(_endivPct * 100).toFixed(1)}%
+- Score de saúde: ${_score}/100
+- Número de contas: ${_nAccs}
+- Dívidas ativas: ${_nDebts}
 
 Parágrafo 1: Avalie a situação patrimonial atual (pontos positivos e negativos).
 Parágrafo 2: Recomende 2-3 ações concretas para melhorar o patrimônio.
 Seja direto, objetivo e use números quando relevante. Máximo 100 palavras por parágrafo.`;
 
+  // Abort after 30 s — prevents infinite spinner on network issues
+  const _ctrl = new AbortController();
+  const _timer = setTimeout(() => _ctrl.abort(), 30000);
   try {
     const resp = await fetch(url, {
       method: 'POST',
@@ -3133,19 +3167,27 @@ Seja direto, objetivo e use números quando relevante. Máximo 100 palavras por 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
       }),
+      signal: _ctrl.signal,
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    clearTimeout(_timer);
+    if (!resp.ok) {
+      const errBody = await resp.json().catch(() => ({}));
+      throw new Error('Gemini ' + resp.status + ': ' + (errBody?.error?.message || resp.statusText));
+    }
     const data = await resp.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) throw new Error('Resposta vazia');
+    if (!text) throw new Error('Resposta vazia da IA');
 
-    // Format paragraphs
-    const paras = text.trim().split('\n\n').filter(Boolean);
+    const paras = text.trim().split(/\n\n+/).filter(Boolean);
     result.innerHTML = paras.map(p =>
       `<p style="margin:0 0 10px;color:var(--text);line-height:1.65">${esc(p.trim())}</p>`
     ).join('');
   } catch(e) {
-    result.innerHTML = `<span style="color:#ef4444">❌ Erro: ${esc(e.message||String(e))}</span>`;
+    clearTimeout(_timer);
+    const _msg = e.name === 'AbortError'
+      ? 'Tempo limite atingido (30s). Verifique sua conexão e tente novamente.'
+      : (e.message || String(e));
+    result.innerHTML = `<span style="color:#ef4444">❌ ${esc(_msg)}</span>`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✨ Analisar'; }
   }

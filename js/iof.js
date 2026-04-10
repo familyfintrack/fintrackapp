@@ -1,36 +1,87 @@
 
 // ── IOF Settings — categoria e beneficiário padrão (por família) ─────────────
-const IOF_CAT_KEY   = 'iof_category_id';
-const IOF_PAYEE_KEY = 'iof_payee_id';
+// Chaves são SEMPRE sufixadas com o family_id para garantir isolamento entre famílias.
+// Persistência: app_settings table no Supabase (lida diretamente, não via cache geral).
+
+function _iofCatKey()   { return 'iof_category_id_' + (typeof famId === 'function' ? famId() : 'default'); }
+function _iofPayeeKey() { return 'iof_payee_id_'    + (typeof famId === 'function' ? famId() : 'default'); }
+
+// ── Leitura direta do Supabase (família-scoped, cross-device) ─────────────────
+async function _iofReadFromDB(key) {
+  if (!window.sb) return null;
+  try {
+    const { data, error } = await window.sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+    if (error) return null;
+    const v = data?.value;
+    return (v === '' || v === null || v === undefined) ? null : String(v);
+  } catch(_) { return null; }
+}
+
+// ── Escrita directa no Supabase (família-scoped) ───────────────────────────────
+async function _iofWriteToDB(key, value) {
+  if (!window.sb) return;
+  try {
+    const { error } = await window.sb
+      .from('app_settings')
+      .upsert({ key, value: value || '' }, { onConflict: 'key' });
+    if (error) console.warn('[IOF] _iofWriteToDB:', error.message);
+  } catch(e) { console.warn('[IOF] _iofWriteToDB exception:', e.message); }
+}
 
 async function getIofCategoryId() {
-  // Try in-memory cache first
-  if (window._iofCatId !== undefined) return window._iofCatId;
-  const val = await (typeof getAppSetting === 'function'
-    ? getAppSetting(IOF_CAT_KEY, null)
-    : Promise.resolve(null));
-  window._iofCatId = val || null;
+  const key = _iofCatKey();
+  // 1. In-memory cache (invalidado ao trocar de família)
+  if (window._iofCatId !== undefined && window._iofCatKey === key) return window._iofCatId;
+  // 2. Lê direto do Supabase (garante persistência cross-device e cross-session)
+  const dbVal = await _iofReadFromDB(key);
+  // 3. Fallback: _appSettingsCache com a chave legada (migração de dados antigos)
+  const legacyVal = dbVal || (window._appSettingsCache?.['iof_category_id']) || null;
+  window._iofCatId  = legacyVal || null;
+  window._iofCatKey = key;
   return window._iofCatId;
 }
 
 async function getIofPayeeId() {
-  if (window._iofPayeeId !== undefined) return window._iofPayeeId;
-  const val = await (typeof getAppSetting === 'function'
-    ? getAppSetting(IOF_PAYEE_KEY, null)
-    : Promise.resolve(null));
-  window._iofPayeeId = val || null;
+  const key = _iofPayeeKey();
+  if (window._iofPayeeId !== undefined && window._iofPayeeKey === key) return window._iofPayeeId;
+  const dbVal = await _iofReadFromDB(key);
+  const legacyVal = dbVal || (window._appSettingsCache?.['iof_payee_id']) || null;
+  window._iofPayeeId  = legacyVal || null;
+  window._iofPayeeKey = key;
   return window._iofPayeeId;
 }
 
 async function setIofCategoryId(id) {
-  window._iofCatId = id || null;
-  if (typeof saveAppSetting === 'function') await saveAppSetting(IOF_CAT_KEY, id || '');
+  const key = _iofCatKey();
+  window._iofCatId  = id || null;
+  window._iofCatKey = key;
+  // Persiste no banco E no cache
+  await _iofWriteToDB(key, id || '');
+  if (window._appSettingsCache) window._appSettingsCache[key] = id || '';
+  try { localStorage.setItem(key, id || ''); } catch(_) {}
 }
 
 async function setIofPayeeId(id) {
-  window._iofPayeeId = id || null;
-  if (typeof saveAppSetting === 'function') await saveAppSetting(IOF_PAYEE_KEY, id || '');
+  const key = _iofPayeeKey();
+  window._iofPayeeId  = id || null;
+  window._iofPayeeKey = key;
+  await _iofWriteToDB(key, id || '');
+  if (window._appSettingsCache) window._appSettingsCache[key] = id || '';
+  try { localStorage.setItem(key, id || ''); } catch(_) {}
 }
+
+// Invalida o cache de IOF ao trocar de família (chamado pelo auth.js no switchFamily)
+function _iofInvalidateCache() {
+  window._iofCatId    = undefined;
+  window._iofCatKey   = undefined;
+  window._iofPayeeId  = undefined;
+  window._iofPayeeKey = undefined;
+}
+window._iofInvalidateCache = _iofInvalidateCache;
 
 // ── Bulk-update IOF transactions to new category ────────────────────────────
 async function bulkUpdateIofCategory(newCatId) {

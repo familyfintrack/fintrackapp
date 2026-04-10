@@ -1041,6 +1041,7 @@ function navigate(page){
   else if(page==='telemetry')loadTelemetryDashboard?.();
   else if(page==='investments')loadInvestmentsPage?.();
   else if(page==='debts')loadDebtsPage?.();
+  else if(page==='receivables')loadReceivables?.();
   else if(page==='prices')initPricesPage();
   else if(page==='grocery')initGroceryPage();
   else if(page==='ai_insights')initAiInsightsPage();

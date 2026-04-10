@@ -93,7 +93,7 @@ function _drillOpenModal(opts) {
           <div class="drill-tx-dot" style="background:${catColor}"></div>
           <div class="drill-tx-body">
             <div class="drill-tx-desc">${esc2(t.description||'—')}</div>
-            <div class="drill-tx-meta">${t.date||''}${t.categories?.name?' · '+esc2(t.categories.name):''}${t.payees?.name?' · '+esc2(t.payees.name):''}</div>
+            <div class="drill-tx-meta">${fmtDate(t.date)||''}${t.categories?.name?' · '+esc2(t.categories.name):''}${t.payees?.name?' · '+esc2(t.payees.name):''}</div>
           </div>
           <div class="drill-tx-amt ${isNeg?'neg':'pos'}">${isNeg?'−':'+'}${fmt2(Math.abs(parseFloat(t.amount)||0))}</div>
         </div>`;
@@ -1768,7 +1768,7 @@ function exportReportCSV() {
   const BOM = '\uFEFF';
   const headers = ['Data','Descrição','Conta','Moeda','Categoria','Beneficiário','Tags','Valor','Tipo','Memo'];
   const rows = txs.map(t => [
-    t.date,
+    fmtDate(t.date),
     `"${(t.description||'').replace(/"/g,'""')}"`,
     `"${(t.accounts?.name||'').replace(/"/g,'""')}"`,
     t.accounts?.currency || 'BRL',

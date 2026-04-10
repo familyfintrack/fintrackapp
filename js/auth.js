@@ -1172,7 +1172,8 @@ function updateUserUI() {
       if (typeof _cfgUpdateFeedbackBadge === 'function') _cfgUpdateFeedbackBadge();
     }, 1500);
   }
-
+  // Receivables badge — always update after login
+  setTimeout(() => { _updateReceivablesBadge().catch(() => {}); }, 2000);
   // Family switcher (only when user has 2+ families)
   _renderFamilySwitcher();
 
@@ -2232,6 +2233,7 @@ async function _renderPendingTab() {
       + '<select id="pendingFam_' + uid + '" style="flex:1;min-width:140px;height:32px;font-size:.8rem;border:1px solid var(--border);border-radius:6px;padding:0 8px;background:var(--surface);color:var(--text)">'
       + famOptions
       + '</select>'
+      + '<button class="btn btn-ghost btn-sm" data-uid="' + uid + '" data-uname="' + uname + '" data-uemail="' + esc(u.email||'') + '" onclick="_sendPendingInviteLink(this.dataset.uid,this.dataset.uname,this.dataset.uemail)" style="color:var(--accent);border-color:var(--accent);height:32px;white-space:nowrap" title="Envia link do register.html por email">✉️ Convidar</button>'
       + '<button class="btn btn-primary btn-sm" data-uid="' + uid + '" data-uname="' + uname + '" onclick="_inlineApprove(this.dataset.uid,this.dataset.uname)" style="background:#16a34a;height:32px;white-space:nowrap">&#9989; Aprovar</button>'
       + '<button class="btn btn-ghost btn-sm" data-uid="' + uid + '" data-uname="' + uname + '" onclick="_inlineReject(this.dataset.uid,this.dataset.uname)" style="color:#dc2626;height:32px">&#10005; Rejeitar</button>'
       + '</div>'
@@ -2320,8 +2322,34 @@ async function _inlineReject(userId, userName) {
   await _renderPendingTab();
 }
 
+// ── Enviar link de registro (register.html) para usuário pendente ────────────
+async function _sendPendingInviteLink(userId, userName, userEmail) {
+  if (!userEmail) { toast('E-mail não disponível.', 'error'); return; }
+  if (!confirm('Enviar link de cadastro para ' + (userName || userEmail) + '?\n\nO usuário receberá um email com o link para register.html com os dados pré-preenchidos.')) return;
 
-// ══════════════════════════════════════════════════════════════════════════════
+  try {
+    // Fetch full user record for name
+    const { data: row } = await sb.from('app_users').select('name,email').eq('id', userId).maybeSingle();
+    const name  = row?.name  || userName  || '';
+    const email = row?.email || userEmail || '';
+
+    await _sendApprovalEmail(email, name, null, userId);
+    toast('✉️ Link de cadastro enviado para ' + (name || email) + '!', 'success');
+
+    // Mark invite_sent_at in app_users if column exists
+    await sb.from('app_users')
+      .update({ invite_sent_at: new Date().toISOString() })
+      .eq('id', userId)
+      .catch(() => {});
+
+    await _renderPendingTab();
+  } catch(e) {
+    toast('Erro ao enviar convite: ' + e.message, 'error');
+  }
+}
+window._sendPendingInviteLink = _sendPendingInviteLink;
+
+
 //  COPY FAMILY DATA — copies ALL data from source family → target family
 //  Target family data is wiped first, then repopulated with remapped UUIDs.
 //  Admin-only operation.
@@ -2891,12 +2919,21 @@ async function loadFamiliesList() {
           <div class="fam-panel-title">
             <span class="fam-panel-icon">🏠</span>
             <div>
-              <div class="fam-panel-name">${esc(fname)}</div>
+              <div class="fam-panel-name">
+                ${esc(fname)}
+                ${f.is_demo ? '<span style="font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(245,158,11,.15);color:#b45309;border:1px solid rgba(245,158,11,.3);border-radius:100px;padding:2px 8px;margin-left:6px;vertical-align:middle">🎭 Demo</span>' : ''}
+              </div>
               <div class="fam-panel-meta">
                 ${members.length} membro${members.length!==1?'s':''}${f.description ? ' · ' + esc(f.description) : ''}
               </div>
             </div>
           </div>
+          ${isGlobalAdmin ? `<button
+            onclick="_toggleFamilyDemo('${fid}', ${!f.is_demo})"
+            title="${f.is_demo ? 'Remover flag de demonstração' : 'Marcar como família de demonstração'}"
+            style="font-family:var(--font-sans);font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:8px;border:1px solid ${f.is_demo ? 'rgba(245,158,11,.4)' : 'var(--border)'};background:${f.is_demo ? 'rgba(245,158,11,.1)' : 'transparent'};color:${f.is_demo ? '#b45309' : 'var(--muted)'};cursor:pointer">
+            🎭 ${f.is_demo ? 'É Demo' : 'Marcar Demo'}
+          </button>` : ''}
         </div>
 
         <!-- Modules -->
@@ -2986,6 +3023,15 @@ async function _famToggleModule(famId, keyPrefix, btnId, applyFn) {
   // Aplicar sidebar imediatamente
   try { if (applyFn && typeof window[applyFn]==='function') await window[applyFn](); } catch {}
 
+  // Also update _fpCache via family_prefs so isDreamsEnabled / isModuleEnabled sees new value
+  // This is critical — without it _fpCache stays stale and the module appears stuck
+  const modName = keyPrefix.replace(/_enabled_$/, '');
+  if (typeof updateFamilyPreferences === 'function') {
+    try {
+      await updateFamilyPreferences({ modules: { [modName]: nowOn } });
+    } catch(e) { console.debug('[famToggleModule] family_prefs update:', e.message); }
+  }
+
   // Persistir no banco — RPC primeiro, depois upsert padrão
   let saved = false;
   if (sb) {
@@ -3013,11 +3059,20 @@ function showFamilyForm(id='') {
   document.getElementById('fDesc').value = '';
   document.getElementById('familyFormTitle').textContent = id ? 'Editar Família' : 'Nova Família';
   document.getElementById('familyFormArea').style.display = '';
+
+  // is_demo toggle — only visible to global admins
+  const isAdmin = currentUser?.role === 'admin';
+  const demoRow = document.getElementById('fDemoRow');
+  const demoChk = document.getElementById('fIsDemo');
+  if (demoRow) demoRow.style.display = isAdmin ? '' : 'none';
+  if (demoChk) demoChk.checked = false;
+
   if (id) {
     const f = _families.find(x => x.id === id) || (currentUser?.families || []).find(x => x.id === id);
     if (f) {
       document.getElementById('fName').value = _familyDisplayName(id, f.name || '');
       document.getElementById('fDesc').value = f.description||'';
+      if (demoChk && isAdmin) demoChk.checked = !!(f.is_demo);
     }
   }
 }
@@ -3025,9 +3080,10 @@ function showFamilyForm(id='') {
 function editFamily(id) { showFamilyForm(id); document.getElementById('familyFormArea').scrollIntoView({behavior:'smooth'}); }
 
 async function saveFamily() {
-  const id   = document.getElementById('editFamilyId').value;
-  const name = document.getElementById('fName').value.trim();
-  const desc = document.getElementById('fDesc').value.trim();
+  const id     = document.getElementById('editFamilyId').value;
+  const name   = document.getElementById('fName').value.trim();
+  const desc   = document.getElementById('fDesc').value.trim();
+  const isDemo = !!(document.getElementById('fIsDemo')?.checked);
   if (!name) { toast('Informe o nome da família','error'); return; }
 
   const isGlobalAdmin = currentUser?.role === 'admin';
@@ -3055,6 +3111,33 @@ async function saveFamily() {
   }
   if (error) { toast('Erro: ' + error.message,'error'); return; }
 
+  // Persist is_demo flag — admin only, via dedicated RPC
+  if (isGlobalAdmin && id) {
+    try {
+      const { error: demoErr } = await sb.rpc('set_family_demo_flag', {
+        p_family_id: id,
+        p_is_demo: isDemo,
+      });
+      if (demoErr) {
+        // Fallback: direct update (works if RLS allows admin)
+        await sb.from('families').update({ is_demo: isDemo }).eq('id', id);
+      }
+    } catch(e) {
+      console.warn('[saveFamily] is_demo update:', e.message);
+    }
+  } else if (isGlobalAdmin && !id) {
+    // For new families: update is_demo after creation
+    setTimeout(async () => {
+      try {
+        const newFam2 = (_families || []).find(f => f.name === name);
+        if (newFam2?.id && isDemo) {
+          await sb.rpc('set_family_demo_flag', { p_family_id: newFam2.id, p_is_demo: true })
+            .catch(() => sb.from('families').update({ is_demo: true }).eq('id', newFam2.id));
+        }
+      } catch(_) {}
+    }, 1500);
+  }
+
   toast(id ? '✓ Família atualizada!' : '✓ Família criada! Iniciando configuração…','success');
   document.getElementById('familyFormArea').style.display = 'none';
   await _loadCurrentUserContext().catch(()=>{});
@@ -3064,11 +3147,35 @@ async function saveFamily() {
 
   // For new families: offer to run the setup wizard
   if (!id) {
-    // RPC may return new family id — try to extract it from families list
     const newFam = (_families || []).find(f => f.name === name);
     _offerFamilyWizard(name, newFam?.id || null);
   }
 }
+
+// ── Toggle família demo (admin only) ─────────────────────────────────────────
+async function _toggleFamilyDemo(familyId, setDemo) {
+  if (currentUser?.role !== 'admin') { toast('Apenas administradores podem alterar esta configuração.', 'error'); return; }
+  try {
+    // Try RPC first (SECURITY DEFINER bypasses RLS)
+    const { error: rpcErr } = await sb.rpc('set_family_demo_flag', {
+      p_family_id: familyId,
+      p_is_demo:   setDemo,
+    });
+    if (rpcErr) {
+      // Fallback: direct update
+      const { error: upErr } = await sb.from('families').update({ is_demo: setDemo }).eq('id', familyId);
+      if (upErr) throw upErr;
+    }
+    // Update local cache
+    const fam = _families.find(f => f.id === familyId);
+    if (fam) fam.is_demo = setDemo;
+    toast(setDemo ? '🎭 Família marcada como demonstração.' : '✓ Flag de demonstração removida.', 'success');
+    await loadFamiliesList();
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+window._toggleFamilyDemo = _toggleFamilyDemo;
 
 async function deleteFamily(id, name) {
   const isGlobalAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin' || currentUser?.can_admin;
@@ -5364,6 +5471,7 @@ async function switchFamily(familyId) {
   try { if (typeof _catChartEntries !== 'undefined') _catChartEntries.length = 0; } catch(e) {}  // dashboard chart
   try { if (typeof rptState !== 'undefined') rptState.txData = []; } catch(e) {}  // reports
   try { if (typeof _destroyForecastChart === 'function') _destroyForecastChart(); } catch(e) {}
+  try { if (typeof _iofInvalidateCache === 'function') _iofInvalidateCache(); } catch(e) {}  // IOF settings
 
   // ── 3. Atualizar currentUser para nova família ────────────────────────────
   currentUser.family_id = familyId;
@@ -5421,6 +5529,26 @@ async function switchFamily(familyId) {
 function _roleLabel(role) {
   return { owner:'Owner', admin:'Admin', user:'Usuário', viewer:'Visualizador' }[role] || role;
 }
+
+// ── Receivables badge update ──────────────────────────────────────────────────
+async function _updateReceivablesBadge() {
+  try {
+    const { count } = await sb.from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('family_id', famId())
+      .eq('status', 'unreceived')
+      .gte('amount', 0);
+    const badge = document.getElementById('receivablesBadge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
+}
+window._updateReceivablesBadge = _updateReceivablesBadge;
 
 // ── Pending approvals badge ───────────────────────────────────────────────────
 async function _checkPendingApprovals() {
@@ -6234,6 +6362,7 @@ async function loadWaitlist() {
 
     if (filter === 'pending') query = query.eq('status', 'pending');
     else if (filter === 'invited') query = query.eq('status', 'invited');
+    else if (filter === 'registered') query = query.eq('status', 'registered');
 
     const { data, error } = await query;
     if (error) throw error;
@@ -6258,13 +6387,16 @@ async function loadWaitlist() {
       const date     = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '—';
       const roleLabel = {family:'Família',couple:'Casal',personal:'Individual',business:'Empreendedor',curious:'Curioso IA'}[r.role] || r.role || '—';
       const initials  = (r.name||'?').trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-      const isPending = r.status === 'pending';
-      const isInvited = r.status === 'invited';
+      const isPending    = r.status === 'pending';
+      const isInvited    = r.status === 'invited';
+      const isRegistered = r.status === 'registered';
       const statusPill = isPending
         ? '<span style="font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(245,158,11,.12);color:#b45309;border:1px solid rgba(245,158,11,.25);border-radius:100px;padding:2px 8px">⏳ Aguardando</span>'
-        : '<span style="font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(42,96,73,.1);color:var(--accent);border:1px solid rgba(42,96,73,.2);border-radius:100px;padding:2px 8px">✉️ Convidado</span>';
+        : isRegistered
+          ? '<span style="font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(22,163,74,.12);color:#15803d;border:1px solid rgba(22,163,74,.25);border-radius:100px;padding:2px 8px">✅ Registrado</span>'
+          : '<span style="font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(42,96,73,.1);color:var(--accent);border:1px solid rgba(42,96,73,.2);border-radius:100px;padding:2px 8px">✉️ Convidado</span>';
 
-      const invBtn = isPending ? `
+      const invBtn = isRegistered ? '' : isPending ? `
         <button
           data-id="${esc(r.id)}" data-name="${esc(r.name||'')}" data-email="${esc(r.email||'')}"
           onclick="inviteFromWaitlist(this.dataset.id, this.dataset.name, this.dataset.email)"

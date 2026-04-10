@@ -3647,28 +3647,50 @@ async function _loadDemoSelectors() {
 
   famSel.innerHTML = '<option value="">⏳ Carregando…</option>';
   try {
-    // Try from state.families first (already loaded), else query
-    let families = (state.families || []).length
-      ? state.families
-      : null;
-    if (!families) {
-      const { data, error } = await sb.from('families').select('id,name').order('name');
-      if (error) throw error;
-      families = data || [];
-    }
-    if (!families.length) {
-      // Fallback: use current user's family
-      const fid = typeof famId === 'function' ? famId() : null;
-      if (fid) {
-        famSel.innerHTML = `<option value="">— Selecionar família —</option>`;
-        const { data: f2 } = await sb.from('families').select('id,name').eq('id',fid).maybeSingle();
-        if (f2) families = [f2];
+    // ── Buscar apenas famílias marcadas como is_demo = true ────────────────
+    let families = [];
+
+    // 1. Tentar via RPC get_demo_families (SECURITY DEFINER)
+    try {
+      const { data: rpcData, error: rpcErr } = await sb.rpc('get_demo_families');
+      if (!rpcErr && Array.isArray(rpcData)) {
+        families = rpcData;
       }
+    } catch(_) {}
+
+    // 2. Fallback: query direta com filtro is_demo
+    if (!families.length) {
+      try {
+        const { data, error } = await sb.from('families')
+          .select('id,name,is_demo')
+          .eq('is_demo', true)
+          .order('name');
+        if (!error) families = data || [];
+      } catch(_) {}
     }
-    famSel.innerHTML = '<option value="">— Selecionar família —</option>'
-      + families.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+
+    // 3. Se ainda vazio, mostrar aviso instrutivo
+    if (!families.length) {
+      famSel.innerHTML = '<option value="">⚠️ Nenhuma família marcada como demo</option>';
+      if (userSel) userSel.innerHTML = '<option value="">— Selecione uma família primeiro —</option>';
+      // Show hint
+      const hint = document.getElementById('demoFamilyHint');
+      if (hint) {
+        hint.style.display = '';
+        hint.innerHTML = '⚠️ Nenhuma família está marcada como <strong>Demonstração</strong>. ' +
+          'Acesse <strong>Configurações → Usuários → Famílias</strong>, edite uma família e ative a flag 🎭 Demo.';
+      }
+      return;
+    }
+
+    // Hide hint if families found
+    const hint = document.getElementById('demoFamilyHint');
+    if (hint) hint.style.display = 'none';
+
+    famSel.innerHTML = '<option value="">— Selecionar família demo —</option>'
+      + families.map(f => `<option value="${f.id}">🎭 ${esc(f.name)}</option>`).join('');
     famSel.onchange = () => _loadDemoUsers(famSel.value);
-    // Auto-select if only one family
+    // Auto-select if only one demo family
     if (families.length === 1) {
       famSel.value = families[0].id;
       _loadDemoUsers(families[0].id);
