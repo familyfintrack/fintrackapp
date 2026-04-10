@@ -1643,7 +1643,18 @@ async function saveMyProfile() {
   const twoFaChanged  = twoFaEnabled !== !!(currentUser?.two_fa_enabled)
                      || twoFaChannel !== (currentUser?.two_fa_channel || 'email');
 
-  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged && !notifyChanged && !twoFaChanged) {
+  // Detect changes in alert preferences (toast duration / style / sound)
+  const alertStyle    = document.getElementById('myProfileAlertStyle')?.value    || 'toast';
+  const alertDuration = document.getElementById('myProfileAlertDuration')?.value || '3200';
+  const alertSound    = !!(document.getElementById('myProfileAlertSound')?.checked);
+  const _storedStyle    = (typeof getAlertStyle    === 'function') ? String(getAlertStyle())    : 'toast';
+  const _storedDuration = (typeof getAlertDuration === 'function') ? String(getAlertDuration()) : '3200';
+  const _storedSound    = (typeof getAlertSound    === 'function') ? getAlertSound()            : false;
+  const alertPrefsChanged = alertStyle    !== _storedStyle
+                         || alertDuration !== _storedDuration
+                         || alertSound    !== _storedSound;
+
+  if (!avatarFile && !avatarRemove && !pwd1 && !prefFamChanged && !langChanged && !waChanged && !tgChanged && !fmChanged && !nameChanged && !notifyChanged && !twoFaChanged && !alertPrefsChanged) {
     toast('Nenhuma alteração detectada.', 'info');
     closeModal('myProfileModal');
     return;
