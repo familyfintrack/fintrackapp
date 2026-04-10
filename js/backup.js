@@ -25,7 +25,15 @@ const BACKUP_TABLES = [
   'investment_price_history',
   'grocery_lists',
   'grocery_items',
-];
+  'dreams',
+  'dream_items',
+  'dream_contributions',
+  'ai_insight_snapshots',
+  'ai_insight_recommendations',
+  'financial_objectives',
+  'attachments',
+  'family_preferences'
+];;
 
 const BACKUP_RELATIONS = [
   ['family_members', 'family_id', 'families'],
@@ -158,6 +166,18 @@ async function _collectFamilyBackupPayload(fid) {
       : Promise.resolve({ data: [] }),
   ]);
 
+  // New modules — fetched separately (optional, won't break backup if missing)
+  const [dreamsRes, dreamItemsRes, dreamContribRes, aiSnapshotsRes, aiRecsRes, objectivesRes, familyPrefsRes, attachmentsRes] = await Promise.all([
+    qf('dreams').catch(() => ({ data: [] })),
+    qf('dream_items').catch(() => ({ data: [] })),
+    qf('dream_contributions').catch(() => ({ data: [] })),
+    qf('ai_insight_snapshots').catch(() => ({ data: [] })),
+    qf('ai_insight_recommendations').catch(() => ({ data: [] })),
+    qf('financial_objectives').catch(() => ({ data: [] })),
+    sb.from('family_preferences').select('*').eq('family_id', fid).catch(() => ({ data: [] })),
+    qf('attachments').catch(() => ({ data: [] })),
+  ]);
+
   const payload = {
     families:                 _arr(familiesRes.data),
     family_members:           _arr(membersRes.data),
@@ -181,6 +201,15 @@ async function _collectFamilyBackupPayload(fid) {
     investment_price_history: _arr(invPriceRes.data),
     grocery_lists:            _arr(groceryListsRes.data),
     grocery_items:            _arr(groceryItemsRes.data),
+    // New modules (graceful fallback if tables don't exist)
+    dreams:                   _arr(dreamsRes?.data),
+    dream_items:              _arr(dreamItemsRes?.data),
+    dream_contributions:      _arr(dreamContribRes?.data),
+    ai_insight_snapshots:     _arr(aiSnapshotsRes?.data),
+    ai_insight_recommendations:_arr(aiRecsRes?.data),
+    financial_objectives:     _arr(objectivesRes?.data),
+    family_preferences:       _arr(familyPrefsRes?.data),
+    attachments:              _arr(attachmentsRes?.data),
   };
 
   const counts = {};

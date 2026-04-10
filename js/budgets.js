@@ -319,13 +319,7 @@ function _budgetCardHTML(b, spent, raw) {
   const isRecurring = (b.auto_reset ?? true) && _budgetView === 'monthly';
   const badgesHtml = [
     isPaused
-      ? `<span class="budget-badge" style="background:#fef3c7;color:#b45309;font-weight:700">⏸ Pausado</span>` : '',
-    isRecurring && !isPaused
-      ? `<span class="budget-badge" style="background:#e0f2fe;color:#0369a1" title="Recorrente — reseta todo mês automaticamente">🔄 Recorrente</span>` : '',
-    _budgetView === 'annual'
-      ? `<span class="budget-badge" style="background:#f0fdf4;color:#15803d">📆</span>` : '',
-    b.notes
-      ? `<span class="budget-badge" style="background:var(--bg2);color:var(--muted)" title="${esc(b.notes)}">📝</span>` : '',
+      ? `<span class="budget-badge" style="background:#fef3c7;color:#b45309;font-weight:700;font-size:.65rem">⏸ Pausado</span>` : '',
   ].filter(Boolean).join('');
 
   return `<div class="budget-card${over ? ' budget-card--over' : near ? ' budget-card--near' : ''}${isPaused ? ' budget-card--paused' : ''}" style="cursor:pointer;${isPaused ? 'opacity:.72' : ''}" onclick="openBudgetDrilldown('${b.id}','${(cat.name||'').replace(/'/g,'\\u0027')}')">
@@ -341,7 +335,7 @@ function _budgetCardHTML(b, spent, raw) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        ${badgesHtml}
+        ${isPaused ? `<span class="budget-badge" style="background:#fef3c7;color:#b45309;font-weight:700;font-size:.65rem">⏸ Pausado</span>` : ''}
         <button class="btn-icon" onclick="event.stopPropagation();toggleBudgetPaused('${b.id}',${isPaused})"
           title="${isPaused ? 'Retomar orçamento' : 'Pausar orçamento'}"
           style="color:${isPaused ? 'var(--accent)' : 'var(--muted)'}"
@@ -350,6 +344,12 @@ function _budgetCardHTML(b, spent, raw) {
         <button class="btn-icon" onclick="event.stopPropagation();deleteBudget('${b.id}')" title="Excluir" style="color:var(--red)">🗑️</button>
       </div>
     </div>
+
+    ${(isRecurring && !isPaused) || _budgetView==='annual' || b.notes ? `<div style="padding:2px 10px 7px;display:flex;gap:5px;flex-wrap:wrap">
+      ${isRecurring && !isPaused ? `<span class="budget-badge" style="background:#e0f2fe;color:#0369a1;font-size:.7rem" title="Recorrente — reseta todo mês automaticamente">🔄 Recorrente</span>` : ''}
+      ${_budgetView==='annual' ? `<span class="budget-badge" style="background:#f0fdf4;color:#15803d;font-size:.7rem">📆 Anual</span>` : ''}
+      ${b.notes ? `<span class="budget-badge" style="background:var(--bg2);color:var(--muted);font-size:.7rem" title="${esc(b.notes)}">📝 Nota</span>` : ''}
+    </div>` : ''}
 
     <div class="budget-amounts">
       <div>

@@ -142,6 +142,8 @@ window.txCatSplitPickCategory = txCatSplitPickCategory;
 // Chamado pelo catPicker quando está em modo split
 let _txSplitPendingCatRowId = null;
 function txCatSplitReceiveCategory(catId, catName, catColor) {
+  const _cat=(state.categories||[]).find(c=>c.id===catId);
+  const _parent=_cat?.parent_id?(state.categories||[]).find(c=>c.id===_cat.parent_id):null;
   if (_txSplitPendingCatRowId === null) return;
   const row = _txSplit.catRows.find(r => r.id === _txSplitPendingCatRowId);
   if (row) {
@@ -183,8 +185,13 @@ function _txSplitCatRowHtml(row, txAmt, suffix) {
   const dotStyle = hascat
     ? `background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block`
     : 'display:none';
+  // Show parent > child for subcategories
+  let _catLabel = row.category_name;
+  if (hascat && row.category_parent_name) {
+    _catLabel = row.category_parent_name + '  ›  ' + row.category_name;
+  }
   const btnLabel = hascat
-    ? `<span style="${dotStyle}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(row.category_name)}</span>`
+    ? `<span style="${dotStyle}"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(_catLabel)}</span>`
     : `<span style="color:var(--muted)">— Selecionar categoria —</span>`;
   const amtVal = row.amount > 0 ? row.amount.toFixed(2).replace('.', ',') : '';
   const rowId = suffix ? `txCatSplitRow${suffix}_${row.id}` : `txCatSplitRow_${row.id}`;
@@ -370,8 +377,14 @@ function _txSplitMemRowHtml(row, txAmt, suffix) {
   suffix = suffix || '';
   const isPct = _txSplit.memMode === 'pct';
   const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : [];
+  // Exclude members already selected in OTHER rows (each member only once)
+  const usedIds = new Set(_txSplit.memRows.filter(r=>r.id!==row.id).map(r=>r.member_id).filter(Boolean));
   const memberOpts = members.map(m =>
-    `<option value="${m.id}" ${m.id === row.member_id ? 'selected' : ''}>${esc(m.name)}</option>`
+    m.id === row.member_id
+      ? `<option value="${m.id}" selected>${esc(m.name)}</option>`
+      : usedIds.has(m.id)
+        ? '' // already used in another row
+        : `<option value="${m.id}">${esc(m.name)}</option>`
   ).join('');
   const dispVal = isPct
     ? (row.pct > 0 ? row.pct.toFixed(1).replace('.', ',') : '')
@@ -684,9 +697,11 @@ function scCatSplitPickCategory(rowId) {
 window.scCatSplitPickCategory = scCatSplitPickCategory;
 
 function scCatSplitReceiveCategory(catId, catName, catColor) {
+  const _scat=(state.categories||[]).find(c=>c.id===catId);
+  const _sparent=_scat?.parent_id?(state.categories||[]).find(c=>c.id===_scat.parent_id):null;
   if (_scSplitPendingCatRowId === null) return;
   const row = _scSplit.catRows.find(r=>r.id===_scSplitPendingCatRowId);
-  if (row) { row.category_id=catId; row.category_name=catName; row.category_color=catColor||'#94a3b8'; }
+  if (row) { row.category_id=catId; row.category_name=catName; row.category_color=catColor||'#94a3b8'; row.category_parent_name=_sparent?_sparent.name:null; }
   _scSplitPendingCatRowId = null;
   _scSplitRenderCat();
 }
@@ -719,7 +734,8 @@ function _scSplitRenderCat(scAmt) {
   }
   container.innerHTML=_scSplit.catRows.map(row=>{
     const has=!!row.category_id;
-    const lbl=has?`<span style="background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(row.category_name)}</span>`:`<span style="color:var(--muted)">— Selecionar categoria —</span>`;
+    const _catDisplayName = has?(row.category_parent_name?row.category_parent_name+'  ›  '+row.category_name:row.category_name):'';
+    const lbl=has?`<span style="background:${row.category_color};width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block"></span><span style="overflow:hidden;text-overflow:ellipsis">${esc(_catDisplayName)}</span>`:`<span style="color:var(--muted)">— Selecionar categoria —</span>`;
     const av=row.amount>0?row.amount.toFixed(2).replace('.',','):'';
     return `<div class="tx-split-row" id="scCatSplitRow_${row.id}"><div class="tx-split-row-left"><button type="button" class="tx-split-cat-btn" onclick="scCatSplitPickCategory(${row.id})" style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;overflow:hidden;white-space:nowrap">${lbl}</button></div><div class="tx-split-row-right"><input type="text" inputmode="decimal" class="tx-split-amount-input" placeholder="0,00" value="${av}" onchange="scCatSplitUpdateAmount(${row.id},this.value)" oninput="scCatSplitUpdateAmount(${row.id},this.value)"><button type="button" class="tx-split-remove-btn" onclick="scCatSplitRemoveRow(${row.id})">✕</button></div></div>`;
   }).join('');
@@ -811,7 +827,8 @@ function _scSplitRenderMem(scAmt) {
   container.innerHTML=_scSplit.memRows.map(row=>{
     const isVal=_scSplit.memMode==='value';
     const members=typeof getFamilyMembers==='function'?getFamilyMembers():[];
-    const opts=members.map(m=>`<option value="${m.id}" ${m.id===row.member_id?'selected':''} >${esc(m.name)}</option>`).join('');
+    const _usedIds=new Set(_scSplit.memRows.filter(r=>r.id!==row.id).map(r=>r.member_id).filter(Boolean));
+    const opts=members.map(m=>m.id===row.member_id?`<option value="${m.id}" selected>${esc(m.name)}</option>`:_usedIds.has(m.id)?'': `<option value="${m.id}">${esc(m.name)}</option>`).join('');
     const dv=isVal?(row.amount>0?row.amount.toFixed(2).replace('.',','):''):(row.pct>0?row.pct.toFixed(1).replace('.',','):'');
     const ph=isVal?'0,00':'0,0%';
     return `<div class="tx-split-row" id="scMemSplitRow_${row.id}">

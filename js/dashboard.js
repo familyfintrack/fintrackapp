@@ -1928,6 +1928,11 @@ async function _renderDashForecast() {
   else if (accIds.length > 1) q = q.in('account_id', accIds);
   const { data: txData } = await q;
 
+  // Ensure scheduled transactions are loaded before building forecast items
+  if (!state.scheduled?.length && typeof loadScheduled === 'function') {
+    try { await loadScheduled(); } catch(_) {}
+  }
+
   // Build scheduled items
   let scheduledItems = [];
   if (includeScheduled && state.scheduled?.length) {

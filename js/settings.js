@@ -16,6 +16,14 @@ function cfgShowPane(paneId) {
   if (paneId === 'pane-feedbacks' && typeof loadFeedbackReports === 'function') {
     loadFeedbackReports();
   }
+  // Show danger zone only to family owner (not admin, not regular member)
+  if (paneId === 'pane-familia') {
+    const dangerZone = document.getElementById('familyDangerZone');
+    if (dangerZone) {
+      const isOwner = currentUser?.role === 'owner';  // family owner only, not global admin
+      dangerZone.style.display = isOwner ? '' : 'none';
+    }
+  }
   // Scroll active tab into view on mobile
   if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
@@ -3411,6 +3419,15 @@ async function deleteAllFamilyData() {
   const fname = (state.families||[]).find(f=>f.id===fid)?.name || 'família atual';
 
   if (!fid) { toast('Nenhuma família ativa.', 'warning'); return; }
+
+  // Only family owner can delete all data
+  // Only the family owner (role='owner' in family_members) can delete all data
+  // Global 'admin' is NOT allowed here — this is a family management action
+  const isOwner = currentUser?.role === 'owner';
+  if (!isOwner) {
+    toast('Apenas o proprietário da família pode excluir todos os dados.', 'error');
+    return;
+  }
 
   // Two-step confirmation
   const confirm1 = await new Promise(res => {

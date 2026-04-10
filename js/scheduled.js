@@ -2790,7 +2790,164 @@ window.fetchScCurrencyRate                 = fetchScCurrencyRate;
 window.fetchScSuggestedFxRate              = fetchScSuggestedFxRate;
 window.generateOccurrences                 = generateOccurrences;
 window.ignoreOccurrence                    = ignoreOccurrence;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A/R — VALORES A RECEBER (Contas a receber pendentes)
+// Guarda num store scoped por família em app_settings
+// ═══════════════════════════════════════════════════════════════════════════
+
+const _SC_AR_KEY = 'sc_ar_records';
+
+async function _scArGetRecs() {
+  try {
+    const fid = typeof famId === 'function' ? famId() : null;
+    const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
+    const { data } = await sb.from('app_settings').select('value')
+      .eq('key', scopedKey).maybeSingle();
+    return JSON.parse(data?.value || '[]');
+  } catch(_) { return []; }
+}
+async function _scArSaveRecs(records) {
+  const fid = typeof famId === 'function' ? famId() : null;
+  const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
+  const val = JSON.stringify(records);
+  await sb.from('app_settings')
+    .upsert({ key: scopedKey, value: val }, { onConflict: 'key' });
+}
+
+// Called by "⏳ Não Recebido" button in registerOccModal
+async function registerAsNotReceived() {
+  const scId  = document.getElementById('occScId')?.value;
+  const date  = document.getElementById('occDate')?.value;
+  const amtRaw= document.getElementById('occAmount')?.value;
+  const memo  = document.getElementById('occMemo')?.value?.trim() || '';
+
+  if (!scId || !date) { if (typeof toast==='function') toast('Preencha a data.','warning'); return; }
+
+  const sc = (state.scheduled||[]).find(s=>s.id===scId);
+  const amount = Math.abs(parseFloat(String(amtRaw).replace(',','.')) || parseFloat(sc?.amount)||0);
+  const desc = sc?.description || 'Valor a receber';
+
+  try {
+    const recs = await _scArGetRecs();
+    recs.push({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      sc_id:       scId,
+      description: desc,
+      date,
+      amount,
+      memo,
+      status:      'pending',  // pending | received | cancelled
+      created_at:  new Date().toISOString(),
+    });
+    await _scArSaveRecs(recs);
+    if (typeof closeModal==='function') closeModal('registerOccModal');
+    if (typeof toast==='function') toast('⏳ Registrado em Valores a Receber','info');
+    _scArLoad();
+  } catch(e) {
+    if (typeof toast==='function') toast('Erro ao registrar: '+(e.message||e),'error');
+  }
+}
+window.registerAsNotReceived = registerAsNotReceived;
+
+// Load and render the A/R section
+async function _scArLoad() {
+  const section = document.getElementById('scArSection');
+  const list    = document.getElementById('scArList');
+  const cntEl   = document.getElementById('scArCount');
+  if (!section || !list) return;
+
+  const recs = await _scArGetRecs();
+  const pending = recs.filter(r => r.status === 'pending');
+
+  // Show/hide section
+  section.style.display = pending.length ? '' : 'none';
+  if (cntEl) cntEl.textContent = pending.length || '';
+
+  if (!pending.length) { list.innerHTML=''; return; }
+
+  list.innerHTML = pending.map(r => {
+    const dt = r.date ? r.date.split('-').reverse().join('/') : '—';
+    const amt = typeof fmt === 'function' ? fmt(r.amount||0) : 'R$ '+(r.amount||0).toFixed(2);
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid #fde68a;border-radius:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.83rem;font-weight:700;color:var(--text)">${typeof esc==='function'?esc(r.description):r.description}</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap">
+          <span style="font-size:.78rem;color:var(--muted)">${dt}</span>
+          <span style="font-size:.83rem;font-weight:800;color:#d97706">${amt}</span>
+          ${r.memo?`<span style="font-size:.72rem;color:var(--muted);font-style:italic">${typeof esc==='function'?esc(r.memo):r.memo}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="_scArReceive('${r.id}')"
+          style="padding:5px 10px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+          ✅ Recebido
+        </button>
+        <button onclick="_scArCancel('${r.id}')"
+          style="padding:5px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:7px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">
+          ✕
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window._scArLoad = _scArLoad;
+
+// Mark a pending A/R as received — opens the TX modal pre-filled
+async function _scArReceive(arId) {
+  const recs = await _scArGetRecs();
+  const rec = recs.find(r=>r.id===arId);
+  if (!rec) return;
+
+  // Mark as received
+  rec.status = 'received';
+  rec.received_at = new Date().toISOString();
+  await _scArSaveRecs(recs);
+
+  // Open TX modal pre-filled with this amount as income
+  if (typeof openTransactionModal === 'function') {
+    openTransactionModal();
+    setTimeout(() => {
+      const sc = (state.scheduled||[]).find(s=>s.id===rec.sc_id);
+      if (typeof setTxType==='function') setTxType('income');
+      const dtEl=document.getElementById('txDate'); if(dtEl) dtEl.value=rec.date;
+      const descEl=document.getElementById('txDesc'); if(descEl) descEl.value=rec.description;
+      if (typeof setAmtField==='function') setAmtField('txAmount', Math.abs(rec.amount||0));
+      if (sc?.account_id && document.getElementById('txAccountId')) {
+        document.getElementById('txAccountId').value=sc.account_id;
+      }
+    }, 200);
+  }
+  _scArLoad();
+  if (typeof toast==='function') toast('✅ Marcado como recebido — confira o lançamento','success');
+}
+window._scArReceive = _scArReceive;
+
+// Cancel / dismiss a pending A/R
+async function _scArCancel(arId) {
+  const recs = await _scArGetRecs();
+  const idx = recs.findIndex(r=>r.id===arId);
+  if (idx<0) return;
+  recs[idx].status = 'cancelled';
+  recs[idx].cancelled_at = new Date().toISOString();
+  await _scArSaveRecs(recs);
+  _scArLoad();
+  if (typeof toast==='function') toast('Registro removido de Valores a Receber','info');
+}
+window._scArCancel = _scArCancel;
+
+// Show the "⏳ Não Recebido" button only for income scheduled transactions
+function _scArShowBtn(sc) {
+  const btn = document.getElementById('registerNotReceivedBtn');
+  if (!btn) return;
+  const isIncome = sc?.type === 'income';
+  btn.style.display = isIncome ? '' : 'none';
+}
+window._scArShowBtn = _scArShowBtn;
+
 window.loadScheduled                       = loadScheduled;
+// Auto-load A/R section after scheduled loads
+_scArLoad && setTimeout(_scArLoad, 500);
 window.openRegisterOcc                     = openRegisterOcc;
 
 // ── switchScTab: handles tab navigation inside the scheduled modal ──────────
