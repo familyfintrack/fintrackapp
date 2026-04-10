@@ -299,6 +299,8 @@ function scStatusLabel(sc) {
 function clearAllScFilters() {
   const searchEl = document.getElementById('scSearch');
   if (searchEl) searchEl.value = '';
+  const searchDesktopEl = document.getElementById('scSearchDesktop');
+  if (searchDesktopEl) searchDesktopEl.value = '';
   const typeEl = document.getElementById('scTypeFilter');
   if (typeEl) typeEl.value = '';
   // Reset chip to "Todos"
@@ -386,7 +388,17 @@ function scChipFilter(event, status) {
 }
 
 function filterScheduled() {
-  const search = (document.getElementById('scSearch')?.value||'').toLowerCase();
+  // Read search from whichever input the user is typing in (mobile panel or desktop panel)
+  const _mSearch  = document.getElementById('scSearch')?.value || '';
+  const _dSearch  = document.getElementById('scSearchDesktop')?.value || '';
+  const search = (_dSearch || _mSearch).toLowerCase();
+  // Keep both search inputs in sync
+  const _mEl = document.getElementById('scSearch');
+  const _dEl = document.getElementById('scSearchDesktop');
+  if (_mEl && _dEl) {
+    if (_dSearch && _mEl.value !== _dEl.value) _mEl.value = _dEl.value;
+    else if (_mSearch && _dEl.value !== _mEl.value) _dEl.value = _mEl.value;
+  }
   const statusF = _scStatusChip || '';
   // Read from mobile filter OR desktop panel filter — whichever has a value
   // (desktop uses scTypeFilterDesktop to avoid duplicate-id collision with mobile)

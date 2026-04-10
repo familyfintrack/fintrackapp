@@ -104,7 +104,25 @@ window.toggleFamilyDreams = toggleFamilyDreams;
 
 /* ── Page init ────────────────────────────────────────────────────── */
 async function initDreamsPage() {
-  if (!await isDreamsEnabled()) return;
+  const container = document.getElementById('dreams-list-container');
+  if (!await isDreamsEnabled()) {
+    // Module disabled — show appropriate message instead of "Carregando sonhos…"
+    if (container) {
+      container.innerHTML = `<div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px">⚙️</div>
+        <div style="font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:8px">Módulo Sonhos não ativado</div>
+        <div style="font-size:.82rem;color:var(--muted);line-height:1.6">Ative o módulo em <strong>Gerenciar Família → Módulos</strong>.</div>
+      </div>`;
+    }
+    return;
+  }
+  // Show loading state while fetching
+  if (container && !_drm.loaded) {
+    container.innerHTML = `<div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:12px">⏳</div>
+      <div style="font-size:.95rem;font-weight:600;color:var(--text)">Carregando sonhos…</div>
+    </div>`;
+  }
   await loadDreams();
   renderDreamsPage();
 }
@@ -130,7 +148,8 @@ async function loadDreams(force = false) {
             <div class="drm-empty-desc">As tabelas do módulo Sonhos ainda não foram criadas no banco de dados.<br>Execute a migração SQL no painel Supabase e recarregue a página.</div>
           </div>`;
         }
-        return; // não marca como loaded — força nova tentativa
+        _drm.loaded = true; // mark loaded so we don't retry on every navigation
+        return;
       }
       throw error;
     }
