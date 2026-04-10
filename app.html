@@ -5913,6 +5913,27 @@ Se você não solicitou isso, ignore este e-mail.`,
             class="btn btn-ghost btn-sm" style="flex-shrink:0;font-size:1rem;padding:0 10px">👁</button>
         </div>
       </div>
+
+      <div class="form-group">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          Modelo Gemini
+          <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank"
+            style="font-size:.72rem;color:var(--accent)">Ver modelos disponíveis ↗</a>
+        </label>
+        <select id="geminiModelSelect"
+          style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;
+                 background:var(--surface);color:var(--text);font-size:.83rem;font-family:inherit">
+          <option value="gemini-2.5-flash">gemini-2.5-flash — Recomendado ✅</option>
+          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite — Leve / econômico</option>
+          <option value="gemini-2.5-pro">gemini-2.5-pro — Mais capaz (cota menor)</option>
+          <option value="gemini-1.5-flash">gemini-1.5-flash — Estável / legado</option>
+          <option value="gemini-1.5-pro">gemini-1.5-pro — Legado avançado</option>
+        </select>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
+          Se receber erro 404 "model not available", troque para outro modelo.
+          Todos os módulos de IA do app usam esta configuração.
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('aiConfigModal')">Cancelar</button>
