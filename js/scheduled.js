@@ -1069,6 +1069,17 @@ function openScheduledModal(id='') {
 
   updateScPreview();
   openModal('scheduledModal');
+  // Show Reembolso button (only for non-transfer types)
+  const _scReimbBtn = document.getElementById('scReimbBtn');
+  const _scId = document.getElementById('scId')?.value;
+  const _scTypeVal = document.getElementById('scTypeField')?.value;
+  if (_scReimbBtn) {
+    const _isScTransfer = _scTypeVal === 'transfer' || _scTypeVal === 'card_payment';
+    _scReimbBtn.style.display = _isScTransfer ? 'none' : 'flex';
+    if (_scId && !_isScTransfer && typeof checkReimbOnScOpen === 'function') {
+      checkReimbOnScOpen(_scId).catch(()=>{});
+    }
+  }
   if (typeof initScFormMode === "function") initScFormMode();
   if (typeof initScFormMode === 'function') initScFormMode();
   // Apply admin notification channel visibility

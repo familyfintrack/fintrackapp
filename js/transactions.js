@@ -1271,6 +1271,11 @@ async function openTransactionModal(id=''){
     }
     _populateTxDreamSelect(null).catch(() => {});
     openModal('txModal');
+  // Check existing reimbursement link for this transaction
+  if (typeof checkReimbOnOpen === 'function') {
+    const _txId = document.getElementById('txId')?.value;
+    if (_txId) checkReimbOnOpen(_txId).catch(()=>{});
+  }
   if (typeof initTxFormMode === 'function') initTxFormMode();
   }
   } catch(e) {
@@ -1744,6 +1749,11 @@ function setTxType(type){
   document.getElementById('txTransferToGroup').style.display=isTransfer?'':'none';
   const _swapBtn=document.getElementById('txSwapAccountsBtn');
   if(_swapBtn) _swapBtn.style.display=isTransfer?'flex':'none';
+  // Reembolso button: visible only for expense/income (not transfers)
+  const _reimbBtn=document.getElementById('txReimbBtn');
+  if(_reimbBtn) {
+    _reimbBtn.style.display=isTransfer?'none':'flex';
+  }
   document.getElementById('txPayeeGroup').style.display=isTransfer?'none':'';
   // Show category for expense, income and card_payment; hide only for pure transfer
   document.getElementById('txCategoryGroup').style.display=isPureTransfer?'none':'';

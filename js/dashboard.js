@@ -2626,528 +2626,444 @@ window.toggleSupGroup = toggleSupGroup;
 
 // ── Modal: Composição do Patrimônio Total ─────────────────────────────────
 async function _openPatrimonioModal() {
-  let accs = Array.isArray(state.accounts) ? state.accounts : [];
-  if (!accs.length) {
-    try { await DB.accounts.load(); accs = state.accounts || []; } catch(_) {}
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 1 — Carregar contas (mesma lógica do loadKPIs em db.js)
+  ═══════════════════════════════════════════════════════════════════════ */
+  if (typeof DB !== 'undefined' && DB.accounts) {
+    try { await DB.accounts.load(); } catch(_) {}
   }
-  if (!accs.length) { toast('Nenhuma conta encontrada', 'info'); return; }
+  const accs = Array.isArray(state.accounts) ? state.accounts : [];
+  if (!accs.length) { toast('Nenhuma conta encontrada.', 'info'); return; }
 
-  /* ── Calcular totais ────────────────────────────────────────── */
-  const accsLiquid = accs.filter(a => !['investimento','cartao_credito'].includes(a.type));
-  const accsInvest = accs.filter(a => a.type === 'investimento');
-  const accsCard   = accs.filter(a => a.type === 'cartao_credito');
-
-  const liquidTotal = accsLiquid.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-  const invTotal    = accsInvest.reduce((s,a) => {
-    const bal = (a._totalPortfolioBalance != null) ? a._totalPortfolioBalance : (parseFloat(a.balance)||0);
-    return s + toBRL(bal, a.currency||'BRL');
-  }, 0);
-  const cardTotal   = accsCard.reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-  const accountTotal = liquidTotal + invTotal + cardTotal;
-  const cardDebt    = Math.abs(Math.min(0, cardTotal));
-
-  const invPositions = (typeof _inv !== 'undefined' && _inv.positions) ? _inv.positions : [];
-  const invByType = {};
-  invPositions.forEach(p => {
-    const k = p.asset_type || 'outro';
-    if (!invByType[k]) invByType[k] = { positions: [], total: 0 };
-    const mv = (typeof _invMarketValue === 'function') ? _invMarketValue(p) : (+(p.quantity||0) * (+(p.current_price||p.avg_cost||0)));
-    invByType[k].positions.push({ ...p, _mv: mv });
-    invByType[k].total += mv;
-  });
-
-  let debtTotal = 0, debts = [];
+  // Garantir market value de investimentos (idem loadKPIs)
   try {
-    // Use already-loaded debts from the debts module if available
-    if (typeof _dbt !== 'undefined' && _dbt.loaded && Array.isArray(_dbt.debts)) {
-      debts = _dbt.debts.filter(d => d.status === 'active');
-    } else {
-      // Fallback: fresh query with creditor join
-      const { data: dd, error: de } = await famQ(
-        sb.from('debts')
-          .select('id,description,name,current_balance,original_amount,currency,status,fixed_rate,adjustment_type,creditor:payees!debts_creditor_payee_id_fkey(id,name)')
-      ).eq('status', 'active').order('current_balance', { ascending: false });
-      if (!de) { debts = dd || []; }
-      else {
-        // RLS fallback: simpler query
-        const { data: ds } = await famQ(sb.from('debts').select('*')).eq('status', 'active');
-        debts = ds || [];
-      }
-    }
+    if (typeof loadInvestments === 'function') await loadInvestments();
+    if (typeof invPostBalanceHook === 'function') invPostBalanceHook();
   } catch(_) {}
-  debtTotal = debts.reduce((s,d) => s + toBRL(parseFloat(d.current_balance ?? d.original_amount) || 0, d.currency || 'BRL'), 0);
 
-  const totalPassivos = debtTotal + cardDebt;
-  const totalLiquido  = accountTotal - debtTotal;
-  const ativosBase    = Math.max(accountTotal, 0.01);
-
-  const _pct = (val, base) => base > 0 ? Math.min(100, Math.abs(val / base * 100)) : 0;
-  const _pctStr = (val, base) => _pct(val, base).toFixed(1);
-  const _isFX = (cur) => cur && cur !== 'BRL';
-  const _invTypeLabel = { acao_br:'Ações BR', fii:'FII', etf_br:'ETF BR', acao_us:'Ações US',
-    etf_us:'ETF US', bdr:'BDR', fundo:'Fundos', crypto:'Criptomoedas', renda_fixa:'Renda Fixa', outro:'Outros' };
-  const _invTypeEmoji = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈',
-    bdr:'🌐', fundo:'🏦', crypto:'₿', renda_fixa:'💰', outro:'📌' };
-
-  /* ── Score de saúde patrimonial (0–100) ─────────────────────── */
-  const endividamento = accountTotal > 0 ? totalPassivos / accountTotal : 0;
-  const diversificacao = [liquidTotal > 0, invTotal > 0, debts.length === 0].filter(Boolean).length;
-  const healthScore = Math.round(
-    Math.max(0, Math.min(100,
-      70 * (1 - Math.min(endividamento, 1)) +
-      20 * (diversificacao / 3) +
-      10 * (totalLiquido > 0 ? 1 : 0)
-    ))
-  );
-  const healthLabel = healthScore >= 80 ? ['Excelente','#10b981'] : healthScore >= 60 ? ['Bom','#f59e0b'] : healthScore >= 40 ? ['Atenção','#f97316'] : ['Crítico','#ef4444'];
-
-  /* ── Donut SVG ──────────────────────────────────────────────── */
-  const donutSegments = [
-    { label:'Contas', value: Math.max(0, liquidTotal), color:'#10b981' },
-    { label:'Investimentos', value: Math.max(0, invTotal), color:'#3b82f6' },
-    { label:'Cartões +', value: Math.max(0, cardTotal), color:'#8b5cf6' },
-    { label:'Passivos', value: totalPassivos, color:'#ef4444' },
-  ].filter(s => s.value > 0);
-  const donutTotal = donutSegments.reduce((s,g) => s + g.value, 0) || 1;
-  const R = 52, CX = 64, CY = 64, SW = 14;
-  let cumAngle = -90;
-  const donutPaths = donutSegments.map(seg => {
-    const angle = (seg.value / donutTotal) * 360;
-    const start = cumAngle; cumAngle += angle;
-    if (angle >= 360) {
-      return `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${SW}" stroke-dasharray="326.7 0"/>`;
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 2 — Dívidas ativas (mesma query do loadKPIs)
+  ═══════════════════════════════════════════════════════════════════════ */
+  let debts = [], debtTotal = 0;
+  try {
+    // _dbt cache do módulo de dívidas (mais completo — inclui description, creditor, etc.)
+    if (typeof _dbt !== 'undefined' && _dbt.loaded && Array.isArray(_dbt.debts) && _dbt.debts.length) {
+      debts = _dbt.debts.filter(d => (d.status||'active') === 'active');
+    } else {
+      const { data: dd } = await famQ(
+        sb.from('debts').select('id,description,name,current_balance,original_amount,currency,status,interest_rate,index_type,installment_count,installments_paid,creditor,creditor_payee_id')
+      ).eq('status', 'active').order('current_balance', { ascending: false });
+      debts = dd || [];
     }
-    const a1 = start * Math.PI / 180, a2 = cumAngle * Math.PI / 180;
-    const x1 = CX + R * Math.cos(a1), y1 = CY + R * Math.sin(a1);
-    const x2 = CX + R * Math.cos(a2), y2 = CY + R * Math.sin(a2);
-    const lg = angle > 180 ? 1 : 0;
-    return `<path fill="none" stroke="${seg.color}" stroke-width="${SW}" stroke-linecap="butt"
-      d="M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)}"/>`;
-  }).join('');
+  } catch(e) { console.warn('[patrimônio] debts:', e?.message); }
+  debtTotal = debts.reduce((s,d) =>
+    s + toBRL(parseFloat(d.current_balance ?? d.original_amount)||0, d.currency||'BRL'), 0);
 
-  /* ── Barra de progresso colorida ────────────────────────────── */
-  const _bar = (pct, color) =>
-    `<div style="height:3px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:5px">
-       <div style="height:100%;width:${Math.min(+pct,100)}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
-     </div>`;
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 3 — Calcular exatamente igual ao loadKPIs
+  ═══════════════════════════════════════════════════════════════════════ */
+  // Cada conta contribui com:
+  //   - contas de investimento → _totalPortfolioBalance (market value)
+  //   - demais → balance (saldo da conta)
+  // cartão de crédito negativo → entra negativo no accountTotal
+  const accountRows = accs.map(a => {
+    const rawBal = (a.type === 'investimento' && a._totalPortfolioBalance != null)
+      ? a._totalPortfolioBalance
+      : (parseFloat(a.balance) || 0);
+    const balBRL = toBRL(rawBal, a.currency || 'BRL');
+    return { ...a, _rawBal: rawBal, _balBRL: balBRL };
+  }).sort((a,b) => Math.abs(b._balBRL) - Math.abs(a._balBRL));
 
-  /* ── Linha de conta ─────────────────────────────────────────── */
-  const _row = (icon_html, name, type_label, bal, balBRL, cur, color, pct, onclick, isNeg=false) => {
-    const isFX = _isFX(cur);
-    const disp = isFX ? dashFmt(Math.abs(bal), cur) : dashFmt(Math.abs(balBRL), 'BRL');
+  const accountTotal = accountRows.reduce((s,a) => s + a._balBRL, 0);
+
+  // ── PATRIMÔNIO TOTAL (idêntico ao dashboard KPI) ──
+  const patrimonioTotal = accountTotal - debtTotal;
+
+  // Componentes positivos vs negativos
+  const ativoRows    = accountRows.filter(a => a._balBRL > 0);
+  const passivoRows  = accountRows.filter(a => a._balBRL < 0); // cartões negativos
+  const totalAtivos  = ativoRows.reduce((s,a)=>s+a._balBRL, 0);
+  const totalCartNeg = passivoRows.reduce((s,a)=>s+Math.abs(a._balBRL), 0);
+  const totalPassivos = totalCartNeg + debtTotal;
+
+  // Grupos de ativos
+  const accsLiquid = ativoRows.filter(a => !['investimento','cartao_credito'].includes(a.type));
+  const accsInvest = ativoRows.filter(a => a.type === 'investimento');
+  const accsCardPos = ativoRows.filter(a => a.type === 'cartao_credito');
+  const accsCardNeg = passivoRows.filter(a => a.type === 'cartao_credito');
+
+  const liquidTotal = accsLiquid.reduce((s,a)=>s+a._balBRL, 0);
+  const invTotal    = accsInvest.reduce((s,a)=>s+a._balBRL, 0);
+  const ativosBase  = Math.max(totalAtivos, 0.01);
+
+  // Score de saúde
+  const endividamento = totalAtivos > 0 ? totalPassivos / totalAtivos : 0;
+  const healthScore = Math.round(Math.max(0, Math.min(100,
+    70 * (1 - Math.min(endividamento, 1)) +
+    20 * ([liquidTotal>0, invTotal>0, debts.length===0].filter(Boolean).length / 3) +
+    10 * (patrimonioTotal > 0 ? 1 : 0)
+  )));
+  const [hLabel, hColor] = healthScore >= 80 ? ['Excelente','#10b981']
+    : healthScore >= 60 ? ['Bom','#f59e0b']
+    : healthScore >= 40 ? ['Atenção','#f97316']
+    : ['Crítico','#ef4444'];
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 4 — Helpers visuais
+  ═══════════════════════════════════════════════════════════════════════ */
+  const _pct    = (v, b) => b > 0 ? Math.min(100, Math.abs(v/b*100)) : 0;
+  const _pctStr = (v, b) => _pct(v,b).toFixed(1);
+  const _isFX   = cur => cur && cur !== 'BRL';
+  const _cred   = d => { const c=d.creditor; return (typeof c==='object'?c?.name:c)||''; };
+  const _dName  = d => esc(d.description || d.name || '—');
+
+  const _invTypeLabel = { acao_br:'Ações BR', fii:'FII', etf_br:'ETF BR', acao_us:'Ações US', etf_us:'ETF US', bdr:'BDR', fundo:'Fundos', crypto:'Cripto', renda_fixa:'Renda Fixa', outro:'Outros' };
+  const _invTypeEmoji = { acao_br:'🇧🇷', fii:'🏢', etf_br:'📊', acao_us:'🇺🇸', etf_us:'📈', bdr:'🌐', fundo:'🏦', crypto:'₿', renda_fixa:'💰', outro:'📌' };
+
+  // Tipo de conta para exibição
+  const _typeLabel = a => {
+    if (typeof accountTypeLabel === 'function') return accountTypeLabel(a.type);
+    const m = {corrente:'Conta corrente',poupanca:'Poupança',cartao_credito:'Cartão de crédito',investimento:'Investimento',dinheiro:'Dinheiro/Espécie',outros:'Outros'};
+    return m[a.type] || a.type;
+  };
+
+  // Linha de conta
+  const _row = (a, isNeg=false) => {
+    const bal    = a._rawBal;
+    const balBRL = a._balBRL;
+    const disp   = _isFX(a.currency) ? dashFmt(Math.abs(bal), a.currency) : dashFmt(Math.abs(balBRL), 'BRL');
+    const pct    = _pct(Math.abs(balBRL), ativosBase);
+    const color  = isNeg ? '#ef4444' : (a.color || '#10b981');
+    const sub    = _typeLabel(a) + (_isFX(a.currency) ? ` · ${a.currency}` : '');
+    const note   = a.type === 'investimento' && a._totalPortfolioBalance != null
+      ? '<span style="font-size:.62rem;background:rgba(59,130,246,.1);color:#3b82f6;padding:1px 5px;border-radius:4px;margin-left:4px">market value</span>'
+      : '';
     return `
-    <div onclick="${onclick||''}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;
-      border-radius:12px;cursor:${onclick?'pointer':'default'};transition:background .13s;margin-bottom:2px"
-      ${onclick?`onmouseover="this.style.background='var(--surface3,rgba(0,0,0,.04))'" onmouseout="this.style.background=''"`:''}>
-      <div style="width:36px;height:36px;border-radius:10px;background:${color}22;flex-shrink:0;
-        display:flex;align-items:center;justify-content:center">${icon_html}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.845rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:1px">${type_label}${isFX?` · ${cur}`:''}</div>
-        ${_bar(pct, isNeg ? '#ef4444' : color)}
+    <div onclick="goToAccountTransactions('${a.id}');closeModal('patrimonioModal')"
+      style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--border)"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="width:32px;height:32px;border-radius:9px;background:${color}22;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        ${_dashRenderIcon(a.icon, a.color, 16)}
       </div>
-      <div style="text-align:right;flex-shrink:0;min-width:64px">
-        <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);
-          color:${isNeg?'#ef4444':'var(--text)'}">
-          ${isNeg?'−':''}${disp}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.name)}${note}</div>
+        <div style="font-size:.66rem;color:var(--muted)">${sub}</div>
+        <div style="height:2.5px;background:var(--border);border-radius:3px;margin-top:4px;overflow:hidden;max-width:180px">
+          <div style="height:100%;width:${pct.toFixed(1)}%;background:${color};border-radius:3px;transition:width .4s"></div>
         </div>
-        ${isFX?`<div style="font-size:.65rem;color:var(--muted)">≈ ${dashFmt(Math.abs(balBRL),'BRL')}</div>`:''}
-        <div style="font-size:.62rem;color:var(--muted)">${pct.toFixed(1)}%</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;min-width:80px">
+        <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:${isNeg?'#ef4444':'var(--text)'}">${isNeg?'−':''}${disp}</div>
+        ${_isFX(a.currency)?`<div style="font-size:.63rem;color:var(--muted)">≈ ${dashFmt(Math.abs(balBRL),'BRL')}</div>`:''}
+        <div style="font-size:.62rem;color:var(--muted)">${pct.toFixed(1)}% patrimônio</div>
       </div>
     </div>`;
   };
 
-  /* ── Seção colapsável ───────────────────────────────────────── */
-  const _section = (id, emoji, title, total, color, content) => `
-  <div style="margin-bottom:6px;border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--surface)">
-    <div onclick="const b=document.getElementById('psec-${id}');const c=document.getElementById('pchev-${id}');
-      const open=b.style.display!=='none';b.style.display=open?'none':'block';c.style.transform=open?'rotate(-90deg)':'rotate(0)'"
-      style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;
-        background:var(--surface);transition:background .13s;user-select:none"
-      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
-      <div style="width:32px;height:32px;border-radius:9px;background:${color}18;flex-shrink:0;
-        display:flex;align-items:center;justify-content:center;font-size:1rem">${emoji}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.82rem;font-weight:800;color:var(--text)">${title}</div>
-        <div style="height:3px;border-radius:3px;background:var(--border);margin-top:5px;overflow:hidden;width:100%">
-          <div style="height:100%;width:${_pctStr(total,ativosBase)}%;background:${color};border-radius:3px"></div>
-        </div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:.92rem;font-weight:800;font-family:var(--font-serif);color:${color}">${dashFmt(Math.abs(total),'BRL')}</div>
-        <div style="font-size:.62rem;color:var(--muted)">${_pctStr(total,ativosBase)}% dos ativos</div>
-      </div>
-      <span id="pchev-${id}" style="color:var(--muted);font-size:.75rem;transition:transform .2s;margin-left:2px">▾</span>
+  // Linha de investimento individual (ativo)
+  const invByType = {};
+  const invPositions = typeof _inv !== 'undefined' && _inv.positions ? _inv.positions : [];
+  invPositions.forEach(p => {
+    const k = p.asset_type || 'outro';
+    if (!invByType[k]) invByType[k] = { positions: [], total: 0 };
+    const mv = typeof _invMarketValue === 'function' ? _invMarketValue(p) : (+(p.quantity||0)*(+(p.current_price||p.avg_cost||0)));
+    invByType[k].positions.push({...p, _mv:mv});
+    invByType[k].total += mv;
+  });
+
+  // Seção colapsável
+  const _section = (emoji, title, total, color, bodyHtml, indent=false) => `
+  <div style="margin-bottom:1px;background:var(--surface)">
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);border-bottom:1px solid var(--border)${indent?';padding-left:22px':''}">
+      <span>${emoji}</span>
+      <span style="font-size:.79rem;font-weight:800;color:var(--text);flex:1">${title}</span>
+      <span style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:${color}">${dashFmt(Math.abs(total),'BRL')}</span>
+      <span style="font-size:.63rem;color:var(--muted);margin-left:3px">${_pctStr(Math.abs(total),ativosBase)}%</span>
     </div>
-    <div id="psec-${id}" style="border-top:1px solid var(--border);padding:6px 0 8px">${content}</div>
+    ${bodyHtml}
   </div>`;
 
-  /* ══════════════════════════════════════════════════════════════
-     BUILD HTML
-  ══════════════════════════════════════════════════════════════ */
-  const html = `
-<style>
-  #patrimonioModalBody { font-family: var(--font-sans, system-ui, sans-serif); }
-  #patrimonioModalBody .pat-tab { padding:7px 16px;border-radius:20px;border:none;font-size:.78rem;font-weight:700;
-    cursor:pointer;font-family:inherit;transition:all .15s;color:var(--text2);background:transparent }
-  #patrimonioModalBody .pat-tab.active { background:var(--accent);color:#fff }
-  #patrimonioModalBody .pat-tab-pane { display:none }
-  #patrimonioModalBody .pat-tab-pane.active { display:block }
-</style>
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 5 — Construir linhas de cada grupo
+  ═══════════════════════════════════════════════════════════════════════ */
+  // Contas líquidas (corrente, poupança, dinheiro, outros)
+  const liquidHtml = accsLiquid.map(a => _row(a)).join('')
+    || '<div style="padding:10px 14px;font-size:.8rem;color:var(--muted)">Nenhuma</div>';
 
-<!-- ── HEADER ─────────────────────────────────────────────────────────── -->
-<div style="padding:18px 18px 0;border-bottom:1px solid var(--border)">
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
-    <div>
-      <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
-        color:var(--muted);margin-bottom:5px">🔍 Patrimônio 360° · Família</div>
-      <div style="font-size:1.9rem;font-weight:900;font-family:var(--font-serif);
-        color:${totalLiquido>=0?'var(--accent)':'#ef4444'};line-height:1;letter-spacing:-.02em">
-        ${dashFmt(totalLiquido,'BRL')}
+  // Investimentos — expandível por tipo de ativo
+  let investHtml = '';
+  if (accsInvest.length) {
+    if (Object.keys(invByType).length) {
+      investHtml = accsInvest.map(a => {
+        // Mostra a conta + posições abaixo
+        const typeRows = invByType; // usaremos details dentro
+        return `${_row(a)}`;
+      }).join('');
+      // Adiciona breakdown por tipo se houver posições
+      investHtml += Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => `
+      <details style="background:var(--surface)">
+        <summary style="display:flex;align-items:center;gap:8px;padding:7px 14px 7px 28px;cursor:pointer;list-style:none;border-bottom:1px solid var(--border);background:rgba(59,130,246,.03)">
+          <span style="font-size:.9rem">${_invTypeEmoji[k]||'📌'}</span>
+          <span style="flex:1;font-size:.78rem;font-weight:600;color:var(--text2)">${_invTypeLabel[k]||k} · ${grp.positions.length} ativo${grp.positions.length!==1?'s':''}</span>
+          <span style="font-size:.8rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(grp.total,'BRL')}</span>
+          <span style="font-size:.65rem;color:var(--muted);margin-left:3px">▾</span>
+        </summary>
+        <div style="background:var(--surface2);padding:4px 0">
+          ${grp.positions.sort((a,b)=>b._mv-a._mv).map(p => {
+            const mv = p._mv||0, cost = (+(p.quantity||0))*(+(p.avg_cost||0));
+            const pnl = mv-cost, pnlPct = cost>0?(pnl/cost*100):0;
+            return `<div style="display:flex;align-items:center;gap:10px;padding:7px 14px 7px 42px;border-bottom:1px solid var(--border)">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.81rem;font-weight:700">${esc(p.ticker||'—')}</div>
+                <div style="font-size:.64rem;color:var(--muted)">${(+(p.quantity||0)).toLocaleString('pt-BR',{maximumFractionDigits:4})} un. · PM ${dashFmt(+(p.avg_cost||0),'BRL')}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:.83rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(mv,'BRL')}</div>
+                <div style="font-size:.62rem;color:${pnl>=0?'#10b981':'#ef4444'};font-weight:700">${pnl>=0?'▲':'▼'} ${Math.abs(pnlPct).toFixed(1)}%</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </details>`).join('');
+    } else {
+      investHtml = accsInvest.map(a => _row(a)).join('');
+    }
+  }
+  if (!investHtml) investHtml = '<div style="padding:10px 14px;font-size:.8rem;color:var(--muted)">Nenhum</div>';
+
+  // Cartões com saldo positivo (crédito disponível)
+  const cardPosHtml = accsCardPos.map(a => _row(a)).join('');
+
+  // Passivos — cartões negativos
+  const cardNegHtml = accsCardNeg.map(a => _row(a, true)).join('');
+
+  // Passivos — dívidas
+  const debtHtml = debts.length ? debts.map(d => {
+    const bal = parseFloat(d.current_balance ?? d.original_amount)||0;
+    const balBRL = toBRL(bal, d.currency||'BRL');
+    const orig = parseFloat(d.original_amount)||0;
+    const quitPct = orig > 0 ? Math.max(0,Math.min(100,((orig-bal)/orig)*100)) : 0;
+    const credStr = _cred(d);
+    const isFX = _isFX(d.currency||'BRL');
+    return `
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="width:32px;height:32px;border-radius:9px;background:rgba(239,68,68,.1);flex-shrink:0;
+          display:flex;align-items:center;justify-content:center;font-size:.95rem">📋</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_dName(d)}</div>
+          <div style="font-size:.66rem;color:var(--muted);margin-top:1px">${credStr?esc(credStr):''}${d.interest_rate?` · ${(+d.interest_rate).toFixed(2)}% a.m.`:''}</div>
+          ${orig>0?`<div style="margin-top:5px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+              <span style="font-size:.61rem;color:var(--muted)">Quitado ${quitPct.toFixed(0)}%</span>
+              <span style="font-size:.61rem;color:var(--muted)">${d.installments_paid||0}/${d.installment_count||'—'} parcelas</span>
+            </div>
+            <div style="height:4px;border-radius:4px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${quitPct.toFixed(1)}%;background:linear-gradient(90deg,#ef4444,#f97316,#10b981);border-radius:4px"></div>
+            </div>
+          </div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;min-width:80px">
+          <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);color:#ef4444">−${dashFmt(balBRL,'BRL')}</div>
+          ${isFX?`<div style="font-size:.63rem;color:var(--muted)">${dashFmt(bal,d.currency||'BRL')}</div>`:''}
+          <div style="font-size:.62rem;color:var(--muted)">${_pctStr(balBRL,ativosBase)}% patrimônio</div>
+        </div>
       </div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">
-        Patrimônio líquido · ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}
+    </div>`;
+  }).join('') : '<div style="padding:10px 14px;font-size:.8rem;color:var(--muted);text-align:center">Nenhuma dívida ativa registrada</div>';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 6 — Donut chart (reflete os mesmos 4 componentes)
+  ═══════════════════════════════════════════════════════════════════════ */
+  const donutSegs = [
+    { l:'Contas',       v: Math.max(0,liquidTotal),    c:'#10b981' },
+    { l:'Investimentos',v: Math.max(0,invTotal),        c:'#3b82f6' },
+    { l:'Crédito disp.',v: accsCardPos.reduce((s,a)=>s+a._balBRL,0), c:'#8b5cf6' },
+    { l:'Passivos',     v: totalPassivos,               c:'#ef4444' },
+  ].filter(s=>s.v>0);
+  const donutTot = donutSegs.reduce((s,g)=>s+g.v,0)||1;
+  const R=48,CX=58,CY=58,SW=14; let cum=-90;
+  const dPaths = donutSegs.map(seg=>{
+    const deg=seg.v/donutTot*360;
+    const a1=cum*Math.PI/180, a2=(cum+deg)*Math.PI/180; cum+=deg;
+    if(deg>=360) return `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${seg.c}" stroke-width="${SW}"/>`;
+    const x1=CX+R*Math.cos(a1),y1=CY+R*Math.sin(a1),x2=CX+R*Math.cos(a2),y2=CY+R*Math.sin(a2);
+    return `<path fill="none" stroke="${seg.c}" stroke-width="${SW}" d="M${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 ${deg>180?1:0},1 ${x2.toFixed(1)},${y2.toFixed(1)}"/>`;
+  }).join('');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PASSO 7 — HTML final
+  ═══════════════════════════════════════════════════════════════════════ */
+  const html = `<div id="patModal" style="font-family:var(--font-sans,system-ui,sans-serif)">
+
+<!-- ── HEADER ── -->
+<div style="padding:16px 16px 12px;border-bottom:1px solid var(--border)">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px">
+    <div>
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:5px">
+        🔍 Composição do Patrimônio · Dashboard
+      </div>
+      <div style="font-size:1.85rem;font-weight:900;font-family:var(--font-serif);color:${patrimonioTotal>=0?'var(--accent)':'#ef4444'};line-height:1;letter-spacing:-.02em">
+        ${dashFmt(patrimonioTotal,'BRL')}
+      </div>
+      <div style="font-size:.67rem;color:var(--muted);margin-top:4px">
+        Igual ao valor exibido no Dashboard · ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'})}
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <!-- Score badge -->
-      <div style="background:var(--surface2);border:1.5px solid var(--border);
-        border-radius:12px;padding:7px 12px;text-align:center">
-        <div style="font-size:1.1rem;font-weight:900;color:${healthLabel[1]}">${healthScore}</div>
-        <div style="font-size:.58rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">${healthLabel[0]}</div>
+    <div style="display:flex;gap:7px;align-items:flex-start;flex-shrink:0">
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:6px 10px;text-align:center">
+        <div style="font-size:1rem;font-weight:900;color:${hColor}">${healthScore}</div>
+        <div style="font-size:.56rem;font-weight:700;color:var(--muted);text-transform:uppercase">${hLabel}</div>
       </div>
       <button onclick="closeModal('patrimonioModal')"
-        style="background:var(--surface2);border:1px solid var(--border);
-          border-radius:50%;width:34px;height:34px;cursor:pointer;color:var(--text2);
-          font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;cursor:pointer;color:var(--text2);font-size:.9rem;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
   </div>
 
-  <!-- KPI row -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-    <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:10px;padding:9px 11px">
-      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Ativos</div>
-      <div style="font-size:.85rem;font-weight:800;color:#10b981;font-family:var(--font-serif)">${dashFmt(accountTotal,'BRL')}</div>
-    </div>
-    <div style="background:${totalPassivos>0?'rgba(239,68,68,.06)':'rgba(16,185,129,.04)'};border:1px solid ${totalPassivos>0?'rgba(239,68,68,.15)':'var(--border)'};border-radius:10px;padding:9px 11px">
-      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Passivos</div>
-      <div style="font-size:.85rem;font-weight:800;color:${totalPassivos>0?'#ef4444':'var(--muted)'};font-family:var(--font-serif)">
-        ${totalPassivos > 0 ? '−'+dashFmt(totalPassivos,'BRL') : '—'}
+  <!-- Fórmula visível -->
+  <div style="background:var(--surface2);border-radius:9px;padding:10px 12px;font-size:.75rem;border:1px solid var(--border)">
+    <div style="font-weight:700;color:var(--text);margin-bottom:6px">📐 Como o valor é calculado</div>
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">+ Saldo de todas as contas</span>
+        <span style="font-weight:700;font-family:var(--font-serif);color:#10b981">+ ${dashFmt(accountTotal,'BRL')}</span>
+      </div>
+      ${debtTotal>0?`<div style="display:flex;justify-content:space-between">
+        <span style="color:var(--muted)">− Dívidas ativas (${debts.length})</span>
+        <span style="font-weight:700;font-family:var(--font-serif);color:#ef4444">− ${dashFmt(debtTotal,'BRL')}</span>
+      </div>`:''}
+      <div style="border-top:1px solid var(--border);padding-top:5px;margin-top:3px;display:flex;justify-content:space-between">
+        <span style="font-weight:800;color:var(--text)">= Patrimônio líquido</span>
+        <span style="font-weight:900;font-family:var(--font-serif);color:${patrimonioTotal>=0?'var(--accent)':'#ef4444'}">= ${dashFmt(patrimonioTotal,'BRL')}</span>
       </div>
     </div>
-    <div style="background:${endividamento>0.4?'rgba(239,68,68,.06)':endividamento>0.2?'rgba(245,158,11,.06)':'rgba(16,185,129,.04)'};border:1px solid ${endividamento>0.4?'rgba(239,68,68,.15)':endividamento>0.2?'rgba(245,158,11,.15)':'var(--border)'};border-radius:10px;padding:9px 11px">
-      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Endividamento</div>
-      <div style="font-size:.85rem;font-weight:800;font-family:var(--font-serif);
-        color:${endividamento>0.4?'#ef4444':endividamento>0.2?'#f59e0b':'#10b981'}">${(endividamento*100).toFixed(1)}%</div>
-    </div>
   </div>
 
-  <!-- Barra ativos vs passivos -->
-  <div style="height:4px;border-radius:4px;overflow:hidden;background:var(--border);display:flex;gap:1px;margin-bottom:14px">
-    <div style="flex:${Math.max(accountTotal,0.01)};background:#10b981;min-width:${totalPassivos?'4px':'0'}"></div>
-    ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:#ef4444"></div>` : ''}
-  </div>
-</div>
-
-<!-- ── TABS ───────────────────────────────────────────────────────────── -->
-<div style="display:flex;gap:4px;padding:10px 16px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;
-  scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface)">
-  ${['Visão Geral','Ativos','Passivos','Composição'].map((t,i) =>
-    `<button class="pat-tab${i===0?' active':''}" onclick="
-      document.querySelectorAll('#patrimonioModalBody .pat-tab').forEach(b=>b.classList.remove('active'));
-      this.classList.add('active');
-      document.querySelectorAll('#patrimonioModalBody .pat-tab-pane').forEach(p=>p.classList.remove('active'));
-      document.getElementById('ptab-${i}').classList.add('active')">${t}</button>`
-  ).join('')}
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     TAB 0 — VISÃO GERAL
-════════════════════════════════════════════════════════════════════ -->
-<div id="ptab-0" class="pat-tab-pane active" style="padding:16px">
-
-  <!-- Donut + legenda lado a lado -->
-  <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;
-    padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
-    <svg viewBox="0 0 128 128" width="100" height="100" style="flex-shrink:0;overflow:visible">
-      ${donutPaths}
-      <circle cx="64" cy="64" r="${R-SW/2-1}" fill="var(--surface2)"/>
-      <text x="64" y="60" text-anchor="middle" font-size="11" font-weight="900"
-        fill="var(--text)" font-family="var(--font-serif)">${(endividamento<0.01?'100':(100-endividamento*100).toFixed(0))}%</text>
-      <text x="64" y="74" text-anchor="middle" font-size="6.5" fill="var(--muted)" font-family="inherit">Saudável</text>
-    </svg>
-    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px">
-      ${donutSegments.map(s => `
-      <div style="display:flex;align-items:center;gap:7px">
-        <div style="width:8px;height:8px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
-        <div style="font-size:.75rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.label}</div>
-        <div style="font-size:.78rem;font-weight:700;font-family:var(--font-serif);color:var(--text);white-space:nowrap">${dashFmt(s.value,'BRL')}</div>
-      </div>`).join('')}
+  <!-- KPI chips -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px">
+    <div style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18);border-radius:9px;padding:8px 10px">
+      <div style="font-size:.56rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Contas</div>
+      <div style="font-size:.82rem;font-weight:800;color:#10b981;font-family:var(--font-serif)">${dashFmt(accountTotal,'BRL')}</div>
     </div>
-  </div>
-
-  <!-- Score de saúde -->
-  <div style="padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border);margin-bottom:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:.78rem;font-weight:700;color:var(--text)">Score de Saúde Patrimonial</span>
-      <span style="font-size:1.1rem;font-weight:900;color:${healthLabel[1]}">${healthScore} <span style="font-size:.7rem;font-weight:600">${healthLabel[0]}</span></span>
+    <div style="background:${debtTotal>0?'rgba(239,68,68,.07)':'rgba(16,185,129,.04)'};border:1px solid ${debtTotal>0?'rgba(239,68,68,.18)':'var(--border)'};border-radius:9px;padding:8px 10px">
+      <div style="font-size:.56rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Dívidas</div>
+      <div style="font-size:.82rem;font-weight:800;color:${debtTotal>0?'#ef4444':'var(--muted)'};font-family:var(--font-serif)">${debtTotal>0?'−'+dashFmt(debtTotal,'BRL'):'Nenhuma'}</div>
     </div>
-    <div style="height:7px;border-radius:7px;background:var(--border);overflow:hidden">
-      <div style="height:100%;width:${healthScore}%;border-radius:7px;
-        background:linear-gradient(90deg,#ef4444 0%,#f59e0b 40%,#10b981 70%);
-        transition:width .8s ease"></div>
+    <div style="background:${endividamento>0.3?'rgba(239,68,68,.07)':'rgba(16,185,129,.04)'};border:1px solid ${endividamento>0.3?'rgba(239,68,68,.18)':'var(--border)'};border-radius:9px;padding:8px 10px">
+      <div style="font-size:.56rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Endividamento</div>
+      <div style="font-size:.82rem;font-weight:800;font-family:var(--font-serif);color:${endividamento>0.3?'#ef4444':endividamento>0.15?'#f59e0b':'#10b981'}">${(endividamento*100).toFixed(1)}%</div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-top:6px">
-      <span style="font-size:.62rem;color:var(--muted)">Crítico</span>
-      <span style="font-size:.62rem;color:var(--muted)">Excelente</span>
-    </div>
-    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">
-      ${[
-        [endividamento < 0.3, 'Endividamento controlado', endividamento >= 0.3, `${(endividamento*100).toFixed(0)}% de endividamento`],
-        [invTotal > 0, 'Tem investimentos', invTotal === 0, 'Sem investimentos'],
-        [liquidTotal > 0, 'Liquidez disponível', liquidTotal <= 0, 'Sem liquidez'],
-        [debts.length === 0, 'Sem dívidas', debts.length > 0, `${debts.length} dívida${debts.length>1?'s':''} ativa${debts.length>1?'s':''}`],
-      ].map(([ok, goodText, bad, badText]) => `
-        <span style="font-size:.68rem;padding:3px 8px;border-radius:20px;font-weight:600;
-          background:${ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.08)'};
-          color:${ok?'#10b981':'#ef4444'}">
-          ${ok?'✓':bad?'✗':''} ${ok?goodText:badText}
-        </span>`).join('')}
-    </div>
-  </div>
-
-  <!-- Destaques -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-    ${(() => {
-      const allPos = [...accsLiquid,...accsInvest,...accsCard.filter(a=>(parseFloat(a.balance)||0)>0)];
-      const top = allPos.sort((a,b)=>toBRL(Math.abs(parseFloat(b.balance)||0),b.currency||'BRL')-toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL'))[0];
-      const topBRL = top ? toBRL(Math.abs(parseFloat(top.balance)||0),top.currency||'BRL') : 0;
-      return `
-      <div style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15);border-radius:12px;padding:12px">
-        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Maior ativo</div>
-        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${top ? esc(top.name) : '—'}</div>
-        <div style="font-size:.75rem;font-weight:800;color:#10b981;margin-top:3px;font-family:var(--font-serif)">${dashFmt(topBRL,'BRL')}</div>
-      </div>`;
-    })()}
-    ${(() => {
-      const topDebt = debts[0];
-      const topCard = accsCard.filter(a=>(parseFloat(a.balance)||0)<0).sort((a,b)=>parseFloat(a.balance)-parseFloat(b.balance))[0];
-      const item = topDebt || topCard;
-      const brl = topDebt ? toBRL(parseFloat(topDebt.current_balance||topDebt.original_amount)||0,topDebt.currency||'BRL')
-        : topCard ? toBRL(Math.abs(parseFloat(topCard.balance)||0),topCard.currency||'BRL') : 0;
-      return `
-      <div style="background:${item?'rgba(239,68,68,.06)':'rgba(16,185,129,.07)'};border:1px solid ${item?'rgba(239,68,68,.15)':'rgba(16,185,129,.15)'};border-radius:12px;padding:12px">
-        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Maior passivo</div>
-        ${item ? `
-        <div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.name||item.description||'—')}</div>
-        <div style="font-size:.75rem;font-weight:800;color:#ef4444;margin-top:3px;font-family:var(--font-serif)">−${dashFmt(brl,'BRL')}</div>
-        ` : `<div style="font-size:.78rem;color:#10b981;font-weight:700">✓ Patrimônio livre</div>`}
-      </div>`;
-    })()}
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════════
-     TAB 1 — ATIVOS
-════════════════════════════════════════════════════════════════════ -->
-<div id="ptab-1" class="pat-tab-pane" style="padding:16px;display:flex;flex-direction:column;gap:8px">
+<!-- ── DONUT + LEGENDA ── -->
+<div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface)">
+  <svg viewBox="0 0 116 116" width="82" height="82" style="flex-shrink:0">
+    ${dPaths}
+    <circle cx="${CX}" cy="${CY}" r="${R-SW/2-1}" fill="var(--surface)"/>
+    <text x="${CX}" y="${CY-3}" text-anchor="middle" font-size="9.5" font-weight="900" fill="var(--text)" font-family="var(--font-serif)">${patrimonioTotal>=0?'✓':'!'}</text>
+    <text x="${CX}" y="${CY+8}" text-anchor="middle" font-size="5.5" fill="var(--muted)">${hLabel}</text>
+  </svg>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+    ${donutSegs.map(s=>`
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="width:8px;height:8px;border-radius:2px;background:${s.c};flex-shrink:0"></div>
+      <div style="font-size:.73rem;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.l}</div>
+      <div style="font-size:.76rem;font-weight:700;font-family:var(--font-serif);white-space:nowrap">${dashFmt(s.v,'BRL')}</div>
+      <div style="font-size:.62rem;color:var(--muted);white-space:nowrap">${_pctStr(s.v,donutTot)}%</div>
+    </div>`).join('')}
+  </div>
+</div>
 
-  ${accsLiquid.length ? _section('liquid','🏦','Contas & Carteiras', liquidTotal, '#10b981',
-    accsLiquid.sort((a,b)=>toBRL(Math.abs(parseFloat(b.balance)||0),b.currency||'BRL')-toBRL(Math.abs(parseFloat(a.balance)||0),a.currency||'BRL')).map(a => {
-      const bal = parseFloat(a.balance)||0, balBRL = toBRL(bal, a.currency||'BRL');
-      const icon = `<div style="width:18px;height:18px">${_dashRenderIcon(a.icon,a.color,17)}</div>`;
-      const typeL = typeof accountTypeLabel === 'function' ? accountTypeLabel(a.type) : a.type;
-      return _row(icon, a.name, typeL, bal, balBRL, a.currency||'BRL', a.color||'#10b981', _pct(Math.abs(balBRL),ativosBase),
-        `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
-    }).join('')) : ''}
+<!-- ── DETALHAMENTO POR CONTA/DÍVIDA ── -->
+<div style="background:var(--surface)">
 
-  ${accsInvest.length ? _section('invest','📊','Investimentos', invTotal, '#3b82f6',
-    Object.keys(invByType).length > 0
-      ? Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => `
-        <details style="margin:4px 8px;border-radius:10px;background:var(--surface2);overflow:hidden">
-          <summary style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none">
-            <span style="font-size:1rem">${_invTypeEmoji[k]||'📌'}</span>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:.83rem;font-weight:700;color:var(--text)">${_invTypeLabel[k]||k}</div>
-              <div style="font-size:.67rem;color:var(--muted)">${grp.positions.length} ativo${grp.positions.length!==1?'s':''}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(grp.total,'BRL')}</div>
-              <div style="font-size:.63rem;color:var(--muted)">${_pctStr(grp.total,ativosBase)}%</div>
-            </div>
-            <span style="color:var(--muted);font-size:.7rem;margin-left:4px">▾</span>
-          </summary>
-          ${_bar(_pctStr(grp.total,ativosBase),'#3b82f6')}
-          <div style="padding:6px 12px 10px;border-top:1px solid var(--border)">
-            ${grp.positions.sort((a,b)=>b._mv-a._mv).map(p => {
-              const mv = p._mv||0, cost = (+p.quantity||0)*(+p.avg_cost||0);
-              const pnl = mv-cost, pnlPct = cost>0?(pnl/cost*100):0;
-              return `
-              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-                <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:5px">
-                    <span style="font-size:.84rem;font-weight:800;color:var(--text)">${esc(p.ticker)}</span>
-                    ${_isFX(p.currency)?`<span style="font-size:.6rem;font-weight:700;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;color:var(--muted)">${p.currency}</span>`:''}
-                  </div>
-                  <div style="font-size:.67rem;color:var(--muted)">${(+(p.quantity||0)).toLocaleString('pt-BR',{maximumFractionDigits:4})} un.</div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(mv,'BRL')}</div>
-                  <div style="font-size:.65rem;color:${pnl>=0?'#10b981':'#ef4444'}">${pnl>=0?'▲':'▼'} ${Math.abs(pnlPct).toFixed(1)}%</div>
-                </div>
-              </div>`;
-            }).join('')}
-          </div>
-        </details>`)
-      .join('')
-      : accsInvest.map(a => {
-          const bal = (a._totalPortfolioBalance!=null)?a._totalPortfolioBalance:(parseFloat(a.balance)||0);
-          const balBRL = toBRL(bal, a.currency||'BRL');
-          return _row(`<div style="width:18px;height:18px">${_dashRenderIcon(a.icon,a.color,17)}</div>`,
-            a.name, 'Investimento', bal, balBRL, a.currency||'BRL', '#3b82f6', _pct(balBRL,ativosBase),
-            `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`);
-        }).join('')
-  ) : ''}
+  <!-- ATIVOS -->
+  <div style="padding:8px 14px 4px;background:var(--surface2);border-bottom:1px solid var(--border)">
+    <span style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#10b981">
+      ✚ Ativos — ${dashFmt(totalAtivos,'BRL')}
+    </span>
+  </div>
 
-  ${!accsLiquid.length && !accsInvest.length ? `
-  <div style="text-align:center;padding:40px 20px;color:var(--muted)">
-    <div style="font-size:2rem;margin-bottom:8px">📭</div>
-    <div style="font-size:.85rem">Nenhum ativo encontrado</div>
+  ${accsLiquid.length ? `
+  <div style="border-bottom:1px solid var(--border)">
+    <div style="padding:7px 14px;background:rgba(16,185,129,.04)">
+      <span style="font-size:.72rem;font-weight:700;color:#10b981">🏦 Contas & Carteiras — ${dashFmt(liquidTotal,'BRL')}</span>
+    </div>
+    ${accsLiquid.map(a=>_row(a)).join('')}
   </div>` : ''}
-</div>
 
-<!-- ═══════════════════════════════════════════════════════════════════
-     TAB 2 — PASSIVOS
-════════════════════════════════════════════════════════════════════ -->
-<div id="ptab-2" class="pat-tab-pane" style="padding:16px;display:flex;flex-direction:column;gap:8px">
+  ${accsInvest.length ? `
+  <div style="border-bottom:1px solid var(--border)">
+    <div style="padding:7px 14px;background:rgba(59,130,246,.04)">
+      <span style="font-size:.72rem;font-weight:700;color:#3b82f6">📊 Investimentos — ${dashFmt(invTotal,'BRL')}</span>
+      <span style="font-size:.62rem;color:var(--muted);margin-left:6px">* inclui market value das posições</span>
+    </div>
+    ${investHtml}
+  </div>` : ''}
 
+  ${accsCardPos.length ? `
+  <div style="border-bottom:1px solid var(--border)">
+    <div style="padding:7px 14px;background:rgba(139,92,246,.04)">
+      <span style="font-size:.72rem;font-weight:700;color:#8b5cf6">💳 Cartões — Crédito Disponível — ${dashFmt(accsCardPos.reduce((s,a)=>s+a._balBRL,0),'BRL')}</span>
+    </div>
+    ${cardPosHtml}
+  </div>` : ''}
+
+  <!-- PASSIVOS -->
   ${totalPassivos > 0 ? `
-
-  <!-- Faturas CC -->
-  ${accsCard.some(a=>(parseFloat(a.balance)||0)<0) ? _section('cc-debt','💳','Faturas em Aberto', cardDebt, '#8b5cf6',
-    accsCard.filter(a=>(parseFloat(a.balance)||0)<0).map(a => {
-      const bal = Math.abs(parseFloat(a.balance)||0), balBRL = toBRL(bal, a.currency||'BRL');
-      return _row(`<div style="width:18px;height:18px">${_dashRenderIcon(a.icon,a.color,17)}</div>`,
-        a.name, `Fatura em aberto · vence dia ${a.due_day||'—'}`, bal, balBRL, a.currency||'BRL', '#8b5cf6',
-        _pct(balBRL,ativosBase), `goToAccountTransactions('${a.id}');closeModal('patrimonioModal')`, true);
-    }).join('')) : ''}
-
-  <!-- Dívidas -->
-  ${debts.length ? _section('debts','📉','Dívidas Ativas', debtTotal, '#ef4444',
-    debts.map(d => {
-      const bal = parseFloat(d.current_balance??d.original_amount)||0;
-      const balBRL = toBRL(bal, d.currency||'BRL');
-      const orig = parseFloat(d.original_amount)||0;
-      const quitPct = orig > 0 ? Math.max(0,Math.min(100,((orig-bal)/orig)*100)) : 0;
-      return `
-      <div style="padding:11px 14px;margin-bottom:2px">
-        <div style="display:flex;align-items:center;gap:11px">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,.12);flex-shrink:0;
-            display:flex;align-items:center;justify-content:center;font-size:1rem">📋</div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.84rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||d.description||'—')}</div>
-            <div style="font-size:.67rem;color:var(--muted);margin-top:1px">${(()=>{ const cr=d.creditor; return (typeof cr==='object'?cr?.name:cr)||d.creditor_name||''; })()}${d.fixed_rate?` · ${(+d.fixed_rate).toFixed(2)}% a.m.`:''}</div>
-            ${orig > 0 ? `
-            <div style="margin-top:6px">
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                <span style="font-size:.62rem;color:var(--muted)">Progresso de quitação</span>
-                <span style="font-size:.62rem;font-weight:700;color:var(--accent)">${quitPct.toFixed(0)}% quitado</span>
-              </div>
-              <div style="height:4px;border-radius:4px;background:var(--border);overflow:hidden">
-                <div style="height:100%;width:${quitPct}%;background:linear-gradient(90deg,#ef4444,#f97316,#10b981);border-radius:4px;transition:width .5s"></div>
-              </div>
-            </div>` : ''}
-          </div>
-          <div style="text-align:right;flex-shrink:0;min-width:72px">
-            <div style="font-size:.9rem;font-weight:800;font-family:var(--font-serif);color:#ef4444">−${dashFmt(balBRL,'BRL')}</div>
-            <div style="font-size:.63rem;color:var(--muted)">${_pctStr(balBRL,ativosBase)}% dos ativos</div>
-          </div>
-        </div>
-      </div>`;
-    }).join('')) : ''}
-
-  ` : `
-  <div style="text-align:center;padding:48px 20px">
-    <div style="font-size:3rem;margin-bottom:12px">🎉</div>
-    <div style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:6px">Patrimônio livre de passivos</div>
-    <div style="font-size:.78rem;color:var(--muted);line-height:1.6">Você não tem dívidas nem faturas em aberto.<br>Continue assim!</div>
-  </div>`}
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     TAB 3 — COMPOSIÇÃO
-════════════════════════════════════════════════════════════════════ -->
-<div id="ptab-3" class="pat-tab-pane" style="padding:16px">
-
-  <!-- Barras de composição horizontal -->
-  <div style="margin-bottom:14px;padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
-    <div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:12px">Distribuição por tipo</div>
-    ${[
-      ['🏦 Contas', liquidTotal, '#10b981', ativosBase],
-      ['📊 Investimentos', invTotal, '#3b82f6', ativosBase],
-      ['💳 Cartões +', Math.max(0,cardTotal), '#8b5cf6', ativosBase],
-    ].filter(([,v]) => v > 0).map(([label, val, color, base]) => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:.77rem;color:var(--text);font-weight:600">${label}</span>
-        <div style="text-align:right">
-          <span style="font-size:.77rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(val,'BRL')}</span>
-          <span style="font-size:.65rem;color:var(--muted);margin-left:5px">${_pctStr(val,base)}%</span>
-        </div>
-      </div>
-      <div style="height:8px;border-radius:8px;background:var(--border);overflow:hidden">
-        <div style="height:100%;width:${_pctStr(val,base)}%;background:${color};border-radius:8px;transition:width .6s ease"></div>
-      </div>
-    </div>`).join('')}
+  <div style="padding:8px 14px 4px;background:rgba(239,68,68,.05);border-top:2px solid rgba(239,68,68,.2);border-bottom:1px solid var(--border)">
+    <span style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#ef4444">
+      ✕ Passivos — − ${dashFmt(totalPassivos,'BRL')}
+    </span>
   </div>
 
-  <!-- Composição dos investimentos por tipo -->
-  ${Object.keys(invByType).length > 0 ? `
-  <div style="padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border);margin-bottom:14px">
-    <div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:12px">Carteira de investimentos</div>
-    ${Object.entries(invByType).sort(([,a],[,b])=>b.total-a.total).map(([k,grp]) => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:.77rem;color:var(--text);font-weight:600">${_invTypeEmoji[k]||'📌'} ${_invTypeLabel[k]||k}</span>
-        <div style="text-align:right">
-          <span style="font-size:.77rem;font-weight:800;font-family:var(--font-serif)">${dashFmt(grp.total,'BRL')}</span>
-          <span style="font-size:.65rem;color:var(--muted);margin-left:5px">${_pctStr(grp.total,invTotal||1)}%</span>
-        </div>
-      </div>
-      <div style="height:6px;border-radius:6px;background:var(--border);overflow:hidden">
-        <div style="height:100%;width:${_pctStr(grp.total,invTotal||1)}%;background:#3b82f6;border-radius:6px;
-          opacity:${0.5+0.5*(grp.total/(Object.values(invByType).sort((a,b)=>b.total-a.total)[0]?.total||1))};transition:width .6s ease"></div>
-      </div>
-    </div>`).join('')}
+  ${accsCardNeg.length ? `
+  <div style="border-bottom:1px solid var(--border)">
+    <div style="padding:7px 14px;background:rgba(239,68,68,.04)">
+      <span style="font-size:.72rem;font-weight:700;color:#ef4444">💳 Faturas em Aberto — − ${dashFmt(totalCartNeg,'BRL')}</span>
+    </div>
+    ${cardNegHtml}
   </div>` : ''}
 
-  <!-- Resumo numérico final -->
-  <div style="padding:14px;background:var(--surface2);border-radius:14px;border:1px solid var(--border)">
-    <div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:10px">Resumo numérico</div>
-    ${[
-      ['Total de ativos',         dashFmt(accountTotal,'BRL'), '#10b981'],
-      ['Total de passivos',       totalPassivos > 0 ? '−'+dashFmt(totalPassivos,'BRL') : 'Nenhum', totalPassivos > 0 ? '#ef4444' : '#10b981'],
-      ['Patrimônio líquido',      dashFmt(totalLiquido,'BRL'), totalLiquido >= 0 ? 'var(--accent)' : '#ef4444'],
-      ['Nível de endividamento',  (endividamento*100).toFixed(1)+'%', endividamento>0.4?'#ef4444':endividamento>0.2?'#f59e0b':'#10b981'],
-      ['Contas',                  `${accs.length} conta${accs.length!==1?'s':''}`, 'var(--muted)'],
-      ['Posições de investimento',`${invPositions.length} ativo${invPositions.length!==1?'s':''}`, 'var(--muted)'],
-    ].map(([label, value, color]) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;
-      padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:.78rem;color:var(--muted)">${label}</span>
-      <span style="font-size:.82rem;font-weight:800;color:${color};font-family:var(--font-serif)">${value}</span>
-    </div>`).join('')}
-  </div>
-</div>`;
+  <div>
+    <div style="padding:7px 14px;background:rgba(239,68,68,.04)">
+      <span style="font-size:.72rem;font-weight:700;color:#ef4444">📋 Dívidas Ativas (${debts.length}) — − ${dashFmt(debtTotal,'BRL')}</span>
+    </div>
+    ${debtHtml}
+  </div>` : `
+  <div style="text-align:center;padding:12px;background:rgba(16,185,129,.05);border-top:1px solid rgba(16,185,129,.15)">
+    <span style="font-size:.8rem;font-weight:700;color:#10b981">🎉 Sem passivos — patrimônio livre!</span>
+  </div>`}
 
+</div>
+
+<!-- ── ANÁLISE IA ── -->
+<div style="border-top:1px solid var(--border);background:var(--surface)">
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2)">
+    <span style="font-size:.9rem">🤖</span>
+    <span style="font-size:.8rem;font-weight:700;color:var(--text);flex:1">Análise Patrimonial com Gemini</span>
+    <button id="patAiBtn"
+      onclick="_patAnalyzeWithGemini(${JSON.stringify({totalAtivos,totalPassivos,patrimonioTotal,debtTotal,totalCartNeg,liquidTotal,invTotal,endividamento,healthScore,debtsCount:debts.length,accsCount:accs.length,hLabel})})"
+      style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">
+      ✨ Analisar
+    </button>
+  </div>
+  <div id="patAiResult" style="padding:12px 14px;font-size:.8rem;color:var(--muted);line-height:1.65">
+    Clique em <strong>Analisar</strong> para obter uma análise personalizada do seu patrimônio.
+  </div>
+</div>
+
+</div>`;/* end patModal */
+
+  /* ── Renderizar modal ── */
   let modal = document.getElementById('patrimonioModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'patrimonioModal';
     modal.className = 'modal-overlay';
     modal.onclick = e => { if (e.target === modal) closeModal('patrimonioModal'); };
-    modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:90dvh;overflow-y:auto;
-      -webkit-overflow-scrolling:touch;padding:0;border-radius:20px 20px 16px 16px">
+    modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0;border-radius:16px">
       <div id="patrimonioModalBody"></div>
     </div>`;
     document.body.appendChild(modal);
@@ -3156,6 +3072,71 @@ async function _openPatrimonioModal() {
   openModal('patrimonioModal');
 }
 window._openPatrimonioModal = _openPatrimonioModal;
+
+// ── Análise patrimonial com Gemini ────────────────────────────────────────
+async function _patAnalyzeWithGemini(metrics) {
+  const btn = document.getElementById('patAiBtn');
+  const result = document.getElementById('patAiResult');
+  if (!btn || !result) return;
+
+  const apiKey = typeof getAppSetting === 'function'
+    ? await getAppSetting('gemini_api_key', '').catch(() => '')
+    : '';
+
+  if (!apiKey || !apiKey.startsWith('AIza')) {
+    result.innerHTML = '<span style="color:#f59e0b">⚠️ Configure a chave Gemini em <strong>Configurações → IA</strong> para usar esta análise.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Analisando…';
+  result.innerHTML = '<span style="color:var(--muted)">Consultando Gemini…</span>';
+
+  const model = typeof RECEIPT_AI_MODEL !== 'undefined' ? RECEIPT_AI_MODEL : 'gemini-2.5-flash-lite';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const prompt = `Analise o patrimônio financeiro desta família em EXATAMENTE 2 parágrafos curtos em português brasileiro.
+
+Dados do patrimônio:
+- Patrimônio líquido: R$ ${metrics.patrimonioLiq.toFixed(2)}
+- Total de ativos: R$ ${metrics.totalAtivos.toFixed(2)} (contas: R$ ${metrics.liquidTotal.toFixed(2)}, investimentos: R$ ${metrics.invTotal.toFixed(2)})
+- Total de passivos: R$ ${metrics.totalPassivos.toFixed(2)} (dívidas: R$ ${metrics.debtTotal.toFixed(2)}, faturas cartão: R$ ${metrics.cardDebt.toFixed(2)})
+- Endividamento: ${(metrics.endividamento * 100).toFixed(1)}%
+- Score de saúde: ${metrics.healthScore}/100
+- Número de contas: ${metrics.accsCount}
+- Dívidas ativas: ${metrics.debtsCount}
+
+Parágrafo 1: Avalie a situação patrimonial atual (pontos positivos e negativos).
+Parágrafo 2: Recomende 2-3 ações concretas para melhorar o patrimônio.
+Seja direto, objetivo e use números quando relevante. Máximo 100 palavras por parágrafo.`;
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
+      }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) throw new Error('Resposta vazia');
+
+    // Format paragraphs
+    const paras = text.trim().split('\n\n').filter(Boolean);
+    result.innerHTML = paras.map(p =>
+      `<p style="margin:0 0 10px;color:var(--text);line-height:1.65">${esc(p.trim())}</p>`
+    ).join('');
+  } catch(e) {
+    result.innerHTML = `<span style="color:#ef4444">❌ Erro: ${esc(e.message||String(e))}</span>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Analisar'; }
+  }
+}
+window._patAnalyzeWithGemini = _patAnalyzeWithGemini;
+
 
 /* ══════════════════════════════════════════════════════════════════
    DASHBOARD — Card de Orçamentos
