@@ -11337,5 +11337,113 @@ window.openMyProfile = function(...args) {
 @keyframes rmSlideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
 </style>
 
+
+<!-- ── Objetivo: modal criar/editar ─────────────────────────────────────── -->
+<div class="modal-overlay" id="objectiveModal">
+  <div class="modal"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="objModalTitle">Novo Objetivo</span>
+      <button class="modal-close" onclick="closeModal('objectiveModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="objId">
+
+      <!-- Icon + Name row -->
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+        <div style="flex-shrink:0">
+          <div id="objIconDisplay" style="
+            width:52px;height:52px;border-radius:14px;
+            background:color-mix(in srgb,var(--accent) 12%,var(--surface2));
+            border:2px solid color-mix(in srgb,var(--accent) 25%,var(--border));
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.6rem;cursor:pointer"
+            onclick="document.getElementById('objIconPickerWrap').style.display = document.getElementById('objIconPickerWrap').style.display==='none'?'':'none'">
+            🎯
+          </div>
+          <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Clique</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <label class="field-label">Nome do objetivo *</label>
+          <input type="text" id="objName" class="field-input"
+            placeholder="Ex: Reforma da cozinha, Viagem a Paris…"
+            oninput="document.getElementById('objAiIconFeedback').style.display='none'">
+        </div>
+      </div>
+
+      <!-- Icon picker (hidden by default) -->
+      <input type="hidden" id="objIconValue" value="🎯">
+      <div id="objIconPickerWrap" style="display:none;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Escolha um ícone</span>
+          <button id="objAiIconBtn" class="btn btn-ghost btn-sm" onclick="suggestObjIconWithAI()">✨ IA</button>
+        </div>
+        <div id="objIconPicker" class="obj-icon-picker"></div>
+        <div id="objAiIconFeedback" style="display:none;font-size:.75rem;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--accent-lt,rgba(42,96,73,.08))"></div>
+      </div>
+
+      <!-- Description -->
+      <div class="field-group">
+        <label class="field-label">Descrição (opcional)</label>
+        <textarea id="objDescription" class="field-input" rows="2"
+          placeholder="Breve descrição do objetivo…"
+          style="resize:vertical;min-height:60px"></textarea>
+      </div>
+
+      <!-- Dates row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <label class="field-label">Data de início *</label>
+          <input type="date" id="objStartDate" class="field-input">
+        </div>
+        <div>
+          <label class="field-label">Data final (opcional)</label>
+          <input type="date" id="objEndDate" class="field-input">
+        </div>
+      </div>
+
+      <!-- Budget limit -->
+      <div class="field-group">
+        <label class="field-label">Limite de orçamento (opcional)</label>
+        <div class="input-prefix-wrap">
+          <span class="input-prefix">R$</span>
+          <input type="text" id="objBudgetLimit" class="field-input with-prefix"
+            placeholder="0,00" inputmode="decimal"
+            oninput="if(typeof _maskAmtInput==='function')_maskAmtInput(this)">
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="field-group">
+        <label class="field-label">Status</label>
+        <select id="objStatus" class="field-input">
+          <option value="active">🟢 Ativo</option>
+          <option value="paused">⏸ Pausado</option>
+          <option value="closed">🔒 Encerrado</option>
+        </select>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('objectiveModal')">Cancelar</button>
+        <button class="btn btn-primary" style="flex:2" id="objSaveBtn" onclick="saveObjective()">💾 Salvar objetivo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Objetivo: modal detalhe/gastos ────────────────────────────────────── -->
+<div class="modal-overlay" id="objectiveDetailModal">
+  <div class="modal modal-lg"><div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="objDetailTitle">Objetivo</span>
+      <button class="modal-close" onclick="closeModal('objectiveDetailModal')">✕</button>
+    </div>
+    <div style="font-size:.75rem;color:var(--muted);padding:4px 20px 10px;border-bottom:1px solid var(--border)" id="objDetailPeriod"></div>
+    <div class="modal-body" id="objDetailBody" style="padding:0 16px 16px">
+      <div style="text-align:center;padding:32px;color:var(--muted)">⏳ Carregando…</div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
