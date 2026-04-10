@@ -27890,3 +27890,65 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
   .obj-card-header { padding: 12px 14px 8px; }
   .obj-card-footer { padding: 8px 12px 10px; }
 }
+
+/* ── Upcoming: AR-pending row (transação aguardando confirmação) ── */
+.sup-item--ar-pending {
+  background: color-mix(in srgb, #f59e0b 5%, var(--surface)) !important;
+  border-left: 3px solid #f59e0b !important;
+}
+.sup-ar-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: .62rem; font-weight: 700;
+  background: rgba(251,191,36,.18); color: #d97706;
+  border: 1px solid rgba(251,191,36,.4);
+  border-radius: 100px; padding: 1px 7px;
+  margin-left: 5px; vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ── Objectives detail modal internals ── */
+.obj-detail-kpis {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 1px;
+  background: var(--border); border-radius: 12px; overflow: hidden;
+  margin: 16px 0 14px;
+}
+.obj-kpi {
+  background: var(--surface2); padding: 12px 10px; text-align: center;
+}
+.obj-kpi-label {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--muted);
+}
+.obj-kpi-value { font-size: 1rem; font-weight: 800; color: var(--text); margin-top: 3px; }
+
+.obj-detail-budget-bar-wrap { margin-bottom: 14px; }
+.obj-budget-track {
+  height: 8px; border-radius: 100px; background: var(--border); overflow: hidden;
+}
+.obj-budget-fill { height: 100%; border-radius: 100px; background: var(--accent); transition: width .4s; }
+.obj-budget-over { background: var(--red); }
+
+.obj-detail-section { margin-bottom: 14px; }
+.obj-detail-section-title {
+  font-size: .68rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--accent); margin-bottom: 8px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.obj-breakdown-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+  font-size: .8rem;
+}
+.obj-breakdown-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.obj-breakdown-meta  { font-size: .68rem; color: var(--muted); flex-shrink: 0; }
+.obj-breakdown-value { font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 80px; text-align: right; }
+
+/* Budget intro banner fix — ensure it aligns with other panels */
+#budgetPanelObjectives {
+  padding-top: 4px;
+}
+
+/* Mobile: 2-column kpis on small screen */
+@media (max-width: 480px) {
+  .obj-detail-kpis { grid-template-columns: repeat(2,1fr); }
+}
