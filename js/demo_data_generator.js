@@ -81,8 +81,8 @@ function generateDemoData() {
 
   /* ── Account Groups ───────────────────────────────────────────────────── */
   const accountGroups = [
-    { id: GRP_BR,    name: 'Brasil',   icon: '🇧🇷', color: '#009c3b', currency: 'BRL' },
-    { id: GRP_CARDS, name: 'Cartões',  icon: '💳', color: '#1A1F71', currency: 'BRL' },
+    { id: GRP_BR,    name: 'Brasil',   emoji: '🇧🇷', color: '#009c3b', currency: 'BRL' },
+    { id: GRP_CARDS, name: 'Cartões',  emoji: '💳', color: '#1A1F71', currency: 'BRL' },
   ];
 
   /* ── Accounts ─────────────────────────────────────────────────────────── */

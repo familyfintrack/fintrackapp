@@ -3296,7 +3296,7 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── Column whitelists — only send columns that exist in each table ────────
   const COLS = {
-    account_groups: ['id','name','icon','color','currency','family_id','created_at'],
+    account_groups: ['id','name','emoji','color','currency','family_id','created_at'],
     accounts:       ['id','name','type','currency','initial_balance','icon','color',
                      'group_id','is_favorite','due_day','best_purchase_day','card_limit',
                      'notes','family_id','created_at'],
