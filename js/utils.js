@@ -952,3 +952,108 @@ async function ensureTransactionDescription(input) {
 window.buildAutoDescriptionFallback = buildAutoDescriptionFallback;
 window.generateAutoTransactionDescription = generateAutoTransactionDescription;
 window.ensureTransactionDescription = ensureTransactionDescription;
+
+/* ── Shared Gemini API retry helper ──────────────────────────────────────────
+   Use: const data = await geminiRetryFetch(url, body, options?)
+   options: { maxRetries:3, backoffMs:[4000,10000,20000], onRetry:fn }
+   Handles 429 (rate limit) and 503 (model overloaded) with exponential backoff.
+─────────────────────────────────────────────────────────────────────────────── */
+async function geminiRetryFetch(url, body, opts = {}) {
+  const maxRetries = opts.maxRetries ?? 3;
+  const backoff    = opts.backoffMs  ?? [4000, 10000, 20000];
+  const onRetry    = opts.onRetry;   // optional callback(attempt, maxRetries, waitMs)
+
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      const wait = backoff[Math.min(attempt - 1, backoff.length - 1)];
+      if (typeof onRetry === 'function') onRetry(attempt, maxRetries, wait);
+      await new Promise(r => setTimeout(r, wait));
+    }
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch(netErr) {
+      lastErr = new Error('Erro de rede: ' + netErr.message);
+      if (attempt < maxRetries) continue;
+      throw lastErr;
+    }
+
+    if (resp.ok) return resp.json();
+
+    const errBody = await resp.json().catch(() => ({}));
+    const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
+
+    if ((resp.status === 429 || resp.status === 503) && attempt < maxRetries) {
+      lastErr = new Error(resp.status === 429
+        ? 'Limite de requisições. Tentando novamente…'
+        : 'Modelo com alta demanda. Tentando novamente…');
+      continue;
+    }
+
+    // Specific known errors
+    if (resp.status === 400 && errMsg.includes('API_KEY'))
+      throw new Error('Chave Gemini inválida. Verifique em Configurações → IA.');
+    if (resp.status === 429)
+      throw new Error('Limite de requisições atingido. Aguarde 1 minuto e tente novamente.');
+    if (resp.status === 503)
+      throw new Error('Modelo indisponível (alta demanda). Tente novamente em alguns segundos ou use outro modelo.');
+
+    throw new Error(errMsg);
+  }
+  throw lastErr || new Error('Falha após múltiplas tentativas. Tente novamente em alguns minutos.');
+}
+window.geminiRetryFetch = geminiRetryFetch;
+
+/* ── Global Gemini 429/503 auto-retry interceptor ────────────────────────────
+   Wraps window.fetch so ALL Gemini API calls in the app automatically retry
+   on rate-limit (429) and model overload (503) — no changes needed elsewhere.
+   Installed after DOM ready so it doesn't interfere with non-Gemini fetches.
+   Backoff: 4s → 12s → 25s (3 retries max).
+─────────────────────────────────────────────────────────────────────────────── */
+(function _geminiRetryInterceptor() {
+  const GEMINI_HOST = 'generativelanguage.googleapis.com';
+  const BACKOFF_MS  = [4000, 12000, 25000];
+  const MAX_RETRIES = 3;
+
+  // Bail if telemetry.js already wrapped fetch (we'll layer on top safely)
+  const _originalFetch = window.fetch;
+
+  window.fetch = async function _fetchWithGeminiRetry(input, init, ...rest) {
+    const url = typeof input === 'string' ? input
+              : (input instanceof Request ? input.url : String(input));
+
+    // Only intercept Gemini API calls
+    if (!url.includes(GEMINI_HOST)) {
+      return _originalFetch.call(this, input, init, ...rest);
+    }
+
+    let lastResp;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const wait = BACKOFF_MS[Math.min(attempt - 1, BACKOFF_MS.length - 1)];
+        console.warn(`[Gemini] Retry ${attempt}/${MAX_RETRIES} after ${wait}ms (429/503)`);
+        await new Promise(r => setTimeout(r, wait));
+      }
+
+      try {
+        // Clone init for each attempt (body can only be read once if it's a stream,
+        // but Gemini calls always use JSON.stringify so the body string is reusable)
+        const resp = await _originalFetch.call(this, input, init, ...rest);
+        if (resp.ok || (resp.status !== 429 && resp.status !== 503)) return resp;
+        lastResp = resp;
+        if (attempt === MAX_RETRIES) break;
+      } catch(e) {
+        if (attempt === MAX_RETRIES) throw e;
+      }
+    }
+
+    return lastResp; // return last response (caller handles !resp.ok)
+  };
+
+  Object.defineProperty(window.fetch, 'name', { value: '_fetchWithGeminiRetry' });
+})();

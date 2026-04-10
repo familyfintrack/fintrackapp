@@ -1667,60 +1667,10 @@ function getPeriodColor(period) {
   }
 }
 
-/* ── Privacy page utilities ──────────────────────────────────────────────── */
+/* ── Privacy page scroll helper ──────────────────────────────────────────── */
 function privScrollTo(sectionId) {
   const el = document.getElementById(sectionId);
-  if (!el) return;
-  const page = document.getElementById('page-privacy');
-  if (page) {
-    // Scroll inside the page container
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+window.privScrollTo = privScrollTo;
 
-function privCheckDeleteReady() {
-  const confirmInput = document.getElementById('privDeleteConfirm');
-  const emailInput   = document.getElementById('privDeleteEmail');
-  const btn          = document.getElementById('privDeleteBtn');
-  if (!btn) return;
-  const confirmOk = confirmInput?.value?.trim().toUpperCase() === 'EXCLUIR MEUS DADOS';
-  const emailOk   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput?.value?.trim() || '');
-  btn.disabled = !(confirmOk && emailOk);
-}
-
-async function privSubmitDeleteRequest() {
-  const email  = document.getElementById('privDeleteEmail')?.value?.trim() || '';
-  const reason = document.getElementById('privDeleteReason')?.value || 'not_specified';
-  const msgEl  = document.getElementById('privDeleteConfirmMsg');
-  const btn    = document.getElementById('privDeleteBtn');
-
-  if (!email) { toast('Informe seu e-mail.', 'warning'); return; }
-
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
-
-  try {
-    // Log the deletion request via telemetry / feedback
-    if (typeof sb !== 'undefined' && sb) {
-      const uid = typeof currentUser !== 'undefined' ? currentUser?.id : null;
-      const fid = typeof famId === 'function' ? famId() : null;
-      await sb.from('app_settings').upsert({
-        key: `deletion_request_${uid||email}`,
-        value: JSON.stringify({ email, reason, requested_at: new Date().toISOString(), user_id: uid, family_id: fid }),
-      }, { onConflict: 'key' }).catch(() => {});
-    }
-
-    if (msgEl) {
-      msgEl.style.cssText = 'display:block;margin-top:12px;padding:12px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;font-size:.8rem;color:#166534;line-height:1.55';
-      msgEl.innerHTML = `✅ <strong>Solicitação enviada.</strong><br>Você receberá um e-mail de confirmação em <strong>${email}</strong> em até 48 horas. O processamento ocorre em até 30 dias úteis.`;
-    }
-    if (btn) { btn.textContent = '✅ Solicitação enviada'; }
-    toast('Solicitação de exclusão registrada.', 'success');
-  } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = '🗑️ Enviar solicitação de exclusão'; }
-    toast('Erro ao enviar solicitação: ' + (e.message||e), 'error');
-  }
-}
-
-window.privScrollTo             = privScrollTo;
-window.privCheckDeleteReady     = privCheckDeleteReady;
-window.privSubmitDeleteRequest  = privSubmitDeleteRequest;

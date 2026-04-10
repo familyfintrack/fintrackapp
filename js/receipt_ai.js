@@ -337,27 +337,31 @@ Arquivo: ${pending.fileName}`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
-          { text: prompt },
-        ],
-      }],
-      generationConfig: { maxOutputTokens: 2500, temperature: 0.1 },
-    }),
+  const _rcptBody = JSON.stringify({
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
+        { text: prompt },
+      ],
+    }],
+    generationConfig: { maxOutputTokens: 2500, temperature: 0.1 },
   });
 
-  if (!resp.ok) {
+  let resp;
+  for (let _attempt = 0; _attempt <= 2; _attempt++) {
+    if (_attempt > 0) await new Promise(r => setTimeout(r, _attempt * 8000));
+    try { resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:_rcptBody }); }
+    catch(netErr) { if (_attempt === 2) throw new Error('Erro de rede: ' + netErr.message); continue; }
+    if (resp.ok) break;
+    if ((resp.status === 429 || resp.status === 503) && _attempt < 2) continue;
     const err = await resp.json().catch(() => ({}));
     const msg = err?.error?.message || `HTTP ${resp.status}`;
     if (resp.status === 400 && msg.includes('API_KEY')) throw new Error('Chave API inválida. Verifique em Configurações.');
     if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde alguns segundos.');
+    if (resp.status === 503) throw new Error('Modelo com alta demanda. Tente novamente em breve.');
     throw new Error(msg);
   }
+  if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${resp.status}`); }
 
   const data  = await resp.json();
   const text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';

@@ -3131,8 +3131,9 @@ function _scArShowBtn(sc) {
   btn.style.display = sc && sc.type === 'income' ? '' : 'none';
 }
 
-window._scArLoad    = _scArLoad;
-window._scArReceive = _scArReceive;
+window._scArLoad              = _scArLoad;
+window._scArReceive           = _scArReceive;
+window.registerAsNotReceived  = registerAsNotReceived;
 window._scArCancel  = _scArCancel;
 window._scArShowBtn = _scArShowBtn;
 

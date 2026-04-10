@@ -1467,12 +1467,18 @@ REGRAS FINAIS:
   };
 
   // Retry helper — models can be overloaded or return 503 transiently
-  async function _callWithRetry(body, maxRetries = 2) {
+  async function _callWithRetry(body, maxRetries = 3) {
+    const BACKOFF = [5000, 12000, 25000]; // 5s → 12s → 25s
     let lastErr;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       if (attempt > 0) {
-        const delay = attempt * 8000; // 8s, 16s
-        console.warn(`[AIInsights] Retry ${attempt} after ${delay}ms`);
+        const delay = BACKOFF[Math.min(attempt - 1, BACKOFF.length - 1)];
+        console.warn(`[AIInsights] Retry ${attempt}/${maxRetries} after ${delay}ms`);
+        // Update UI to inform user
+        const statusEl = document.getElementById('aiInsightsLoadingMsg') ||
+                         document.querySelector('.ai-loading-text');
+        if (statusEl) statusEl.textContent =
+          `⏳ Modelo ocupado — aguardando ${delay/1000}s (tentativa ${attempt}/${maxRetries})…`;
         await new Promise(r => setTimeout(r, delay));
       }
       let resp;
@@ -1484,7 +1490,8 @@ REGRAS FINAIS:
         });
       } catch(networkErr) {
         lastErr = new Error('Erro de rede: ' + networkErr.message);
-        continue;
+        if (attempt < maxRetries) continue;
+        break;
       }
 
       if (resp.ok) return await resp.json();
@@ -1492,15 +1499,17 @@ REGRAS FINAIS:
       const errBody = await resp.json().catch(() => ({}));
       const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
 
-      if (resp.status === 429 || resp.status === 503) {
+      if ((resp.status === 429 || resp.status === 503) && attempt < maxRetries) {
         lastErr = new Error(
           resp.status === 429
-            ? 'Limite de requisições atingido. Aguarde alguns segundos e tente novamente.'
-            : 'Modelo temporariamente sobrecarregado (alta demanda). Tentando novamente…'
+            ? 'Limite de requisições atingido. Tentando novamente…'
+            : 'Modelo com alta demanda. Tentando novamente…'
         );
-        // Only retry on 503/429
         continue;
       }
+
+      if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde 1 minuto e tente novamente.');
+      if (resp.status === 503) throw new Error('Modelo indisponível (alta demanda). Tente novamente em alguns segundos ou use outro modelo em Configurações → IA.');
 
       // 400 = unsupported config (e.g. responseMimeType not supported by this model)
       if (resp.status === 400 && body.generationConfig?.responseMimeType) {
@@ -1512,7 +1521,7 @@ REGRAS FINAIS:
 
       throw new Error(errMsg);
     }
-    throw lastErr || new Error('Falha após múltiplas tentativas. Tente novamente mais tarde.');
+    throw lastErr || new Error('Falha após múltiplas tentativas. Tente em alguns minutos ou selecione um modelo diferente em Configurações → IA.');
   }
 
   const data = await _callWithRetry(requestBody);

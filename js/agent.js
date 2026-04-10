@@ -457,14 +457,52 @@ async function _agCallGemini(userText, ctx, toolResultParts) {
     generationConfig: {temperature:0.35, maxOutputTokens:1500},
   };
 
-  const resp = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if (!resp.ok) {
-    const err = await resp.json().catch(()=>({}));
-    const msg = err?.error?.message||`HTTP ${resp.status}`;
-    if (resp.status===429||resp.status===503) throw new Error('Modelo ocupado. Aguarde alguns segundos e tente novamente.');
-    throw new Error(msg);
+  // Retry with exponential backoff for 429/503 (model busy / rate limit)
+  const MAX_RETRIES = 3;
+  const BACKOFF_MS  = [4000, 10000, 20000]; // 4s → 10s → 20s
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      });
+    } catch(netErr) {
+      if (attempt === MAX_RETRIES) throw new Error('Erro de rede: ' + netErr.message);
+      await new Promise(r => setTimeout(r, BACKOFF_MS[attempt]));
+      continue;
+    }
+
+    if (resp.ok) return resp.json();
+
+    const errBody = await resp.json().catch(() => ({}));
+    const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
+
+    if ((resp.status === 429 || resp.status === 503) && attempt < MAX_RETRIES) {
+      const waitMs = BACKOFF_MS[attempt];
+      // Show a non-blocking status update
+      _agUpdateRetryStatus(attempt + 1, MAX_RETRIES, waitMs);
+      await new Promise(r => setTimeout(r, waitMs));
+      continue;
+    }
+
+    // Non-retryable or exhausted retries
+    if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde um minuto e tente novamente.');
+    if (resp.status === 503) throw new Error('Modelo temporariamente indisponível (alta demanda). Tente novamente em alguns segundos.');
+    if (resp.status === 400) throw new Error('Requisição inválida: ' + errMsg);
+    throw new Error(errMsg);
   }
-  return resp.json();
+
+  throw new Error('Falha após múltiplas tentativas. Tente novamente mais tarde.');
+}
+
+function _agUpdateRetryStatus(attempt, max, waitMs) {
+  const statusEl = document.getElementById('agentStatusText');
+  const dot      = document.querySelector('.ag-status-dot');
+  if (statusEl) statusEl.textContent = `Alta demanda — tentativa ${attempt}/${max} em ${waitMs/1000}s…`;
+  if (dot) dot.style.cssText = 'background:#f59e0b;box-shadow:0 0 6px #f59e0b';
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

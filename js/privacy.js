@@ -20,7 +20,7 @@ window._prvInitPage = _prvInitPage;
 function _privUpdateDeleteBtn() {
   const email   = document.getElementById('privDeleteEmail')?.value.trim() || '';
   const confirm = document.getElementById('privDeleteConfirm')?.value || '';
-  const btn     = document.getElementById('privDeleteSubmit');
+  const btn     = document.getElementById('privDeleteSubmit') || document.getElementById('privDeleteBtn');
   if (!btn) return;
   const valid = email.includes('@') && confirm === 'EXCLUIR MEUS DADOS';
   btn.disabled = !valid;
@@ -50,7 +50,7 @@ async function _privSubmitDeletion() {
   const emailEl   = document.getElementById('privDeleteEmail');
   const reasonEl  = document.getElementById('privDeleteReason');
   const confirmEl = document.getElementById('privDeleteConfirm');
-  const btn       = document.getElementById('privDeleteSubmit');
+  const btn       = document.getElementById('privDeleteSubmit') || document.getElementById('privDeleteBtn');
 
   const email   = emailEl?.value.trim() || '';
   const reason  = reasonEl?.value || 'not_specified';
@@ -164,3 +164,7 @@ function _prvShowStatus(msg, type) {
   el.style.borderRadius = '8px';
   el.style.padding = '10px 12px';
 }
+
+// Aliases for HTML event handlers (HTML uses these names)
+window.privCheckDeleteReady    = _privUpdateDeleteBtn;
+window.privSubmitDeleteRequest = _privSubmitDeletion;
