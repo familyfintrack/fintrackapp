@@ -6559,6 +6559,18 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div id="txAiMemberSuggestion" style="display:none"></div>
           </div>
           <div class="form-group"><label>Conta <span class="req-star">*</span></label><select id="txAccountId" onchange="_onTxSourceAccountChange(this.value)"></select></div>
+          <!-- Swap button: visible only during transfer/card_payment -->
+          <div id="txSwapAccountsBtn" style="display:none;justify-content:center;align-items:center;margin:-4px 0">
+            <button type="button" onclick="swapTxAccounts()" title="Inverter contas de origem e destino"
+              style="display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s"
+              onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+              Inverter contas
+            </button>
+          </div>
           <div class="form-group" id="txTransferToGroup" style="display:none"><label>Conta Destino <span class="req-star">*</span></label><select id="txTransferTo" onchange="onTransferAccountChange()"></select></div>
           <div class="form-group" id="txPayeeGroup" style="position:relative">
             <label>Beneficiário / Fonte <span class="req-star">*</span></label>
