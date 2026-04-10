@@ -3394,9 +3394,17 @@ async function importDemoData(userId, familyId, progressCb) {
   log('Criando grupos de contas…', 8);
   await ins('account_groups', data.accountGroups, 'Grupos');
 
-  // ── 2. Accounts ───────────────────────────────────────────────────────────
+  // Build group ID map immediately after insert (before accounts need it)
+  const groupIdMap = await buildIdMap('account_groups', data.accountGroups, 'name');
+  console.log('[DemoImport] groupIdMap entries:', Object.keys(groupIdMap).length);
+
+  // ── 2. Accounts (with remapped group_id) ──────────────────────────────────
   log('Criando contas…', 14);
-  await ins('accounts', data.accounts, 'Contas');
+  const accountsRemapped = data.accounts.map(a => ({
+    ...a,
+    group_id: a.group_id ? (groupIdMap[a.group_id] || null) : null,
+  }));
+  await ins('accounts', accountsRemapped, 'Contas');
 
   // ── 3. Categories (parents first) ─────────────────────────────────────────
   log('Criando categorias…', 20);
@@ -3463,6 +3471,23 @@ async function importDemoData(userId, familyId, progressCb) {
   const payIdMap  = await buildIdMap('payees',      data.payees,      'name');
   const catIdMap  = await buildIdMap('categories',  data.categories,  'name');
   log('Mapas de IDs prontos', 36);
+
+  // Patch payees.default_category_id now that catIdMap is available
+  const payeesWithCat = data.payees.filter(p => p.category_id || p.default_category_id);
+  if (payeesWithCat.length && Object.keys(payIdMap).length) {
+    for (const p of payeesWithCat) {
+      const realPayeeId  = payIdMap[p.id];
+      const demoCatId    = p.category_id || p.default_category_id;
+      const realCatId    = demoCatId ? remap(catIdMap, demoCatId) : null;
+      if (realPayeeId && realCatId && realCatId !== demoCatId) {
+        await sb.from('payees')
+          .update({ default_category_id: realCatId })
+          .eq('id', realPayeeId)
+          .eq('family_id', familyId)
+          .catch(() => {});
+      }
+    }
+  }
 
   // Remap helper: translate demo UUID → actual DB UUID (or keep original if already ok)
   function remap(map, id) { return (id && map[id]) ? map[id] : id; }
@@ -3542,17 +3567,44 @@ async function importDemoData(userId, familyId, progressCb) {
     if (typeof currentUser !== 'undefined' && currentUser?.auth_uid) dreamsAuthUid = currentUser.auth_uid;
   }
   console.log('[DemoImport] dreams auth_uid:', dreamsAuthUid);
-  await ins('dreams', data.dreams.map(dr => ({
-    ...dr,
-    created_by:  dreamsAuthUid,
-    dream_type:  dr.dream_type || dr.type || 'outro',
-    target_date: dr.target_date || dr.deadline || null,
-    updated_at:  new Date().toISOString(),
-    // Remove columns that don't exist in schema
-    type:          undefined, deadline: undefined,
-    current_amount: undefined, saved_amount: undefined,
-    icon:          undefined,  // no icon column in dreams
-  })), 'Sonhos');
+  // Try inserting dreams row-by-row (RLS requires auth.uid() match on created_by)
+  {
+    const dreamRows = data.dreams.map(dr => ({
+      ...pick({
+        ...dr,
+        created_by:  dreamsAuthUid,
+        dream_type:  dr.dream_type || dr.type || 'outro',
+        target_date: dr.target_date || dr.deadline || null,
+        updated_at:  new Date().toISOString(),
+        family_id:   familyId,
+        status:      dr.status || 'active',
+        priority:    dr.priority || 1,
+        title:       dr.title || dr.name || 'Objetivo',
+        target_amount: dr.target_amount || dr.goal_amount || 0,
+      }, ['id','title','description','target_amount','dream_type',
+          'target_date','priority','status','created_by','family_id',
+          'updated_at','created_at']),
+    }));
+    let dreamOk = 0;
+    const dreamErrors = [];
+    for (const row of dreamRows) {
+      // Try with current auth.uid() as created_by
+      const tryRow = { ...row, created_by: dreamsAuthUid };
+      const { error: de } = await sb.from('dreams').insert(tryRow);
+      if (!de) { dreamOk++; continue; }
+      // If RLS blocks, try without created_by (some schemas don't require it)
+      if (de.code === '42501' || de.message?.includes('policy')) {
+        const { error: de2 } = await sb.from('dreams').insert({ ...tryRow, created_by: null });
+        if (!de2) { dreamOk++; continue; }
+        dreamErrors.push(de2.message);
+      } else {
+        dreamErrors.push(de.message);
+      }
+    }
+    tableResults['dreams'] = { label: 'Sonhos', sent: dreamRows.length, ok: dreamOk, errors: dreamErrors.slice(0,2) };
+    if (dreamErrors.length) errors.push('dreams: ' + dreamErrors[0]);
+    log('Sonhos: ' + dreamOk + '/' + dreamRows.length, null);
+  }
 
   // ── 11. Prices ───────────────────────────────────────────────────────────
   log('Criando preços…', 83);
@@ -3561,7 +3613,21 @@ async function importDemoData(userId, familyId, progressCb) {
     ...pi,
     category_id: remap(catIdMap, pi.category_id) || null,
   }));
-  await ins('price_items', validPriceItems, 'Itens de preço');
+  // price_items has unique constraint on (family_id, name) — handle per-row
+  {
+    let piOk = 0; const piErrs = [];
+    for (const pi of validPriceItems) {
+      // Try upsert on (family_id, name) — update if exists
+      const { error: pie } = await sb.from('price_items')
+        .upsert(pi, { onConflict: 'family_id,name', ignoreDuplicates: true });
+      if (!pie) piOk++;
+      else if (!pie.message?.includes('duplicate') && !pie.code?.includes('23505'))
+        piErrs.push(pi.name + ': ' + pie.message);
+    }
+    tableResults['price_items'] = { label: 'Itens de preço', sent: validPriceItems.length, ok: piOk, errors: piErrs.slice(0,2) };
+    if (piErrs.length) errors.push('price_items: ' + piErrs[0]);
+    log('Itens de preço: ' + piOk + '/' + validPriceItems.length, null);
+  }
   await ins('price_stores', data.priceStores, 'Lojas');
 
   // Build actual ID maps for price_items and price_stores after insert
