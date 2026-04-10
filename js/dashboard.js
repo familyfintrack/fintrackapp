@@ -763,6 +763,143 @@ async function renderCategoryChart(){
     if (bar) { bar.classList.toggle('active', savedType === 'bar');     bar.style.background=''; bar.style.color=''; }
   }
 
+// ── _renderCatChartBar: horizontal bar chart from _catChartEntries ───────────
+function _renderCatChartBar() {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas) return;
+
+  const entries = _catChartEntries.slice(0, 16); // max 16 bars for readability
+  const labels  = entries.map(e => e.name);
+  const data    = entries.map(e => e.total);
+  const colors  = entries.map(e => e.color || '#2a6049');
+
+  const usedColors = new Set(colors);
+
+  if (state.chartInstances && state.chartInstances['categoryChart']) {
+    try { state.chartInstances['categoryChart'].destroy(); } catch(_) {}
+  }
+  state.chartInstances = state.chartInstances || {};
+
+  const ctx = canvas.getContext('2d');
+  state.chartInstances['categoryChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors.map(c => c + 'cc'),
+        borderColor:     colors,
+        borderWidth:     1.5,
+        borderRadius:    4,
+        borderSkipped:   false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => '  ' + (typeof fmt === 'function' ? fmt(ctx.parsed.x) : ctx.parsed.x),
+          },
+        },
+      },
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        openCatDetail(elements[0].index);
+      },
+      onHover(evt, elements) {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      },
+      scales: {
+        x: {
+          ticks: {
+            font: { size: 10 },
+            color: '#8c8278',
+            callback: v => typeof dashFmt === 'function' ? dashFmt(v) : v,
+          },
+          grid: { color: '#e8e4de22' },
+        },
+        y: {
+          ticks: {
+            font: { size: 11 },
+            color: 'var(--text)',
+            callback(val) {
+              const label = this.getLabelForValue(val);
+              return label && label.length > 18 ? label.slice(0, 17) + '…' : label;
+            },
+          },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+  // Adjust canvas height based on entry count
+  canvas.style.height = Math.max(160, entries.length * 28) + 'px';
+}
+
+// ── _renderCatChartDoughnut: doughnut chart from _catChartEntries ────────────
+function _renderCatChartDoughnut() {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas) return;
+
+  const entries = _catChartEntries.slice(0, 12);
+  const labels  = entries.map(e => e.name);
+  const data    = entries.map(e => e.total);
+  const colors  = entries.map(e => e.color || '#2a6049');
+
+  if (state.chartInstances && state.chartInstances['categoryChart']) {
+    try { state.chartInstances['categoryChart'].destroy(); } catch(_) {}
+  }
+  state.chartInstances = state.chartInstances || {};
+
+  canvas.style.height = '220px';
+  const ctx = canvas.getContext('2d');
+  state.chartInstances['categoryChart'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors.map(c => c + 'cc'),
+        borderColor:     '#fff',
+        borderWidth:     2,
+        hoverBorderWidth: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            boxWidth: 10,
+            font: { size: 11 },
+            color: 'var(--text)',
+            padding: 10,
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.label + ': ' + (typeof fmt === 'function' ? fmt(ctx.parsed) : ctx.parsed),
+          },
+        },
+      },
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        openCatDetail(elements[0].index);
+      },
+      onHover(evt, elements) {
+        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      },
+    },
+  });
+}
+
   if (_catChartType === 'bar') {
     _renderCatChartBar();
     return;

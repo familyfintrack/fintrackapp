@@ -3117,13 +3117,14 @@ async function loadPayeeReport() {
   const isInc = _rptBenefMode === 'income';
 
   try {
-    const { data: txs, error } = await famQ(
+    let q = famQ(
       sb.from('transactions')
         .select('id,date,description,amount,brl_amount,currency,payee_id,payees(id,name,type),categories(name,color,icon)')
-    ).gte('date', range.from)
-      .lte('date', range.to)
-      .eq('status', 'confirmed')
-      .not('payee_id', 'is', null);
+    );
+    q = q.gte('date', range.from).lte('date', range.to)
+         .eq('status', 'confirmed')
+         .not('payee_id', 'is', null);
+    const { data: txs, error } = await q;
 
     if (error) throw error;
 
