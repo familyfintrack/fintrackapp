@@ -970,9 +970,48 @@
           border-radius: var(--tx-r);
           margin-bottom: 10px;
           overflow: hidden;
-          display: block; /* open by default */
         }
-        #tx-filters-panel.open { display: block; }
+        #tx-filters-panel-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          cursor: pointer;
+          user-select: none;
+          transition: background .12s;
+        }
+        #tx-filters-panel-header:hover { background: var(--surface2); }
+        #tx-filters-panel-header:active { background: var(--surface3, var(--surface2)); }
+        #tx-filters-panel-title {
+          font-size: .76rem;
+          font-weight: 700;
+          color: var(--text2);
+          flex: 1;
+        }
+        #tx-filters-badge {
+          display: none;
+          background: var(--accent);
+          color: #fff;
+          font-size: .65rem;
+          font-weight: 800;
+          padding: 1px 6px;
+          border-radius: 10px;
+          min-width: 16px;
+          text-align: center;
+        }
+        #tx-filters-badge.visible { display: inline-block; }
+        #tx-filters-chevron {
+          color: var(--muted);
+          font-size: .72rem;
+          transition: transform .2s ease;
+          flex-shrink: 0;
+        }
+        #tx-filters-panel.open #tx-filters-chevron { transform: rotate(180deg); }
+        #tx-filters-panel-body {
+          display: none;
+          border-top: 1px solid var(--border);
+        }
+        #tx-filters-panel.open #tx-filters-panel-body { display: block; }
         #tx-filters-panel-inner {
           padding: 10px 12px 12px;
           display: flex;
@@ -1072,8 +1111,19 @@
         </button>
       </div>
 
-      <!-- ── Collapsible filters panel (hidden by default) ── -->
+      <!-- ── Collapsible filters panel ── -->
       <div id="tx-filters-panel">
+        <!-- Header: always visible, click to toggle -->
+        <div id="tx-filters-panel-header" onclick="_txToggleFilters()" role="button" aria-expanded="false">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);flex-shrink:0">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span id="tx-filters-panel-title">Filtros</span>
+          <span id="tx-filters-badge"></span>
+          <span id="tx-filters-chevron">▾</span>
+        </div>
+        <!-- Body: collapsible -->
+        <div id="tx-filters-panel-body">
         <div id="tx-filters-panel-inner">
           <select id="txMonth" onchange="filterTransactions(true)" class="tx-chip-select"></select>
           <select id="txAccount" onchange="filterTransactions(true)" class="tx-chip-select">
@@ -1114,6 +1164,7 @@
             ↻ Recarregar
           </button>
         </div>
+        </div><!-- /tx-filters-panel-body -->
       </div>
 
             <!-- ── Account filter active badge ── -->
