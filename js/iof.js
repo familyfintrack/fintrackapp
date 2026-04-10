@@ -1,101 +1,150 @@
 
 // ── IOF Settings — categoria e beneficiário padrão (por família) ─────────────
-// Chaves são SEMPRE sufixadas com o family_id para garantir isolamento entre famílias.
-// Persistência: app_settings table no Supabase (lida diretamente, não via cache geral).
+// Persiste na tabela iof_settings (family_id PK) com RLS correta para todos
+// os membros da família. Fallback para app_settings se a migration não rodou.
 
-function _iofCatKey()   { return 'iof_category_id_' + (typeof famId === 'function' ? famId() : 'default'); }
-function _iofPayeeKey() { return 'iof_payee_id_'    + (typeof famId === 'function' ? famId() : 'default'); }
+// ── In-memory cache ──────────────────────────────────────────────────────────
+let _iofCache = { fid: null, category_id: null, payee_id: null, loaded: false };
 
-// ── Leitura direta do Supabase (família-scoped, cross-device) ─────────────────
-async function _iofReadFromDB(key) {
-  if (!window.sb) return null;
+function _iofGetFid() {
+  return typeof famId === 'function' ? famId() : (window.currentUser?.family_id || null);
+}
+
+// Invalidate when switching family
+function _iofInvalidateCache() {
+  _iofCache = { fid: null, category_id: null, payee_id: null, loaded: false };
+  // Legacy keys
+  window._iofCatId = undefined; window._iofCatKey = undefined;
+  window._iofPayeeId = undefined; window._iofPayeeKey = undefined;
+}
+window._iofInvalidateCache = _iofInvalidateCache;
+
+// ── Load from DB (iof_settings table, with fallback to app_settings) ──────────
+async function _iofLoadFromDB() {
+  const fid = _iofGetFid();
+  if (!fid || !window.sb) return;
+  if (_iofCache.loaded && _iofCache.fid === fid) return; // already loaded for this family
+
   try {
     const { data, error } = await window.sb
-      .from('app_settings')
-      .select('value')
-      .eq('key', key)
+      .from('iof_settings')
+      .select('category_id, payee_id')
+      .eq('family_id', fid)
       .maybeSingle();
-    if (error) return null;
-    const v = data?.value;
-    return (v === '' || v === null || v === undefined) ? null : String(v);
-  } catch(_) { return null; }
-}
 
-// ── Escrita directa no Supabase (família-scoped) ───────────────────────────────
-async function _iofWriteToDB(key, value) {
-  if (!window.sb) return;
-  const fid = typeof famId === 'function' ? famId() : null;
-  try {
-    // Try with family_id scope first (if app_settings has family_id column)
-    const row = fid
-      ? { key, value: value || '', family_id: fid }
-      : { key, value: value || '' };
-    const { error } = await window.sb
-      .from('app_settings')
-      .upsert(row, { onConflict: 'key' });
-    if (error) {
-      // Fallback: without family_id (simpler schema)
-      if (error.message?.includes('family_id')) {
-        const { error: e2 } = await window.sb
-          .from('app_settings').upsert({ key, value: value||'' }, { onConflict: 'key' });
-        if (e2) console.warn('[IOF] _iofWriteToDB fallback:', e2.message);
-      } else {
-        console.warn('[IOF] _iofWriteToDB:', error.message);
-      }
+    if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
+      // Table not yet created — fall back to app_settings
+      await _iofLoadLegacy(fid);
+      return;
     }
-  } catch(e) { console.warn('[IOF] _iofWriteToDB exception:', e.message); }
+    _iofCache.fid         = fid;
+    _iofCache.category_id = data?.category_id || null;
+    _iofCache.payee_id    = data?.payee_id    || null;
+    _iofCache.loaded      = true;
+    // Sync legacy window globals for code that reads them directly
+    window._iofCatId   = _iofCache.category_id;
+    window._iofPayeeId = _iofCache.payee_id;
+  } catch(e) {
+    console.warn('[IOF] _iofLoadFromDB:', e.message);
+    await _iofLoadLegacy(fid);
+  }
 }
 
+async function _iofLoadLegacy(fid) {
+  // Fallback: read from app_settings with family-scoped keys
+  const catKey   = 'iof_category_id_' + fid;
+  const payeeKey = 'iof_payee_id_'    + fid;
+  try {
+    const { data } = await window.sb
+      .from('app_settings')
+      .select('key, value')
+      .in('key', [catKey, payeeKey]);
+    const byKey = {};
+    (data || []).forEach(r => { byKey[r.key] = r.value || null; });
+    _iofCache.fid         = fid;
+    _iofCache.category_id = byKey[catKey]   || null;
+    _iofCache.payee_id    = byKey[payeeKey] || null;
+    _iofCache.loaded      = true;
+    window._iofCatId   = _iofCache.category_id;
+    window._iofPayeeId = _iofCache.payee_id;
+  } catch(e) {
+    console.warn('[IOF] _iofLoadLegacy:', e.message);
+  }
+}
+
+// ── Save to DB ────────────────────────────────────────────────────────────────
+async function _iofSaveToDB() {
+  const fid = _iofGetFid();
+  if (!fid || !window.sb) return;
+
+  const userId = window.currentUser?.id || null;
+  const row = {
+    family_id:   fid,
+    category_id: _iofCache.category_id || null,
+    payee_id:    _iofCache.payee_id    || null,
+    updated_at:  new Date().toISOString(),
+    updated_by:  userId,
+  };
+
+  try {
+    const { error } = await window.sb
+      .from('iof_settings')
+      .upsert(row, { onConflict: 'family_id' });
+
+    if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
+      // Table not created yet — save to app_settings as fallback
+      await _iofSaveLegacy(fid);
+      return;
+    }
+    if (error) {
+      console.warn('[IOF] _iofSaveToDB:', error.message);
+      await _iofSaveLegacy(fid); // try fallback
+    }
+  } catch(e) {
+    console.warn('[IOF] _iofSaveToDB exception:', e.message);
+    await _iofSaveLegacy(fid);
+  }
+}
+
+async function _iofSaveLegacy(fid) {
+  const catKey   = 'iof_category_id_' + fid;
+  const payeeKey = 'iof_payee_id_'    + fid;
+  try {
+    await Promise.all([
+      window.sb.from('app_settings').upsert({ key: catKey,   value: _iofCache.category_id || '' }, { onConflict: 'key' }),
+      window.sb.from('app_settings').upsert({ key: payeeKey, value: _iofCache.payee_id    || '' }, { onConflict: 'key' }),
+    ]);
+  } catch(e) { console.warn('[IOF] _iofSaveLegacy:', e.message); }
+}
+
+// ── Public getters ────────────────────────────────────────────────────────────
 async function getIofCategoryId() {
-  const key = _iofCatKey();
-  // 1. In-memory cache (invalidado ao trocar de família)
-  if (window._iofCatId !== undefined && window._iofCatKey === key) return window._iofCatId;
-  // 2. Lê direto do Supabase (garante persistência cross-device e cross-session)
-  const dbVal = await _iofReadFromDB(key);
-  // 3. Fallback: _appSettingsCache com a chave legada (migração de dados antigos)
-  const legacyVal = dbVal || (window._appSettingsCache?.['iof_category_id']) || null;
-  window._iofCatId  = legacyVal || null;
-  window._iofCatKey = key;
-  return window._iofCatId;
+  await _iofLoadFromDB();
+  return _iofCache.category_id;
 }
 
 async function getIofPayeeId() {
-  const key = _iofPayeeKey();
-  if (window._iofPayeeId !== undefined && window._iofPayeeKey === key) return window._iofPayeeId;
-  const dbVal = await _iofReadFromDB(key);
-  const legacyVal = dbVal || (window._appSettingsCache?.['iof_payee_id']) || null;
-  window._iofPayeeId  = legacyVal || null;
-  window._iofPayeeKey = key;
-  return window._iofPayeeId;
+  await _iofLoadFromDB();
+  return _iofCache.payee_id;
 }
 
+// ── Public setters ────────────────────────────────────────────────────────────
 async function setIofCategoryId(id) {
-  const key = _iofCatKey();
-  window._iofCatId  = id || null;
-  window._iofCatKey = key;
-  // Persiste no banco E no cache
-  await _iofWriteToDB(key, id || '');
-  if (window._appSettingsCache) window._appSettingsCache[key] = id || '';
-  try { localStorage.setItem(key, id || ''); } catch(_) {}
+  _iofCache.category_id = id || null;
+  _iofCache.fid = _iofGetFid();
+  window._iofCatId = _iofCache.category_id;
+  await _iofSaveToDB();
+  // localStorage backup
+  try { if (_iofCache.fid) localStorage.setItem('iof_category_id_' + _iofCache.fid, id || ''); } catch(_) {}
 }
 
 async function setIofPayeeId(id) {
-  const key = _iofPayeeKey();
-  window._iofPayeeId  = id || null;
-  window._iofPayeeKey = key;
-  await _iofWriteToDB(key, id || '');
-  if (window._appSettingsCache) window._appSettingsCache[key] = id || '';
-  try { localStorage.setItem(key, id || ''); } catch(_) {}
+  _iofCache.payee_id = id || null;
+  _iofCache.fid = _iofGetFid();
+  window._iofPayeeId = _iofCache.payee_id;
+  await _iofSaveToDB();
+  try { if (_iofCache.fid) localStorage.setItem('iof_payee_id_' + _iofCache.fid, id || ''); } catch(_) {}
 }
-
-// Invalida o cache de IOF ao trocar de família (chamado pelo auth.js no switchFamily)
-function _iofInvalidateCache() {
-  window._iofCatId    = undefined;
-  window._iofCatKey   = undefined;
-  window._iofPayeeId  = undefined;
-  window._iofPayeeKey = undefined;
-}
-window._iofInvalidateCache = _iofInvalidateCache;
 
 // ── Bulk-update IOF transactions to new category ────────────────────────────
 async function bulkUpdateIofCategory(newCatId) {
