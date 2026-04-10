@@ -3571,3 +3571,67 @@ function syncScheduledAutomationSummary() {
   if (typeof _updateAutoConfirmHint === 'function') _updateAutoConfirmHint();
 }
 window.syncScheduledAutomationSummary = syncScheduledAutomationSummary;
+
+/* ── Programados Tab switcher (mobile) ──────────────────────────────────── */
+let _scActiveTab = 'scheduled';
+
+async function _scSwitchTab(tab) {
+  _scActiveTab = tab;
+
+  // Update tab buttons
+  const tSc = document.getElementById('scTabScheduled');
+  const tAr = document.getElementById('scTabReceivables');
+  if (tSc) tSc.classList.toggle('active', tab === 'scheduled');
+  if (tAr) tAr.classList.toggle('active', tab === 'receivables');
+
+  // Show/hide content panels
+  const listView     = document.getElementById('scListView');
+  const arTabContent = document.getElementById('scArTabContent');
+
+  if (listView)     listView.style.display     = tab === 'scheduled' ? '' : 'none';
+  if (arTabContent) arTabContent.style.display = tab === 'receivables' ? '' : 'none';
+
+  if (tab === 'receivables') {
+    // Load and render into the inline tab body
+    const tabBody = document.getElementById('scArTabBody');
+    if (tabBody) tabBody.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
+
+    // Temporarily redirect loadReceivables output to tab KPIs + body
+    const origIds = _scRedirectReceivablesToTab(true);
+    if (typeof loadReceivables === 'function') await loadReceivables();
+    _scRedirectReceivablesToTab(false, origIds);
+  }
+}
+
+function _scRedirectReceivablesToTab(enable, origIds) {
+  // Swap element IDs so loadReceivables() writes into the tab instead of the modal
+  const swaps = {
+    'receivablesTotalAmt': 'scArTabTotal',
+    'receivablesOverdueAmt': 'scArTabOverdue',
+    'receivablesCount': 'scArTabCount',
+    'receivablesBody': 'scArTabBody',
+  };
+  if (enable) {
+    const saved = {};
+    for (const [modalId, tabId] of Object.entries(swaps)) {
+      const modalEl = document.getElementById(modalId);
+      const tabEl   = document.getElementById(tabId);
+      if (modalEl && tabEl) {
+        saved[modalId] = modalEl.id;
+        modalEl.id = tabId + '_hidden';
+        tabEl.id   = modalId;
+      }
+    }
+    return saved;
+  } else {
+    // Restore original IDs
+    for (const [modalId, tabId] of Object.entries(swaps)) {
+      const swapped = document.getElementById(modalId);
+      const hidden  = document.getElementById(tabId + '_hidden');
+      if (swapped) swapped.id = tabId;
+      if (hidden)  hidden.id  = modalId;
+    }
+  }
+}
+
+window._scSwitchTab = _scSwitchTab;

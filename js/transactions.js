@@ -4059,12 +4059,13 @@ function closeReceivablesModal() {
 
 // Sync the badge on the Programados access button
 function _syncReceivablesBadge(count) {
-  const ids = ['scArBadgeBtn','receivablesBadge','scHeaderArBadge','scMobileArBadge'];
+  const ids = ['scArBadgeBtn','receivablesBadge','scHeaderArBadge','scMobileArBadge','scTabArBadge'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = count > 0 ? count : '';
-    el.style.display = count > 0 ? (id.includes('Header') || id.includes('Mobile') ? 'flex' : '') : 'none';
+    const showFlex = id.includes('Header') || id.includes('Mobile') || id === 'scTabArBadge';
+    el.style.display = count > 0 ? (showFlex ? 'inline-flex' : '') : 'none';
   });
 }
 
