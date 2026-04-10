@@ -3587,6 +3587,12 @@ async function loadReceivables() {
   const overEl    = document.getElementById('receivablesOverdueAmt');
   if (!container) return;
 
+  _recvCurrentFilter = 'all';
+  _recvAllRows = [];
+  // Reset filter tabs
+  document.querySelectorAll('.recv-ftab').forEach(b => b.classList.remove('active'));
+  const allTab = document.getElementById('recvFiltAll');
+  if (allTab) allTab.classList.add('active');
   container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
   if (!sb || !currentUser) {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Aguardando conexão…</div>';
@@ -3640,14 +3646,33 @@ async function loadReceivables() {
     // ── Merge and sort by date ─────────────────────────────────────────────
     const rows = [...txRows, ...arRows].sort((a, b) => a.date.localeCompare(b.date));
     const today = new Date().toISOString().slice(0, 10);
+
+    // Load patrimonio flags for TX rows (which transactions are marked as patrimônio)
+    window._recvPatMap = window._recvPatMap || {};
+    if (txRows.length) {
+      try {
+        const txIds = txRows.map(r => r.id);
+        const { data: patData } = await sb.from('transactions')
+          .select('id,include_in_patrimonio')
+          .in('id', txIds);
+        (patData || []).forEach(r => {
+          window._recvPatMap[r.id] = !!r.include_in_patrimonio;
+        });
+      } catch(_) {}
+    }
     const total   = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const overdue = rows.filter(r => r.date < today).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
+    const onTime = total - overdue;
     if (countEl) countEl.textContent = rows.length;
     if (totalEl) totalEl.textContent = typeof fmt === 'function' ? fmt(total) : total.toFixed(2);
     if (overEl)  overEl.textContent  = typeof fmt === 'function' ? fmt(overdue) : overdue.toFixed(2);
-    const overWrap = document.getElementById('receivablesOverdueWrap');
-    if (overWrap) overWrap.style.display = overdue > 0 ? '' : 'none';
+    const overWrap   = document.getElementById('receivablesOverdueWrap');
+    const okKpi      = document.getElementById('receivablesKpiOk');
+    const onTimeAmtEl = document.getElementById('receivablesOnTimeAmt');
+    if (overWrap)    overWrap.style.display   = overdue > 0 ? '' : 'none';
+    if (onTimeAmtEl) onTimeAmtEl.textContent  = typeof fmt === 'function' ? fmt(onTime) : onTime.toFixed(2);
+    if (okKpi)       okKpi.style.display      = overdue > 0 ? '' : 'none'; // hide if no overdue
 
     if (!rows.length) {
       container.innerHTML =
@@ -3663,7 +3688,9 @@ async function loadReceivables() {
       return;
     }
 
-    container.innerHTML = _buildRecv(rows, today);
+    // Store rows globally so filter buttons can re-render without re-fetching
+    _recvAllRows = rows;
+    _recvRenderFiltered();
 
   } catch(e) {
     container.innerHTML =
@@ -3671,6 +3698,80 @@ async function loadReceivables() {
       (typeof esc === 'function' ? esc(e.message) : e.message) + '</div>';
   }
 }
+
+/* ── A Receber — filter and quick-add helpers ────────────────────────────── */
+let _recvCurrentFilter = 'all';
+let _recvAllRows = [];
+
+function _recvFilter(filter, btnEl) {
+  _recvCurrentFilter = filter;
+  // Update button states
+  document.querySelectorAll('.recv-ftab').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  // Re-render with filter
+  _recvRenderFiltered();
+}
+window._recvFilter = _recvFilter;
+
+function _recvRenderFiltered() {
+  const container = document.getElementById('receivablesBody');
+  if (!container) return;
+  const today = new Date().toISOString().slice(0, 10);
+
+  let rows = _recvAllRows;
+  switch(_recvCurrentFilter) {
+    case 'overdue':  rows = rows.filter(r => r.date < today); break;
+    case 'today':    rows = rows.filter(r => r.date === today); break;
+    case 'upcoming': rows = rows.filter(r => r.date > today); break;
+    case 'tx':       rows = rows.filter(r => r._src === 'tx'); break;
+    case 'ar':       rows = rows.filter(r => r._src === 'ar'); break;
+  }
+
+  if (!rows.length) {
+    const labels = { overdue:'em atraso', today:'para hoje', upcoming:'a vencer', tx:'de transações', ar:'de programados' };
+    const lbl = labels[_recvCurrentFilter] || '';
+    container.innerHTML =
+      '<div style="text-align:center;padding:48px 20px">' +
+      '<div style="font-size:3rem;margin-bottom:14px">' + (_recvCurrentFilter === 'all' ? '📭' : '🔍') + '</div>' +
+      '<div style="font-size:.95rem;font-weight:800;color:var(--text)">Nenhum valor' + (lbl ? ' ' + lbl : '') + '</div>' +
+      '<div style="font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.6">' +
+        (_recvCurrentFilter === 'all'
+          ? 'Use os botões acima para adicionar receitas pendentes, ou marque uma transação de receita como "Pendente".'
+          : 'Nenhum registro neste filtro.') +
+      '</div>' +
+      '<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+        '<button onclick="_recvAddManual()" style="font-family:var(--font-sans);font-size:.8rem;font-weight:700;padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer">✏️ Lançar manual</button>' +
+        '<button onclick="navigate(\'transactions\')" style="font-family:var(--font-sans);font-size:.8rem;font-weight:600;padding:9px 18px;background:var(--surface2);color:var(--text2);border:1.5px solid var(--border);border-radius:10px;cursor:pointer">Ver Transações</button>' +
+      '</div></div>';
+    return;
+  }
+
+  container.innerHTML = _buildRecv(rows, today);
+}
+
+async function _recvAddManual() {
+  // Open transaction modal pre-filled as income + pending
+  if (typeof openTransactionModal === 'function') {
+    openTransactionModal(null);
+    await new Promise(r => setTimeout(r, 150));
+    if (typeof setTxType === 'function') setTxType('income');
+    const statusEl = document.getElementById('txStatus');
+    if (statusEl) { statusEl.value = 'pending'; statusEl.dispatchEvent(new Event('change')); }
+    toast('💡 Preencha a receita — ela ficará como Pendente em A Receber', 'info');
+  } else {
+    navigate('transactions');
+  }
+}
+window._recvAddManual = _recvAddManual;
+
+function _recvAddFromTx() {
+  navigate('transactions');
+  setTimeout(() => {
+    toast('💡 Abra uma transação de receita e clique em 📬 para movê-la para A Receber', 'info');
+  }, 400);
+}
+window._recvAddFromTx = _recvAddFromTx;
+
 window.loadReceivables = loadReceivables;
 
 function _buildRecv(rows, today) {
@@ -3789,7 +3890,9 @@ function _buildRecv(rows, today) {
     const catColor = r.categories?.color || 'var(--accent)';
     const dl       = dLabel(r.date);
     const dc       = dColor(r.date);
-    const inPat    = !!(_recvPatMap && _recvPatMap[r.id]);
+    // _recvPatMap is loaded asynchronously; default to false if not ready
+    const _rMap = window._recvPatMap || {};
+    const inPat = !!_rMap[r.id];
 
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">' +
       '<div style="width:32px;height:32px;border-radius:8px;background:' + catColor + '18;border:1.5px solid ' + catColor + '40;' +

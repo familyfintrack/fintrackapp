@@ -58,19 +58,20 @@ function _drmAmtVal(el) {
 }
 
 async function isDreamsEnabled() {
-  const fid = famId();
+  const fid = typeof famId === 'function' ? famId() : null;
   if (!fid) return false;
 
   // 1. New system: family_preferences.module_dreams
-  // Always await getFamilyPreferences() to ensure _fpCache is populated
   if (typeof getFamilyPreferences === 'function') {
     try {
       await getFamilyPreferences(); // populates _fpCache
       if (typeof isModuleEnabled === 'function') {
-        const enabled = isModuleEnabled('dreams');
-        if (enabled) return true;
-        // If explicitly false in new system, trust it
-        // (but only if cache is populated — isModuleEnabled returns false when not loaded)
+        // Only trust an EXPLICIT false — if cache empty/not loaded, default to enabled
+        if (typeof _fpCache !== 'undefined' && _fpCache !== null) {
+          const enabled = isModuleEnabled('dreams');
+          // If explicitly disabled, honour it
+          if (_fpCache.modules && 'dreams' in _fpCache.modules) return !!enabled;
+        }
       }
     } catch(_) {}
   }
@@ -81,14 +82,17 @@ async function isDreamsEnabled() {
     return !!window._familyFeaturesCache[cacheKey];
 
   try {
-    const raw = await getAppSetting(cacheKey, false);
-    const enabled = raw === true || raw === 'true';
-    window._familyFeaturesCache = window._familyFeaturesCache || {};
-    window._familyFeaturesCache[cacheKey] = enabled;
-    return enabled;
-  } catch(_) {
-    return false;
-  }
+    const raw = await getAppSetting(cacheKey, null);
+    // Only trust explicit false — if not set at all, default to ENABLED
+    if (raw === false || raw === 'false') {
+      window._familyFeaturesCache = window._familyFeaturesCache || {};
+      window._familyFeaturesCache[cacheKey] = false;
+      return false;
+    }
+  } catch(_) {}
+
+  // Default: ENABLED (module should show unless explicitly turned off)
+  return true;
 }
 
 async function applyDreamsFeature() {
