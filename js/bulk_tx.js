@@ -1,4 +1,28 @@
 
+// ── BRL amount mask for bulk entry ──────────────────────────────────────────
+function _bulkAmtInput(input, rowId) {
+  const rawDigits = input.value.replace(/[^0-9]/g, '');
+  if (!rawDigits) { input.dataset.cents = '0'; input.value = ''; bulkTxSetField(rowId, 'amount', ''); return; }
+  const cents = parseInt(rawDigits.slice(-13) || '0', 10);
+  input.dataset.cents = String(cents);
+  const reais = Math.floor(cents / 100);
+  const centsOnly = cents % 100;
+  input.value = reais.toLocaleString('pt-BR') + ',' + String(centsOnly).padStart(2, '0');
+  try { input.setSelectionRange(input.value.length, input.value.length); } catch(_) {}
+  // Store numeric value in the row
+  bulkTxSetField(rowId, 'amount', String(cents / 100));
+}
+window._bulkAmtInput = _bulkAmtInput;
+
+// Format a numeric amount as BRL string for display in the bulk table
+function _bulkFmtAmt(amount) {
+  const v = parseFloat(String(amount).replace(',', '.')) || 0;
+  if (!v) return '';
+  const cents = Math.round(v * 100);
+  return Math.floor(cents/100).toLocaleString('pt-BR') + ',' + String(cents%100).padStart(2,'0');
+}
+
+
 // ════════════════════════════════════════════════════════════════════════════
 // BULK TRANSACTION ENTRY — lançamento em massa de transações
 // ════════════════════════════════════════════════════════════════════════════
@@ -62,9 +86,12 @@ function bulkTxSetField(id, field, value) {
   const row = _bulkTx.rows.find(r => r.id === id);
   if (!row) return;
   row[field] = value;
-  // Auto-strip minus sign from amount — type handles sign
+  // Amount is stored as a numeric string (from _bulkAmtInput)
   if (field === 'amount') {
-    row.amount = String(value).replace(/[^0-9,\.]/g,'');
+    // Accept both formatted "1.500,00" and plain "1500" or "15.00"
+    const raw = String(value).replace(/[^0-9,.]/g, '');
+    const num = parseFloat(raw.replace(/\./g,'').replace(',','.')) || 0;
+    row.amount = num > 0 ? String(num) : '';
   }
   _bulkUpdateTotals();
 }
@@ -131,9 +158,10 @@ function _bulkRenderRows() {
           onkeydown="if(event.key==='Tab'&&!event.shiftKey&&event.target.closest('tr')===document.querySelectorAll('.bulk-tx-row')[document.querySelectorAll('.bulk-tx-row').length-1]){event.preventDefault();bulkTxAddRow();}">
       </td>
       <td class="bulk-td-amt">
-        <input type="text" class="bulk-cell-input bulk-cell-amt" inputmode="decimal"
-          value="${row.amount}" placeholder="0,00"
-          oninput="bulkTxSetField(${row.id},'amount',this.value)">
+        <input type="text" class="bulk-cell-input bulk-cell-amt" inputmode="numeric"
+          value="${_bulkFmtAmt(row.amount)}" placeholder="0,00"
+          data-cents="${Math.round((parseFloat(row.amount)||0)*100)}"
+          oninput="_bulkAmtInput(this,${row.id})">
       </td>
       <td class="bulk-td-acct">
         <select class="bulk-cell-select" onchange="bulkTxSetField(${row.id},'account_id',this.value)">
@@ -219,19 +247,21 @@ async function executeBulkTxSave() {
     try {
       const amount = parseFloat(String(row.amount).replace(',','.'));
       const signedAmt = row.type === 'expense' ? -Math.abs(amount) : Math.abs(amount);
+      const _isTransfer   = row.type === 'transfer' || row.type === 'card_payment';
+      const _isCardPayment = row.type === 'card_payment';
       const txData = {
-        family_id:   fid,
-        account_id:  row.account_id,
-        category_id: row.category_id || null,
-        description: row.description || (row.type === 'income' ? 'Receita' : 'Despesa'),
-        amount:      signedAmt,
-        brl_amount:  typeof toBRL === 'function' ? toBRL(signedAmt, 'BRL') : signedAmt,
-        date:        row.date,
-        status:      row.status || 'confirmed',
-        type:        row.type,
-        is_transfer: row.type === 'transfer',
-        currency:    'BRL',
-        created_at:  new Date().toISOString(),
+        family_id:            fid,
+        account_id:           row.account_id,
+        category_id:          row.category_id || null,
+        description:          row.description || (_isTransfer ? 'Transferência' : row.type === 'income' ? 'Receita' : 'Despesa'),
+        amount:               signedAmt,
+        brl_amount:           typeof toBRL === 'function' ? toBRL(signedAmt, 'BRL') : signedAmt,
+        date:                 row.date,
+        status:               row.status || 'confirmed',
+        is_transfer:          _isTransfer,
+        is_card_payment:      _isCardPayment,
+        currency:             'BRL',
+        created_at:           new Date().toISOString(),
       };
       const { error } = await sb.from('transactions').insert(txData);
       if (error) throw error;

@@ -728,7 +728,9 @@ function renderForecastTables(allItems, accounts) {
 
       const runBalEmphasis = isSignChange ? ' forecast-run-bal--emphasis' : '';
       return `${crossDivider}${grpHdr}<tr class="${rowCls} forecast-tx-row" style="cursor:pointer" onclick="${clickAction}" title="${rowTitle}">
-        <td class="forecast-date-cell${isToday?' forecast-date-cell--today':''}"><div class="forecast-date-card forecast-date-card--compact"><div class="forecast-date-weekday">${dp.weekday}</div><div class="forecast-date-daynum">${dp.day}</div><div class="forecast-date-monthyear">${dp.monthYear}</div></div></td>
+        <td class="forecast-date-cell${isToday?' forecast-date-cell--today':''}">
+          <span class="forecast-date-simple">${dp.day} ${dp.monthYear.split(' · ')[0]}</span>
+        </td>
         <td class="forecast-desc-cell"><div class="forecast-line forecast-title">${_fcEsc(t.description||'')}${scBadge}${signChangeBadge}</div>${catLine}${paLine}</td>
         <td class="forecast-amount-cell ${amt>=0?'amount-pos':'amount-neg'}">
           <div class="forecast-amount-main">${amt>=0?'+':''}${_fcFmt(t.amount,a.currency)}</div>

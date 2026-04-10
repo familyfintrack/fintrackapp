@@ -24,9 +24,11 @@ const _grocery = {
 // INIT
 // ─────────────────────────────────────────────────────────────────────────
 async function initGroceryPage() {
-  const on = typeof isGroceryEnabled === 'function' && await isGroceryEnabled();
-  if (!on) {
-    toast('Lista de Mercado não está ativa. Ative em Administração → Famílias.', 'warning');
+  // Check via new unified module system OR legacy key
+  const newSysEnabled = typeof isModuleEnabled === 'function' && isModuleEnabled('grocery');
+  const legacyEnabled = typeof isGroceryEnabled === 'function' && await isGroceryEnabled();
+  if (!newSysEnabled && !legacyEnabled) {
+    toast('Lista de Mercado não está ativa. Ative em Gerenciar Família → Módulos.', 'warning');
     navigate('dashboard');
     return;
   }

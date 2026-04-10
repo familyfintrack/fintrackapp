@@ -2888,21 +2888,19 @@ window.ignoreOccurrence                    = ignoreOccurrence;
 
 const _SC_AR_KEY = 'sc_ar_records';
 
-async function _scArGetRecs() {
+function _scArGetRecs() {
   try {
     const fid = typeof famId === 'function' ? famId() : null;
     const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
-    const { data } = await sb.from('app_settings').select('value')
-      .eq('key', scopedKey).maybeSingle();
-    return JSON.parse(data?.value || '[]');
+    return JSON.parse(localStorage.getItem(scopedKey) || '[]');
   } catch(_) { return []; }
 }
-async function _scArSaveRecs(records) {
-  const fid = typeof famId === 'function' ? famId() : null;
-  const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
-  const val = JSON.stringify(records);
-  await sb.from('app_settings')
-    .upsert({ key: scopedKey, value: val }, { onConflict: 'key' });
+function _scArSaveRecs(records) {
+  try {
+    const fid = typeof famId === 'function' ? famId() : null;
+    const scopedKey = fid ? _SC_AR_KEY + '_' + fid : _SC_AR_KEY;
+    localStorage.setItem(scopedKey, JSON.stringify(records));
+  } catch(_) {}
 }
 
 // Called by "⏳ Não Recebido" button in registerOccModal
@@ -2919,7 +2917,7 @@ async function registerAsNotReceived() {
   const desc = sc?.description || 'Valor a receber';
 
   try {
-    const recs = await _scArGetRecs();
+    const recs = _scArGetRecs();
     recs.push({
       id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
       sc_id:       scId,
@@ -2930,7 +2928,7 @@ async function registerAsNotReceived() {
       status:      'pending',  // pending | received | cancelled
       created_at:  new Date().toISOString(),
     });
-    await _scArSaveRecs(recs);
+    _scArSaveRecs(recs);
     if (typeof closeModal==='function') closeModal('registerOccModal');
     if (typeof toast==='function') toast('⏳ Registrado em Valores a Receber','info');
     _scArLoad();
@@ -2947,7 +2945,7 @@ async function _scArLoad() {
   const cntEl   = document.getElementById('scArCount');
   if (!section || !list) return;
 
-  const recs = await _scArGetRecs();
+  const recs = _scArGetRecs();
   const pending = recs.filter(r => r.status === 'pending');
 
   // Show/hide section
@@ -2985,14 +2983,14 @@ window._scArLoad = _scArLoad;
 
 // Mark a pending A/R as received — opens the TX modal pre-filled
 async function _scArReceive(arId) {
-  const recs = await _scArGetRecs();
+  const recs = _scArGetRecs();
   const rec = recs.find(r=>r.id===arId);
   if (!rec) return;
 
   // Mark as received
   rec.status = 'received';
   rec.received_at = new Date().toISOString();
-  await _scArSaveRecs(recs);
+  _scArSaveRecs(recs);
 
   // Open TX modal pre-filled with this amount as income
   if (typeof openTransactionModal === 'function') {
@@ -3015,12 +3013,12 @@ window._scArReceive = _scArReceive;
 
 // Cancel / dismiss a pending A/R
 async function _scArCancel(arId) {
-  const recs = await _scArGetRecs();
+  const recs = _scArGetRecs();
   const idx = recs.findIndex(r=>r.id===arId);
   if (idx<0) return;
   recs[idx].status = 'cancelled';
   recs[idx].cancelled_at = new Date().toISOString();
-  await _scArSaveRecs(recs);
+  _scArSaveRecs(recs);
   _scArLoad();
   if (typeof toast==='function') toast('Registro removido de Valores a Receber','info');
 }

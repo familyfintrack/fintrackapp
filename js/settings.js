@@ -3403,7 +3403,7 @@ async function importDemoData(userId, familyId, progressCb) {
   log('Criando lista de supermercado…', 88);
   const grocery = data.groceries;
   await sb.from('grocery_lists').insert({ ...grocery.list, family_id:familyId, created_at:new Date().toISOString() });
-  await ins('grocery_items', grocery.items.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'grocery_items');
+  await ins('grocery_items', grocery.items.map(x=>({...x, list_id:grocery.list.id, family_id:familyId, created_at:new Date().toISOString()})), 'grocery_items');
 
   log('✅ Importação concluída!', 100);
   return { success: true, txCount, message: `Dados demo importados: ${txCount} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários.` };

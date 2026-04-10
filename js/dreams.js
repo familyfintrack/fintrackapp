@@ -21,6 +21,42 @@ const _drm = {
 };
 
 /* ── Feature flag ─────────────────────────────────────────────────── */
+
+// ── BRL amount mask for Dreams fields (mirrors _amtFieldInput in utils.js) ──
+function _drmAmtInput(el) {
+  if (!el) return;
+  const rawDigits = el.value.replace(/[^0-9]/g, '');
+  if (!rawDigits) { el.dataset.cents = '0'; el.value = ''; return; }
+  const cents = parseInt(rawDigits.slice(-13) || '0', 10);
+  el.dataset.cents = String(cents);
+  const reais = Math.floor(cents / 100);
+  const centsOnly = cents % 100;
+  el.value = reais.toLocaleString('pt-BR') + ',' + String(centsOnly).padStart(2, '0');
+  try { el.setSelectionRange(el.value.length, el.value.length); } catch(_) {}
+}
+function _drmAmtBlur(el) {
+  if (!el) return;
+  let cents = parseInt(el.dataset.cents || '0', 10);
+  if (!cents) {
+    const raw = el.value.replace(/\./g, '').replace(',', '.');
+    cents = Math.round(Math.abs(parseFloat(raw) || 0) * 100);
+    el.dataset.cents = String(cents);
+  }
+  if (!cents) { el.value = ''; return; }
+  const reais = Math.floor(cents / 100);
+  const centsOnly = cents % 100;
+  el.value = reais.toLocaleString('pt-BR') + ',' + String(centsOnly).padStart(2, '0');
+}
+// Read numeric value from a drm amount field (returns float in BRL)
+function _drmAmtVal(el) {
+  if (!el) return 0;
+  const cents = parseInt(el.dataset.cents || '0', 10);
+  if (cents) return cents / 100;
+  // Fallback: parse displayed value
+  const raw = (el.value || '').replace(/\./g, '').replace(',', '.');
+  return Math.abs(parseFloat(raw) || 0);
+}
+
 async function isDreamsEnabled() {
   const fid = famId();
   if (!fid) return false;
@@ -666,7 +702,7 @@ function openContributeModal(dreamId) {
         <p style="color:var(--muted);font-size:.82rem;margin-bottom:12px">Sonho: <strong>${_esc(d.title)}</strong></p>
         <div class="form-group">
           <label class="form-label">Valor</label>
-          <input type="number" id="contribAmount" class="form-input" placeholder="0,00" min="0.01" step="0.01">
+          <input type="text" inputmode="numeric" id="contribAmount" class="form-input" placeholder="0,00" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
         </div>
         <div class="form-group">
           <label class="form-label">Data</label>
@@ -689,7 +725,7 @@ function openContributeModal(dreamId) {
 window.openContributeModal = openContributeModal;
 
 async function saveContribution(dreamId) {
-  const amount = parseFloat(document.getElementById('contribAmount')?.value);
+  const amount = _drmAmtVal(document.getElementById('contribAmount'));
   const date   = document.getElementById('contribDate')?.value;
   if (!amount || amount <= 0) { toast('Informe um valor válido', 'warning'); return; }
   if (!date) { toast('Informe a data', 'warning'); return; }
@@ -1067,7 +1103,7 @@ function _wizStep2() {
       <div class="drm-form-row">
         <div class="form-group">
           <label class="form-label">Valor total estimado *</label>
-          <input type="number" id="wizAmount" class="form-input" placeholder="0,00" min="1" step="0.01" value="${d.target_amount||''}">
+          <input type="text" inputmode="numeric" id="wizAmount" class="form-input" placeholder="0,00" value="${d.target_amount||''}" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
         </div>
         <div class="form-group">
           <label class="form-label">Prazo</label>
@@ -1128,7 +1164,7 @@ function _wizFieldsAutomovel(d) {
     <div class="drm-form-row">
       <div class="form-group">
         <label class="form-label">Entrada</label>
-        <input type="number" id="wizEntrada" class="form-input" placeholder="0,00" value="${meta.entrada||''}">
+        <input type="text" inputmode="numeric" id="wizEntrada" class="form-input" placeholder="0,00" value="${meta.entrada||''}" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
       </div>
       <div class="form-group">
         <label class="form-label">Taxa juros % a.m.</label>
@@ -1172,7 +1208,7 @@ function _wizFieldsImovel(d) {
       </div>
       <div class="form-group">
         <label class="form-label">FGTS (opcional)</label>
-        <input type="number" id="wizFgts" class="form-input" placeholder="0,00" value="${meta.fgts||''}">
+        <input type="text" inputmode="numeric" id="wizFgts" class="form-input" placeholder="0,00" value="${meta.fgts||''}" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
       </div>
     </div>
     <div class="form-group">
@@ -1231,8 +1267,8 @@ function _renderWizItem(it, i) {
     ${it.is_ai_suggested ? '<span class="drm-ai-badge" title="Sugerido por IA">✨</span>' : ''}
     <input type="text" class="form-input drm-wiz-item-name" value="${_esc(it.name||'')}"
       oninput="_updateWizItem(${i},'name',this.value)">
-    <input type="number" class="form-input drm-wiz-item-amt" value="${it.estimated_amount||''}" step="0.01" min="0"
-      oninput="_updateWizItem(${i},'estimated_amount',this.value);_refreshItemsTotal()">
+    <input type="text" inputmode="numeric" class="form-input drm-wiz-item-amt" value="${it.estimated_amount||''}"
+      oninput="_drmAmtInput(this);_updateWizItem(${i},'estimated_amount',_drmAmtVal(this));_refreshItemsTotal()" onblur="_drmAmtBlur(this)">
     <button class="drm-item-del" onclick="_removeWizItem(${i})" title="Remover">✕</button>
   </div>`;
 }
@@ -1308,17 +1344,17 @@ async function wizardAiSuggestItems() {
     extra.medico        = document.getElementById('wizMedico')?.value || '';
     extra.clinica       = document.getElementById('wizClinica')?.value || '';
     extra.protese       = document.getElementById('wizProtese')?.value || '';
-    extra.custo_anestesia = parseFloat(document.getElementById('wizCustoAnestesia')?.value) || 0;
-    extra.custo_hospital  = parseFloat(document.getElementById('wizCustoHospital')?.value) || 0;
-    extra.custo_exames    = parseFloat(document.getElementById('wizCustoExames')?.value) || 0;
+    extra.custo_anestesia = _drmAmtVal(document.getElementById('wizCustoAnestesia')) || 0;
+    extra.custo_hospital  = _drmAmtVal(document.getElementById('wizCustoHospital')) || 0;
+    extra.custo_exames    = _drmAmtVal(document.getElementById('wizCustoExames')) || 0;
   } else if (type === 'estudos') {
     extra.tipo_estudo   = document.getElementById('wizTipoEstudo')?.value || '';
     extra.instituicao   = document.getElementById('wizInstituicao')?.value || '';
     extra.pais          = document.getElementById('wizPaisEstudo')?.value || '';
     extra.duracao_meses = parseInt(document.getElementById('wizDuracaoEstudo')?.value) || 0;
-    extra.custo_mensalidade = parseFloat(document.getElementById('wizCustoMensalidade')?.value) || 0;
-    extra.custo_moradia = parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0;
-    extra.custo_passagem = parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0;
+    extra.custo_mensalidade = _drmAmtVal(document.getElementById('wizCustoMensalidade')) || 0;
+    extra.custo_moradia = _drmAmtVal(document.getElementById('wizCustoMoradia')) || 0;
+    extra.custo_passagem = _drmAmtVal(document.getElementById('wizCustoPassagem')) || 0;
     extra.moeda         = document.getElementById('wizMoedaEstudo')?.value || 'BRL';
   } else if (type === 'outro') {
     extra.categoria = document.getElementById('wizOutroCategoria')?.value || '';
@@ -1378,7 +1414,7 @@ window.wizardAiSuggestItems = wizardAiSuggestItems;
 function _wizStep4() {
   const w = _drm.wizard;
   const title    = document.getElementById('wizTitle')?.value || w.data?.title || '—';
-  const amount   = parseFloat(document.getElementById('wizAmount')?.value || w.data?.target_amount || 0);
+  const amount   = (_drmAmtVal(document.getElementById('wizAmount')) || parseFloat(w.data?.target_amount) || 0);
   const date     = document.getElementById('wizDate')?.value || w.data?.target_date || '';
   const priority = parseInt(document.getElementById('wizPriority')?.value || w.data?.priority || 1);
   const items    = w.items || [];
@@ -1493,10 +1529,10 @@ function wizardNext() {
         medico:          document.getElementById('wizMedico')?.value || '',
         clinica:         document.getElementById('wizClinica')?.value || '',
         protese:         document.getElementById('wizProtese')?.value || '',
-        custo_medico:    parseFloat(document.getElementById('wizCustoMedico')?.value) || 0,
-        custo_anestesia: parseFloat(document.getElementById('wizCustoAnestesia')?.value) || 0,
-        custo_hospital:  parseFloat(document.getElementById('wizCustoHospital')?.value) || 0,
-        custo_exames:    parseFloat(document.getElementById('wizCustoExames')?.value) || 0,
+        custo_medico:    _drmAmtVal(document.getElementById('wizCustoMedico')) || 0,
+        custo_anestesia: _drmAmtVal(document.getElementById('wizCustoAnestesia')) || 0,
+        custo_hospital:  _drmAmtVal(document.getElementById('wizCustoHospital')) || 0,
+        custo_exames:    _drmAmtVal(document.getElementById('wizCustoExames')) || 0,
       };
     } else if (w.type === 'estudos') {
       w.data.ai_generated_fields_json = {
@@ -1504,9 +1540,9 @@ function wizardNext() {
         instituicao:      document.getElementById('wizInstituicao')?.value || '',
         pais:             document.getElementById('wizPaisEstudo')?.value || '',
         duracao_meses:    parseInt(document.getElementById('wizDuracaoEstudo')?.value) || 0,
-        custo_mensalidade: parseFloat(document.getElementById('wizCustoMensalidade')?.value) || 0,
-        custo_moradia:    parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0,
-        custo_passagem:   parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0,
+        custo_mensalidade: _drmAmtVal(document.getElementById('wizCustoMensalidade')) || 0,
+        custo_moradia:    _drmAmtVal(document.getElementById('wizCustoMoradia')) || 0,
+        custo_passagem:   _drmAmtVal(document.getElementById('wizCustoPassagem')) || 0,
         moeda:            document.getElementById('wizMoedaEstudo')?.value || 'BRL',
       };
     } else if (w.type === 'outro') {
@@ -1582,21 +1618,21 @@ function _wizFieldsCirurgia(d) {
   <div class="drm-form-row">
     <div class="form-group">
       <label class="form-label">Honorários do médico (R$)</label>
-      <input type="number" id="wizCustoMedico" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_medico||''}" oninput="_wizSomaCirurgia()">
+      <input type="text" inputmode="numeric" id="wizCustoMedico" class="form-input" placeholder="0,00" value="${meta.custo_medico||''}" oninput="_wizSomaCirurgia()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
     <div class="form-group">
       <label class="form-label">Anestesia (R$)</label>
-      <input type="number" id="wizCustoAnestesia" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_anestesia||''}" oninput="_wizSomaCirurgia()">
+      <input type="text" inputmode="numeric" id="wizCustoAnestesia" class="form-input" placeholder="0,00" value="${meta.custo_anestesia||''}" oninput="_wizSomaCirurgia()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
   </div>
   <div class="drm-form-row">
     <div class="form-group">
       <label class="form-label">Hospital / Clínica (R$)</label>
-      <input type="number" id="wizCustoHospital" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_hospital||''}" oninput="_wizSomaCirurgia()">
+      <input type="text" inputmode="numeric" id="wizCustoHospital" class="form-input" placeholder="0,00" value="${meta.custo_hospital||''}" oninput="_wizSomaCirurgia()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
     <div class="form-group">
       <label class="form-label">Exames pré-op (R$)</label>
-      <input type="number" id="wizCustoExames" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_exames||''}" oninput="_wizSomaCirurgia()">
+      <input type="text" inputmode="numeric" id="wizCustoExames" class="form-input" placeholder="0,00" value="${meta.custo_exames||''}" oninput="_wizSomaCirurgia()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
   </div>
   <div style="margin-top:6px;padding:8px 12px;background:var(--accent-lt);border-radius:8px;font-size:.8rem;color:var(--accent);font-weight:600" id="wizCirurgiaTotal" style="display:none"></div>`;
@@ -1664,18 +1700,18 @@ function _wizFieldsEstudos(d) {
     </div>
     <div class="form-group">
       <label class="form-label">Mensalidade</label>
-      <input type="number" id="wizCustoMensalidade" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_mensalidade||''}" oninput="_wizSomaEstudos()">
+      <input type="text" inputmode="numeric" id="wizCustoMensalidade" class="form-input" placeholder="0,00" value="${meta.custo_mensalidade||''}" oninput="_wizSomaEstudos()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
   </div>
   <div class="drm-wiz-section-title" style="margin-top:10px">✈️ Custos Adicionais</div>
   <div class="drm-form-row">
     <div class="form-group">
       <label class="form-label">Moradia (por mês)</label>
-      <input type="number" id="wizCustoMoradia" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_moradia||''}" oninput="_wizSomaEstudos()">
+      <input type="text" inputmode="numeric" id="wizCustoMoradia" class="form-input" placeholder="0,00" value="${meta.custo_moradia||''}" oninput="_wizSomaEstudos()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
     <div class="form-group">
       <label class="form-label">Passagem (total)</label>
-      <input type="number" id="wizCustoPassagem" class="form-input" placeholder="0,00" min="0" step="0.01" value="${meta.custo_passagem||''}" oninput="_wizSomaEstudos()">
+      <input type="text" inputmode="numeric" id="wizCustoPassagem" class="form-input" placeholder="0,00" value="${meta.custo_passagem||''}" oninput="_wizSomaEstudos()" oninput="_drmAmtInput(this)" onblur="_drmAmtBlur(this)">
     </div>
   </div>
   <div style="margin-top:6px;padding:8px 12px;background:var(--accent-lt);border-radius:8px;font-size:.8rem;color:var(--accent);font-weight:600" id="wizEstudosTotal"></div>`;
@@ -1683,9 +1719,9 @@ function _wizFieldsEstudos(d) {
 
 function _wizSomaEstudos() {
   const meses       = parseInt(document.getElementById('wizDuracaoEstudo')?.value) || 1;
-  const mensalidade = parseFloat(document.getElementById('wizCustoMensalidade')?.value) || 0;
-  const moradia     = parseFloat(document.getElementById('wizCustoMoradia')?.value) || 0;
-  const passagem    = parseFloat(document.getElementById('wizCustoPassagem')?.value) || 0;
+  const mensalidade = _drmAmtVal(document.getElementById('wizCustoMensalidade')) || 0;
+  const moradia     = _drmAmtVal(document.getElementById('wizCustoMoradia')) || 0;
+  const passagem    = _drmAmtVal(document.getElementById('wizCustoPassagem')) || 0;
   const total = (mensalidade + moradia) * meses + passagem;
   const el = document.getElementById('wizEstudosTotal');
   if (el) {

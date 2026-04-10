@@ -5900,14 +5900,39 @@ function _canManageFamily(famId) {
 }
 
 async function _mfmToggleFeature(key, famId, label, applyFn) {
-  // Nota de segurança: o acesso já foi validado em openMyFamilyMgmt().
-  // Não repetimos o check aqui para evitar falsos negativos por dessincronia
-  // entre currentUser (carregado no login) e o estado real da família.
-
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
-  const nowOn = !window._familyFeaturesCache[key];
+  const isCurrentlyOn = !!window._familyFeaturesCache[key];
+  const nowOn = !isCurrentlyOn;
 
-  // ── Atualização síncrona de todos os caches antes de qualquer await ──────
+  // ── Confirmação obrigatória ao DESATIVAR um módulo ───────────────────────
+  if (!nowOn) {
+    const confirmed = await new Promise(res => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+      overlay.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div style="font-size:1.4rem;text-align:center;margin-bottom:10px">⚙️</div>
+        <div style="font-weight:700;font-size:.95rem;color:var(--text);text-align:center;margin-bottom:8px">Desativar módulo <strong>${label}</strong>?</div>
+        <div style="font-size:.82rem;color:var(--muted);text-align:center;line-height:1.55;margin-bottom:20px">
+          O módulo ficará oculto para todos os membros da família.<br>
+          Os dados existentes <strong>não serão apagados</strong>.
+        </div>
+        <div style="display:flex;gap:10px">
+          <button id="_modCancelBtn" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">
+            ✕ Cancelar
+          </button>
+          <button id="_modConfirmBtn" style="flex:1;padding:10px;border-radius:9px;border:none;background:#dc2626;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">
+            Desativar
+          </button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#_modCancelBtn').onclick  = () => { overlay.remove(); res(false); };
+      overlay.querySelector('#_modConfirmBtn').onclick = () => { overlay.remove(); res(true);  };
+    });
+    if (!confirmed) return; // user cancelled — do NOT touch any cache or DB
+  }
+
+  // ── Atualização de caches e UI apenas após confirmação ───────────────────
   window._familyFeaturesCache[key] = nowOn;
   if (window._appSettingsCache) window._appSettingsCache[key] = nowOn;
   try { localStorage.setItem(key, String(nowOn)); } catch(_) {}
@@ -5916,7 +5941,7 @@ async function _mfmToggleFeature(key, famId, label, applyFn) {
   if (applyFn && typeof window[applyFn] === 'function') {
     window[applyFn]().catch(() => {});
   }
-  toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, 'success');
+  toast(nowOn ? `✓ ${label} ativado` : `${label} desativado`, nowOn ? 'success' : 'info');
   _mfmRenderFeatures(famId);
 
   // ── Persistência best-effort — 3 caminhos em cascata ────────────────────
@@ -5928,7 +5953,7 @@ async function _mfmToggleFeature(key, famId, label, applyFn) {
       try { await updateFamilyPreferences({ modules: { [modKey]: nowOn } }); return; } catch(_) {}
     }
 
-    // 2. families.settings JSONB (owner sempre pode escrever na própria família)
+    // 2. families.settings JSONB
     if (famId && window.sb) {
       try {
         const { data: fRow } = await sb.from('families')
@@ -5940,7 +5965,7 @@ async function _mfmToggleFeature(key, famId, label, applyFn) {
       } catch(_) {}
     }
 
-    // 3. app_settings legado (pode falhar por RLS para owner — localStorage já garantiu)
+    // 3. app_settings legado
     if (typeof saveAppSetting === 'function') {
       saveAppSetting(key, nowOn).catch(() => {});
     }
