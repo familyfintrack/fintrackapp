@@ -2783,71 +2783,62 @@ async function _openPatrimonioModal() {
   #patrimonioModalBody .pat-tab-pane.active { display:block }
 </style>
 
-<!-- ── HERO ──────────────────────────────────────────────────────────── -->
-<div style="background:linear-gradient(150deg,#0a2e1e 0%,#0f4a31 45%,#1a6644 100%);
-  padding:24px 20px 20px;position:relative;overflow:hidden">
-  <!-- Noise texture overlay -->
-  <div style="position:absolute;inset:0;opacity:.04;background:url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"></div>
-  <!-- Decorative circles -->
-  <div style="position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;border:1px solid rgba(255,255,255,.06)"></div>
-  <div style="position:absolute;right:10px;top:10px;width:90px;height:90px;border-radius:50%;border:1px solid rgba(255,255,255,.04)"></div>
-
-  <div style="position:relative;display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+<!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+<div style="padding:18px 18px 0;border-bottom:1px solid var(--border)">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
     <div>
-      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
-        color:rgba(255,255,255,.45);margin-bottom:6px">🔍 Patrimônio 360° · Família</div>
-      <div style="font-size:2.1rem;font-weight:900;font-family:var(--font-serif);
-        color:#fff;line-height:1;letter-spacing:-.02em">${dashFmt(totalLiquido,'BRL')}</div>
-      <div style="font-size:.7rem;color:rgba(255,255,255,.45);margin-top:5px">
+      <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+        color:var(--muted);margin-bottom:5px">🔍 Patrimônio 360° · Família</div>
+      <div style="font-size:1.9rem;font-weight:900;font-family:var(--font-serif);
+        color:${totalLiquido>=0?'var(--accent)':'#ef4444'};line-height:1;letter-spacing:-.02em">
+        ${dashFmt(totalLiquido,'BRL')}
+      </div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:4px">
         Patrimônio líquido · ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Score badge -->
-      <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
-        border-radius:12px;padding:7px 12px;backdrop-filter:blur(4px);text-align:center">
+      <div style="background:var(--surface2);border:1.5px solid var(--border);
+        border-radius:12px;padding:7px 12px;text-align:center">
         <div style="font-size:1.1rem;font-weight:900;color:${healthLabel[1]}">${healthScore}</div>
-        <div style="font-size:.58rem;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em">${healthLabel[0]}</div>
+        <div style="font-size:.58rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">${healthLabel[0]}</div>
       </div>
       <button onclick="closeModal('patrimonioModal')"
-        style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-          border-radius:50%;width:34px;height:34px;cursor:pointer;color:rgba(255,255,255,.7);
+        style="background:var(--surface2);border:1px solid var(--border);
+          border-radius:50%;width:34px;height:34px;cursor:pointer;color:var(--text2);
           font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
     </div>
   </div>
 
-  <!-- KPI chips -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
-    <div style="background:rgba(255,255,255,.09);border-radius:11px;padding:10px 11px;backdrop-filter:blur(4px)">
-      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:4px">Ativos</div>
-      <div style="font-size:.88rem;font-weight:800;color:#7ef5a8;font-family:var(--font-serif)">${dashFmt(accountTotal,'BRL')}</div>
+  <!-- KPI row -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+    <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:10px;padding:9px 11px">
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Ativos</div>
+      <div style="font-size:.85rem;font-weight:800;color:#10b981;font-family:var(--font-serif)">${dashFmt(accountTotal,'BRL')}</div>
     </div>
-    <div style="background:rgba(255,255,255,.09);border-radius:11px;padding:10px 11px;backdrop-filter:blur(4px)">
-      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:4px">Passivos</div>
-      <div style="font-size:.88rem;font-weight:800;color:${totalPassivos>0?'#fca5a5':'rgba(255,255,255,.5)'};font-family:var(--font-serif)">
-        ${totalPassivos > 0 ? '−'+dashFmt(totalPassivos,'BRL') : 'Nenhum'}
+    <div style="background:${totalPassivos>0?'rgba(239,68,68,.06)':'rgba(16,185,129,.04)'};border:1px solid ${totalPassivos>0?'rgba(239,68,68,.15)':'var(--border)'};border-radius:10px;padding:9px 11px">
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Passivos</div>
+      <div style="font-size:.85rem;font-weight:800;color:${totalPassivos>0?'#ef4444':'var(--muted)'};font-family:var(--font-serif)">
+        ${totalPassivos > 0 ? '−'+dashFmt(totalPassivos,'BRL') : '—'}
       </div>
     </div>
-    <div style="background:rgba(255,255,255,.09);border-radius:11px;padding:10px 11px;backdrop-filter:blur(4px)">
-      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:4px">Endividamento</div>
-      <div style="font-size:.88rem;font-weight:800;font-family:var(--font-serif);
-        color:${endividamento>0.4?'#fca5a5':endividamento>0.2?'#fde68a':'rgba(255,255,255,.7)'}">${(endividamento*100).toFixed(1)}%</div>
+    <div style="background:${endividamento>0.4?'rgba(239,68,68,.06)':endividamento>0.2?'rgba(245,158,11,.06)':'rgba(16,185,129,.04)'};border:1px solid ${endividamento>0.4?'rgba(239,68,68,.15)':endividamento>0.2?'rgba(245,158,11,.15)':'var(--border)'};border-radius:10px;padding:9px 11px">
+      <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:3px">Endividamento</div>
+      <div style="font-size:.85rem;font-weight:800;font-family:var(--font-serif);
+        color:${endividamento>0.4?'#ef4444':endividamento>0.2?'#f59e0b':'#10b981'}">${(endividamento*100).toFixed(1)}%</div>
     </div>
   </div>
 
   <!-- Barra ativos vs passivos -->
-  <div style="height:5px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.1);display:flex;gap:1px">
-    <div style="flex:${Math.max(accountTotal,0.01)};background:rgba(100,220,140,.9);min-width:${totalPassivos?'3px':'0'}"></div>
-    ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:rgba(239,68,68,.8)"></div>` : ''}
-  </div>
-  <div style="display:flex;justify-content:space-between;margin-top:5px">
-    <span style="font-size:.6rem;color:rgba(255,255,255,.35)">▪ Ativos: ${_pctStr(accountTotal,accountTotal+totalPassivos)}%</span>
-    ${totalPassivos>0?`<span style="font-size:.6rem;color:rgba(239,68,68,.5)">▪ Passivos: ${_pctStr(totalPassivos,accountTotal+totalPassivos)}%</span>`:''}
+  <div style="height:4px;border-radius:4px;overflow:hidden;background:var(--border);display:flex;gap:1px;margin-bottom:14px">
+    <div style="flex:${Math.max(accountTotal,0.01)};background:#10b981;min-width:${totalPassivos?'4px':'0'}"></div>
+    ${totalPassivos > 0 ? `<div style="flex:${totalPassivos};background:#ef4444"></div>` : ''}
   </div>
 </div>
 
 <!-- ── TABS ───────────────────────────────────────────────────────────── -->
-<div style="display:flex;gap:4px;padding:12px 16px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+<div style="display:flex;gap:4px;padding:10px 16px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;
   scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--surface)">
   ${['Visão Geral','Ativos','Passivos','Composição'].map((t,i) =>
     `<button class="pat-tab${i===0?' active':''}" onclick="
