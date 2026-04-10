@@ -12,8 +12,15 @@ function generateDemoData() {
   const M   = NOW.getMonth(); // 0-based
 
   /* ── Helpers ──────────────────────────────────────────────────────────── */
-  let _uid = 1;
-  function uid() { return 'demo-' + String(++_uid).padStart(6,'0'); }
+  // Generate proper UUID v4 for Supabase compatibility
+  function uid() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    // Fallback: RFC4122 compliant UUID
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
   function d(year, month1, day) { return `${year}-${String(month1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; }
   function ago(days) {
     const dt = new Date(NOW); dt.setDate(dt.getDate() - days); return dt.toISOString().slice(0,10);

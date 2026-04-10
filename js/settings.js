@@ -3288,125 +3288,169 @@ window._applyNotifChannelVisibility        = _applyNotifChannelVisibility;
 async function importDemoData(userId, familyId, progressCb) {
   if (!userId || !familyId) throw new Error('Usuário e família são obrigatórios.');
   const log = (msg, pct) => { console.log(`[DemoImport] ${msg}`); if (progressCb) progressCb(msg, pct); };
+  const errors = [];
 
-  // Generate the demo data
-  if (typeof generateDemoData !== 'function') throw new Error('Gerador de dados não disponível. Verifique demo_data_generator.js.');
+  if (typeof generateDemoData !== 'function') throw new Error('Gerador não disponível. Verifique demo_data_generator.js.');
   const data = generateDemoData();
-  log(`Dados gerados: ${data._meta.txCount} transações`, 5);
+  log(`Dados gerados: ${data._meta.txCount} transações, ${data._meta.catCount} categorias`, 3);
 
-  // Helper to insert with error handling
-  async function ins(table, rows, label) {
-    if (!rows || !rows.length) return;
-    // Add family_id and created_at to all rows
+  // ── Helper: insert in batches, log all errors ──────────────────────────
+  async function ins(table, rows, label, batchSize = 50) {
+    if (!rows || !rows.length) { log(`${label}: 0 (skipped)`, null); return 0; }
     const enriched = rows.map(r => ({
       ...r,
-      family_id: familyId,
+      family_id:  familyId,
       created_at: r.created_at || new Date().toISOString(),
     }));
-    // Insert in batches of 50
-    for (let i = 0; i < enriched.length; i += 50) {
-      const batch = enriched.slice(i, i+50);
+    let ok = 0;
+    for (let i = 0; i < enriched.length; i += batchSize) {
+      const batch = enriched.slice(i, i + batchSize);
       const { error } = await sb.from(table).insert(batch);
       if (error) {
-        console.warn(`[DemoImport] ${table} batch error:`, error.message);
-        // Continue on duplicate/conflict errors
+        const msg = `${table} batch ${Math.floor(i/batchSize)+1}: ${error.message}`;
+        console.error('[DemoImport]', msg, error);
+        errors.push(msg);
+      } else {
+        ok += batch.length;
       }
     }
-    log(`${label}: ${rows.length} registros`, null);
+    log(`${label}: ${ok}/${rows.length} inseridos`, null);
+    return ok;
   }
 
-  // ── 1. Account Groups ─────────────────────────────────────────────────────
-  log('Criando grupos de contas…', 10);
-  await ins('account_groups', data.accountGroups, 'account_groups');
+  // ── 1. Account Groups ─────────────────────────────────────────────────
+  log('Criando grupos de contas…', 8);
+  await ins('account_groups', data.accountGroups, 'Grupos de contas');
 
-  // ── 2. Accounts ──────────────────────────────────────────────────────────
-  log('Criando contas…', 15);
+  // ── 2. Accounts — needs auth_uid for RLS ─────────────────────────────
+  log('Criando contas…', 14);
   await ins('accounts', data.accounts.map(a => ({
-    ...a, active: true, is_archived: false
-  })), 'accounts');
+    ...a,
+    active:      true,
+    is_archived: false,
+    auth_uid:    userId,     // required by RLS
+  })), 'Contas');
 
-  // ── 3. Categories ─────────────────────────────────────────────────────────
+  // ── 3. Categories — parents first ────────────────────────────────────
   log('Criando categorias…', 20);
-  // Insert parents first, then children
-  const parents = data.categories.filter(c => !c.parent_id);
-  const children = data.categories.filter(c => c.parent_id);
-  await ins('categories', parents, 'categories (pais)');
-  await ins('categories', children, 'categories (filhas)');
+  const parents  = data.categories.filter(c => !c.parent_id);
+  const children = data.categories.filter(c =>  c.parent_id);
+  await ins('categories', parents,  'Categorias (pais)');
+  await ins('categories', children, 'Categorias (filhas)');
 
-  // ── 4. Payees ─────────────────────────────────────────────────────────────
-  log('Criando beneficiários…', 25);
-  await ins('payees', data.payees, 'payees');
+  // ── 4. Payees ─────────────────────────────────────────────────────────
+  log('Criando beneficiários…', 27);
+  await ins('payees', data.payees, 'Beneficiários');
 
-  // ── 5. Family Members ─────────────────────────────────────────────────────
-  log('Criando membros da família…', 30);
+  // ── 5. Family Members ─────────────────────────────────────────────────
+  log('Criando membros da família…', 32);
   for (const m of data.familyMembers) {
-    await sb.from('family_members').insert({
-      family_id: familyId,
-      user_id:   userId,
-      name:      m.name,
-      role:      m.role,
-      color:     m.color,
-      icon:      m.icon,
-      created_at:new Date().toISOString(),
-    }).then(({error}) => { if(error) console.warn('family_member:', error.message); });
+    const { error } = await sb.from('family_members').insert({
+      family_id:  familyId,
+      user_id:    userId,
+      name:       m.name,
+      role:       m.role || 'viewer',
+      color:      m.color,
+      icon:       m.icon,
+      created_at: new Date().toISOString(),
+    });
+    if (error) {
+      console.warn('[DemoImport] family_member:', error.message);
+      errors.push(`family_member ${m.name}: ${error.message}`);
+    }
   }
 
-  // ── 6. Transactions ───────────────────────────────────────────────────────
-  log('Importando transações…', 35);
+  // ── 6. Transactions ───────────────────────────────────────────────────
+  log('Importando transações…', 37);
   const txCount = data.transactions.length;
+  let txOk = 0;
   for (let i = 0; i < data.transactions.length; i += 100) {
-    const batch = data.transactions.slice(i, i+100).map(t => ({
-      ...t, family_id: familyId, created_at: new Date().toISOString()
-    }));
+    const batch = data.transactions.slice(i, i + 100).map(t => {
+      // Ensure no stray 'type' column — table uses is_transfer / is_card_payment
+      const { type: _type, ...rest } = t;
+      return {
+        ...rest,
+        family_id:   familyId,
+        created_at:  new Date().toISOString(),
+        updated_at:  new Date().toISOString(),
+        brl_amount:  t.brl_amount ?? (typeof toBRL === 'function' ? toBRL(t.amount, t.currency || 'BRL') : t.amount),
+      };
+    });
     const { error } = await sb.from('transactions').insert(batch);
-    if (error) console.warn('[DemoImport] tx batch:', error.message);
-    const pct = 35 + Math.round((i/txCount) * 30);
+    if (error) {
+      const msg = `transactions batch ${Math.floor(i/100)+1}: ${error.message}`;
+      console.error('[DemoImport]', msg, error);
+      errors.push(msg);
+    } else {
+      txOk += batch.length;
+    }
+    const pct = 37 + Math.round((Math.min(i + 100, txCount) / txCount) * 32);
     log(`Transações: ${Math.min(i+100,txCount)}/${txCount}…`, pct);
   }
+  log(`Transações: ${txOk}/${txCount} inseridas`, 69);
 
-  // ── 7. Scheduled Transactions ─────────────────────────────────────────────
-  log('Criando transações programadas…', 66);
-  for (const sc of data.scheduled) {
-    await sb.from('scheduled_transactions').insert({
-      ...sc, family_id: familyId, created_at: new Date().toISOString(),
-      frequency: sc.frequency || 'monthly',
-      status:    sc.status || 'active',
-    }).then(({error}) => { if(error) console.warn('scheduled:', error.message); });
-  }
+  // ── 7. Scheduled Transactions ─────────────────────────────────────────
+  log('Criando programados…', 71);
+  await ins('scheduled_transactions', data.scheduled.map(sc => ({
+    ...sc,
+    family_id:  familyId,
+    frequency:  sc.frequency || 'monthly',
+    status:     sc.status    || 'active',
+    created_at: new Date().toISOString(),
+  })), 'Programados', 20);
 
-  // ── 8. Budgets ────────────────────────────────────────────────────────────
-  log('Criando orçamentos…', 70);
-  await ins('budgets', data.budgets, 'budgets');
+  // ── 8. Budgets ────────────────────────────────────────────────────────
+  log('Criando orçamentos…', 74);
+  await ins('budgets', data.budgets, 'Orçamentos');
 
-  // ── 9. Debts ──────────────────────────────────────────────────────────────
-  log('Criando dívidas…', 74);
+  // ── 9. Debts ──────────────────────────────────────────────────────────
+  log('Criando dívidas…', 77);
   await ins('debts', data.debts.map(d => ({
     ...d,
     creditor_payee_id: null,
-    family_id: familyId,
-    created_at: new Date().toISOString(),
-  })), 'debts');
+    family_id:         familyId,
+    created_at:        new Date().toISOString(),
+  })), 'Dívidas');
 
-  // ── 10. Dreams ────────────────────────────────────────────────────────────
-  log('Criando objetivos…', 78);
+  // ── 10. Dreams ────────────────────────────────────────────────────────
+  log('Criando objetivos…', 80);
   await ins('dreams', data.dreams.map(dr => ({
-    ...dr, family_id: familyId, created_by: userId, created_at: new Date().toISOString()
-  })), 'dreams');
+    ...dr,
+    family_id:  familyId,
+    created_by: userId,
+    created_at: new Date().toISOString(),
+  })), 'Sonhos');
 
-  // ── 11. Price Items & Stores ──────────────────────────────────────────────
-  log('Criando rastreamento de preços…', 82);
-  await ins('price_items',   data.priceItems.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'price_items');
-  await ins('price_stores',  data.priceStores.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'price_stores');
-  await ins('price_history', data.priceHistory.map(x=>({...x, family_id:familyId, created_at:new Date().toISOString()})), 'price_history');
+  // ── 11. Prices ────────────────────────────────────────────────────────
+  log('Criando preços…', 83);
+  await ins('price_items',   data.priceItems.map(x  => ({...x,  family_id: familyId, created_at: new Date().toISOString()})), 'Preços');
+  await ins('price_stores',  data.priceStores.map(x => ({...x,  family_id: familyId, created_at: new Date().toISOString()})), 'Lojas');
+  await ins('price_history', data.priceHistory.map(x => ({...x, family_id: familyId, created_at: new Date().toISOString()})), 'Histórico preços');
 
-  // ── 12. Grocery List ──────────────────────────────────────────────────────
-  log('Criando lista de supermercado…', 88);
+  // ── 12. Grocery ───────────────────────────────────────────────────────
+  log('Criando lista de mercado…', 88);
   const grocery = data.groceries;
-  await sb.from('grocery_lists').insert({ ...grocery.list, family_id:familyId, created_at:new Date().toISOString() });
-  await ins('grocery_items', grocery.items.map(x=>({...x, list_id:grocery.list.id, family_id:familyId, created_at:new Date().toISOString()})), 'grocery_items');
+  const { error: glErr } = await sb.from('grocery_lists').insert({
+    ...grocery.list, family_id: familyId, created_at: new Date().toISOString()
+  });
+  if (!glErr) {
+    await ins('grocery_items', grocery.items.map(x => ({
+      ...x, list_id: grocery.list.id, family_id: familyId, created_at: new Date().toISOString()
+    })), 'Itens mercado');
+  } else {
+    console.warn('[DemoImport] grocery_list:', glErr.message);
+    errors.push(`grocery_list: ${glErr.message}`);
+  }
 
-  log('✅ Importação concluída!', 100);
-  return { success: true, txCount, message: `Dados demo importados: ${txCount} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários.` };
+  const errSummary = errors.length > 0 ? ` (${errors.length} avisos — veja console)` : '';
+  log(`✅ Importação concluída!${errSummary}`, 100);
+
+  return {
+    success: true,
+    txCount: txOk,
+    errors,
+    message: `${txOk} transações, ${data.categories.length} categorias, ${data.payees.length} beneficiários importados.${errSummary}`,
+  };
 }
 window.importDemoData = importDemoData;
 
