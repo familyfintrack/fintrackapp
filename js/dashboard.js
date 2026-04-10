@@ -219,11 +219,13 @@ async function loadDashboard(){
   _updateDashFilterBadge(_dashMemberIds);
 
   let income = 0, expense = 0, total = 0, _pendCount = 0;
+  let kpiResult = null;
   try {
-    const [kpiResult] = await Promise.all([
+    const [_kpi] = await Promise.all([
       DB.dashboard.loadKPIs(_dashMemberIds),
       fxPromise,
     ]);
+    kpiResult = _kpi;
     if (kpiResult) {
       income = kpiResult.income || 0;
       expense = kpiResult.expense || 0;
