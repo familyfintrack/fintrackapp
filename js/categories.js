@@ -7,24 +7,39 @@ const _CAT_FAV_KEY = () => {
 };
 
 function _loadCatFavorites() {
+  // Lê do cache local primeiro (imediato)
   try {
     const raw = localStorage.getItem(_CAT_FAV_KEY());
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+async function _syncCatFavoritesFromServer() {
+  if (typeof getAppSetting !== 'function') return;
+  try {
+    const key = _CAT_FAV_KEY();
+    const val = await getAppSetting(key, null);
+    if (Array.isArray(val)) {
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+    }
+  } catch (e) { console.warn('[catFav] sync:', e?.message); }
 }
 
 async function _saveCatFavorites(ids) {
-  // 1. Persistir localmente (imediato)
+  // 1. Persistir localmente (imediato, fallback)
   const key = _CAT_FAV_KEY();
   try { localStorage.setItem(key, JSON.stringify(ids)); } catch {}
-  // 2. Upsert direto no Supabase — sem depender de saveAppSetting
-  if (typeof sb === 'undefined' || !sb) return;
-  try {
-    const { error } = await sb.from('app_settings')
-      .upsert({ key, value: ids }, { onConflict: 'key' });
-    if (error) console.warn('[catFav] save error:', error.message);
-    else console.log('[catFav] saved', ids.length, 'favorites to Supabase');
-  } catch (e) { console.warn('[catFav] save exception:', e.message); }
+  // 2. Upsert no Supabase (principal — sincroniza entre dispositivos)
+  if (typeof saveAppSetting === 'function') {
+    saveAppSetting(key, ids).catch(e => console.warn('[catFav] save error:', e?.message));
+  } else if (typeof sb !== 'undefined' && sb) {
+    try {
+      const { error } = await sb.from('app_settings')
+        .upsert({ key, value: ids }, { onConflict: 'key' });
+      if (error) console.warn('[catFav] save error:', error.message);
+    } catch (e) { console.warn('[catFav] save exception:', e?.message); }
+  }
 }
 
 function isCatFavorite(id) { return _loadCatFavorites().includes(id); }

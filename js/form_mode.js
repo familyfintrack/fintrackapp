@@ -660,15 +660,25 @@ function loadAlertPrefsIntoProfile() {
   if (soundEl) soundEl.checked = sound;
 }
 
-function saveAlertPrefsFromProfile() {
+async function saveAlertPrefsFromProfile() {
   const style    = document.getElementById('myProfileAlertStyle')?.value    || 'toast';
   const duration = document.getElementById('myProfileAlertDuration')?.value || '3200';
   const sound    = !!(document.getElementById('myProfileAlertSound')?.checked);
+  // 1. Salvar localmente (imediato)
   try {
     localStorage.setItem(ALERT_STYLE_KEY(),    style);
     localStorage.setItem(ALERT_DURATION_KEY(), duration);
     localStorage.setItem(ALERT_SOUND_KEY(),    String(sound));
   } catch(_) {}
+  // 2. Persistir no Supabase (sincroniza entre dispositivos)
+  if (typeof saveAppSetting === 'function') {
+    const uid = window.currentUser?.id || 'local';
+    await Promise.all([
+      saveAppSetting(`pref_${uid}_alert_style`,    style).catch(()=>{}),
+      saveAppSetting(`pref_${uid}_alert_duration`, duration).catch(()=>{}),
+      saveAppSetting(`pref_${uid}_alert_sound`,    sound).catch(()=>{}),
+    ]);
+  }
 }
 
 // ── Override toast() to respect user alert style pref ─────────────────────

@@ -899,11 +899,19 @@ const _DASH_CARDS = [
 ];
 
 function _dashGetPrefs() {
+  const key = _DASH_PREFS_KEY();
+  // 1. Check Supabase cache (_appSettingsCache loaded at login)
+  if (typeof _appSettingsCache !== 'undefined' && _appSettingsCache &&
+      _appSettingsCache[key] && typeof _appSettingsCache[key] === 'object') {
+    const cached = _appSettingsCache[key];
+    try { localStorage.setItem(key, JSON.stringify(cached)); } catch {}
+    return cached;
+  }
+  // 2. Fallback: localStorage
   try {
-    const raw = localStorage.getItem(_DASH_PREFS_KEY());
+    const raw = localStorage.getItem(key);
     if (raw) return JSON.parse(raw);
   } catch (_e) {}
-  // Defaults: mandatory cards on, optional cards off (user activates via ⚙️)
   return Object.fromEntries(_DASH_CARDS.map(c => [c.id, !c.optional]));
 }
 

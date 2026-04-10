@@ -314,8 +314,14 @@ window.clearAllScFilters = clearAllScFilters;
 
 async function loadScheduled() {
   // Recuperar view preferida — padrão: lista (carrega mais rápido, sem flash)
+  // sc_view_pref: read from localStorage (fast) or app_users.preferred_sc_view (sync)
   const _savedView = (() => {
-    try { return localStorage.getItem('sc_view_pref') || 'list'; } catch(_) { return 'list'; }
+    try {
+      const local = localStorage.getItem('sc_view_pref');
+      if (local) return local;
+      // Fallback to app_users preference (already loaded into currentUser)
+      return currentUser?.preferred_sc_view || 'list';
+    } catch(_) { return 'list'; }
   })();
 
   // Sincronizar variável de estado ANTES de qualquer render
@@ -1951,11 +1957,12 @@ const SC_MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ── View switch ───────────────────────────────────────────────────
 function setScView(view) {
   _scView = view;
-  // Persist preference to localStorage + Supabase app_users
+  // Persist: localStorage (instant) + app_users (cross-device sync)
   try { localStorage.setItem('sc_view_pref', view); } catch(_) {}
   if (typeof sb !== 'undefined' && sb && typeof currentUser !== 'undefined' && currentUser?.id) {
     sb.from('app_users').update({ preferred_sc_view: view }).eq('id', currentUser.id)
-      .then(() => {}).catch(() => {});
+      .then(({error}) => { if(error) console.warn('[sc_view] save:', error.message); })
+      .catch(e => console.warn('[sc_view] save:', e?.message));
   }
 
   // Update all view buttons — handles both desktop and mobile variants
