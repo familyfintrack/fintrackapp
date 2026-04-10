@@ -1433,3 +1433,27 @@ async function openPayeeDetailModal(payeeId) {
   }
 }
 window.openPayeeDetailModal = openPayeeDetailModal;
+
+// ── Payees page tab switcher ─────────────────────────────────────────────
+function setPayeesTab(tab) {
+  const groupsEl = document.getElementById('payeeGroups');
+  const reportEl = document.getElementById('payeesReportPanel');
+  const tabCad   = document.getElementById('payeesTabCad');
+  const tabRpt   = document.getElementById('payeesTabRpt');
+
+  const showReport = (tab === 'relatorio');
+  if (groupsEl) groupsEl.style.display = showReport ? 'none' : '';
+  if (reportEl) reportEl.style.display = showReport ? '' : 'none';
+
+  if (tabCad) {
+    tabCad.style.background = showReport ? 'transparent' : 'var(--accent)';
+    tabCad.style.color      = showReport ? 'var(--muted)' : '#fff';
+  }
+  if (tabRpt) {
+    tabRpt.style.background = showReport ? 'var(--accent)' : 'transparent';
+    tabRpt.style.color      = showReport ? '#fff' : 'var(--muted)';
+  }
+
+  if (showReport && typeof loadPayeeReport === 'function') loadPayeeReport();
+}
+window.setPayeesTab = setPayeesTab;

@@ -3600,17 +3600,45 @@ async function loadReceivables() {
   }
 
   try {
-    const { data, error } = await sb.from('transactions')
+    // ── Source 1: pending income transactions ─────────────────────────────
+    const { data: txData, error: txErr } = await sb.from('transactions')
       .select('id,date,description,amount,brl_amount,currency,account_id,category_id,payee_id,accounts!transactions_account_id_fkey(name),categories(name,color,icon),payees(name)')
       .eq('family_id', fid)
       .eq('status', 'pending')
       .gte('amount', 0)
       .eq('is_transfer', false)
       .order('date', { ascending: true });
+    if (txErr) throw txErr;
+    const txRows = (txData || []).map(r => ({ ...r, _src: 'tx' }));
 
-    if (error) throw error;
+    // ── Source 2: scheduled AR records (pending) ──────────────────────────
+    let arRows = [];
+    try {
+      const { data: arData } = await sb.from('scheduled_ar_records')
+        .select('id,date,description,amount,memo,status,sc_id,scheduled_transactions(account_id,payee_id,category_id,accounts!scheduled_transactions_account_id_fkey(name),payees(name),categories(name,color,icon))')
+        .eq('family_id', fid)
+        .eq('status', 'pending')
+        .order('date', { ascending: true });
+      arRows = (arData || []).map(r => ({
+        id:          r.id,
+        date:        r.date,
+        description: r.description,
+        amount:      r.amount,
+        brl_amount:  r.amount,
+        currency:    'BRL',
+        memo:        r.memo,
+        payees:      r.scheduled_transactions?.payees || null,
+        categories:  r.scheduled_transactions?.categories || null,
+        accounts:    r.scheduled_transactions?.['accounts!scheduled_transactions_account_id_fkey'] || null,
+        _src:        'ar',
+        _arId:       r.id,
+      }));
+    } catch(arErr) {
+      console.warn('[receivables] AR records query failed:', arErr?.message);
+    }
 
-    const rows  = data || [];
+    // ── Merge and sort by date ─────────────────────────────────────────────
+    const rows = [...txRows, ...arRows].sort((a, b) => a.date.localeCompare(b.date));
     const today = new Date().toISOString().slice(0, 10);
     const total   = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const overdue = rows.filter(r => r.date < today).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
@@ -3627,7 +3655,7 @@ async function loadReceivables() {
         '<div style="font-size:3rem;margin-bottom:14px">📭</div>' +
         '<div style="font-size:1rem;font-weight:800;color:var(--text)">Nenhum valor a receber</div>' +
         '<div style="font-size:.82rem;color:var(--muted);margin-top:8px;line-height:1.6">' +
-        'Transações de receita com status <strong>Pendente</strong> aparecem aqui.</div>' +
+        'Receitas pendentes de transações ou <strong>Programados marcados como "Não Recebido"</strong> aparecem aqui.</div>' +
         '<div style="margin-top:20px"><button onclick="navigate(\'transactions\')" ' +
         'style="font-family:var(--font-sans);font-size:.82rem;font-weight:700;padding:10px 20px;' +
         'background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer">' +
@@ -3779,12 +3807,16 @@ function _buildRecv(rows, today) {
       '<div style="flex-shrink:0;text-align:right">' +
         '<div style="font-size:.88rem;font-weight:800;color:var(--accent)">+' + fmtV(r.amount) + '</div>' +
         '<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">' +
-          '<button onclick="markTxReceived(\'' + escV(r.id) + '\')" ' +
-            'style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;' +
-            'border:none;border-radius:6px;padding:3px 7px;cursor:pointer">✅</button>' +
-          '<button onclick="openTxDetail(\'' + escV(r.id) + '\')" ' +
-            'style="font-family:var(--font-sans);font-size:.65rem;color:var(--muted);background:transparent;' +
-            'border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer">✏️</button>' +
+          (r._src === 'ar'
+            ? '<button onclick="_scArReceive(\'' + escV(r._arId) + '\')" ' +
+                'style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;' +
+                'border:none;border-radius:6px;padding:3px 7px;cursor:pointer">✅ Receber</button>'
+            : '<button onclick="markTxReceived(\'' + escV(r.id) + '\')" ' +
+                'style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;' +
+                'border:none;border-radius:6px;padding:3px 7px;cursor:pointer">✅ Receber</button>' +
+              '<button onclick="openTxDetail(\'' + escV(r.id) + '\')" ' +
+                'style="font-family:var(--font-sans);font-size:.65rem;color:var(--muted);background:transparent;' +
+                'border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer">✏️</button>') +
         '</div>' +
         '<label style="display:flex;align-items:center;gap:4px;margin-top:4px;justify-content:flex-end;cursor:pointer" title="Incluir no patrimônio">' +
           '<input type="checkbox" ' + (inPat ? 'checked' : '') + ' onchange="_recvTogglePatrimonio(\'' + escV(r.id) + '\',this.checked)" ' +

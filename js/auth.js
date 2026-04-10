@@ -1770,6 +1770,11 @@ async function saveMyProfile() {
       await sb.from('app_users').update({ password_hash: hash, must_change_pwd: false }).eq('id', appRow.id);
     }
 
+    // Save alert/toast preferences (style, duration, sound) — stored in localStorage + Supabase
+    if (typeof saveAlertPrefsFromProfile === 'function') {
+      await saveAlertPrefsFromProfile().catch(()=>{});
+    }
+
     toast('✓ Perfil atualizado com sucesso!', 'success');
     // Form mode already saved in updatePayload — no separate call needed
     // Alert preferences already saved in updatePayload — sync topbar badge

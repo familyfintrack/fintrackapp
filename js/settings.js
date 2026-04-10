@@ -3334,7 +3334,7 @@ async function importDemoData(userId, familyId, progressCb) {
   // Tables where name+family_id must be unique — use upsert to skip duplicates
   const UPSERT_TABLES = new Set([
     'account_groups','accounts','payees','price_stores',
-    'categories','scheduled_transactions',
+    'categories',
   ]);
 
   async function ins(table, rows, label, batchSize = 50) {
@@ -3363,9 +3363,10 @@ async function importDemoData(userId, familyId, progressCb) {
           for (const row of batch) {
             const { error: re } = await sb.from(table).insert(row);
             if (!re) rowOk++;
-            // skip duplicates silently
+            // else: skip duplicates silently (row already exists)
           }
           ok += rowOk; tableResults[table].ok += rowOk;
+          // Note: skipped rows count as success (data already exists = goal achieved)
           continue;
         }
       } else {
@@ -3435,18 +3436,27 @@ async function importDemoData(userId, familyId, progressCb) {
     const names = demoRows.map(r => r[nameCol]).filter(Boolean);
     if (!names.length) return {};
     try {
-      const { data: rows } = await sb.from(table)
+      const { data: rows, error: mapErr } = await sb.from(table)
         .select('id,' + nameCol)
         .eq('family_id', familyId)
         .in(nameCol, names);
+      if (mapErr) {
+        console.warn('[DemoImport] buildIdMap', table, ':', mapErr.message);
+        return {};
+      }
       const byName = {};
       (rows || []).forEach(r => { byName[r[nameCol]] = r.id; });
       const map = {};
+      let mapped = 0;
       demoRows.forEach(r => {
-        if (r[nameCol] && byName[r[nameCol]]) map[r.id] = byName[r[nameCol]];
+        if (r[nameCol] && byName[r[nameCol]]) { map[r.id] = byName[r[nameCol]]; mapped++; }
       });
+      console.log('[DemoImport] buildIdMap', table + ':', mapped + '/' + demoRows.length, 'mapped');
       return map;
-    } catch(_) { return {}; }
+    } catch(e) {
+      console.warn('[DemoImport] buildIdMap exception', table, ':', e.message);
+      return {};
+    }
   }
 
   const accIdMap  = await buildIdMap('accounts',   data.accounts,    'name');
@@ -3521,10 +3531,17 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 10. Dreams ───────────────────────────────────────────────────────────
   log('Criando objetivos…', 80);
-  // dreams: created_by must match auth.uid() for RLS — use currentUser.auth_uid
-  const dreamsAuthUid = (typeof currentUser !== 'undefined' && currentUser?.auth_uid)
-    || (typeof currentUser !== 'undefined' && currentUser?.id)
-    || userId;
+  // dreams: created_by must match auth.uid() for RLS
+  // Fetch the actual auth.uid() from Supabase session (most reliable)
+  let dreamsAuthUid = userId;
+  try {
+    const { data: { user: authUser } } = await sb.auth.getUser();
+    if (authUser?.id) dreamsAuthUid = authUser.id;
+    else if (typeof currentUser !== 'undefined' && currentUser?.auth_uid) dreamsAuthUid = currentUser.auth_uid;
+  } catch(_) {
+    if (typeof currentUser !== 'undefined' && currentUser?.auth_uid) dreamsAuthUid = currentUser.auth_uid;
+  }
+  console.log('[DemoImport] dreams auth_uid:', dreamsAuthUid);
   await ins('dreams', data.dreams.map(dr => ({
     ...dr,
     created_by:  dreamsAuthUid,
@@ -3710,6 +3727,8 @@ async function deleteAllFamilyData() {
       // Categories & payees (beneficiários)
       ['categories',                76],
       ['payees',                    80],
+      // Receivables
+      ['scheduled_ar_records',      82],
       // Family structure
       ['family_composition',        85],
       ['family_members',            90],
@@ -3733,22 +3752,26 @@ async function deleteAllFamilyData() {
 
     toast('✅ Todos os dados da família foram removidos com sucesso.', 'success');
 
-    // Clear all in-memory state
-    state.transactions=[];
-    state.accounts=[];
-    state.categories=[];
-    state.payees=[];
-    state.budgets=[];
-    state.dreams=[];
-    state.debts=[];
-    state.groups=[];
-    state.familyMembers=[];
-    if (typeof DB !== 'undefined' && DB._cache) DB._cache={};
-    // Navigate to dashboard and reload
-    if (typeof navigate === 'function') navigate('dashboard');
-    setTimeout(() => {
-      if (typeof loadDashboard === 'function') loadDashboard();
-    }, 300);
+    // Clear ALL in-memory state caches
+    if (typeof state !== 'undefined') {
+      state.transactions=[]; state.accounts=[]; state.categories=[];
+      state.payees=[]; state.budgets=[]; state.dreams=[]; state.debts=[];
+      state.groups=[]; state.familyMembers=[]; state.scheduled=[];
+      state._scFiltered=null;
+    }
+    if (typeof DB !== 'undefined') {
+      if (DB._cache) DB._cache={};
+      if (DB.accounts?.invalidate) DB.accounts.invalidate();
+      if (DB.categories?.invalidate) DB.categories.invalidate();
+    }
+    // Clear module-level caches
+    if (typeof _dbt !== 'undefined') { _dbt.debts=[]; _dbt.loaded=false; }
+    if (typeof _drm !== 'undefined') { _drm.dreams=[]; _drm.loaded=false; }
+
+    await new Promise(r => setTimeout(r, 600));
+    toast('🔄 Recarregando…', 'info');
+    // Full page reload ensures all modules start fresh
+    setTimeout(() => { window.location.reload(); }, 800);
 
   } catch(e) {
     prog.remove();

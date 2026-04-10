@@ -2988,9 +2988,33 @@ async function registerAsNotReceived() {
       if (error) throw error;
     }
 
+    // Mark this occurrence as skipped so it disappears from upcoming list
+    try {
+      await sb.from('scheduled_occurrences')
+        .upsert({
+          sc_id:            scId,
+          scheduled_date:   date,
+          family_id:        fid,
+          execution_status: 'skipped',
+          updated_at:       new Date().toISOString(),
+        }, { onConflict: 'sc_id,scheduled_date' });
+      // Update local cache so renderUpcoming reflects it immediately
+      const sc = (state.scheduled || []).find(s => s.id === scId);
+      if (sc) {
+        if (!sc.occurrences) sc.occurrences = [];
+        const existing = sc.occurrences.find(o => o.scheduled_date === date);
+        if (existing) existing.execution_status = 'skipped';
+        else sc.occurrences.push({ sc_id: scId, scheduled_date: date, execution_status: 'skipped', family_id: fid });
+      }
+    } catch(skipErr) {
+      console.warn('[scAr] Could not mark occurrence as skipped:', skipErr?.message);
+    }
+
     closeModal('registerOccModal');
-    toast('Registrado em Valores a Receber', 'info');
+    toast('📬 Adicionado em A Receber', 'success');
     _scArLoad();
+    renderUpcoming();
+    if (typeof loadDashboard === 'function' && typeof state !== 'undefined' && state.currentPage === 'dashboard') loadDashboard();
   } catch (e) {
     toast('Erro ao registrar: ' + (e.message || e), 'error');
   }
