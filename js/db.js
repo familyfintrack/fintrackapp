@@ -336,21 +336,7 @@ const _dashboard = {
 
       const total = accountTotal - debtTotal;
 
-      // ── Patrimônio Health Score (0–100) ──────────────────────────────────
-      const accs        = state.accounts || [];
-      const liquidBal   = accs.filter(a => !['investimento','cartao_credito'].includes(a.type))
-                              .reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-      const invBal      = accs.filter(a => a.type === 'investimento')
-                              .reduce((s,a) => s + toBRL((a._totalPortfolioBalance ?? parseFloat(a.balance))||0, a.currency||'BRL'), 0);
-      const totalAtivos = Math.max(accountTotal, 0);
-      const endividamento = totalAtivos > 0 ? Math.min(debtTotal / totalAtivos, 1) : (debtTotal > 0 ? 1 : 0);
-      const healthScore = Math.round(Math.max(0, Math.min(100,
-        70 * (1 - endividamento) +
-        20 * ([liquidBal > 0, invBal > 0, debtTotal === 0].filter(Boolean).length / 3) +
-        10 * (total > 0 ? 1 : 0)
-      )));
-
-      return { income, expense, total, pendingCount: pendRes.count || 0, healthScore };
+      return { income, expense, total, pendingCount: pendRes.count || 0, debtTotal };
     });
   },
 

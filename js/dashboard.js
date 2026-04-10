@@ -184,6 +184,73 @@ function _openDashMonthTx(type, memberIds) {
   if(_e('txAccount'))      _e('txAccount').value='';
   navigate('transactions');
 }
+// ── Shared patrimônio score badge updater ────────────────────────────────────
+// Called both from loadDashboard (quick estimate) and _openPatrimonioModal (exact)
+function _updatePatrimonioScoreBadge(patrimonioTotal, debtTotal, anchorEl) {
+  // Replicate exact same formula as _openPatrimonioModal
+  const accs         = Array.isArray(state.accounts) ? state.accounts : [];
+  const liquidTotal  = accs
+    .filter(a => !['investimento','cartao_credito'].includes(a.type) && (parseFloat(a.balance)||0) > 0)
+    .reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
+  const invTotal     = accs
+    .filter(a => a.type === 'investimento')
+    .reduce((s,a) => s + toBRL((a._totalPortfolioBalance ?? parseFloat(a.balance))||0, a.currency||'BRL'), 0);
+  const cardNegTotal = accs
+    .filter(a => a.type === 'cartao_credito' && (parseFloat(a.balance)||0) < 0)
+    .reduce((s,a) => s + Math.abs(toBRL(parseFloat(a.balance)||0, a.currency||'BRL')), 0);
+  const totalPassivos = cardNegTotal + (debtTotal || 0);
+  const totalAtivos   = accs
+    .filter(a => {
+      const b = a.type === 'investimento'
+        ? (a._totalPortfolioBalance ?? (parseFloat(a.balance)||0))
+        : (parseFloat(a.balance)||0);
+      return toBRL(b, a.currency||'BRL') > 0;
+    })
+    .reduce((s,a) => {
+      const b = a.type === 'investimento'
+        ? (a._totalPortfolioBalance ?? (parseFloat(a.balance)||0))
+        : (parseFloat(a.balance)||0);
+      return s + toBRL(b, a.currency||'BRL');
+    }, 0);
+
+  const endividamento = totalAtivos > 0 ? totalPassivos / totalAtivos : 0;
+  const debtsArr      = typeof _dbt !== 'undefined' && _dbt.loaded ? _dbt.debts.filter(d=>(d.status||'active')==='active') : [];
+  const healthScore   = Math.round(Math.max(0, Math.min(100,
+    70 * (1 - Math.min(endividamento, 1)) +
+    20 * ([liquidTotal > 0, invTotal > 0, debtsArr.length === 0].filter(Boolean).length / 3) +
+    10 * (patrimonioTotal > 0 ? 1 : 0)
+  )));
+
+  const [hsLabel, hsBg, hsClr] = healthScore >= 80
+    ? ['Excelente','rgba(16,185,129,.12)','#10b981']
+    : healthScore >= 60 ? ['Bom','rgba(245,158,11,.12)','#f59e0b']
+    : healthScore >= 40 ? ['Atenção','rgba(249,115,22,.12)','#f97316']
+    : ['Crítico','rgba(239,68,68,.12)','#ef4444'];
+
+  const anchor = anchorEl || document.getElementById('statTotal');
+  if (!anchor) return;
+
+  let badge = document.getElementById('dashPatrimonioScore');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.id = 'dashPatrimonioScore';
+    badge.style.cssText =
+      'display:inline-flex;align-items:center;gap:3px;margin-left:8px;' +
+      'padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:800;' +
+      'letter-spacing:.04em;cursor:pointer;vertical-align:middle;' +
+      'border:1px solid transparent;transition:all .2s';
+    badge.title = 'Score de saúde patrimonial — clique para ver detalhes';
+    badge.onclick = e => { e.stopPropagation(); _openPatrimonioModal(); };
+    anchor.after(badge);
+  }
+  badge.textContent      = healthScore + ' ' + hsLabel;
+  badge.style.background = hsBg;
+  badge.style.color      = hsClr;
+  badge.style.borderColor = hsClr + '33';
+}
+window._updatePatrimonioScoreBadge = _updatePatrimonioScoreBadge;
+
+
 async function loadDashboard(){
   // Atualizar nome da família ativa no topo do dashboard
   try {
@@ -251,31 +318,10 @@ async function loadDashboard(){
       _tc.title = 'Ver composição do patrimônio';
       _tc.onclick = () => _openPatrimonioModal();
     }
-    // ── Health score badge ──────────────────────────────────────────────
-    const hs = kpiResult?.healthScore ?? null;
-    if (hs !== null) {
-      const [hsLabel, hsBg, hsClr] = hs >= 80 ? ['Excelente','rgba(16,185,129,.12)','#10b981']
-        : hs >= 60 ? ['Bom','rgba(245,158,11,.12)','#f59e0b']
-        : hs >= 40 ? ['Atenção','rgba(249,115,22,.12)','#f97316']
-        : ['Crítico','rgba(239,68,68,.12)','#ef4444'];
-      let scoreBadge = document.getElementById('dashPatrimonioScore');
-      if (!scoreBadge) {
-        scoreBadge = document.createElement('span');
-        scoreBadge.id = 'dashPatrimonioScore';
-        scoreBadge.style.cssText =
-          'display:inline-flex;align-items:center;gap:3px;margin-left:8px;' +
-          'padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:800;' +
-          'letter-spacing:.04em;cursor:pointer;vertical-align:middle;' +
-          'border:1px solid transparent;transition:all .2s';
-        scoreBadge.title = 'Score de saúde patrimonial — clique para ver detalhes';
-        scoreBadge.onclick = e => { e.stopPropagation(); _openPatrimonioModal(); };
-        statTotalEl.after(scoreBadge);
-      }
-      scoreBadge.textContent = hs + ' ' + hsLabel;
-      scoreBadge.style.background = hsBg;
-      scoreBadge.style.color      = hsClr;
-      scoreBadge.style.borderColor = hsClr + '33';
-    }
+    // ── Health score badge — computed after modal data is ready ────────
+    // Use debtTotal from loadKPIs + accounts already in state for a quick estimate
+    // then update with precise value from modal calculation once available
+    _updatePatrimonioScoreBadge(total, kpiResult?.debtTotal ?? 0, statTotalEl);
   }
   if (statIncomeEl){
     statIncomeEl.textContent=dashFmt(income,'BRL');
@@ -2924,6 +2970,9 @@ async function _openPatrimonioModal() {
     : healthScore >= 60 ? ['Bom','#f59e0b']
     : healthScore >= 40 ? ['Atenção','#f97316']
     : ['Crítico','#ef4444'];
+
+  // Sync the dashboard badge with the exact modal score
+  _updatePatrimonioScoreBadge(patrimonioTotal, debtTotal);
 
   /* ═══════════════════════════════════════════════════════════════════════
      PASSO 4 — Helpers visuais
