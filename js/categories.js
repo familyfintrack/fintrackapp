@@ -102,25 +102,75 @@ async function _loadCatTxCounts() {
 
 // ── Render ────────────────────────────────────────────────────────────────
 
+
+function _catHighlight(text, term) {
+  if (!term) return text;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx === -1) return text;
+  return text.slice(0, idx) +
+    '<mark style="background:var(--amber,#fef08a);color:var(--text);border-radius:2px;padding:0 1px">' +
+    text.slice(idx, idx + term.length) +
+    '</mark>' +
+    text.slice(idx + term.length);
+}
+
+// ── Category search filter ───────────────────────────────────────────────────
+let _catSearchTerm = '';
+
+function filterCategories(term) {
+  _catSearchTerm = (term || '').toLowerCase().trim();
+  const clearBtn = document.getElementById('catSearchClear');
+  if (clearBtn) clearBtn.style.display = _catSearchTerm ? '' : 'none';
+  renderCategories();
+}
+window.filterCategories = filterCategories;
+
 function renderCategories() {
+  const q = _catSearchTerm;
+
   ['expense', 'income'].forEach(type => {
     const dbType    = type === 'expense' ? 'despesa' : 'receita';
     const container = document.getElementById('catEditor' + (type === 'expense' ? 'Expense' : 'Income'));
     const countEl   = document.getElementById('catCount'  + (type === 'expense' ? 'Expense' : 'Income'));
     if (!container) return;
 
-    const parents     = state.categories.filter(c => c.type === dbType && !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+    // When searching, include a parent if it OR any of its subs match
+    let parents     = state.categories.filter(c => c.type === dbType && !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
     const allChildren = state.categories.filter(c => c.type === dbType && c.parent_id);
-    if (countEl) { const n = state.categories.filter(c => c.type === dbType).length; countEl.textContent = n + (n === 1 ? ' cat.' : ' cats.'); }
+
+    if (q) {
+      parents = parents.filter(p => {
+        const parentMatches = p.name.toLowerCase().includes(q);
+        const anySubMatches = allChildren.filter(c => c.parent_id === p.id)
+          .some(c => c.name.toLowerCase().includes(q));
+        return parentMatches || anySubMatches;
+      });
+    }
+
+    const totalCount = state.categories.filter(c => c.type === dbType).length;
+    if (countEl) {
+      if (q && parents.length !== state.categories.filter(c => c.type === dbType && !c.parent_id).length) {
+        countEl.textContent = parents.length + ' de ' + totalCount;
+      } else {
+        countEl.textContent = totalCount + (totalCount === 1 ? ' cat.' : ' cats.');
+      }
+    }
 
     if (!parents.length) {
-      container.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">
-        Nenhuma categoria. Clique em "+ ${type === 'expense' ? 'Despesa' : 'Receita'}" para criar.</div>`;
+      container.innerHTML = q
+        ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">
+            🔍 Nenhuma categoria encontrada para "<strong>${esc(q)}</strong>"</div>`
+        : `<div style="text-align:center;padding:24px;color:var(--muted);font-size:.83rem">
+            Nenhuma categoria. Clique em "+ ${type === 'expense' ? 'Despesa' : 'Receita'}" para criar.</div>`;
       return;
     }
 
     container.innerHTML = parents.map(p => {
-      const subs      = allChildren.filter(c => c.parent_id === p.id).sort((a, b) => a.name.localeCompare(b.name));
+      const allSubs  = allChildren.filter(c => c.parent_id === p.id).sort((a, b) => a.name.localeCompare(b.name));
+      // When searching: show only matching subs (unless parent itself matches → show all)
+      const subs     = (q && !p.name.toLowerCase().includes(q))
+        ? allSubs.filter(c => c.name.toLowerCase().includes(q))
+        : allSubs;
       const pTxCount  = _catTxCounts[p.id] || 0;
       const pColor    = p.color || 'var(--accent)';
 
@@ -136,7 +186,7 @@ function renderCategories() {
           <div class="cat-group-icon">
             <span>${p.icon || '📦'}</span>
           </div>
-          <span class="cat-group-name" id="catName-${p.id}" ondblclick="startCatInlineEdit('${p.id}')">${esc(p.name)}</span>
+          <span class="cat-group-name" id="catName-${p.id}" ondblclick="startCatInlineEdit('${p.id}')">${q ? _catHighlight(esc(p.name), q) : esc(p.name)}</span>
           <div class="cat-group-meta">
             ${subs.length ? `<span class="cat-sub-pill">${subs.length} sub</span>` : ''}
             ${pTxCount > 0 ? `<span class="cat-tx-pill" title="Ver histórico" onclick="event.stopPropagation();openCategoryHistory('${p.id}','${esc(p.name)}')">📊 ${pTxCount}</span>` : ''}
@@ -175,7 +225,7 @@ function renderCategories() {
             <div class="cat-sub-icon" style="background:color-mix(in srgb,${cColor} 14%,transparent)">
               <span style="color:${cColor}">${c.icon || '▸'}</span>
             </div>
-            <span class="cat-sub-name" id="catName-${c.id}" ondblclick="startCatInlineEdit('${c.id}')">${esc(c.name)}</span>
+            <span class="cat-sub-name" id="catName-${c.id}" ondblclick="startCatInlineEdit('${c.id}')">${q ? _catHighlight(esc(c.name), q) : esc(c.name)}</span>
             ${cCount > 0 ? `<span class="cat-tx-pill" title="Ver histórico" onclick="event.stopPropagation();openCategoryHistory('${c.id}','${esc(c.name)}')">📊 ${cCount}</span>` : ''}
             <div class="cat-inline-actions">
               <button class="btn-icon" onclick="toggleCatFavorite('${c.id}')" title="${isCatFavorite(c.id)?'Remover favorito':'Favoritar'}" style="color:${isCatFavorite(c.id)?'var(--amber,#f59e0b)':'var(--muted)'};font-size:1.05rem">★</button>
