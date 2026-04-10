@@ -1268,60 +1268,177 @@
 
     <!-- ── A Receber ──────────────────────────────────────────────────────── -->
     <div class="page" id="page-receivables" style="display:none">
+      <style>
+        /* ── A Receber redesign ── */
+        #page-receivables { --recv-accent: #1e5c42; }
 
-      <!-- ── Collapsible intro banner ─────────────────────────────────── -->
-      <div class="module-intro-banner" style="--intro-accent:#1e5c42;--intro-accent-lt:rgba(30,92,66,.07)">
-        <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
-          <i class="mib-arr">▾</i> Recolher
-        </button>
-        <div class="module-intro-badge" style="background:rgba(30,92,66,.1);color:#1e5c42">📬 A Receber</div>
-        <div class="module-intro-body">
-          <h3 class="module-intro-headline">Gestão de contas a receber da família</h3>
-          <p class="module-intro-text">Acompanhe receitas pendentes por devedor, tipo e tempo em aberto. Veja quem deve, quanto e há quantos dias — e registre o recebimento com um clique.</p>
-          <div class="module-intro-chips">
-            <span class="module-intro-chip" style="background:rgba(30,92,66,.08);color:#1e5c42">📊 Dashboard analítico</span>
-            <span class="module-intro-chip" style="background:rgba(30,92,66,.08);color:#1e5c42">⏱ Aging por tempo</span>
-            <span class="module-intro-chip" style="background:rgba(30,92,66,.08);color:#1e5c42">👤 Por devedor</span>
-            <span class="module-intro-chip" style="background:rgba(30,92,66,.08);color:#1e5c42">✅ Recebimento em 1 clique</span>
-          </div>
-        </div>
-      </div>
+        .recv-hero {
+          background: linear-gradient(135deg, #1e5c42 0%, #2a7550 60%, #1a5c38 100%);
+          border-radius: 14px; padding: 18px 20px 16px; position: relative; overflow: hidden;
+          margin-bottom: 14px;
+        }
+        .recv-hero::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background-image: linear-gradient(rgba(125,194,66,.08) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(125,194,66,.08) 1px, transparent 1px);
+          background-size: 28px 28px;
+        }
+        .recv-hero-top {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          position: relative; z-index: 1;
+        }
+        .recv-hero-title {
+          font-size: 1.15rem; font-weight: 800; color: #fff;
+          letter-spacing: -.02em; display: flex; align-items: center; gap: 10px;
+        }
+        .recv-count-badge {
+          font-size: .75rem; font-weight: 700; background: rgba(255,255,255,.15);
+          color: #fff; border-radius: 100px; padding: 2px 10px;
+        }
+        .recv-hero-sub { font-size: .78rem; color: rgba(255,255,255,.6); margin-top: 3px; }
+        .recv-refresh-btn {
+          background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+          color: #fff; border-radius: 9px; padding: 6px 12px; font-size: .73rem;
+          font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0;
+          transition: background .14s;
+        }
+        .recv-refresh-btn:hover { background: rgba(255,255,255,.22); }
+
+        .recv-kpi-grid {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+          margin-top: 14px; position: relative; z-index: 1;
+        }
+        .recv-kpi {
+          background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+          border-radius: 12px; padding: 11px 14px;
+        }
+        .recv-kpi-label {
+          font-size: .62rem; font-weight: 700; color: rgba(255,255,255,.55);
+          text-transform: uppercase; letter-spacing: .07em;
+        }
+        .recv-kpi-value { font-size: 1.3rem; font-weight: 800; color: #7dc242; margin-top: 2px; }
+        .recv-kpi-value.danger { color: #fca5a5; }
+
+        /* Quick-add bar */
+        .recv-quick-bar {
+          display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
+        }
+        .recv-quick-btn {
+          flex: 1; min-width: 120px; display: flex; align-items: center; gap: 7px;
+          padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--border);
+          background: var(--surface); cursor: pointer; font-family: inherit;
+          font-size: .8rem; font-weight: 600; color: var(--text2);
+          transition: all .15s;
+        }
+        .recv-quick-btn:hover {
+          border-color: var(--accent); color: var(--accent);
+          background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+          transform: translateY(-1px);
+        }
+        .recv-quick-icon {
+          width: 28px; height: 28px; border-radius: 8px;
+          background: color-mix(in srgb, var(--accent) 12%, var(--surface2));
+          display: flex; align-items: center; justify-content: center;
+          font-size: .9rem; flex-shrink: 0;
+        }
+
+        /* Filter tabs */
+        .recv-filter-bar {
+          display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto;
+          scrollbar-width: none; -webkit-overflow-scrolling: touch;
+        }
+        .recv-filter-bar::-webkit-scrollbar { display: none; }
+        .recv-ftab {
+          flex-shrink: 0; padding: 5px 12px; border-radius: 20px;
+          border: 1.5px solid var(--border); background: var(--surface);
+          color: var(--text2); font-size: .74rem; font-weight: 600;
+          cursor: pointer; font-family: inherit; transition: all .14s; white-space: nowrap;
+        }
+        .recv-ftab.active {
+          background: var(--accent); border-color: var(--accent); color: #fff;
+        }
+
+        /* Info tip */
+        .recv-info-tip {
+          background: color-mix(in srgb, var(--accent) 7%, var(--surface2));
+          border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+          border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+          font-size: .77rem; color: var(--text2); display: flex; gap: 8px;
+          align-items: flex-start; line-height: 1.5;
+        }
+        .recv-info-tip svg { flex-shrink: 0; color: var(--accent); margin-top: 1px; }
+      </style>
+
       <!-- Hero header -->
-      <div style="background:linear-gradient(135deg,#1e5c42 0%,#2a7550 60%,#1a5c38 100%);padding:24px 20px 20px;position:relative;overflow:hidden">
-        <div style="position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(125,194,66,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.08) 1px,transparent 1px);background-size:32px 32px"></div>
-        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between">
+      <div class="recv-hero">
+        <div class="recv-hero-top">
           <div>
-            <div style="font-size:1.2rem;font-weight:800;color:#fff;letter-spacing:-.02em;display:flex;align-items:center;gap:10px">
+            <div class="recv-hero-title">
               📬 A Receber
-              <span id="receivablesCount" style="font-size:.78rem;font-weight:700;background:rgba(255,255,255,.15);color:#fff;border-radius:100px;padding:2px 10px">0</span>
+              <span class="recv-count-badge" id="receivablesCount">0</span>
             </div>
-            <div style="font-size:.8rem;color:rgba(255,255,255,.65);margin-top:4px">Receitas pendentes de recebimento</div>
+            <div class="recv-hero-sub">Receitas pendentes de recebimento</div>
           </div>
-          <button onclick="loadReceivables()"
-            style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:9px;padding:7px 12px;font-family:var(--font-sans);font-size:.75rem;font-weight:700;cursor:pointer">
-            ↻ Atualizar
-          </button>
+          <button class="recv-refresh-btn" onclick="loadReceivables()">↻ Atualizar</button>
         </div>
-        <!-- KPI cards -->
-        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 16px">
-            <div style="font-size:.65rem;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em">Total a receber</div>
-            <div id="receivablesTotalAmt" style="font-size:1.4rem;font-weight:800;color:#7dc242;margin-top:2px">—</div>
+        <div class="recv-kpi-grid">
+          <div class="recv-kpi">
+            <div class="recv-kpi-label">Total a receber</div>
+            <div class="recv-kpi-value" id="receivablesTotalAmt">—</div>
           </div>
-          <div id="receivablesOverdueWrap" style="background:rgba(220,38,38,.18);border:1px solid rgba(220,38,38,.35);border-radius:14px;padding:12px 16px;display:none">
-            <div style="font-size:.65rem;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.06em">⚠️ Em atraso</div>
-            <div id="receivablesOverdueAmt" style="font-size:1.4rem;font-weight:800;color:#fca5a5;margin-top:2px">—</div>
+          <div class="recv-kpi" id="receivablesOverdueWrap" style="display:none;background:rgba(220,38,38,.18);border-color:rgba(220,38,38,.35)">
+            <div class="recv-kpi-label" style="color:rgba(255,255,255,.65)">⚠️ Em atraso</div>
+            <div class="recv-kpi-value danger" id="receivablesOverdueAmt">—</div>
+          </div>
+          <div class="recv-kpi" id="receivablesKpiOk" style="background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.2)">
+            <div class="recv-kpi-label">No prazo</div>
+            <div class="recv-kpi-value" id="receivablesOnTimeAmt" style="color:#4ade80">—</div>
           </div>
         </div>
       </div>
 
-      <!-- Info bar -->
-      <div style="background:#fef9c3;border-bottom:1px solid #fcd34d;padding:10px 16px;font-size:.78rem;color:#92400e;display:flex;align-items:flex-start;gap:8px">
-        <span style="flex-shrink:0">💡</span>
-        <span>Receitas com status <strong>Pendente</strong> ficam aqui até serem recebidas. Para mover uma receita confirmada para cá, abra a transação e clique em <strong>📬</strong>.</span>
+      <!-- Quick-add actions -->
+      <div class="recv-quick-bar">
+        <button class="recv-quick-btn" onclick="_recvAddFromTx()">
+          <div class="recv-quick-icon">💳</div>
+          <div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--text)">Da transação</div>
+            <div style="font-size:.68rem;color:var(--muted)">Mover receita para cá</div>
+          </div>
+        </button>
+        <button class="recv-quick-btn" onclick="_recvAddManual()">
+          <div class="recv-quick-icon">✏️</div>
+          <div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--text)">Lançar manual</div>
+            <div style="font-size:.68rem;color:var(--muted)">Nova receita pendente</div>
+          </div>
+        </button>
+        <button class="recv-quick-btn" onclick="navigate('scheduled')">
+          <div class="recv-quick-icon">📆</div>
+          <div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--text)">De programado</div>
+            <div style="font-size:.68rem;color:var(--muted)">Marcar como não recebido</div>
+          </div>
+        </button>
       </div>
 
-      <!-- List -->
+      <!-- Filter tabs -->
+      <div class="recv-filter-bar">
+        <button class="recv-ftab active" id="recvFiltAll"     onclick="_recvFilter('all',this)">Todos</button>
+        <button class="recv-ftab"         id="recvFiltOver"    onclick="_recvFilter('overdue',this)">⚠️ Em atraso</button>
+        <button class="recv-ftab"         id="recvFiltToday"   onclick="_recvFilter('today',this)">Hoje</button>
+        <button class="recv-ftab"         id="recvFiltUpcoming"onclick="_recvFilter('upcoming',this)">A vencer</button>
+        <button class="recv-ftab"         id="recvFiltTx"      onclick="_recvFilter('tx',this)">Transações</button>
+        <button class="recv-ftab"         id="recvFiltAr"      onclick="_recvFilter('ar',this)">Programados</button>
+      </div>
+
+      <!-- Info tip -->
+      <div class="recv-info-tip">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span>Receitas com status <strong>Pendente</strong> e registros de <strong>Programados não recebidos</strong> aparecem aqui. Clique em <strong>✅ Receber</strong> para confirmar o recebimento.</span>
+      </div>
+
+      <!-- Body (JS-rendered) -->
       <div id="receivablesBody" style="background:var(--surface)">
         <div style="text-align:center;padding:48px;color:var(--muted)">⏳ Carregando…</div>
       </div>
