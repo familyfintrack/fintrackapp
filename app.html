@@ -749,29 +749,62 @@
         </div>
       </div>
 
-      <!-- Próximas Faturas — 2 colunas: total (esq) + datas agrupadas (dir) -->
-      <div id="dashCardCCInvoices" class="dcard mb-4" style="display:none">
-        <!-- Barra de título compacta -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:7px">
-            <div style="width:22px;height:22px;border-radius:6px;background:rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <!-- Próximas Faturas — design premium -->
+      <div id="dashCardCCInvoices" class="dcard mb-4" style="display:none;overflow:hidden">
+
+        <!-- Hero gradient: total + resumo de urgência -->
+        <div id="dashCCHero" style="
+          background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+          padding:18px 18px 14px;position:relative;overflow:hidden">
+
+          <!-- Brilho decorativo -->
+          <div style="position:absolute;top:-30px;right:-20px;width:120px;height:120px;
+            border-radius:50%;background:rgba(220,38,38,.15);pointer-events:none"></div>
+          <div style="position:absolute;bottom:-20px;left:30px;width:80px;height:80px;
+            border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none"></div>
+
+          <!-- Linha superior: ícone + título + link -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:28px;height:28px;border-radius:8px;
+                background:rgba(220,38,38,.25);border:1px solid rgba(220,38,38,.4);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              </div>
+              <span style="font-size:.78rem;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.01em">
+                Próximas Faturas
+              </span>
             </div>
-            <span style="font-size:.78rem;font-weight:700;color:var(--text)">Próximas Faturas</span>
+            <button onclick="navigate('scheduled')"
+              style="font-size:.68rem;font-weight:600;color:rgba(255,255,255,.5);
+              background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+              border-radius:6px;padding:3px 9px;cursor:pointer;font-family:inherit;
+              transition:background .15s"
+              onmouseover="this.style.background='rgba(255,255,255,.15)'"
+              onmouseout="this.style.background='rgba(255,255,255,.08)'">
+              Ver todos →
+            </button>
           </div>
-          <button onclick="navigate('scheduled')" style="font-size:.68rem;color:var(--accent);font-weight:600;background:none;border:none;cursor:pointer;padding:2px 4px">Ver →</button>
-        </div>
-        <!-- Corpo em 2 colunas -->
-        <div style="display:grid;grid-template-columns:100px 1fr">
-          <!-- Coluna esquerda: total + contagem -->
-          <div id="dashCCLeft" style="padding:14px 10px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center">
-            <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Total</div>
-            <div id="dashCCTotal" style="font-size:1rem;font-weight:800;color:#dc2626;font-family:var(--font-serif);line-height:1.1">—</div>
-            <div id="dashCCCount" style="font-size:.65rem;color:var(--muted);margin-top:2px">—</div>
+
+          <!-- Total em destaque -->
+          <div style="margin-bottom:10px">
+            <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;
+              letter-spacing:.08em;color:rgba(255,255,255,.4);margin-bottom:3px">
+              Total a pagar
+            </div>
+            <div id="dashCCTotal"
+              style="font-size:1.75rem;font-weight:800;color:#f87171;
+              font-family:var(--font-serif);line-height:1;letter-spacing:-.02em">
+              —
+            </div>
           </div>
-          <!-- Coluna direita: datas agrupadas -->
-          <div id="dashCCList" style="overflow:hidden"></div>
+
+          <!-- Badges de resumo -->
+          <div id="dashCCBadges" style="display:flex;gap:6px;flex-wrap:wrap"></div>
         </div>
+
+        <!-- Lista de datas -->
+        <div id="dashCCList" style="background:var(--surface)"></div>
       </div>
 
       <!-- Previsão de Caixa 90 dias -->
