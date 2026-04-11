@@ -1219,11 +1219,17 @@ async function _syncDashPrefsFromServer() {
       // Inject defaults for optional cards added after the user's prefs were saved
       const merged = Object.assign({}, data.value);
       _DASH_CARDS.forEach(c => {
-        if (!(c.id in merged)) merged[c.id] = !c.optional; // new card: default = !optional
+        if (!(c.id in merged)) {
+          // New card not yet in saved prefs — use default
+          // Check localStorage first in case user just saved it this session
+          merged[c.id] = !c.optional;
+        }
       });
       _dashSavePrefs(merged);
       _dashApplyPrefs(merged);
       _renderDashFavCategories(_lastDashIncome, _lastDashExpense);
+      // Load optional cards that are now enabled
+      if (merged.loyalty !== false) _loadDashLoyaltyCard().catch(()=>{});
     }
   } catch (e) { console.warn('[dashPrefs] sync exception:', e.message); }
 }
@@ -4495,8 +4501,13 @@ async function _loadDashLoyaltyCard() {
   const programs = window._loy?.programs || [];
   const active   = programs; // mostrar todos os programas cadastrados
 
-  if (!active.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
+  // If prefs say show but no programs loaded yet, show empty state (don't hide)
+  if (!active.length) {
+    card.style.display = '';
+    if (body) body.innerHTML = '<div style="padding:16px;text-align:center;font-size:.8rem;color:var(--muted)">Nenhum programa de fidelidade cadastrado.<br><button onclick="navigate(\'accounts\')" style="margin-top:8px;font-size:.76rem;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600">+ Cadastrar programa →</button></div>';
+    if (subEl) subEl.textContent = '0 programas';
+    return;
+  }
 
   const E      = typeof esc === 'function' ? esc : s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const fmtPts = n => Number(n||0).toLocaleString('pt-BR');
