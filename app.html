@@ -891,6 +891,23 @@
         </div>
       </div>
 
+      <!-- Card: Programas de Fidelidade (opcional) -->
+      <div id="dashCardLoyalty" class="dcard mb-4" style="display:none">
+        <div class="dcard-header">
+          <div class="dcard-title-wrap">
+            <div class="dcard-icon" style="background:rgba(245,158,11,.1);color:#d97706">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div>
+              <div class="dcard-title">Programas de Fidelidade</div>
+              <div class="dcard-sub" id="dashLoyaltySub">Saldo de pontos</div>
+            </div>
+          </div>
+          <button class="dcard-link-btn" onclick="navigate('accounts');setTimeout(()=>document.querySelector('.loy-section')?.scrollIntoView({behavior:'smooth'}),400)">Ver todos →</button>
+        </div>
+        <div id="dashLoyaltyBody" style="padding:0"></div>
+      </div>
+
       <!-- Modal de customização do dashboard -->
       <div class="modal-overlay" id="dashCustomModal">
         <div class="modal" style="max-width:380px">
