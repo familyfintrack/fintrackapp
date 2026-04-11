@@ -845,9 +845,12 @@ function renderUpcoming() {
       '</div>';
     }).join('');
 
+    const dayId   = 'scDay_' + date;
+    const isCollapsed = _scDayCollapsed.has(date);
     return '<div style="border-bottom:1.5px solid var(--border)">' +
-      // Day header
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 6px;' + dayBg + '">' +
+      // Day header — clickable to collapse/expand
+      '<div onclick="_scToggleDay(\'' + date + '\')" ' +
+        'style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 6px;cursor:pointer;user-select:none;' + dayBg + '">' +
         '<div style="display:flex;align-items:center;gap:8px">' +
           '<div style="width:36px;height:36px;border-radius:10px;background:var(--surface);border:1.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">' +
             '<span style="font-size:.62rem;font-weight:700;color:var(--muted);line-height:1;text-transform:uppercase">' + dayMon + '</span>' +
@@ -855,13 +858,21 @@ function renderUpcoming() {
           '</div>' +
           '<div>' +
             '<div style="font-size:.8rem;font-weight:700;color:var(--text)">' + dayLabel + '</div>' +
-            '<div style="font-size:.65rem;color:var(--muted)">' + items.length + ' transaç' + (items.length===1?'ão':'ões') + '</div>' +
+            '<div style="font-size:.65rem;color:var(--muted)">' + items.length + ' transaç' + (items.length===1?'ão':'ões') + (isCollapsed ? ' · recolhido' : '') + '</div>' +
           '</div>' +
         '</div>' +
-        '<div style="font-size:.9rem;font-weight:800;' + dayTotColor + '">' + (dayTot>=0?'+':'') + fmt(dayTot) + '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="font-size:.9rem;font-weight:800;' + dayTotColor + '">' + (dayTot>=0?'+':'') + fmt(dayTot) + '</div>' +
+          '<svg id="' + dayId + '_arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" ' +
+            'style="color:var(--muted);transition:transform .2s;transform:' + (isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)') + ';flex-shrink:0">' +
+            '<polyline points="6 9 12 15 18 9"/>' +
+          '</svg>' +
+        '</div>' +
       '</div>' +
-      // Items
-      itemRows +
+      // Items — collapsible
+      '<div id="' + dayId + '" style="display:' + (isCollapsed ? 'none' : '') + '">' +
+        itemRows +
+      '</div>' +
     '</div>';
   }).join('');
 
@@ -897,6 +908,31 @@ function toggleUpcomingGroup(gid) {
   rows.style.display = isOpen ? 'none' : '';
   if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
+
+// ── Collapse state for individual days in list view ─────────────────────────
+const _scDayCollapsed = new Set(); // Set of date strings 'YYYY-MM-DD' currently collapsed
+
+window._scToggleDay = function(date) {
+  const el    = document.getElementById('scDay_' + date);
+  const arrow = document.getElementById('scDay_' + date + '_arr');
+  if (!el) return;
+  const wasCollapsed = _scDayCollapsed.has(date);
+  if (wasCollapsed) {
+    _scDayCollapsed.delete(date);
+    el.style.display = '';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+    // Update subtitle
+    const hdr = el.previousElementSibling;
+    if (hdr) {
+      const sub = hdr.querySelector('.sc-day-sub');
+      if (sub) sub.textContent = sub.textContent.replace(' · recolhido', '');
+    }
+  } else {
+    _scDayCollapsed.add(date);
+    el.style.display = 'none';
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+};
 function _toggleUpcomingGroupOLD(gid) {
   const rows = document.getElementById(gid);
   const arrow = document.getElementById(gid + '_arr');

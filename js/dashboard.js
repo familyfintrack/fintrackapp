@@ -435,9 +435,9 @@ async function loadDashboard(){
                ${fmt(_confBal, a.currency)}
              </div>`
           : '';
-        // Loyalty points badge — shown if this account is linked to a loyalty program
-        const _loyaltyBadge = (typeof getLoyaltyBadgeHtml === 'function')
-          ? getLoyaltyBadgeHtml(a.id) : '';
+        // Loyalty points badge — discrete inline badge for dashboard fav card
+        const _loyaltyBadge = (typeof getLoyaltyBadgeDash === 'function')
+          ? getLoyaltyBadgeDash(a.id) : '';
 
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
@@ -449,7 +449,6 @@ async function loadDashboard(){
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
           ${_confLine}
           ${_brlLine}
-          ${_loyaltyBadge ? `<div style="margin-top:4px">${_loyaltyBadge}</div>` : ''}
           <div class="dash-fav-card__spacer"></div>
           <div class="dash-fav-card__actions" onclick="event.stopPropagation()">
             <button class="dash-fav-card__btn dash-fav-card__btn--add"
@@ -457,6 +456,7 @@ async function loadDashboard(){
               title="Nova transação nesta conta">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
+            ${_loyaltyBadge ? `<button class="dash-fav-card__btn" style="padding:3px 8px;border-radius:20px;gap:3px;opacity:.75;max-width:82px;overflow:hidden;flex-shrink:0;font-size:.65rem;display:flex;align-items:center;justify-content:center;" onclick="event.stopPropagation();(function(){const p=typeof getLoyaltyBadgeProgId==='function'&&getLoyaltyBadgeProgId('${a.id}');if(p)openLoyaltyStatement(p);})()" title="Pontos de fidelidade — ver extrato">${_loyaltyBadge}</button>` : ''}
             <button class="dash-fav-card__btn"
               onclick="_openFavAccountModal('${a.id}')"
               title="Informações da conta">

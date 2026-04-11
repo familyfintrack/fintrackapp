@@ -3072,6 +3072,9 @@ function _rptBenefDateRange() {
   return { from:y+'-01-01', to:y+'-12-31', label:'Ano '+y };
 }
 
+// Keeps expanded state across refreshes within the same session
+const _rptBenefExpanded = new Set();
+
 async function loadPayeeReport() {
   const listEl = document.getElementById('rptBenefList');
   const kpiEl  = document.getElementById('rptBenefKpi');
@@ -3109,12 +3112,13 @@ async function loadPayeeReport() {
     for (var page = 0; ; page++) {
       var res = await sb
         .from('transactions')
-        .select('id,amount,brl_amount,payee_id,payees(id,name),categories(name,color,icon)')
+        .select('id,date,description,amount,brl_amount,payee_id,account_id,payees(id,name),categories(name,color,icon),accounts!transactions_account_id_fkey(name)')
         .eq('family_id', fid)
         .eq('status', 'confirmed')
         .eq('is_transfer', false)
         .gte('date', range.from)
         .lte('date', range.to)
+        .order('date', { ascending: false })
         .range(page * PG, (page+1)*PG - 1);
       if (res.error) throw res.error;
       if (!res.data || res.data.length === 0) break;
@@ -3136,14 +3140,16 @@ async function loadPayeeReport() {
     var pid = t.payee_id;
     if (!map[pid]) {
       map[pid] = {
+        id:    pid,
         name:  (t.payees && t.payees.name) || '(sem nome)',
         icon:  (t.categories && t.categories.icon) || (isInc ? '💰' : '🛒'),
         color: (t.categories && t.categories.color) || accent,
-        total: 0, count: 0
+        total: 0, count: 0, txs: []
       };
     }
     map[pid].total += abs;
     map[pid].count++;
+    map[pid].txs.push(t);
     grandTotal += abs;
     txCount++;
   });
@@ -3176,13 +3182,15 @@ async function loadPayeeReport() {
     return;
   }
 
+  const MON = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
   var html =
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;' +
     'background:var(--surface2);border-bottom:1px solid var(--border)">' +
     '<div style="font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + accent + '">' +
     (isInc ? '📥 Fontes Pagadoras' : '📤 Beneficiarios') +
-    ' - ' + ranked.length + ' registro' + (ranked.length>1?'s':'') + '</div>' +
-    '<div style="font-size:.71rem;color:var(--muted)">' + E(range.label) + ' - ' + txCount + ' tx</div>' +
+    ' — ' + ranked.length + ' registro' + (ranked.length>1?'s':'') + '</div>' +
+    '<div style="font-size:.71rem;color:var(--muted)">' + E(range.label) + ' · ' + txCount + ' tx</div>' +
     '</div>';
 
   ranked.forEach(function(p, i) {
@@ -3191,31 +3199,100 @@ async function loadPayeeReport() {
     var medals = ['🥇','🥈','🥉'];
     var medal  = medals[i] || null;
     var bgTop3 = i < 3 ? 'background:' + accent + '0d;' : '';
+    var isOpen = _rptBenefExpanded.has(p.id);
+    var rowId  = 'rptBenefDetail_' + p.id;
 
+    // ── Main row (clickable) ────────────────────────────────────────────────
     html +=
-      '<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);' + bgTop3 + '">' +
-      '<div style="width:24px;text-align:center;flex-shrink:0">' +
-        (medal
-          ? '<span style="font-size:1rem">' + medal + '</span>'
-          : '<span style="font-size:.67rem;font-weight:800;color:var(--muted)">' + (i+1) + '</span>') +
-      '</div>' +
-      '<div style="width:34px;height:34px;border-radius:9px;background:' + p.color + '18;' +
-        'border:1.5px solid ' + p.color + '40;display:flex;align-items:center;' +
-        'justify-content:center;font-size:.95rem;flex-shrink:0">' + p.icon + '</div>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:5px">' +
-          '<span style="font-size:.85rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + E(p.name) + '</span>' +
-          '<span style="font-size:.85rem;font-weight:800;color:' + accent + ';white-space:nowrap;flex-shrink:0">' + (isInc?'+':'-') + F(p.total) + '</span>' +
+      '<div style="border-bottom:1px solid var(--border)">' +
+      '<div onclick="_rptBenefToggle(\'' + p.id + '\')" ' +
+        'style="display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;user-select:none;' +
+        bgTop3 + 'transition:background .12s" ' +
+        'onmouseover="this.style.background=\'' + accent + '08\'" ' +
+        'onmouseout="this.style.background=\'' + (i<3 ? accent+'0d' : '') + '\'">' +
+        // Rank
+        '<div style="width:24px;text-align:center;flex-shrink:0">' +
+          (medal
+            ? '<span style="font-size:1rem">' + medal + '</span>'
+            : '<span style="font-size:.67rem;font-weight:800;color:var(--muted)">' + (i+1) + '</span>') +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          '<div style="flex:1;height:5px;border-radius:3px;background:var(--border);overflow:hidden">' +
-            '<div style="height:100%;width:' + barW + '%;background:' + accent + ';border-radius:3px"></div>' +
+        // Icon
+        '<div style="width:34px;height:34px;border-radius:9px;background:' + p.color + '18;' +
+          'border:1.5px solid ' + p.color + '40;display:flex;align-items:center;' +
+          'justify-content:center;font-size:.95rem;flex-shrink:0">' + p.icon + '</div>' +
+        // Name + bar
+        '<div style="flex:1;min-width:0">' +
+          '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:5px">' +
+            '<span style="font-size:.85rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + E(p.name) + '</span>' +
+            '<span style="font-size:.85rem;font-weight:800;color:' + accent + ';white-space:nowrap;flex-shrink:0">' + (isInc?'+':'-') + F(p.total) + '</span>' +
           '</div>' +
-          '<span style="font-size:.63rem;color:var(--muted);white-space:nowrap">' + pct + '% - ' + p.count + 'tx</span>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<div style="flex:1;height:5px;border-radius:3px;background:var(--border);overflow:hidden">' +
+              '<div style="height:100%;width:' + barW + '%;background:' + accent + ';border-radius:3px"></div>' +
+            '</div>' +
+            '<span style="font-size:.63rem;color:var(--muted);white-space:nowrap">' + pct + '% · ' + p.count + 'tx</span>' +
+          '</div>' +
         '</div>' +
-      '</div></div>';
+        // Chevron
+        '<svg id="' + rowId + '_arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" ' +
+          'style="color:var(--muted);transition:transform .2s;transform:' + (isOpen?'rotate(180deg)':'rotate(0deg)') + ';flex-shrink:0">' +
+          '<polyline points="6 9 12 15 18 9"/>' +
+        '</svg>' +
+      '</div>' +
+
+      // ── Expandable transaction list ────────────────────────────────────────
+      '<div id="' + rowId + '" style="display:' + (isOpen?'':'none') + ';border-top:1px solid var(--border)">';
+
+    // Transaction rows
+    p.txs.forEach(function(t) {
+      var d    = new Date((t.date||'')+'T12:00:00');
+      var dStr = d.getDate() + ' ' + MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
+      var abs  = Math.abs(parseFloat(t.brl_amount!=null?t.brl_amount:t.amount)||0);
+      var catIcon = (t.categories && t.categories.icon) || (isInc?'💰':'🛒');
+      var catName = (t.categories && t.categories.name) || '';
+      var accName = (t.accounts && t.accounts.name) || '';
+      html +=
+        '<div onclick="event.stopPropagation();openTransactionModal(\'' + t.id + '\')" ' +
+          'style="display:flex;align-items:center;gap:10px;padding:9px 18px 9px 64px;' +
+          'cursor:pointer;border-bottom:1px solid var(--border)" ' +
+          'onmouseover="this.style.background=\'#f9f9f9\'" ' +
+          'onmouseout="this.style.background=\'\'">' +
+          '<span style="font-size:.8rem;flex-shrink:0">' + catIcon + '</span>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + E(t.description||'—') + '</div>' +
+            '<div style="font-size:.67rem;color:var(--muted);margin-top:1px">' +
+              dStr +
+              (accName ? ' · ' + E(accName) : '') +
+              (catName ? ' · ' + E(catName) : '') +
+            '</div>' +
+          '</div>' +
+          '<div style="text-align:right;flex-shrink:0">' +
+            '<div style="font-size:.83rem;font-weight:700;color:' + accent + '">' + (isInc?'+':'-') + F(abs) + '</div>' +
+            '<div style="font-size:.6rem;color:var(--muted);margin-top:1px">✏️ editar</div>' +
+          '</div>' +
+        '</div>';
+    });
+
+    html += '</div></div>'; // close expandable + outer wrapper
   });
 
   listEl.innerHTML = html;
 }
+
+window._rptBenefToggle = function(pid) {
+  const row   = document.getElementById('rptBenefDetail_' + pid);
+  const arrow = document.getElementById('rptBenefDetail_' + pid + '_arr');
+  if (!row) return;
+  const isOpen = row.style.display !== 'none';
+  if (isOpen) {
+    _rptBenefExpanded.delete(pid);
+    row.style.display = 'none';
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  } else {
+    _rptBenefExpanded.add(pid);
+    row.style.display = '';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+};
+
 window.loadPayeeReport = loadPayeeReport;

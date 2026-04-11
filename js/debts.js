@@ -238,16 +238,8 @@ function renderDebtsPage() {
     </div>` : ''}
   </div>
 
-  <!-- List -->
-  <div id="debtsList">
-    ${_dbt.debts.length === 0
-      ? `<div class="empty-state"><div class="es-icon">💳</div><p>${t('dbt.empty')}</p></div>`
-      : _dbt.debts.map(d => _renderDebtCard(d)).join('')
-    }
-  </div>
-
-  <!-- Intro banner — below active debts -->
-  <div class="module-intro-banner" style="--intro-accent:#dc2626;--intro-accent-lt:rgba(220,38,38,.07);margin-top:20px">
+  <!-- Intro banner — após header verde, antes da listagem -->
+  <div class="module-intro-banner" style="--intro-accent:#dc2626;--intro-accent-lt:rgba(220,38,38,.07);margin-top:16px">
     <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
       <i class="mib-arr">▾</i> Recolher
     </button>
@@ -262,6 +254,14 @@ function renderDebtsPage() {
         <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📊 Progresso visual</span>
       </div>
     </div>
+  </div>
+
+  <!-- List -->
+  <div id="debtsList">
+    ${_dbt.debts.length === 0
+      ? `<div class="empty-state"><div class="es-icon">💳</div><p>${t('dbt.empty')}</p></div>`
+      : _dbt.debts.map(d => _renderDebtCard(d)).join('')
+    }
   </div>
 
 </div>`;

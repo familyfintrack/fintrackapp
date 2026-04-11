@@ -131,6 +131,7 @@ window.loadLoyaltyPrograms = loadLoyaltyPrograms;
 
 /* ── Badge de pontos para card de conta ───────────────────────────────────── */
 function getLoyaltyBadgeHtml(accountId) {
+  // Used in accounts page cards — respects show_in_account_card flag
   const prog = _loy.programs.find(p =>
     p.linked_account_id === accountId && p.show_in_account_card
   );
@@ -143,6 +144,26 @@ function getLoyaltyBadgeHtml(accountId) {
   </div>`;
 }
 window.getLoyaltyBadgeHtml = getLoyaltyBadgeHtml;
+
+// Discrete badge content for dashboard favorites card (respects show_in_dash_fav flag)
+function getLoyaltyBadgeDash(accountId) {
+  const prog = _loy.programs.find(p =>
+    p.linked_account_id === accountId && p.show_in_dash_fav !== false && p.show_in_account_card
+  );
+  if (!prog) return '';
+  const cat = _loyCatalog(prog.program_type);
+  // Returns just inline content — dashboard wraps it in its own button element
+  return `<span style="font-size:.8rem;line-height:1">${cat.icon}</span><span style="font-size:.65rem;font-weight:700;color:${cat.color}">${_loyFmt(prog.points_balance)}</span>`;
+}
+window.getLoyaltyBadgeDash      = getLoyaltyBadgeDash;
+
+// Helper to get program ID for a linked account (used by dashboard onclick)
+window.getLoyaltyBadgeProgId = function(accountId) {
+  const prog = _loy.programs.find(p =>
+    p.linked_account_id === accountId && p.show_in_dash_fav !== false && p.show_in_account_card
+  );
+  return prog?.id || '';
+};
 
 /* ── Seção de programas na página de Contas ──────────────────────────────── */
 async function renderLoyaltySection() {
@@ -670,14 +691,23 @@ async function openLoyaltyModal(id) {
           </div>
         </div>
 
-        <!-- Mostrar no card -->
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-          <input type="checkbox" id="loyShowCard" ${prog.show_in_account_card?'checked':''} style="accent-color:var(--accent);width:16px;height:16px">
-          <div>
-            <div style="font-size:.84rem;font-weight:600;color:var(--text)">Exibir pontos no card da conta vinculada</div>
-            <div style="font-size:.73rem;color:var(--muted)">Quando vinculado, mostra o saldo de pontos junto ao card da conta</div>
-          </div>
-        </label>
+        <!-- Mostrar no card da conta + dashboard -->
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+            <input type="checkbox" id="loyShowCard" ${prog.show_in_account_card?'checked':''} style="accent-color:var(--accent);width:16px;height:16px">
+            <div>
+              <div style="font-size:.84rem;font-weight:600;color:var(--text)">Exibir pontos no card da conta vinculada</div>
+              <div style="font-size:.73rem;color:var(--muted)">Mostra badge de pontos no card da conta na página Contas</div>
+            </div>
+          </label>
+          <label id="loyShowDashRow" style="display:${prog.linked_account_id?'flex':'none'};align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+            <input type="checkbox" id="loyShowDash" ${prog.show_in_dash_fav!==false?'checked':''} style="accent-color:var(--accent);width:16px;height:16px">
+            <div>
+              <div style="font-size:.84rem;font-weight:600;color:var(--text)">Exibir pontos no Dashboard (contas favoritas)</div>
+              <div style="font-size:.73rem;color:var(--muted)">Mostra total de pontos de forma discreta na linha de ações do card favorito</div>
+            </div>
+          </label>
+        </div>
 
         <!-- Notas -->
         <div>
@@ -749,6 +779,7 @@ async function _loySaveProgram() {
     program_type:          type,
     linked_account_id:     linked || null,
     show_in_account_card:  showCard,
+    show_in_dash_fav:      document.getElementById('loyShowDash')?.checked ?? true,
     points_expiry_date:    expiry || null,
     notes:                 notes || null,
     // Preserve api fields if already set

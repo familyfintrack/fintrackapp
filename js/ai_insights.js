@@ -1328,7 +1328,7 @@ Responda SOMENTE com JSON válido, sem markdown, sem texto antes ou depois.
 DADOS FINANCEIROS — PERÍODO ${ctx.period.from} a ${ctx.period.to}:
 ${JSON.stringify(promptData, null, 0)}
 
-RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
+RETORNE APENAS O SEGUINTE JSON (sem texto antes ou depois, sem markdown):
 {
   "summary": "2-3 frases resumindo o período de forma clara e humana",
   "overview": {
@@ -1409,7 +1409,6 @@ RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
     { "category": "nome", "status": "ok|near|over", "insight": "análise do orçamento" }
   ],
   "investments_analysis": {
-    "_instrucao": "Inclua APENAS se carteira_investimentos estiver nos dados. Omita esta seção completamente se não houver dados de investimentos.",
     "summary": "resumo da carteira em 1-2 frases",
     "total_market_value_comment": "comentário sobre o valor total da carteira",
     "pnl_comment": "avaliação do resultado (lucro/prejuízo) da carteira",
@@ -1422,7 +1421,6 @@ RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
     ]
   },
   "debts_analysis": {
-    "_instrucao": "Inclua APENAS se dividas_ativas estiver nos dados. Omita esta seção completamente se não houver dados de dívidas.",
     "summary": "resumo das dívidas em 1-2 frases",
     "total_burden_comment": "avaliação do peso das dívidas em relação à renda",
     "priority_order": [
@@ -1432,7 +1430,6 @@ RETORNE EXATAMENTE ESTE JSON (todos os textos em português brasileiro):
     "cashflow_impact": "impacto estimado das dívidas no fluxo de caixa mensal"
   },
   "price_insights": {
-    "_instrucao": "Inclua APENAS se rastreamento_precos estiver nos dados. Omita esta seção completamente se não houver dados de preços.",
     "summary": "observação sobre os itens rastreados",
     "best_value_items": [
       { "name": "item", "insight": "dica de economia baseada nos preços históricos" }
@@ -1457,18 +1454,20 @@ REGRAS FINAIS:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  // geminiRetryFetch: auto-injects thinkingConfig:{thinkingBudget:0} for 2.5 models.
-  // responseMimeType removed: it forces strict JSON mode which causes Gemini to produce
-  // control characters inside string fields when the response is large (causes parse errors).
-  // Instead we rely on _parseGeminiJSON which has a multi-stage sanitizer + bracket-counter.
+  // responseMimeType: 'application/json' forces Gemini to output ONLY valid JSON.
+  // Combined with the improved _parseGeminiJSON (bracket-counting + sanitizer),
+  // this is more reliable than free-text mode where the model adds preamble/postamble.
   const _statusEl = () =>
     document.getElementById('aiInsightsLoadingMsg') || document.querySelector('.ai-loading-text');
 
   const data = await geminiRetryFetch(url, {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-      maxOutputTokens: 12000,
+      maxOutputTokens: 10000,
       temperature: 0.2,
+      responseMimeType: 'application/json',
+      // Explicitly set thinkingBudget=0 so geminiRetryFetch doesn't re-inject it
+      // (thinkingBudget:0 = all tokens available for output)
     },
   }, {
     onRetry: (attempt, max, waitMs) => {
