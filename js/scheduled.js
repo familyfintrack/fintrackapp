@@ -2790,7 +2790,8 @@ function _openUpcomingIfHasEvents() {
 // CALENDAR VIEW — Right column panels (Upcoming + Recorrentes)
 // ══════════════════════════════════════════════════════════════════════════════
 
-let _calUpcomingOpen = true;
+let _calUpcomingOpen        = true;
+let _calUpcomingInitialised = false;
 let _calScStatusChip = 'all';
 
 window.toggleCalUpcomingPanel = function() {
@@ -2917,7 +2918,11 @@ function _renderCalUpcoming() {
 
   // Open the upcoming panel
   listEl.style.setProperty('display', 'block', 'important');
-  _calUpcomingOpen = true;
+  // Preserve user's toggle state — only initialise on first render
+  if (!_calUpcomingInitialised) {
+    _calUpcomingOpen = true;
+    _calUpcomingInitialised = true;
+  }
   if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
 }
 

@@ -841,19 +841,12 @@ Responda APENAS em JSON no formato:
 {"name":"","type":"","indexador":"CDI|IPCA|IGP-M|Selic|Prefixado|N/A","description":"","gestora":""}`;
 
     const _invModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${_invModel}:generateContent?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 1000, temperature: 0.5 },
-      })
+    const _invUrl = `https://generativelanguage.googleapis.com/v1beta/models/${_invModel}:generateContent?key=${key}`;
+    const raw = await geminiRetryFetch(_invUrl, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 1000, temperature: 0.5 },
     });
-    if (!resp.ok) throw new Error('Gemini API: ' + resp.status);
-    const raw = await resp.json();
-    const text = raw.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = text.replace(/```json|```/g, '').trim();
-    const data = JSON.parse(clean);
+    const data = _parseGeminiJSON(raw);
 
     // Preencher campos do formulário
     if (data.name) {

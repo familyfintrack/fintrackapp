@@ -1457,135 +1457,26 @@ REGRAS FINAIS:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  // Detect thinking models (gemini-2.5-*) — they consume thinking tokens from the output budget
-  const _isThinkingModel = /gemini-2\.5/.test(RECEIPT_AI_MODEL);
-  const requestBody = {
+  // geminiRetryFetch: auto-injects thinkingConfig:{thinkingBudget:0} for 2.5 models,
+  // handles 429/503 retry with UI callback, and auto-drops responseMimeType on 400.
+  const _statusEl = () =>
+    document.getElementById('aiInsightsLoadingMsg') || document.querySelector('.ai-loading-text');
+
+  const data = await geminiRetryFetch(url, {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-      maxOutputTokens: _isThinkingModel ? 16000 : 8000,
+      maxOutputTokens: 8000,
       temperature: 0.2,
       responseMimeType: 'application/json',
     },
-    // Disable thinking for structured JSON generation (saves tokens, faster, more reliable),
-  };
+  }, {
+    onRetry: (attempt, max, waitMs) => {
+      const el = _statusEl();
+      if (el) el.textContent = `⏳ Modelo ocupado — aguardando ${waitMs/1000}s (tentativa ${attempt}/${max})…`;
+    },
+  });
 
-  // Retry helper — models can be overloaded or return 503 transiently
-  async function _callWithRetry(body, maxRetries = 3) {
-    const BACKOFF = [5000, 12000, 25000]; // 5s → 12s → 25s
-    let lastErr;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (attempt > 0) {
-        const delay = BACKOFF[Math.min(attempt - 1, BACKOFF.length - 1)];
-        console.warn(`[AIInsights] Retry ${attempt}/${maxRetries} after ${delay}ms`);
-        // Update UI to inform user
-        const statusEl = document.getElementById('aiInsightsLoadingMsg') ||
-                         document.querySelector('.ai-loading-text');
-        if (statusEl) statusEl.textContent =
-          `⏳ Modelo ocupado — aguardando ${delay/1000}s (tentativa ${attempt}/${maxRetries})…`;
-        await new Promise(r => setTimeout(r, delay));
-      }
-      let resp;
-      try {
-        resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-      } catch(networkErr) {
-        lastErr = new Error('Erro de rede: ' + networkErr.message);
-        if (attempt < maxRetries) continue;
-        break;
-      }
-
-      if (resp.ok) return await resp.json();
-
-      const errBody = await resp.json().catch(() => ({}));
-      const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
-
-      if ((resp.status === 429 || resp.status === 503) && attempt < maxRetries) {
-        lastErr = new Error(
-          resp.status === 429
-            ? 'Limite de requisições atingido. Tentando novamente…'
-            : 'Modelo com alta demanda. Tentando novamente…'
-        );
-        continue;
-      }
-
-      if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde 1 minuto e tente novamente.');
-      if (resp.status === 503) throw new Error('Modelo indisponível (alta demanda). Tente novamente em alguns segundos ou use outro modelo em Configurações → IA.');
-
-      // 400 = unsupported config (e.g. responseMimeType not supported by this model)
-      if (resp.status === 400 && body.generationConfig?.responseMimeType) {
-        console.warn('[AIInsights] responseMimeType not supported, retrying without it');
-        const fallbackBody = { ...body, generationConfig: { ...body.generationConfig } };
-        delete fallbackBody.generationConfig.responseMimeType;
-        return await _callWithRetry(fallbackBody, 0);
-      }
-
-      throw new Error(errMsg);
-    }
-    throw lastErr || new Error('Falha após múltiplas tentativas. Tente em alguns minutos ou selecione um modelo diferente em Configurações → IA.');
-  }
-
-  const data = await _callWithRetry(requestBody);
-
-  // ── Parse the response ──────────────────────────────────────────────────
-  const candidate = data?.candidates?.[0];
-
-  // Check finishReason — truncated/blocked responses can't be parsed
-  const finishReason = candidate?.finishReason || '';
-  if (finishReason === 'MAX_TOKENS') {
-    // For thinking models, this usually means the thinking budget was exhausted
-    const _hint = _isThinkingModel
-      ? 'O modelo de raciocínio excedeu o limite de tokens. Tente reduzir o período ou use gemini-1.5-flash em Configurações → IA.'
-      : 'Resposta truncada (período muito longo). Reduza o intervalo de datas e tente novamente.';
-    throw new Error(_hint);
-  }
-  if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
-    throw new Error('Resposta bloqueada pelo modelo de segurança da IA. Altere o contexto e tente novamente.');
-  }
-  if (!candidate || !candidate.content) {
-    // Check for promptFeedback blockReason
-    const blockReason = data?.promptFeedback?.blockReason;
-    if (blockReason) throw new Error('Prompt bloqueado: ' + blockReason);
-    throw new Error('O modelo não retornou resposta. Tente novamente ou use um modelo diferente.');
-  }
-
-  // Collect all text parts
-  const parts = candidate.content?.parts || [];
-  const raw   = parts.map(p => p.text || '').join('');
-
-  if (!raw.trim()) {
-    throw new Error('O modelo retornou resposta vazia. Tente novamente.');
-  }
-
-  // Strip markdown fences
-  let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-
-  // Extract outermost { ... }
-  const jsonStart = clean.indexOf('{');
-  const jsonEnd   = clean.lastIndexOf('}');
-  if (jsonStart !== -1 && jsonEnd > jsonStart) {
-    clean = clean.slice(jsonStart, jsonEnd + 1);
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(clean);
-  } catch(parseErr) {
-    console.warn('[AIInsights] JSON parse failed:', parseErr.message, '\nRaw (first 500):', raw.slice(0, 500));
-    const match = clean.match(/\{[\s\S]+\}/);
-    if (match) {
-      try { parsed = JSON.parse(match[0]); }
-      catch {
-        throw new Error('Resposta inválida da IA. O modelo retornou texto que não é JSON. Tente reduzir o período ou use outro modelo.');
-      }
-    } else {
-      throw new Error('Resposta inválida da IA. O modelo retornou texto que não é JSON. Tente reduzir o período ou use outro modelo.');
-    }
-  }
-
-  return parsed;
+  return _parseGeminiJSON(data);
 }
 
 
@@ -2648,28 +2539,16 @@ REGRAS:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents: [
-        ...geminiHistory,
-        { role: 'user', parts: [{ text: question }] },
-      ],
-      generationConfig: { maxOutputTokens: 800, temperature: 0.4 },
-    }),
+  const data = await geminiRetryFetch(url, {
+    system_instruction: { parts: [{ text: systemInstruction }] },
+    contents: [
+      ...geminiHistory,
+      { role: 'user', parts: [{ text: question }] },
+    ],
+    generationConfig: { maxOutputTokens: 1200, temperature: 0.4 },
   });
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    const msg = err?.error?.message || `HTTP ${resp.status}`;
-    if (resp.status === 429) throw new Error('Limite de requisições. Aguarde.');
-    throw new Error(msg);
-  }
-
-  const data = await resp.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '(sem resposta)';
+  return _parseGeminiText(data) || '(sem resposta)';
 }
 
 function _aiRenderChatHistory() {

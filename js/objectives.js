@@ -253,25 +253,14 @@ Responda APENAS com um único emoji que represente melhor este objetivo.
 Escolha entre emojis comuns como: 🎯 🏠 ✈️ 🚗 💒 🎓 💻 📱 🏋️ 🎸 🍕 🌴 🎉 🏖️ 🛍️ 🔧 🎨 📚 💡 🌍 🏗️ 🚀 💰 🏦 🛒 👶 💍 🎂 🏥 🚢 🎮 📷 🎵
 Responda somente com o emoji, sem texto adicional.`;
 
-    // Try models in order — same fallback chain as agent.js
+    // Use configured model; geminiRetryFetch handles 429/503 and thinkingConfig
     const _cfgModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
-    const MODELS = [_cfgModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v,i,a) => a.indexOf(v) === i);
-    let data = null;
-    for (const model of MODELS) {
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        { method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 16, temperature: 0.4 },}) }
-      );
-      if (resp.status === 404) continue; // model not available, try next
-      if (!resp.ok) throw new Error('Erro na API Gemini: ' + resp.status);
-      data = await resp.json();
-      break;
-    }
-    if (!data) throw new Error('Nenhum modelo Gemini disponível');
-    const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    const _objUrl = `https://generativelanguage.googleapis.com/v1beta/models/${_cfgModel}:generateContent?key=${apiKey}`;
+    const data = await geminiRetryFetch(_objUrl, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 16, temperature: 0.4 },
+    });
+    const raw  = _parseGeminiText(data)?.trim() || '';
     // Extrair o primeiro emoji da resposta
     const emojiMatch = raw.match(/\p{Emoji}/u);
     const suggested  = emojiMatch ? emojiMatch[0] : '🎯';

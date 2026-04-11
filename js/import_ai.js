@@ -128,29 +128,12 @@ REGRAS DE ANÁLISE:
   const _impModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : IMPORT_AI_MODEL_FALLBACK;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${_impModel}:generateContent?key=${apiKey}`;
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 1200, temperature: 0.05 },
-    }),
+  const data = await geminiRetryFetch(url, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 1200, temperature: 0.05 },
   });
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    const msg = err?.error?.message || `HTTP ${resp.status}`;
-    if (resp.status === 429) throw new Error('Limite de requisições atingido.');
-    throw new Error(msg);
-  }
-
-  const data  = await resp.json();
-  const text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/g, '').trim();
-
-  let parsed;
-  try { parsed = JSON.parse(clean); }
-  catch { throw new Error('Resposta inválida da IA: ' + text.slice(0, 120)); }
+  const parsed = _parseGeminiJSON(data);
 
   // Normalizar colMap: remover nulls, converter strings para int
   if (parsed.colMap) {

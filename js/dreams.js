@@ -847,16 +847,11 @@ RETORNE EXATAMENTE ESTE JSON (em português brasileiro):
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 1200 } }),
+    const _d1 = await geminiRetryFetch(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 1200 },
     });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const body = await resp.json();
-    const raw  = body?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const result = JSON.parse(clean);
+    const result = _parseGeminiJSON(_d1);
 
     // Save to simulation_json
     const simData = { ai_summary: result.resumo, ai_full: result, generated_at: new Date().toISOString() };
@@ -1053,14 +1048,11 @@ JSON esperado (sem markdown, sem texto adicional):
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 300 } }),
+    const _d2 = await geminiRetryFetch(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
     });
-    const body = await resp.json();
-    const raw  = body?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const result = _parseGeminiJSON(_d2);
 
     if (_drm.wizard) {
       _drm.wizard.type = result.tipo;
@@ -1398,14 +1390,11 @@ Regras:
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 800 } }),
+    const _d3 = await geminiRetryFetch(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
     });
-    const body = await resp.json();
-    const raw  = body?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const result = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    const result = _parseGeminiJSON(_d3);
 
     const newItems = (result.componentes || []).map(c => ({
       name: c.nome,

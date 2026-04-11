@@ -1400,23 +1400,18 @@ Respond ONLY with valid JSON, no explanation:
 
   const apiKey = await getAppSetting('gemini_api_key', '');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 80, temperature: 0 },
-    }),
-  });
-  if (!resp.ok) { _aiSmartFallback(desc, ctx, flags); return; }
-
-  const json = await resp.json();
-  let raw = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-  // Strip markdown code fences if present
-  raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
 
   let result;
-  try { result = JSON.parse(raw); } catch (_) { _aiSmartFallback(desc, ctx, flags); return; }
+  try {
+    const json = await geminiRetryFetch(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 80, temperature: 0 },
+    });
+    result = _parseGeminiJSON(json);
+  } catch (_) {
+    _aiSmartFallback(desc, ctx, flags);
+    return;
+  }
 
   _aiSmartApplySuggestions(result, ctx, flags);
 }
@@ -3767,6 +3762,16 @@ async function _recvAddManual() {
 }
 window._recvAddManual = _recvAddManual;
 
+function _recvToggleDebtor(i) {
+  const detail = document.getElementById('recvDebtor_detail_' + i);
+  const chev   = document.getElementById('recvDebtorChev_' + i);
+  if (!detail) return;
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : '';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+window._recvToggleDebtor = _recvToggleDebtor;
+
 function _recvAddFromTx() {
   navigate('transactions');
   setTimeout(() => {
@@ -3861,31 +3866,61 @@ function _buildRecv(rows, today) {
   const overdueN = rows.filter(r => r.date < today).length;
   html += card('⏱', 'Antiguidade', overdueN + ' em atraso', agingRows);
 
-  // ── By debtor card ──────────────────────────────────────────────────────
+  // ── By debtor card — tap to expand / collapse transactions ───────────────
   const debtorRows = debtors.map((d, i) => {
-    const bW  = (d.total / maxD * 100).toFixed(1);
-    const pct = total > 0 ? (d.total / total * 100).toFixed(1) : 0;
+    const bW     = (d.total / maxD * 100).toFixed(1);
+    const pct    = total > 0 ? (d.total / total * 100).toFixed(1) : 0;
     const idsStr = d.ids.join(',');
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)">' +
-      '<div style="width:22px;text-align:center;flex-shrink:0;font-size:.68rem;font-weight:800;color:var(--muted)">' + (i+1) + '</div>' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
-          '<span style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(d.name) + '</span>' +
-          '<span style="font-size:.83rem;font-weight:800;color:var(--accent);white-space:nowrap;margin-left:8px">+' + fmtV(d.total) + '</span>' +
+    const detailId = 'recvDebtor_detail_' + i;
+
+    // Inline transactions for this debtor
+    const dRows = rows.filter(r => (r.payee_id || '__none__') === Object.keys(byPayee)[i]);
+    const detailHtml = dRows.map(r => {
+      const dl  = daysOld(r.date);
+      const dc  = dColor(r.date);
+      const lab = dLabel(r.date);
+      const catIcon = r.categories?.icon || '💰';
+      const receiveBtn = r._src === 'ar'
+        ? '<button onclick="event.stopPropagation();_scArReceive(\'' + escV(r._arId) + '\')" style="font-family:var(--font-sans);font-size:.62rem;font-weight:700;color:#fff;background:#16a34a;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;flex-shrink:0">✅</button>'
+        : '<button onclick="event.stopPropagation();markTxReceived(\'' + escV(r.id) + '\')" style="font-family:var(--font-sans);font-size:.62rem;font-weight:700;color:#fff;background:#16a34a;border:none;border-radius:5px;padding:3px 7px;cursor:pointer;flex-shrink:0">✅</button>';
+      const editBtn = r._src !== 'ar'
+        ? '<button onclick="event.stopPropagation();openTxDetail(\'' + escV(r.id) + '\')" style="font-family:var(--font-sans);font-size:.62rem;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:5px;padding:3px 6px;cursor:pointer;flex-shrink:0">✏️</button>'
+        : '';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 16px 8px 40px;border-bottom:1px solid var(--border);background:var(--surface2)">' +
+        '<span style="font-size:.9rem;flex-shrink:0">' + catIcon + '</span>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escV(r.description || '—') + '</div>' +
+          '<div style="font-size:.66rem;color:var(--muted);margin-top:1px;display:flex;gap:6px;flex-wrap:wrap">' +
+            '<span>📅 ' + fmtD(r.date) + '</span>' +
+            '<span style="color:' + dc + ';font-weight:600">⏱ ' + lab + '</span>' +
+          '</div>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)">' +
-            '<div style="height:100%;width:' + bW + '%;background:var(--accent);border-radius:2px"></div></div>' +
-          '<span style="font-size:.6rem;color:var(--muted)">' + pct + '% · ' + d.count + '×</span>' +
+        '<div style="font-size:.8rem;font-weight:800;color:var(--accent);white-space:nowrap">+' + fmtV(r.amount) + '</div>' +
+        '<div style="display:flex;gap:3px">' + receiveBtn + editBtn + '</div>' +
+        '</div>';
+    }).join('');
+
+    return '<div>' +
+      '<div onclick="_recvToggleDebtor(' + i + ')" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none">' +
+        '<div style="width:22px;text-align:center;flex-shrink:0;font-size:.68rem;font-weight:800;color:var(--muted)">' + (i+1) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+            '<span style="font-size:.83rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escV(d.name) + '</span>' +
+            '<span style="font-size:.83rem;font-weight:800;color:var(--accent);white-space:nowrap;margin-left:8px">+' + fmtV(d.total) + '</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<div style="flex:1;height:4px;border-radius:2px;background:var(--border)">' +
+              '<div style="height:100%;width:' + bW + '%;background:var(--accent);border-radius:2px"></div></div>' +
+            '<span style="font-size:.6rem;color:var(--muted)">' + pct + '% · ' + d.count + ' lançamento' + (d.count>1?'s':'') + '</span>' +
+          '</div>' +
         '</div>' +
+        '<svg id="recvDebtorChev_' + i + '" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--muted);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>' +
       '</div>' +
-      '<button onclick="_recvMarkAllReceived(\'' + escV(idsStr) + '\')" ' +
-        'style="font-family:var(--font-sans);font-size:.65rem;font-weight:700;color:#fff;background:#16a34a;' +
-        'border:none;border-radius:6px;padding:4px 9px;cursor:pointer;flex-shrink:0">✅ Receber</button>' +
+      '<div id="' + detailId + '" style="display:none">' + detailHtml + '</div>' +
       '</div>';
   }).join('');
 
-  html += card('👤', 'Por Devedor', debtors.length + ' fonte' + (debtors.length > 1 ? 's' : ''), debtorRows);
+  html += card('👤', 'Por Devedor — toque para ver lançamentos', debtors.length + ' devedor' + (debtors.length > 1 ? 'es' : ''), debtorRows);
 
   // ── Statistical consolidation by payee (accumulated receivables) ────────────
   if (debtors.length > 0) {

@@ -37,8 +37,15 @@ function generateDemoData() {
   // Contas
   const A_NUBANK   = uid(), A_ITAU    = uid(), A_BRADESCO = uid();
   const A_VISA_NU  = uid(), A_MASTER  = uid(), A_POUPANCA = uid();
-  const A_USD      = uid(), A_DINHEIRO= uid();
-  const GRP_BR     = uid(), GRP_CARDS = uid();
+  const A_USD      = uid(), A_DINHEIRO= uid(), A_XP_INV   = uid();
+  const GRP_BR     = uid(), GRP_CARDS = uid(), GRP_INV    = uid();
+
+  // IDs para investimentos (carteira)
+  const INV_TESOURO = uid(), INV_FII   = uid(), INV_ACAO1 = uid();
+  const INV_ACAO2   = uid(), INV_CDB   = uid(), INV_ETF   = uid();
+
+  // IDs para objetivos financeiros
+  const OBJ_EMERG   = uid(), OBJ_APOS  = uid(), OBJ_CARRO = uid();
 
   // Categorias — Pais
   const C_ALIM = uid(), C_TRANSP = uid(), C_MORAD  = uid(), C_SAUDE  = uid();
@@ -83,6 +90,7 @@ function generateDemoData() {
   const accountGroups = [
     { id: GRP_BR,    name: 'Brasil',   emoji: '🇧🇷', color: '#009c3b', currency: 'BRL' },
     { id: GRP_CARDS, name: 'Cartões',  emoji: '💳', color: '#1A1F71', currency: 'BRL' },
+    { id: GRP_INV,   name: 'Investimentos', emoji: '📈', color: '#1A1F71', currency: 'BRL' },
   ];
 
   /* ── Accounts ─────────────────────────────────────────────────────────── */
@@ -95,6 +103,7 @@ function generateDemoData() {
     { id:A_POUPANCA, name:'Poupança Itaú',      type:'poupanca',       currency:'BRL', icon:'itau',      color:'#F5A623', group_id:GRP_BR,    is_favorite:false, initial_balance:22000  },
     { id:A_USD,      name:'Wise USD',           type:'corrente',       currency:'USD', icon:'wise',      color:'#9FE870', group_id:GRP_BR,    is_favorite:false, initial_balance: 1500  },
     { id:A_DINHEIRO, name:'Carteira',           type:'dinheiro',       currency:'BRL', icon:'emoji-💵',  color:'#2a6049', group_id:GRP_BR,    is_favorite:false, initial_balance:  400  },
+    { id:A_XP_INV,  name:'XP Investimentos',   type:'investimento',   currency:'BRL', icon:'xp',        color:'#1A1F71', group_id:GRP_INV,   is_favorite:true,  initial_balance:45200  },
   ];
 
   /* ── Categories ───────────────────────────────────────────────────────── */
@@ -633,6 +642,23 @@ function generateDemoData() {
       notes:'Credor: Caixa Econômica Federal.' },
   ];
 
+  /* ── Investimentos (carteira) ────────────────────────────────────────── */
+  const investments = [
+    { id:INV_TESOURO, name:'Tesouro IPCA+ 2029',       type:'tesouro_ipca',  ticker:null,     purchase_price:1000, current_price:1187.43, quantity:10,  account_id:A_XP_INV, purchase_date:mth(18,15), notes:'IPCA+ 5.08% a.a.', icon:'🏦', color:'#1A6B3C' },
+    { id:INV_FII,     name:'HGLG11 — CSHG Logística',  type:'fii',           ticker:'HGLG11', purchase_price:168,  current_price:182.50,  quantity:30,  account_id:A_XP_INV, purchase_date:mth(12,8),  notes:'FII Logística',    icon:'🏢', color:'#1A4A6B' },
+    { id:INV_ACAO1,   name:'WEGE3 — WEG',               type:'acao',          ticker:'WEGE3',  purchase_price:37.5, current_price:45.20,   quantity:100, account_id:A_XP_INV, purchase_date:mth(10,22), notes:'Small cap',        icon:'⚙️', color:'#1A6B4A' },
+    { id:INV_ACAO2,   name:'ITUB4 — Itaú Unibanco',     type:'acao',          ticker:'ITUB4',  purchase_price:27.8, current_price:34.90,   quantity:150, account_id:A_XP_INV, purchase_date:mth(8,5),   notes:'Bancário',         icon:'🏦', color:'#FF6600' },
+    { id:INV_CDB,     name:'CDB Nubank 120% CDI',        type:'renda_fixa',    ticker:null,     purchase_price:5000, current_price:5680,    quantity:1,   account_id:A_XP_INV, purchase_date:mth(14,1),  notes:'Vence em 2 anos',  icon:'💰', color:'#820AD1' },
+    { id:INV_ETF,     name:'BOVA11 — iShares Ibovespa', type:'etf',           ticker:'BOVA11', purchase_price:112,  current_price:121.30,  quantity:40,  account_id:A_XP_INV, purchase_date:mth(6,10),  notes:'ETF Ibovespa',     icon:'📊', color:'#2563EB' },
+  ];
+
+  /* ── Objetivos Financeiros ────────────────────────────────────────────── */
+  const financialObjectives = [
+    { id:OBJ_EMERG, name:'Reserva de Emergência',    target_amount:60000,  current_amount:38400, target_date:`${Y+1}-12-01`, category:'reserva',    priority:1, status:'active', color:'#16a34a', icon:'🛡️',  notes:'6 meses de despesas fixas (R$10k/mês)' },
+    { id:OBJ_APOS,  name:'Previdência / Aposentadoria', target_amount:500000, current_amount:68500, target_date:`${Y+20}-01-01`, category:'previdencia', priority:2, status:'active', color:'#2563eb', icon:'🏖️', notes:'Carteira diversificada — aporte mensal R$800' },
+    { id:OBJ_CARRO, name:'Troca do Carro',            target_amount:45000,  current_amount:12800, target_date:`${Y+2}-06-01`,  category:'bem',        priority:3, status:'active', color:'#d97706', icon:'🚗',  notes:'Entrada + parcelas. Modelo: HB20 Platinum 2026.' },
+  ];
+
   return {
     accountGroups,
     accounts,
@@ -643,6 +669,8 @@ function generateDemoData() {
     scheduled,
     budgets,
     dreams,
+    investments,
+    financialObjectives,
     priceItems,
     priceStores,
     priceHistory,

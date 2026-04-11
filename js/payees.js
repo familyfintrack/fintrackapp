@@ -655,38 +655,16 @@ window.payeeAiSuggestLogo = async function() {
     ].join('\n');
 
     const _cfgModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
-    const models = [_cfgModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v,i,a) => a.indexOf(v) === i);
-    let lastErr = null;
-    let parsed = null;
-
-    for (const model of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const resp = await fetch(url, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            contents:[{parts:[{text:prompt}]}],
-            generationConfig:{maxOutputTokens:500,temperature:0.35,responseMimeType:'application/json'},
-          })
-        });
-        if (!resp.ok) {
-          const errText = await resp.text().catch(()=>'');
-          throw new Error(`HTTP ${resp.status}${errText ? ' - ' + errText : ''}`);
-        }
-        const data = await resp.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const clean = text.replace(/```json|```/g,'').trim();
-        parsed = JSON.parse(clean);
-        if (parsed?.suggestions?.length) break;
-        throw new Error('Sem sugestões');
-      } catch (err) {
-        lastErr = err;
-      }
-    }
+    // geminiRetryFetch: handles thinkingConfig, retry, and responseMimeType fallback automatically
+    const _payUrl = `https://generativelanguage.googleapis.com/v1beta/models/${_cfgModel}:generateContent?key=${apiKey}`;
+    const _payData = await geminiRetryFetch(_payUrl, {
+      contents:[{parts:[{text:prompt}]}],
+      generationConfig:{maxOutputTokens:500,temperature:0.35,responseMimeType:'application/json'},
+    });
+    const parsed = _parseGeminiJSON(_payData);
 
     const sugs = parsed?.suggestions || [];
-    if (!sugs.length) throw (lastErr || new Error('Sem sugestões'));
+    if (!sugs.length) throw new Error('Sem sugestões');
 
     content.innerHTML = sugs.map(s => {
       const title = esc(s.label || 'Sugestão');

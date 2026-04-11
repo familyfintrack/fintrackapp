@@ -616,32 +616,16 @@ REGRAS:
 
   const _grocModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${_grocModel}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [
-        { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
-        { text: prompt },
-      ]}],
-      generationConfig: { maxOutputTokens: 2000, temperature: 0.1 },
-    }),
+
+  const data = await geminiRetryFetch(url, {
+    contents: [{ parts: [
+      { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
+      { text: prompt },
+    ]}],
+    generationConfig: { maxOutputTokens: 2000, temperature: 0.1 },
   });
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    const msg = err?.error?.message || `HTTP ${resp.status}`;
-    if (resp.status === 400 && msg.includes('API_KEY')) throw new Error('Chave API inválida.');
-    if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde.');
-    throw new Error(msg);
-  }
-
-  const data  = await resp.json();
-  const text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/g, '').trim();
-  let parsed;
-  try { parsed = JSON.parse(clean); }
-  catch { throw new Error('Resposta inválida: ' + text.slice(0, 120)); }
+  const parsed = _parseGeminiJSON(data);
   if (parsed.error) throw new Error(parsed.error);
   return parsed;
 }

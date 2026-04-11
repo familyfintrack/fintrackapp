@@ -264,6 +264,20 @@ async function loadDashboard(){
     }
   } catch(_e) {}
 
+  // ── Saudação temporal estilo Claude ─────────────────────────────────────
+  try {
+    const _greetEl = document.getElementById('dashWelcomeMsg');
+    if (_greetEl) {
+      const _h = new Date().getHours();
+      const _greet = _h >= 5 && _h < 12 ? 'Bom dia'
+                   : _h >= 12 && _h < 18 ? 'Boa tarde'
+                   : _h >= 18 ? 'Boa noite' : 'Boa madrugada';
+      const _uname = (currentUser?.name || '').split(' ')[0].trim();
+      _greetEl.textContent = _uname ? `${_greet}, ${_uname}!` : `${_greet}!`;
+      _greetEl.style.display = '';
+    }
+  } catch(_e) {}
+
   // Aplicar prefs de customização imediatamente (evita flash de cards ocultos)
   try { _dashApplyPrefs(_dashGetPrefs()); } catch(_e) {}
   // Sincronizar prefs do servidor em background
@@ -825,16 +839,30 @@ async function renderCategoryChart(){
 
   closeCatDetail(); // reset any open detail
 
+  // Always reset expense/income mode to Despesas on fresh render
+  // (prevents stale state after navigation away and back)
+  _catChartEntries = window._catChartExpEntriesRaw || _catChartEntries;
+  const expBtn = document.getElementById('dashCatModeExp');
+  const incBtn = document.getElementById('dashCatModeInc');
+  if (expBtn) expBtn.classList.add('active');
+  if (incBtn) incBtn.classList.remove('active');
+
+  // Ensure chart controls + type toggle are visible (may have been hidden by openCatDetail)
+  const dashCatControls = document.getElementById('dashCatControls');
+  const catChartWrap    = document.getElementById('catChartWrap');
+  const typeTogglePar   = document.querySelector('#catChartCard > div:last-child');
+  if (dashCatControls) dashCatControls.style.display = '';
+  if (catChartWrap)    catChartWrap.style.display    = '';
+  if (typeTogglePar && typeTogglePar.querySelector('.dash-cat-toggle'))
+    typeTogglePar.style.display = '';
+
   // Restore chart type from prefs
   const savedType = _dashGetPrefs()?.catChartType || 'bar';
-  if (savedType !== _catChartType) {
-    _catChartType = savedType;
-    // sync toggle buttons
-    const pie = document.getElementById('catChartTypePie');
-    const bar = document.getElementById('catChartTypeBar');
-    if (pie) { pie.classList.toggle('active', savedType === 'doughnut'); pie.style.background=''; pie.style.color=''; }
-    if (bar) { bar.classList.toggle('active', savedType === 'bar');     bar.style.background=''; bar.style.color=''; }
-  }
+  _catChartType = savedType;
+  const pie = document.getElementById('catChartTypePie');
+  const bar = document.getElementById('catChartTypeBar');
+  if (pie) pie.classList.toggle('active', savedType === 'doughnut');
+  if (bar) bar.classList.toggle('active', savedType === 'bar');
 
 // ── _renderCatChartBar: horizontal bar chart from _catChartEntries ───────────
 function _renderCatChartBar() {
@@ -3412,55 +3440,17 @@ async function _patAnalyzeWithGemini() {
     + 'Não use formatação. Não escreva introdução. Comece direto pela análise.';
 
 
-  // Abort after 30 s — prevents infinite spinner on network issues
-  const _ctrl = new AbortController();
-  const _timer = setTimeout(() => _ctrl.abort(), 30000);
   try {
-    let resp;
-    for (let _attempt = 0; _attempt <= 2; _attempt++) {
-      if (_attempt > 0) {
-        result.innerHTML = '<span style="color:var(--muted)">⏳ Tentando novamente (' + _attempt + '/2)…</span>';
-        await new Promise(r => setTimeout(r, _attempt * 5000));
-      }
-      resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.6, maxOutputTokens: 600 },
-        }),
-        signal: _ctrl.signal,
-      });
-      if (resp.ok || (resp.status !== 429 && resp.status !== 503)) break;
-    };
-    clearTimeout(_timer);
-    if (!resp.ok) {
-      const errBody = await resp.json().catch(() => ({}));
-      throw new Error('Gemini ' + resp.status + ': ' + (errBody?.error?.message || resp.statusText));
-    }
-    const data = await resp.json();
+    const data = await geminiRetryFetch(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.6, maxOutputTokens: 600 },
+    }, {
+      onRetry: (attempt, max, waitMs) => {
+        result.innerHTML = `<span style="color:var(--muted)">⏳ Tentando novamente (${attempt}/${max})…</span>`;
+      },
+    });
 
-    // Check for API-level error in response body
-    if (data?.error) throw new Error(data.error.message || 'Erro na API Gemini');
-
-    const candidate = data?.candidates?.[0];
-    const finishReason = candidate?.finishReason;
-    const text = candidate?.content?.parts?.[0]?.text || '';
-
-    // Diagnose empty response
-    if (!text) {
-      if (!data?.candidates?.length) {
-        // No candidates — check for promptFeedback block
-        const blockReason = data?.promptFeedback?.blockReason;
-        throw new Error(blockReason
-          ? 'Conteúdo bloqueado pela IA: ' + blockReason
-          : 'Nenhuma resposta gerada. Tente novamente.');
-      }
-      if (finishReason === 'MAX_TOKENS') throw new Error('Resposta cortada (limite de tokens). Use um modelo com mais capacidade.');
-      if (finishReason === 'SAFETY') throw new Error('Resposta bloqueada por filtro de segurança.');
-      if (finishReason === 'RECITATION') throw new Error('Resposta bloqueada por política de citação.');
-      throw new Error('Resposta vazia da IA (finishReason: ' + (finishReason || 'desconhecido') + ')');
-    }
+    const text = _parseGeminiText(data);
 
     // Strip common AI preamble patterns
     let cleanText = text.trim()

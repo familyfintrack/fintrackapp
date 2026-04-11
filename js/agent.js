@@ -457,45 +457,9 @@ async function _agCallGemini(userText, ctx, toolResultParts) {
     generationConfig: {temperature:0.35, maxOutputTokens:1500},
   };
 
-  // Retry with exponential backoff for 429/503 (model busy / rate limit)
-  const MAX_RETRIES = 3;
-  const BACKOFF_MS  = [4000, 10000, 20000]; // 4s → 10s → 20s
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    let resp;
-    try {
-      resp = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(body),
-      });
-    } catch(netErr) {
-      if (attempt === MAX_RETRIES) throw new Error('Erro de rede: ' + netErr.message);
-      await new Promise(r => setTimeout(r, BACKOFF_MS[attempt]));
-      continue;
-    }
-
-    if (resp.ok) return resp.json();
-
-    const errBody = await resp.json().catch(() => ({}));
-    const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
-
-    if ((resp.status === 429 || resp.status === 503) && attempt < MAX_RETRIES) {
-      const waitMs = BACKOFF_MS[attempt];
-      // Show a non-blocking status update
-      _agUpdateRetryStatus(attempt + 1, MAX_RETRIES, waitMs);
-      await new Promise(r => setTimeout(r, waitMs));
-      continue;
-    }
-
-    // Non-retryable or exhausted retries
-    if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde um minuto e tente novamente.');
-    if (resp.status === 503) throw new Error('Modelo temporariamente indisponível (alta demanda). Tente novamente em alguns segundos.');
-    if (resp.status === 400) throw new Error('Requisição inválida: ' + errMsg);
-    throw new Error(errMsg);
-  }
-
-  throw new Error('Falha após múltiplas tentativas. Tente novamente mais tarde.');
+  return geminiRetryFetch(url, body, {
+    onRetry: (attempt, max, waitMs) => _agUpdateRetryStatus(attempt, max, waitMs),
+  });
 }
 
 function _agUpdateRetryStatus(attempt, max, waitMs) {

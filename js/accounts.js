@@ -1198,26 +1198,13 @@ window.accountAiSuggestIcon = async function() {
     ].join('\n');
 
     const _cfgModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
-    const models = [_cfgModel, 'gemini-2.5-flash', 'gemini-1.5-flash'].filter((v,i,a) => a.indexOf(v) === i);
-    let parsed = null;
-    for (const model of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 400, temperature: 0.3, responseMimeType: 'application/json' },
-          })
-        });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json|```/g,'').trim();
-        parsed = JSON.parse(text);
-        if (parsed?.suggestions?.length) break;
-      } catch(_) {}
-    }
+    // geminiRetryFetch: handles thinkingConfig, retry, and responseMimeType fallback automatically
+    const _accUrl = `https://generativelanguage.googleapis.com/v1beta/models/${_cfgModel}:generateContent?key=${apiKey}`;
+    const _accData = await geminiRetryFetch(_accUrl, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 400, temperature: 0.3, responseMimeType: 'application/json' },
+    });
+    const parsed = _parseGeminiJSON(_accData);
 
     const sugs = parsed?.suggestions || [];
     const aiChips = sugs.map(s => {

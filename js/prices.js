@@ -1508,19 +1508,15 @@ async function rpmNormalizeAI(idx) {
   if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
   try {
     const url  = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text:
-          `Normalize este nome de produto para uma descrição curta e padronizada em português brasileiro.\n` +
-          `Remova abreviações técnicas e códigos internos.\n` +
-          `Retorne APENAS o nome normalizado em Title Case.\n\nProduto: ${raw}`
-        }] }],
-        generationConfig: { maxOutputTokens: 50, temperature: 0.1 },
-      }),
+    const _p1  = await geminiRetryFetch(url, {
+      contents: [{ parts: [{ text:
+        `Normalize este nome de produto para uma descrição curta e padronizada em português brasileiro.\n` +
+        `Remova abreviações técnicas e códigos internos.\n` +
+        `Retorne APENAS o nome normalizado em Title Case.\n\nProduto: ${raw}`
+      }] }],
+      generationConfig: { maxOutputTokens: 50, temperature: 0.1 },
     });
-    const data = await resp.json();
-    const norm = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const norm = _parseGeminiText(_p1)?.split('\n')[0]?.trim();
     if (norm && descEl) { descEl.value = norm; _rpmAutoLink(idx); }
     toast('✓ Nome normalizado', 'success');
   } catch(e) { toast('Erro na IA: ' + e.message, 'error'); }
@@ -1872,22 +1868,14 @@ async function _callPricesVision(apiKey, pending) {
     `REGRAS: description=nome limpo sem abreviações; unit_price=total_price/quantity; date=${today} se não encontrar; ` +
     `se payee bater com algum da lista use o nome exato.`;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [
-        { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
-        { text: prompt },
-      ]}],
-      generationConfig: { maxOutputTokens: 2000, temperature: 0.1 },
-    }),
+  const _p2 = await geminiRetryFetch(url, {
+    contents: [{ parts: [
+      { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
+      { text: prompt },
+    ]}],
+    generationConfig: { maxOutputTokens: 2000, temperature: 0.1 },
   });
-  if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err?.error?.message || `HTTP ${resp.status}`); }
-  const data  = await resp.json();
-  const text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/g, '').trim();
-  let parsed;
-  try { parsed = JSON.parse(clean); } catch { throw new Error('Resposta inválida da IA'); }
+  const parsed = _parseGeminiJSON(_p2);
   if (parsed.error) throw new Error(parsed.error);
   return parsed;
 }

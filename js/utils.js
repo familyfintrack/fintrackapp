@@ -900,21 +900,19 @@ Presente da Chloe na Amazon`;
 
     const _utilModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${_utilModel}:generateContent?key=${apiKey}`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    let text;
+    try {
+      const json = await geminiRetryFetch(url, {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 80 }
-      })
-    });
-    if (!resp.ok) return fallback;
-
-    const json = await resp.json().catch(() => null);
-    const text = _afdClean(json?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join(' ') || '');
+        generationConfig: { temperature: 0.1, maxOutputTokens: 80 },
+      }, { maxRetries: 1 });
+      text = _afdClean(_parseGeminiText(json));
+    } catch (_) {
+      return fallback;
+    }
     if (!text) return fallback;
 
-    const cleaned = text.replace(/^['"“”]+|['"“”]+$/g, '').replace(/\s+/g, ' ').trim();
+    const cleaned = text.replace(/^['“”“”]+|['“”“”]+$/g, '').replace(/\s+/g, ' ').trim();
     if (!cleaned || cleaned.length > 80) return fallback;
     return cleaned;
   } catch (_) {
@@ -953,31 +951,88 @@ window.buildAutoDescriptionFallback = buildAutoDescriptionFallback;
 window.generateAutoTransactionDescription = generateAutoTransactionDescription;
 window.ensureTransactionDescription = ensureTransactionDescription;
 
-/* ── Shared Gemini API retry helper ──────────────────────────────────────────
-   Use: const data = await geminiRetryFetch(url, body, options?)
-   options: { maxRetries:3, backoffMs:[4000,10000,20000], onRetry:fn }
-   Handles 429 (rate limit) and 503 (model overloaded) with exponential backoff.
-─────────────────────────────────────────────────────────────────────────────── */
+/* ── Gemini utilities ────────────────────────────────────────────────────────
+ *
+ *  _geminiInjectThinking(body, url)
+ *    Auto-injects thinkingConfig:{thinkingBudget:0} for gemini-2.5-* models
+ *    so the model does NOT spend output tokens on internal reasoning.
+ *    Without this, 2.5-flash silently consumes up to 8 000+ tokens on thinking
+ *    before writing the actual response, causing MAX_TOKENS truncation and
+ *    broken JSON.  Always disable thinking for structured / fast responses.
+ *
+ *  geminiRetryFetch(url, body, opts?)
+ *    Central Gemini call helper used by all AI modules.
+ *    • Injects thinkingConfig automatically
+ *    • Retries on 429 / 503 with exponential backoff (3 retries max)
+ *    • Returns parsed response JSON; throws descriptive errors
+ *
+ *  _parseGeminiText(data)
+ *    Extracts the text content from a Gemini response object.
+ *    Joins all parts, strips Markdown fences, checks finishReason.
+ *    Throws on MAX_TOKENS / SAFETY / empty response.
+ *
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/** Inject thinkingConfig for 2.5 models (modifies a shallow copy, not the original). */
+function _geminiInjectThinking(body, url) {
+  // Detect model from URL: .../models/gemini-2.5-flash:generateContent...
+  const modelMatch = (url || '').match(/\/models\/([^:?/]+)/);
+  const modelName  = modelMatch ? modelMatch[1] : '';
+  if (!/gemini-2\.5/.test(modelName)) return body;             // not a 2.5 model — leave unchanged
+
+  const gc = body.generationConfig || {};
+  if (gc.thinkingConfig) return body;                           // already set by caller — respect it
+
+  return {
+    ...body,
+    generationConfig: {
+      ...gc,
+      thinkingConfig: { thinkingBudget: 0 },                   // disable thinking → all tokens go to output
+    },
+  };
+}
+window._geminiInjectThinking = _geminiInjectThinking;
+
+/**
+ * geminiRetryFetch(url, body, opts?)
+ *
+ * opts: {
+ *   maxRetries  : number          default 3
+ *   backoffMs   : number[]        default [5000, 12000, 25000]
+ *   onRetry     : fn(attempt, max, waitMs)  optional UI callback
+ * }
+ *
+ * Returns the parsed JSON response from Gemini.
+ * Uses the original (non-intercepted) fetch to avoid double-retry.
+ */
+const _geminiRawFetch = window.fetch.bind(window);  // capture BEFORE any wrapper is added
+
 async function geminiRetryFetch(url, body, opts = {}) {
   const maxRetries = opts.maxRetries ?? 3;
-  const backoff    = opts.backoffMs  ?? [4000, 10000, 20000];
-  const onRetry    = opts.onRetry;   // optional callback(attempt, maxRetries, waitMs)
+  const backoff    = opts.backoffMs  ?? [5000, 12000, 25000];
+  const onRetry    = opts.onRetry;
+
+  // Auto-inject thinkingConfig for 2.5 models
+  const preparedBody = _geminiInjectThinking(body, url);
+  const bodyStr      = JSON.stringify(preparedBody);
 
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
       const wait = backoff[Math.min(attempt - 1, backoff.length - 1)];
       if (typeof onRetry === 'function') onRetry(attempt, maxRetries, wait);
+      console.warn(`[Gemini] retry ${attempt}/${maxRetries}, waiting ${wait}ms`);
       await new Promise(r => setTimeout(r, wait));
     }
+
     let resp;
     try {
-      resp = await fetch(url, {
-        method: 'POST',
+      resp = await _geminiRawFetch(url, {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body:    bodyStr,
       });
-    } catch(netErr) {
+    } catch (netErr) {
       lastErr = new Error('Erro de rede: ' + netErr.message);
       if (attempt < maxRetries) continue;
       throw lastErr;
@@ -988,6 +1043,7 @@ async function geminiRetryFetch(url, body, opts = {}) {
     const errBody = await resp.json().catch(() => ({}));
     const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
 
+    // Retryable errors
     if ((resp.status === 429 || resp.status === 503) && attempt < maxRetries) {
       lastErr = new Error(resp.status === 429
         ? 'Limite de requisições. Tentando novamente…'
@@ -995,13 +1051,21 @@ async function geminiRetryFetch(url, body, opts = {}) {
       continue;
     }
 
-    // Specific known errors
+    // 400 with responseMimeType → retry without it (model may not support JSON mode)
+    if (resp.status === 400 && preparedBody.generationConfig?.responseMimeType && attempt === 0) {
+      console.warn('[Gemini] responseMimeType rejected (400), retrying without it');
+      const fallbackBody = { ...preparedBody, generationConfig: { ...preparedBody.generationConfig } };
+      delete fallbackBody.generationConfig.responseMimeType;
+      return geminiRetryFetch(url, fallbackBody, { ...opts, maxRetries: opts.maxRetries ?? 3 });
+    }
+
+    // Known terminal errors
     if (resp.status === 400 && errMsg.includes('API_KEY'))
       throw new Error('Chave Gemini inválida. Verifique em Configurações → IA.');
     if (resp.status === 429)
       throw new Error('Limite de requisições atingido. Aguarde 1 minuto e tente novamente.');
     if (resp.status === 503)
-      throw new Error('Modelo indisponível (alta demanda). Tente novamente em alguns segundos ou use outro modelo.');
+      throw new Error('Modelo indisponível (alta demanda). Tente outro modelo em Configurações → IA.');
 
     throw new Error(errMsg);
   }
@@ -1009,51 +1073,57 @@ async function geminiRetryFetch(url, body, opts = {}) {
 }
 window.geminiRetryFetch = geminiRetryFetch;
 
-/* ── Global Gemini 429/503 auto-retry interceptor ────────────────────────────
-   Wraps window.fetch so ALL Gemini API calls in the app automatically retry
-   on rate-limit (429) and model overload (503) — no changes needed elsewhere.
-   Installed after DOM ready so it doesn't interfere with non-Gemini fetches.
-   Backoff: 4s → 12s → 25s (3 retries max).
+/**
+ * _parseGeminiText(data)
+ * Extracts and validates the text response from a parsed Gemini JSON response.
+ * Strips Markdown fences. Throws on MAX_TOKENS / SAFETY / empty.
+ */
+function _parseGeminiText(data) {
+  const candidate  = data?.candidates?.[0];
+  const finishReason = candidate?.finishReason || '';
+
+  if (!candidate || !candidate.content) {
+    const blockReason = data?.promptFeedback?.blockReason;
+    if (blockReason) throw new Error('Prompt bloqueado pela IA: ' + blockReason);
+    throw new Error('Modelo não retornou resposta. Tente novamente.');
+  }
+  if (finishReason === 'MAX_TOKENS') {
+    throw new Error('Resposta truncada (MAX_TOKENS). Reduza o período de análise ou escolha outro modelo em Configurações → IA.');
+  }
+  if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+    throw new Error('Resposta bloqueada pelo filtro de segurança da IA.');
+  }
+
+  const parts = candidate.content?.parts || [];
+  const raw   = parts.map(p => p.text || '').join('');
+  if (!raw.trim()) throw new Error('Modelo retornou resposta vazia. Tente novamente.');
+
+  // Strip Markdown fences
+  return raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+}
+window._parseGeminiText = _parseGeminiText;
+
+/**
+ * _parseGeminiJSON(data)
+ * Like _parseGeminiText but also JSON-parses the result.
+ * Extracts the outermost { } or [ ] block if there is surrounding text.
+ */
+function _parseGeminiJSON(data) {
+  const text  = _parseGeminiText(data);
+  // Try to extract a JSON object or array even if there is surrounding text
+  const start = text.search(/[{[]/);
+  const end   = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
+  const clean = (start !== -1 && end > start) ? text.slice(start, end + 1) : text;
+  try {
+    return JSON.parse(clean);
+  } catch (e) {
+    throw new Error('Resposta inválida da IA (JSON mal formado). Tente novamente. Detalhe: ' + e.message);
+  }
+}
+window._parseGeminiJSON = _parseGeminiJSON;
+
+/* ── Legacy: keep window.fetch unmodified ────────────────────────────────────
+   The old _geminiRetryInterceptor that wrapped window.fetch has been removed.
+   All AI modules now use geminiRetryFetch() directly, which handles retry +
+   thinkingConfig injection in one place without double-retry side effects.
 ─────────────────────────────────────────────────────────────────────────────── */
-(function _geminiRetryInterceptor() {
-  const GEMINI_HOST = 'generativelanguage.googleapis.com';
-  const BACKOFF_MS  = [4000, 12000, 25000];
-  const MAX_RETRIES = 3;
-
-  // Bail if telemetry.js already wrapped fetch (we'll layer on top safely)
-  const _originalFetch = window.fetch;
-
-  window.fetch = async function _fetchWithGeminiRetry(input, init, ...rest) {
-    const url = typeof input === 'string' ? input
-              : (input instanceof Request ? input.url : String(input));
-
-    // Only intercept Gemini API calls
-    if (!url.includes(GEMINI_HOST)) {
-      return _originalFetch.call(this, input, init, ...rest);
-    }
-
-    let lastResp;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const wait = BACKOFF_MS[Math.min(attempt - 1, BACKOFF_MS.length - 1)];
-        console.warn(`[Gemini] Retry ${attempt}/${MAX_RETRIES} after ${wait}ms (429/503)`);
-        await new Promise(r => setTimeout(r, wait));
-      }
-
-      try {
-        // Clone init for each attempt (body can only be read once if it's a stream,
-        // but Gemini calls always use JSON.stringify so the body string is reusable)
-        const resp = await _originalFetch.call(this, input, init, ...rest);
-        if (resp.ok || (resp.status !== 429 && resp.status !== 503)) return resp;
-        lastResp = resp;
-        if (attempt === MAX_RETRIES) break;
-      } catch(e) {
-        if (attempt === MAX_RETRIES) throw e;
-      }
-    }
-
-    return lastResp; // return last response (caller handles !resp.ok)
-  };
-
-  Object.defineProperty(window.fetch, 'name', { value: '_fetchWithGeminiRetry' });
-})();

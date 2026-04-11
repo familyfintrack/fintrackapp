@@ -451,22 +451,11 @@ Responda SOMENTE com JSON válido, sem explicações:
 
   const model = (typeof getGeminiModel === 'function') ? await getGeminiModel() : (window.RECEIPT_AI_MODEL || 'gemini-2.5-flash');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
-    }),
+  const data = await geminiRetryFetch(url, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
   });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
-  }
-  const data = await resp.json();
-  let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
-  try { return JSON.parse(raw); } catch(_) { throw new Error('Resposta inválida da IA'); }
+  return _parseGeminiJSON(data);
 }
 
 function _txAiApplyResult(r) {

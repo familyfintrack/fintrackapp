@@ -3212,7 +3212,7 @@ async function openTelegramLinkFlow() {
     }));
 
     // 3. Buscar nome do bot
-    let botName = 'FinTrackBot'; // fallback
+    let botName = 'FamilyFintrack_bot'; // correct bot name
     try {
       const { data: botRow } = await sb.from('app_settings').select('value').eq('key', 'tg_bot_name').maybeSingle();
       if (botRow?.value) botName = String(botRow.value).replace(/^@/, '');
@@ -3316,6 +3316,10 @@ async function importDemoData(userId, familyId, progressCb) {
     price_history:  ['id','item_id','store_id','unit_price','purchased_at','quantity','family_id','created_at'],
     grocery_lists:  ['id','name','status','family_id','created_at'],
     grocery_items:  ['id','list_id','name','qty','unit','checked','suggested_price','family_id','created_at'],
+    investment_positions: ['id','family_id','account_id','ticker','asset_type','name',
+                     'quantity','avg_cost','current_price','currency','notes','created_at'],
+    financial_objectives: ['id','family_id','name','icon','description','start_date',
+                     'end_date','budget_limit','status','created_at','updated_at'],
     transactions:   ['id','date','description','amount','brl_amount','account_id',
                      'category_id','payee_id','is_transfer','is_card_payment',
                      'transfer_to_account_id','status','currency','memo',
@@ -3726,7 +3730,80 @@ async function importDemoData(userId, familyId, progressCb) {
     log('Sonhos: ' + dreamOk + '/' + dreamRows.length, null);
   }
 
-  // ── 11. Prices ───────────────────────────────────────────────────────────
+  // ── 11. Investment Positions ─────────────────────────────────────────────
+  log('Criando carteira de investimentos…', 81);
+  if (data.investments && data.investments.length) {
+    const accIdMapLocal = await buildIdMap('accounts', data.accounts, 'name');
+    let invOk = 0; const invErrors = [];
+    for (const inv of data.investments) {
+      try {
+        const realAccId = accIdMapLocal[data.accounts.find(a => a.id === inv.account_id)?.name] || inv.account_id;
+        const invRow = {
+          id:            inv.id,
+          family_id:     familyId,
+          account_id:    realAccId,
+          ticker:        inv.ticker || null,
+          asset_type:    inv.type   || 'acao',
+          name:          inv.name,
+          quantity:      inv.quantity  || 0,
+          avg_cost:      inv.purchase_price || 0,
+          current_price: inv.current_price  || inv.purchase_price || 0,
+          currency:      'BRL',
+          notes:         inv.notes || null,
+          created_at:    new Date().toISOString(),
+        };
+        const { error: ie } = await sb.from('investment_positions')
+          .upsert(invRow, { onConflict: 'id', ignoreDuplicates: true });
+        if (!ie || ie.code === '23505') invOk++;
+        else {
+          // Try without id (let DB generate)
+          const { id: _skip, ...rowNoId } = invRow;
+          const { error: ie2 } = await sb.from('investment_positions').insert(rowNoId);
+          if (!ie2) invOk++;
+          else invErrors.push(inv.name + ': ' + ie2.message.slice(0,60));
+        }
+      } catch(e_) { invErrors.push(inv.name + ': ' + e_.message.slice(0,60)); }
+    }
+    tableResults['investment_positions'] = { label: 'Investimentos', sent: data.investments.length, ok: invOk, errors: invErrors.slice(0,2) };
+    if (invErrors.length) errors.push('investments: ' + invErrors[0]);
+    log('Investimentos: ' + invOk + '/' + data.investments.length, null);
+  }
+
+  // ── 11b. Financial Objectives ─────────────────────────────────────────────
+  log('Criando objetivos financeiros…', 82);
+  if (data.financialObjectives && data.financialObjectives.length) {
+    let objOk = 0; const objErrors = [];
+    const now = new Date().toISOString();
+    for (const obj of data.financialObjectives) {
+      const objRow = {
+        id:           obj.id,
+        family_id:    familyId,
+        name:         obj.name,
+        icon:         obj.icon  || '🎯',
+        description:  obj.notes || null,
+        start_date:   new Date().toISOString().slice(0,10),
+        end_date:     obj.target_date || null,
+        budget_limit: obj.target_amount || null,
+        status:       obj.status || 'active',
+        created_at:   now,
+        updated_at:   now,
+      };
+      const { error: oe } = await sb.from('financial_objectives')
+        .upsert(objRow, { onConflict: 'id', ignoreDuplicates: true });
+      if (!oe || oe.code === '23505') objOk++;
+      else {
+        const { id: _skip, ...rowNoId } = objRow;
+        const { error: oe2 } = await sb.from('financial_objectives').insert(rowNoId);
+        if (!oe2) objOk++;
+        else objErrors.push(obj.name + ': ' + oe2.message.slice(0,60));
+      }
+    }
+    tableResults['financial_objectives'] = { label: 'Objetivos Financeiros', sent: data.financialObjectives.length, ok: objOk, errors: objErrors.slice(0,2) };
+    if (objErrors.length) errors.push('objectives: ' + objErrors[0]);
+    log('Objetivos: ' + objOk + '/' + data.financialObjectives.length, null);
+  }
+
+  // ── 12. Prices ───────────────────────────────────────────────────────────
   log('Criando preços…', 83);
   // price_items.category_id references a grocery-specific category (not transaction categories)
   // These demo UUIDs (priceCatFood, etc.) are ephemeral and not in catIdMap → always null
