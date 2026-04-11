@@ -127,6 +127,8 @@ function renderAccounts(ft=''){
   // Sync active tab to current view mode
   _syncAccountsTab(ft);
   try { renderGroupManager(); } catch(e) {}
+  // Render loyalty programs section
+  if (typeof renderLoyaltySection === 'function') renderLoyaltySection().catch(()=>{});
 }
 
 function _renderArchivedSection(grid) {
@@ -324,7 +326,11 @@ function accountCardHTML(a, isArchived=false){
     <button class="btn-icon" title="Excluir" onclick="event.stopPropagation();deleteAccount('${a.id}')">🗑️</button>
   `;
 
-  return `<div class="account-card${isArchived?' account-card--archived':''}" onclick="goToAccountTransactions('${a.id}')" style="position:relative">
+  // Loyalty points badge (shown for accounts linked to a loyalty program)
+  const loyaltyBadge = (typeof getLoyaltyBadgeHtml === 'function')
+    ? getLoyaltyBadgeHtml(a.id) : '';
+
+  return `<div class="account-card${isArchived?' account-card--archived':''}${ a.type==='programa_fidelidade' ? ' account-card--loyalty' : ''}" onclick="${a.type==='programa_fidelidade' ? `event.stopPropagation();typeof openLoyaltyStatement==='function'?openLoyaltyStatement(null,'${a.id}'):null` : `goToAccountTransactions('${a.id}')`}" style="position:relative">
     <div class="account-card-stripe" style="background:${color}"></div>
     ${isArchived ? '<div class="archived-card-badge">📦 Arquivada</div>' : favStar}
     <div class="account-card-body">
@@ -337,7 +343,7 @@ function accountCardHTML(a, isArchived=false){
       </div>
       <div class="account-balance ${a.balance<0?'text-red':'text-accent'}">${fmt(a.balance,a.currency)}</div>
       ${a.currency&&a.currency!=='BRL'?`<div class="account-currency">${esc(a.currency)}</div>`:''}
-      ${bankLine}${dueLine}${limitLine}${pixLine}
+      ${bankLine}${dueLine}${limitLine}${pixLine}${loyaltyBadge}
     </div>
     <div class="account-actions">${actions}</div>
   </div>`;
@@ -363,40 +369,45 @@ function filterAccounts(type){
 
 function accountTypeLabel(t){
   return{
-    corrente:      'Corrente',
-    poupanca:      'Poupança',
-    cartao_credito:'Crédito',
-    investimento:  'Investimentos',
-    dinheiro:      'Dinheiro',
-    outros:        'Outros',
+    corrente:             'Corrente',
+    poupanca:             'Poupança',
+    cartao_credito:       'Crédito',
+    investimento:         'Investimentos',
+    dinheiro:             'Dinheiro',
+    outros:               'Outros',
     // Legacy value — DB may have this; display gracefully
-    vale_refeicao: 'Vale Refeição',
+    vale_refeicao:        'Vale Refeição',
+    programa_fidelidade:  'Prog. Fidelidade',
   }[t] || t;
 }
 
 // Chamado ao mudar o tipo de conta no MODAL (não navega para transações)
 function _onAccModalTypeChange() {
   const type  = document.getElementById('accountType')?.value || '';
-  const isCC   = type === 'cartao_credito';
-  const isVale = type === 'vale_refeicao';
+  const isCC      = type === 'cartao_credito';
+  const isVale    = type === 'vale_refeicao';
+  const isLoyalty = type === 'programa_fidelidade';
 
   // Card tab: show/hide sections and notice
   const notice    = document.getElementById('acmCardNotice');
   const iofCfg    = document.getElementById('accountIofConfig');
   const cardData  = document.getElementById('accountCardDataSection');
   const valeData  = document.getElementById('accountValeDataSection');
+  const loyData   = document.getElementById('accountLoyaltyDataSection');
 
-  // Card notice: hide for CC and vale (both have specific panels)
-  if (notice)   notice.style.display   = (isCC || isVale) ? 'none' : '';
+  if (notice)   notice.style.display   = (isCC || isVale || isLoyalty) ? 'none' : '';
   if (iofCfg)   iofCfg.style.display   = isCC ? '' : 'none';
   if (cardData)  cardData.style.display  = isCC ? '' : 'none';
   if (valeData)  valeData.style.display  = isVale ? '' : 'none';
+  if (loyData)   loyData.style.display   = isLoyalty ? '' : 'none';
 
-  // Mostrar aba Cartão para CC e Vale
+  // Loyalty: currency irrelevant (points, not money) — hide/lock currency field
+  const currencyField = document.getElementById('accountCurrency')?.closest('.acm-field');
+  if (currencyField) currencyField.style.display = isLoyalty ? 'none' : '';
+
   const cardTab = document.getElementById('acmTabCard');
-  if (cardTab) cardTab.style.display = (isCC || isVale) ? '' : '';
+  if (cardTab) cardTab.style.display = (isCC || isVale || isLoyalty) ? '' : '';
 
-  // Trigger preview update
   if (typeof acmLivePreview === 'function') acmLivePreview();
 }
 window._onAccModalTypeChange = _onAccModalTypeChange;

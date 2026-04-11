@@ -264,17 +264,29 @@ async function loadDashboard(){
     }
   } catch(_e) {}
 
-  // ── Saudação temporal estilo Claude ─────────────────────────────────────
+  // ── Saudação na barra de título do dashboard ────────────────────────────
+  // Só exibe na primeira visita após login (_dashGreetingPending definido em updateUserUI)
   try {
-    const _greetEl = document.getElementById('dashWelcomeMsg');
-    if (_greetEl) {
+    if (window._dashGreetingPending) {
+      window._dashGreetingPending = false;
       const _h = new Date().getHours();
       const _greet = _h >= 5 && _h < 12 ? 'Bom dia'
                    : _h >= 12 && _h < 18 ? 'Boa tarde'
                    : _h >= 18 ? 'Boa noite' : 'Boa madrugada';
       const _uname = (currentUser?.name || '').split(' ')[0].trim();
-      _greetEl.textContent = _uname ? `${_greet}, ${_uname}!` : `${_greet}!`;
-      _greetEl.style.display = '';
+      const _msg   = _uname ? `${_greet}, ${_uname}!` : `${_greet}!`;
+      const _titleEl = document.querySelector('#page-dashboard .page-header-bar-title');
+      if (_titleEl) {
+        _titleEl.textContent = _msg;
+        // Reverter para "Dashboard" após 6 segundos
+        setTimeout(() => {
+          const el = document.querySelector('#page-dashboard .page-header-bar-title');
+          if (el && el.textContent !== 'Dashboard') el.textContent = 'Dashboard';
+        }, 6000);
+      }
+      // Ocultar elemento legado (mantido no HTML mas não mais necessário)
+      const _greetEl = document.getElementById('dashWelcomeMsg');
+      if (_greetEl) _greetEl.style.display = 'none';
     }
   } catch(_e) {}
 

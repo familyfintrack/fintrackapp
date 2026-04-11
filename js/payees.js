@@ -1280,13 +1280,13 @@ async function openPayeeDetailModal(payeeId) {
   document.body.appendChild(shell);
 
   try {
-    // Fetch last 6 months transactions for this payee
+    // Fetch last 12 months transactions for this payee (extended range for better analysis)
     const now=new Date();
-    const from=new Date(now.getFullYear(),now.getMonth()-5,1).toISOString().slice(0,10);
+    const from=new Date(now.getFullYear(),now.getMonth()-11,1).toISOString().slice(0,10);
     const { data:txsRaw, error } = await famQ(
       sb.from('transactions')
-        .select('id,date,description,amount,brl_amount,currency,accounts!transactions_account_id_fkey(name),categories(name,icon)')
-    ).eq('payee_id',payeeId).gte('date',from).order('date',{ascending:false}).limit(60);
+        .select('id,date,description,amount,brl_amount,currency,accounts!transactions_account_id_fkey(name),categories(name,icon,color)')
+    ).eq('payee_id',payeeId).gte('date',from).order('date',{ascending:false}).limit(200);
 
     if (error) throw error;
 
@@ -1305,15 +1305,81 @@ async function openPayeeDetailModal(payeeId) {
     const totalAmt = txs.reduce((s,t)=>s+Math.abs(parseFloat(t.brl_amount||t.amount)||0),0);
     const avgAmt   = txs.length ? totalAmt/txs.length : 0;
     const lastDate = txs[0]?.date || null;
+    const firstDate= txs[txs.length-1]?.date || null;
 
-    // Top account / category
-    const acctMap={}, catMap={};
+    // Monthly breakdown (last 6 months shown in chart)
+    const monthlyMap={};
     txs.forEach(t=>{
-      const an=t.accounts?.name||'—';   acctMap[an]=(acctMap[an]||0)+1;
-      const cn=t.categories?.name||'—'; catMap[cn]=(catMap[cn]||0)+1;
+      const m=(t.date||'').slice(0,7);
+      if(!monthlyMap[m]) monthlyMap[m]={total:0,count:0};
+      monthlyMap[m].total += Math.abs(parseFloat(t.brl_amount||t.amount)||0);
+      monthlyMap[m].count++;
     });
-    const topAcct = Object.entries(acctMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
-    const topCat  = Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
+    // Get last 6 months in order
+    const last6Months=[];
+    for(let i=5;i>=0;i--){
+      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+      last6Months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+    }
+    const monthlyTotals=last6Months.map(m=>monthlyMap[m]?.total||0);
+    const maxMonthly=Math.max(...monthlyTotals,1);
+    const MON_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+    // Category breakdown by amount
+    const catAmtMap={};
+    txs.forEach(t=>{
+      const cn=t.categories?.name||'Sem categoria';
+      const cc=t.categories?.color||'var(--border)';
+      const ci=t.categories?.icon||'📦';
+      if(!catAmtMap[cn]) catAmtMap[cn]={total:0,count:0,color:cc,icon:ci};
+      catAmtMap[cn].total += Math.abs(parseFloat(t.brl_amount||t.amount)||0);
+      catAmtMap[cn].count++;
+    });
+    const catEntries=Object.entries(catAmtMap).sort((a,b)=>b[1].total-a[1].total).slice(0,6);
+
+    // Account breakdown
+    const acctAmtMap={};
+    txs.forEach(t=>{
+      const an=t.accounts?.name||'—';
+      if(!acctAmtMap[an]) acctAmtMap[an]={total:0,count:0};
+      acctAmtMap[an].total += Math.abs(parseFloat(t.brl_amount||t.amount)||0);
+      acctAmtMap[an].count++;
+    });
+    const topAcct = Object.entries(acctAmtMap).sort((a,b)=>b[1].total-a[1].total)[0]?.[0]||'—';
+    const topCat  = catEntries[0]?.[0]||'—';
+
+    // Monthly trend chart HTML (bar chart using divs)
+    const trendHtml = last6Months.map((m,i)=>{
+      const v=monthlyTotals[i];
+      const pct=v>0?(v/maxMonthly*100).toFixed(1):0;
+      const mLabel=MON_PT[parseInt(m.split('-')[1])-1];
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0">'
+        +'<div style="font-size:.6rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center">'+fmtAmt(v)+'</div>'
+        +'<div style="flex:1;width:100%;display:flex;align-items:flex-end;min-height:40px">'
+          +'<div style="width:100%;height:'+pct+'%;min-height:'+( v>0?2:0)+'px;background:'+typeColor+';border-radius:4px 4px 0 0;opacity:'+(v>0?0.85:0.15)+';transition:height .3s"></div>'
+        +'</div>'
+        +'<div style="font-size:.62rem;color:var(--muted)">'+mLabel+'</div>'
+        +'</div>';
+    }).join('');
+
+    // Category breakdown bars
+    const catHtml = catEntries.map(([name,{total,count,color,icon}])=>{
+      const pct=totalAmt>0?(total/totalAmt*100).toFixed(0):0;
+      const barW=(total/catEntries[0][1].total*100).toFixed(1);
+      return '<div style="display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;padding:5px 0">'
+        +'<span style="font-size:.9rem;text-align:center">'+icon+'</span>'
+        +'<div>'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+            +'<span style="font-size:.78rem;font-weight:600;color:var(--text)">'+esc(name)+'</span>'
+            +'<span style="font-size:.72rem;color:var(--muted)">'+pct+'% · '+count+'×</span>'
+          +'</div>'
+          +'<div style="height:5px;border-radius:3px;background:var(--border)">'
+            +'<div style="height:100%;width:'+barW+'%;background:'+color+';border-radius:3px"></div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="font-size:.8rem;font-weight:700;color:'+typeColor+';white-space:nowrap">'+fmtAmt(total)+'</div>'
+        +'</div>';
+    }).join('');
 
     // Contact/address
     const addr=[payee.address,payee.city,payee.state,payee.country].filter(Boolean).join(', ');
@@ -1339,10 +1405,10 @@ async function openPayeeDetailModal(payeeId) {
 
     // KPI cards
     const kpis=[
-      ['Total 6 meses', fmtAmt(totalAmt), typeColor],
-      ['Transações',    String(txs.length), '#2563eb'],
-      ['Ticket médio',  fmtAmt(avgAmt), '#d97706'],
-      ['Última vez',    lastDate?lastDate.split('-').reverse().join('/'):'—', '#6d28d9'],
+      ['Total 12m',    fmtAmt(totalAmt), typeColor],
+      ['Transações',   String(txs.length), '#2563eb'],
+      ['Ticket médio', fmtAmt(avgAmt), '#d97706'],
+      ['Última vez',   lastDate?lastDate.split('-').reverse().join('/'):'—', '#6d28d9'],
     ];
     const kpiHtml=kpis.map(([l,v,c])=>
       '<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">'
@@ -1351,7 +1417,9 @@ async function openPayeeDetailModal(payeeId) {
       +'</div>'
     ).join('');
 
-    const content='<div class="modal" style="max-width:640px;width:100%;max-height:90dvh;overflow-y:auto;border-radius:18px" onclick="event.stopPropagation()">'
+    const content =
+      // ── Header ──────────────────────────────────────────────────────────────
+      '<div class="modal" style="max-width:680px;width:100%;max-height:90dvh;overflow-y:auto;border-radius:18px" onclick="event.stopPropagation()">'
       +'<div class="modal-handle"></div>'
       +'<div class="modal-header" style="padding:14px 18px;gap:10px">'
         +'<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">'
@@ -1363,9 +1431,27 @@ async function openPayeeDetailModal(payeeId) {
         +'</div>'
         +'<button class="modal-close" onclick="document.getElementById(\'payee360Modal\')?.remove()">✕</button>'
       +'</div>'
-      +'<div class="modal-body" style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">'
+      // ── Body ─────────────────────────────────────────────────────────────────
+      +'<div class="modal-body" style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">'
+        // KPI cards
         +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">'+kpiHtml+'</div>'
+        // Contact
         +(contactHtml?'<div style="background:var(--surface2);border-radius:10px;padding:12px 14px;border:1px solid var(--border)"><div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📋 Contato</div>'+contactHtml+'</div>':'')
+        // ── Tendência mensal (últimos 6 meses) ──────────────────────────────
+        +(trendHtml
+          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">'
+            +'<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:10px">📈 Tendência Mensal — últimos 6 meses</div>'
+            +'<div style="display:flex;align-items:flex-end;gap:6px;height:90px">'+trendHtml+'</div>'
+          +'</div>'
+          : '')
+        // ── Distribuição por categoria ──────────────────────────────────────
+        +(catHtml
+          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px">'
+            +'<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:8px">🏷️ Distribuição por Categoria</div>'
+            +catHtml
+          +'</div>'
+          : '')
+        // ── Conta e categoria principais ────────────────────────────────────
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
           +'<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)">'
             +'<div style="font-size:.66rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Conta mais usada</div>'
@@ -1376,9 +1462,10 @@ async function openPayeeDetailModal(payeeId) {
             +'<div style="font-size:.88rem;font-weight:700;color:var(--text)">'+esc(topCat)+'</div>'
           +'</div>'
         +'</div>'
+        // ── Lista de transações ─────────────────────────────────────────────
         +(txs.length
           ? '<div>'
-            +'<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📅 Últimos 6 meses ('+txs.length+' tx)</div>'
+            +'<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📅 Lançamentos — 12 meses ('+txs.length+' tx)</div>'
             +'<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">'
               +'<table style="width:100%;border-collapse:collapse">'
                 +'<thead><tr style="background:var(--surface2)">'
@@ -1392,8 +1479,9 @@ async function openPayeeDetailModal(payeeId) {
             +'</div>'
             +(txs.length>20?'<div style="font-size:.74rem;color:var(--muted);text-align:center;margin-top:6px">Mostrando 20 de '+txs.length+'</div>':'')
           +'</div>'
-          : '<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">Nenhuma transação nos últimos 6 meses.</div>'
+          : '<div style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem">Nenhuma transação nos últimos 12 meses.</div>'
         )
+        // ── Actions ──────────────────────────────────────────────────────────
         +'<div style="display:flex;gap:8px;padding-top:4px">'
           +'<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'payee360Modal\')?.remove();openPayeeModal(\''+payeeId+'\')">✏️ Editar</button>'
         +'</div>'

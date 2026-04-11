@@ -3190,89 +3190,144 @@ async function _save2FASettings(appUserId) {
 ══════════════════════════════════════════════════════════════════ */
 
 let _tgLinkPollInterval = null;
+let _tgLinkCountdownInterval = null;
 
 async function openTelegramLinkFlow() {
-  const btn    = document.getElementById('tgLinkFlowBtn');
-  const status = document.getElementById('tgLinkStatus');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando link...'; }
-  if (status) status.textContent = '';
+  const btn      = document.getElementById('tgLinkFlowBtn');
+  const status   = document.getElementById('tgLinkStatus');
+  const progress = document.getElementById('tgLinkProgress');
+  const bar      = document.getElementById('tgLinkProgressBar');
+  const countdown= document.getElementById('tgLinkCountdown');
+
+  // Clear any previous poll
+  if (_tgLinkPollInterval)    clearInterval(_tgLinkPollInterval);
+  if (_tgLinkCountdownInterval) clearInterval(_tgLinkCountdownInterval);
+
+  if (btn)    { btn.disabled = true; btn.textContent = '⏳ Gerando link...'; }
+  if (status) { status.textContent = ''; status.style.color = 'var(--muted)'; }
+  if (progress) progress.style.display = 'none';
 
   try {
-    // 1. Gerar token único
+    // 1. Token único de 32 hex chars
     const token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map(b => b.toString(16).padStart(2, '0')).join('');
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10min
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
 
-    // 2. Salvar token no app_settings com user_id
+    // 2. Salvar token em app_settings (lido pelo bot ao receber /start TOKEN)
     const userId = currentUser?.app_user_id || currentUser?.id;
-    await saveAppSetting('tg_link_token_' + token, JSON.stringify({
-      user_id: userId,
-      expires_at: expiresAt,
-      used: false,
-    }));
-
-    // 3. Buscar nome do bot
-    let botName = 'FamilyFintrack_bot'; // correct bot name
     try {
-      const { data: botRow } = await sb.from('app_settings').select('value').eq('key', 'tg_bot_name').maybeSingle();
+      await sb.from('app_settings').upsert({
+        key:   'tg_link_token_' + token,
+        value: JSON.stringify({ user_id: userId, expires_at: expiresAt, used: false }),
+      }, { onConflict: 'key' });
+    } catch(dbErr) {
+      console.warn('[TgLink] token save failed:', dbErr?.message);
+      // Continue anyway — may still work via bot direct lookup
+    }
+
+    // 3. Buscar nome do bot configurado (fallback: FamilyFintrack_bot)
+    let botName = 'FamilyFintrack_bot';
+    try {
+      const { data: botRow } = await sb.from('app_settings')
+        .select('value').eq('key', 'tg_bot_name').maybeSingle();
       if (botRow?.value) botName = String(botRow.value).replace(/^@/, '');
     } catch(_) {}
 
-    // 4. Abrir Telegram com deep link
+    // 4. Abrir Telegram
     const tgUrl = `https://t.me/${botName}?start=${token}`;
     window.open(tgUrl, '_blank');
 
-    if (status) status.textContent = '📱 Aguardando vinculação no Telegram...';
     if (btn) { btn.disabled = false; btn.textContent = '✈️ Abrir novamente'; }
+    if (status) status.textContent = `📱 Abriu @${botName} — envie /start ou toque em Iniciar no bot.`;
 
-    // 5. Poll por resultado a cada 3s por até 2min
-    if (_tgLinkPollInterval) clearInterval(_tgLinkPollInterval);
+    // 5. Mostrar barra de progresso + countdown
+    if (progress) progress.style.display = '';
+    const POLL_MAX = 120;
     let elapsed = 0;
+    if (bar)      { bar.style.transition = 'none'; bar.style.width = '0%'; }
+    if (countdown) countdown.textContent = POLL_MAX;
+
+    // Animate bar smoothly
+    setTimeout(() => {
+      if (bar) { bar.style.transition = `width ${POLL_MAX}s linear`; bar.style.width = '100%'; }
+    }, 100);
+
+    // Countdown seconds
+    _tgLinkCountdownInterval = setInterval(() => {
+      elapsed += 1;
+      if (countdown) countdown.textContent = Math.max(0, POLL_MAX - elapsed);
+    }, 1000);
+
+    // 6. Poll a cada 3s por até 2min
     _tgLinkPollInterval = setInterval(async () => {
-      elapsed += 3;
-      if (elapsed > 120) {
+      if (elapsed >= POLL_MAX) {
         clearInterval(_tgLinkPollInterval);
-        if (status) status.textContent = '⏱ Tempo esgotado. Tente novamente.';
+        clearInterval(_tgLinkCountdownInterval);
+        if (progress) progress.style.display = 'none';
+        if (status) {
+          status.textContent = '⏱ Tempo esgotado. Use o @userinfobot abaixo para obter o ID manualmente.';
+          status.style.color = '#d97706';
+        }
         return;
       }
+
       try {
         const { data: tokenRow } = await sb.from('app_settings')
-          .select('value').eq('key', 'tg_link_token_' + token).maybeSingle();
-        if (!tokenRow) return;
-        const payload = typeof tokenRow.value === 'string' ? JSON.parse(tokenRow.value) : tokenRow.value;
+          .select('value')
+          .eq('key', 'tg_link_token_' + token)
+          .maybeSingle();
+
+        if (!tokenRow) return; // Ainda não respondeu
+
+        let payload;
+        try {
+          payload = typeof tokenRow.value === 'string'
+            ? JSON.parse(tokenRow.value) : tokenRow.value;
+        } catch(_) { return; }
+
         if (payload?.chat_id) {
-          // Chat ID recebido!
+          // ✅ Chat ID recebido do bot!
           clearInterval(_tgLinkPollInterval);
+          clearInterval(_tgLinkCountdownInterval);
+          if (progress) progress.style.display = 'none';
+          if (bar) { bar.style.transition = 'none'; bar.style.width = '100%'; bar.style.background = 'var(--accent)'; }
+
           const chatId = String(payload.chat_id);
 
-          // Atualizar campo no perfil
+          // Preencher campo
           const inp = document.getElementById('myProfileTelegramChatId');
           if (inp) inp.value = chatId;
 
-          // Salvar imediatamente no app_users
+          // Persistir em app_users
           if (currentUser?.app_user_id) {
-            await sb.from('app_users').update({ telegram_chat_id: chatId }).eq('id', currentUser.app_user_id);
-            currentUser.telegram_chat_id = chatId;
+            try {
+              await sb.from('app_users')
+                .update({ telegram_chat_id: chatId })
+                .eq('id', currentUser.app_user_id);
+              currentUser.telegram_chat_id = chatId;
+            } catch(_) {}
           }
 
-          // Limpar token do banco
-          await sb.from('app_settings').delete().eq('key', 'tg_link_token_' + token);
+          // Limpar token usado
+          try { await sb.from('app_settings').delete().eq('key', 'tg_link_token_' + token); } catch(_) {}
 
           if (status) {
-            status.textContent = '✅ Telegram vinculado! Chat ID: ' + chatId;
+            status.textContent = '✅ Chat ID ' + chatId + ' vinculado!';
             status.style.color = 'var(--accent)';
           }
-          toast('✅ Telegram vinculado com sucesso!', 'success');
-          // Recarregar 2FA hints
-          _load2FAIntoProfile();
+          toast('✅ Telegram vinculado com sucesso! Chat ID: ' + chatId, 'success');
+          if (typeof _load2FAIntoProfile === 'function') _load2FAIntoProfile();
         }
-      } catch(_) {}
+      } catch(_) { /* ignora erros de rede no poll */ }
     }, 3000);
 
   } catch(e) {
+    clearInterval(_tgLinkPollInterval);
+    clearInterval(_tgLinkCountdownInterval);
+    if (progress) progress.style.display = 'none';
     if (status) { status.textContent = 'Erro: ' + e.message; status.style.color = 'var(--red)'; }
-    if (btn) { btn.disabled = false; btn.textContent = '✈️ Vincular via Telegram'; }
-    toast('Erro ao iniciar vinculação: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✈️ Abrir @FamilyFintrack_bot'; }
+    console.error('[TgLink]', e);
   }
 }
 

@@ -1122,6 +1122,8 @@ function _registerMagicLinkGate() {
 // ── Update UI with current user ──
 function updateUserUI() {
   if (!currentUser) return;
+  // Sinaliza para o dashboard que deve exibir saudação na próxima visita
+  window._dashGreetingPending = true;
   const nameEl  = document.getElementById('currentUserName');
   const emailEl = document.getElementById('currentUserEmail');
   if (nameEl)  nameEl.textContent  = currentUser.name || currentUser.email;
@@ -1163,9 +1165,14 @@ function updateUserUI() {
       }
     });
   });
-  // Audit: sempre visível — apenas garante que não esteja escondido
+  // Audit: visível para todos os usuários autenticados — usa classe .audit-visible
+  // (igual ao padrão admin-visible, para que !important do CSS seja respeitado)
   document.querySelectorAll('[data-nav="audit"]').forEach(el => {
-    el.style.display = '';
+    if (el.id === 'auditNavTopbar') {
+      el.classList.add('audit-visible');
+    } else {
+      el.style.display = '';
+    }
   });
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display = isAdmin ? '' : 'none';
@@ -1225,7 +1232,13 @@ function applyPermissions() {
   });
 });
 // Audit sempre visível para todos os usuários autenticados
-document.querySelectorAll('[data-nav="audit"]').forEach(el => { el.style.display = ''; });
+document.querySelectorAll('[data-nav="audit"]').forEach(el => {
+  if (el.id === 'auditNavTopbar') {
+    el.classList.add('audit-visible');
+  } else {
+    el.style.display = '';
+  }
+});
 if (!p.can_admin) {
   const adminSec = document.getElementById('adminNavSection');
   if (adminSec) adminSec.style.display = 'none';
