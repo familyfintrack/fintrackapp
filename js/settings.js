@@ -3590,26 +3590,57 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 9. Debts ─────────────────────────────────────────────────────────────
   log('Criando dívidas…', 77);
-  // debts: creditor_payee_id is NOT NULL — remap using payIdMap built from real payees
+  // debts: creditor_payee_id is NOT NULL — create creditor payees on-the-fly
   log('Criando dívidas…', 77);
   {
     const debtData = data.debts || [];
-    if (!debtData.length || !Object.keys(payIdMap).length) {
-      log('Dívidas: puladas (sem dados ou payIdMap vazio)', null);
-      tableResults['debts'] = { label: 'Dívidas', sent: 0, ok: 0, errors: ['Pulado: creditor_payee_id NOT NULL'] };
+    if (!debtData.length) {
+      tableResults['debts'] = { label: 'Dívidas', sent: 0, ok: 0, errors: [] };
     } else {
-      const debtCols = COLS['debts'] || ['id','name','creditor_payee_id','original_amount',
+      const debtCols = ['id','name','creditor_payee_id','original_amount',
         'current_balance','currency','interest_rate','min_payment','due_day',
         'status','start_date','notes','family_id','created_at'];
       let debtOk = 0; const debtErrors = [];
+
       for (const d of debtData) {
-        const realCreditorId = d.creditor_payee_id ? remap(payIdMap, d.creditor_payee_id) : null;
-        if (!realCreditorId) { debtErrors.push(d.name + ': creditor not mapped'); continue; }
+        // Try to get/create a creditor payee
+        let creditorId = d.creditor_payee_id ? remap(payIdMap, d.creditor_payee_id) : null;
+
+        if (!creditorId) {
+          // Extract creditor name from notes or use debt name as creditor
+          const creditorName = d.creditor_name || d.name.split('(')[0].trim() + ' (credor)';
+          try {
+            // Try to find existing payee by name
+            const { data: existingPayee } = await sb.from('payees')
+              .select('id')
+              .eq('family_id', familyId)
+              .ilike('name', creditorName)
+              .maybeSingle();
+            if (existingPayee?.id) {
+              creditorId = existingPayee.id;
+            } else {
+              // Create creditor payee
+              const newPayeeId = crypto.randomUUID?.() || (Math.random().toString(36).slice(2));
+              const { error: pErr } = await sb.from('payees').insert({
+                id: newPayeeId, name: creditorName, type: 'empresa',
+                family_id: familyId, created_at: new Date().toISOString(),
+              });
+              if (!pErr) creditorId = newPayeeId;
+            }
+          } catch(_) {}
+        }
+
+        if (!creditorId) { debtErrors.push(d.name + ': não foi possível criar credor'); continue; }
+
         const debtRow = {};
         debtCols.forEach(c => { if (c in d) debtRow[c] = d[c]; });
-        debtRow.family_id  = familyId;
-        debtRow.created_at = debtRow.created_at || new Date().toISOString();
-        debtRow.creditor_payee_id = realCreditorId;
+        debtRow.family_id         = familyId;
+        debtRow.creditor_payee_id = creditorId;
+        debtRow.currency          = debtRow.currency || 'BRL';
+        debtRow.created_at        = debtRow.created_at || new Date().toISOString();
+        // Remove undefined values
+        Object.keys(debtRow).forEach(k => { if (debtRow[k] === undefined) delete debtRow[k]; });
+
         const { error: de } = await sb.from('debts').upsert(debtRow, { onConflict: 'id', ignoreDuplicates: true });
         if (!de) { debtOk++; }
         else if (de.code === '23505' || de.message?.includes('duplicate')) { debtOk++; }

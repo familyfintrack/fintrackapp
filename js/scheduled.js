@@ -260,16 +260,18 @@ function generateOccurrences(sc, limit = 12) {
 
 function getNextOccurrence(sc) {
   const today = localDateStr();
-  const registered = (sc.occurrences || []).map(o => o.scheduled_date);
+  // 'executed', 'processing', 'skipped', 'ar_pending' all count as consumed
+  // A date with ANY occurrence record is considered handled — move to next date
+  const consumed = new Set((sc.occurrences || []).map(o => o.scheduled_date));
   if(sc.frequency === 'once') {
-    return registered.includes(sc.start_date) ? null : sc.start_date;
+    return consumed.has(sc.start_date) ? null : sc.start_date;
   }
   let cur = sc.start_date;
   const maxCount = sc.end_count || 999;
   const endDate = sc.end_date || '2099-12-31';
   let count = 0;
   while(count < maxCount && cur <= endDate) {
-    if(!registered.includes(cur)) return cur;
+    if(!consumed.has(cur)) return cur;  // next unhandled date
     count++;
     cur = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
   }
@@ -2871,7 +2873,7 @@ function _renderCalUpcoming() {
       return s + (isExp ? -1 : 1) * Math.abs(sc.amount);
     }, 0);
 
-    const rows = items.map(({ sc, isPending }) => {
+    const rows = items.map(({ sc, isPending, isArPending }) => {
       const isExp    = sc.type === 'expense' || sc.type === 'card_payment' || sc.type === 'transfer';
       const isIncome = sc.type === 'income';
       const typeIcon = sc.type === 'transfer' ? '🔄' : isExp ? '💸' : '💰';
@@ -3556,58 +3558,55 @@ let _scActiveTab = 'scheduled';
 async function _scSwitchTab(tab) {
   _scActiveTab = tab;
 
-  // Update tab buttons
-  const tSc = document.getElementById('scTabScheduled');
-  const tAr = document.getElementById('scTabReceivables');
-  if (tSc) tSc.classList.toggle('active', tab === 'scheduled');
-  if (tAr) tAr.classList.toggle('active', tab === 'receivables');
+  // Force update tab button states
+  document.querySelectorAll('.sc-tab').forEach(btn => {
+    const isActive = btn.id === 'scTab' + (tab === 'scheduled' ? 'Scheduled' : 'Receivables');
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive);
+  });
 
-  // Show/hide content panels
+  // Toggle panels
   const listView     = document.getElementById('scListView');
   const arTabContent = document.getElementById('scArTabContent');
-
-  if (listView)     listView.style.display     = tab === 'scheduled' ? '' : 'none';
-  if (arTabContent) arTabContent.style.display = tab === 'receivables' ? '' : 'none';
+  if (listView)     listView.style.cssText     = tab === 'scheduled' ? '' : 'display:none !important';
+  if (arTabContent) arTabContent.style.cssText = tab === 'receivables' ? '' : 'display:none !important';
 
   if (tab === 'receivables') {
-    // Load and render into the inline tab body
-    const tabBody = document.getElementById('scArTabBody');
+    // Render receivables directly into the tab containers (no ID swapping)
+    const tabBody  = document.getElementById('scArTabBody');
+    const tabTotal = document.getElementById('scArTabTotal');
+    const tabOver  = document.getElementById('scArTabOverdue');
+    const tabCount = document.getElementById('scArTabCount');
     if (tabBody) tabBody.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>';
 
-    // Temporarily redirect loadReceivables output to tab KPIs + body
-    const origIds = _scRedirectReceivablesToTab(true);
-    if (typeof loadReceivables === 'function') await loadReceivables();
-    _scRedirectReceivablesToTab(false, origIds);
-  }
-}
-
-function _scRedirectReceivablesToTab(enable, origIds) {
-  // Swap element IDs so loadReceivables() writes into the tab instead of the modal
-  const swaps = {
-    'receivablesTotalAmt': 'scArTabTotal',
-    'receivablesOverdueAmt': 'scArTabOverdue',
-    'receivablesCount': 'scArTabCount',
-    'receivablesBody': 'scArTabBody',
-  };
-  if (enable) {
-    const saved = {};
-    for (const [modalId, tabId] of Object.entries(swaps)) {
-      const modalEl = document.getElementById(modalId);
-      const tabEl   = document.getElementById(tabId);
-      if (modalEl && tabEl) {
-        saved[modalId] = modalEl.id;
-        modalEl.id = tabId + '_hidden';
-        tabEl.id   = modalId;
+    if (typeof loadReceivables === 'function') {
+      // Patch the DOM elements temporarily
+      const restore = [];
+      const remap = [
+        ['receivablesTotalAmt', 'scArTabTotal'],
+        ['receivablesOverdueAmt','scArTabOverdue'],
+        ['receivablesCount',    'scArTabCount'],
+        ['receivablesBody',     'scArTabBody'],
+      ];
+      remap.forEach(([from, to]) => {
+        const fromEl = document.getElementById(from);
+        const toEl   = document.getElementById(to);
+        if (fromEl && toEl) {
+          const origId = fromEl.id;
+          toEl.id   = from;   // tab element gets the ID loadReceivables() looks for
+          fromEl.id = from + '__hidden';
+          restore.push([fromEl, origId, toEl, to]);
+        }
+      });
+      try {
+        await loadReceivables();
+      } finally {
+        // Always restore IDs
+        restore.forEach(([fromEl, origId, toEl, to]) => {
+          fromEl.id = origId;
+          toEl.id   = to;
+        });
       }
-    }
-    return saved;
-  } else {
-    // Restore original IDs
-    for (const [modalId, tabId] of Object.entries(swaps)) {
-      const swapped = document.getElementById(modalId);
-      const hidden  = document.getElementById(tabId + '_hidden');
-      if (swapped) swapped.id = tabId;
-      if (hidden)  hidden.id  = modalId;
     }
   }
 }
