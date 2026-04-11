@@ -4640,6 +4640,7 @@ window.openDashCustomModal                 = openDashCustomModal;
 async function renderDashCCInvoices() {
   const card    = document.getElementById('dashCardCCInvoices');
   const totalEl = document.getElementById('dashCCTotal');
+  const countEl = document.getElementById('dashCCCount');
   const badgesEl= document.getElementById('dashCCBadges');
   const listEl  = document.getElementById('dashCCList');
   if (!card) return;
@@ -4706,16 +4707,16 @@ async function renderDashCCInvoices() {
   if (totalEl) totalEl.textContent = '-' + F(grandTotal);
 
   if (badgesEl) {
-    const overdue  = entries.filter(e => e.date <  today).length;
-    const urgent   = entries.filter(e => {
+    const overdue = entries.filter(e => e.date < today).length;
+    const urgent  = entries.filter(e => {
       const d = Math.round((new Date(e.date + 'T12:00:00') - new Date()) / 86400000);
       return e.date >= today && d <= 7;
     }).length;
-    const ok       = entries.length - overdue - urgent;
-    const badges   = [];
-    if (overdue) badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:rgba(220,38,38,.25);border:1px solid rgba(220,38,38,.4);font-size:.65rem;font-weight:700;color:#fca5a5">⚠ ${overdue} vencida${overdue>1?'s':''}</span>`);
-    if (urgent)  badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:rgba(251,191,36,.18);border:1px solid rgba(251,191,36,.35);font-size:.65rem;font-weight:700;color:#fcd34d">⏰ ${urgent} esta semana</span>`);
-    if (ok)      badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:.65rem;font-weight:600;color:rgba(255,255,255,.5)">${ok} no prazo</span>`);
+    const ok      = entries.length - overdue - urgent;
+    const badges  = [];
+    if (overdue) badges.push(`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);font-size:.62rem;font-weight:700;color:#dc2626">⚠ ${overdue} vencida${overdue>1?'s':''}</span>`);
+    if (urgent)  badges.push(`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;background:rgba(217,119,6,.08);border:1px solid rgba(217,119,6,.2);font-size:.62rem;font-weight:700;color:#d97706">⏰ ${urgent} esta sem.</span>`);
+    if (ok)      badges.push(`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.2);font-size:.62rem;font-weight:600;color:#16a34a">${ok} no prazo</span>`);
     badgesEl.innerHTML = badges.join('');
   }
 
@@ -4725,6 +4726,7 @@ async function renderDashCCInvoices() {
   entries.forEach(e => { if (!byDate[e.date]) byDate[e.date]=[]; byDate[e.date].push(e); });
 
   const dates     = Object.keys(byDate).sort();
+  if (countEl) countEl.textContent = entries.length + ' fatura' + (entries.length > 1 ? 's' : '') + ' · ' + dates.length + ' data' + (dates.length > 1 ? 's' : '');
   const _ccExp    = window._ccDateExpanded || (window._ccDateExpanded = new Set());
 
   let html = '';
