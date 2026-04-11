@@ -3590,22 +3590,56 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 9. Debts ─────────────────────────────────────────────────────────────
   log('Criando dívidas…', 77);
-  // debts: creditor_payee_id is NOT NULL (FK to payees) — skip demo debts
-  // to avoid constraint violation. Demo data doesn't have real payee UUIDs.
-  log('Dívidas: puladas (creditor_payee_id NOT NULL requer payee real)', null);
-  tableResults['debts'] = { label: 'Dívidas', sent: 0, ok: 0, errors: ['Pulado: creditor_payee_id NOT NULL'] };
+  // debts: creditor_payee_id is NOT NULL — remap using payIdMap built from real payees
+  log('Criando dívidas…', 77);
+  {
+    const debtData = data.debts || [];
+    if (!debtData.length || !Object.keys(payIdMap).length) {
+      log('Dívidas: puladas (sem dados ou payIdMap vazio)', null);
+      tableResults['debts'] = { label: 'Dívidas', sent: 0, ok: 0, errors: ['Pulado: creditor_payee_id NOT NULL'] };
+    } else {
+      const debtCols = COLS['debts'] || ['id','name','creditor_payee_id','original_amount',
+        'current_balance','currency','interest_rate','min_payment','due_day',
+        'status','start_date','notes','family_id','created_at'];
+      let debtOk = 0; const debtErrors = [];
+      for (const d of debtData) {
+        const realCreditorId = d.creditor_payee_id ? remap(payIdMap, d.creditor_payee_id) : null;
+        if (!realCreditorId) { debtErrors.push(d.name + ': creditor not mapped'); continue; }
+        const debtRow = {};
+        debtCols.forEach(c => { if (c in d) debtRow[c] = d[c]; });
+        debtRow.family_id  = familyId;
+        debtRow.created_at = debtRow.created_at || new Date().toISOString();
+        debtRow.creditor_payee_id = realCreditorId;
+        const { error: de } = await sb.from('debts').upsert(debtRow, { onConflict: 'id', ignoreDuplicates: true });
+        if (!de) { debtOk++; }
+        else if (de.code === '23505' || de.message?.includes('duplicate')) { debtOk++; }
+        else debtErrors.push(d.name + ': ' + de.message.slice(0, 60));
+      }
+      tableResults['debts'] = { label: 'Dívidas', sent: debtData.length, ok: debtOk, errors: debtErrors.slice(0,2) };
+      if (debtErrors.length) errors.push('debts: ' + debtErrors[0]);
+      log('Dívidas: ' + debtOk + '/' + debtData.length, null);
+    }
+  }
 
   // ── 10. Dreams ───────────────────────────────────────────────────────────
   log('Criando objetivos…', 80);
   // dreams: created_by must match auth.uid() for RLS
   // Fetch the actual auth.uid() from Supabase session (most reliable)
-  let dreamsAuthUid = userId;
+  // Always use the CURRENT SESSION auth.uid() for dreams.created_by
+  // RLS checks auth.uid() = created_by — only the logged-in user can insert.
+  let dreamsAuthUid = null;
   try {
-    const { data: { user: authUser } } = await sb.auth.getUser();
-    if (authUser?.id) dreamsAuthUid = authUser.id;
-    else if (typeof currentUser !== 'undefined' && currentUser?.auth_uid) dreamsAuthUid = currentUser.auth_uid;
-  } catch(_) {
-    if (typeof currentUser !== 'undefined' && currentUser?.auth_uid) dreamsAuthUid = currentUser.auth_uid;
+    const { data: { user: _au } } = await sb.auth.getUser();
+    dreamsAuthUid = _au?.id || null;
+  } catch(_) {}
+  // Fallback chain
+  if (!dreamsAuthUid && typeof currentUser !== 'undefined') {
+    dreamsAuthUid = currentUser?.auth_uid || currentUser?.supabase_uid || null;
+  }
+  if (!dreamsAuthUid) {
+    // Last resort: read directly from supabase session
+    const _sess = sb.auth?.currentSession?.()?.data?.session;
+    dreamsAuthUid = _sess?.user?.id || userId;
   }
   console.log('[DemoImport] dreams auth_uid:', dreamsAuthUid);
   // Try inserting dreams row-by-row (RLS requires auth.uid() match on created_by)
@@ -3649,6 +3683,17 @@ async function importDemoData(userId, familyId, progressCb) {
             const { error: de4 } = await sb.from('dreams').insert({ ...rowNoId, created_by: _au.id });
             if (!de4) { dreamOk++; continue; }
           }
+        } catch(_) {}
+        // Strategy 5: the RLS policy may require the family_id to be in the
+        // logged-in user's authorized families. Try with explicit family_id only.
+        try {
+          const { id: _id2, created_by: _cb2, ...bareRow } = rowNoId;
+          const { error: de5 } = await sb.from('dreams').insert({
+            ...bareRow,
+            family_id:  familyId,
+            created_by: dreamsAuthUid,
+          });
+          if (!de5) { dreamOk++; continue; }
         } catch(_) {}
         dreamErrors.push(de.message.slice(0, 80));
       } else {
