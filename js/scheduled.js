@@ -870,7 +870,7 @@ function renderUpcoming() {
          </div>`
       : `<span class="sup-group-dow">${dow}, ${fmtDate(date)}</span>`;
 
-    const _startOpen = isToday || isTomorrow;
+    const _startOpen = true;  // always start expanded — user can collapse individual days
     return `<div class="sup-group">
       <div class="sup-group-hdr" onclick="toggleUpcomingGroup('${gid}')">
         <div class="sup-group-left">
