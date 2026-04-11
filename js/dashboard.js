@@ -184,73 +184,6 @@ function _openDashMonthTx(type, memberIds) {
   if(_e('txAccount'))      _e('txAccount').value='';
   navigate('transactions');
 }
-// ── Shared patrimônio score badge updater ────────────────────────────────────
-// Called both from loadDashboard (quick estimate) and _openPatrimonioModal (exact)
-function _updatePatrimonioScoreBadge(patrimonioTotal, debtTotal, anchorEl) {
-  // Replicate exact same formula as _openPatrimonioModal
-  const accs         = Array.isArray(state.accounts) ? state.accounts : [];
-  const liquidTotal  = accs
-    .filter(a => !['investimento','cartao_credito'].includes(a.type) && (parseFloat(a.balance)||0) > 0)
-    .reduce((s,a) => s + toBRL(parseFloat(a.balance)||0, a.currency||'BRL'), 0);
-  const invTotal     = accs
-    .filter(a => a.type === 'investimento')
-    .reduce((s,a) => s + toBRL((a._totalPortfolioBalance ?? parseFloat(a.balance))||0, a.currency||'BRL'), 0);
-  const cardNegTotal = accs
-    .filter(a => a.type === 'cartao_credito' && (parseFloat(a.balance)||0) < 0)
-    .reduce((s,a) => s + Math.abs(toBRL(parseFloat(a.balance)||0, a.currency||'BRL')), 0);
-  const totalPassivos = cardNegTotal + (debtTotal || 0);
-  const totalAtivos   = accs
-    .filter(a => {
-      const b = a.type === 'investimento'
-        ? (a._totalPortfolioBalance ?? (parseFloat(a.balance)||0))
-        : (parseFloat(a.balance)||0);
-      return toBRL(b, a.currency||'BRL') > 0;
-    })
-    .reduce((s,a) => {
-      const b = a.type === 'investimento'
-        ? (a._totalPortfolioBalance ?? (parseFloat(a.balance)||0))
-        : (parseFloat(a.balance)||0);
-      return s + toBRL(b, a.currency||'BRL');
-    }, 0);
-
-  const endividamento = totalAtivos > 0 ? totalPassivos / totalAtivos : 0;
-  const debtsArr      = typeof _dbt !== 'undefined' && _dbt.loaded ? _dbt.debts.filter(d=>(d.status||'active')==='active') : [];
-  const healthScore   = Math.round(Math.max(0, Math.min(100,
-    70 * (1 - Math.min(endividamento, 1)) +
-    20 * ([liquidTotal > 0, invTotal > 0, debtsArr.length === 0].filter(Boolean).length / 3) +
-    10 * (patrimonioTotal > 0 ? 1 : 0)
-  )));
-
-  const [hsLabel, hsBg, hsClr] = healthScore >= 80
-    ? ['Excelente','rgba(16,185,129,.12)','#10b981']
-    : healthScore >= 60 ? ['Bom','rgba(245,158,11,.12)','#f59e0b']
-    : healthScore >= 40 ? ['Atenção','rgba(249,115,22,.12)','#f97316']
-    : ['Crítico','rgba(239,68,68,.12)','#ef4444'];
-
-  const anchor = anchorEl || document.getElementById('statTotal');
-  if (!anchor) return;
-
-  let badge = document.getElementById('dashPatrimonioScore');
-  if (!badge) {
-    badge = document.createElement('span');
-    badge.id = 'dashPatrimonioScore';
-    badge.style.cssText =
-      'display:inline-flex;align-items:center;gap:3px;margin-left:8px;' +
-      'padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:800;' +
-      'letter-spacing:.04em;cursor:pointer;vertical-align:middle;' +
-      'border:1px solid transparent;transition:all .2s';
-    badge.title = 'Score de saúde patrimonial — clique para ver detalhes';
-    badge.onclick = e => { e.stopPropagation(); _openPatrimonioModal(); };
-    anchor.after(badge);
-  }
-  badge.textContent      = healthScore + ' ' + hsLabel;
-  badge.style.background = hsBg;
-  badge.style.color      = hsClr;
-  badge.style.borderColor = hsClr + '33';
-}
-window._updatePatrimonioScoreBadge = _updatePatrimonioScoreBadge;
-
-
 async function loadDashboard(){
   // Atualizar nome da família ativa no topo do dashboard
   try {
@@ -286,13 +219,11 @@ async function loadDashboard(){
   _updateDashFilterBadge(_dashMemberIds);
 
   let income = 0, expense = 0, total = 0, _pendCount = 0;
-  let kpiResult = null;
   try {
-    const [_kpi] = await Promise.all([
+    const [kpiResult] = await Promise.all([
       DB.dashboard.loadKPIs(_dashMemberIds),
       fxPromise,
     ]);
-    kpiResult = _kpi;
     if (kpiResult) {
       income = kpiResult.income || 0;
       expense = kpiResult.expense || 0;
@@ -318,10 +249,6 @@ async function loadDashboard(){
       _tc.title = 'Ver composição do patrimônio';
       _tc.onclick = () => _openPatrimonioModal();
     }
-    // ── Health score badge — computed after modal data is ready ────────
-    // Use debtTotal from loadKPIs + accounts already in state for a quick estimate
-    // then update with precise value from modal calculation once available
-    _updatePatrimonioScoreBadge(total, kpiResult?.debtTotal ?? 0, statTotalEl);
   }
   if (statIncomeEl){
     statIncomeEl.textContent=dashFmt(income,'BRL');
@@ -835,143 +762,6 @@ async function renderCategoryChart(){
     if (pie) { pie.classList.toggle('active', savedType === 'doughnut'); pie.style.background=''; pie.style.color=''; }
     if (bar) { bar.classList.toggle('active', savedType === 'bar');     bar.style.background=''; bar.style.color=''; }
   }
-
-// ── _renderCatChartBar: horizontal bar chart from _catChartEntries ───────────
-function _renderCatChartBar() {
-  const canvas = document.getElementById('categoryChart');
-  if (!canvas) return;
-
-  const entries = _catChartEntries.slice(0, 16); // max 16 bars for readability
-  const labels  = entries.map(e => e.name);
-  const data    = entries.map(e => e.total);
-  const colors  = entries.map(e => e.color || '#2a6049');
-
-  const usedColors = new Set(colors);
-
-  if (state.chartInstances && state.chartInstances['categoryChart']) {
-    try { state.chartInstances['categoryChart'].destroy(); } catch(_) {}
-  }
-  state.chartInstances = state.chartInstances || {};
-
-  const ctx = canvas.getContext('2d');
-  state.chartInstances['categoryChart'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors.map(c => c + 'cc'),
-        borderColor:     colors,
-        borderWidth:     1.5,
-        borderRadius:    4,
-        borderSkipped:   false,
-      }],
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => '  ' + (typeof fmt === 'function' ? fmt(ctx.parsed.x) : ctx.parsed.x),
-          },
-        },
-      },
-      onClick(evt, elements) {
-        if (!elements.length) return;
-        openCatDetail(elements[0].index);
-      },
-      onHover(evt, elements) {
-        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-      },
-      scales: {
-        x: {
-          ticks: {
-            font: { size: 10 },
-            color: '#8c8278',
-            callback: v => typeof dashFmt === 'function' ? dashFmt(v) : v,
-          },
-          grid: { color: '#e8e4de22' },
-        },
-        y: {
-          ticks: {
-            font: { size: 11 },
-            color: 'var(--text)',
-            callback(val) {
-              const label = this.getLabelForValue(val);
-              return label && label.length > 18 ? label.slice(0, 17) + '…' : label;
-            },
-          },
-          grid: { display: false },
-        },
-      },
-    },
-  });
-  // Adjust canvas height based on entry count
-  canvas.style.height = Math.max(160, entries.length * 28) + 'px';
-}
-
-// ── _renderCatChartDoughnut: doughnut chart from _catChartEntries ────────────
-function _renderCatChartDoughnut() {
-  const canvas = document.getElementById('categoryChart');
-  if (!canvas) return;
-
-  const entries = _catChartEntries.slice(0, 12);
-  const labels  = entries.map(e => e.name);
-  const data    = entries.map(e => e.total);
-  const colors  = entries.map(e => e.color || '#2a6049');
-
-  if (state.chartInstances && state.chartInstances['categoryChart']) {
-    try { state.chartInstances['categoryChart'].destroy(); } catch(_) {}
-  }
-  state.chartInstances = state.chartInstances || {};
-
-  canvas.style.height = '220px';
-  const ctx = canvas.getContext('2d');
-  state.chartInstances['categoryChart'] = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors.map(c => c + 'cc'),
-        borderColor:     '#fff',
-        borderWidth:     2,
-        hoverBorderWidth: 3,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '62%',
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            boxWidth: 10,
-            font: { size: 11 },
-            color: 'var(--text)',
-            padding: 10,
-          },
-        },
-        tooltip: {
-          callbacks: {
-            label: ctx => ' ' + ctx.label + ': ' + (typeof fmt === 'function' ? fmt(ctx.parsed) : ctx.parsed),
-          },
-        },
-      },
-      onClick(evt, elements) {
-        if (!elements.length) return;
-        openCatDetail(elements[0].index);
-      },
-      onHover(evt, elements) {
-        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-      },
-    },
-  });
-}
 
   if (_catChartType === 'bar') {
     _renderCatChartBar();
@@ -1888,15 +1678,9 @@ async function renderDashboardUpcoming(memberIds = null) {
 
   (state.scheduled || []).forEach(sc => {
     if (sc.status === 'paused') return;
-    // Dates explicitly ignored — must NOT appear
-    const skippedDates = new Set(
-      (sc.occurrences || [])
-        .filter(o => o.execution_status === 'skipped')
-        .map(o => o.scheduled_date)
-    );
     const pendingDates = new Set(
       (sc.occurrences || [])
-        .filter(o => o.execution_status === 'pending' && o.scheduled_date >= today && o.scheduled_date <= limitStr)
+        .filter(o => (o.execution_status === 'pending' || o.execution_status === 'skipped') && o.scheduled_date >= today && o.scheduled_date <= limitStr)
         .map(o => o.scheduled_date)
     );
     const executedDates = new Set(
@@ -1910,16 +1694,14 @@ async function renderDashboardUpcoming(memberIds = null) {
     const maxCount = sc.end_count || 999;
     const endDate = sc.end_date || '2099-12-31';
     while (cur && cur <= limitStr && count < maxCount && cur <= endDate) {
-      if (cur >= today && !executedDates.has(cur) && !skippedDates.has(cur))
-        pushOccurrence(sc, cur, pendingDates.has(cur));
+      if (cur >= today && !executedDates.has(cur)) pushOccurrence(sc, cur, pendingDates.has(cur));
       count++;
       if (sc.frequency === 'once') break;
       cur = nextDate(cur, sc.frequency, sc.custom_interval, sc.custom_unit);
       if (!cur) break;
     }
     pendingDates.forEach(date => {
-      if (date >= today && date <= limitStr && !executedDates.has(date) && !skippedDates.has(date)
-          && !upcoming.some(x => x.sc.id === sc.id && x.date === date)) {
+      if (date >= today && date <= limitStr && !executedDates.has(date) && !upcoming.some(x => x.sc.id === sc.id && x.date === date)) {
         pushOccurrence(sc, date, true);
       }
     });
@@ -2919,33 +2701,13 @@ async function _openPatrimonioModal() {
 
   const accountTotal = accountRows.reduce((s,a) => s + a._balBRL, 0);
 
-  // ── RECEIVABLES FLAGGED FOR PATRIMÔNIO ────────────────────────────────
-  let recvTotal = 0, recvRows = [];
-  try {
-    const fid = typeof famId === 'function' ? famId() : null;
-    if (fid) {
-      // Fetch all pending income, then filter by client-side _recvPatMap
-      // Avoids SELECT/WHERE on include_in_patrimonio which may not exist yet
-      const { data: rv } = await sb.from('transactions')
-        .select('id,description,amount,brl_amount,currency,date,payees(name)')
-        .eq('family_id', fid).eq('status','pending').gte('amount',0)
-        .eq('is_transfer',false);
-      // Filter: either column exists in response OR use client-side map
-      recvRows = (rv || []).filter(r =>
-        r.include_in_patrimonio === true ||
-        (typeof _recvPatMap !== 'undefined' && _recvPatMap[r.id] === true)
-      );
-      recvTotal = recvRows.reduce((s,r) => s + (parseFloat(r.brl_amount ?? r.amount)||0), 0);
-    }
-  } catch(_) {}
-
   // ── PATRIMÔNIO TOTAL (idêntico ao dashboard KPI) ──
-  const patrimonioTotal = accountTotal - debtTotal + recvTotal;
+  const patrimonioTotal = accountTotal - debtTotal;
 
   // Componentes positivos vs negativos
   const ativoRows    = accountRows.filter(a => a._balBRL > 0);
   const passivoRows  = accountRows.filter(a => a._balBRL < 0); // cartões negativos
-  const totalAtivos  = ativoRows.reduce((s,a)=>s+a._balBRL, 0) + recvTotal;
+  const totalAtivos  = ativoRows.reduce((s,a)=>s+a._balBRL, 0);
   const totalCartNeg = passivoRows.reduce((s,a)=>s+Math.abs(a._balBRL), 0);
   const totalPassivos = totalCartNeg + debtTotal;
 
@@ -2970,9 +2732,6 @@ async function _openPatrimonioModal() {
     : healthScore >= 60 ? ['Bom','#f59e0b']
     : healthScore >= 40 ? ['Atenção','#f97316']
     : ['Crítico','#ef4444'];
-
-  // Sync the dashboard badge with the exact modal score
-  _updatePatrimonioScoreBadge(patrimonioTotal, debtTotal);
 
   /* ═══════════════════════════════════════════════════════════════════════
      PASSO 4 — Helpers visuais
@@ -3276,23 +3035,6 @@ async function _openPatrimonioModal() {
     ${cardPosHtml}
   </div>` : ''}
 
-  ${recvRows.length ? `
-  <div style="border-bottom:1px solid var(--border)">
-    <div style="padding:7px 14px;background:rgba(30,92,66,.06)">
-      <span style="font-size:.72rem;font-weight:700;color:var(--accent)">📬 A Receber (incluído no patrimônio) — +${dashFmt(recvTotal,'BRL')}</span>
-    </div>
-    ${recvRows.map(r => {
-      const rAmt = parseFloat(r.brl_amount ?? r.amount)||0;
-      return `<div onclick="navigate('receivables');closeModal('patrimonioModal')" style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <div style="min-width:0;flex:1">
-          <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.description||'—')}</div>
-          <div style="font-size:.7rem;color:var(--muted)">${fmtDate?fmtDate(r.date):r.date}${r.payees?.name?' · '+esc(r.payees.name):''}</div>
-        </div>
-        <span style="font-size:.85rem;font-weight:700;color:var(--accent);flex-shrink:0;margin-left:10px">+${dashFmt(rAmt,'BRL')}</span>
-      </div>`;
-    }).join('')}
-  </div>` : ''}
-
   <!-- PASSIVOS -->
   ${totalPassivos > 0 ? `
   <div style="padding:8px 14px 4px;background:rgba(239,68,68,.05);border-top:2px solid rgba(239,68,68,.2);border-bottom:1px solid var(--border)">
@@ -3382,9 +3124,8 @@ async function _patAnalyzeWithGemini() {
   btn.textContent = '⏳ Analisando…';
   result.innerHTML = '<span style="color:var(--muted)">Consultando Gemini…</span>';
 
-  // Use admin-configured model; fall back to stable default
   const _patModel = (typeof getGeminiModel === 'function') ? await getGeminiModel() : 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${_patModel}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${_patModel}:generateContent?key=` + apiKey;
 
   // Safe coercion — avoids TypeError when a metric field is undefined
   const _safe = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
@@ -3400,87 +3141,46 @@ async function _patAnalyzeWithGemini() {
   const _nAccs     = _safe(metrics.accsCount);
   const _nDebts    = _safe(metrics.debtsCount);
 
-  const _fmt2 = v => 'R$\u00a0' + Math.round(Math.abs(v)).toLocaleString('pt-BR');
-  const prompt = 'Responda APENAS com 2 parágrafos de texto puro (sem markdown, sem asteriscos, sem títulos, sem introdução). Seja direto.\n\n'
-    + 'Dados financeiros da família:\n'
-    + '• Patrimônio líquido: ' + _fmt2(_patLiq) + '\n'
-    + '• Ativos: ' + _fmt2(_totalAtiv) + ' (liquidez: ' + _fmt2(_liquidAmt) + ', investimentos: ' + _fmt2(_invAmt) + ')\n'
-    + '• Passivos: ' + _fmt2(_totalPass) + ' (dívidas: ' + _fmt2(_debtAmt) + ', cartões: ' + _fmt2(_cardDebt) + ')\n'
-    + '• Endividamento: ' + (_endivPct * 100).toFixed(0) + '% | Score financeiro: ' + _score + '/100\n\n'
-    + 'Parágrafo 1: Situação atual — pontos fortes e fracos.\n'
-    + 'Parágrafo 2: 2 a 3 ações concretas para melhorar.\n'
-    + 'Não use formatação. Não escreva introdução. Comece direto pela análise.';
+  const prompt = `Analise o patrimônio financeiro desta família em EXATAMENTE 2 parágrafos curtos em português brasileiro.
 
+Dados do patrimônio:
+- Patrimônio líquido: R$ ${_patLiq.toFixed(2)}
+- Total de ativos: R$ ${_totalAtiv.toFixed(2)} (contas: R$ ${_liquidAmt.toFixed(2)}, investimentos: R$ ${_invAmt.toFixed(2)})
+- Total de passivos: R$ ${_totalPass.toFixed(2)} (dívidas: R$ ${_debtAmt.toFixed(2)}, faturas cartão: R$ ${_cardDebt.toFixed(2)})
+- Endividamento: ${(_endivPct * 100).toFixed(1)}%
+- Score de saúde: ${_score}/100
+- Número de contas: ${_nAccs}
+- Dívidas ativas: ${_nDebts}
+
+Parágrafo 1: Avalie a situação patrimonial atual (pontos positivos e negativos).
+Parágrafo 2: Recomende 2-3 ações concretas para melhorar o patrimônio.
+Seja direto, objetivo e use números quando relevante. Máximo 100 palavras por parágrafo.`;
 
   // Abort after 30 s — prevents infinite spinner on network issues
   const _ctrl = new AbortController();
   const _timer = setTimeout(() => _ctrl.abort(), 30000);
   try {
-    let resp;
-    for (let _attempt = 0; _attempt <= 2; _attempt++) {
-      if (_attempt > 0) {
-        result.innerHTML = '<span style="color:var(--muted)">⏳ Tentando novamente (' + _attempt + '/2)…</span>';
-        await new Promise(r => setTimeout(r, _attempt * 5000));
-      }
-      resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.6, maxOutputTokens: 600 },
-        }),
-        signal: _ctrl.signal,
-      });
-      if (resp.ok || (resp.status !== 429 && resp.status !== 503)) break;
-    };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
+      }),
+      signal: _ctrl.signal,
+    });
     clearTimeout(_timer);
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({}));
       throw new Error('Gemini ' + resp.status + ': ' + (errBody?.error?.message || resp.statusText));
     }
     const data = await resp.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) throw new Error('Resposta vazia da IA');
 
-    // Check for API-level error in response body
-    if (data?.error) throw new Error(data.error.message || 'Erro na API Gemini');
-
-    const candidate = data?.candidates?.[0];
-    const finishReason = candidate?.finishReason;
-    const text = candidate?.content?.parts?.[0]?.text || '';
-
-    // Diagnose empty response
-    if (!text) {
-      if (!data?.candidates?.length) {
-        // No candidates — check for promptFeedback block
-        const blockReason = data?.promptFeedback?.blockReason;
-        throw new Error(blockReason
-          ? 'Conteúdo bloqueado pela IA: ' + blockReason
-          : 'Nenhuma resposta gerada. Tente novamente.');
-      }
-      if (finishReason === 'MAX_TOKENS') throw new Error('Resposta cortada (limite de tokens). Use um modelo com mais capacidade.');
-      if (finishReason === 'SAFETY') throw new Error('Resposta bloqueada por filtro de segurança.');
-      if (finishReason === 'RECITATION') throw new Error('Resposta bloqueada por política de citação.');
-      throw new Error('Resposta vazia da IA (finishReason: ' + (finishReason || 'desconhecido') + ')');
-    }
-
-    // Strip common AI preamble patterns
-    let cleanText = text.trim()
-      .replace(/^(aqui (está|estão|vai)|aqui (a análise|está a análise|está o resultado):?\s*)/i, '')
-      .replace(/^(claro[,!]?\s*)/i, '')
-      .replace(/^(análise[:\s]+)/i, '')
-      .trim();
-
-    // Convert basic markdown to HTML
-    const _mdToHtml = s => s
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // **bold**
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')                 // *italic*
-      .replace(/^#{1,3}\s+/gm, '')                           // strip headings
-      .replace(/^[-•]\s+/gm, '• ')                           // list bullets
-      .replace(/^(P[12]:|Parágrafo \d+:)/gm, '')             // strip P1/P2 labels
-      .trim();
-
-    const paras = cleanText.split(/\n\n+/).map(p => _mdToHtml(p.trim())).filter(Boolean);
+    const paras = text.trim().split(/\n\n+/).filter(Boolean);
     result.innerHTML = paras.map(p =>
-      '<p style="margin:0 0 10px;color:var(--text);line-height:1.7;font-size:.88rem">' + p + '</p>'
+      `<p style="margin:0 0 10px;color:var(--text);line-height:1.65">${esc(p.trim())}</p>`
     ).join('');
   } catch(e) {
     clearTimeout(_timer);
@@ -4428,7 +4128,7 @@ async function _loadDashTopPayeesCard(period) {
       </div>`;
 
     const verRelatorioLink = `<div style="padding:6px 14px 10px;text-align:right">
-      <button onclick="navigate('payees');setTimeout(()=>typeof setPayeesTab==='function'&&setPayeesTab('report'),300)"
+      <button onclick="navigate('reports');setTimeout(()=>typeof setReportView==='function'&&setReportView('beneficiarios'),300)"
         style="background:none;border:none;cursor:pointer;font-size:.74rem;font-weight:600;color:var(--accent);font-family:inherit;padding:0;transition:opacity .15s"
         onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
         Ver relatório completo →
@@ -4551,51 +4251,6 @@ window._dashGetPrefs                       = _dashGetPrefs;
 window._dashSavePrefs                      = _dashSavePrefs;
 window._renderDashFavCategories            = _renderDashFavCategories;
 window.closeCatDetail                      = closeCatDetail;
-
-/* ── Chart type and mode toggles (called from HTML) ─────────────────────── */
-function _setCatChartType(type) {
-  _catChartType = type;
-  // Update button states
-  const bar = document.getElementById('catChartTypeBar');
-  const pie = document.getElementById('catChartTypePie');
-  if (bar) bar.classList.toggle('active', type === 'bar');
-  if (pie) pie.classList.toggle('active', type === 'doughnut');
-  // Re-render with new type
-  if (type === 'doughnut') {
-    if (typeof _renderCatChartDoughnut === 'function') _renderCatChartDoughnut();
-  } else {
-    if (typeof _renderCatChartBar === 'function') _renderCatChartBar();
-  }
-  // Save to prefs
-  try {
-    const prefs = _dashGetPrefs() || {};
-    prefs.catChartType = type;
-    _dashSavePrefs(prefs);
-  } catch(_) {}
-}
-
-function _setDashCatMode(mode) {
-  // mode: 'expense' | 'income'
-  const expBtn = document.getElementById('dashCatModeExp');
-  const incBtn = document.getElementById('dashCatModeInc');
-  if (expBtn) expBtn.classList.toggle('active', mode === 'expense');
-  if (incBtn) incBtn.classList.toggle('active', mode === 'income');
-  // Switch the data source
-  if (mode === 'income') {
-    _catChartEntries = window._catChartIncEntries || [];
-  } else {
-    _catChartEntries = window._catChartExpEntriesRaw || [];
-  }
-  // Re-render
-  if (_catChartType === 'doughnut') {
-    if (typeof _renderCatChartDoughnut === 'function') _renderCatChartDoughnut();
-  } else {
-    if (typeof _renderCatChartBar === 'function') _renderCatChartBar();
-  }
-}
-
-window._setCatChartType = _setCatChartType;
-window._setDashCatMode  = _setDashCatMode;
 window.loadDashboard                       = loadDashboard;
 window.loadDashboardRecent                 = loadDashboardRecent;
 window.openDashCustomModal                 = openDashCustomModal;

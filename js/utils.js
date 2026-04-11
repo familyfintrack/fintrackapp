@@ -961,7 +961,7 @@ window.ensureTransactionDescription = ensureTransactionDescription;
 async function geminiRetryFetch(url, body, opts = {}) {
   const maxRetries = opts.maxRetries ?? 3;
   const backoff    = opts.backoffMs  ?? [4000, 10000, 20000];
-  const onRetry    = opts.onRetry;   // optional callback(attempt, maxRetries, waitMs)
+  const onRetry    = opts.onRetry;
 
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -995,7 +995,6 @@ async function geminiRetryFetch(url, body, opts = {}) {
       continue;
     }
 
-    // Specific known errors
     if (resp.status === 400 && errMsg.includes('API_KEY'))
       throw new Error('Chave Gemini inválida. Verifique em Configurações → IA.');
     if (resp.status === 429)
@@ -1020,14 +1019,12 @@ window.geminiRetryFetch = geminiRetryFetch;
   const BACKOFF_MS  = [4000, 12000, 25000];
   const MAX_RETRIES = 3;
 
-  // Bail if telemetry.js already wrapped fetch (we'll layer on top safely)
   const _originalFetch = window.fetch;
 
   window.fetch = async function _fetchWithGeminiRetry(input, init, ...rest) {
     const url = typeof input === 'string' ? input
               : (input instanceof Request ? input.url : String(input));
 
-    // Only intercept Gemini API calls
     if (!url.includes(GEMINI_HOST)) {
       return _originalFetch.call(this, input, init, ...rest);
     }
@@ -1041,8 +1038,6 @@ window.geminiRetryFetch = geminiRetryFetch;
       }
 
       try {
-        // Clone init for each attempt (body can only be read once if it's a stream,
-        // but Gemini calls always use JSON.stringify so the body string is reusable)
         const resp = await _originalFetch.call(this, input, init, ...rest);
         if (resp.ok || (resp.status !== 429 && resp.status !== 503)) return resp;
         lastResp = resp;
@@ -1052,7 +1047,7 @@ window.geminiRetryFetch = geminiRetryFetch;
       }
     }
 
-    return lastResp; // return last response (caller handles !resp.ok)
+    return lastResp;
   };
 
   Object.defineProperty(window.fetch, 'name', { value: '_fetchWithGeminiRetry' });
