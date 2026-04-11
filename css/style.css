@@ -23374,10 +23374,10 @@ tr.payee-row[onclick] { cursor: pointer; }
     overflow: hidden !important;
   }
 
-  /* Body do painel: não vaza para fora */
+  /* Body do painel: overflow visible para lista flat */
   #scUpcomingPanel .sc-panel__body {
-    overflow: hidden !important;
-    padding: 8px 10px 10px !important;
+    overflow: visible !important;
+    padding: 0 !important;
     width: 100% !important;
     box-sizing: border-box !important;
   }
