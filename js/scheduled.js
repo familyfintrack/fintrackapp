@@ -2032,10 +2032,21 @@ function setScView(view) {
       .catch(e => console.warn('[sc_view] save:', e?.message));
   }
 
-  // Update all view buttons — handles both desktop and mobile variants
-  document.querySelectorAll('#scViewList').forEach(b => b.classList.toggle('active', view === 'list'));
-  document.querySelectorAll('#scViewCal').forEach(b  => b.classList.toggle('active', view === 'calendar'));
-  document.querySelectorAll('#scViewCats').forEach(b => b.classList.toggle('active', view === 'categories'));
+  // Update all view buttons — desktop (by id) + mobile (by data-mview)
+  const _viewMap = { list: 'list', calendar: 'cal', categories: 'cats' };
+  const _mKey = _viewMap[view] || view;
+  // Desktop
+  ['scViewList','scViewCal','scViewCats'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active',
+      (id === 'scViewList' && view === 'list') ||
+      (id === 'scViewCal'  && view === 'calendar') ||
+      (id === 'scViewCats' && view === 'categories'));
+  });
+  // Mobile (data-mview attribute)
+  document.querySelectorAll('[data-mview]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-mview') === _mKey);
+  });
 
   const listView = document.getElementById('scListView');
   const calView  = document.getElementById('scCalendarView');
