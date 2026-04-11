@@ -3728,10 +3728,11 @@ async function importDemoData(userId, familyId, progressCb) {
 
   // ── 11. Prices ───────────────────────────────────────────────────────────
   log('Criando preços…', 83);
-  // Remap category_id in price_items using catIdMap
+  // price_items.category_id references a grocery-specific category (not transaction categories)
+  // These demo UUIDs (priceCatFood, etc.) are ephemeral and not in catIdMap → always null
   const validPriceItems = data.priceItems.map(pi => ({
     ...pi,
-    category_id: remap(catIdMap, pi.category_id) || null,
+    category_id: null,  // price items have their own category system, not tied to transaction categories
   }));
   // price_items has unique constraint on (family_id, name) — handle per-row
   // Must enrich with family_id before upsert (ins() not used here)
@@ -3744,11 +3745,20 @@ async function importDemoData(userId, familyId, progressCb) {
       piCols.forEach(c => { if (c in pi) piRow[c] = pi[c]; });
       piRow.family_id  = familyId;
       piRow.created_at = piRow.created_at || new Date().toISOString();
-      // Upsert on (family_id, name) — ignore if already exists
-      const { error: pie } = await sb.from('price_items')
+
+      // Attempt 1: upsert with category_id
+      let { error: pie } = await sb.from('price_items')
         .upsert(piRow, { onConflict: 'family_id,name', ignoreDuplicates: true });
+
+      // FK violation on category_id → retry without it
+      if (pie?.message?.includes('category_id') || pie?.message?.includes('price_items_category')) {
+        const piRowNoCat = { ...piRow, category_id: null };
+        const { error: pie2 } = await sb.from('price_items')
+          .upsert(piRowNoCat, { onConflict: 'family_id,name', ignoreDuplicates: true });
+        pie = pie2;
+      }
+
       if (!pie) { piOk++; continue; }
-      // If onConflict not supported by DB version, fall back to insert-ignore
       if (pie.message?.includes('duplicate') || pie.code === '23505') { piOk++; continue; }
       piErrs.push(pi.name + ': ' + pie.message);
     }
