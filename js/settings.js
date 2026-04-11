@@ -3620,7 +3620,7 @@ async function importDemoData(userId, familyId, progressCb) {
               creditorId = existingPayee.id;
             } else {
               // Create creditor payee
-              const newPayeeId = crypto.randomUUID?.() || (Math.random().toString(36).slice(2));
+              const newPayeeId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
               const { error: pErr } = await sb.from('payees').insert({
                 id: newPayeeId, name: creditorName, type: 'empresa',
                 family_id: familyId, created_at: new Date().toISOString(),
@@ -4074,6 +4074,27 @@ async function _loadDemoUsers(familyId) {
   }
 }
 
+
+// ── Purge all family data before demo import ─────────────────────────────
+async function _purgeFamilyForDemo(fid) {
+  if (!fid) return;
+  const tables = [
+    'ai_insight_recommendations','ai_insight_snapshots',
+    'price_history','grocery_items','grocery_lists','price_stores','price_items',
+    'debt_ledger','debts','dream_items','dream_contributions','dreams',
+    'investment_price_history','investment_transactions','investment_positions',
+    'scheduled_occurrences','scheduled_run_logs','scheduled_ar_records','scheduled_transactions',
+    'budgets','financial_objectives',
+    'transactions','accounts','account_groups',
+    'categories','payees','family_composition',
+  ];
+  for (const table of tables) {
+    try { await sb.from(table).delete().eq('family_id', fid); }
+    catch(e) { console.warn('[purgeDemo]', table, e?.message); }
+  }
+  console.log('[purgeDemo] Done:', fid);
+}
+
 async function _startDemoImport() {
   const familyId = document.getElementById('demoFamilySelect')?.value;
   const userId   = document.getElementById('demoUserSelect')?.value;
@@ -4090,18 +4111,20 @@ async function _startDemoImport() {
   const fam = document.getElementById('demoFamilySelect')?.options[document.getElementById('demoFamilySelect').selectedIndex]?.text;
   const usr = document.getElementById('demoUserSelect')?.options[document.getElementById('demoUserSelect').selectedIndex]?.text;
 
-  if (!confirm(`⚠️ Importar dados demo para:
-
-Família: ${fam}
-Usuário: ${usr}
-
-Isso vai criar categorias, contas, transações e outros dados fictícios. Continuar?`)) return;
+  if (!confirm(`⚠️ ATENÇÃO: Importar dados demo para:\n\nFamília: ${fam}\nUsuário: ${usr}\n\nEsta ação VAI APAGAR todos os dados existentes desta família antes de importar os dados de demonstração. Continuar?`)) return;
 
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Importando…'; }
   if (progress) progress.style.display = '';
   if (resultEl) resultEl.style.display = 'none';
 
   try {
+    // ── STEP 0: Purge existing family data ────────────────────────────
+    if (statusEl) statusEl.textContent = '🗑️ Removendo dados existentes…';
+    if (barEl) barEl.style.width = '2%';
+    await _purgeFamilyForDemo(familyId);
+    if (statusEl) statusEl.textContent = '✅ Dados removidos. Importando dados demo…';
+    if (barEl) barEl.style.width = '5%';
+
     const result = await importDemoData(userId, familyId, (msg, pct) => {
       if (statusEl) statusEl.textContent = msg;
       if (pct !== null && barEl) barEl.style.width = pct + '%';

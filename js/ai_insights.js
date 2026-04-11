@@ -1457,13 +1457,17 @@ REGRAS FINAIS:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
+  // Detect thinking models (gemini-2.5-*) — they consume thinking tokens from the output budget
+  const _isThinkingModel = /gemini-2\.5/.test(RECEIPT_AI_MODEL);
   const requestBody = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-      maxOutputTokens: 8000,
+      maxOutputTokens: _isThinkingModel ? 16000 : 8000,
       temperature: 0.2,
       responseMimeType: 'application/json',
     },
+    // Disable thinking for structured JSON generation (saves tokens, faster, more reliable)
+    ...(_isThinkingModel ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
   };
 
   // Retry helper — models can be overloaded or return 503 transiently
@@ -1532,7 +1536,11 @@ REGRAS FINAIS:
   // Check finishReason — truncated/blocked responses can't be parsed
   const finishReason = candidate?.finishReason || '';
   if (finishReason === 'MAX_TOKENS') {
-    throw new Error('Resposta truncada (período muito longo). Reduza o intervalo de datas e tente novamente.');
+    // For thinking models, this usually means the thinking budget was exhausted
+    const _hint = _isThinkingModel
+      ? 'O modelo de raciocínio excedeu o limite de tokens. Tente reduzir o período ou use gemini-1.5-flash em Configurações → IA.'
+      : 'Resposta truncada (período muito longo). Reduza o intervalo de datas e tente novamente.';
+    throw new Error(_hint);
   }
   if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
     throw new Error('Resposta bloqueada pelo modelo de segurança da IA. Altere o contexto e tente novamente.');

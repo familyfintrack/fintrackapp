@@ -1208,7 +1208,8 @@ window.accountAiSuggestIcon = async function() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 400, temperature: 0.3, responseMimeType: 'application/json' }
+            generationConfig: { maxOutputTokens: 400, temperature: 0.3, responseMimeType: 'application/json' },
+      ...(/2\.5/.test(_cfgModel) ? {thinkingConfig: {thinkingBudget: 0}} : {})
           })
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
