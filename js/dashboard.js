@@ -3400,42 +3400,65 @@ async function _patAnalyzeWithGemini() {
   const _nAccs     = _safe(metrics.accsCount);
   const _nDebts    = _safe(metrics.debtsCount);
 
-  const prompt = `Analise o patrimônio financeiro desta família em EXATAMENTE 2 parágrafos curtos em português brasileiro.
+  const _fmt2 = v => 'R$\u00a0' + Math.round(Math.abs(v)).toLocaleString('pt-BR');
+  const prompt = 'Consultor financeiro: analise em 2 parágrafos curtos (máx 80 palavras cada) em português.\n\n'
+    + 'Patrimônio líquido: ' + _fmt2(_patLiq) + '\n'
+    + 'Ativos: ' + _fmt2(_totalAtiv) + ' (liquidez: ' + _fmt2(_liquidAmt) + ', investimentos: ' + _fmt2(_invAmt) + ')\n'
+    + 'Passivos: ' + _fmt2(_totalPass) + ' (dívidas: ' + _fmt2(_debtAmt) + ', cartões: ' + _fmt2(_cardDebt) + ')\n'
+    + 'Endividamento: ' + (_endivPct * 100).toFixed(0) + '% | Score saúde: ' + _score + '/100\n\n'
+    + 'P1: Avalie pontos positivos e negativos.\n'
+    + 'P2: Liste 2-3 ações concretas para melhoria.';
 
-Dados do patrimônio:
-- Patrimônio líquido: R$ ${_patLiq.toFixed(2)}
-- Total de ativos: R$ ${_totalAtiv.toFixed(2)} (contas: R$ ${_liquidAmt.toFixed(2)}, investimentos: R$ ${_invAmt.toFixed(2)})
-- Total de passivos: R$ ${_totalPass.toFixed(2)} (dívidas: R$ ${_debtAmt.toFixed(2)}, faturas cartão: R$ ${_cardDebt.toFixed(2)})
-- Endividamento: ${(_endivPct * 100).toFixed(1)}%
-- Score de saúde: ${_score}/100
-- Número de contas: ${_nAccs}
-- Dívidas ativas: ${_nDebts}
-
-Parágrafo 1: Avalie a situação patrimonial atual (pontos positivos e negativos).
-Parágrafo 2: Recomende 2-3 ações concretas para melhorar o patrimônio.
-Seja direto, objetivo e use números quando relevante. Máximo 100 palavras por parágrafo.`;
 
   // Abort after 30 s — prevents infinite spinner on network issues
   const _ctrl = new AbortController();
   const _timer = setTimeout(() => _ctrl.abort(), 30000);
   try {
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 400 },
-      }),
-      signal: _ctrl.signal,
-    });
+    let resp;
+    for (let _attempt = 0; _attempt <= 2; _attempt++) {
+      if (_attempt > 0) {
+        result.innerHTML = '<span style="color:var(--muted)">⏳ Tentando novamente (' + _attempt + '/2)…</span>';
+        await new Promise(r => setTimeout(r, _attempt * 5000));
+      }
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.6, maxOutputTokens: 600 },
+        }),
+        signal: _ctrl.signal,
+      });
+      if (resp.ok || (resp.status !== 429 && resp.status !== 503)) break;
+    };
     clearTimeout(_timer);
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({}));
       throw new Error('Gemini ' + resp.status + ': ' + (errBody?.error?.message || resp.statusText));
     }
     const data = await resp.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) throw new Error('Resposta vazia da IA');
+
+    // Check for API-level error in response body
+    if (data?.error) throw new Error(data.error.message || 'Erro na API Gemini');
+
+    const candidate = data?.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const text = candidate?.content?.parts?.[0]?.text || '';
+
+    // Diagnose empty response
+    if (!text) {
+      if (!data?.candidates?.length) {
+        // No candidates — check for promptFeedback block
+        const blockReason = data?.promptFeedback?.blockReason;
+        throw new Error(blockReason
+          ? 'Conteúdo bloqueado pela IA: ' + blockReason
+          : 'Nenhuma resposta gerada. Tente novamente.');
+      }
+      if (finishReason === 'MAX_TOKENS') throw new Error('Resposta cortada (limite de tokens). Use um modelo com mais capacidade.');
+      if (finishReason === 'SAFETY') throw new Error('Resposta bloqueada por filtro de segurança.');
+      if (finishReason === 'RECITATION') throw new Error('Resposta bloqueada por política de citação.');
+      throw new Error('Resposta vazia da IA (finishReason: ' + (finishReason || 'desconhecido') + ')');
+    }
 
     const paras = text.trim().split(/\n\n+/).filter(Boolean);
     result.innerHTML = paras.map(p =>
