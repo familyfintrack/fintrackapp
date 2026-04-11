@@ -4493,7 +4493,7 @@ async function _loadDashLoyaltyCard() {
   }
 
   const programs = window._loy?.programs || [];
-  const active   = programs.filter(p => p.points_balance > 0 || p.show_in_account_card);
+  const active   = programs; // mostrar todos os programas cadastrados
 
   if (!active.length) { card.style.display = 'none'; return; }
   card.style.display = '';

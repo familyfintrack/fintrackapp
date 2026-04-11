@@ -781,6 +781,9 @@ function renderUpcoming() {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   const tomorrowStr = localDateStr(tomorrow);
 
+  // Pre-collapse all dates beyond today/tomorrow (first call per session per date)
+  _scInitCollapse(Object.keys(byDate).sort(), today, tomorrowStr);
+
   const groups = Object.entries(byDate).map(([date, items]) => {
     const isToday    = date === today;
     const isTomorrow = date === tomorrowStr;
@@ -911,6 +914,20 @@ function toggleUpcomingGroup(gid) {
 
 // ── Collapse state for individual days in list view ─────────────────────────
 const _scDayCollapsed = new Set(); // Set of date strings 'YYYY-MM-DD' currently collapsed
+
+// ── Pre-collapse dates beyond the first 2 days when rendering ────────────────
+// Called by renderUpcoming after computing the sorted date list
+function _scInitCollapse(allDates, today, tomorrowStr) {
+  // Expand only today and tomorrow; collapse everything else
+  // Preserve any manual toggle the user has done during this session
+  allDates.forEach(date => {
+    const isFirst2 = date === today || date === tomorrowStr;
+    if (!isFirst2 && !_scDayCollapsed.has(date)) {
+      // Not yet manually toggled open — collapse by default
+      _scDayCollapsed.add(date);
+    }
+  });
+}
 
 window._scToggleDay = function(date) {
   const el    = document.getElementById('scDay_' + date);
