@@ -3401,13 +3401,15 @@ async function _patAnalyzeWithGemini() {
   const _nDebts    = _safe(metrics.debtsCount);
 
   const _fmt2 = v => 'R$\u00a0' + Math.round(Math.abs(v)).toLocaleString('pt-BR');
-  const prompt = 'Consultor financeiro: analise em 2 parágrafos curtos (máx 80 palavras cada) em português.\n\n'
-    + 'Patrimônio líquido: ' + _fmt2(_patLiq) + '\n'
-    + 'Ativos: ' + _fmt2(_totalAtiv) + ' (liquidez: ' + _fmt2(_liquidAmt) + ', investimentos: ' + _fmt2(_invAmt) + ')\n'
-    + 'Passivos: ' + _fmt2(_totalPass) + ' (dívidas: ' + _fmt2(_debtAmt) + ', cartões: ' + _fmt2(_cardDebt) + ')\n'
-    + 'Endividamento: ' + (_endivPct * 100).toFixed(0) + '% | Score saúde: ' + _score + '/100\n\n'
-    + 'P1: Avalie pontos positivos e negativos.\n'
-    + 'P2: Liste 2-3 ações concretas para melhoria.';
+  const prompt = 'Responda APENAS com 2 parágrafos de texto puro (sem markdown, sem asteriscos, sem títulos, sem introdução). Seja direto.\n\n'
+    + 'Dados financeiros da família:\n'
+    + '• Patrimônio líquido: ' + _fmt2(_patLiq) + '\n'
+    + '• Ativos: ' + _fmt2(_totalAtiv) + ' (liquidez: ' + _fmt2(_liquidAmt) + ', investimentos: ' + _fmt2(_invAmt) + ')\n'
+    + '• Passivos: ' + _fmt2(_totalPass) + ' (dívidas: ' + _fmt2(_debtAmt) + ', cartões: ' + _fmt2(_cardDebt) + ')\n'
+    + '• Endividamento: ' + (_endivPct * 100).toFixed(0) + '% | Score financeiro: ' + _score + '/100\n\n'
+    + 'Parágrafo 1: Situação atual — pontos fortes e fracos.\n'
+    + 'Parágrafo 2: 2 a 3 ações concretas para melhorar.\n'
+    + 'Não use formatação. Não escreva introdução. Comece direto pela análise.';
 
 
   // Abort after 30 s — prevents infinite spinner on network issues
@@ -3461,9 +3463,25 @@ async function _patAnalyzeWithGemini() {
       throw new Error('Resposta vazia da IA (finishReason: ' + (finishReason || 'desconhecido') + ')');
     }
 
-    const paras = text.trim().split(/\n\n+/).filter(Boolean);
+    // Strip common AI preamble patterns
+    let cleanText = text.trim()
+      .replace(/^(aqui (está|estão|vai)|aqui (a análise|está a análise|está o resultado):?\s*)/i, '')
+      .replace(/^(claro[,!]?\s*)/i, '')
+      .replace(/^(análise[:\s]+)/i, '')
+      .trim();
+
+    // Convert basic markdown to HTML
+    const _mdToHtml = s => s
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // **bold**
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')                 // *italic*
+      .replace(/^#{1,3}\s+/gm, '')                           // strip headings
+      .replace(/^[-•]\s+/gm, '• ')                           // list bullets
+      .replace(/^(P[12]:|Parágrafo \d+:)/gm, '')             // strip P1/P2 labels
+      .trim();
+
+    const paras = cleanText.split(/\n\n+/).map(p => _mdToHtml(p.trim())).filter(Boolean);
     result.innerHTML = paras.map(p =>
-      `<p style="margin:0 0 10px;color:var(--text);line-height:1.65">${esc(p.trim())}</p>`
+      '<p style="margin:0 0 10px;color:var(--text);line-height:1.7;font-size:.88rem">' + p + '</p>'
     ).join('');
   } catch(e) {
     clearTimeout(_timer);

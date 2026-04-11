@@ -3357,20 +3357,24 @@ async function importDemoData(userId, familyId, progressCb) {
       if (useUpsert) {
         // ON CONFLICT DO NOTHING — tries id first, falls back to insert-ignore on duplicate
         ({ error } = await sb.from(table).upsert(batch, { onConflict: 'id', ignoreDuplicates: true }));
-        if (error && (error.message?.includes('duplicate') || error.code === '23505')) {
-          // Conflict on unique constraint other than id — insert row by row, skip existing
+        if (!error) {
+          // Success (inserted or skipped duplicate) — count all as ok
+          ok += batch.length; tableResults[table].ok += batch.length;
+          continue;
+        }
+        if (error.message?.includes('duplicate') || error.code === '23505') {
+          // Conflict on unique constraint other than id — row-by-row fallback
           let rowOk = 0;
           for (const row of batch) {
             const { error: re } = await sb.from(table).insert(row);
-            if (!re) rowOk++;
-            // else: skip duplicates silently (row already exists)
+            if (!re || re.code === '23505' || re.message?.includes('duplicate')) rowOk++;
           }
           ok += rowOk; tableResults[table].ok += rowOk;
-          // Note: skipped rows count as success (data already exists = goal achieved)
           continue;
         }
       } else {
         ({ error } = await sb.from(table).insert(batch));
+        if (!error) { ok += batch.length; tableResults[table].ok += batch.length; continue; }
       }
       if (error) {
         // Last resort: upsert already tried above; just record the error
@@ -3604,33 +3608,19 @@ async function importDemoData(userId, familyId, progressCb) {
 
       for (const d of debtData) {
         // Try to get/create a creditor payee
-        let creditorId = d.creditor_payee_id ? remap(payIdMap, d.creditor_payee_id) : null;
+        // Use any payee from payIdMap as creditor placeholder
+        const payeeIds = Object.values(payIdMap);
+        let creditorId = payeeIds.length > 0 ? payeeIds[0] : null;
 
         if (!creditorId) {
-          // Extract creditor name from notes or use debt name as creditor
-          const creditorName = d.creditor_name || d.name.split('(')[0].trim() + ' (credor)';
           try {
-            // Try to find existing payee by name
-            const { data: existingPayee } = await sb.from('payees')
-              .select('id')
-              .eq('family_id', familyId)
-              .ilike('name', creditorName)
-              .maybeSingle();
-            if (existingPayee?.id) {
-              creditorId = existingPayee.id;
-            } else {
-              // Create creditor payee
-              const newPayeeId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
-              const { error: pErr } = await sb.from('payees').insert({
-                id: newPayeeId, name: creditorName, type: 'empresa',
-                family_id: familyId, created_at: new Date().toISOString(),
-              });
-              if (!pErr) creditorId = newPayeeId;
-            }
+            const { data: anyP } = await sb.from('payees')
+              .select('id').eq('family_id', familyId).limit(1).maybeSingle();
+            if (anyP?.id) creditorId = anyP.id;
           } catch(_) {}
         }
 
-        if (!creditorId) { debtErrors.push(d.name + ': não foi possível criar credor'); continue; }
+        if (!creditorId) { debtErrors.push(d.name + ': sem credor disponível'); continue; }
 
         const debtRow = {};
         debtCols.forEach(c => { if (c in d) debtRow[c] = d[c]; });
