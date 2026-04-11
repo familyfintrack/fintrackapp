@@ -886,7 +886,7 @@ body.sidebar-open .fab{
   #globalAddBtn{display:none;}
   /* Hide admin topbar buttons on mobile — they live in sidebar */
   #importNav          { display: none !important; }
-  #auditNavTopbar     { display: none !important; }
+  /* #auditNavTopbar: shown via .audit-visible class — not hidden here */
   #telemetryNavTopbar { display: none !important; }
   #settingsNavTopbar  { display: none !important; }  #topbarQuickActions,
   .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
