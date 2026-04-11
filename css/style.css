@@ -888,8 +888,7 @@ body.sidebar-open .fab{
   #importNav          { display: none !important; }
   #auditNavTopbar     { display: none !important; }
   #telemetryNavTopbar { display: none !important; }
-  #settingsNavTopbar  { display: none !important; }
-  #topbarQuickActions,
+  #settingsNavTopbar  { display: none !important; }  #topbarQuickActions,
   .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
   .content{padding:16px;padding-bottom:calc(var(--bottom-h) + 104px + env(safe-area-inset-bottom));}
   .grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}
@@ -17050,9 +17049,9 @@ tr.reconcile-checked td { opacity: 1 !important; }
   /* Group view: tighter cards */
   .tx-group-wrap { margin-bottom: 10px; }
 
-  /* Page header green bar: full width */
+  /* Page header green bar: full width, no bottom margin (matches default) */
   .page-header-bar {
-    margin: -16px -18px 14px -18px;
+    margin: -16px -18px 0 -18px;
     width: calc(100% + 36px);
   }
 }
@@ -20869,6 +20868,30 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 }
 .sc-page-header__left  { display: flex; align-items: center; gap: 8px; }
 .sc-page-header__right { margin-left: auto; flex-shrink: 0; }
+
+/* ── sc-desktop-header: edge-to-edge, no gap between page-header-bar ── */
+#page-scheduled .sc-desktop-header {
+  margin: 0 -24px 14px -24px;
+  width: calc(100% + 48px);
+  padding: 8px 24px 10px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  #page-scheduled .sc-desktop-header {
+    margin: 0 -16px 12px -16px;
+    width: calc(100% + 32px);
+    padding: 7px 16px 9px;
+  }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  #page-scheduled .sc-desktop-header {
+    margin: 0 -18px 12px -18px;
+    width: calc(100% + 36px);
+    padding: 7px 18px 9px;
+  }
+}
 
 /* ── Desktop KPI strip ── */
 .sc-kpi-strip {
@@ -28270,4 +28293,143 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
 }
 @media (min-width: 769px) {
   .sc-tab-bar { display: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LOYALTY — Programas de Fidelidade
+══════════════════════════════════════════════════════════════════════════ */
+
+.loyalty-empty {
+  text-align: center;
+  padding: 32px 20px;
+  background: var(--surface);
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+}
+
+.loyalty-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  transition: box-shadow .15s;
+}
+.loyalty-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+
+.loyalty-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.loyalty-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.loyalty-card-info { flex: 1; min-width: 0; }
+.loyalty-card-name  { font-size: .88rem; font-weight: 700; color: var(--text); }
+.loyalty-card-type  { font-size: .72rem; color: var(--muted); margin-top: 1px; }
+.loyalty-card-balance { text-align: right; flex-shrink: 0; }
+.loyalty-pts-value  { font-size: 1.3rem; font-weight: 800; line-height: 1.1; }
+.loyalty-pts-label  { font-size: .68rem; color: var(--muted); }
+
+.loyalty-card-actions {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  flex-wrap: wrap;
+}
+.loyalty-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text2);
+  font-family: var(--font-sans);
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .13s;
+  white-space: nowrap;
+}
+.loyalty-action-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-lt, rgba(42,96,73,.08));
+}
+
+/* Loyalty points badge on account cards */
+.loyalty-pts-badge {
+  transition: opacity .15s;
+}
+.loyalty-pts-badge:hover { opacity: .8; }
+
+/* Account card loyalty type */
+.account-card--loyalty { cursor: pointer; }
+
+/* Program picker chips */
+.loy-prog-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.loy-prog-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--surface);
+  transition: all .13s;
+  min-width: 70px;
+}
+.loy-prog-chip:hover { border-color: var(--accent); background: var(--accent-lt, rgba(42,96,73,.06)); }
+.loy-prog-chip--active {
+  border-color: var(--accent) !important;
+  background: var(--accent-lt, rgba(42,96,73,.10)) !important;
+}
+
+/* Mode buttons in update modal */
+.loyalty-mode-btn {
+  padding: 8px 6px;
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text2);
+  font-family: var(--font-sans);
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .13s;
+  text-align: center;
+}
+.loyalty-mode-btn.active {
+  border-color: var(--loy-mode-color, var(--accent));
+  background: color-mix(in srgb, var(--loy-mode-color, var(--accent)) 12%, transparent);
+  color: var(--loy-mode-color, var(--accent));
+}
+.loyalty-mode-btn:hover:not(.active) {
+  border-color: var(--border2);
+  background: var(--bg2);
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+  .loyalty-card-top { flex-wrap: wrap; }
+  .loyalty-card-balance { width: 100%; text-align: left; }
+  .loy-prog-chip { min-width: 60px; padding: 6px 8px; }
 }
