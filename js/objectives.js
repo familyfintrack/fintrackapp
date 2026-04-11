@@ -450,14 +450,26 @@ async function openObjectiveDetail(id) {
       </div>`;
     };
 
-    const recentRows = list.slice(0,8).map(t => {
+    const recentRows = list.slice(0,15).map(t => {
       const sign  = t.amount >= 0 ? '+' : '-';
       const color = t.amount >= 0 ? 'var(--green)' : 'var(--red)';
-      return `<tr>
-        <td style="color:var(--muted);font-size:.72rem;white-space:nowrap">${_objFmtDate(t.date)}</td>
-        <td style="font-size:.8rem">${_objEsc(t.description||'—')}</td>
-        <td style="font-size:.75rem;color:var(--muted)">${_objEsc(t.payees?.name||'—')}</td>
-        <td style="text-align:right;font-weight:700;color:${color};white-space:nowrap">${sign}${_objFmt(Math.abs(t.amount))}</td>
+      const catIcon = t.categories?.icon || '📦';
+      return `<tr style="cursor:pointer;transition:background .13s"
+        onclick="closeModal('objectiveDetailModal');openTransactionModal('${t.id}')"
+        onmouseover="this.style.background='var(--surface2)'"
+        onmouseout="this.style.background=''">
+        <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;padding:8px 8px">${_objFmtDate(t.date)}</td>
+        <td style="font-size:.8rem;padding:8px 4px">
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:.85rem">${catIcon}</span>
+            <span>${_objEsc(t.description||'—')}</span>
+          </div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:1px">${_objEsc(t.payees?.name||t.accounts?.name||'')}</div>
+        </td>
+        <td style="text-align:right;font-weight:700;color:${color};white-space:nowrap;padding:8px 8px">
+          <div>${sign}${_objFmt(Math.abs(t.amount))}</div>
+          <div style="font-size:.62rem;color:var(--muted);font-weight:400;margin-top:1px">✏️ editar</div>
+        </td>
       </tr>`;
     }).join('');
 
@@ -473,7 +485,7 @@ async function openObjectiveDetail(id) {
     ${renderSection(byPayee,'🏪 Por beneficiário', (k)   => _objEsc(k))}
     ${renderSection(byMember,'👥 Por membro',      (k,v) => `${v.emoji} ${_objEsc(k)}`)}
     ${list.length ? `<div class="obj-detail-section">
-      <div class="obj-detail-section-title">🕒 Últimas transações</div>
+      <div class="obj-detail-section-title">🕒 Últimas transações <span style="font-size:.68rem;font-weight:400;color:var(--muted)">· toque para editar</span></div>
       <div class="table-wrap" style="border-radius:var(--r-sm);border:1px solid var(--border);overflow:hidden">
         <table style="font-size:.82rem;width:100%">
           <thead><tr style="background:var(--surface2)">
@@ -485,7 +497,7 @@ async function openObjectiveDetail(id) {
           <tbody>${recentRows}</tbody>
         </table>
       </div>
-      ${list.length>8?`<div style="text-align:center;margin-top:8px;font-size:.75rem;color:var(--muted)">… e mais ${list.length-8} transações</div>`:''}
+      ${list.length>15?`<div style="text-align:center;margin-top:8px;font-size:.75rem;color:var(--muted)">… e mais ${list.length-15} transações</div>`:''}
     </div>` : ''}
     <div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
       <button class="btn btn-ghost" onclick="openObjectiveModal('${id}')">✏️ Editar</button>

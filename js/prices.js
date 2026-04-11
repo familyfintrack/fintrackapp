@@ -434,13 +434,19 @@ async function _loadPricesData() {
   ]);
   _px.items  = itemsRes.data  || [];
   _px.stores = storesRes.data || [];
+  _px._histRaw = histRes.data || [];
 
   // Construir indice item_id -> Set<store_id> para filtragem rapida
   _px._itemStoreIndex = {};
-  (histRes.data || []).forEach(h => {
+  // Counters for charts: store_id -> count, item_id -> count
+  _px._storeCount = {};
+  _px._itemCount  = {};
+  _px._histRaw.forEach(h => {
     if (!h.item_id || !h.store_id) return;
     if (!_px._itemStoreIndex[h.item_id]) _px._itemStoreIndex[h.item_id] = new Set();
     _px._itemStoreIndex[h.item_id].add(h.store_id);
+    _px._storeCount[h.store_id] = (_px._storeCount[h.store_id] || 0) + 1;
+    _px._itemCount[h.item_id]   = (_px._itemCount[h.item_id]   || 0) + 1;
   });
 }
 
@@ -525,6 +531,8 @@ function _renderPricesPage() {
       </div>`;
     return;
   }
+  _renderPricesCharts();
+
   if (_px.groupBy) {
     if (_px.groupBy === 'subcat') { _renderPricesGroupedBySubcat(items); return; }
     _renderPricesGrouped(items);
@@ -534,6 +542,85 @@ function _renderPricesPage() {
 }
 
 function pricesSearch(val)      { _px.search = val;      _renderPricesPage(); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRICES CHARTS — Top lojas e artigos mais registrados
+───────────────────────────────────────────────────────────────────────────── */
+function _renderPricesCharts() {
+  const el = document.getElementById('pricesCharts');
+  if (!el) return;
+
+  const storeCount = _px._storeCount || {};
+  const itemCount  = _px._itemCount  || {};
+
+  if (!Object.keys(storeCount).length && !Object.keys(itemCount).length) {
+    el.style.display = 'none';
+    return;
+  }
+
+  // Top stores (by number of price records)
+  const storeMap  = {};
+  (_px.stores || []).forEach(s => { storeMap[s.id] = s.payees?.name || s.name; });
+  const topStores = Object.entries(storeCount)
+    .map(([id, cnt]) => ({ name: storeMap[id] || 'Desconhecido', count: cnt }))
+    .sort((a, b) => b.count - a.count).slice(0, 8);
+
+  // Top items (by number of price records)
+  const itemMap  = {};
+  (_px.items || []).forEach(i => { itemMap[i.id] = i.name; });
+  const topItems = Object.entries(itemCount)
+    .map(([id, cnt]) => ({ name: itemMap[id] || 'Desconhecido', count: cnt }))
+    .sort((a, b) => b.count - a.count).slice(0, 8);
+
+  const maxStore = topStores[0]?.count || 1;
+  const maxItem  = topItems[0]?.count  || 1;
+
+  const accent = '#2a6049';
+  const accent2 = '#f59e0b';
+
+  const barHtml = (items, maxVal, color) => items.map(({ name, count }) => {
+    const pct = (count / maxVal * 100).toFixed(1);
+    return `<div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:5px 0">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">${esc(name)}</span>
+          <span style="font-size:.7rem;color:var(--muted);margin-left:8px;flex-shrink:0">${count}×</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--border)">
+          <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s ease"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+      <!-- Top lojas -->
+      ${topStores.length ? `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
+          <span style="font-size:1rem">🏪</span>
+          <span style="font-size:.82rem;font-weight:800;color:var(--text)">Lojas mais usadas</span>
+          <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${topStores.length} lojas</span>
+        </div>
+        ${barHtml(topStores, maxStore, accent)}
+      </div>` : ''}
+
+      <!-- Top artigos -->
+      ${topItems.length ? `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
+          <span style="font-size:1rem">📦</span>
+          <span style="font-size:.82rem;font-weight:800;color:var(--text)">Artigos mais registrados</span>
+          <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${topItems.length} itens</span>
+        </div>
+        ${barHtml(topItems, maxItem, accent2)}
+      </div>` : ''}
+
+    </div>`;
+}
 function pricesCatFilter(val)   {
   _px.catFilter = val;
   _populatePxSubcatFilter();

@@ -3985,7 +3985,11 @@ async function deleteAllFamilyData() {
       <div style="font-size:1rem;font-weight:800;color:var(--text);text-align:center;margin-bottom:8px">Excluir todos os dados?</div>
       <div style="font-size:.84rem;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:20px">
         Você está prestes a excluir <strong>TODOS</strong> os dados da família <strong>${esc(fname)}</strong>:<br>
-        transações, contas, categorias, orçamentos, programados, dívidas, objetivos, preços, lista de supermercado e membros.<br><br>
+        transações, contas, categorias, orçamentos, programados,
+        <strong>beneficiários e fontes pagadoras</strong>,
+        <strong>dívidas e lançamentos de dívidas</strong>,
+        objetivos, preços, lista de supermercado,
+        programas de fidelidade e membros.<br><br>
         <span style="color:#dc2626;font-weight:700">Esta ação é irreversível.</span>
       </div>
       <div style="display:flex;gap:10px">
@@ -4028,48 +4032,55 @@ async function deleteAllFamilyData() {
 
   try {
     const tables=[
+      // Telemetria / logs
+      ['app_telemetry',              3],
       // AI insights
-      ['ai_insight_recommendations', 4],
+      ['ai_insight_recommendations', 5],
       ['ai_insight_snapshots',       7],
       // Prices
       ['price_history',             10],
       // Grocery
-      ['grocery_items',             13],
-      ['grocery_lists',             16],
-      ['price_stores',              18],
-      ['price_items',               20],
-      // Debts
-      ['debt_ledger',               23],
-      ['debts',                     26],
+      ['grocery_items',             12],
+      ['grocery_lists',             14],
+      ['price_stores',              16],
+      ['price_items',               18],
+      // Loyalty — deve vir antes de accounts (linked_account_id)
+      ['loyalty_transactions',      21],
+      ['loyalty_programs',          23],
+      // Debts — deve vir antes de accounts e payees
+      ['debt_ledger',               26],
+      ['debts',                     29],
       // Dreams / objectives
-      ['dream_items',               29],
-      ['dream_contributions',       32],
-      ['dreams',                    35],
+      ['dream_items',               32],
+      ['dream_contributions',       35],
+      ['dreams',                    38],
+      ['financial_objectives',      40],
       // Investments
-      ['investment_price_history',  38],
-      ['investment_transactions',   41],
-      ['investment_positions',      44],
+      ['investment_price_history',  43],
+      ['investment_transactions',   46],
+      ['investment_positions',      49],
       // Scheduled
-      ['scheduled_occurrences',     48],
-      ['scheduled_run_logs',        51],
-      ['scheduled_transactions',    54],
+      ['scheduled_occurrences',     52],
+      ['scheduled_run_logs',        55],
+      ['scheduled_transactions',    58],
       // Budgets
-      ['budgets',                   58],
-      // Transactions
-      ['transactions',              63],
-      // Accounts + groups
-      ['accounts',                  68],
-      ['account_groups',            72],
-      // Categories & payees (beneficiários)
-      ['categories',                76],
-      ['payees',                    80],
+      ['budgets',                   61],
       // Receivables
-      ['scheduled_ar_records',      82],
-      // Family structure
-      ['family_composition',        85],
-      ['family_members',            90],
-      // NOTE: app_settings is NOT deleted — it contains system config
-      // (EmailJS, module flags, etc.) that should persist across data resets
+      ['scheduled_ar_records',      63],
+      // Transactions — deve vir antes de accounts, payees e categories
+      ['transactions',              67],
+      // Accounts + groups
+      ['accounts',                  71],
+      ['account_groups',            74],
+      // Beneficiários e fontes pagadoras — após transactions e scheduled
+      ['payees',                    78],
+      // Categorias — após transactions e budgets
+      ['categories',                82],
+      // Family structure — por último
+      ['family_composition',        86],
+      ['family_members',            92],
+      // NOTE: app_settings NÃO é deletado — contém config do sistema
+      // (EmailJS, flags de módulo, etc.) que deve persistir entre resets
     ];
 
     for (const [table, pct] of tables) {
@@ -4103,6 +4114,7 @@ async function deleteAllFamilyData() {
     // Clear module-level caches
     if (typeof _dbt !== 'undefined') { _dbt.debts=[]; _dbt.loaded=false; }
     if (typeof _drm !== 'undefined') { _drm.dreams=[]; _drm.loaded=false; }
+    if (typeof _loy !== 'undefined') { _loy.programs=[]; _loy.loaded=false; }
 
     await new Promise(r => setTimeout(r, 600));
     toast('🔄 Recarregando…', 'info');

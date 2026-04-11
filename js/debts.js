@@ -216,25 +216,7 @@ function renderDebtsPage() {
   page.innerHTML = `
 <div class="page-inner">
 
-  <!-- Intro banner -->
-  <div class="module-intro-banner" style="--intro-accent:#dc2626;--intro-accent-lt:rgba(220,38,38,.07)">
-    <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
-      <i class="mib-arr">▾</i> Recolher
-    </button>
-    <div class="module-intro-badge" style="background:rgba(220,38,38,.1);color:#dc2626">💳 Dívidas</div>
-    <div class="module-intro-body">
-      <h3 class="module-intro-headline">Controle total das suas dívidas e financiamentos</h3>
-      <p class="module-intro-text">Acompanhe empréstimos, financiamentos e qualquer obrigação financeira. Registre amortizações, atualize saldos por índices (SELIC, IPCA, CDI) e veja o progresso de quitação em tempo real.</p>
-      <div class="module-intro-chips">
-        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📉 Índices BCB</span>
-        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">🏦 Ledger completo</span>
-        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">💰 Amortizações</span>
-        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📊 Progresso visual</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Hero header -->
+  <!-- Hero header — shown first, intro below -->
   <div class="dbt-hero">
     <div class="dbt-hero-main">
       <div class="dbt-hero-label">Dívidas Ativas — Saldo Total</div>
@@ -263,6 +245,25 @@ function renderDebtsPage() {
       : _dbt.debts.map(d => _renderDebtCard(d)).join('')
     }
   </div>
+
+  <!-- Intro banner — below active debts -->
+  <div class="module-intro-banner" style="--intro-accent:#dc2626;--intro-accent-lt:rgba(220,38,38,.07);margin-top:20px">
+    <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
+      <i class="mib-arr">▾</i> Recolher
+    </button>
+    <div class="module-intro-badge" style="background:rgba(220,38,38,.1);color:#dc2626">💳 Dívidas</div>
+    <div class="module-intro-body">
+      <h3 class="module-intro-headline">Controle total das suas dívidas e financiamentos</h3>
+      <p class="module-intro-text">Acompanhe empréstimos, financiamentos e qualquer obrigação financeira. Registre amortizações, atualize saldos por índices (SELIC, IPCA, CDI) e veja o progresso de quitação em tempo real.</p>
+      <div class="module-intro-chips">
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📉 Índices BCB</span>
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">🏦 Ledger completo</span>
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">💰 Amortizações</span>
+        <span class="module-intro-chip" style="background:rgba(220,38,38,.08);color:#dc2626">📊 Progresso visual</span>
+      </div>
+    </div>
+  </div>
+
 </div>`;
   // Re-inject page-header-bar (renderDebtsPage overwrites innerHTML)
   {

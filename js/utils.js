@@ -1105,20 +1105,60 @@ window._parseGeminiText = _parseGeminiText;
 
 /**
  * _parseGeminiJSON(data)
- * Like _parseGeminiText but also JSON-parses the result.
- * Extracts the outermost { } or [ ] block if there is surrounding text.
+ * Extracts and parses the JSON response from Gemini.
+ * Uses bracket-counting (not lastIndexOf) to find the exact JSON boundary.
+ * Sanitizes common Gemini issues: control chars inside strings, unescaped chars.
  */
 function _parseGeminiJSON(data) {
-  const text  = _parseGeminiText(data);
-  // Try to extract a JSON object or array even if there is surrounding text
-  const start = text.search(/[{[]/);
-  const end   = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
-  const clean = (start !== -1 && end > start) ? text.slice(start, end + 1) : text;
-  try {
-    return JSON.parse(clean);
-  } catch (e) {
-    throw new Error('Resposta inválida da IA (JSON mal formado). Tente novamente. Detalhe: ' + e.message);
+  const text = _parseGeminiText(data);
+
+  // Find start of first JSON object or array
+  const startIdx = text.search(/[{[]/);
+  if (startIdx === -1) throw new Error('Resposta da IA não contém JSON. Tente novamente.');
+
+  // Bracket-counting to find exact end of JSON structure
+  let depth = 0, inStr = false, esc = false, endIdx = -1;
+  for (let i = startIdx; i < text.length; i++) {
+    const ch = text[i];
+    if (esc)          { esc = false; continue; }
+    if (ch === '\\' && inStr) { esc = true; continue; }
+    if (ch === '"')   { inStr = !inStr; continue; }
+    if (inStr)        { continue; }
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) { endIdx = i; break; }
+    }
   }
+
+  const jsonStr = (endIdx > startIdx)
+    ? text.slice(startIdx, endIdx + 1)
+    : text.slice(startIdx);
+
+  // Attempt 1: direct parse
+  try { return JSON.parse(jsonStr); } catch(_) {}
+
+  // Attempt 2: sanitize control characters and retry
+  // Gemini sometimes embeds raw \n or \t inside string values without proper escaping
+  const sanitized = jsonStr
+    .replace(/[\u0000-\u001F\u007F]/g, (ch) => {
+      const map = {'\n':'\\n', '\r':'\\r', '\t':'\\t', '\b':'\\b', '\f':'\\f'};
+      return map[ch] || '';
+    });
+
+  try { return JSON.parse(sanitized); } catch(_) {}
+
+  // Attempt 3: try to truncate at the last complete top-level element
+  // Useful when the model cuts off mid-array
+  try {
+    const lastClose = Math.max(sanitized.lastIndexOf('}'), sanitized.lastIndexOf(']'));
+    if (lastClose > 10) {
+      const truncated = sanitized.slice(0, lastClose + 1);
+      return JSON.parse(truncated);
+    }
+  } catch(_) {}
+
+  throw new Error('Resposta inválida da IA (JSON mal formado). Tente novamente. Detalhe: Verifique os filtros e reduza o período de análise.');
 }
 window._parseGeminiJSON = _parseGeminiJSON;
 

@@ -2916,14 +2916,14 @@ function _renderCalUpcoming() {
     </div>`;
   }).join('');
 
-  // Open the upcoming panel
-  listEl.style.setProperty('display', 'block', 'important');
-  // Preserve user's toggle state — only initialise on first render
+  // Preserve user's toggle state — only force open on first render
   if (!_calUpcomingInitialised) {
     _calUpcomingOpen = true;
     _calUpcomingInitialised = true;
   }
-  if (arrowEl) arrowEl.style.transform = 'rotate(180deg)';
+  // Apply current state (respects user collapse)
+  listEl.style.setProperty('display', _calUpcomingOpen ? 'block' : 'none', 'important');
+  if (arrowEl) arrowEl.style.transform = _calUpcomingOpen ? 'rotate(180deg)' : 'rotate(0)';
 }
 
 function filterScheduledCal() {

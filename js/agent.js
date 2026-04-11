@@ -322,12 +322,13 @@ ${s.upcomingCount ? `**Próximos 7 dias:** ${s.upcomingCount} programados (${s.u
 
 ## REGRAS DE FERRAMENTAS
 - **Consultas** → use get_* para dados reais; não invente números
-- **Ações** → sempre confirme antes de criar/alterar dados
-- **Confirmação do usuário** (sim/pode/ok/confirma/vai) → execute a ação pendente
+- **Ações** → sempre confirme antes de criar/alterar dados (1 mensagem de confirmação, breve)
+- **Confirmação do usuário** (sim/pode/ok/confirma/vai/registra/salva) → execute a ação pendente IMEDIATAMENTE com create_transaction
+- **Criar transação** → use SEMPRE create_transaction (não open_new_transaction_form) quando o usuário confirmar; se conta não informada, use a conta corrente principal
 - **Perguntas financeiras gerais** → use answer_financial_question (educação financeira, conceitos, estratégias)
 - **Navegação** → use navigate_to para ir a páginas
-- Resolva nomes de contas/categorias pelos dados acima (fuzzy match)
-- Se faltarem dados obrigatórios, pergunte apenas o essencial`;
+- Resolva nomes de contas/categorias pelos dados acima (fuzzy match tolerante)
+- Se faltarem dados obrigatórios, pergunte apenas o essencial (1 pergunta por vez)`;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -377,7 +378,9 @@ async function _agGetContext() {
 
   const brl  = (v,cur) => typeof toBRL   ==='function'? toBRL(+v||0,cur||'BRL')    : +v||0;
   const fmt  = (v)     => typeof dashFmt ==='function'? dashFmt(Math.abs(+v||0),'BRL') : `R$${(+v||0).toFixed(2)}`;
-  const typePtAcc = t => ({corrente:'Conta corrente',poupanca:'Poupança',cartao_credito:'Cartão de crédito',investimento:'Investimento',dinheiro:'Dinheiro',outros:'Outros'}[t]||t);
+  const typePtAcc = t => ({corrente:'Conta corrente',poupanca:'Poupança',cartao_credito:'Cartão de crédito',investimento:'Investimento',dinheiro:'Dinheiro',outros:'Outros',programa_fidelidade:'Prog. Fidelidade'}[t]||t);
+  // Only show transactionable accounts (exclude loyalty/investment for tx context)
+  const accForTx = accs.filter(a => a.type !== 'programa_fidelidade');
   const typePtSc  = t => ({expense:'Despesa',income:'Receita',transfer:'Transferência'}[t]||t);
   const freqPt    = f => ({monthly:'Mensal',weekly:'Semanal',biweekly:'Quinzenal',yearly:'Anual',once:'Única vez'}[f]||f);
 
@@ -411,7 +414,7 @@ async function _agGetContext() {
   _ag.ctx = {
     today, familyId:fid, monthName:months_pt[now.getMonth()],
     currentPage: window.state?.currentPage||'dashboard',
-    accounts: accs.map(a=>({id:a.id,name:a.name,type:a.type,typePt:typePtAcc(a.type),currency:a.currency||'BRL',balance:brl(a.balance||0,a.currency),balanceFmt:fmt(brl(a.balance||0,a.currency)),negative:brl(a.balance||0,a.currency)<0})),
+    accounts: accForTx.map(a=>({id:a.id,name:a.name,type:a.type,typePt:typePtAcc(a.type),currency:a.currency||'BRL',balance:brl(a.balance||0,a.currency),balanceFmt:fmt(brl(a.balance||0,a.currency)),negative:brl(a.balance||0,a.currency)<0})),
     categories: cats.map(c=>({id:c.id,name:c.name,type:c.type,parent_id:c.parent_id})),
     payees: payees.map(p=>({id:p.id,name:p.name,default_category_id:p.default_category_id})),
     scheduled: sched.filter(s=>(s.status||'active')==='active').map(s=>({id:s.id,description:s.description,amount:s.amount,type:s.type,typePt:typePtSc(s.type),frequency:s.frequency,freqPt:freqPt(s.frequency),account_id:s.account_id,next:s.start_date||s.next_occurrence||''})),
@@ -454,7 +457,13 @@ async function _agCallGemini(userText, ctx, toolResultParts) {
     contents: _ag.history,
     tools: _AG_TOOLS,
     tool_config: {function_calling_config:{mode:'AUTO'}},
-    generationConfig: {temperature:0.35, maxOutputTokens:1500},
+    generationConfig: {
+      temperature: 0.35,
+      maxOutputTokens: 1500,
+      // Agent uses multi-turn function calling — needs reasoning to resolve account/category names
+      // and maintain conversation context. Allow a small thinking budget (not zero).
+      thinkingConfig: { thinkingBudget: /gemini-2\.5/.test(model) ? 1024 : 0 },
+    },
   };
 
   return geminiRetryFetch(url, body, {
@@ -561,9 +570,16 @@ async function _agExecTool(name, args, ctx) {
     case 'create_transaction': {
       const amt = Math.abs(+(args.amount)||0);
       if (!amt) return {ok:false,error:'Valor inválido.'};
-      let acc = match(ctx.accounts,args.account_name);
-      if (!acc&&ctx.accounts.length===1) acc=ctx.accounts[0];
-      if (!acc) return {ok:false,error:`Conta "${args.account_name||'?'}" não encontrada. Disponíveis: ${ctx.accounts.map(a=>a.name).join(', ')}`};
+      let acc = match(ctx.accounts, args.account_name);
+      if (!acc && ctx.accounts.length === 1) acc = ctx.accounts[0];
+      // Smart fallback: quando conta não especificada, prefere conta corrente/poupança ativa
+      if (!acc && ctx.accounts.length > 1) {
+        acc = ctx.accounts.find(a => a.type === 'corrente' && !a.negative)
+           || ctx.accounts.find(a => a.type === 'corrente')
+           || ctx.accounts.find(a => a.type !== 'investimento' && a.type !== 'programa_fidelidade')
+           || ctx.accounts[0];
+      }
+      if (!acc) return {ok:false,error:`Conta não encontrada. Disponíveis: ${ctx.accounts.map(a=>a.name).join(', ')}`};
       const catType = args.type==='income'?'receita':'despesa';
       let cat = match(ctx.categories.filter(c=>c.type===catType),args.category_name)||match(ctx.categories,args.category_name);
       const payee = match(ctx.payees,args.payee_name);

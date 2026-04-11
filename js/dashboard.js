@@ -435,6 +435,10 @@ async function loadDashboard(){
                ${fmt(_confBal, a.currency)}
              </div>`
           : '';
+        // Loyalty points badge — shown if this account is linked to a loyalty program
+        const _loyaltyBadge = (typeof getLoyaltyBadgeHtml === 'function')
+          ? getLoyaltyBadgeHtml(a.id) : '';
+
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
           <div class="dash-fav-card__top">
@@ -445,6 +449,7 @@ async function loadDashboard(){
           <div class="dash-fav-card__balance ${_isNeg ? 'neg' : ''}">${fmt(a.balance,a.currency)}</div>
           ${_confLine}
           ${_brlLine}
+          ${_loyaltyBadge ? `<div style="margin-top:4px">${_loyaltyBadge}</div>` : ''}
           <div class="dash-fav-card__spacer"></div>
           <div class="dash-fav-card__actions" onclick="event.stopPropagation()">
             <button class="dash-fav-card__btn dash-fav-card__btn--add"
@@ -851,13 +856,17 @@ async function renderCategoryChart(){
 
   closeCatDetail(); // reset any open detail
 
-  // Always reset expense/income mode to Despesas on fresh render
-  // (prevents stale state after navigation away and back)
-  _catChartEntries = window._catChartExpEntriesRaw || _catChartEntries;
+  // Restore expense/income mode from prefs (persists across reloads)
+  const savedMode = _dashGetPrefs()?.catChartMode || 'expense';
+  if (savedMode === 'income') {
+    _catChartEntries = window._catChartIncEntries || _catChartEntries;
+  } else {
+    _catChartEntries = window._catChartExpEntriesRaw || _catChartEntries;
+  }
   const expBtn = document.getElementById('dashCatModeExp');
   const incBtn = document.getElementById('dashCatModeInc');
-  if (expBtn) expBtn.classList.add('active');
-  if (incBtn) incBtn.classList.remove('active');
+  if (expBtn) expBtn.classList.toggle('active', savedMode === 'expense');
+  if (incBtn) incBtn.classList.toggle('active', savedMode === 'income');
 
   // Ensure chart controls + type toggle are visible (may have been hidden by openCatDetail)
   const dashCatControls = document.getElementById('dashCatControls');
@@ -877,6 +886,15 @@ async function renderCategoryChart(){
   if (bar) bar.classList.toggle('active', savedType === 'bar');
 
 // ── _renderCatChartBar: horizontal bar chart from _catChartEntries ───────────
+
+  if (_catChartType === 'bar') {
+    _renderCatChartBar();
+    return;
+  }
+
+  _renderCatChartDoughnut();
+}
+
 function _renderCatChartBar() {
   const canvas = document.getElementById('categoryChart');
   if (!canvas) return;
@@ -952,8 +970,8 @@ function _renderCatChartBar() {
   // Adjust canvas height based on entry count
   canvas.style.height = Math.max(160, entries.length * 28) + 'px';
 }
+window._renderCatChartBar       = _renderCatChartBar;
 
-// ── _renderCatChartDoughnut: doughnut chart from _catChartEntries ────────────
 function _renderCatChartDoughnut() {
   const canvas = document.getElementById('categoryChart');
   if (!canvas) return;
@@ -1012,14 +1030,8 @@ function _renderCatChartDoughnut() {
     },
   });
 }
+window._renderCatChartDoughnut  = _renderCatChartDoughnut;
 
-  if (_catChartType === 'bar') {
-    _renderCatChartBar();
-    return;
-  }
-
-  _renderCatChartDoughnut();
-}
 
 function openCatDetail(idx) {
   const entry = _catChartEntries[idx];
@@ -4562,12 +4574,9 @@ function _setCatChartType(type) {
   const pie = document.getElementById('catChartTypePie');
   if (bar) bar.classList.toggle('active', type === 'bar');
   if (pie) pie.classList.toggle('active', type === 'doughnut');
-  // Re-render with new type
-  if (type === 'doughnut') {
-    if (typeof _renderCatChartDoughnut === 'function') _renderCatChartDoughnut();
-  } else {
-    if (typeof _renderCatChartBar === 'function') _renderCatChartBar();
-  }
+  // Re-render with new type (functions now globally accessible)
+  if (type === 'doughnut') _renderCatChartDoughnut();
+  else _renderCatChartBar();
   // Save to prefs
   try {
     const prefs = _dashGetPrefs() || {};
@@ -4588,12 +4597,11 @@ function _setDashCatMode(mode) {
   } else {
     _catChartEntries = window._catChartExpEntriesRaw || [];
   }
-  // Re-render
-  if (_catChartType === 'doughnut') {
-    if (typeof _renderCatChartDoughnut === 'function') _renderCatChartDoughnut();
-  } else {
-    if (typeof _renderCatChartBar === 'function') _renderCatChartBar();
-  }
+  // Persist mode choice
+  try { const p = _dashGetPrefs()||{}; p.catChartMode = mode; _dashSavePrefs(p); } catch(_){}
+  // Re-render with the now-global render functions
+  if (_catChartType === 'doughnut') _renderCatChartDoughnut();
+  else _renderCatChartBar();
 }
 
 window._setCatChartType = _setCatChartType;

@@ -1457,17 +1457,18 @@ REGRAS FINAIS:
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  // geminiRetryFetch: auto-injects thinkingConfig:{thinkingBudget:0} for 2.5 models,
-  // handles 429/503 retry with UI callback, and auto-drops responseMimeType on 400.
+  // geminiRetryFetch: auto-injects thinkingConfig:{thinkingBudget:0} for 2.5 models.
+  // responseMimeType removed: it forces strict JSON mode which causes Gemini to produce
+  // control characters inside string fields when the response is large (causes parse errors).
+  // Instead we rely on _parseGeminiJSON which has a multi-stage sanitizer + bracket-counter.
   const _statusEl = () =>
     document.getElementById('aiInsightsLoadingMsg') || document.querySelector('.ai-loading-text');
 
   const data = await geminiRetryFetch(url, {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
-      maxOutputTokens: 8000,
+      maxOutputTokens: 12000,
       temperature: 0.2,
-      responseMimeType: 'application/json',
     },
   }, {
     onRetry: (attempt, max, waitMs) => {
