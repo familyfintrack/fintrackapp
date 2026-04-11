@@ -749,6 +749,26 @@
         </div>
       </div>
 
+      <!-- Faturas de Cartão de Crédito -->
+      <div id="dashCardCCInvoices" class="dcard mb-4" style="display:none">
+        <div class="dcard-header" style="cursor:pointer" onclick="_dashCCToggleDetail()">
+          <div class="dcard-title-wrap">
+            <div class="dcard-icon" style="background:rgba(220,38,38,.1);color:#dc2626">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <div>
+              <div class="dcard-title">Próximas Faturas</div>
+              <div class="dcard-sub">Pagamentos de cartão programados</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="dashCCTotal" style="font-size:1.05rem;font-weight:800;color:#dc2626;font-family:var(--font-serif)">—</div>
+            <svg id="dashCCChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--muted);transition:transform .2s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div id="dashCCDetail" style="display:none;border-top:1px solid var(--border)"></div>
+      </div>
+
       <!-- Previsão de Caixa 90 dias -->
       <div id="dashCardForecast90" class="dcard mb-4">
         <div class="dcard-header">
@@ -1272,7 +1292,13 @@
             <span style="font-size:1.1rem">⭐</span>
             <span style="font-size:.88rem;font-weight:800;color:var(--text)">Programas de Fidelidade</span>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="openLoyaltyModal('')">+ Adicionar</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="openLoyaltyApiSettings()" title="Configurar integrações de API">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              API
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="openLoyaltyModal('')">+ Adicionar</button>
+          </div>
         </div>
         <div id="loyaltySectionWrap"></div>
       </div>
@@ -6168,6 +6194,34 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div style="font-size:.72rem;color:var(--muted);margin-top:4px">
           Se receber erro 404 "model not available", troque para outro modelo.
           Todos os módulos de IA do app usam esta configuração.
+        </div>
+      </div>
+
+      <!-- n8n Integration -->
+      <div style="margin-top:8px;padding:14px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+          <span style="font-size:.95rem">⚡</span>
+          <span style="font-size:.82rem;font-weight:700;color:var(--text)">Integração n8n (opcional)</span>
+          <span style="font-size:.68rem;padding:2px 7px;background:#eff6ff;color:#2563eb;border-radius:10px;font-weight:600">Avançado</span>
+        </div>
+        <div style="font-size:.73rem;color:var(--muted);margin-bottom:10px;line-height:1.55">
+          Quando configurado, o Agente FinTrack envia mensagens ao n8n em vez de chamar o Gemini diretamente.
+          O n8n pode enriquecer o contexto, executar automações e persistir histórico de conversas.
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:.76rem;font-weight:600;color:var(--text2)">URL do Webhook n8n</label>
+          <input type="url" id="agentN8nWebhookUrl"
+            placeholder="https://seu-n8n.com/webhook/fintrack-agent"
+            autocomplete="off" style="margin-top:4px;font-family:monospace;font-size:.78rem">
+          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">
+            Deixe em branco para usar o Gemini diretamente (padrão).
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label style="font-size:.76rem;font-weight:600;color:var(--text2)">Chave secreta do webhook (x-fintrack-key)</label>
+          <input type="password" id="agentN8nSecretKey"
+            placeholder="Opcional — chave de autenticação do webhook"
+            autocomplete="off" style="margin-top:4px;font-family:monospace;font-size:.78rem">
         </div>
       </div>
     </div>
