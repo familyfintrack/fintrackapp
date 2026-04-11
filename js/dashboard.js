@@ -3428,7 +3428,6 @@ async function _patAnalyzeWithGemini() {
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.6, maxOutputTokens: 600 },
-      ...(/2\.5/.test(_patModel) ? {thinkingConfig: {thinkingBudget: 0}} : {}),
         }),
         signal: _ctrl.signal,
       });

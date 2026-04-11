@@ -263,8 +263,7 @@ Responda somente com o emoji, sem texto adicional.`;
         { method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 16, temperature: 0.4 },
-      ...(/2\.5/.test(_cfgModel) ? {thinkingConfig: {thinkingBudget: 0}} : {}) }) }
+            generationConfig: { maxOutputTokens: 16, temperature: 0.4 },}) }
       );
       if (resp.status === 404) continue; // model not available, try next
       if (!resp.ok) throw new Error('Erro na API Gemini: ' + resp.status);

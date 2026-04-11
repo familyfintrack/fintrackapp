@@ -847,7 +847,6 @@ Responda APENAS em JSON no formato:
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { maxOutputTokens: 1000, temperature: 0.5 },
-        ...(/2\.5/.test(_invModel) ? {thinkingConfig: {thinkingBudget: 0}} : {}),
       })
     });
     if (!resp.ok) throw new Error('Gemini API: ' + resp.status);

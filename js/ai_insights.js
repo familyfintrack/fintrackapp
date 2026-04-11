@@ -1466,8 +1466,7 @@ REGRAS FINAIS:
       temperature: 0.2,
       responseMimeType: 'application/json',
     },
-    // Disable thinking for structured JSON generation (saves tokens, faster, more reliable)
-    ...(_isThinkingModel ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+    // Disable thinking for structured JSON generation (saves tokens, faster, more reliable),
   };
 
   // Retry helper — models can be overloaded or return 503 transiently

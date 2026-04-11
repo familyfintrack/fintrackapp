@@ -625,7 +625,6 @@ REGRAS:
         { text: prompt },
       ]}],
       generationConfig: { maxOutputTokens: 2000, temperature: 0.1 },
-      ...(/2\.5/.test(_grocModel) ? {thinkingConfig: {thinkingBudget: 0}} : {}),
     }),
   });
 

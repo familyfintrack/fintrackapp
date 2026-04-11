@@ -134,7 +134,6 @@ REGRAS DE ANÁLISE:
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { maxOutputTokens: 1200, temperature: 0.05 },
-      ...(/2\.5/.test(_impModel) ? {thinkingConfig: {thinkingBudget: 0}} : {}),
     }),
   });
 

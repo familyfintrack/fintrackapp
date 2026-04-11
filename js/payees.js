@@ -668,7 +668,6 @@ window.payeeAiSuggestLogo = async function() {
           body: JSON.stringify({
             contents:[{parts:[{text:prompt}]}],
             generationConfig:{maxOutputTokens:500,temperature:0.35,responseMimeType:'application/json'},
-      ...(/2\.5/.test(_cfgModel) ? {thinkingConfig: {thinkingBudget: 0}} : {})
           })
         });
         if (!resp.ok) {
