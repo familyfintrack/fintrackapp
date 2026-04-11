@@ -749,27 +749,33 @@
         </div>
       </div>
 
-      <!-- Faturas de Cartão de Crédito -->
+      <!-- Próximas Faturas — 2 colunas: total (esq) + datas agrupadas (dir) -->
       <div id="dashCardCCInvoices" class="dcard mb-4" style="display:none">
-        <div class="dcard-header" style="cursor:pointer" onclick="_dashCCToggleDetail()">
-          <div class="dcard-title-wrap">
-            <div class="dcard-icon" style="background:rgba(220,38,38,.1);color:#dc2626">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <!-- Barra de título compacta -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div style="width:22px;height:22px;border-radius:6px;background:rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             </div>
-            <div>
-              <div class="dcard-title">Próximas Faturas</div>
-              <div class="dcard-sub">Pagamentos de cartão programados</div>
-            </div>
+            <span style="font-size:.78rem;font-weight:700;color:var(--text)">Próximas Faturas</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div id="dashCCTotal" style="font-size:1.05rem;font-weight:800;color:#dc2626;font-family:var(--font-serif)">—</div>
-            <svg id="dashCCChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--muted);transition:transform .2s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
+          <button onclick="navigate('scheduled')" style="font-size:.68rem;color:var(--accent);font-weight:600;background:none;border:none;cursor:pointer;padding:2px 4px">Ver →</button>
         </div>
-        <div id="dashCCDetail" style="display:none;border-top:1px solid var(--border)"></div>
+        <!-- Corpo em 2 colunas -->
+        <div style="display:grid;grid-template-columns:100px 1fr">
+          <!-- Coluna esquerda: total + contagem -->
+          <div id="dashCCLeft" style="padding:14px 10px;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center">
+            <div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Total</div>
+            <div id="dashCCTotal" style="font-size:1rem;font-weight:800;color:#dc2626;font-family:var(--font-serif);line-height:1.1">—</div>
+            <div id="dashCCCount" style="font-size:.65rem;color:var(--muted);margin-top:2px">—</div>
+          </div>
+          <!-- Coluna direita: datas agrupadas -->
+          <div id="dashCCList" style="overflow:hidden"></div>
+        </div>
       </div>
 
       <!-- Previsão de Caixa 90 dias -->
+
       <div id="dashCardForecast90" class="dcard mb-4">
         <div class="dcard-header">
           <div class="dcard-title-wrap">
