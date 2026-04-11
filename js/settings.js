@@ -3419,11 +3419,19 @@ async function importDemoData(userId, familyId, progressCb) {
       let { error: ae } = await sb.from('accounts').upsert(row, { onConflict: 'id', ignoreDuplicates: true });
       if (!ae) { accountsInserted++; continue; }
 
+      // Duplicate name constraint → account already exists with different id → count as success
+      if (ae.code === '23505' || ae.message?.includes('duplicate') || ae.message?.includes('unique')) {
+        accountsInserted++;
+        continue;
+      }
+
       // FK error on group_id → retry without group_id
       if (ae.message?.includes('group_id') || ae.message?.includes('accounts_group_id')) {
         const rowNoGroup = { ...row }; delete rowNoGroup.group_id;
         const { error: ae2 } = await sb.from('accounts').upsert(rowNoGroup, { onConflict: 'id', ignoreDuplicates: true });
         if (!ae2) { accountsInserted++; continue; }
+        // If still duplicate, account exists
+        if (ae2.code === '23505' || ae2.message?.includes('duplicate')) { accountsInserted++; continue; }
         ae = ae2;
       }
       accountErrors.push(a.name + ': ' + ae.message);
@@ -3634,6 +3642,14 @@ async function importDemoData(userId, familyId, progressCb) {
         const { id: _skip, ...rowNoId } = tryRow;
         const { error: de3 } = await sb.from('dreams').insert({ ...rowNoId, created_by: dreamsAuthUid });
         if (!de3) { dreamOk++; continue; }
+        // Strategy 4: try with family_id and auth_uid explicitly from current session
+        try {
+          const { data: { user: _au } } = await sb.auth.getUser();
+          if (_au?.id && _au.id !== dreamsAuthUid) {
+            const { error: de4 } = await sb.from('dreams').insert({ ...rowNoId, created_by: _au.id });
+            if (!de4) { dreamOk++; continue; }
+          }
+        } catch(_) {}
         dreamErrors.push(de.message.slice(0, 80));
       } else {
         dreamErrors.push(de.message.slice(0, 80));
@@ -3652,15 +3668,23 @@ async function importDemoData(userId, familyId, progressCb) {
     category_id: remap(catIdMap, pi.category_id) || null,
   }));
   // price_items has unique constraint on (family_id, name) — handle per-row
+  // Must enrich with family_id before upsert (ins() not used here)
   {
+    const piCols = COLS['price_items'] || ['id','name','description','unit','category_id','family_id','created_at'];
     let piOk = 0; const piErrs = [];
     for (const pi of validPriceItems) {
-      // Try upsert on (family_id, name) — update if exists
+      // Enrich: add family_id and created_at, pick only valid columns
+      const piRow = {};
+      piCols.forEach(c => { if (c in pi) piRow[c] = pi[c]; });
+      piRow.family_id  = familyId;
+      piRow.created_at = piRow.created_at || new Date().toISOString();
+      // Upsert on (family_id, name) — ignore if already exists
       const { error: pie } = await sb.from('price_items')
-        .upsert(pi, { onConflict: 'family_id,name', ignoreDuplicates: true });
-      if (!pie) piOk++;
-      else if (!pie.message?.includes('duplicate') && !pie.code?.includes('23505'))
-        piErrs.push(pi.name + ': ' + pie.message);
+        .upsert(piRow, { onConflict: 'family_id,name', ignoreDuplicates: true });
+      if (!pie) { piOk++; continue; }
+      // If onConflict not supported by DB version, fall back to insert-ignore
+      if (pie.message?.includes('duplicate') || pie.code === '23505') { piOk++; continue; }
+      piErrs.push(pi.name + ': ' + pie.message);
     }
     tableResults['price_items'] = { label: 'Itens de preço', sent: validPriceItems.length, ok: piOk, errors: piErrs.slice(0,2) };
     if (piErrs.length) errors.push('price_items: ' + piErrs[0]);
