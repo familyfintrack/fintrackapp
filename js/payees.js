@@ -214,7 +214,17 @@ function payeeRow(p) {
     <td style="text-align:center">${txBadge}</td>
     <td>
       <div class="payee-row-actions" style="display:flex;gap:4px;justify-content:flex-end;align-items:center">
-        <button class="py2-action-btn" onclick="event.stopPropagation();setIofPayeeTarget('${p.id}','${esc(p.name)}')" title="${window._iofPayeeId===p.id?'Beneficiário IOF padrão (clique para remover)':'Definir como beneficiário padrão do IOF'}" style="font-size:.68rem;font-weight:700;color:${window._iofPayeeId===p.id?'#dc2626':'var(--muted)'};padding:3px 7px;border-radius:6px;background:${window._iofPayeeId===p.id?'rgba(220,38,38,.1)':'var(--surface2)'}">IOF</button>
+        ${(() => {
+              const _isActive = window._iofPayeeId === p.id;
+              const _hasOther = !!window._iofPayeeId && window._iofPayeeId !== p.id;
+              const _color    = _isActive ? '#dc2626' : _hasOther ? 'var(--border)' : 'var(--muted)';
+              const _bg       = _isActive ? 'rgba(220,38,38,.1)' : _hasOther ? 'var(--surface)' : 'var(--surface2)';
+              const _cursor   = _hasOther ? 'not-allowed' : 'pointer';
+              const _opacity  = _hasOther ? '0.35' : '1';
+              const _events   = _hasOther ? 'none' : 'auto';
+              const _title    = _isActive ? 'IOF ativo (clique para liberar seleção)' : _hasOther ? 'Desative o IOF atual para selecionar outro' : 'Definir como beneficiário padrão do IOF';
+              return `<button class="py2-action-btn" onclick="event.stopPropagation();setIofPayeeTarget('${p.id}','${esc(p.name)}')" title="${_title}" style="font-size:.68rem;font-weight:700;color:${_color};padding:3px 7px;border-radius:6px;background:${_bg};cursor:${_cursor};opacity:${_opacity};pointer-events:${_events}">IOF</button>`;
+            })()}
         <button class="py2-action-btn" onclick="event.stopPropagation();openPayeeModal('${p.id}')" title="Editar">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -657,7 +667,7 @@ window.payeeAiSuggestLogo = async function() {
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
             contents:[{parts:[{text:prompt}]}],
-            generationConfig:{maxOutputTokens:500,temperature:0.35,responseMimeType:'application/json'}
+            generationConfig:{maxOutputTokens:500,temperature:0.35,responseMimeType:'application/json'},
           })
         });
         if (!resp.ok) {
@@ -1423,3 +1433,27 @@ async function openPayeeDetailModal(payeeId) {
   }
 }
 window.openPayeeDetailModal = openPayeeDetailModal;
+
+// ── Payees page tab switcher ─────────────────────────────────────────────
+function setPayeesTab(tab) {
+  const groupsEl = document.getElementById('payeeGroups');
+  const reportEl = document.getElementById('payeesReportPanel');
+  const tabCad   = document.getElementById('payeesTabCad');
+  const tabRpt   = document.getElementById('payeesTabRpt');
+
+  const showReport = (tab === 'relatorio');
+  if (groupsEl) groupsEl.style.display = showReport ? 'none' : '';
+  if (reportEl) reportEl.style.display = showReport ? '' : 'none';
+
+  if (tabCad) {
+    tabCad.style.background = showReport ? 'transparent' : 'var(--accent)';
+    tabCad.style.color      = showReport ? 'var(--muted)' : '#fff';
+  }
+  if (tabRpt) {
+    tabRpt.style.background = showReport ? 'var(--accent)' : 'transparent';
+    tabRpt.style.color      = showReport ? '#fff' : 'var(--muted)';
+  }
+
+  if (showReport && typeof loadPayeeReport === 'function') loadPayeeReport();
+}
+window.setPayeesTab = setPayeesTab;

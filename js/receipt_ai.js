@@ -10,6 +10,9 @@ const GEMINI_MODEL_SETTING     = 'gemini_model';
 const GEMINI_MODEL_DEFAULT     = 'gemini-2.5-flash';   // stable, widely available
 
 // ── RECEIPT_AI_MODEL: dynamic global — reads configured model at call time ──
+// All modules that reference RECEIPT_AI_MODEL as a plain variable automatically
+// pick up the admin-configured model without any code changes.
+// Falls back to GEMINI_MODEL_DEFAULT if not yet configured.
 Object.defineProperty(window, 'RECEIPT_AI_MODEL', {
   get() {
     return (window._appSettingsCache && window._appSettingsCache[GEMINI_MODEL_SETTING])
@@ -42,25 +45,46 @@ window._receiptAiPending = null; // { base64, mediaType, fileName }
 // ══════════════════════════════════════════════════════════════════════════
 
 async function showAiConfig() {
-  const val = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const val   = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const model = await getGeminiModel();
   const inp = document.getElementById('anthropicApiKeyInput');
   if (inp) { inp.value = val || ''; inp.type = 'password'; }
   const tog = document.getElementById('aiKeyToggle');
   if (tog) tog.textContent = '👁';
+  // Pre-select configured model
+  const modelSel = document.getElementById('geminiModelSelect');
+  if (modelSel) {
+    // If model in list — select it; otherwise add as custom option
+    const opt = Array.from(modelSel.options).find(o => o.value === model);
+    if (opt) {
+      modelSel.value = model;
+    } else if (model) {
+      const custom = new Option(model + ' (personalizado)', model);
+      modelSel.add(custom);
+      modelSel.value = model;
+    }
+  }
   openModal('aiConfigModal');
 }
 
 async function saveAiConfig() {
-  const inp = document.getElementById('anthropicApiKeyInput');
-  const key = (inp?.value || '').trim();
+  const inp      = document.getElementById('anthropicApiKeyInput');
+  const modelSel = document.getElementById('geminiModelSelect');
+  const key      = (inp?.value || '').trim();
+  const model    = (modelSel?.value || GEMINI_MODEL_DEFAULT).trim();
+
   if (key && !key.startsWith('AIza')) {
     toast('Chave inválida — deve começar com AIza…', 'error');
     return;
   }
   await saveAppSetting(RECEIPT_AI_KEY_SETTING, key);
+  await saveAppSetting(GEMINI_MODEL_SETTING, model);
+  // Update cache immediately so all modules pick up the new model at once
+  if (!window._appSettingsCache) window._appSettingsCache = {};
+  window._appSettingsCache[GEMINI_MODEL_SETTING] = model;
   _updateAiStatusBadge();
   closeModal('aiConfigModal');
-  toast(key ? '✅ Chave Anthropic salva!' : 'Chave removida', key ? 'success' : 'info');
+  toast(key ? '✅ Configuração de IA salva!' : 'Modelo salvo (sem chave)', key ? 'success' : 'info');
 }
 
 function toggleAiKeyVisibility() {
@@ -72,15 +96,16 @@ function toggleAiKeyVisibility() {
 }
 
 async function _updateAiStatusBadge() {
-  const key = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
-  const ok  = !!(key && key.startsWith('AIza'));
-  const dot = document.getElementById('aiStatusDot');
-  const sub = document.getElementById('aiSettingsSub');
+  const key   = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const model = await getGeminiModel();
+  const ok    = !!(key && key.startsWith('AIza'));
+  const dot   = document.getElementById('aiStatusDot');
+  const sub   = document.getElementById('aiSettingsSub');
   if (dot) {
     dot.style.cssText = `width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${ok ? 'var(--green,#22c55e)' : '#d1d5db'}`;
   }
   if (sub) sub.textContent = ok
-    ? '✓ Configurado — leitura de recibos com IA ativa'
+    ? `✓ Configurado · modelo: ${model}`
     : 'Configure para habilitar leitura automática de recibos';
 }
 
@@ -312,27 +337,31 @@ Arquivo: ${pending.fileName}`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
-          { text: prompt },
-        ],
-      }],
-      generationConfig: { maxOutputTokens: 2500, temperature: 0.1 },
-    }),
+  const _rcptBody = JSON.stringify({
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: pending.mediaType, data: pending.base64 } },
+        { text: prompt },
+      ],
+    }],
+    generationConfig: { maxOutputTokens: 2500, temperature: 0.1 },
   });
 
-  if (!resp.ok) {
+  let resp;
+  for (let _attempt = 0; _attempt <= 2; _attempt++) {
+    if (_attempt > 0) await new Promise(r => setTimeout(r, _attempt * 8000));
+    try { resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:_rcptBody }); }
+    catch(netErr) { if (_attempt === 2) throw new Error('Erro de rede: ' + netErr.message); continue; }
+    if (resp.ok) break;
+    if ((resp.status === 429 || resp.status === 503) && _attempt < 2) continue;
     const err = await resp.json().catch(() => ({}));
     const msg = err?.error?.message || `HTTP ${resp.status}`;
     if (resp.status === 400 && msg.includes('API_KEY')) throw new Error('Chave API inválida. Verifique em Configurações.');
     if (resp.status === 429) throw new Error('Limite de requisições atingido. Aguarde alguns segundos.');
+    if (resp.status === 503) throw new Error('Modelo com alta demanda. Tente novamente em breve.');
     throw new Error(msg);
   }
+  if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e?.error?.message||`HTTP ${resp.status}`); }
 
   const data  = await resp.json();
   const text  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';

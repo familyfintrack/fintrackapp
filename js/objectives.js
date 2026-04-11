@@ -72,46 +72,72 @@ async function renderObjectivesPage() {
     container.style.justifyContent = 'center';
     container.style.minHeight = '320px';
     container.innerHTML = `
-      <div style="text-align:center;padding:32px 24px;max-width:380px">
-        <div style="font-size:4rem;margin-bottom:16px;line-height:1">🎯</div>
-        <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:10px">Nenhum objetivo criado</div>
-        <div style="font-size:.83rem;color:var(--muted);line-height:1.55;margin-bottom:24px">
-          Crie objetivos para monitorar gastos de projetos específicos como reformas, viagens ou eventos especiais
-        </div>
-        <button class="btn btn-primary" onclick="openObjectiveModal()" style="padding:12px 28px;font-size:.9rem">
-          🎯 Criar primeiro objetivo
+      <div class="obj-empty">
+        <div class="obj-empty-icon">🎯</div>
+        <div class="obj-empty-title">Nenhum objetivo criado</div>
+        <div class="obj-empty-desc">Crie objetivos para monitorar gastos de projetos específicos — reformas, viagens, casamentos ou qualquer evento especial.</div>
+        <button class="btn btn-primary" onclick="openObjectiveModal()" style="padding:11px 28px;font-size:.88rem">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Criar primeiro objetivo
         </button>
       </div>`;
     return;
   }
-  // Reset container for grid layout when there are items
-  container.style.display = '';
-  container.style.alignItems = '';
-  container.style.justifyContent = '';
-  container.style.minHeight = '';
+  container.style.cssText = '';  // Reset any inline overrides
   container.innerHTML = _objList.map(o => _renderObjectiveCard(o)).join('');
 }
 
 function _renderObjectiveCard(o) {
   const st = _objStatus(o);
-  const budget = o.budget_limit ? _objFmt(o.budget_limit) : null;
-  return `
-  <div class="obj-card" onclick="openObjectiveDetail('${o.id}')">
-    <div class="obj-card-header">
-      <div class="obj-card-icon">${o.icon||'🎯'}</div>
-      <div class="obj-card-info">
-        <div class="obj-card-name">${_objEsc(o.name)}</div>
-        <div class="obj-card-dates">${_objFmtDate(o.start_date)} → ${o.end_date ? _objFmtDate(o.end_date) : 'sem prazo'}</div>
-      </div>
-      <span class="obj-status-badge ${st.cls}">${st.icon} ${st.label}</span>
-    </div>
-    ${o.description ? `<div class="obj-card-desc">${_objEsc(o.description)}</div>` : ''}
-    ${budget ? `<div class="obj-card-budget">Limite: <strong>${budget}</strong></div>` : ''}
-    <div class="obj-card-footer">
-      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openObjectiveModal('${o.id}')">✏️ Editar</button>
-      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openObjectiveDetail('${o.id}')">📊 Gastos</button>
-    </div>
-  </div>`;
+
+  // Budget progress bar
+  let budgetHtml = '';
+  if (o.budget_limit && o.budget_limit > 0) {
+    const spent = o._spent || 0;  // enriched by loadObjectives if available
+    const pct   = Math.min(100, (spent / o.budget_limit) * 100).toFixed(1);
+    const over  = spent > o.budget_limit;
+    const _pctSpan = over
+      ? '<span style="color:var(--red);font-weight:700">⚠ ' + pct + '%</span>'
+      : '<span>' + pct + '%</span>';
+    const _fillCls = over ? 'obj-card-budget-fill over' : 'obj-card-budget-fill';
+    budgetHtml = '<div class="obj-card-budget">' +
+      '<div class="obj-card-budget-label">' +
+        '<span>Limite: <strong>' + _objFmt(o.budget_limit) + '</strong></span>' +
+        _pctSpan +
+      '</div>' +
+      '<div class="obj-card-budget-track">' +
+        '<div class="' + _fillCls + '" style="width:' + pct + '%"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  const dateRange = o.end_date
+    ? (_objFmtDate(o.start_date) + ' → ' + _objFmtDate(o.end_date))
+    : ('A partir de ' + _objFmtDate(o.start_date));
+  const descHtml = o.description
+    ? '<div class="obj-card-desc">' + _objEsc(o.description) + '</div>'
+    : '';
+  const calIcon = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+
+  return (
+    '<div class="obj-card" data-status="' + (o.status||'active') + '" data-id="' + o.id + '"' +
+      ' onclick="openObjectiveDetail(\'' + o.id + '\')">' +
+      '<div class="obj-card-header">' +
+        '<div class="obj-card-icon">' + (o.icon||'🎯') + '</div>' +
+        '<div class="obj-card-info">' +
+          '<div class="obj-card-name">' + _objEsc(o.name) + '</div>' +
+          '<div class="obj-card-dates">' + calIcon + ' ' + _objEsc(dateRange) + '</div>' +
+        '</div>' +
+        '<span class="obj-status-badge ' + st.cls + '">' + st.icon + ' ' + st.label + '</span>' +
+      '</div>' +
+      descHtml +
+      budgetHtml +
+      '<div class="obj-card-footer">' +
+        '<button class="btn" onclick="event.stopPropagation();openObjectiveModal(\'' + o.id + '\')">✏️ Editar</button>' +
+        '<button class="btn" onclick="event.stopPropagation();openObjectiveDetail(\'' + o.id + '\')">📊 Ver gastos</button>' +
+      '</div>' +
+    '</div>'
+  );
 }
 
 // ── Ícones disponíveis para seleção ──────────────────────────────────────────
@@ -237,7 +263,7 @@ Responda somente com o emoji, sem texto adicional.`;
         { method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 16, temperature: 0.4 } }) }
+            generationConfig: { maxOutputTokens: 16, temperature: 0.4 },}) }
       );
       if (resp.status === 404) continue; // model not available, try next
       if (!resp.ok) throw new Error('Erro na API Gemini: ' + resp.status);

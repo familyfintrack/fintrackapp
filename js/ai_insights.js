@@ -1466,16 +1466,18 @@ REGRAS FINAIS:
       temperature: 0.2,
       responseMimeType: 'application/json',
     },
+    // Disable thinking for structured JSON generation (saves tokens, faster, more reliable),
   };
 
   // Retry helper — models can be overloaded or return 503 transiently
   async function _callWithRetry(body, maxRetries = 3) {
-    const BACKOFF = [5000, 12000, 25000];
+    const BACKOFF = [5000, 12000, 25000]; // 5s → 12s → 25s
     let lastErr;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       if (attempt > 0) {
         const delay = BACKOFF[Math.min(attempt - 1, BACKOFF.length - 1)];
         console.warn(`[AIInsights] Retry ${attempt}/${maxRetries} after ${delay}ms`);
+        // Update UI to inform user
         const statusEl = document.getElementById('aiInsightsLoadingMsg') ||
                          document.querySelector('.ai-loading-text');
         if (statusEl) statusEl.textContent =
@@ -1530,8 +1532,10 @@ REGRAS FINAIS:
   // ── Parse the response ──────────────────────────────────────────────────
   const candidate = data?.candidates?.[0];
 
+  // Check finishReason — truncated/blocked responses can't be parsed
   const finishReason = candidate?.finishReason || '';
   if (finishReason === 'MAX_TOKENS') {
+    // For thinking models, this usually means the thinking budget was exhausted
     const _hint = _isThinkingModel
       ? 'O modelo de raciocínio excedeu o limite de tokens. Tente reduzir o período ou use gemini-1.5-flash em Configurações → IA.'
       : 'Resposta truncada (período muito longo). Reduza o intervalo de datas e tente novamente.';
@@ -1541,11 +1545,13 @@ REGRAS FINAIS:
     throw new Error('Resposta bloqueada pelo modelo de segurança da IA. Altere o contexto e tente novamente.');
   }
   if (!candidate || !candidate.content) {
+    // Check for promptFeedback blockReason
     const blockReason = data?.promptFeedback?.blockReason;
     if (blockReason) throw new Error('Prompt bloqueado: ' + blockReason);
     throw new Error('O modelo não retornou resposta. Tente novamente ou use um modelo diferente.');
   }
 
+  // Collect all text parts
   const parts = candidate.content?.parts || [];
   const raw   = parts.map(p => p.text || '').join('');
 

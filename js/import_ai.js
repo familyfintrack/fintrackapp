@@ -13,8 +13,8 @@
 
 const IMPORT_AI_MAX_ROWS   = 60;   // linhas enviadas para análise
 const IMPORT_AI_MIN_CONF   = 0.70; // confiança mínima para auto-avançar
-const IMPORT_AI_MODEL_FALLBACK = 'gemini-2.5-flash'; // used only if getGeminiModel unavailable
 // IMPORT_AI_MODEL is now dynamic — uses getGeminiModel() at call time
+const IMPORT_AI_MODEL_FALLBACK = 'gemini-2.5-flash';
 
 // Estado da análise IA atual
 window._importAiResult = null;
