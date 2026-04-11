@@ -771,7 +771,7 @@ function renderUpcoming() {
   // Card starts expanded by default (display is '' from HTML)
   // toggleUpcomingCard() handles collapse/expand on click
 
-  // Agrupar por data
+  // ── Render upcoming list ───────────────────────────────────────────────────
   const byDate = {};
   upcoming.forEach(u => { if(!byDate[u.date]) byDate[u.date]=[]; byDate[u.date].push(u); });
 
@@ -779,114 +779,92 @@ function renderUpcoming() {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
   const tomorrowStr = localDateStr(tomorrow);
 
-  if(listEl) listEl.innerHTML = Object.entries(byDate).map(([date, items]) => {
+  const groups = Object.entries(byDate).map(([date, items]) => {
     const isToday    = date === today;
     const isTomorrow = date === tomorrowStr;
-    const dow = DOW[new Date(date+'T12:00:00').getDay()];
-    const dayLabel = isToday ? '🔔 Hoje' : isTomorrow ? '📆 Amanhã' : `${dow}, ${fmtDate(date)}`;
-
+    const dow   = DOW[new Date(date+'T12:00:00').getDay()];
+    const dayNum = new Date(date+'T12:00:00').getDate();
+    const dayMon = new Date(date+'T12:00:00').toLocaleString('pt-BR',{month:'short'}).replace('.','');
     const dayTot = items.reduce((s,{sc}) => {
       const isExp = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
       return s + (isExp ? -1 : 1)*Math.abs(sc.amount);
     }, 0);
 
-    const gid = 'upg_' + date.replace(/-/g,'');
-    const rows = items.map(({sc, isPending}) => {
-      const isExp    = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
-      const typeIcon = sc.type==='card_payment'?'💳':sc.type==='transfer'?'↔':isExp?'↑':'↓';
-      const dest     = (sc.type==='transfer'||sc.type==='card_payment')
-                       ? state.accounts.find(a=>a.id===sc.transfer_to_account_id) : null;
-      const catColor = sc.categories?.color || (isExp ? 'var(--red)' : 'var(--green)');
-      const manualBadge = !sc.auto_register
-        ? `<span class="sup-manual-badge">Manual</span>` : '';
-      const pendingBadge = isPending
-        ? `<span class="sup-pending-badge" title="Aguardando registro">⚠ Pendente</span>` : '';
+    const dayLabel = isToday ? '🔔 Hoje' : isTomorrow ? '📆 Amanhã' : (dow + ', ' + fmtDate(date));
+    const dayBg    = isToday
+      ? 'background:color-mix(in srgb,var(--amber) 8%,var(--surface2));border-color:rgba(217,119,6,.25)'
+      : isTomorrow
+      ? 'background:color-mix(in srgb,var(--accent) 5%,var(--surface2));border-color:rgba(42,96,73,.2)'
+      : '';
+    const dayTotColor = dayTot >= 0 ? 'color:#16a34a' : 'color:#dc2626';
 
-      // AR-pending row: special styling + Receive/Cancel buttons
+    // Build item rows
+    const itemRows = items.map(({sc, date: d, isPending, isArPending}) => {
+      const isExp    = sc.type==='expense'||sc.type==='card_payment'||sc.type==='transfer';
+      const amtColor = isExp ? '#dc2626' : '#16a34a';
+      const amtSign  = isExp ? '−' : '+';
+      const catColor = sc.categories?.color || (isExp ? '#dc2626' : '#16a34a');
+      const typeEmoji = sc.type==='card_payment'?'💳':sc.type==='transfer'?'↔':isExp?'↑':'↓';
+
+      // AR-pending special row
       if (isArPending) {
-        const arRecord = (state._arPendingKeys ? [...(state._arPendingKeys)] : [])
-          .find(k => k === sc.id + '|' + date);
-        // Fetch arId from loaded records for action buttons
-        const arRec = (window._scArRecordsCache || []).find(r => r.sc_id === sc.id && r.date === date);
-        const arId  = arRec?.id || '';
-        return `<div class="sup-item sup-item--ar-pending${isToday?' sup-item--today':''}">
-          <div class="sup-icon" style="background:rgba(251,191,36,.15);color:#d97706;font-size:.9rem">📬</div>
-          <div class="sup-body">
-            <div class="sup-desc" style="color:var(--text)">${esc(sc.description)}
-              <span class="sup-ar-badge">📬 A Receber</span>
-            </div>
-            <div class="sup-acct" style="color:var(--muted)">${esc(sc.accounts?.name||'—')} · ${fmtDate(date)}</div>
-            <div style="font-size:.72rem;color:#d97706;margin-top:2px">⏳ Aguardando confirmação de recebimento</div>
-          </div>
-          <div class="sup-right">
-            <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(sc.amount))}</span>
-            <div class="sup-actions" style="gap:5px">
-              ${arId ? `<button onclick="event.stopPropagation();_scArReceive('${arId}')"
-                style="padding:4px 8px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:7px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✅ Receber</button>
-              <button onclick="event.stopPropagation();_scArCancelFromUpcoming('${arId}','${sc.id}','${date}')"
-                style="padding:4px 8px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:7px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit">🗑</button>` :
-              `<button onclick="event.stopPropagation();openReceivablesModal()"
-                style="padding:4px 8px;background:rgba(251,191,36,.15);color:#d97706;border:1px solid rgba(251,191,36,.4);border-radius:7px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit">Ver →</button>`}
-            </div>
-          </div>
-        </div>`;
+        const arRec = (window._scArRecordsCache||[]).find(r => r.sc_id===sc.id && r.date===d);
+        const arId  = arRec?.id||'';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border);background:rgba(251,191,36,.05)">' +
+          '<div style="width:30px;height:30px;border-radius:8px;background:rgba(251,191,36,.15);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0">📬</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(sc.description) + '</div>' +
+            '<div style="font-size:.68rem;color:#d97706;margin-top:1px">⏳ A Receber</div>' +
+          '</div>' +
+          '<div style="text-align:right;flex-shrink:0">' +
+            '<div style="font-size:.85rem;font-weight:800;color:#16a34a">' + amtSign + fmt(Math.abs(sc.amount)) + '</div>' +
+            (arId ? '<button onclick="event.stopPropagation();_scArReceive(\'' + arId + '\')" style="margin-top:3px;padding:2px 7px;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:5px;font-size:.62rem;font-weight:700;cursor:pointer;font-family:inherit">✅ Receber</button>' : '') +
+          '</div>' +
+        '</div>';
       }
 
-      return `<div class="sup-item${isToday?' sup-item--today':''}">
-        <div class="sup-icon" style="background:color-mix(in srgb,${catColor} 14%,transparent);color:${catColor}">${typeIcon}</div>
-        <div class="sup-body">
-          <div class="sup-desc">${esc(sc.description)}${manualBadge}${pendingBadge}</div>
-          <div class="sup-acct">${esc(sc.accounts?.name||'—')}${dest?` <span class="sup-arrow">→</span> ${esc(dest.name)}`:''}</div>
-        </div>
-        <div class="sup-right">
-          <span class="sup-amt ${isExp?'neg':'pos'}">${isExp?'−':'+'}${fmt(Math.abs(sc.amount))}</span>
-          <div class="sup-actions">
-            <button class="sup-ignore-btn" title="Ignorar"
-              onclick="event.stopPropagation();ignoreOccurrence('${sc.id}','${date}')">✕</button>
-            <button class="sup-register-btn" onclick="openRegisterOcc('${sc.id}','${date}')">✓</button>
-          </div>
-        </div>
-      </div>`;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--border)">' +
+        '<div style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex-shrink:0;background:' + catColor + '18;color:' + catColor + '">' + typeEmoji + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:.82rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(sc.description) + '</div>' +
+          '<div style="font-size:.68rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+            esc(sc.accounts?.name||'—') +
+            (sc.payees?.name ? ' · ' + esc(sc.payees.name) : '') +
+            (isPending ? ' · <span style="color:#d97706;font-weight:600">⚠ Pendente</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0">' +
+          '<div style="font-size:.85rem;font-weight:800;color:' + amtColor + '">' + amtSign + fmt(Math.abs(sc.amount)) + '</div>' +
+          '<button onclick="event.stopPropagation();openRegisterOcc(\'' + sc.id + '\',\'' + d + '\')" ' +
+            'style="margin-top:3px;display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:.62rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">' +
+            '✓ Registrar' +
+          '</button>' +
+        '</div>' +
+      '</div>';
     }).join('');
 
-    const dayNum = new Date(date+'T12:00:00').getDate();
-    const dayMon = new Date(date+'T12:00:00').toLocaleString('pt-BR',{month:'short'}).replace('.','');
-    const dayPill = isToday
-      ? `<div class="sup-day-pill sup-day-pill--today"><span>Hoje</span></div>`
-      : isTomorrow
-      ? `<div class="sup-day-pill sup-day-pill--tmrw"><span>Amanhã</span></div>`
-      : `<div class="sup-day-pill"><span class="sup-day-num">${dayNum}</span><span class="sup-day-mon">${dayMon}</span></div>`;
-
-    // Para Hoje/Amanhã: subtítulo com data por extenso; demais: só dow + data
-    const dowLabel = isToday
-      ? `<div class="sup-group-dow-wrap">
-           <span class="sup-group-dow sup-group-dow--special">Hoje</span>
-           <span class="sup-group-date-sub">${dow} · ${dayNum} de ${dayMon}</span>
-         </div>`
-      : isTomorrow
-      ? `<div class="sup-group-dow-wrap">
-           <span class="sup-group-dow sup-group-dow--special">Amanhã</span>
-           <span class="sup-group-date-sub">${dow} · ${dayNum} de ${dayMon}</span>
-         </div>`
-      : `<span class="sup-group-dow">${dow}, ${fmtDate(date)}</span>`;
-
-    const _startOpen = true;  // always start expanded — user can collapse individual days
-    return `<div class="sup-group">
-      <div class="sup-group-hdr" onclick="toggleUpcomingGroup('${gid}')">
-        <div class="sup-group-left">
-          ${dayPill}
-          ${dowLabel}
-        </div>
-        <div class="sup-group-meta">
-          <span class="sup-day-total ${dayTot>=0?'pos':'neg'}">${dayTot>=0?'+':''}${fmt(dayTot)}</span>
-          <span class="sup-day-count">${items.length}</span>
-          <svg class="sc-upcoming-day-arrow" id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-            style="transform:rotate(${_startOpen?'180':'0'}deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-      <div class="sup-rows" id="${gid}" style="${_startOpen?'':'display:none'}">${rows}</div>
-    </div>`;
+    return '<div style="border-bottom:1.5px solid var(--border)">' +
+      // Day header
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 6px;' + dayBg + '">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="width:36px;height:36px;border-radius:10px;background:var(--surface);border:1.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">' +
+            '<span style="font-size:.62rem;font-weight:700;color:var(--muted);line-height:1;text-transform:uppercase">' + dayMon + '</span>' +
+            '<span style="font-size:1rem;font-weight:800;color:var(--text);line-height:1">' + dayNum + '</span>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:.8rem;font-weight:700;color:var(--text)">' + dayLabel + '</div>' +
+            '<div style="font-size:.65rem;color:var(--muted)">' + items.length + ' transaç' + (items.length===1?'ão':'ões') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:.9rem;font-weight:800;' + dayTotColor + '">' + (dayTot>=0?'+':'') + fmt(dayTot) + '</div>' +
+      '</div>' +
+      // Items
+      itemRows +
+    '</div>';
   }).join('');
+
+  if(listEl) listEl.innerHTML = groups;
+
 
   // Auto-open the desktop upcoming panel after rendering
   // (panel body starts display:none; open it so events are visible)
