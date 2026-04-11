@@ -861,8 +861,9 @@ function loadSettings() {
   // IA settings
   if (typeof initAiSettings === 'function') initAiSettings();
 
-  // Telegram bot token
+  // Telegram bot — load token UI + show admin section for owners/admins + load bot name
   if (typeof loadTelegramBotTokenUI === 'function') loadTelegramBotTokenUI();
+  _loadTgAdminSection();
 
 
 
@@ -3293,6 +3294,15 @@ async function openTelegramLinkFlow() {
   if (btn)    { btn.disabled = true; btn.textContent = '⏳ Gerando link...'; }
   if (status) { status.textContent = ''; status.style.color = 'var(--muted)'; }
   if (progress) progress.style.display = 'none';
+  // Also drive the cfg panel progress if settings is open
+  const cfgProgress  = document.getElementById('tgLinkProgressCfg');
+  const cfgBar       = document.getElementById('tgLinkProgressBarCfg');
+  const cfgCountdown = document.getElementById('tgLinkCountdownCfg');
+  const cfgStatusDiv = document.getElementById('tgLinkStatusCfg');
+  const cfgBtn       = document.getElementById('tgLinkFlowBtnCfg');
+  if (cfgProgress) cfgProgress.style.display = 'none';
+  if (cfgStatusDiv) cfgStatusDiv.style.display = 'none';
+  if (cfgBtn) { cfgBtn.disabled = true; cfgBtn.textContent = '⏳'; }
 
   try {
     // 1. Token único de 32 hex chars
@@ -3325,24 +3335,30 @@ async function openTelegramLinkFlow() {
     window.open(tgUrl, '_blank');
 
     if (btn) { btn.disabled = false; btn.textContent = '✈️ Abrir novamente'; }
+    if (cfgBtn) { cfgBtn.disabled = false; cfgBtn.innerHTML = '✈️ Abrir novamente'; }
     if (status) status.textContent = `📱 Abriu @${botName} — envie /start ou toque em Iniciar no bot.`;
 
     // 5. Mostrar barra de progresso + countdown
     if (progress) progress.style.display = '';
+    if (cfgProgress) cfgProgress.style.display = '';
     const POLL_MAX = 120;
     let elapsed = 0;
     if (bar)      { bar.style.transition = 'none'; bar.style.width = '0%'; }
+    if (cfgBar)   { cfgBar.style.transition = 'none'; cfgBar.style.width = '0%'; }
     if (countdown) countdown.textContent = POLL_MAX;
+    if (cfgCountdown) cfgCountdown.textContent = POLL_MAX;
 
     // Animate bar smoothly
     setTimeout(() => {
-      if (bar) { bar.style.transition = `width ${POLL_MAX}s linear`; bar.style.width = '100%'; }
+      if (bar)    { bar.style.transition = `width ${POLL_MAX}s linear`; bar.style.width = '100%'; }
+      if (cfgBar) { cfgBar.style.transition = `width ${POLL_MAX}s linear`; cfgBar.style.width = '100%'; }
     }, 100);
 
     // Countdown seconds
     _tgLinkCountdownInterval = setInterval(() => {
       elapsed += 1;
-      if (countdown) countdown.textContent = Math.max(0, POLL_MAX - elapsed);
+      if (countdown)    countdown.textContent    = Math.max(0, POLL_MAX - elapsed);
+      if (cfgCountdown) cfgCountdown.textContent = Math.max(0, POLL_MAX - elapsed);
     }, 1000);
 
     // 6. Poll a cada 3s por até 2min
@@ -3402,6 +3418,17 @@ async function openTelegramLinkFlow() {
             status.textContent = '✅ Chat ID ' + chatId + ' vinculado!';
             status.style.color = 'var(--accent)';
           }
+          if (cfgStatusDiv) {
+            cfgStatusDiv.style.display = '';
+            cfgStatusDiv.innerHTML = '<div style="font-size:.78rem;font-weight:700;color:var(--accent)">✅ Conta vinculada ao Telegram!</div>' +
+              '<div style="font-size:.7rem;color:var(--muted);margin-top:2px">Chat ID: ' + chatId + '</div>';
+          }
+          if (cfgProgress) cfgProgress.style.display = 'none';
+          // Update status dot
+          const cfgDot = document.getElementById('tgBotStatusDot');
+          if (cfgDot) cfgDot.style.background = '#22c55e';
+          const cfgName = document.getElementById('tgBotNameBadge');
+          if (cfgName) { cfgName.textContent = 'Vinculado'; cfgName.style.display = ''; }
           toast('✅ Telegram vinculado com sucesso! Chat ID: ' + chatId, 'success');
           if (typeof _load2FAIntoProfile === 'function') _load2FAIntoProfile();
         }
@@ -4458,6 +4485,59 @@ window.loadAppSettings                     = loadAppSettings;
 window.loadNotifChannelSettings            = loadNotifChannelSettings;
 window.loadSettings                        = loadSettings;
 window.openNormalizeNamesPreview           = openNormalizeNamesPreview;
+/* ── Telegram — Admin section: show bot name config for owners/admins ──────── */
+async function _loadTgAdminSection() {
+  const section = document.getElementById('tgAdminSection');
+  const dot     = document.getElementById('tgBotStatusDot');
+  const nameBadge = document.getElementById('tgBotNameBadge');
+  const statusEl  = document.getElementById('tgBotStatus');
+  const isAdmin = (currentUser?.role === 'admin' || currentUser?.role === 'owner');
+
+  // Show admin section only for admin/owner
+  if (section) section.style.display = isAdmin ? '' : 'none';
+
+  // Load current bot name for everyone (drives the link)
+  try {
+    const { data: botRow } = await sb.from('app_settings')
+      .select('value').eq('key', 'tg_bot_name').maybeSingle();
+    const botName = botRow?.value ? String(botRow.value).replace(/^@/, '') : 'FamilyFintrack_bot';
+
+    // Populate admin input
+    const inp = document.getElementById('tgBotNameInput');
+    if (inp) inp.value = botName;
+
+    // Show badge with bot name
+    if (nameBadge) { nameBadge.textContent = '@' + botName; nameBadge.style.display = ''; }
+
+    // If user already has chat_id linked, show as connected
+    if (currentUser?.telegram_chat_id) {
+      if (dot) dot.style.background = '#22c55e';
+      if (statusEl) statusEl.textContent = '✅ Vinculado — Chat ID: ' + currentUser.telegram_chat_id;
+    } else {
+      if (dot) dot.style.background = '#f59e0b';
+      if (statusEl) statusEl.textContent = 'Clique em Vincular para conectar sua conta ao Telegram';
+    }
+  } catch(_) {}
+}
+
+window.saveTgBotName = async function() {
+  const inp = document.getElementById('tgBotNameInput');
+  const name = (inp?.value || '').trim().replace(/^@/, '');
+  if (!name) { toast('Informe o @username do bot', 'error'); return; }
+  try {
+    await sb.from('app_settings').upsert({ key: 'tg_bot_name', value: name }, { onConflict: 'key' });
+    toast('✅ Nome do bot salvo: @' + name, 'success');
+    // Refresh badge
+    const badge = document.getElementById('tgBotNameBadge');
+    if (badge) { badge.textContent = '@' + name; badge.style.display = ''; }
+    // Refresh profile modal button label
+    const flowBtn = document.getElementById('tgLinkFlowBtn');
+    if (flowBtn) flowBtn.textContent = '✈️ Abrir @' + name;
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, 'error');
+  }
+};
+
 window.openTelegramLinkFlow                = openTelegramLinkFlow;
 window.resetAppLogo                        = resetAppLogo;
 window.runNormalizeNames                   = runNormalizeNames;

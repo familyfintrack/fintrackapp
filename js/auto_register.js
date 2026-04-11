@@ -804,7 +804,10 @@ window.saveTelegramBotToken = async function() {
   }
 
   if (dot) dot.style.background = '#22c55e';
-  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Informe o Chat ID abaixo e clique Testar.'; }
+  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Clique em "Registrar Webhook" para conectar o bot.'; }
+  // Show webhook registration button
+  const webhookRow = document.getElementById('tgWebhookRow');
+  if (webhookRow) webhookRow.style.display = '';
   // Show the test row with chat-id field
   const testRow = document.getElementById('tgBotTestRow');
   if (testRow) testRow.style.display = 'flex';
@@ -818,6 +821,113 @@ window.saveTelegramBotToken = async function() {
     }
   }
   toast('Token do Telegram salvo', 'success');
+};
+
+/** Registrar (ou atualizar) o webhook do bot no Telegram — chamada direta à API */
+window.registerTelegramWebhook = async function() {
+  const tokenInput = document.getElementById('telegramBotTokenInput');
+  const statusEl   = document.getElementById('tgBotStatus');
+  const webhookStatusEl = document.getElementById('tgWebhookStatus');
+  const btn        = document.getElementById('tgRegisterWebhookBtn');
+  const dot        = document.getElementById('tgBotStatusDot');
+  const nameBadge  = document.getElementById('tgBotNameBadge');
+
+  const token = (tokenInput?.value || getTelegramBotToken() || '').trim();
+  if (!token) {
+    toast('Salve o token primeiro.', 'error');
+    return;
+  }
+
+  // Construir webhook URL a partir da URL do Supabase configurada
+  const sbUrl = (window.SUPABASE_URL || '').replace(/\/$/, '');
+  if (!sbUrl) {
+    toast('URL do Supabase não encontrada. Configure a conexão primeiro.', 'error');
+    return;
+  }
+  const webhookUrl = `${sbUrl}/functions/v1/telegram-webhook`;
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Conectando…'; }
+  if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = '🔄 Verificando bot e registrando webhook…'; }
+  if (webhookStatusEl) webhookStatusEl.style.display = 'none';
+
+  try {
+    // 1. Verificar token via getMe
+    const getMeRes  = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const getMeData = await getMeRes.json();
+    if (!getMeData.ok) {
+      throw new Error(`Token inválido: ${getMeData.description || 'erro desconhecido'}`);
+    }
+    const botInfo = getMeData.result;
+    const botName = botInfo.username ? `@${botInfo.username}` : botInfo.first_name;
+
+    // 2. Registrar webhook
+    const setRes  = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url:             webhookUrl,
+        allowed_updates: ['message'],
+        drop_pending_updates: true,
+      }),
+    });
+    const setData = await setRes.json();
+    if (!setData.ok) {
+      throw new Error(`Erro ao registrar webhook: ${setData.description || 'erro desconhecido'}`);
+    }
+
+    // 3. Confirmar via getWebhookInfo
+    const infoRes  = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const infoData = await infoRes.json();
+    const info     = infoData.result || {};
+
+    // Atualizar UI de sucesso
+    if (dot) dot.style.background = '#22c55e';
+    if (nameBadge) { nameBadge.textContent = botName; nameBadge.style.display = ''; }
+    if (statusEl) {
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = `✅ Webhook registrado com sucesso! Envie uma mensagem para ${botName} no Telegram.`;
+    }
+
+    if (webhookStatusEl) {
+      const pendingCount = info.pending_update_count ?? 0;
+      const lastErr = info.last_error_message ? `<div style="color:#dc2626;font-size:.68rem;margin-top:4px">⚠️ Último erro: ${info.last_error_message}</div>` : '';
+      webhookStatusEl.style.display = '';
+      webhookStatusEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+          <span style="font-size:1rem">✅</span>
+          <span style="font-size:.8rem;font-weight:700;color:var(--text)">Webhook ativo — ${botName}</span>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);word-break:break-all;margin-bottom:4px">
+          🔗 ${webhookUrl}
+        </div>
+        <div style="font-size:.7rem;color:var(--muted)">
+          📨 Pendentes: ${pendingCount}
+        </div>
+        ${lastErr}
+        <div style="margin-top:8px;padding:8px 10px;background:#f0fdf4;border-radius:7px;border:1px solid #86efac;font-size:.72rem;color:#166534;line-height:1.6">
+          <strong>Próximo passo:</strong> Abra o Telegram, pesquise por <strong>${botName}</strong> e envie
+          <code style="background:#dcfce7;padding:1px 5px;border-radius:4px">/start</code>.
+          Depois, registre seu Chat ID em <strong>Meu Perfil → Telegram</strong> e
+          ative <strong>Transações por Chat</strong> no menu do usuário.
+        </div>`;
+    }
+
+    toast(`✅ Bot ${botName} conectado!`, 'success');
+
+  } catch(e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (dot) dot.style.background = '#dc2626';
+    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = `❌ ${msg}`; }
+    if (webhookStatusEl) {
+      webhookStatusEl.style.display = '';
+      webhookStatusEl.style.background = '#fef2f2';
+      webhookStatusEl.style.borderColor = '#fca5a5';
+      webhookStatusEl.innerHTML = `<div style="font-size:.75rem;color:#dc2626;font-weight:600">❌ Falha ao registrar</div><div style="font-size:.7rem;color:#991b1b;margin-top:3px">${msg}</div>`;
+    }
+    toast('Erro: ' + msg, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Registrar Webhook'; }
+  }
 };
 
 window.testTelegramBotToken = async function() {
@@ -884,23 +994,60 @@ window.loadTelegramBotTokenUI = async function() {
   const testRow = document.getElementById('tgBotTestRow');
   const testBtn = document.getElementById('tgBotTestBtn');
   const chatIdInput = document.getElementById('tgBotTestChatId');
+  const webhookRow  = document.getElementById('tgWebhookRow');
   if (!input) return;
 
-  // ensureTelegramBotToken: lê localStorage → fallback Supabase DB
   const token = await ensureTelegramBotToken();
-  if (token) {
-    input.value = token;
-    if (dot) dot.style.background = '#22c55e';
-    if (testRow) testRow.style.display = 'flex';
-    // Pre-fill Chat ID from currentUser if available
-    if (chatIdInput && !chatIdInput.value) {
-      const knownChatId = String(currentUser?.telegram_chat_id || '').trim();
-      if (knownChatId) {
-        chatIdInput.value = knownChatId;
-        if (testBtn) testBtn.style.display = '';
-      }
+  if (!token) return;
+
+  input.value = token;
+  if (dot) dot.style.background = '#22c55e';
+  if (testRow) testRow.style.display = 'flex';
+  if (webhookRow) webhookRow.style.display = '';
+
+  // Pre-fill Chat ID from currentUser if available
+  if (chatIdInput && !chatIdInput.value) {
+    const knownChatId = String(currentUser?.telegram_chat_id || '').trim();
+    if (knownChatId) {
+      chatIdInput.value = knownChatId;
+      if (testBtn) testBtn.style.display = '';
     }
   }
+
+  // Check current webhook status and show info card
+  try {
+    const infoRes  = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const infoData = await infoRes.json();
+    const info     = infoData.result || {};
+    const sbUrl    = (window.SUPABASE_URL || '').replace(/\/$/, '');
+    const expectedUrl = sbUrl ? `${sbUrl}/functions/v1/telegram-webhook` : '';
+    const isRegistered = info.url && info.url === expectedUrl;
+    const nameBadge    = document.getElementById('tgBotNameBadge');
+    const statusEl     = document.getElementById('tgBotStatus');
+    const webhookStatusEl = document.getElementById('tgWebhookStatus');
+
+    if (isRegistered) {
+      // Fetch bot name
+      const getMeRes  = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+      const getMeData = await getMeRes.json();
+      const botName   = getMeData.ok ? `@${getMeData.result.username || getMeData.result.first_name}` : '';
+      if (nameBadge && botName) { nameBadge.textContent = botName; nameBadge.style.display = ''; }
+      if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = `✅ Bot conectado e webhook ativo.`; }
+      if (webhookStatusEl) {
+        webhookStatusEl.style.display = '';
+        webhookStatusEl.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:.85rem">✅</span>
+            <span style="font-size:.77rem;font-weight:700;color:var(--text)">Webhook ativo${botName ? ' — ' + botName : ''}</span>
+          </div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:3px;word-break:break-all">${info.url}</div>
+          ${info.last_error_message ? `<div style="font-size:.68rem;color:#dc2626;margin-top:3px">⚠️ ${info.last_error_message}</div>` : ''}`;
+      }
+    } else if (info.url && info.url !== expectedUrl) {
+      // Different URL registered
+      if (statusEl) { statusEl.style.color = '#d97706'; statusEl.textContent = '⚠️ Webhook registrado em outro servidor. Clique "Registrar Webhook" para atualizar.'; }
+    }
+  } catch(_) { /* non-blocking */ }
 };
 
 /* ── Notify on manual/auto transaction ────────────────────────────────────── */

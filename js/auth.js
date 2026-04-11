@@ -147,7 +147,7 @@ async function _loadCurrentUserContext(authCtx = null) {
   {
     const { data: byUid } = await sb
       .from('app_users')
-      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, two_fa_enabled, two_fa_channel, notify_login')
+      .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, two_fa_enabled, two_fa_channel, notify_login, chat_tx_enabled')
       .eq('auth_uid', user.id)
       .maybeSingle();
     appUserRow = byUid || null;
@@ -159,7 +159,7 @@ async function _loadCurrentUserContext(authCtx = null) {
       // otherwise rely on app_users_own_row policy which also allows email match
       const { data: byEmail } = await sb
         .from('app_users')
-        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, two_fa_enabled, two_fa_channel, notify_login')
+        .select('id, family_id, avatar_url, role, name, preferred_family_id, preferred_language, whatsapp_number, telegram_chat_id, preferred_form_mode, notify_on_tx, notify_tx_email, notify_tx_wa, notify_tx_tg, two_fa_enabled, two_fa_channel, notify_login, chat_tx_enabled')
         .eq('email', user.email)
         .maybeSingle();
       appUserRow = byEmail || null;
@@ -307,6 +307,7 @@ async function _loadCurrentUserContext(authCtx = null) {
     notify_tx_email:      !!appUserRow?.notify_tx_email,
     notify_tx_wa:         !!appUserRow?.notify_tx_wa,
     notify_tx_tg:         !!appUserRow?.notify_tx_tg,
+    chat_tx_enabled:      appUserRow?.chat_tx_enabled !== false,
     ...caps
   };
 
@@ -1282,6 +1283,9 @@ function toggleUserMenu(e) {
   // ── Family switcher inside menu ──
   _renderUserMenuFamilies();
 
+  // ── Chat Tx toggle state ──
+  _refreshChatTxToggle();
+
   // ── Position dropdown relative to avatar button, safe for mobile ──
   const btn   = document.getElementById('topbarUserBtn');
   const rect  = btn ? btn.getBoundingClientRect() : { bottom: 56, right: window.innerWidth - 8 };
@@ -1330,6 +1334,52 @@ function closeUserMenu() {
   if (dd) dd.style.display = 'none';
   document.removeEventListener('click', _closeUserMenuOutside);
 }
+
+/* ── Chat Tx toggle — Transações por Chat (Telegram / WhatsApp) ──────────── */
+
+function _refreshChatTxToggle() {
+  const track = document.getElementById('chatTxToggleTrack');
+  if (!track) return;
+  const enabled = currentUser?.chat_tx_enabled !== false; // default true
+  track.style.background = enabled ? 'var(--accent)' : '';
+  track.classList.toggle('active', enabled);
+}
+
+async function _toggleChatTxEnabled() {
+  const newVal = !(currentUser?.chat_tx_enabled !== false);
+  // Optimistic UI update
+  if (currentUser) currentUser.chat_tx_enabled = newVal;
+  _refreshChatTxToggle();
+
+  if (!sb || !currentUser) return;
+  try {
+    const { data: appRow } = await sb
+      .from('app_users')
+      .select('id')
+      .eq('auth_uid', (await sb.auth.getUser())?.data?.user?.id)
+      .maybeSingle();
+    if (!appRow) return;
+    const { error } = await sb
+      .from('app_users')
+      .update({ chat_tx_enabled: newVal, updated_at: new Date().toISOString() })
+      .eq('id', appRow.id);
+    if (error) {
+      // Rollback on error
+      if (currentUser) currentUser.chat_tx_enabled = !newVal;
+      _refreshChatTxToggle();
+      toast('Erro ao salvar preferência de chat: ' + error.message, 'error');
+    } else {
+      const label = newVal ? 'ativadas' : 'desativadas';
+      toast(`Transações por chat ${label}.`, 'success');
+    }
+  } catch (e) {
+    if (currentUser) currentUser.chat_tx_enabled = !newVal;
+    _refreshChatTxToggle();
+    console.warn('[chatTxToggle]', e);
+  }
+}
+
+window._toggleChatTxEnabled = _toggleChatTxEnabled;
 
 /* ══════════════════════════════════════════════════════════════════
    MY PROFILE MODAL — avatar + senha num único lugar
@@ -1737,6 +1787,7 @@ async function saveMyProfile() {
       if ('notify_tx_email' in updatePayload) currentUser.notify_tx_email = notifyTxEmail;
       if ('notify_tx_wa'    in updatePayload) currentUser.notify_tx_wa    = notifyTxWa;
       if ('notify_tx_tg'    in updatePayload) currentUser.notify_tx_tg    = notifyTxTg;
+      if ('chat_tx_enabled' in updatePayload) currentUser.chat_tx_enabled = updatePayload.chat_tx_enabled;
       if ('name' in updatePayload) {
         currentUser.name = newName;
         // Refresh cover header name
