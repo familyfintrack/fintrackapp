@@ -281,12 +281,11 @@
    Colocar aqui garante que este bloco venha DEPOIS e vença.
 ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
-  /* Hide topbar-only buttons on mobile + tablet (they live in the sidebar on smaller screens) */
+  /* Hide topbar-only buttons on mobile + tablet */
   #importNav          { display: none !important; }
   #telemetryNavTopbar { display: none !important; }
-  /* auditNavTopbar: visibility is controlled exclusively via .audit-visible class (JS) —
-     on mobile it stays hidden because audit is accessible via sidebar + navigate() */
-  #auditNavTopbar.audit-visible { display: none !important; }
+  /* auditNavTopbar: shown on ALL screen sizes — audit was removed from sidebar */
+  /* #auditNavTopbar is shown via .audit-visible class on all screens */
   /* #settingsNavTopbar is NOT hidden on mobile — admin must always access settings */
   .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
   .topbar-actions {
