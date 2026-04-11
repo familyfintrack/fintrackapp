@@ -97,24 +97,24 @@ async function loadAppSettings() {
 
 
     // Hydrate EmailJS config
-    EMAILJS_CONFIG.serviceId  = _appSettingsCache['ej_service']  || localStorage.getItem('ej_service')  || '';
-    EMAILJS_CONFIG.templateId = _appSettingsCache['ej_template'] || localStorage.getItem('ej_template') || '';
-    EMAILJS_CONFIG.scheduledTemplateId = _appSettingsCache['ej_sched_template'] || localStorage.getItem('ej_sched_template') || '';
-    EMAILJS_CONFIG.publicKey  = _appSettingsCache['ej_key']      || localStorage.getItem('ej_key')      || '';
+    EMAILJS_CONFIG.serviceId  = _appSettingsCache['ej_service']  || '';
+    EMAILJS_CONFIG.templateId = _appSettingsCache['ej_template'] || '';
+    EMAILJS_CONFIG.scheduledTemplateId = _appSettingsCache['ej_sched_template'] || '';
+    EMAILJS_CONFIG.publicKey  = _appSettingsCache['ej_key']      || '';
     // Hydrate masterPin
     const dbPin = _appSettingsCache['masterPin'];
     if (dbPin) localStorage.setItem('masterPin', dbPin); // keep local in sync
     // Hydrate auto-check config
     const dbAutoCheck = _appSettingsCache[AUTO_CHECK_CONFIG_KEY];
     if (dbAutoCheck) {
-      try { localStorage.setItem(AUTO_CHECK_CONFIG_KEY, JSON.stringify(dbAutoCheck)); } catch {}
+      // Auto-check config stored only in Supabase (family_settings)
     }
   } catch(e) {
     console.warn('loadAppSettings fallback to localStorage:', e.message);
     // Fallback: load from localStorage
-    EMAILJS_CONFIG.serviceId  = localStorage.getItem('ej_service')  || '';
-    EMAILJS_CONFIG.templateId = localStorage.getItem('ej_template') || '';
-    EMAILJS_CONFIG.publicKey  = localStorage.getItem('ej_key')      || '';
+    EMAILJS_CONFIG.serviceId  = _appSettingsCache?.['ej_service']  || '';
+    EMAILJS_CONFIG.templateId = _appSettingsCache?.['ej_template'] || '';
+    EMAILJS_CONFIG.publicKey  = _appSettingsCache?.['ej_key']      || '';
   }
   // Signal that app_settings are ready — lets modules do a cross-device restore pass
   try { document.dispatchEvent(new CustomEvent('appsettings:loaded')); } catch(_) {}
@@ -180,7 +180,7 @@ async function _seedModulesFromFamilyPreferences() {
       if (prev !== next) {
         window._appSettingsCache[key]    = next;
         window._familyFeaturesCache[key] = next;
-        try { localStorage.setItem(key, String(next)); } catch(_) {}
+        // Counter stored in Supabase only
         changed = true;
       }
     });
@@ -234,15 +234,78 @@ function _initModuleFlagRealtimeSync() {
 }
 window._initModuleFlagRealtimeSync = _initModuleFlagRealtimeSync;
 
-async function saveAppSetting(key, value) {
-  // Sempre persiste localmente como fallback garantido
+
+// ── Chaves de credenciais → sempre armazenadas por família no Supabase ────────
+// Nunca vão para localStorage (dados sensíveis / compartilhados com a família)
+const _FAMILY_SETTING_KEYS = new Set([
+  'gemini_api_key',
+  'gemini_model',
+  'agent_n8n_webhook_url',
+  'agent_n8n_secret_key',
+  'tg_bot_name',
+  'tg_link_token',
+  'emailjs_service_id',
+  'emailjs_template_id',
+  'emailjs_public_key',
+  // EmailJS legacy keys used in loadEmailJsConfig
+  'ej_service',
+  'ej_template',
+  'ej_sched_template',
+  'ej_key',
+]);
+
+// ── Helpers para family_settings table ───────────────────────────────────────
+async function _famSettingGet(key) {
+  const fid = typeof famId === 'function' ? famId() : null;
+  if (!fid || !sb) return null;
   try {
-    if (typeof value === 'object') {
-      localStorage.setItem(key, JSON.stringify(value));
-    } else {
-      localStorage.setItem(key, String(value));
-    }
+    const { data, error } = await sb.from('family_settings')
+      .select('value')
+      .eq('family_id', fid)
+      .eq('key', key)
+      .maybeSingle();
+    if (error || !data) return null;
+    try { return JSON.parse(data.value); } catch { return data.value; }
+  } catch { return null; }
+}
+
+async function _famSettingSet(key, value) {
+  const fid = typeof famId === 'function' ? famId() : null;
+  if (!fid || !sb) return;
+  const serialized = (value === null || value === undefined)
+    ? null
+    : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+  try {
+    await sb.from('family_settings')
+      .upsert({ family_id: fid, key, value: serialized, updated_at: new Date().toISOString() },
+               { onConflict: 'family_id,key' });
+  } catch(e) {
+    console.warn('[famSetting] set error:', e?.message);
+  }
+}
+
+async function _famSettingDel(key) {
+  const fid = typeof famId === 'function' ? famId() : null;
+  if (!fid || !sb) return;
+  try {
+    await sb.from('family_settings').delete().eq('family_id', fid).eq('key', key);
   } catch {}
+}
+
+window._famSettingGet = _famSettingGet;
+window._famSettingSet = _famSettingSet;
+window._famSettingDel = _famSettingDel;
+
+async function saveAppSetting(key, value) {
+  // ── Credenciais de família → family_settings (Supabase), SEM localStorage ──
+  if (_FAMILY_SETTING_KEYS.has(key) || key.startsWith('tg_link_token_')) {
+    if (!_appSettingsCache) _appSettingsCache = {};
+    _appSettingsCache[key] = value;
+    await _famSettingSet(key, value);
+    return;
+  }
+
+  // ── Cache em memória (sem localStorage para dados sensíveis) ──
   if (!_appSettingsCache) _appSettingsCache = {};
   _appSettingsCache[key] = value;
   if (!sb) return;
@@ -252,16 +315,11 @@ async function saveAppSetting(key, value) {
   const family_id = m ? m[2] : null;
 
   if (family_id) {
-    // Flags de módulo: tenta RPC primeiro (bypassa RLS), depois upsert em app_settings
-    // Ambos são tentados para garantir que TODOS os membros da família leiam o estado
-    let rpcOk = false;
     try {
       const { error: rpcErr } = await sb.rpc('set_family_feature_flag', {
         p_family_id: family_id, p_key: key, p_value: !!value
       });
-      if (!rpcErr) rpcOk = true;
     } catch {}
-    // Sempre também persiste em app_settings — acessível a todos os membros sem RLS
     try {
       await sb.from('app_settings')
         .upsert({ key, value: !!value }, { onConflict: 'key' });
@@ -271,23 +329,55 @@ async function saveAppSetting(key, value) {
     return;
   }
 
-  // Config geral (não é flag de módulo): upsert em app_settings
+  // Config geral não sensível: app_settings (sem localStorage)
   try {
     const { error } = await sb.from('app_settings')
       .upsert({ key, value }, { onConflict: 'key' });
     if (error) throw error;
   } catch(e) {
-    console.warn('saveAppSetting DB error (saved locally):', e.message);
+    console.warn('saveAppSetting DB error:', e.message);
   }
 }
 
 async function getAppSetting(key, defaultValue = null) {
+  // ── Check memory cache first ──
   if (_appSettingsCache && key in _appSettingsCache) return _appSettingsCache[key];
-  // Fallback localStorage
-  const local = localStorage.getItem(key);
-  if (local !== null) {
-    try { return JSON.parse(local); } catch { return local; }
+
+  // ── Credentials → family_settings table ──
+  if (_FAMILY_SETTING_KEYS.has(key) || key.startsWith('tg_link_token_')) {
+    const val = await _famSettingGet(key);
+    if (val !== null) {
+      if (!_appSettingsCache) _appSettingsCache = {};
+      _appSettingsCache[key] = val;
+      return val;
+    }
+    // Migrate from localStorage if present (one-time migration for existing users)
+    try {
+      const legacy = localStorage.getItem(key);
+      if (legacy !== null) {
+        const parsed = (() => { try { return JSON.parse(legacy); } catch { return legacy; } })();
+        await _famSettingSet(key, parsed);
+        localStorage.removeItem(key);  // clean up after migrating
+        if (!_appSettingsCache) _appSettingsCache = {};
+        _appSettingsCache[key] = parsed;
+        return parsed;
+      }
+    } catch {}
+    return defaultValue;
   }
+
+  // ── General settings → app_settings table ──
+  try {
+    if (sb) {
+      const { data } = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+      if (data?.value !== undefined && data?.value !== null) {
+        if (!_appSettingsCache) _appSettingsCache = {};
+        _appSettingsCache[key] = data.value;
+        return data.value;
+      }
+    }
+  } catch {}
+
   return defaultValue;
 }
 
@@ -295,10 +385,7 @@ async function getAppSetting(key, defaultValue = null) {
 // Usado pelo toggle de módulos. Persiste em: localStorage → _appSettingsCache →
 // _familyFeaturesCache → family_preferences (se disponível) → app_settings RPC/upsert.
 async function saveModuleFlag(key, value, famId) {
-  // 1. localStorage — sempre funciona, sobrevive reload
-  try { localStorage.setItem(key, String(value)); } catch(_) {}
-
-  // 2. Caches em memória — efeito imediato na sessão
+  // 1. Cache em memória — efeito imediato na sessão (sem localStorage)
   if (!window._appSettingsCache) window._appSettingsCache = {};
   window._appSettingsCache[key] = value;
   if (!window._familyFeaturesCache) window._familyFeaturesCache = {};
@@ -443,7 +530,7 @@ async function saveEmailJSConfig() {
   await saveAppSetting('ej_template', tpl);
   await saveAppSetting('ej_sched_template', stpl);
   await saveAppSetting('ej_key',      key);
-  try { localStorage.setItem('ej_sched_template', stpl); } catch {}
+  // ej_sched_template stored in family_settings via saveAppSetting
   ejCheckStatus();
   closeModal('emailjsModal');
   toast(t('toast.emailjs_saved'), 'success');

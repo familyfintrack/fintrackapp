@@ -1410,3 +1410,310 @@ window._loyConfirmPurchase = _loyConfirmPurchase;
 window.addEventListener('DOMContentLoaded', () => {
   // Will be called by accounts page navigation
 });
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LOYALTY API SETTINGS PAGE
+════════════════════════════════════════════════════════════════════════════ */
+const _LOY_API_DOCS = {
+  smiles: {
+    steps: ['Acesse <a href="https://developers.smiles.com.br" target="_blank" style="color:var(--accent)">developers.smiles.com.br</a> e crie conta de desenvolvedor','Registre uma aplicação e copie o <strong>Client ID</strong> e <strong>Client Secret</strong>','Informe o <strong>CPF</strong> cadastrado no Smiles para consulta de saldo'],
+    scope: 'Saldo de pontos e extrato',
+    note: 'API Smiles é B2B — pode requerer solicitação de acesso via contato comercial.',
+  },
+  latam_pass: {
+    steps: ['Acesse <a href="https://developer.latam.com" target="_blank" style="color:var(--accent)">developer.latam.com</a> e faça login','Registre uma aplicação e copie o <strong>Client ID</strong> e <strong>Client Secret</strong>','Informe o <strong>e-mail</strong> da conta LATAM Pass'],
+    scope: 'Consulta de milhas e extrato',
+    note: 'API LATAM requer aprovação de parceria para produção. Sandbox disponível para testes.',
+  },
+  livelo: {
+    steps: ['Acesse <a href="https://developers.livelo.com.br" target="_blank" style="color:var(--accent)">developers.livelo.com.br</a> e registre-se','Crie aplicação para obter <strong>Client ID</strong> e <strong>Client Secret</strong>','Informe o <strong>CPF</strong> cadastrado na Livelo'],
+    scope: 'Saldo de pontos, extrato e resgates',
+    note: 'Sandbox disponível. Produção requer aprovação Livelo.',
+  },
+  tudoazul: {
+    steps: ['Entre em contato com parcerias Azul via <a href="https://api.azul.com.br" target="_blank" style="color:var(--accent)">api.azul.com.br</a>','Após aprovação, obtenha <strong>Client ID</strong> e <strong>Client Secret</strong>','Informe o <strong>login</strong> (CPF ou e-mail) da conta TudoAzul'],
+    scope: 'Pontos TudoAzul e extrato de voos',
+    note: 'API exclusiva para parceiros certificados Azul.',
+  },
+};
+
+async function openLoyaltyApiSettings() {
+  // Close any existing instance
+  document.getElementById('loyApiSettingsModal')?.remove();
+
+  const programs = (_loy.programs || []).filter(p => {
+    const cat = _loyCatalog(p.program_type);
+    return cat.has_api;
+  });
+
+  // Also show catalog programs not yet registered so user knows what's available
+  const registeredTypes = new Set(programs.map(p => p.program_type));
+  const availableCatalog = LOYALTY_CATALOG.filter(c => c.has_api && !registeredTypes.has(c.type));
+
+  const _renderProgCard = (prog) => {
+    const cat = _loyCatalog(prog.program_type);
+    const cfg = prog.api_config || {};
+    const isEnabled = prog.api_enabled;
+    const lastSync = cfg.last_sync_at ? new Date(cfg.last_sync_at).toLocaleString('pt-BR') : null;
+    const lastStatus = cfg.last_sync_status;
+    const hasProxy = !!(cfg.proxy_url);
+    const hasCreds = !!(cfg.client_id && cfg.client_secret);
+    const docs = _LOY_API_DOCS[prog.program_type] || {};
+
+    const statusBadge = isEnabled && hasCreds
+      ? `<span style="font-size:.68rem;padding:2px 8px;background:#dcfce7;color:#166534;border-radius:10px;font-weight:700">🟢 Configurado</span>`
+      : `<span style="font-size:.68rem;padding:2px 8px;background:#fef9c3;color:#854d0e;border-radius:10px;font-weight:700">⚙️ Configurar</span>`;
+
+    const syncStatus = lastSync
+      ? `<div style="font-size:.72rem;margin-top:6px;padding:6px 10px;border-radius:7px;background:${lastStatus==='success'?'#f0fdf4':'#fef2f2'};color:${lastStatus==='success'?'#166534':'#991b1b'}">
+           ${lastStatus==='success'?'✅':'⚠️'} Última sincronização: ${lastSync}
+           ${cfg.last_sync_points ? ` · ${_loyFmt(cfg.last_sync_points)} pontos` : ''}
+         </div>`
+      : `<div style="font-size:.72rem;color:var(--muted);margin-top:4px">⏱ Nunca sincronizado</div>`;
+
+    const stepsHtml = (docs.steps||[]).map((s,i) =>
+      `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+        <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:.62rem;font-weight:800;display:flex;align-items:center;justify-content:center">${i+1}</span>
+        <span style="font-size:.75rem;color:var(--text2);line-height:1.5">${s}</span>
+      </div>`
+    ).join('');
+
+    const fieldLabels = {client_id:'Client ID', client_secret:'Client Secret', cpf:'CPF do titular', email:'E-mail da conta', login:'Login / CPF'};
+
+    const fieldsHtml = (cat.api_fields||['client_id','client_secret']).map(f => {
+      const isPass = f === 'client_secret';
+      const saved = cfg[f] ? (isPass ? '••••••••' : cfg[f]) : '';
+      const placeholder = {client_id:'Obtido no portal do desenvolvedor', client_secret:'Chave secreta da aplicação', cpf:'000.000.000-00', email:'email@exemplo.com', login:'CPF ou e-mail cadastrado'}[f] || '';
+      return `<div>
+        <label style="font-size:.74rem;font-weight:600;color:var(--text2)">${fieldLabels[f]||f}</label>
+        <input type="${isPass?'password':'text'}" id="loys_${prog.id}_${f}" class="form-input"
+          value="${_loyEsc(saved)}" placeholder="${placeholder}"
+          autocomplete="off" style="margin-top:3px;font-family:monospace;font-size:.8rem">
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--surface);border:1.5px solid ${isEnabled&&hasCreds?'var(--accent)':'var(--border)'};border-radius:14px;padding:16px;margin-bottom:14px" id="loyApiCard_${prog.id}">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:40px;height:40px;border-radius:11px;background:${cat.color}18;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">${prog.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.9rem;font-weight:800;color:var(--text)">${_loyEsc(prog.name)}</div>
+          <div style="font-size:.72rem;color:var(--muted)">${_loyEsc(cat.name)} · ${_loyFmt(prog.points_balance)} pontos atuais</div>
+        </div>
+        ${statusBadge}
+      </div>
+
+      <!-- Enable toggle -->
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);margin-bottom:10px">
+        <input type="checkbox" id="loys_${prog.id}_enabled" ${isEnabled?'checked':''}
+          style="accent-color:var(--accent);width:15px;height:15px">
+        <span style="font-size:.8rem;font-weight:600;color:var(--text)">Habilitar sincronização automática</span>
+      </label>
+
+      <!-- How to get credentials -->
+      <details style="margin-bottom:10px">
+        <summary style="font-size:.75rem;font-weight:700;color:var(--accent);cursor:pointer;padding:4px 0;list-style:none;display:flex;align-items:center;gap:5px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Como obter as credenciais
+        </summary>
+        <div style="margin-top:8px;padding:10px 12px;background:var(--surface2);border-radius:9px;border-left:3px solid var(--accent)">
+          ${stepsHtml}
+          ${docs.scope ? `<div style="font-size:.72rem;color:var(--muted);margin-top:6px"><strong>Escopo:</strong> ${docs.scope}</div>` : ''}
+          ${docs.note  ? `<div style="font-size:.72rem;color:#d97706;margin-top:4px;font-style:italic">⚠️ ${docs.note}</div>` : ''}
+          <a href="${cat.docs_url||cat.api_url||'#'}" target="_blank" rel="noopener"
+            style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:.73rem;font-weight:600;color:#2563eb;text-decoration:none">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+            Acessar portal do desenvolvedor
+          </a>
+        </div>
+      </details>
+
+      <!-- Credential fields -->
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+        ${fieldsHtml}
+      </div>
+
+      <!-- Proxy URL (Edge Function) -->
+      <details style="margin-bottom:10px">
+        <summary style="font-size:.73rem;font-weight:600;color:var(--muted);cursor:pointer;padding:4px 0;list-style:none">
+          ⚡ Proxy URL (Supabase Edge Function) ${hasProxy ? '✅' : '· opcional'}
+        </summary>
+        <div style="margin-top:6px">
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:5px;line-height:1.5">
+            Se a API bloquear chamadas diretas do browser (CORS), configure uma Edge Function como proxy.
+            <a href="https://supabase.com/docs/guides/functions" target="_blank" style="color:var(--accent)">Ver docs →</a>
+          </div>
+          <input type="url" id="loys_${prog.id}_proxy_url" class="form-input"
+            value="${_loyEsc(cfg.proxy_url||'')}"
+            placeholder="https://xxxx.supabase.co/functions/v1/loyalty-sync"
+            style="font-family:monospace;font-size:.75rem">
+        </div>
+      </details>
+
+      ${syncStatus}
+
+      <!-- Actions -->
+      <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="_loyApiSettingsSave('${prog.id}')"
+          style="flex:1;min-width:120px">💾 Salvar</button>
+        <button class="btn btn-ghost btn-sm" id="loys_sync_${prog.id}"
+          onclick="_loyApiSettingsSync('${prog.id}')"
+          style="display:flex;align-items:center;gap:5px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Sincronizar agora
+        </button>
+      </div>
+      <div id="loys_msg_${prog.id}" style="display:none;margin-top:6px;font-size:.73rem;padding:7px 10px;border-radius:7px;border:1px solid var(--border)"></div>
+
+    </div>`;
+  };
+
+  const unavailableHtml = availableCatalog.length
+    ? `<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:10px">PROGRAMAS SEM API PÚBLICA</div>
+        ${availableCatalog.map(c => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:1.1rem">${c.icon}</span>
+            <div style="flex:1">
+              <div style="font-size:.8rem;font-weight:600;color:var(--text)">${c.name}</div>
+              <div style="font-size:.7rem;color:var(--muted)">${c.note}</div>
+            </div>
+          </div>`).join('')}
+       </div>`
+    : '';
+
+  const html = `
+  <div class="modal-overlay open" id="loyApiSettingsModal" onclick="if(event.target===this)document.getElementById('loyApiSettingsModal')?.remove()">
+    <div class="modal" style="max-width:620px;max-height:90dvh;overflow-y:auto">
+      <div class="modal-handle"></div>
+      <div class="modal-header" style="position:sticky;top:0;background:var(--surface);z-index:10">
+        <div style="display:flex;align-items:center;gap:10px;flex:1">
+          <div style="width:34px;height:34px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <div>
+            <div style="font-size:.95rem;font-weight:800">Configurações de API</div>
+            <div style="font-size:.73rem;color:var(--muted)">Programas de Fidelidade — sincronização automática</div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('loyApiSettingsModal')?.remove()">✕</button>
+      </div>
+      <div class="modal-body">
+
+        ${programs.length === 0
+          ? `<div style="text-align:center;padding:32px 20px;color:var(--muted)">
+               <div style="font-size:2.5rem;margin-bottom:12px">🔌</div>
+               <div style="font-weight:700;font-size:.9rem;margin-bottom:6px">Nenhum programa com API disponível cadastrado</div>
+               <div style="font-size:.8rem">Cadastre um programa Smiles, LATAM Pass, Livelo ou TudoAzul para configurar a integração.</div>
+             </div>`
+          : programs.map(_renderProgCard).join('')
+        }
+
+        ${unavailableHtml}
+
+        <!-- How proxy works info -->
+        <div style="margin-top:16px;padding:12px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:.75rem;font-weight:700;color:var(--text2);margin-bottom:6px">💡 Como funciona a sincronização</div>
+          <div style="font-size:.72rem;color:var(--muted);line-height:1.6">
+            O app tenta conectar diretamente à API do programa usando OAuth 2.0. Se o browser bloquear por CORS,
+            configure uma <strong>Supabase Edge Function</strong> como proxy — ela recebe a requisição do app
+            e chama a API de forma segura pelo servidor.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.openLoyaltyApiSettings = openLoyaltyApiSettings;
+
+// Save credentials from the settings page
+async function _loyApiSettingsSave(progId) {
+  const prog = _loyProgram(progId);
+  if (!prog) return;
+  const cat = _loyCatalog(prog.program_type);
+
+  const enabled = document.getElementById(`loys_${progId}_enabled`)?.checked ?? false;
+  const existing = prog.api_config || {};
+  const newCfg = { ...existing };
+
+  (cat.api_fields || ['client_id','client_secret']).forEach(f => {
+    const val = document.getElementById(`loys_${progId}_${f}`)?.value?.trim() || '';
+    if (val && val !== '••••••••') newCfg[f] = val;
+  });
+
+  const proxyUrl = document.getElementById(`loys_${progId}_proxy_url`)?.value?.trim();
+  if (proxyUrl) newCfg.proxy_url = proxyUrl;
+  else delete newCfg.proxy_url;
+
+  const msgEl = document.getElementById(`loys_msg_${progId}`);
+  const _msg = (text, ok) => {
+    if (!msgEl) return;
+    msgEl.style.display = '';
+    msgEl.style.background = ok ? '#f0fdf4' : '#fef2f2';
+    msgEl.style.color = ok ? '#166534' : '#991b1b';
+    msgEl.textContent = text;
+  };
+
+  try {
+    const { error } = await sb.from('loyalty_programs')
+      .update({ api_enabled: enabled, api_config: newCfg, updated_at: new Date().toISOString() })
+      .eq('id', progId);
+    if (error) throw error;
+
+    const local = _loyProgram(progId);
+    if (local) { local.api_enabled = enabled; local.api_config = newCfg; }
+
+    // Update card border
+    const card = document.getElementById(`loyApiCard_${progId}`);
+    if (card) card.style.borderColor = enabled && newCfg.client_id ? 'var(--accent)' : 'var(--border)';
+
+    _msg('✅ Configuração salva com sucesso!', true);
+    _loyToast('✅ Credenciais de API salvas!', 'success');
+    renderLoyaltySection();
+    if (typeof renderAccounts === 'function') renderAccounts();
+  } catch(e) {
+    _msg('Erro: ' + e.message, false);
+  }
+}
+window._loyApiSettingsSave = _loyApiSettingsSave;
+
+// Sync from settings page
+async function _loyApiSettingsSync(progId) {
+  const btn   = document.getElementById(`loys_sync_${progId}`);
+  const msgEl = document.getElementById(`loys_msg_${progId}`);
+
+  const _msg = (text, ok) => {
+    if (!msgEl) return;
+    msgEl.style.display = '';
+    msgEl.style.background = ok ? '#f0fdf4' : '#fef2f2';
+    msgEl.style.color = ok ? '#166534' : '#991b1b';
+    msgEl.textContent = text;
+  };
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sincronizando…'; }
+  _msg('🔄 Conectando à API…', true);
+
+  // Delegate to existing _loyApiSync which handles OAuth + balance update
+  await _loyApiSync(progId);
+
+  // Refresh status display after sync
+  const prog = _loyProgram(progId);
+  if (prog) {
+    const cfg = prog.api_config || {};
+    const ok = cfg.last_sync_status === 'success';
+    const pts = cfg.last_sync_points ? _loyFmt(cfg.last_sync_points) + ' pontos' : '';
+    const when = cfg.last_sync_at ? new Date(cfg.last_sync_at).toLocaleString('pt-BR') : '';
+    _msg(ok ? `✅ ${pts} — ${when}` : `⚠️ ${cfg.last_sync_error || 'Erro na sincronização'}`, ok);
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Sincronizar novamente';
+  }
+}
+window._loyApiSettingsSync = _loyApiSettingsSync;
+

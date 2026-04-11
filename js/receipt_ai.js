@@ -54,19 +54,19 @@ async function showAiConfig() {
   // Pre-select configured model
   const modelSel = document.getElementById('geminiModelSelect');
   if (modelSel) {
-    // If model in list — select it; otherwise add as custom option
     const opt = Array.from(modelSel.options).find(o => o.value === model);
-    if (opt) {
-      modelSel.value = model;
-    } else if (model) {
-      const custom = new Option(model + ' (personalizado)', model);
-      modelSel.add(custom);
-      modelSel.value = model;
-    }
+    if (opt) { modelSel.value = model; }
+    else if (model) { const c = new Option(model+' (personalizado)',model); modelSel.add(c); modelSel.value=model; }
   }
+  // Load n8n settings
+  const n8nUrl = await getAppSetting('agent_n8n_webhook_url', '');
+  const n8nKey = await getAppSetting('agent_n8n_secret_key', '');
+  const urlEl = document.getElementById('agentN8nWebhookUrl');
+  const keyEl = document.getElementById('agentN8nSecretKey');
+  if (urlEl) urlEl.value = n8nUrl || '';
+  if (keyEl) keyEl.value = n8nKey || '';
   openModal('aiConfigModal');
 }
-
 async function saveAiConfig() {
   const inp      = document.getElementById('anthropicApiKeyInput');
   const modelSel = document.getElementById('geminiModelSelect');
@@ -79,6 +79,11 @@ async function saveAiConfig() {
   }
   await saveAppSetting(RECEIPT_AI_KEY_SETTING, key);
   await saveAppSetting(GEMINI_MODEL_SETTING, model);
+  // Save n8n settings
+  const n8nUrl = (document.getElementById('agentN8nWebhookUrl')?.value || '').trim();
+  const n8nKey = (document.getElementById('agentN8nSecretKey')?.value || '').trim();
+  await saveAppSetting('agent_n8n_webhook_url', n8nUrl);
+  await saveAppSetting('agent_n8n_secret_key',  n8nKey);
   // Update cache immediately so all modules pick up the new model at once
   if (!window._appSettingsCache) window._appSettingsCache = {};
   window._appSettingsCache[GEMINI_MODEL_SETTING] = model;

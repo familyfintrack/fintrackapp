@@ -433,6 +433,67 @@ async function _agGetContext() {
   _ag.ctxTs = Date.now();
   return _ag.ctx;
 }
+/* ════════════════════════════════════════════════════════════════════════════
+   n8n PROXY — processa mensagem via webhook n8n em vez do Gemini direto
+   O n8n recebe: { message, family_id, session_id, user_id, today }
+   O n8n retorna: { ok, text, tool_executed?, tool_result?, error? }
+════════════════════════════════════════════════════════════════════════════ */
+async function _agProcessViaProxy(userText, webhookUrl) {
+  const fid     = typeof famId === 'function' ? famId() : null;
+  const userId  = currentUser?.app_user_id || currentUser?.id || null;
+  const n8nKey  = await getAppSetting('agent_n8n_secret_key', '').catch(() => '');
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (n8nKey) headers['x-fintrack-key'] = String(n8nKey);
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        message:    userText,
+        family_id:  fid,
+        session_id: _ag._n8nSession || (_ag._n8nSession = crypto.randomUUID()),
+        user_id:    userId,
+        today:      new Date().toISOString().slice(0, 10),
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => `HTTP ${res.status}`);
+      throw new Error(`n8n respondeu com erro ${res.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      throw new Error(data.error || 'Resposta inválida do n8n');
+    }
+
+    // Show tool execution feedback if reported by n8n
+    if (data.tool_executed) {
+      _agAppendToolCall(data.tool_executed, data.tool_args || {});
+    }
+
+    _agAppendBot(data.text || '(sem resposta)');
+
+    // Refresh dashboard data if n8n created/modified transactions
+    if (data.tool_executed && data.tool_executed.includes('transaction')) {
+      _agInvalidateCtx();
+      setTimeout(() => {
+        if (typeof loadTransactions === 'function') loadTransactions(true).catch(() => {});
+        if (typeof loadDashboard    === 'function') loadDashboard().catch(() => {});
+      }, 500);
+    }
+
+  } catch(err) {
+    console.error('[Agent n8n]', err);
+    _agAppendBot(`❌ Erro ao conectar ao n8n: ${err.message}\n\n_Verifique a URL do webhook em Configurações → IA._`);
+  } finally {
+    _agSetLoading(false);
+  }
+}
+
 function _agCtxEmpty() {
   return { today:new Date().toISOString().slice(0,10), familyId:null, monthName:'', currentPage:'dashboard', accounts:[], categories:[], payees:[], scheduled:[], debts:[], budgets:[], snapshot:{totalSaldoFmt:'R$0',totalSaldo:0,debtTotalFmt:'R$0',debtTotal:0,patrimonioFmt:'R$0',incomeMonthFmt:'R$0',expenseMonthFmt:'R$0',balanceMonthFmt:'R$0',topCats:[],txCount:0,upcomingCount:0,upcomingDesc:[]} };
 }
@@ -752,12 +813,26 @@ async function _agExecTool(name, args, ctx) {
    PROCESSAMENTO DA MENSAGEM
 ════════════════════════════════════════════════════════════════════════════ */
 async function _agProcess(userText) {
-  if (!_ag.apiKey) {
-    _agAppendBot('⚙️ Configure sua **chave Gemini** em Configurações → IA para usar o agente.');
-    return;
-  }
   _agSetLoading(true);
   _agAppendUser(userText);
+
+  // ── n8n proxy mode ────────────────────────────────────────────────────────
+  // If an n8n webhook URL is configured in Settings → IA, route through n8n.
+  // n8n handles context building, Gemini call, tool execution and history.
+  try {
+    const n8nUrl = await getAppSetting('agent_n8n_webhook_url', '');
+    if (n8nUrl && String(n8nUrl).startsWith('http')) {
+      await _agProcessViaProxy(userText, String(n8nUrl));
+      return;
+    }
+  } catch(_) {}
+  // ── fallback: direct Gemini ───────────────────────────────────────────────
+
+  if (!_ag.apiKey) {
+    _agAppendBot('⚙️ Configure sua **chave Gemini** em Configurações → IA para usar o agente.');
+    _agSetLoading(false);
+    return;
+  }
 
   try {
     const ctx = await _agGetContext();

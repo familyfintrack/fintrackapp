@@ -435,9 +435,20 @@ async function loadDashboard(){
                ${fmt(_confBal, a.currency)}
              </div>`
           : '';
-        // Loyalty points badge — discrete inline badge for dashboard fav card
-        const _loyaltyBadge = (typeof getLoyaltyBadgeDash === 'function')
-          ? getLoyaltyBadgeDash(a.id) : '';
+        // Loyalty points — compact number shown LEFT of add button
+        // Respects show_in_dash_fav flag. Returns points number only (no icon).
+        const _loyProg = (typeof getLoyaltyBadgeProgId === 'function') && getLoyaltyBadgeProgId(a.id);
+        const _loyPts  = _loyProg
+          ? (() => {
+              const p = (window._loy?.programs||[]).find(x => x.id === _loyProg);
+              if (!p) return '';
+              const n = p.points_balance || 0;
+              // Compact format: 9.999.999 → "9,9M"  999.999 → "999k"  9.999 → "9.999"
+              if (n >= 1000000) return (n/1000000).toFixed(1).replace('.',',') + 'M';
+              if (n >= 100000)  return Math.round(n/1000) + 'k';
+              return n.toLocaleString('pt-BR');
+            })()
+          : '';
 
         return `<div class="dash-fav-card" onclick="goToAccountTransactions('${a.id}')"
           style="--card-clr:${_cardColor}">
@@ -451,12 +462,12 @@ async function loadDashboard(){
           ${_brlLine}
           <div class="dash-fav-card__spacer"></div>
           <div class="dash-fav-card__actions" onclick="event.stopPropagation()">
+            ${_loyPts ? `<span class="dash-fav-pts" onclick="(function(){const p=typeof getLoyaltyBadgeProgId==='function'&&getLoyaltyBadgeProgId('${a.id}');if(p&&typeof openLoyaltyStatement==='function')openLoyaltyStatement(p);})()" title="Pontos de fidelidade — ver extrato">${_loyPts}</span>` : ''}
             <button class="dash-fav-card__btn dash-fav-card__btn--add"
               onclick="_dashFavAddTx('${a.id}')"
               title="Nova transação nesta conta">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
-            ${_loyaltyBadge ? `<button class="dash-fav-card__btn" style="padding:3px 8px;border-radius:20px;gap:3px;opacity:.75;max-width:82px;overflow:hidden;flex-shrink:0;font-size:.65rem;display:flex;align-items:center;justify-content:center;" onclick="event.stopPropagation();(function(){const p=typeof getLoyaltyBadgeProgId==='function'&&getLoyaltyBadgeProgId('${a.id}');if(p)openLoyaltyStatement(p);})()" title="Pontos de fidelidade — ver extrato">${_loyaltyBadge}</button>` : ''}
             <button class="dash-fav-card__btn"
               onclick="_openFavAccountModal('${a.id}')"
               title="Informações da conta">
@@ -609,6 +620,7 @@ async function loadDashboard(){
   await Promise.all([
     renderCashflowChart(_dashMemberIds).catch(e => console.warn('[dashboard] cashflow:', e?.message)),
     renderCategoryChart().catch(e => console.warn('[dashboard] categoryChart:', e?.message)),
+    renderDashCCInvoices().catch(e => console.warn('[dashboard] ccInvoices:', e?.message)),
   ]);
 }
 async function renderCashflowChart(memberIds = null){
@@ -1152,6 +1164,7 @@ const _DASH_CARDS = [
   { id: 'charts',       label: 'Fluxo de Caixa e Gráficos', icon: '📊', sub: 'Cashflow 6 meses + gráfico de despesas',    el: 'dashCardCharts'       },
   { id: 'favcats',      label: 'Categorias Favoritas',      icon: '⭐', sub: 'Evolução das categorias marcadas',          el: 'dashCardFavCats'      },
   { id: 'upcoming',     label: 'Próximas Transações',       icon: '📆', sub: 'Programadas para os próximos 10 dias',      el: 'dashCardUpcoming'     },
+  { id: 'ccinvoices',   label: 'Próximas Faturas',          icon: '💳', sub: 'Próximo pagamento de cada cartão',          el: 'dashCardCCInvoices',  optional: true },
   { id: 'forecast90',   label: 'Previsão 90 dias',          icon: '📈', sub: 'Projeção de saldo para os próximos 90 dias',el: 'dashCardForecast90'   },
   { id: 'recent',       label: 'Últimas Transações',        icon: '🧾', sub: 'Histórico recente de lançamentos',          el: 'dashCardRecent'       },
   { id: 'budgets',      label: 'Orçamentos do Mês',         icon: '🎯', sub: 'Progresso dos orçamentos mensais',          el: 'dashCardBudgets',     optional: true },
@@ -1169,10 +1182,14 @@ function _dashGetPrefs() {
     try { localStorage.setItem(key, JSON.stringify(cached)); } catch {}
     return cached;
   }
-  // 2. Fallback: localStorage
+  // 2. Fallback: localStorage (inject defaults for newly added optional cards)
   try {
     const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      _DASH_CARDS.forEach(c => { if (!(c.id in saved)) saved[c.id] = !c.optional; });
+      return saved;
+    }
   } catch (_e) {}
   return Object.fromEntries(_DASH_CARDS.map(c => [c.id, !c.optional]));
 }
@@ -1197,8 +1214,13 @@ async function _syncDashPrefsFromServer() {
       .select('value').eq('key', key).maybeSingle();
     if (error) { console.warn('[dashPrefs] sync error:', error.message); return; }
     if (data?.value && typeof data.value === 'object') {
-      _dashSavePrefs(data.value);
-      _dashApplyPrefs(data.value);
+      // Inject defaults for optional cards added after the user's prefs were saved
+      const merged = Object.assign({}, data.value);
+      _DASH_CARDS.forEach(c => {
+        if (!(c.id in merged)) merged[c.id] = !c.optional; // new card: default = !optional
+      });
+      _dashSavePrefs(merged);
+      _dashApplyPrefs(merged);
       _renderDashFavCategories(_lastDashIncome, _lastDashExpense);
     }
   } catch (e) { console.warn('[dashPrefs] sync exception:', e.message); }
@@ -4609,3 +4631,133 @@ window._setDashCatMode  = _setDashCatMode;
 window.loadDashboard                       = loadDashboard;
 window.loadDashboardRecent                 = loadDashboardRecent;
 window.openDashCustomModal                 = openDashCustomModal;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DASHBOARD — Card de Próximas Faturas de Cartão de Crédito
+   Mostra o próximo pagamento programado (tipo card_payment) de cada cartão.
+════════════════════════════════════════════════════════════════════════════ */
+
+async function renderDashCCInvoices() {
+  const card   = document.getElementById('dashCardCCInvoices');
+  const totalEl = document.getElementById('dashCCTotal');
+  const detailEl = document.getElementById('dashCCDetail');
+  if (!card) return;
+
+  // Respect dashboard prefs — card starts hidden, shown as optional
+  const prefs = _dashGetPrefs();
+  if (prefs.ccinvoices === false) { card.style.display = 'none'; return; }
+
+  if (!state.scheduled?.length && typeof loadScheduled === 'function') {
+    try { await loadScheduled(); } catch(_) {}
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Find all active card_payment scheduled transactions
+  const cardPayments = (state.scheduled || []).filter(sc =>
+    sc.type === 'card_payment' && sc.status !== 'paused' && sc.status !== 'finished'
+  );
+
+  if (!cardPayments.length) { card.style.display = 'none'; return; }
+
+  // For each, find the NEXT occurrence only
+  const entries = [];
+  cardPayments.forEach(sc => {
+    // Check already-executed dates to skip them
+    const executedDates = new Set(
+      (sc.occurrences || [])
+        .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing')
+        .map(o => o.scheduled_date)
+    );
+    const skippedDates = new Set(
+      (sc.occurrences || [])
+        .filter(o => o.execution_status === 'skipped')
+        .map(o => o.scheduled_date)
+    );
+
+    if (typeof generateOccurrences !== 'function') return;
+    const occs = generateOccurrences(sc, 12); // next 12 occurrences
+
+    // Find first upcoming date
+    const nextDate = occs.find(d => d >= today && !executedDates.has(d) && !skippedDates.has(d));
+    if (!nextDate) return;
+
+    // Account names
+    const fromAcc = (state.accounts || []).find(a => a.id === sc.account_id);
+    const toAcc   = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
+
+    entries.push({
+      sc,
+      id:          sc.id,
+      description: sc.description || (toAcc ? `Fatura ${toAcc.name}` : 'Pagamento cartão'),
+      amount:      Math.abs(parseFloat(sc.amount) || 0),
+      date:        nextDate,
+      fromAcc:     fromAcc?.name || '—',
+      toAcc:       toAcc?.name   || '—',
+    });
+  });
+
+  if (!entries.length) { card.style.display = 'none'; return; }
+
+  // Sort by date ascending
+  entries.sort((a, b) => a.date.localeCompare(b.date));
+
+  const grandTotal = entries.reduce((s, e) => s + e.amount, 0);
+
+  // Update total in header
+  if (totalEl) totalEl.textContent = fmt ? '-' + fmt(grandTotal) : '-R$' + grandTotal.toFixed(2);
+  card.style.display = '';
+
+  // Build detail rows
+  const MON = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const _fmtDate = (d) => {
+    const dt = new Date(d + 'T12:00:00');
+    return `${dt.getDate()} ${MON[dt.getMonth()]}`;
+  };
+
+  const rows = entries.map(e => {
+    const isOverdue = e.date < today;
+    const daysUntil = Math.round((new Date(e.date + 'T12:00:00') - new Date()) / 86400000);
+    const urgency   = daysUntil <= 3 ? '#dc2626' : daysUntil <= 7 ? '#d97706' : 'var(--text2)';
+    const daysLabel = isOverdue ? 'vencido'
+                    : daysUntil === 0 ? 'hoje'
+                    : daysUntil === 1 ? 'amanhã'
+                    : `${daysUntil}d`;
+    return `<div onclick="navigate('scheduled')"
+      style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
+      onmouseover="this.style.background='var(--surface2)'"
+      onmouseout="this.style.background=''">
+      <div style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:rgba(220,38,38,.08);display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <span style="font-size:.58rem;font-weight:700;color:#dc2626;text-transform:uppercase;line-height:1">${MON[new Date(e.date+'T12:00:00').getMonth()]}</span>
+        <span style="font-size:.82rem;font-weight:800;color:#dc2626;line-height:1">${new Date(e.date+'T12:00:00').getDate()}</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc ? esc(e.description) : e.description}</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:1px">${esc ? esc(e.fromAcc) : e.fromAcc}${e.toAcc !== '—' ? ' → ' + (esc ? esc(e.toAcc) : e.toAcc) : ''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.85rem;font-weight:800;color:#dc2626">-${fmt ? fmt(e.amount) : 'R$'+e.amount.toFixed(2)}</div>
+        <div style="font-size:.65rem;font-weight:600;color:${urgency}">${daysLabel}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const footerRow = `<div onclick="navigate('scheduled')"
+    style="display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:7px 14px;cursor:pointer;background:var(--surface2)">
+    <span style="font-size:.7rem;color:var(--accent);font-weight:600">Ver programados →</span>
+  </div>`;
+
+  if (detailEl) detailEl.innerHTML = rows + footerRow;
+}
+
+// Toggle detail open/close
+window._dashCCToggleDetail = function() {
+  const detailEl  = document.getElementById('dashCCDetail');
+  const chevronEl = document.getElementById('dashCCChevron');
+  if (!detailEl) return;
+  const isOpen = detailEl.style.display !== 'none';
+  detailEl.style.display = isOpen ? 'none' : '';
+  if (chevronEl) chevronEl.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+};
+
+window.renderDashCCInvoices = renderDashCCInvoices;
