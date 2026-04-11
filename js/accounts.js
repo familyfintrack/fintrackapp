@@ -103,11 +103,18 @@ async function saveConsolidation() {
 }
 
 
-function renderAccounts(ft=''){
+async function renderAccounts(ft=''){
   _accountsViewMode=ft;
   const grid=document.getElementById('accountGrid');
   if(!grid) return;
   state.groups = state.groups || [];
+
+  // ── Garantir que programas de fidelidade estão carregados ANTES de renderizar ──
+  // getLoyaltyBadgeHtml lê de _loy.programs — se vazio, badges não aparecem
+  if (typeof loadLoyaltyPrograms === 'function' && !window._loy?.loaded) {
+    await loadLoyaltyPrograms().catch(() => {});
+  }
+
   let accs=state.accounts || [];
   if(ft==='__group__'){
     if(!state.groups.length){ renderAccountsFlat(accs,grid); return; }
@@ -127,7 +134,7 @@ function renderAccounts(ft=''){
   // Sync active tab to current view mode
   _syncAccountsTab(ft);
   try { renderGroupManager(); } catch(e) {}
-  // Render loyalty programs section
+  // Render loyalty programs section (já carregado acima, só renderiza a seção)
   if (typeof renderLoyaltySection === 'function') renderLoyaltySection().catch(()=>{});
 }
 

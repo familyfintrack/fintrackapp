@@ -233,6 +233,10 @@ function _loyCard(p) {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Extrato
       </button>
+      <button class="loyalty-action-btn" onclick="openLoyaltyTxModal('${p.id}')" title="Registrar movimentação de pontos" style="color:var(--accent);border-color:rgba(42,96,73,.25)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Lançar
+      </button>
       <button class="loyalty-action-btn" onclick="openLoyaltyConvert('${p.id}')" title="Converter pontos em crédito">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
         Converter
@@ -1032,6 +1036,7 @@ async function openLoyaltyStatement(id) {
         <div id="loyStmtBody"><div style="text-align:center;padding:32px;color:var(--muted)">⏳ Carregando…</div></div>
       </div>
       <div class="modal-footer">
+        <button class="btn btn-primary btn-sm" onclick="openLoyaltyTxModal('${id}');closeModal('loyaltyStatementModal')">➕ Lançar</button>
         <button class="btn btn-ghost btn-sm" onclick="updateLoyaltyPoints('${id}');closeModal('loyaltyStatementModal')">🔄 Atualizar</button>
         <button class="btn btn-ghost btn-sm" onclick="openLoyaltyConvert('${id}');closeModal('loyaltyStatementModal')">↔ Converter</button>
         <button class="btn btn-ghost btn-sm" onclick="closeModal('loyaltyStatementModal')">Fechar</button>
@@ -1321,6 +1326,210 @@ function openLoyaltyPurchase(id) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 window.openLoyaltyPurchase = openLoyaltyPurchase;
+/* ── Modal: registrar movimentação de pontos (uso, acúmulo, ajuste) ────────── */
+function openLoyaltyTxModal(id) {
+  const p   = _loyProgram(id);
+  if (!p) return;
+  const cat   = _loyCatalog(p.program_type);
+  const color = p.color || cat.color;
+  const today = new Date().toISOString().slice(0, 10);
+
+  document.getElementById('loyaltyTxModal')?.remove();
+
+  const html = `
+  <div class="modal-overlay open" id="loyaltyTxModal"
+    onclick="if(event.target===this)closeModal('loyaltyTxModal')">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">${p.icon} Lançar pontos — ${_loyEsc(p.name)}</span>
+        <button class="modal-close" onclick="closeModal('loyaltyTxModal')">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Saldo atual -->
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          padding:10px 14px;border-radius:10px;background:${color}12;border:1px solid ${color}28">
+          <span style="font-size:.76rem;color:var(--muted);font-weight:600">Saldo atual</span>
+          <span style="font-size:1rem;font-weight:800;color:${color}">${_loyFmt(p.points_balance)} pts</span>
+        </div>
+
+        <!-- Tipo -->
+        <div class="form-group" style="margin:0">
+          <label>Tipo de movimentação</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="loyTxTypeGrid">
+            <button type="button" class="loy-tx-type-btn active" data-type="redeem"
+              onclick="_loyTxSelectType('redeem')"
+              style="display:flex;flex-direction:column;align-items:center;gap:4px;
+                padding:10px 6px;border-radius:10px;border:2px solid #dc2626;
+                background:rgba(220,38,38,.08);cursor:pointer;font-family:inherit">
+              <span style="font-size:1.2rem">✈️</span>
+              <span style="font-size:.72rem;font-weight:700;color:#dc2626">Uso / Resgate</span>
+              <span style="font-size:.62rem;color:var(--muted)">subtrai pontos</span>
+            </button>
+            <button type="button" class="loy-tx-type-btn" data-type="earn"
+              onclick="_loyTxSelectType('earn')"
+              style="display:flex;flex-direction:column;align-items:center;gap:4px;
+                padding:10px 6px;border-radius:10px;border:2px solid var(--border);
+                background:var(--surface2);cursor:pointer;font-family:inherit">
+              <span style="font-size:1.2rem">⭐</span>
+              <span style="font-size:.72rem;font-weight:700;color:#16a34a">Acúmulo</span>
+              <span style="font-size:.62rem;color:var(--muted)">adiciona pontos</span>
+            </button>
+            <button type="button" class="loy-tx-type-btn" data-type="adjust"
+              onclick="_loyTxSelectType('adjust')"
+              style="display:flex;flex-direction:column;align-items:center;gap:4px;
+                padding:10px 6px;border-radius:10px;border:2px solid var(--border);
+                background:var(--surface2);cursor:pointer;font-family:inherit">
+              <span style="font-size:1.2rem">⚖️</span>
+              <span style="font-size:.72rem;font-weight:700;color:#d97706">Ajuste</span>
+              <span style="font-size:.62rem;color:var(--muted)">±livre</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quantidade de pontos -->
+        <div class="form-group" style="margin:0">
+          <label>Quantidade de pontos</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="loyTxSignBadge" style="flex-shrink:0;padding:6px 12px;border-radius:8px;
+              font-size:.8rem;font-weight:800;background:rgba(220,38,38,.1);color:#dc2626;
+              border:1.5px solid rgba(220,38,38,.25)">−</div>
+            <input type="number" id="loyTxPoints" min="1" step="1" placeholder="Ex: 5000"
+              style="flex:1;font-size:1rem;font-weight:700;font-family:var(--font-serif)"
+              oninput="_loyTxPreview()" onchange="_loyTxPreview()">
+          </div>
+          <div id="loyTxPreview" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
+        </div>
+
+        <!-- Descrição -->
+        <div class="form-group" style="margin:0">
+          <label>Descrição</label>
+          <input type="text" id="loyTxDesc" placeholder="Ex: Passagem São Paulo–Lisboa, Upgrade de assento…"
+            maxlength="120" autocomplete="off">
+        </div>
+
+        <!-- Data -->
+        <div class="form-group" style="margin:0">
+          <label>Data</label>
+          <input type="date" id="loyTxDate" value="${today}">
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('loyaltyTxModal')">Cancelar</button>
+        <button class="btn btn-primary" id="loyTxSaveBtn"
+          onclick="saveLoyaltyTx('${id}')">💾 Salvar</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.openLoyaltyTxModal = openLoyaltyTxModal;
+
+/* tipo selecionado via botões de card */
+let _loyTxType = 'redeem';
+function _loyTxSelectType(type) {
+  _loyTxType = type;
+  document.querySelectorAll('.loy-tx-type-btn').forEach(btn => {
+    const t    = btn.dataset.type;
+    const cols = { redeem:'#dc2626', earn:'#16a34a', adjust:'#d97706' };
+    const active = t === type;
+    btn.style.borderColor = active ? cols[t] : 'var(--border)';
+    btn.style.background  = active ? `rgba(${t==='redeem'?'220,38,38':t==='earn'?'22,163,74':'217,119,6'},.08)` : 'var(--surface2)';
+    btn.querySelector('span:nth-child(2)').style.color = active ? cols[t] : 'var(--text2)';
+  });
+  // Update sign badge
+  const badge = document.getElementById('loyTxSignBadge');
+  if (badge) {
+    if (type === 'redeem') {
+      badge.textContent = '−';
+      badge.style.background = 'rgba(220,38,38,.1)'; badge.style.color = '#dc2626'; badge.style.borderColor = 'rgba(220,38,38,.25)';
+    } else if (type === 'earn') {
+      badge.textContent = '+';
+      badge.style.background = 'rgba(22,163,74,.1)'; badge.style.color = '#16a34a'; badge.style.borderColor = 'rgba(22,163,74,.25)';
+    } else {
+      badge.textContent = '±';
+      badge.style.background = 'rgba(217,119,6,.1)'; badge.style.color = '#d97706'; badge.style.borderColor = 'rgba(217,119,6,.25)';
+    }
+  }
+  _loyTxPreview();
+}
+window._loyTxSelectType = _loyTxSelectType;
+
+function _loyTxPreview() {
+  const pts  = parseInt(document.getElementById('loyTxPoints')?.value || 0, 10);
+  const el   = document.getElementById('loyTxPreview');
+  if (!el || !pts) { if (el) el.textContent = ''; return; }
+  const sign = _loyTxType === 'earn' ? +pts : _loyTxType === 'redeem' ? -pts : pts;
+  const id   = document.querySelector('[id="loyTxSaveBtn"]')?.closest('.modal-overlay')
+    ?.querySelector('[onclick*="saveLoyaltyTx"]')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+  const prog = id ? _loyProgram(id) : null;
+  const newBal = prog ? (Number(prog.points_balance) + sign) : null;
+  const col = sign >= 0 ? '#16a34a' : '#dc2626';
+  el.innerHTML = `<span style="color:${col};font-weight:700">${sign > 0 ? '+' : ''}${_loyFmt(sign)} pts</span>`
+    + (newBal !== null ? ` → saldo: <strong>${_loyFmt(newBal)} pts</strong>` : '');
+}
+window._loyTxPreview = _loyTxPreview;
+
+async function saveLoyaltyTx(id) {
+  const p    = _loyProgram(id);
+  if (!p) return;
+  const btn  = document.getElementById('loyTxSaveBtn');
+  const pts  = parseInt(document.getElementById('loyTxPoints')?.value || 0, 10);
+  const desc = (document.getElementById('loyTxDesc')?.value || '').trim();
+  const date = document.getElementById('loyTxDate')?.value || new Date().toISOString().slice(0, 10);
+
+  if (!pts || pts <= 0) { _loyToast('Informe a quantidade de pontos.', 'error'); return; }
+  if (!desc)            { _loyToast('Informe uma descrição.', 'error'); return; }
+
+  // Signal: earn = positive, redeem = negative, adjust = raw (can be negative if user types with -)
+  const signedPts = _loyTxType === 'earn' ? Math.abs(pts)
+    : _loyTxType === 'redeem' ? -Math.abs(pts)
+    : pts; // adjust: user decides direction via sign
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  try {
+    const fid = _loyFamId();
+    // Insert loyalty_transaction
+    const { error: txErr } = await sb.from('loyalty_transactions').insert({
+      family_id:  fid,
+      program_id: id,
+      type:       _loyTxType,
+      points:     signedPts,
+      description: desc,
+      date,
+    });
+    if (txErr) throw txErr;
+
+    // Update points_balance on loyalty_programs
+    const newBalance = Number(p.points_balance) + signedPts;
+    const { error: upErr } = await sb.from('loyalty_programs')
+      .update({ points_balance: newBalance, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (upErr) throw upErr;
+
+    // Update local state
+    p.points_balance = newBalance;
+
+    closeModal('loyaltyTxModal');
+    _loyToast(`✅ ${signedPts > 0 ? '+' : ''}${_loyFmt(signedPts)} pontos registrados!`, 'success');
+
+    // Refresh section
+    if (typeof renderLoyaltySection === 'function') renderLoyaltySection().catch(() => {});
+    if (typeof renderAccounts === 'function') renderAccounts().catch(() => {});
+
+  } catch(e) {
+    _loyToast('Erro ao salvar: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar'; }
+  }
+}
+window.saveLoyaltyTx = saveLoyaltyTx;
+
+
 
 function _loyBuyPreview() {
   const pts  = parseInt(document.getElementById('loyBuyPoints')?.value || 0, 10);

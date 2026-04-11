@@ -4463,13 +4463,7 @@ async function _loadDashTopPayeesCard(period) {
         </div>
       </div>`;
 
-    const verRelatorioLink = `<div style="padding:6px 14px 10px;text-align:right">
-      <button onclick="navigate('payees');setTimeout(()=>typeof setPayeesTab==='function'&&setPayeesTab('report'),300)"
-        style="background:none;border:none;cursor:pointer;font-size:.74rem;font-weight:600;color:var(--accent);font-family:inherit;padding:0;transition:opacity .15s"
-        onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
-        Ver relatório completo →
-      </button>
-    </div>`;
+    const verRelatorioLink = '';
     body.innerHTML = kpi + switchHtml +
       `<div style="padding:12px 14px 10px">${gridLayout}</div>` + verRelatorioLink;
 
@@ -4681,16 +4675,25 @@ async function renderDashCCInvoices() {
     const nextDate = occs.find(d => d >= today && !executedDates.has(d) && !skippedDates.has(d));
     if (!nextDate) return;
 
-    const fromAcc = (state.accounts || []).find(a => a.id === sc.account_id);
-    const toAcc   = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
-    const amount  = Math.abs(parseFloat(sc.amount) || 0);
+    const fromAcc  = (state.accounts || []).find(a => a.id === sc.account_id);
+    const toAcc    = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
+    const amount   = Math.abs(parseFloat(sc.amount) || 0);
+    // Currency: prefer sc.currency, fallback to fromAcc currency, then BRL
+    const currency = (sc.currency || fromAcc?.currency || 'BRL').toUpperCase();
+    const isForeign = currency !== 'BRL';
+    // BRL equivalent for totals — use toBRL if available, else raw amount
+    const amountBRL = isForeign && typeof toBRL === 'function'
+      ? Math.abs(toBRL(amount, currency))
+      : amount;
+
     let delta = null;
     if (lastPaidAmount !== null && Math.abs(amount - lastPaidAmount) > 0.01) {
-      delta = amount - lastPaidAmount;
+      delta = amount - lastPaidAmount; // in original currency
     }
 
     entries.push({
-      id: sc.id, sc, amount, date: nextDate, lastPaidAmount, delta,
+      id: sc.id, sc, amount, amountBRL, currency, isForeign,
+      date: nextDate, lastPaidAmount, delta,
       description: sc.description || (toAcc ? `Fatura ${toAcc.name}` : 'Pagamento cartão'),
       fromAcc: fromAcc?.name || '—',
       toAcc:   toAcc?.name   || '—',
@@ -4700,7 +4703,7 @@ async function renderDashCCInvoices() {
   if (!entries.length) { card.style.display = 'none'; return; }
 
   entries.sort((a, b) => a.date.localeCompare(b.date));
-  const grandTotal = entries.reduce((s, e) => s + e.amount, 0);
+  const grandTotal = entries.reduce((s, e) => s + e.amountBRL, 0); // always BRL
   card.style.display = '';
 
   // ── Hero: total + badges ──────────────────────────────────────────────────
@@ -4733,7 +4736,7 @@ async function renderDashCCInvoices() {
 
   dates.forEach((date, di) => {
     const group      = byDate[date];
-    const groupTotal = group.reduce((s, e) => s + e.amount, 0);
+    const groupTotal    = group.reduce((s, e) => s + e.amountBRL, 0); // BRL for total
     const daysUntil  = Math.round((new Date(date + 'T12:00:00') - new Date()) / 86400000);
     const isOverdue  = date < today;
     const isToday    = daysUntil === 0;
@@ -4782,6 +4785,7 @@ async function renderDashCCInvoices() {
               overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               ${multi ? `${group.length} faturas` : E(group[0].description)}
             </span>
+            ${!multi && group[0].isForeign ? `<span style="flex-shrink:0;font-size:.6rem;font-weight:600;padding:1px 5px;border-radius:6px;background:rgba(30,91,168,.07);color:#1e5ba8;border:1px solid rgba(30,91,168,.15)">${group[0].currency}</span>` : ''}
             ${!multi && group[0].delta !== null ? (() => {
               const up  = group[0].delta > 0;
               const clr = up ? '#ef4444' : '#22c55e';
@@ -4807,9 +4811,15 @@ async function renderDashCCInvoices() {
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <div style="text-align:right">
             <div style="font-size:.9rem;font-weight:800;color:var(--text);letter-spacing:-.01em">
-              -${F(groupTotal)}
+              ${multi
+                ? '-' + F(groupTotal)
+                : '-' + (group[0].isForeign
+                    ? new Intl.NumberFormat('pt-BR',{style:'currency',currency:group[0].currency,minimumFractionDigits:2}).format(group[0].amount)
+                    : F(group[0].amount))}
             </div>
-            ${multi ? `<div style="font-size:.62rem;color:var(--muted);margin-top:1px">${group.length} cartões</div>` : ''}
+            ${!multi && group[0].isForeign ? `<div style="font-size:.62rem;color:var(--muted);margin-top:1px">≈ -${F(group[0].amountBRL)}</div>` : ''}
+            ${multi && group.some(e=>e.isForeign) ? `<div style="font-size:.62rem;color:#1e5ba8;font-weight:600;margin-top:1px">total em BRL</div>` : ''}
+            ${multi && !group.some(e=>e.isForeign) ? `<div style="font-size:.62rem;color:var(--muted);margin-top:1px">${group.length} cartões</div>` : ''}
           </div>
           ${multi ? `
           <div style="width:22px;height:22px;border-radius:6px;background:var(--surface2);
@@ -4855,7 +4865,9 @@ async function renderDashCCInvoices() {
           </div>
 
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.85rem;font-weight:700;color:var(--text)">-${F(e.amount)}</div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--text)">
+              -${e.isForeign ? (new Intl.NumberFormat('pt-BR',{style:'currency',currency:e.currency,minimumFractionDigits:2}).format(e.amount) + ` <span style="font-size:.65rem;font-weight:600;color:var(--muted)">≈ ${F(e.amountBRL)}</span>`) : F(e.amount)}
+            </div>
             ${e.delta !== null ? `
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:2px">
               <span style="font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:5px;
