@@ -4917,10 +4917,11 @@ async function _initiate2FA(authData, appUserRow) {
     console.warn('[2FA] Falha ao enviar código, mostrando tela mesmo assim:', errMsg);
   }
 
-  // Atualizar subtítulo com canal usado
+  // Atualizar subtítulo com canal REAL usado (pode ter fallback para email)
+  const _actualChannel = (sent && _2fa.channel === 'telegram' && _2fa.tgChatId) ? 'telegram' : 'email';
   const sub = document.getElementById('twoFaSub');
   if (sub) {
-    if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+    if (_actualChannel === 'telegram') {
       sub.innerHTML = 'Enviamos um código de 6 dígitos para o seu <strong>Telegram</strong>.<br>Insira-o abaixo para continuar.';
     } else {
       sub.innerHTML = `Enviamos um código de 6 dígitos para <strong>${_2fa.email}</strong>.<br>Insira-o abaixo para continuar.`;
@@ -4963,6 +4964,12 @@ function _show2FAScreen() {
 
   const errEl = document.getElementById('twoFaError');
   if (errEl) errEl.style.display = 'none';
+
+  // Show "Enviar por e-mail" fallback only when channel is telegram
+  const emailFallbackBtn = document.getElementById('twoFaEmailFallbackBtn');
+  if (emailFallbackBtn) {
+    emailFallbackBtn.style.display = (_2fa.channel === 'telegram') ? '' : 'none';
+  }
 
   // Mostrar expiração do trust se já existe (informativo)
   const trustExpEl = document.getElementById('twoFaTrustExpiry');
@@ -5109,17 +5116,37 @@ async function resend2FACode() {
     const code = _gen2FACode();
     await _store2FACode(_2fa.userId, code);
 
+    const { data: _resUser } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
+    const _resName = _resUser?.name || '';
+    let _resSent = false;
+
     if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
-      await _send2FAByTelegram(_2fa.tgChatId, code).catch(async () => {
-        // Fallback email
-        const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
-        await _send2FAByEmail(_2fa.email, code, u?.name || '');
-      });
-    } else {
-      const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
-      await _send2FAByEmail(_2fa.email, code, u?.name || '');
+      try {
+        await _send2FAByTelegram(_2fa.tgChatId, code);
+        _resSent = true;
+      } catch(tgErr) {
+        console.warn('[2FA resend] Telegram falhou, tentando email:', tgErr.message);
+        // Visible fallback notice
+        const sub = document.getElementById('twoFaSub');
+        if (sub) sub.innerHTML = 'Telegram indisponível. Enviando para <strong>' + _2fa.email + '</strong>…';
+      }
     }
 
+    if (!_resSent) {
+      await _send2FAByEmail(_2fa.email, code, _resName);
+      // Update state so subtitle shows email
+      _2fa.channel = 'email';
+    }
+
+    // Determine actual channel used (Telegram may have fallen back to email)
+    const _resSub = document.getElementById('twoFaSub');
+    if (_resSub) {
+      if (_2fa.channel === 'telegram' && _2fa.tgChatId) {
+        _resSub.innerHTML = 'Código reenviado para o seu <strong>Telegram</strong>.<br>Insira-o abaixo para continuar.';
+      } else {
+        _resSub.innerHTML = `Código reenviado para <strong>${_2fa.email}</strong>.<br>Insira-o abaixo para continuar.`;
+      }
+    }
     if (errEl) { errEl.textContent = '✓ Novo código enviado!'; errEl.style.color = '#16a34a'; errEl.style.display = ''; }
     setTimeout(() => { if (errEl) { errEl.style.display = 'none'; errEl.style.color = '#dc2626'; } }, 4000);
 
@@ -5130,6 +5157,51 @@ async function resend2FACode() {
   }
 }
 
+
+// ── Reenviar código forçando canal e-mail (fallback manual do usuário) ──
+async function resend2FACodeByEmail() {
+  const btn   = document.getElementById('twoFaEmailFallbackBtn');
+  const errEl = document.getElementById('twoFaError');
+  const sub   = document.getElementById('twoFaSub');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    if (!_2fa.userId || !_2fa.email) throw new Error('Sessão expirada. Faça login novamente.');
+    const code = _gen2FACode();
+    await _store2FACode(_2fa.userId, code);
+
+    // Check EmailJS config
+    let serviceId, publicKey;
+    try {
+      const { autoCheckConfig } = await _getAutoCheckConfig();
+      serviceId = autoCheckConfig?.emailServiceId || EMAILJS_CONFIG.serviceId;
+      publicKey  = autoCheckConfig?.emailPublicKey  || EMAILJS_CONFIG.publicKey;
+    } catch(_) {
+      serviceId = EMAILJS_CONFIG.serviceId;
+      publicKey  = EMAILJS_CONFIG.publicKey;
+    }
+
+    if (!serviceId || !publicKey) {
+      throw new Error('EmailJS não configurado. Peça ao administrador para configurar em Configurações → E-mail.');
+    }
+
+    const { data: u } = await sb.from('app_users').select('name').eq('id', _2fa.userId).maybeSingle();
+    await _send2FAByEmail(_2fa.email, code, u?.name || '');
+
+    // Update channel state so verify works
+    _2fa.channel = 'email';
+
+    if (sub) sub.innerHTML = `Código enviado para <strong>${_2fa.email}</strong>.<br>Insira-o abaixo para continuar.`;
+    if (errEl) { errEl.textContent = '✓ Código enviado por e-mail!'; errEl.style.color = '#16a34a'; errEl.style.display = ''; }
+    setTimeout(() => { if (errEl) { errEl.style.display = 'none'; errEl.style.color = '#dc2626'; } }, 4000);
+  } catch(e) {
+    if (errEl) { errEl.textContent = '✗ ' + (e.message || e); errEl.style.display = ''; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📧 Enviar por e-mail'; }
+  }
+}
+window.resend2FACodeByEmail = resend2FACodeByEmail;
 
 /* ══════════════════════════════════════════════════════════════════
    CONVITE DE FAMÍLIA — Processamento do token na URL

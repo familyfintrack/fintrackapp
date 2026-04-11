@@ -404,6 +404,7 @@ async function loadDashboard(){
   _loadDashInvestmentsCard().catch(() => {});
   _loadDashDreamsCard().catch(() => {});
   _loadDashTopPayeesCard().catch(() => {});
+  _loadDashLoyaltyCard().catch(() => {});
 
   // Render account balances grouped by account group
   (function renderAccountBalances() {
@@ -1171,6 +1172,7 @@ const _DASH_CARDS = [
   { id: 'investments',  label: 'Carteira de Investimentos', icon: '📈', sub: 'Resumo e distribuição da carteira',         el: 'dashCardInvestments', optional: true },
   { id: 'dreams',       label: 'Meus Sonhos',               icon: '🌟', sub: 'Progresso dos seus sonhos financeiros',     el: 'dashCardDreams',      optional: true },
   { id: 'toppayees',    label: 'Top Beneficiários',         icon: '🏪', sub: 'Quem mais recebe seus pagamentos',          el: 'dashCardTopPayees',   optional: true },
+  { id: 'loyalty',      label: 'Programas de Fidelidade',   icon: '⭐', sub: 'Saldo de pontos de cada programa',          el: 'dashCardLoyalty',     optional: true },
 ];
 
 function _dashGetPrefs() {
@@ -1694,6 +1696,7 @@ function _dashCustomSave() {
   if (prefs.dreams      !== false && _wasOff('dreams',      true))  _loadDashDreamsCard().catch(()=>{});
   if (prefs.toppayees   !== false && _wasOff('toppayees',   false)) _loadDashTopPayeesCard().catch(()=>{});
   if (prefs.forecast90  !== false && _wasOff('forecast90',  false)) _renderDashForecast().catch(()=>{});
+  if (prefs.loyalty     !== false && _wasOff('loyalty',     true))  _loadDashLoyaltyCard().catch(()=>{});
   closeModal('dashCustomModal');
   toast('Preferências do dashboard salvas!', 'success');
 }
@@ -4472,6 +4475,123 @@ async function _loadDashTopPayeesCard(period) {
   }
 }
 window._loadDashTopPayeesCard = _loadDashTopPayeesCard;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Card: Programas de Fidelidade
+// ══════════════════════════════════════════════════════════════════════════════
+async function _loadDashLoyaltyCard() {
+  const card  = document.getElementById('dashCardLoyalty');
+  const body  = document.getElementById('dashLoyaltyBody');
+  const subEl = document.getElementById('dashLoyaltySub');
+  if (!card) return;
+
+  const prefs = _dashGetPrefs();
+  if (prefs.loyalty === false) { card.style.display = 'none'; return; }
+
+  if (typeof loadLoyaltyPrograms === 'function' && !window._loy?.loaded) {
+    await loadLoyaltyPrograms().catch(() => {});
+  }
+
+  const programs = window._loy?.programs || [];
+  const active   = programs.filter(p => p.points_balance > 0 || p.show_in_account_card);
+
+  if (!active.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const E      = typeof esc === 'function' ? esc : s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const fmtPts = n => Number(n||0).toLocaleString('pt-BR');
+  const totalPts = active.reduce((s, p) => s + Number(p.points_balance||0), 0);
+  if (subEl) subEl.textContent = active.length + ' programa' + (active.length > 1 ? 's' : '') + ' \u00b7 ' + fmtPts(totalPts) + ' pts total';
+
+  const PCOLORS = { smiles:'#FF6600', latam_pass:'#E31837', livelo:'#B31017', tudoazul:'#0056A2',
+    esfera:'#E5001E', clube_itau:'#FF6600', multiplus:'#F47920', azul_mais:'#004F9F',
+    dotz:'#8B4513', stix:'#008000', custom:'#f59e0b' };
+  const PICONS = { smiles:'&#x1F60A;', latam_pass:'&#x1F30E;', livelo:'&#x1F534;', tudoazul:'&#x1F499;',
+    esfera:'&#x1F7E1;', clube_itau:'&#x1F536;', multiplus:'&#x1F7E0;', azul_mais:'&#x2708;&#xFE0F;',
+    dotz:'&#x1F7E4;', stix:'&#x1F7E2;', custom:'&#x2B50;' };
+
+  function pColor(p) { return p.color || PCOLORS[p.program_type] || '#f59e0b'; }
+  function pIcon(p)  { return p.icon  || PICONS[p.program_type]  || '&#x2B50;'; }
+
+  function expiryInfo(p) {
+    if (!p.points_expiry_date) return null;
+    const days = Math.round((new Date(p.points_expiry_date + 'T12:00:00') - new Date()) / 86400000);
+    if (days < 0)   return { label:'Vencido', color:'#dc2626', bg:'rgba(220,38,38,.08)' };
+    if (days <= 30) return { label: days + 'd', color:'#d97706', bg:'rgba(217,119,6,.08)' };
+    return null;
+  }
+
+  function linkedAccName(p) {
+    if (!p.linked_account_id) return null;
+    const a = (state.accounts||[]).find(a => a.id === p.linked_account_id);
+    return a ? a.name : null;
+  }
+
+  let html = '';
+  active.forEach(function(p) {
+    const color    = pColor(p);
+    const icon     = pIcon(p);
+    const pts      = Number(p.points_balance||0);
+    const expiry   = expiryInfo(p);
+    const accName  = linkedAccName(p);
+    const subLine  = accName ? ('&#x1F3E6; ' + E(accName))
+                             : E(p.program_type !== 'custom' ? p.program_type.replace(/_/g,' ') : 'Personalizado');
+    const pid      = E(p.id);
+
+    let expiryHtml = '';
+    if (expiry) {
+      expiryHtml = '<div style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;'
+        + 'padding:1px 6px;border-radius:8px;font-size:.6rem;font-weight:700;'
+        + 'background:' + expiry.bg + ';color:' + expiry.color + ';'
+        + 'border:1px solid ' + expiry.color + '30">'
+        + expiry.label + '</div>';
+    }
+
+    html += '<div data-loyid="' + pid + '" onclick="_dashLoyaltyOpen(this)"'
+      + ' style="display:flex;align-items:center;gap:12px;padding:11px 16px;'
+      + 'border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"'
+      + ' onmouseover="this.style.background=\'var(--bg2)\'"'
+      + ' onmouseout="this.style.background=\'\'">'
+      + '<div style="width:38px;height:38px;border-radius:10px;flex-shrink:0;'
+      + 'background:' + color + '15;border:1.5px solid ' + color + '30;'
+      + 'display:flex;align-items:center;justify-content:center;font-size:1.1rem">'
+      + icon + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:.83rem;font-weight:700;color:var(--text);'
+      + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(p.name) + '</div>'
+      + '<div style="font-size:.67rem;color:var(--muted);margin-top:2px;'
+      + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + subLine + '</div>'
+      + '</div>'
+      + '<div style="text-align:right;flex-shrink:0">'
+      + '<div style="font-size:.95rem;font-weight:800;color:' + color + ';'
+      + 'font-family:var(--font-serif);letter-spacing:-.01em">' + fmtPts(pts) + '</div>'
+      + '<div style="font-size:.62rem;color:var(--muted);margin-top:1px">pts</div>'
+      + expiryHtml
+      + '</div>'
+      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+      + ' stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex-shrink:0">'
+      + '<polyline points="9 18 15 12 9 6"/></svg>'
+      + '</div>';
+  });
+
+  html += '<div style="padding:8px 16px 10px">'
+    + '<button onclick="navigate(\'accounts\');'
+    + 'setTimeout(()=>document.querySelector(\'.loy-section\')?.scrollIntoView({behavior:\'smooth\'}),400)"'
+    + ' style="width:100%;font-size:.74rem;font-weight:600;color:var(--accent);'
+    + 'background:var(--accent-lt);border:1px solid rgba(42,96,73,.2);border-radius:8px;'
+    + 'padding:7px 10px;cursor:pointer;font-family:inherit;transition:opacity .15s"'
+    + ' onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'
+    + '&#x2B50; Gerenciar programas</button></div>';
+
+  if (body) body.innerHTML = html;
+}
+
+function _dashLoyaltyOpen(el) {
+  const id = el.closest('[data-loyid]')?.dataset?.loyid;
+  if (id && typeof openLoyaltyStatement === 'function') openLoyaltyStatement(id);
+}
+window._dashLoyaltyOpen     = _dashLoyaltyOpen;
+window._loadDashLoyaltyCard = _loadDashLoyaltyCard;
 
 
 // ── Drill-down: mostrar transações de um beneficiário/fonte ─────────────────
