@@ -1361,7 +1361,7 @@ async function _toggleChatTxEnabled() {
     if (!appRow) return;
     const { error } = await sb
       .from('app_users')
-      .update({ chat_tx_enabled: newVal, updated_at: new Date().toISOString() })
+      .update({ chat_tx_enabled: newVal })
       .eq('id', appRow.id);
     if (error) {
       // Rollback on error
