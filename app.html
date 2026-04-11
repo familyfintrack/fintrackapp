@@ -725,6 +725,8 @@
       </div>
 
       <!-- Categorias favoritas -->
+      <!-- Dashboard welcome greeting -->
+      <div id="dashWelcomeMsg" style="display:none;padding:0 0 16px;font-size:1.25rem;font-weight:600;color:var(--text);letter-spacing:-.01em;line-height:1.3"></div>
       <div id="dashCardFavCats" class="dash-fav-col mb-4">
         <div id="dashFavCategories"></div>
       </div>
@@ -2117,10 +2119,10 @@
           <div class="sc-kpi-item"><span class="sc-kpi-val sc-kpi-pending" id="scKpiPending">—</span><span class="sc-kpi-lbl">pendentes</span></div>
         </div>
         <div class="sc-page-header__right" style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-ghost" style="position:relative;gap:6px;display:flex;align-items:center" onclick="openReceivablesModal()" title="Ver valores a receber">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            A Receber
-            <span id="scHeaderArBadge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#dc2626;color:#fff;font-size:.55rem;font-weight:800;border-radius:50%;display:flex;align-items:center;justify-content:center"></span>
+          <button class="btn btn-primary" style="position:relative;gap:7px;display:flex;align-items:center;padding:9px 16px;font-size:.85rem;font-weight:700" onclick="openReceivablesModal()" title="Ver valores a receber">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            📬 A Receber
+            <span id="scHeaderArBadge" style="display:none;position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;background:#fbbf24;color:#78350f;font-size:.6rem;font-weight:800;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid white"></span>
           </button>
           <button class="btn btn-primary" onclick="openScheduledModal()">+ Programar</button>
         </div>
@@ -2144,9 +2146,10 @@
               Categ.
             </button>
           </div>
-          <button class="sc-mh-ar-btn" onclick="openReceivablesModal()" title="A Receber" style="position:relative">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span id="scMobileArBadge" style="display:none;position:absolute;top:-3px;right:-3px;min-width:14px;height:14px;background:#dc2626;color:#fff;font-size:.5rem;font-weight:800;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 2px"></span>
+          <button class="sc-mh-ar-btn" onclick="openReceivablesModal()" title="A Receber" style="position:relative;min-width:60px;padding:6px 10px;font-size:.75rem;font-weight:700;display:flex;align-items:center;gap:4px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            A Rec.
+            <span id="scMobileArBadge" style="display:none;position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;background:#fbbf24;color:#78350f;font-size:.55rem;font-weight:800;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 2px;border:2px solid white"></span>
           </button>
           <button class="sc-mh-new-btn" onclick="openScheduledModal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -9089,7 +9092,7 @@ Se você não solicitou isso, ignore este e-mail.`,
                 <span id="tgLinkStatus" style="font-size:.72rem;color:var(--muted)"></span>
               </div>
               <div style="font-size:.7rem;color:var(--muted);margin-top:4px;line-height:1.5">
-                Clique em <strong>Vincular via Telegram</strong> para abrir o bot e obter seu Chat ID automaticamente.
+                Clique em <strong>Vincular via Telegram</strong> para abrir <strong>@FamilyFintrack_bot</strong> e obter seu Chat ID automaticamente.
               </div>
             </div>
           </div>
@@ -11402,7 +11405,7 @@ window.openMyProfile = function(...args) {
     </div>
     <div style="padding:10px 14px 12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
       <button onclick="_recvAddManual()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-family:var(--font-sans);font-size:.78rem;font-weight:600;cursor:pointer">✏️ Lançar manual</button>
-      <button onclick="closeReceivablesModal();navigate('receivables')" style="padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-family:var(--font-sans);font-size:.78rem;font-weight:700;cursor:pointer">Tela completa →</button>
+      
     </div>
   </div>
 </div>
