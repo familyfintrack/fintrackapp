@@ -8411,9 +8411,25 @@ tr.tx-row-new td:first-child {
   gap: 6px;
   margin-top: 6px;
   justify-content: flex-end;
+  align-items: center;
   position: relative;
   z-index: 1;
 }
+
+/* Points label — left of add button, numbers only */
+.dash-fav-pts {
+  font-size: .62rem;
+  font-weight: 700;
+  color: rgba(255,255,255,.65);
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  margin-right: auto;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 0;
+  transition: color .15s;
+}
+.dash-fav-pts:hover { color: rgba(255,255,255,.9); }
 
 .dash-fav-card__btn {
   display: flex;
