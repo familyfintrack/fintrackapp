@@ -4911,8 +4911,8 @@ html, body { overscroll-behavior: none; }
     width: calc(100% + 32px);
   }
   .fx-bar {
-    width: calc(100% + 32px);
-    margin: 0 -16px 14px -16px;
+    width: 100%;
+    margin: 0;
   }
 }
 @media (max-width: 480px) {
@@ -4947,8 +4947,8 @@ html, body { overscroll-behavior: none; }
   z-index: 5;
   background: linear-gradient(90deg, #eaf5ee 0%, #f3fbf6 50%, #eaf5ee 100%);
   border-bottom: 1px solid var(--fx-border);
-  width: calc(100% + 48px);
-  margin: 0 -24px 16px -24px;
+  width: 100%;
+  margin: 0;
 }
 
 /* ── Inner row — centred, max-width, no visible scroll ── */
@@ -21005,7 +21005,6 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
 .sc-panel__body {
   overflow-y: auto;
   max-height: calc(100vh - 220px);
-  min-height: 160px;
 }
 .sc-panel__filters {
   flex: 1;
