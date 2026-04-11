@@ -72,6 +72,8 @@ const _loy = {
   loaded:      false,
   loading:     false,
 };
+// Expor estado para outros módulos (dashboard.js, accounts.js, etc.)
+window._loy = _loy;
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 function _loyFamId() {
