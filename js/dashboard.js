@@ -4640,7 +4640,7 @@ window.openDashCustomModal                 = openDashCustomModal;
 async function renderDashCCInvoices() {
   const card    = document.getElementById('dashCardCCInvoices');
   const totalEl = document.getElementById('dashCCTotal');
-  const countEl = document.getElementById('dashCCCount');
+  const badgesEl= document.getElementById('dashCCBadges');
   const listEl  = document.getElementById('dashCCList');
   if (!card) return;
 
@@ -4668,8 +4668,6 @@ async function renderDashCCInvoices() {
     const skippedDates  = new Set(
       (sc.occurrences || []).filter(o => o.execution_status === 'skipped').map(o => o.scheduled_date)
     );
-
-    // Last paid amount for delta
     const lastPaidOcc = executedOccs
       .sort((a, b) => (b.scheduled_date||'').localeCompare(a.scheduled_date||''))
       .find(o => o.scheduled_date < today);
@@ -4678,18 +4676,16 @@ async function renderDashCCInvoices() {
       : null;
 
     if (typeof generateOccurrences !== 'function') return;
-    const occs = generateOccurrences(sc, 12);
+    const occs    = generateOccurrences(sc, 12);
     const nextDate = occs.find(d => d >= today && !executedDates.has(d) && !skippedDates.has(d));
     if (!nextDate) return;
 
     const fromAcc = (state.accounts || []).find(a => a.id === sc.account_id);
     const toAcc   = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
     const amount  = Math.abs(parseFloat(sc.amount) || 0);
-
-    // Delta vs last paid
     let delta = null;
     if (lastPaidAmount !== null && Math.abs(amount - lastPaidAmount) > 0.01) {
-      delta = amount - lastPaidAmount; // positive = increased (bad), negative = decreased (good)
+      delta = amount - lastPaidAmount;
     }
 
     entries.push({
@@ -4706,106 +4702,176 @@ async function renderDashCCInvoices() {
   const grandTotal = entries.reduce((s, e) => s + e.amount, 0);
   card.style.display = '';
 
+  // ── Hero: total + badges ──────────────────────────────────────────────────
   if (totalEl) totalEl.textContent = '-' + F(grandTotal);
-  if (countEl) countEl.textContent = entries.length + ' fatura' + (entries.length > 1 ? 's' : '');
 
-  // ── Group by date ──────────────────────────────────────────────────────
+  if (badgesEl) {
+    const overdue  = entries.filter(e => e.date <  today).length;
+    const urgent   = entries.filter(e => {
+      const d = Math.round((new Date(e.date + 'T12:00:00') - new Date()) / 86400000);
+      return e.date >= today && d <= 7;
+    }).length;
+    const ok       = entries.length - overdue - urgent;
+    const badges   = [];
+    if (overdue) badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:rgba(220,38,38,.25);border:1px solid rgba(220,38,38,.4);font-size:.65rem;font-weight:700;color:#fca5a5">⚠ ${overdue} vencida${overdue>1?'s':''}</span>`);
+    if (urgent)  badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:rgba(251,191,36,.18);border:1px solid rgba(251,191,36,.35);font-size:.65rem;font-weight:700;color:#fcd34d">⏰ ${urgent} esta semana</span>`);
+    if (ok)      badges.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:.65rem;font-weight:600;color:rgba(255,255,255,.5)">${ok} no prazo</span>`);
+    badgesEl.innerHTML = badges.join('');
+  }
+
+  // ── Date-grouped list ─────────────────────────────────────────────────────
   const MON = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const byDate = {};
-  entries.forEach(e => {
-    if (!byDate[e.date]) byDate[e.date] = [];
-    byDate[e.date].push(e);
-  });
+  entries.forEach(e => { if (!byDate[e.date]) byDate[e.date]=[]; byDate[e.date].push(e); });
 
-  const _fmtD = (d) => {
-    const dt = new Date(d + 'T12:00:00');
-    return `${dt.getDate()} ${MON[dt.getMonth()]}`;
-  };
+  const dates     = Object.keys(byDate).sort();
+  const _ccExp    = window._ccDateExpanded || (window._ccDateExpanded = new Set());
 
   let html = '';
-  const dates = Object.keys(byDate).sort();
-  const _ccExpanded = window._ccDateExpanded || (window._ccDateExpanded = new Set());
 
   dates.forEach((date, di) => {
-    const group   = byDate[date];
+    const group      = byDate[date];
     const groupTotal = group.reduce((s, e) => s + e.amount, 0);
     const daysUntil  = Math.round((new Date(date + 'T12:00:00') - new Date()) / 86400000);
     const isOverdue  = date < today;
-    const urgency    = isOverdue ? '#dc2626' : daysUntil <= 3 ? '#dc2626' : daysUntil <= 7 ? '#d97706' : 'var(--muted)';
-    const daysLabel  = isOverdue ? 'vencido' : daysUntil === 0 ? 'hoje' : daysUntil === 1 ? 'amanhã' : `${daysUntil}d`;
+    const isToday    = daysUntil === 0;
+    const isTomorrow = daysUntil === 1;
+    const isUrgent   = !isOverdue && daysUntil <= 7;
     const isLast     = di === dates.length - 1;
-    const isOpen     = _ccExpanded.has(date);
+    const isOpen     = _ccExp.has(date);
     const gid        = 'ccg_' + date.replace(/-/g,'');
     const multi      = group.length > 1;
 
-    // Date row (always visible)
-    html += `<div style="border-bottom:${isLast&&!isOpen?'none':'1px solid var(--border)'}">
-      <div onclick="_dashCCToggleDate('${date}')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;transition:background .12s;${isOpen?'background:rgba(220,38,38,.04);':''}"
-        onmouseover="this.style.background='rgba(220,38,38,.06)'" onmouseout="this.style.background='${isOpen?'rgba(220,38,38,.04)':''}'" >
-        <!-- Date pill -->
-        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;width:28px">
-          <span style="font-size:.52rem;font-weight:700;color:${urgency};text-transform:uppercase;line-height:1">${MON[new Date(date+'T12:00:00').getMonth()]}</span>
-          <span style="font-size:.78rem;font-weight:800;color:${urgency};line-height:1.1">${new Date(date+'T12:00:00').getDate()}</span>
+    // Urgency styling
+    const dotClr   = isOverdue ? '#ef4444' : isToday ? '#ef4444' : isUrgent ? '#f59e0b' : '#22c55e';
+    const tagBg    = isOverdue ? 'rgba(239,68,68,.1)' : isToday ? 'rgba(239,68,68,.1)' : isUrgent ? 'rgba(245,158,11,.1)' : 'rgba(34,197,94,.08)';
+    const tagClr   = isOverdue ? '#ef4444' : isToday ? '#ef4444' : isUrgent ? '#f59e0b' : '#22c55e';
+    const tagBdr   = isOverdue ? 'rgba(239,68,68,.3)' : isToday ? 'rgba(239,68,68,.3)' : isUrgent ? 'rgba(245,158,11,.25)' : 'rgba(34,197,94,.2)';
+    const daysLabel = isOverdue ? 'vencido' : isToday ? 'hoje' : isTomorrow ? 'amanhã' : `${daysUntil}d`;
+
+    const dt    = new Date(date + 'T12:00:00');
+    const dayN  = dt.getDate();
+    const monS  = MON[dt.getMonth()];
+    const isFirst = di === 0;
+
+    // ── Date row ────────────────────────────────────────────────────────────
+    html += `
+    <div style="border-bottom:${isLast&&!isOpen?'none':'1px solid var(--border)'}">
+      <div onclick="${multi ? `_dashCCToggleDate('${date}')` : `navigate('scheduled')`}"
+        style="display:flex;align-items:center;gap:12px;padding:11px 16px;
+               cursor:pointer;transition:background .12s;position:relative;
+               ${isFirst ? '' : ''}"
+        onmouseover="this.style.background='var(--bg2)'"
+        onmouseout="this.style.background=''">
+
+        <!-- Date badge -->
+        <div style="flex-shrink:0;width:40px;height:40px;border-radius:10px;
+          background:${tagBg};border:1.5px solid ${tagBdr};
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px">
+          <span style="font-size:.52rem;font-weight:800;text-transform:uppercase;
+            letter-spacing:.04em;color:${tagClr};line-height:1">${monS}</span>
+          <span style="font-size:1rem;font-weight:800;color:${tagClr};line-height:1">${dayN}</span>
         </div>
-        <!-- Label -->
+
+        <!-- Content -->
         <div style="flex:1;min-width:0">
-          <div style="font-size:.72rem;font-weight:600;color:var(--text)">
-            ${multi ? `${group.length} faturas` : E(group[0].description)}
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+            <span style="font-size:.83rem;font-weight:700;color:var(--text);
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${multi ? `${group.length} faturas` : E(group[0].description)}
+            </span>
+            ${!multi && group[0].delta !== null ? (() => {
+              const up  = group[0].delta > 0;
+              const clr = up ? '#ef4444' : '#22c55e';
+              const ic  = up ? '↑' : '↓';
+              return `<span style="flex-shrink:0;font-size:.6rem;font-weight:700;padding:1px 5px;
+                border-radius:6px;background:${up?'rgba(239,68,68,.08)':'rgba(34,197,94,.08)'};
+                color:${clr};border:1px solid ${up?'rgba(239,68,68,.2)':'rgba(34,197,94,.2)'}">
+                ${ic}${F(Math.abs(group[0].delta))}</span>`;
+            })() : ''}
           </div>
-          <div style="font-size:.62rem;color:${urgency};font-weight:600">${daysLabel}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="display:inline-flex;align-items:center;gap:3px;font-size:.62rem;
+              font-weight:700;padding:1px 7px;border-radius:10px;
+              background:${tagBg};color:${tagClr};border:1px solid ${tagBdr}">
+              <span style="width:5px;height:5px;border-radius:50%;background:${dotClr};flex-shrink:0"></span>
+              ${daysLabel}
+            </span>
+            ${!multi ? `<span style="font-size:.67rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(group[0].fromAcc)}${group[0].toAcc!=='—'?' → '+E(group[0].toAcc):''}</span>` : `<span style="font-size:.67rem;color:var(--muted)">${group.map(e=>E(e.description)).join(' · ').slice(0,50)}</span>`}
+          </div>
         </div>
-        <!-- Total for date + chevron -->
-        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
-          <span style="font-size:.78rem;font-weight:800;color:#dc2626">-${F(groupTotal)}</span>
-          ${multi ? `<svg id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--muted);transition:transform .2s;transform:${isOpen?'rotate(180deg)':'rotate(0deg)'}"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
+
+        <!-- Amount + chevron -->
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <div style="text-align:right">
+            <div style="font-size:.9rem;font-weight:800;color:var(--text);letter-spacing:-.01em">
+              -${F(groupTotal)}
+            </div>
+            ${multi ? `<div style="font-size:.62rem;color:var(--muted);margin-top:1px">${group.length} cartões</div>` : ''}
+          </div>
+          ${multi ? `
+          <div style="width:22px;height:22px;border-radius:6px;background:var(--surface2);
+            border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg id="${gid}_arr" width="10" height="10" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+              style="color:var(--muted);transition:transform .2s;transform:${isOpen?'rotate(180deg)':'rotate(0deg)'}">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>` : ''}
         </div>
       </div>`;
 
-    // Expanded sub-rows (individual cards per date, when multiple)
+    // ── Expanded sub-rows ────────────────────────────────────────────────────
     if (multi) {
-      html += `<div id="${gid}" style="display:${isOpen?'':'none'}">`;
-      group.forEach((e, ei) => {
-        // Delta indicator
-        let deltaHtml = '';
-        if (e.delta !== null) {
-          const up   = e.delta > 0;
-          const clr  = up ? '#dc2626' : '#16a34a';
-          const sign = up ? '▲' : '▼';
-          deltaHtml = `<span style="font-size:.6rem;font-weight:700;color:${clr};white-space:nowrap;margin-left:3px">${sign}${F(Math.abs(e.delta))}</span>`;
-        }
-        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 14px;border-top:1px solid var(--border);background:var(--surface2)">
-          <div style="width:3px;height:28px;border-radius:2px;background:#dc262622;flex-shrink:0"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.75rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(e.description)}</div>
-            <div style="font-size:.62rem;color:var(--muted)">${E(e.fromAcc)}${e.toAcc!=='—'?' → '+E(e.toAcc):''}</div>
+      html += `<div id="${gid}" style="display:${isOpen?'':'none'};border-top:1px solid var(--border)">`;
+      group.forEach((e) => {
+        const up    = e.delta !== null && e.delta > 0;
+        const down  = e.delta !== null && e.delta < 0;
+        const dClr  = up ? '#ef4444' : '#22c55e';
+        const dIc   = up ? '↑' : '↓';
+        html += `
+        <div onclick="navigate('scheduled')"
+          style="display:flex;align-items:center;gap:10px;padding:9px 16px 9px 20px;
+            border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
+          onmouseover="this.style.background='var(--bg2)'"
+          onmouseout="this.style.background=''">
+
+          <!-- Card icon -->
+          <div style="width:32px;height:32px;border-radius:8px;
+            background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.15);
+            display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           </div>
+
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.8rem;font-weight:600;color:var(--text);
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(e.description)}</div>
+            <div style="font-size:.67rem;color:var(--muted);margin-top:1px;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${E(e.fromAcc)}${e.toAcc!=='—'?' → '+E(e.toAcc):''}
+            </div>
+          </div>
+
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:.78rem;font-weight:800;color:#dc2626">-${F(e.amount)}</div>
-            ${deltaHtml}
+            <div style="font-size:.85rem;font-weight:700;color:var(--text)">-${F(e.amount)}</div>
+            ${e.delta !== null ? `
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px;margin-top:2px">
+              <span style="font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:5px;
+                background:${up?'rgba(239,68,68,.08)':'rgba(34,197,94,.08)'};
+                color:${dClr};border:1px solid ${up?'rgba(239,68,68,.2)':'rgba(34,197,94,.2)'}">
+                ${dIc}${F(Math.abs(e.delta))}
+              </span>
+            </div>` : ''}
           </div>
         </div>`;
       });
       html += `</div>`;
-    } else {
-      // Single card: show delta inline in the date row (append after closing the row div)
-      // We need to inject delta into the row — rewrite single-card row to include delta
-      const e = group[0];
-      if (e.delta !== null) {
-        const up  = e.delta > 0;
-        const clr = up ? '#dc2626' : '#16a34a';
-        const sign = up ? '▲' : '▼';
-        // Inject delta as a sub-line under the description
-        html = html.replace(
-          `<div style="font-size:.72rem;font-weight:600;color:var(--text)">\n            ${multi ? '' : E(e.description)}`,
-          `<div style="font-size:.72rem;font-weight:600;color:var(--text)">${E(e.description)} <span style="font-size:.6rem;font-weight:700;color:${clr}">${sign}${F(Math.abs(e.delta))}</span>\n            `
-        );
-      }
     }
 
-    html += `</div>`; // close date group wrapper
+    html += `</div>`; // close date group
   });
 
-  if (listEl) listEl.innerHTML = html || '<div style="padding:12px;font-size:.75rem;color:var(--muted);text-align:center">Nenhuma fatura programada</div>';
+  if (listEl) listEl.innerHTML = html || '<div style="padding:16px;font-size:.78rem;color:var(--muted);text-align:center">Nenhuma fatura programada</div>';
 }
 
 window._dashCCToggleDate = function(date) {
