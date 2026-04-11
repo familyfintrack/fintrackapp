@@ -26042,6 +26042,10 @@ body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
   #page-transactions.page {
     touch-action: pan-y !important;
   }
+  /* Allow tap/input on interactive elements inside pages */
+  .page input, .page textarea, .page select, .page button, .page [onclick] {
+    touch-action: manipulation !important;
+  }
 
   /* Swipe: overflow:visible nos containers para não clipar o translateX do <tr> */
   #page-transactions #txFlatCard,
@@ -28233,4 +28237,38 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
 }
 @media (min-width: 769px) {
   .sc-tab-bar { display: none; }
+}
+
+/* ── sc-tab-bar: cleaner styling, clearly distinct from sc-mh-view-btns ── */
+.sc-tab-bar {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+.sc-tab {
+  padding: 11px 20px !important;
+  border-radius: 0 !important;
+  border-bottom: 3px solid transparent !important;
+  font-size: .84rem !important;
+  font-weight: 600 !important;
+  flex: 1 !important;
+  justify-content: center !important;
+  margin-bottom: -2px !important;
+  background: transparent !important;
+  color: var(--muted) !important;
+}
+.sc-tab.active {
+  color: var(--accent) !important;
+  font-weight: 800 !important;
+  border-bottom-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface)) !important;
+}
+.sc-tab:hover:not(.active) {
+  background: var(--surface2) !important;
+  color: var(--text2) !important;
+}
+@media (min-width: 769px) {
+  .sc-tab-bar { display: none !important; }
 }
