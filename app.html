@@ -259,12 +259,17 @@
    regras voltam a valer — por isso usamos display:none !important aqui para garantir
    que o estado "oculto" não seja revertido acidentalmente por outra regra de classe. */
 #telemetryNavTopbar,
-#settingsNavTopbar {
+#settingsNavTopbar,
+#auditNavTopbar {
   display: none !important;
 }
 /* Classe aplicada pelo JS quando o usuário É admin: .admin-visible */
 #telemetryNavTopbar.admin-visible,
 #settingsNavTopbar.admin-visible {
+  display: flex !important;
+}
+/* Classe aplicada para todos os usuários autenticados: .audit-visible */
+#auditNavTopbar.audit-visible {
   display: flex !important;
 }
 
@@ -276,12 +281,12 @@
    Colocar aqui garante que este bloco venha DEPOIS e vença.
 ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
-  /* Hide admin-only topbar buttons on mobile + tablet (iPad)
-     These buttons live in the sidebar on smaller screens.
-     On desktop (>1024px) they remain visible in topbar. */
+  /* Hide topbar-only buttons on mobile + tablet (they live in the sidebar on smaller screens) */
   #importNav          { display: none !important; }
-  #auditNavTopbar     { display: none !important; }
   #telemetryNavTopbar { display: none !important; }
+  /* auditNavTopbar: visibility is controlled exclusively via .audit-visible class (JS) —
+     on mobile it stays hidden because audit is accessible via sidebar + navigate() */
+  #auditNavTopbar.audit-visible { display: none !important; }
   /* #settingsNavTopbar is NOT hidden on mobile — admin must always access settings */
   .topbar-quick-actions { gap: 4px !important; margin-right: 0 !important; }
   .topbar-actions {
@@ -1260,6 +1265,18 @@
       </div>
 
       <div class="account-grid" id="accountGrid"></div>
+
+      <!-- ── Programas de Fidelidade ── -->
+      <div id="loyaltySectionCard" style="margin-top:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1.1rem">⭐</span>
+            <span style="font-size:.88rem;font-weight:800;color:var(--text)">Programas de Fidelidade</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="openLoyaltyModal('')">+ Adicionar</button>
+        </div>
+        <div id="loyaltySectionWrap"></div>
+      </div>
     </div>
 
     <!-- INVESTMENTS -->
@@ -7552,6 +7569,7 @@ Se você não solicitou isso, ignore este e-mail.`,
                 <option value="investimento">📈 Investimentos</option>
                 <option value="dinheiro">💵 Dinheiro / Caixa</option>
                 <option value="outros">📌 Outros</option>
+                <option value="programa_fidelidade">⭐ Programa de Fidelidade</option>
               </select>
             </div>
           </div>
@@ -7767,6 +7785,27 @@ Se você não solicitou isso, ignore este e-mail.`,
         <div id="acmCardNotice" class="acm-notice" style="display:none">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           Selecione o tipo <strong>Cartão de Crédito</strong> na aba Básico para editar estas configurações.
+        </div>
+
+        <!-- ── Painel Programa de Fidelidade ── -->
+        <div id="accountLoyaltyDataSection" style="display:none">
+          <div class="acm-section-title">⭐ Programa de Fidelidade</div>
+          <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px;font-size:.8rem;color:#92400e;margin-bottom:14px">
+            💡 Contas do tipo <strong>Programa de Fidelidade</strong> acompanham pontos, não dinheiro. Use os botões na seção Programas de Fidelidade para gerenciar pontos, extratos e resgates.
+          </div>
+          <div class="acm-fields-grid">
+            <div class="acm-field acm-field--full">
+              <label class="acm-label">Programa vinculado (após salvar, configure em Programas de Fidelidade)</label>
+              <div style="font-size:.76rem;color:var(--muted);margin-top:4px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+                Após salvar esta conta, acesse a seção <strong>⭐ Programas de Fidelidade</strong> na página de Contas para cadastrar o programa e vincular a esta conta.
+              </div>
+            </div>
+            <div class="acm-field acm-field--full">
+              <label class="acm-label">Notas / Regras do programa</label>
+              <textarea id="loyaltyAccountNotes" class="acm-input" rows="2"
+                style="resize:vertical" placeholder="Ex: pontos expiram em 2 anos, acumulo 1pt por R$1 gasto…"></textarea>
+            </div>
+          </div>
         </div>
       </div><!-- /pane-card -->
 
@@ -9081,18 +9120,42 @@ Se você não solicitou isso, ignore este e-mail.`,
             <div class="form-group" style="margin-bottom:0" id="myProfileTelegramRow">
               <label style="font-size:.78rem">Telegram padrão (Chat ID)</label>
               <div style="display:flex;gap:8px;align-items:center">
-                <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976" style="flex:1">
+                <input type="text" id="myProfileTelegramChatId" placeholder="Ex.: 7540422976" style="flex:1" inputmode="numeric">
                 <button type="button" class="btn btn-ghost btn-sm" id="myProfileTelegramTestBtn" onclick="testMyProfileNotification('telegram')">🧪 Testar</button>
               </div>
+
+              <!-- Auto-link flow -->
               <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <button type="button" class="btn btn-ghost btn-sm" onclick="openTelegramLinkFlow()" id="tgLinkFlowBtn"
+                <button type="button" class="btn btn-primary btn-sm" onclick="openTelegramLinkFlow()" id="tgLinkFlowBtn"
                   style="display:flex;align-items:center;gap:5px;font-size:.75rem">
-                  ✈️ Vincular via Telegram
+                  ✈️ Abrir @FamilyFintrack_bot
                 </button>
                 <span id="tgLinkStatus" style="font-size:.72rem;color:var(--muted)"></span>
               </div>
-              <div style="font-size:.7rem;color:var(--muted);margin-top:4px;line-height:1.5">
-                Clique em <strong>Vincular via Telegram</strong> para abrir <strong>@FamilyFintrack_bot</strong> e obter seu Chat ID automaticamente.
+
+              <!-- Poll progress bar (hidden by default) -->
+              <div id="tgLinkProgress" style="display:none;margin-top:8px">
+                <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+                  <div id="tgLinkProgressBar" style="height:100%;width:0%;background:var(--accent);transition:width 3s linear;border-radius:2px"></div>
+                </div>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:4px">Aguardando confirmação do bot… <span id="tgLinkCountdown">120</span>s</div>
+              </div>
+
+              <!-- Fallback manual via @userinfobot -->
+              <div style="margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+                <div style="font-size:.74rem;font-weight:700;color:var(--text2);margin-bottom:6px">🔑 Obter Chat ID manualmente</div>
+                <div style="font-size:.72rem;color:var(--muted);line-height:1.55;margin-bottom:8px">
+                  Se o link automático não funcionar, abra o <strong>@userinfobot</strong> no Telegram.
+                  Ele responde imediatamente com seu Chat ID — sem precisar de configuração.
+                </div>
+                <a href="https://t.me/userinfobot" target="_blank" rel="noopener"
+                  style="display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:600;color:#2563eb;padding:5px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;text-decoration:none">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                  Abrir @userinfobot
+                </a>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:6px">
+                  Cole o número que o bot enviar no campo "Chat ID" acima e clique em 💾 Salvar.
+                </div>
               </div>
             </div>
           </div>
@@ -11523,5 +11586,6 @@ window.openMyProfile = function(...args) {
   </div>
 </div>
 
+<script src="js/loyalty.js"></script>
 </body>
 </html>
