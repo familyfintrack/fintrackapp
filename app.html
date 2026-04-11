@@ -3289,35 +3289,97 @@
               </div>
               <button class="btn btn-ghost btn-sm" onclick="showAiConfig()">Configurar</button>
             </div>
-            <!-- Telegram Bot Token -->
-            <div class="cfg-row" id="telegramBotRow">
-              <div class="cfg-row-icon" style="background:#e7f3ff">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <!-- Telegram Bot — seção para todos os usuários -->
+            <div id="telegramBotRow">
+
+              <!-- Card visível a TODOS: abre bot e vincula Chat ID -->
+              <div class="cfg-row" style="cursor:pointer" onclick="openTelegramLinkFlow()">
+                <div class="cfg-row-icon" style="background:#e7f3ff">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </div>
+                <div class="cfg-row-info">
+                  <div class="cfg-row-label" style="display:flex;align-items:center;gap:7px">
+                    Telegram Bot
+                    <span id="tgBotStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0;display:inline-block"></span>
+                    <span id="tgBotNameBadge" style="display:none;font-size:.65rem;padding:1px 7px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:10px;font-weight:600"></span>
+                  </div>
+                  <div id="tgBotStatus" style="font-size:.72rem;color:var(--muted)">
+                    Vincule sua conta para registrar transações pelo Telegram
+                  </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openTelegramLinkFlow()"
+                  id="tgLinkFlowBtnCfg" style="flex-shrink:0;gap:5px">
+                  ✈️ Vincular
+                </button>
               </div>
-              <div class="cfg-row-info" style="flex:1;min-width:0">
-                <div class="cfg-row-label" style="display:flex;align-items:center;gap:7px">
-                  Telegram Bot Token
-                  <span id="tgBotStatusDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0;display:inline-block"></span>
+
+              <!-- Progress bar de vinculação -->
+              <div id="tgLinkProgressCfg" style="display:none;padding:0 16px 10px">
+                <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+                  <div id="tgLinkProgressBarCfg" style="height:100%;width:0%;background:#2563eb;border-radius:2px"></div>
                 </div>
-                <div style="display:flex;gap:6px;margin-top:6px">
-                  <input type="text" id="telegramBotTokenInput"
-                    placeholder="123456789:ABC-DEF…"
-                    autocomplete="new-password"
-                    autocorrect="off" autocapitalize="none" spellcheck="false"
-                    inputmode="text"
-                    style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface);-webkit-text-security:disc"
-                    oninput="_tgBotTokenOnInput()">
-                  <button class="btn btn-ghost btn-sm" onclick="saveTelegramBotToken()">Salvar</button>
+                <div style="font-size:.68rem;color:var(--muted);margin-top:4px">
+                  Aguardando confirmação do bot… <span id="tgLinkCountdownCfg">120</span>s
+                  — <a href="https://t.me/userinfobot" target="_blank" style="color:var(--accent)">obter ID manualmente</a>
                 </div>
-                <div style="display:flex;gap:6px;margin-top:6px;align-items:center" id="tgBotTestRow">
+              </div>
+
+              <!-- Status de vinculação -->
+              <div id="tgLinkStatusCfg" style="display:none;padding:8px 16px 10px">
+                <div style="font-size:.75rem;color:var(--accent)"></div>
+              </div>
+
+              <!-- Seção Admin: nome do bot + token + webhook (visível só para owner/admin) -->
+              <div id="tgAdminSection" style="display:none;border-top:1px solid var(--border);padding:12px 16px;background:var(--surface2)">
+                <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+                  ⚙️ Configurações de Administrador
+                </div>
+
+                <!-- Nome do bot (@username) -->
+                <div style="margin-bottom:10px">
+                  <label style="font-size:.76rem;font-weight:600;color:var(--text2)">@Username do bot</label>
+                  <div style="display:flex;gap:6px;margin-top:4px">
+                    <input type="text" id="tgBotNameInput" placeholder="FamilyFintrack_bot"
+                      autocomplete="off" autocorrect="off" spellcheck="false"
+                      style="flex:1;font-size:.8rem;font-family:monospace;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)">
+                    <button class="btn btn-ghost btn-sm" onclick="saveTgBotName()">Salvar</button>
+                  </div>
+                  <div style="font-size:.68rem;color:var(--muted);margin-top:3px">
+                    Sem o @. Ex: <code>FamilyFintrack_bot</code>. Usado no link de vinculação para os usuários.
+                  </div>
+                </div>
+
+                <!-- Token + Webhook (visibilidade só para admin) -->
+                <div style="margin-bottom:10px">
+                  <label style="font-size:.76rem;font-weight:600;color:var(--text2)">Token do Bot (BotFather)</label>
+                  <div style="display:flex;gap:6px;margin-top:4px">
+                    <input type="text" id="telegramBotTokenInput"
+                      placeholder="123456789:ABC-DEF…"
+                      autocomplete="new-password" autocorrect="off" autocapitalize="none" spellcheck="false"
+                      style="flex:1;font-size:.75rem;font-family:monospace;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface);-webkit-text-security:disc"
+                      oninput="_tgBotTokenOnInput()">
+                    <button class="btn btn-ghost btn-sm" onclick="saveTelegramBotToken()">Salvar</button>
+                  </div>
+                </div>
+
+                <!-- Webhook -->
+                <div id="tgWebhookRow" style="display:none">
+                  <button class="btn btn-primary btn-sm" id="tgRegisterWebhookBtn"
+                    onclick="registerTelegramWebhook()"
+                    style="width:100%;justify-content:center;gap:6px;margin-bottom:8px">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Registrar Webhook
+                  </button>
+                </div>
+                <div id="tgWebhookStatus" style="display:none;padding:9px 12px;border-radius:9px;background:var(--surface);border:1px solid var(--border)"></div>
+
+                <!-- Test -->
+                <div style="display:flex;gap:6px;margin-top:8px;align-items:center" id="tgBotTestRow">
                   <input type="text" id="tgBotTestChatId"
-                    placeholder="Chat ID para teste (ex: 7540422976)"
-                    style="flex:1;font-size:.75rem;font-family:monospace;min-width:0;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)"
+                    placeholder="Chat ID para teste"
+                    style="flex:1;font-size:.75rem;font-family:monospace;border:1.5px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface)"
                     oninput="_tgBotChatIdOnInput()">
                   <button class="btn btn-ghost btn-sm" onclick="testTelegramBotToken()" id="tgBotTestBtn" style="display:none">🧪 Testar</button>
-                </div>
-                <div id="tgBotStatus" style="font-size:.7rem;margin-top:3px;color:var(--muted)">
-                  Token do bot usado para enviar notificações. Crie um bot com <strong>@BotFather</strong> no Telegram.
                 </div>
               </div>
             </div>
@@ -10785,6 +10847,18 @@ Se você não solicitou isso, ignore este e-mail.`,
           <span id="darkModeLabel">Modo Escuro</span>
         </div>
         <div class="dark-mode-toggle-track">
+          <div class="dark-mode-toggle-thumb"></div>
+        </div>
+      </button>
+      <!-- Toggle: Transações por Chat (Telegram / WhatsApp) -->
+      <button class="dark-mode-toggle" id="chatTxToggleBtn"
+        onclick="_toggleChatTxEnabled()"
+        title="Ativar ou desativar o registro de transações via Telegram e WhatsApp">
+        <div class="dark-mode-toggle-inner">
+          <span class="dark-mode-icon">💬</span>
+          <span>Transações por Chat</span>
+        </div>
+        <div class="dark-mode-toggle-track" id="chatTxToggleTrack">
           <div class="dark-mode-toggle-thumb"></div>
         </div>
       </button>
