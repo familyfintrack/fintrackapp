@@ -4638,12 +4638,12 @@ window.openDashCustomModal                 = openDashCustomModal;
 ════════════════════════════════════════════════════════════════════════════ */
 
 async function renderDashCCInvoices() {
-  const card   = document.getElementById('dashCardCCInvoices');
+  const card    = document.getElementById('dashCardCCInvoices');
   const totalEl = document.getElementById('dashCCTotal');
-  const detailEl = document.getElementById('dashCCDetail');
+  const countEl = document.getElementById('dashCCCount');
+  const listEl  = document.getElementById('dashCCList');
   if (!card) return;
 
-  // Respect dashboard prefs — card starts hidden, shown as optional
   const prefs = _dashGetPrefs();
   if (prefs.ccinvoices === false) { card.style.display = 'none'; return; }
 
@@ -4652,112 +4652,178 @@ async function renderDashCCInvoices() {
   }
 
   const today = new Date().toISOString().slice(0, 10);
+  const E = typeof esc === 'function' ? esc : s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const F = typeof fmt === 'function' ? fmt : v => 'R$'+Number(v).toFixed(2);
 
-  // Find all active card_payment scheduled transactions
   const cardPayments = (state.scheduled || []).filter(sc =>
     sc.type === 'card_payment' && sc.status !== 'paused' && sc.status !== 'finished'
   );
-
   if (!cardPayments.length) { card.style.display = 'none'; return; }
 
-  // For each, find the NEXT occurrence only
   const entries = [];
   cardPayments.forEach(sc => {
-    // Check already-executed dates to skip them
-    const executedDates = new Set(
-      (sc.occurrences || [])
-        .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing')
-        .map(o => o.scheduled_date)
+    const executedOccs = (sc.occurrences || [])
+      .filter(o => o.execution_status === 'executed' || o.execution_status === 'processing');
+    const executedDates = new Set(executedOccs.map(o => o.scheduled_date));
+    const skippedDates  = new Set(
+      (sc.occurrences || []).filter(o => o.execution_status === 'skipped').map(o => o.scheduled_date)
     );
-    const skippedDates = new Set(
-      (sc.occurrences || [])
-        .filter(o => o.execution_status === 'skipped')
-        .map(o => o.scheduled_date)
-    );
+
+    // Last paid amount for delta
+    const lastPaidOcc = executedOccs
+      .sort((a, b) => (b.scheduled_date||'').localeCompare(a.scheduled_date||''))
+      .find(o => o.scheduled_date < today);
+    const lastPaidAmount = lastPaidOcc
+      ? Math.abs(parseFloat(lastPaidOcc.amount || sc.amount) || 0)
+      : null;
 
     if (typeof generateOccurrences !== 'function') return;
-    const occs = generateOccurrences(sc, 12); // next 12 occurrences
-
-    // Find first upcoming date
+    const occs = generateOccurrences(sc, 12);
     const nextDate = occs.find(d => d >= today && !executedDates.has(d) && !skippedDates.has(d));
     if (!nextDate) return;
 
-    // Account names
     const fromAcc = (state.accounts || []).find(a => a.id === sc.account_id);
     const toAcc   = (state.accounts || []).find(a => a.id === sc.transfer_to_account_id);
+    const amount  = Math.abs(parseFloat(sc.amount) || 0);
+
+    // Delta vs last paid
+    let delta = null;
+    if (lastPaidAmount !== null && Math.abs(amount - lastPaidAmount) > 0.01) {
+      delta = amount - lastPaidAmount; // positive = increased (bad), negative = decreased (good)
+    }
 
     entries.push({
-      sc,
-      id:          sc.id,
+      id: sc.id, sc, amount, date: nextDate, lastPaidAmount, delta,
       description: sc.description || (toAcc ? `Fatura ${toAcc.name}` : 'Pagamento cartão'),
-      amount:      Math.abs(parseFloat(sc.amount) || 0),
-      date:        nextDate,
-      fromAcc:     fromAcc?.name || '—',
-      toAcc:       toAcc?.name   || '—',
+      fromAcc: fromAcc?.name || '—',
+      toAcc:   toAcc?.name   || '—',
     });
   });
 
   if (!entries.length) { card.style.display = 'none'; return; }
 
-  // Sort by date ascending
   entries.sort((a, b) => a.date.localeCompare(b.date));
-
   const grandTotal = entries.reduce((s, e) => s + e.amount, 0);
-
-  // Update total in header
-  if (totalEl) totalEl.textContent = fmt ? '-' + fmt(grandTotal) : '-R$' + grandTotal.toFixed(2);
   card.style.display = '';
 
-  // Build detail rows
+  if (totalEl) totalEl.textContent = '-' + F(grandTotal);
+  if (countEl) countEl.textContent = entries.length + ' fatura' + (entries.length > 1 ? 's' : '');
+
+  // ── Group by date ──────────────────────────────────────────────────────
   const MON = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const _fmtDate = (d) => {
+  const byDate = {};
+  entries.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+
+  const _fmtD = (d) => {
     const dt = new Date(d + 'T12:00:00');
     return `${dt.getDate()} ${MON[dt.getMonth()]}`;
   };
 
-  const rows = entries.map(e => {
-    const isOverdue = e.date < today;
-    const daysUntil = Math.round((new Date(e.date + 'T12:00:00') - new Date()) / 86400000);
-    const urgency   = daysUntil <= 3 ? '#dc2626' : daysUntil <= 7 ? '#d97706' : 'var(--text2)';
-    const daysLabel = isOverdue ? 'vencido'
-                    : daysUntil === 0 ? 'hoje'
-                    : daysUntil === 1 ? 'amanhã'
-                    : `${daysUntil}d`;
-    return `<div onclick="navigate('scheduled')"
-      style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
-      onmouseover="this.style.background='var(--surface2)'"
-      onmouseout="this.style.background=''">
-      <div style="flex-shrink:0;width:32px;height:32px;border-radius:8px;background:rgba(220,38,38,.08);display:flex;flex-direction:column;align-items:center;justify-content:center">
-        <span style="font-size:.58rem;font-weight:700;color:#dc2626;text-transform:uppercase;line-height:1">${MON[new Date(e.date+'T12:00:00').getMonth()]}</span>
-        <span style="font-size:.82rem;font-weight:800;color:#dc2626;line-height:1">${new Date(e.date+'T12:00:00').getDate()}</span>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc ? esc(e.description) : e.description}</div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:1px">${esc ? esc(e.fromAcc) : e.fromAcc}${e.toAcc !== '—' ? ' → ' + (esc ? esc(e.toAcc) : e.toAcc) : ''}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:.85rem;font-weight:800;color:#dc2626">-${fmt ? fmt(e.amount) : 'R$'+e.amount.toFixed(2)}</div>
-        <div style="font-size:.65rem;font-weight:600;color:${urgency}">${daysLabel}</div>
-      </div>
-    </div>`;
-  }).join('');
+  let html = '';
+  const dates = Object.keys(byDate).sort();
+  const _ccExpanded = window._ccDateExpanded || (window._ccDateExpanded = new Set());
 
-  const footerRow = `<div onclick="navigate('scheduled')"
-    style="display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:7px 14px;cursor:pointer;background:var(--surface2)">
-    <span style="font-size:.7rem;color:var(--accent);font-weight:600">Ver programados →</span>
-  </div>`;
+  dates.forEach((date, di) => {
+    const group   = byDate[date];
+    const groupTotal = group.reduce((s, e) => s + e.amount, 0);
+    const daysUntil  = Math.round((new Date(date + 'T12:00:00') - new Date()) / 86400000);
+    const isOverdue  = date < today;
+    const urgency    = isOverdue ? '#dc2626' : daysUntil <= 3 ? '#dc2626' : daysUntil <= 7 ? '#d97706' : 'var(--muted)';
+    const daysLabel  = isOverdue ? 'vencido' : daysUntil === 0 ? 'hoje' : daysUntil === 1 ? 'amanhã' : `${daysUntil}d`;
+    const isLast     = di === dates.length - 1;
+    const isOpen     = _ccExpanded.has(date);
+    const gid        = 'ccg_' + date.replace(/-/g,'');
+    const multi      = group.length > 1;
 
-  if (detailEl) detailEl.innerHTML = rows + footerRow;
+    // Date row (always visible)
+    html += `<div style="border-bottom:${isLast&&!isOpen?'none':'1px solid var(--border)'}">
+      <div onclick="_dashCCToggleDate('${date}')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;transition:background .12s;${isOpen?'background:rgba(220,38,38,.04);':''}"
+        onmouseover="this.style.background='rgba(220,38,38,.06)'" onmouseout="this.style.background='${isOpen?'rgba(220,38,38,.04)':''}'" >
+        <!-- Date pill -->
+        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;width:28px">
+          <span style="font-size:.52rem;font-weight:700;color:${urgency};text-transform:uppercase;line-height:1">${MON[new Date(date+'T12:00:00').getMonth()]}</span>
+          <span style="font-size:.78rem;font-weight:800;color:${urgency};line-height:1.1">${new Date(date+'T12:00:00').getDate()}</span>
+        </div>
+        <!-- Label -->
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.72rem;font-weight:600;color:var(--text)">
+            ${multi ? `${group.length} faturas` : E(group[0].description)}
+          </div>
+          <div style="font-size:.62rem;color:${urgency};font-weight:600">${daysLabel}</div>
+        </div>
+        <!-- Total for date + chevron -->
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+          <span style="font-size:.78rem;font-weight:800;color:#dc2626">-${F(groupTotal)}</span>
+          ${multi ? `<svg id="${gid}_arr" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--muted);transition:transform .2s;transform:${isOpen?'rotate(180deg)':'rotate(0deg)'}"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
+        </div>
+      </div>`;
+
+    // Expanded sub-rows (individual cards per date, when multiple)
+    if (multi) {
+      html += `<div id="${gid}" style="display:${isOpen?'':'none'}">`;
+      group.forEach((e, ei) => {
+        // Delta indicator
+        let deltaHtml = '';
+        if (e.delta !== null) {
+          const up   = e.delta > 0;
+          const clr  = up ? '#dc2626' : '#16a34a';
+          const sign = up ? '▲' : '▼';
+          deltaHtml = `<span style="font-size:.6rem;font-weight:700;color:${clr};white-space:nowrap;margin-left:3px">${sign}${F(Math.abs(e.delta))}</span>`;
+        }
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 14px;border-top:1px solid var(--border);background:var(--surface2)">
+          <div style="width:3px;height:28px;border-radius:2px;background:#dc262622;flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.75rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(e.description)}</div>
+            <div style="font-size:.62rem;color:var(--muted)">${E(e.fromAcc)}${e.toAcc!=='—'?' → '+E(e.toAcc):''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:.78rem;font-weight:800;color:#dc2626">-${F(e.amount)}</div>
+            ${deltaHtml}
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    } else {
+      // Single card: show delta inline in the date row (append after closing the row div)
+      // We need to inject delta into the row — rewrite single-card row to include delta
+      const e = group[0];
+      if (e.delta !== null) {
+        const up  = e.delta > 0;
+        const clr = up ? '#dc2626' : '#16a34a';
+        const sign = up ? '▲' : '▼';
+        // Inject delta as a sub-line under the description
+        html = html.replace(
+          `<div style="font-size:.72rem;font-weight:600;color:var(--text)">\n            ${multi ? '' : E(e.description)}`,
+          `<div style="font-size:.72rem;font-weight:600;color:var(--text)">${E(e.description)} <span style="font-size:.6rem;font-weight:700;color:${clr}">${sign}${F(Math.abs(e.delta))}</span>\n            `
+        );
+      }
+    }
+
+    html += `</div>`; // close date group wrapper
+  });
+
+  if (listEl) listEl.innerHTML = html || '<div style="padding:12px;font-size:.75rem;color:var(--muted);text-align:center">Nenhuma fatura programada</div>';
 }
 
-// Toggle detail open/close
-window._dashCCToggleDetail = function() {
-  const detailEl  = document.getElementById('dashCCDetail');
-  const chevronEl = document.getElementById('dashCCChevron');
-  if (!detailEl) return;
-  const isOpen = detailEl.style.display !== 'none';
-  detailEl.style.display = isOpen ? 'none' : '';
-  if (chevronEl) chevronEl.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+window._dashCCToggleDate = function(date) {
+  if (!window._ccDateExpanded) window._ccDateExpanded = new Set();
+  const gid   = 'ccg_' + date.replace(/-/g,'');
+  const el    = document.getElementById(gid);
+  const arrow = document.getElementById(gid + '_arr');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  if (isOpen) {
+    window._ccDateExpanded.delete(date);
+    el.style.display = 'none';
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  } else {
+    window._ccDateExpanded.add(date);
+    el.style.display = '';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
 };
 
 window.renderDashCCInvoices = renderDashCCInvoices;
