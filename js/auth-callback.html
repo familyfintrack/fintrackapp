@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Family FinTrack</title>
+<meta name="theme-color" content="#0a1e12">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="robots" content="noindex,nofollow">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+body, input, button, select, textarea { font-family: 'Nunito', system-ui, -apple-system, sans-serif; }
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--lime:#7dc242;--green-dk:#0a1e12;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--font-serif:Georgia,serif;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gridFade{from{opacity:.75}to{opacity:1}}
+@keyframes bgPulse{from{opacity:.8}to{opacity:1;transform:scale(1.03)}}
+@keyframes orbDrift{0%{transform:translate(0,0)}100%{transform:translate(28px,-20px)}}
+@media(max-width:600px){.cb-logo{height:100px}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes btnGlow{0%,100%{box-shadow:0 4px 24px rgba(125,194,66,.3)}50%{box-shadow:0 6px 40px rgba(125,194,66,.55)}}
+.cb-screen{overflow:hidden;touch-action:none;overscroll-behavior:none;-webkit-overflow-scrolling:auto;position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px 16px;height:100dvh;width:100%;background:#0a1e12}
+.cb-screen::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;/* grid removed */}
+.cb-screen::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 100% 65% at 10% 15%,rgba(45,106,68,.30) 0%,transparent 60%),radial-gradient(ellipse 70% 80% at 90% 75%,rgba(26,61,39,.25) 0%,transparent 55%);animation:bgPulse 14s ease-in-out infinite alternate}
+.cb-orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0}
+.cb-orb1{width:520px;height:520px;background:rgba(45,106,68,.26);top:-160px;left:-130px;animation:orbDrift 24s ease-in-out infinite alternate}
+.cb-orb2{width:380px;height:380px;background:rgba(125,194,66,.09);bottom:-60px;right:-80px;animation:orbDrift 18s ease-in-out infinite alternate-reverse}
+.cb-wrap{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;max-width:440px;margin:auto;animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both;touch-action:pan-y;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;max-height:100dvh;user-select:text;-webkit-user-select:text}
+.cb-logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:20px;gap:10px}
+.cb-logo{height:131px;width:auto;object-fit:contain;position:relative;z-index:1}
+.cb-badge{display:inline-flex;align-items:center;gap:8px;font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lime);background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.28);border-radius:100px;padding:5px 14px;position:relative;z-index:1}
+.cb-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--lime);box-shadow:0 0 7px var(--lime);animation:btnGlow 2s ease-in-out infinite alternate}
+.cb-card{width:100%;background:#ffffff;border-radius:20px;border-top:3px solid var(--lime);padding:0 0 28px;box-shadow:0 32px 64px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.06);position:relative;overflow:hidden}
+.cb-card::before{content:'';position:absolute;top:-1px;left:15%;right:15%;height:1px;background:linear-gradient(90deg,transparent,rgba(125,194,66,.8),transparent);filter:blur(2px);pointer-events:none}
+.cb-logo-section{display:flex;flex-direction:column;align-items:center;padding:28px 24px 20px;background:linear-gradient(160deg,#0a2010 0%,#0d3d28 60%,#1a5c38 100%);position:relative;overflow:hidden}
+.cb-logo-section::before{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(125,194,66,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(125,194,66,.08) 1px,transparent 1px);background-size:36px 36px;}
+.cb-logo-inner{height:88px;width:auto;object-fit:contain;position:relative;z-index:1;align-items:center;gap:8px;font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lime);background:rgba(125,194,66,.1);border:1px solid rgba(125,194,66,.28);border-radius:100px;padding:5px 14px;position:relative;z-index:1;margin-top:10px}
+.cb-content{padding:28px 28px 0}
+.cb-title{font-family:var(--font-serif);font-size:1.25rem;font-weight:700;color:#0a1e12;text-align:center;margin-bottom:4px;letter-spacing:-.02em}
+.cb-sub{font-size:.82rem;color:#64748b;text-align:center;margin-bottom:20px;line-height:1.55}
+.cb-spinner{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 0}
+.cb-spin{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite}
+.cb-spin-lbl{font-size:.82rem;color:#64748b}
+.cb-btn{width:100%;padding:13px 24px;font-family:var(--font);font-size:.92rem;font-weight:800;color:#0a1e12;background:linear-gradient(135deg,#7dc242 0%,#9ed45f 100%);border:none;border-radius:14px;cursor:pointer;letter-spacing:.01em;animation:btnGlow 3s ease-in-out infinite;transition:transform .2s;margin-top:4px;display:block;text-decoration:none;text-align:center}
+.cb-btn:hover{transform:translateY(-2px)}
+.cb-link{background:none;border:none;padding:0;color:var(--lime);font-size:.82rem;font-weight:700;font-family:var(--font);cursor:pointer;text-decoration:none;transition:color .15s;display:block;text-align:center;margin-top:12px}
+.cb-link:hover{color:#4a7a26;text-decoration:underline}
+.cb-err{margin:12px 28px 0;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#dc2626;font-size:.82rem;text-align:center;line-height:1.5;display:none}
+.cb-footer{margin-top:20px;text-align:center}
+.cb-footer a{color:rgba(125,194,66,.7);font-size:.78rem;text-decoration:none;transition:color .15s}
+.cb-footer a:hover{color:var(--lime)}
+/* Password fields */
+.cb-field{margin-bottom:14px;padding:0 28px}
+.cb-field label{display:block;font-size:.66rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.cb-field input{width:100%;padding:12px 15px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:.92rem;font-family:var(--font);background:#f8fafc;color:#0f172a;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none}
+.cb-field input:focus{border-color:var(--lime);background:#fff;box-shadow:0 0 0 3px rgba(125,194,66,.15)}
+.cb-actions{padding:0 28px}
+.cb-sb-wrap{height:3px;border-radius:3px;background:#e2e8f0;overflow:hidden;margin-top:6px}
+.cb-sb{height:100%;border-radius:3px;width:0;transition:width .3s,background .3s}
+.cb-sl{font-size:.7rem;color:#94a3b8;margin-top:3px;height:14px}
+</style>
+</head>
+<body>
+<div class="cb-screen">
+  <div class="cb-orb cb-orb1"></div>
+  <div class="cb-orb cb-orb2"></div>
+  <div class="cb-wrap">
+    <div class="cb-card">
+      <!-- Logo section -->
+      <div class="cb-logo-section">
+        <img src="logo_glow_soft.png" alt="Family FinTrack" class="cb-logo-inner">
+        <div class="cb-badge-inner"><span class="cb-badge-dot"></span>Family FinTrack</div>
+      </div>
+
+      <!-- State: loading -->
+      <div id="stateLoading" class="cb-content">
+        <p class="cb-title" style="padding-top:22px">Processando…</p>
+        <p class="cb-sub">Aguarde enquanto verificamos seu link.</p>
+        <div class="cb-spinner"><div class="cb-spin"></div><span class="cb-spin-lbl" id="loadingLabel">Verificando…</span></div>
+      </div>
+
+      <!-- State: confirm email success -->
+      <div id="stateConfirm" class="cb-content" style="display:none">
+        <p class="cb-title" style="padding-top:22px">✅ E-mail confirmado!</p>
+        <p class="cb-sub">Sua conta foi ativada com sucesso. Você já pode entrar no aplicativo.</p>
+        <div class="cb-actions" style="padding-top:4px;padding-bottom:0">
+          <a href="login.html" class="cb-btn">Entrar no aplicativo →</a>
+        </div>
+      </div>
+
+      <!-- State: invite / magic-link — set password -->
+      <div id="stateSetPwd" style="display:none">
+        <div class="cb-content">
+          <p class="cb-title" style="padding-top:22px" id="setPwdTitle">Definir Senha</p>
+          <p class="cb-sub" id="setPwdSub">Crie uma senha segura para sua conta.</p>
+        </div>
+        <div class="cb-field">
+          <label for="pwd1">Nova Senha</label>
+          <input type="password" id="pwd1" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+            oninput="onPwdInput(this.value)"
+            onkeydown="if(event.key==='Enter')document.getElementById('pwd2').focus()">
+          <div class="cb-sb-wrap"><div class="cb-sb" id="strengthBar"></div></div>
+          <div class="cb-sl" id="strengthLabel"></div>
+        </div>
+        <div class="cb-field">
+          <label for="pwd2">Confirmar Senha</label>
+          <input type="password" id="pwd2" placeholder="Repita a senha" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter')savePwd()">
+        </div>
+        <div class="cb-actions">
+          <button class="cb-btn" id="savePwdBtn" onclick="savePwd()">Salvar e Entrar →</button>
+        </div>
+      </div>
+
+      <!-- State: magic link — auto login, redirect -->
+      <div id="stateMagic" class="cb-content" style="display:none">
+        <p class="cb-title" style="padding-top:22px">🔗 Link mágico</p>
+        <p class="cb-sub">Autenticado com sucesso! Redirecionando…</p>
+        <div class="cb-spinner"><div class="cb-spin"></div></div>
+      </div>
+
+      <!-- State: error -->
+      <div id="stateError" class="cb-content" style="display:none">
+        <p class="cb-title" style="padding-top:22px">⚠️ Link inválido</p>
+        <p class="cb-sub" id="errMsg">Este link expirou ou já foi usado. Solicite um novo.</p>
+        <div class="cb-actions">
+          <a href="login.html" class="cb-btn">Voltar ao login</a>
+        </div>
+      </div>
+
+      <div class="cb-err" id="fieldErr"></div>
+    </div>
+    <div class="cb-footer"><a href="login.html">← Voltar ao login</a></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script>
+(async function(){
+  'use strict';
+
+  // ── Init Supabase ─────────────────────────────────────────────────────────
+  let sb;
+  try {
+    sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storageKey: 'family-fintrack-auth'
+      }
+    });
+  } catch(e) { showError('Erro ao conectar: ' + e.message); return; }
+
+  // ── Parse URL ─────────────────────────────────────────────────────────────
+  const hash   = window.location.hash;
+  const params = new URLSearchParams(window.location.search);
+  const hp     = hash ? Object.fromEntries(
+    hash.slice(1).split('&').map(p => {
+      const eq = p.indexOf('=');
+      return [decodeURIComponent(p.slice(0,eq)), decodeURIComponent(p.slice(eq+1))];
+    })
+  ) : {};
+
+  // Detect flow type from hash or query params
+  const flowType  = hp.type || params.get('type') || '';
+  const isPkce    = params.has('code');
+  const hasToken  = !!hp.access_token;
+
+  document.getElementById('loadingLabel').textContent = 'Verificando link…';
+
+  // ── Handle flows ──────────────────────────────────────────────────────────
+  try {
+    if (flowType === 'signup' && hasToken) {
+      // Email confirmation
+      await sb.auth.setSession({ access_token: hp.access_token, refresh_token: hp.refresh_token||'' });
+      history.replaceState(null,'',location.pathname);
+      showState('stateConfirm');
+
+    } else if (flowType === 'invite' && hasToken) {
+      // Invite link — user needs to set password
+      await sb.auth.setSession({ access_token: hp.access_token, refresh_token: hp.refresh_token||'' });
+      history.replaceState(null,'',location.pathname);
+      document.getElementById('setPwdTitle').textContent = '🎉 Convite aceito!';
+      document.getElementById('setPwdSub').textContent   = 'Bem-vindo! Crie uma senha segura para sua conta.';
+      showState('stateSetPwd');
+      setTimeout(() => document.getElementById('pwd1').focus(), 120);
+
+    } else if (flowType === 'magiclink' || flowType === 'email' || (isPkce && !params.has('type_hint'))) {
+      // Magic link / OTP — auto-login
+      showState('stateMagic');
+      if (isPkce) {
+        // PKCE: SDK handles code exchange automatically
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Timeout')), 8000);
+          sb.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+              clearTimeout(timeout);
+              resolve(session);
+            }
+          });
+        });
+      } else if (hasToken) {
+        await sb.auth.setSession({ access_token: hp.access_token, refresh_token: hp.refresh_token||'' });
+      }
+      history.replaceState(null,'',location.pathname);
+      // Small delay for visual feedback then redirect
+      setTimeout(() => { window.location.replace('app.html'); }, 1200);
+
+    } else if (isPkce) {
+      // Generic PKCE (could be invite or signup via new flow)
+      showState('stateMagic');
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Link expirado ou já utilizado.')), 8000);
+        sb.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            clearTimeout(timeout); resolve(session);
+          } else if (event === 'PASSWORD_RECOVERY') {
+            clearTimeout(timeout);
+            // Redirect to proper reset page
+            window.location.replace('reset-password.html' + location.search + location.hash);
+            resolve(null);
+          }
+        });
+      });
+      history.replaceState(null,'',location.pathname);
+      setTimeout(() => { window.location.replace('app.html'); }, 1000);
+
+    } else {
+      // No recognizable params — check if session exists
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        window.location.replace('app.html');
+      } else {
+        showError('Link inválido ou expirado. Solicite um novo na tela de login.');
+      }
+    }
+  } catch(e) {
+    showError(e.message || 'Link inválido ou expirado.');
+  }
+
+  // ── Password strength meter ───────────────────────────────────────────────
+  window.onPwdInput = function(v) {
+    const bar = document.getElementById('strengthBar');
+    const lbl = document.getElementById('strengthLabel');
+    if (!v) { bar.style.width='0'; lbl.textContent=''; return; }
+    let s = 0;
+    if (v.length>=8) s++; if (v.length>=12) s++;
+    if (/[A-Z]/.test(v)) s++; if (/[0-9]/.test(v)) s++; if (/[^A-Za-z0-9]/.test(v)) s++;
+    const L=[{w:'20%',bg:'#ef4444',t:'Muito fraca'},{w:'40%',bg:'#f97316',t:'Fraca'},{w:'60%',bg:'#eab308',t:'Média'},{w:'80%',bg:'#22c55e',t:'Forte'},{w:'100%',bg:'#4a7a26',t:'Muito forte'}];
+    const l=L[Math.min(s,4)];
+    bar.style.width=l.w; bar.style.background=l.bg; lbl.textContent=l.t; lbl.style.color=l.bg;
+  };
+
+  // ── Save password (invite flow) ───────────────────────────────────────────
+  window.savePwd = async function() {
+    const p1  = document.getElementById('pwd1').value;
+    const p2  = document.getElementById('pwd2').value;
+    const err = document.getElementById('fieldErr');
+    const btn = document.getElementById('savePwdBtn');
+    err.style.display = 'none';
+    if (p1.length < 8) return showFieldErr('A senha deve ter pelo menos 8 caracteres.');
+    if (p1 !== p2)     return showFieldErr('As senhas não coincidem.');
+    btn.disabled = true; btn.textContent = '⏳ Salvando…';
+    try {
+      const { error } = await sb.auth.updateUser({ password: p1 });
+      if (error) throw error;
+      // Sync password_hash (best-effort)
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session?.user?.email) {
+          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p1));
+          const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+          await sb.from('app_users').update({ password_hash: hex, must_change_pwd: false }).eq('email', session.user.email);
+        }
+      } catch(_) {}
+      window.location.replace('app.html');
+    } catch(e) {
+      showFieldErr(e.message || 'Erro ao salvar senha.');
+      btn.disabled = false; btn.textContent = 'Salvar e Entrar →';
+    }
+  };
+
+  // ── UI helpers ────────────────────────────────────────────────────────────
+  function showState(id) {
+    ['stateLoading','stateConfirm','stateSetPwd','stateMagic','stateError']
+      .forEach(s => { const el=document.getElementById(s); if(el) el.style.display = s===id?'':'none'; });
+  }
+  function showError(msg) {
+    showState('stateError');
+    const el = document.getElementById('errMsg');
+    if (el && msg) el.textContent = msg;
+  }
+  function showFieldErr(msg) {
+    const el = document.getElementById('fieldErr');
+    el.textContent = msg; el.style.display = '';
+  }
+}());
+</script>
+</body>
+</html>
