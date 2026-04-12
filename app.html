@@ -4569,26 +4569,119 @@
 
 
     <!-- ══ DREAMS PAGE ══════════════════════════════════════════════════════ -->
-    <div class="page" id="page-dreams" style="display:none">
+    <div class="page" id="page-dreams">
 
-      <!-- Dreams intro banner -->
-      <div class="module-intro-banner" style="--intro-accent:#f59e0b;--intro-accent-lt:rgba(245,158,11,.08);margin-bottom:20px">
-        <button class="module-intro-toggle" onclick="_toggleModuleIntro(this)" title="Recolher introdução">
-          <i class="mib-arr">▾</i> Recolher
-        </button>
-        <div class="module-intro-badge" style="background:rgba(245,158,11,.12);color:#b45309">🌟 Sonhos</div>
-        <div class="module-intro-body">
-        <h3 class="module-intro-headline">Transforme sonhos em metas financeiras reais</h3>
-        <p class="module-intro-text">Defina objetivos de vida, estime custos com IA e receba um plano personalizado de quanto poupar por mês para realizar cada sonho.</p>
-        <div class="module-intro-chips">
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🤖 IA estima custos</span>
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">📈 Progresso visual</span>
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">💡 Plano de poupança</span>
-          <span class="module-intro-chip" style="background:rgba(245,158,11,.1);color:#b45309">🏆 Conquistas</span>
+      <!-- Dreams hero banner — style matches Fidelidades -->
+      <style>
+        .drm-hero {
+          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 55%, #6d28d9 100%);
+          border-radius: 14px; padding: 20px 22px 18px;
+          position: relative; overflow: hidden; margin-bottom: 16px;
+        }
+        .drm-hero::after {
+          content: '🌟'; position: absolute; right: 18px; bottom: -12px;
+          font-size: 5.5rem; opacity: .08; line-height: 1; pointer-events: none;
+        }
+        .drm-hero-top {
+          display: flex; align-items: flex-start;
+          justify-content: space-between; position: relative; z-index: 1;
+        }
+        .drm-hero-label {
+          font-size: .63rem; font-weight: 800; text-transform: uppercase;
+          letter-spacing: .12em; color: rgba(255,255,255,.5); margin-bottom: 4px;
+        }
+        .drm-hero-title {
+          font-size: 1.22rem; font-weight: 800; color: #fff; letter-spacing: -.02em;
+        }
+        .drm-hero-kpis {
+          display: flex; gap: 22px; margin-top: 16px;
+          flex-wrap: wrap; position: relative; z-index: 1;
+        }
+        .drm-hero-kpi-lbl {
+          font-size: .6rem; font-weight: 700; text-transform: uppercase;
+          letter-spacing: .08em; color: rgba(255,255,255,.5); margin-bottom: 2px;
+        }
+        .drm-hero-kpi-val {
+          font-size: 1.12rem; font-weight: 800; color: #fff;
+          font-family: var(--font-serif); line-height: 1;
+        }
+        .drm-hero-kpi-sub {
+          font-size: .62rem; color: rgba(255,255,255,.42); margin-top: 2px;
+        }
+        .drm-hero-btn {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 7px 13px; border-radius: 9px; font-size: .76rem; font-weight: 700;
+          border: 1.5px solid rgba(255,255,255,.25);
+          background: rgba(255,255,255,.12); color: #fff;
+          cursor: pointer; font-family: inherit;
+          transition: background .15s; touch-action: manipulation;
+        }
+        .drm-hero-btn:hover { background: rgba(255,255,255,.22); }
+        .drm-hero-btn-primary {
+          background: rgba(255,255,255,.95); color: #6d28d9; border-color: transparent;
+        }
+        .drm-hero-btn-primary:hover { background: #fff; }
+        .drm-hero-progress {
+          margin-top: 14px; position: relative; z-index: 1;
+        }
+        .drm-hero-progress-bar {
+          height: 6px; background: rgba(255,255,255,.18); border-radius: 3px; overflow: hidden;
+        }
+        .drm-hero-progress-fill {
+          height: 100%; border-radius: 3px;
+          background: linear-gradient(90deg, rgba(255,255,255,.7), rgba(255,255,255,.95));
+          transition: width .6s ease;
+        }
+        .drm-hero-progress-lbl {
+          display: flex; justify-content: space-between;
+          font-size: .64rem; color: rgba(255,255,255,.55); margin-top: 5px;
+        }
+      </style>
+
+      <div class="drm-hero" id="drmHeroBanner">
+        <div class="drm-hero-top">
+          <div>
+            <div class="drm-hero-label">Meus Sonhos</div>
+            <div class="drm-hero-title" id="drmHeroTitle">Objetivos &amp; Realizações</div>
+          </div>
+          <div style="display:flex;gap:7px;flex-shrink:0">
+            <button class="drm-hero-btn drm-hero-btn-primary" onclick="openDreamWizard()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Sonho
+            </button>
+          </div>
+        </div>
+        <div class="drm-hero-kpis">
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Sonhos ativos</div>
+            <div class="drm-hero-kpi-val" id="drmKpiActive">—</div>
+          </div>
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Total planejado</div>
+            <div class="drm-hero-kpi-val" id="drmKpiTotal">—</div>
+            <div class="drm-hero-kpi-sub">em metas ativas</div>
+          </div>
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Acumulado</div>
+            <div class="drm-hero-kpi-val" id="drmKpiAcc">—</div>
+            <div class="drm-hero-kpi-sub" id="drmKpiAccSub">—</div>
+          </div>
+          <div class="drm-hero-kpi">
+            <div class="drm-hero-kpi-lbl">Conquistados</div>
+            <div class="drm-hero-kpi-val" id="drmKpiAchieved">—</div>
+          </div>
+        </div>
+        <div class="drm-hero-progress" id="drmHeroProgress" style="display:none">
+          <div class="drm-hero-progress-bar">
+            <div class="drm-hero-progress-fill" id="drmHeroProgressFill" style="width:0%"></div>
+          </div>
+          <div class="drm-hero-progress-lbl">
+            <span>Progresso geral</span>
+            <span id="drmHeroProgressPct">0%</span>
+          </div>
         </div>
       </div>
 
-        </div>
       <div id="dreams-list-container" style="padding:0 0 100px">
         <!-- Rendered by dreams.js renderDreamsPage() -->
         <div class="drm-empty" style="padding:60px 20px;text-align:center;color:var(--muted)">
