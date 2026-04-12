@@ -3071,14 +3071,14 @@
         <!-- ══ TAB BAR ══════════════════════════════════════════════════════ -->
         <div class="cfg-tabs" id="cfgTabs">
 
-          <button class="cfg-tab active" onclick="cfgShowPane('pane-conta')" id="cfgNavBtn-conta">
+          <button class="cfg-tab active" onclick="cfgShowPane('pane-conta')" id="cfgNavBtn-conta" style="display:none">
             <div class="cfg-tab-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             Conta
           </button>
 
-          <button class="cfg-tab" onclick="cfgShowPane('pane-conexao')" id="cfgNavBtn-conexao">
+          <button class="cfg-tab active" onclick="cfgShowPane('pane-conexao')" id="cfgNavBtn-conexao">
             <div class="cfg-tab-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             </div>
@@ -3127,7 +3127,7 @@
             Feedbacks<span id="cfgFeedbackBadge" style="display:none;position:absolute;top:6px;right:6px;min-width:14px;height:14px;border-radius:999px;background:#dc2626;color:#fff;font-size:.55rem;font-weight:700;padding:0 3px;line-height:14px;text-align:center"></span>
           </button>
 
-          <button class="cfg-tab" onclick="cfgShowPane('pane-sobre')" id="cfgNavBtn-sobre">
+          <button class="cfg-tab" onclick="cfgShowPane('pane-sobre')" id="cfgNavBtn-sobre" style="display:none">
             <div class="cfg-tab-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
             </div>
@@ -3137,7 +3137,7 @@
         </div>
 
         <!-- ══ PANE: CONTA ══════════════════════════════════════════════════ -->
-        <div class="cfg-pane active" id="pane-conta">
+        <div class="cfg-pane" id="pane-conta">
           <div class="cfg-pane-header">
             <div class="cfg-pane-header-icon" style="background:#e8f5ee">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2a6049" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -3184,7 +3184,7 @@
         </div>
 
         <!-- ══ PANE: CONEXÃO ════════════════════════════════════════════════ -->
-        <div class="cfg-pane" id="pane-conexao">
+        <div class="cfg-pane active" id="pane-conexao">
           <div class="cfg-pane-header">
             <div class="cfg-pane-header-icon" style="background:#eff6ff">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -3722,6 +3722,39 @@
               <div class="cfg-pane-header-sub">Manutenção e administração do sistema</div>
             </div>
           </div><!-- /cfg-pane-header -->
+
+          <!-- Chave Gemini Global (owner/admin) -->
+          <div class="cfg-section-label">Inteligência Artificial Global</div>
+          <div class="cfg-card" id="globalGeminiCfgCard">
+            <div style="padding:14px 16px 6px">
+              <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:4px">🤖 Chave Gemini Compartilhada</div>
+              <div style="font-size:.74rem;color:var(--muted);line-height:1.6;margin-bottom:12px">
+                Esta chave é usada por todas as famílias que não configuraram uma chave própria.
+                Salve-a aqui e as famílias poderão ativar em <strong>Configurações → IA → Usar IA compartilhada</strong>.
+              </div>
+              <div style="background:var(--accent-lt);border:1px solid rgba(42,96,73,.2);border-radius:9px;padding:10px 12px;font-size:.75rem;color:var(--text2);line-height:1.6;margin-bottom:12px">
+                <strong>Como obter a chave (gratuita):</strong><br>
+                1. Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com/app/apikey</a><br>
+                2. Clique em <em>Create API Key</em><br>
+                3. Cole abaixo — começa com <code>AIza</code><br>
+                <span style="color:var(--accent);font-weight:600">✓ Gratuito: 1.500 req/dia · Pago a partir de US$0,10/1M tokens</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="password" id="globalGeminiKeyInput"
+                  placeholder="AIzaSy…" autocomplete="off" autocorrect="off" spellcheck="false"
+                  style="flex:1;font-family:monospace;font-size:.82rem;border:1.5px solid var(--border);
+                    border-radius:9px;padding:8px 10px;background:var(--surface)">
+                <button class="btn btn-ghost btn-sm" onclick="toggleGlobalGeminiVisibility()" id="globalGeminiToggle"
+                  style="flex-shrink:0;font-size:1rem;padding:0 10px">👁</button>
+                <button class="btn btn-primary btn-sm" onclick="saveGlobalGeminiKey()"
+                  style="flex-shrink:0">Salvar</button>
+              </div>
+              <div id="globalGeminiStatus" style="font-size:.7rem;margin-top:6px;color:var(--muted)">
+                Nenhuma chave global configurada.
+              </div>
+            </div>
+          </div>
+
           <div class="cfg-section-label">Acesso &amp; Registro</div>
           <div class="cfg-card">
             <div class="cfg-row">
@@ -6236,30 +6269,67 @@ Se você não solicitou isso, ignore este e-mail.`,
     </div>
     <div class="modal-body">
       <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
-        O app usa o <strong>Google Gemini 2.0 Flash</strong> para ler fotos de recibos,
-        notas fiscais e PDFs e preencher automaticamente os campos da transação.
-        A chave fica salva no banco, acessível apenas pela sua família.
+        O app usa o <strong>Google Gemini</strong> para ler fotos de recibos,
+        notas fiscais e PDFs, e para sugerir categorias via Telegram/WhatsApp.
+        Você pode usar a IA compartilhada do app ou configurar sua própria chave.
       </p>
 
-      <!-- Como obter a chave -->
-      <div style="background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px;font-size:.8rem;line-height:1.7;margin-bottom:16px">
-        <strong>Como obter sua chave (gratuita):</strong><br>
-        1. Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb">aistudio.google.com/app/apikey</a><br>
-        2. Clique em <em>Create API Key</em><br>
-        3. Cole a chave abaixo (começa com <code>AIza</code>)<br>
-        <span style="color:var(--green,#16a34a);font-weight:600">✓ Camada gratuita: 1.500 leituras/dia sem custo</span>
+      <!-- Opção de IA: global vs família -->
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px" id="geminiGlobalSection">
+        <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:10px">
+          🤖 Como usar a IA
+        </div>
+
+        <!-- Opção 1: IA compartilhada -->
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;border-radius:9px;border:2px solid var(--accent);background:var(--accent-lt);margin-bottom:8px" id="geminiGlobalOpt">
+          <input type="radio" name="geminiMode" value="global" id="geminiModeGlobal"
+            style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;margin-top:2px"
+            onchange="_onGeminiModeChange()">
+          <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">Usar IA compartilhada do FinTrack</div>
+            <div style="font-size:.73rem;color:var(--muted);margin-top:3px;line-height:1.5">
+              A chave Gemini é gerenciada pelo administrador do app. Funciona imediatamente, sem configuração.
+              <span style="color:var(--accent);font-weight:600">Recomendado</span>
+            </div>
+          </div>
+        </label>
+
+        <!-- Opção 2: chave própria -->
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;border-radius:9px;border:2px solid var(--border);background:var(--surface)" id="geminiOwnOpt">
+          <input type="radio" name="geminiMode" value="own" id="geminiModeOwn"
+            style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;margin-top:2px"
+            onchange="_onGeminiModeChange()">
+          <div>
+            <div style="font-size:.82rem;font-weight:700;color:var(--text)">Usar minha própria chave Gemini</div>
+            <div style="font-size:.73rem;color:var(--muted);margin-top:3px;line-height:1.5">
+              Configure sua chave do Google AI Studio. Útil para controle de cota e privacidade total.
+            </div>
+          </div>
+        </label>
       </div>
 
-      <div class="form-group" style="position:relative">
-        <label>Chave API Google Gemini</label>
-        <div style="display:flex;gap:6px">
-          <input type="password" id="anthropicApiKeyInput"
-            placeholder="AIzaSy…"
-            autocomplete="off" autocorrect="off" spellcheck="false"
-            style="flex:1;font-family:monospace;font-size:.82rem">
-          <button type="button" id="aiKeyToggle"
-            onclick="toggleAiKeyVisibility()"
-            class="btn btn-ghost btn-sm" style="flex-shrink:0;font-size:1rem;padding:0 10px">👁</button>
+      <!-- Seção chave própria — aparece só quando "própria" selecionado -->
+      <div id="geminiOwnKeySection" style="display:none">
+        <!-- Como obter a chave -->
+        <div style="background:var(--blue-lt,#eff6ff);border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 14px;font-size:.8rem;line-height:1.7;margin-bottom:16px">
+          <strong>Como obter sua chave (gratuita):</strong><br>
+          1. Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb">aistudio.google.com/app/apikey</a><br>
+          2. Clique em <em>Create API Key</em><br>
+          3. Cole a chave abaixo (começa com <code>AIza</code>)<br>
+          <span style="color:var(--green,#16a34a);font-weight:600">✓ Camada gratuita: 1.500 leituras/dia sem custo</span>
+        </div>
+
+        <div class="form-group" style="position:relative">
+          <label>Chave API Google Gemini</label>
+          <div style="display:flex;gap:6px">
+            <input type="password" id="anthropicApiKeyInput"
+              placeholder="AIzaSy…"
+              autocomplete="off" autocorrect="off" spellcheck="false"
+              style="flex:1;font-family:monospace;font-size:.82rem">
+            <button type="button" id="aiKeyToggle"
+              onclick="toggleAiKeyVisibility()"
+              class="btn btn-ghost btn-sm" style="flex-shrink:0;font-size:1rem;padding:0 10px">👁</button>
+          </div>
         </div>
       </div>
 
