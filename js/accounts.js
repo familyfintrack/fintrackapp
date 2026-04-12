@@ -109,9 +109,9 @@ async function renderAccounts(ft=''){
   if(!grid) return;
   state.groups = state.groups || [];
 
-  // ── Garantir que programas de fidelidade estão carregados ANTES de renderizar ──
-  // getLoyaltyBadgeHtml lê de _loy.programs — se vazio, badges não aparecem
-  if (typeof loadLoyaltyPrograms === 'function' && !window._loy?.loaded) {
+  // Always ensure loyalty programs are loaded before rendering cards
+  // (window._loy may not exist yet due to script load order)
+  if (typeof loadLoyaltyPrograms === 'function') {
     await loadLoyaltyPrograms().catch(() => {});
   }
 

@@ -4494,11 +4494,13 @@ async function _loadDashLoyaltyCard() {
   const prefs = _dashGetPrefs();
   if (prefs.loyalty === false) { card.style.display = 'none'; return; }
 
-  if (typeof loadLoyaltyPrograms === 'function' && !window._loy?.loaded) {
+  // Always load/refresh loyalty programs — window._loy may not be set yet
+  // if loyalty.js loaded after dashboard.js (script order issue)
+  if (typeof loadLoyaltyPrograms === 'function') {
     await loadLoyaltyPrograms().catch(() => {});
   }
 
-  const programs = window._loy?.programs || [];
+  const programs = (window._loy?.programs) || [];
   const active   = programs; // mostrar todos os programas cadastrados
 
   // If prefs say show but no programs loaded yet, show empty state (don't hide)
