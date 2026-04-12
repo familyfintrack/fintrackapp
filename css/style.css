@@ -25293,6 +25293,9 @@ body.dark .dark-mode-toggle-track {
   box-shadow: 0 1px 4px rgba(0,0,0,.22);
 }
 body.dark .dark-mode-toggle-thumb { transform: translateX(18px); }
+/* Chat Tx toggle — enabled state moves thumb */
+.dark-mode-toggle-track.active { background: var(--accent) !important; border-color: var(--accent) !important; }
+.dark-mode-toggle-track.active .dark-mode-toggle-thumb { transform: translateX(18px); }
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -28384,6 +28387,19 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
   color: var(--accent);
   background: var(--accent-lt, rgba(42,96,73,.08));
 }
+
+
+/* ── Loyalty programs as account-grid cards (Contas page) ────────────────── */
+.loy-acc-card {
+  border-radius: 14px !important;
+  transition: box-shadow .16s, transform .16s;
+  cursor: pointer;
+}
+.loy-acc-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.09);
+  transform: translateY(-1px);
+}
+.loy-acc-card:active { transform: translateY(0); }
 
 /* Loyalty points badge on account cards */
 .loyalty-pts-badge {
