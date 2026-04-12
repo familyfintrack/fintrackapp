@@ -1495,7 +1495,7 @@ async function _cvLoad() {
     if (!fid || !sb) { body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Não autenticado.</div>'; return; }
 
     const { data: txs, error } = await sb.from('transactions')
-      .select('id,date,description,amount,currency,category_id,account_id,payee_id,notes,categories(id,name,icon,color),accounts(id,name,icon,color),payees(id,name)')
+      .select('id,date,description,amount,currency,category_id,account_id,payee_id,notes,categories(id,name,icon,color),account:accounts!account_id(id,name),payees(id,name)')
       .eq('family_id', fid).eq('source', 'chat').eq('status', 'pending')
       .order('created_at', { ascending: false }).limit(50);
 

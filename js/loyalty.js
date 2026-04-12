@@ -297,13 +297,16 @@ async function renderLoyaltySection() {
 }
 window.renderLoyaltySection = renderLoyaltySection;
 
-// ── Loyalty page init — renders everything dynamically ───────────────────────
+// ── Loyalty page init — fills #lp-content only, never touches page root ────────
+// navigate() injects .page-header-bar and #fxRatesBadge into page-loyalty BEFORE
+// calling this function. #lp-content sits below those elements in the HTML and is
+// the only thing we touch here — header bar and fx bar are always preserved.
 async function initLoyaltyPage() {
-  const page = document.getElementById('page-loyalty');
-  if (!page) return;
+  const contentEl = document.getElementById('lp-content');
+  if (!contentEl) return;
 
-  // Render the full page shell immediately (synchronous)
-  page.innerHTML = `
+  // Inject the loyalty page shell — header/fx bar stay untouched above
+  contentEl.innerHTML = `
     <style>
       .lp-hero {
         background: linear-gradient(135deg, #1e5c42 0%, #2a7550 60%, #1a5c38 100%);

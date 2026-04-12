@@ -1004,17 +1004,13 @@ function navigate(page){
     }
     if (fxBar) {
       pageEl.insertBefore(fxBar, bar.nextSibling);
-      // Move the bar and re-render — but ensure it stays visible if it has content
-      // Do NOT call _renderFxBadge here as it may hide the bar before state is ready
-      // It will be re-rendered by its own update cycle or on next navigate
-      const hasCurrencies = window._fxRates && Object.keys(window._fxRates).length > 0;
-      fxBar.style.display = hasCurrencies ? '' : fxBar.style.display;
-      // Deferred render so state is ready
+      fxBar.style.display = '';   // always show immediately
+      // Defer render so state (accounts, user) is guaranteed ready
       setTimeout(() => {
         if (typeof _renderFxBadge === 'function') {
           try { _renderFxBadge(); } catch (_) {}
         }
-      }, 100);
+      }, 80);
     }
   })(page);
   state.currentPage=page;closeSidebar();

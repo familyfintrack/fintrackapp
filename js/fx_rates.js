@@ -261,14 +261,25 @@ function _renderFxBadge() {
   const pairs = wanted
     .map(c => [c, window._fxRates[c]])
     .filter(([, rate]) => rate != null);
-  if (!pairs.length) { el.style.display = 'none'; return; }
+
+  // Always show the bar when the user is logged in (family name visible regardless of FX)
+  // Only hide if completely anonymous (no user at all)
+  if (!currentUser) { el.style.display = 'none'; return; }
+  el.style.display = '';
+
+  // If no FX pairs, hide only the rates/age section — keep family name visible
+  if (!pairs.length) {
+    if (ratesEl)  ratesEl.innerHTML = '';
+    if (ageEl)    ageEl.textContent  = '';
+    if (refreshEl) refreshEl.style.display = 'none';
+    return;
+  }
+  if (refreshEl) refreshEl.style.display = '';
 
   const age    = _fxAgeMin();
   const stale  = age > _FX_TTL_MIN;
   const ageRnd = Math.round(age);
   const ageStr = age === Infinity ? '' : age < 60 ? `há ${ageRnd}min` : `há ${Math.round(age/60)}h`;
-
-  el.style.display = '';
 
   if (ratesEl) {
     ratesEl.innerHTML = pairs.map(([c, r]) =>
