@@ -1338,12 +1338,139 @@ function closeUserMenu() {
 /* ── Chat Tx toggle — Transações por Chat (Telegram / WhatsApp) ──────────── */
 
 function _refreshChatTxToggle() {
-  const track = document.getElementById('chatTxToggleTrack');
+  const track  = document.getElementById('chatTxToggleTrack');
+  const logBtn = document.getElementById('chatTxLogBtn');
   if (!track) return;
   const enabled = currentUser?.chat_tx_enabled !== false; // default true
   track.style.background = enabled ? 'var(--accent)' : '';
   track.classList.toggle('active', enabled);
+  if (logBtn) logBtn.style.display = enabled ? '' : 'none';
 }
+
+/* ── Histórico de transações criadas via chat ─────────────────────────────── */
+async function openChatTxLog() {
+  document.getElementById('chatTxLogModal')?.remove();
+
+  const html = `
+  <div class="modal-overlay open" id="chatTxLogModal"
+    onclick="if(event.target===this)closeModal('chatTxLogModal')">
+    <div class="modal" style="max-width:520px;max-height:90dvh;display:flex;flex-direction:column">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">💬 Histórico via Chat</span>
+        <button class="modal-close" onclick="closeModal('chatTxLogModal')">✕</button>
+      </div>
+      <div class="modal-body" style="flex:1;overflow-y:auto;padding:0" id="chatTxLogBody">
+        <div style="padding:24px;text-align:center;color:var(--muted);font-size:.82rem">⏳ Carregando…</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('chatTxLogModal')">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  const body = document.getElementById('chatTxLogBody');
+
+  try {
+    if (!sb || !currentUser?.id) throw new Error('Sessão não encontrada.');
+
+    // Load last 50 chat pending actions for this user (all statuses)
+    const { data: actions, error } = await sb
+      .from('chat_pending_actions')
+      .select('id,status,parsed_payload,created_at,channel')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    if (!actions?.length) {
+      body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:.83rem">Nenhuma transação via chat ainda.<br>Mande uma mensagem para o bot!</div>';
+      return;
+    }
+
+    const E = typeof esc === 'function' ? esc : s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const F = typeof fmt === 'function' ? fmt : v => 'R$'+Number(v).toFixed(2);
+    const fmtDt = iso => {
+      try { return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+      catch { return iso?.slice(0,16).replace('T',' ') || '—'; }
+    };
+
+    const statusConfig = {
+      confirmed: { label:'Confirmada', color:'#16a34a', bg:'rgba(22,163,74,.08)', icon:'✅' },
+      cancelled:  { label:'Cancelada',  color:'#dc2626', bg:'rgba(220,38,38,.08)', icon:'❌' },
+      pending:    { label:'Pendente',   color:'#d97706', bg:'rgba(217,119,6,.08)', icon:'⏳' },
+      expired:    { label:'Expirada',   color:'#9ca3af', bg:'rgba(156,163,175,.08)', icon:'⏱' },
+    };
+
+    const rows = actions.map(a => {
+      const p   = a.parsed_payload || {};
+      const st  = statusConfig[a.status] || statusConfig.expired;
+      const amt = p.amount ? (p.type === 'income' ? '+' : '-') + F(Math.abs(p.amount)) : '—';
+      const amtColor = p.type === 'income' ? '#16a34a' : '#dc2626';
+      const ch  = a.channel === 'telegram' ? '✈️' : '💬';
+      const inferIcon = { parser:'📝', memory:'🧠', context:'🔄', ai:'🤖', image:'📷' }[p.inferred_by] || '❓';
+      return `
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border)">
+        <div style="width:36px;height:36px;border-radius:9px;flex-shrink:0;
+          background:${st.bg};border:1px solid ${st.color}30;
+          display:flex;align-items:center;justify-content:center;font-size:1rem">
+          ${st.icon}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:.83rem;font-weight:700;color:var(--text);
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${E(p.description || '—')}
+            </span>
+            <span style="font-size:.6rem;padding:1px 5px;border-radius:6px;
+              background:${st.bg};color:${st.color};font-weight:700;flex-shrink:0">
+              ${st.label}
+            </span>
+          </div>
+          <div style="font-size:.67rem;color:var(--muted)">
+            ${ch} ${fmtDt(a.created_at)}
+            ${p.category_name ? ' · ' + E(p.category_name) : ''}
+            ${p.account_name  ? ' · ' + E(p.account_name)  : ''}
+            <span style="margin-left:4px">${inferIcon}</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.88rem;font-weight:800;color:${amtColor}">${amt}</div>
+          <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${p.date || ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Summary stats
+    const total     = actions.length;
+    const confirmed = actions.filter(a => a.status === 'confirmed').length;
+    const cancelled = actions.filter(a => a.status === 'cancelled').length;
+    const pending   = actions.filter(a => a.status === 'pending').length;
+
+    const summary = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.2);border-radius:9px;padding:8px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:#16a34a">${confirmed}</div>
+        <div style="font-size:.63rem;color:var(--muted);font-weight:600">Confirmadas</div>
+      </div>
+      <div style="background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.2);border-radius:9px;padding:8px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:#dc2626">${cancelled}</div>
+        <div style="font-size:.63rem;color:var(--muted);font-weight:600">Canceladas</div>
+      </div>
+      <div style="background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.2);border-radius:9px;padding:8px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:#d97706">${pending}</div>
+        <div style="font-size:.63rem;color:var(--muted);font-weight:600">Pendentes</div>
+      </div>
+    </div>`;
+
+    body.innerHTML = summary + `<div style="padding:4px 0">${rows}</div>`;
+  } catch(e) {
+    if (body) body.innerHTML = `<div style="padding:20px;color:#dc2626;text-align:center;font-size:.82rem">❌ ${typeof esc==='function'?esc(e.message):e.message}</div>`;
+  }
+}
+window.openChatTxLog = openChatTxLog;
 
 async function _toggleChatTxEnabled() {
   const newVal = !(currentUser?.chat_tx_enabled !== false);

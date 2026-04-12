@@ -188,8 +188,11 @@ async function renderLoyaltySection() {
     return;
   }
 
-  container.innerHTML = programs.map(p => _loyCard(p)).join('') + `
-    <div style="display:flex;justify-content:center;padding:8px 0">
+  container.innerHTML = `
+    <div class="account-grid" style="margin-bottom:12px">
+      ${programs.map(p => _loyCard(p)).join('')}
+    </div>
+    <div style="display:flex;justify-content:center;padding:4px 0 8px">
       <button class="btn btn-ghost btn-sm" onclick="openLoyaltyModal('')">+ Adicionar programa</button>
     </div>`;
 }
@@ -213,20 +216,45 @@ function _loyCard(p) {
     ? `<div style="font-size:.68rem;color:#d97706;font-weight:600">⏳ Vence: ${p.points_expiry_date.split('-').reverse().join('/')}</div>`
     : '';
 
-  return `<div class="loyalty-card" style="border-left:4px solid ${color}">
-    <div class="loyalty-card-top">
-      <div class="loyalty-card-icon" style="background:${color}18;color:${color};font-size:1.5rem">${icon}</div>
-      <div class="loyalty-card-info">
-        <div class="loyalty-card-name">${_loyEsc(p.name)}</div>
-        <div class="loyalty-card-type">${_loyEsc(cat.name)}</div>
-        ${linkedLine}${avgLine}${expiryLine}
+  // Compact pts display
+  const fmtPts = n => {
+    const v = Number(n||0);
+    if (v >= 1000000) return (v/1000000).toFixed(1).replace('.0','') + 'M';
+    if (v >= 1000)    return (v/1000).toFixed(1).replace('.0','') + 'k';
+    return _loyFmt(v);
+  };
+
+  return `<div class="account-card-wrap">
+    <div class="account-card loy-acc-card" onclick="openLoyaltyStatement('${p.id}')"
+      style="cursor:pointer;position:relative;overflow:hidden;border-radius:14px;
+             border:1.5px solid ${color}28;background:var(--surface)">
+      <!-- Color stripe top -->
+      <div style="height:4px;background:linear-gradient(90deg,${color},${color}99);width:100%"></div>
+      <div class="account-card-body" style="padding:12px 14px 8px">
+        <!-- Top row: icon + name + balance -->
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+            background:${color}18;border:1.5px solid ${color}30;
+            display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+            ${icon}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.85rem;font-weight:700;color:var(--text);
+              white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_loyEsc(p.name)}</div>
+            <div style="font-size:.68rem;color:var(--muted)">${_loyEsc(cat.name)}</div>
+            ${linkedLine}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:1.15rem;font-weight:800;color:${color};
+              font-family:var(--font-serif);line-height:1">${fmtPts(p.points_balance)}</div>
+            <div style="font-size:.62rem;color:var(--muted)">pontos</div>
+            ${p.api_enabled ? '<div style="font-size:.6rem;padding:1px 5px;border-radius:5px;background:rgba(22,163,74,.1);color:#16a34a;font-weight:700;margin-top:3px">🟢 API</div>' : ''}
+          </div>
+        </div>
+        ${expiryLine ? '<div style="margin-bottom:6px">' + expiryLine + '</div>' : ''}
+        ${avgLine ? '<div style="margin-bottom:4px">' + avgLine + '</div>' : ''}
       </div>
-      <div class="loyalty-card-balance" style="color:${color}">
-        <div class="loyalty-pts-value">${_loyFmt(p.points_balance)}</div>
-        <div class="loyalty-pts-label">pontos</div>
-      </div>
-    </div>
-    <div class="loyalty-card-actions">
+      <div class="loyalty-card-actions" onclick="event.stopPropagation()">
       <button class="loyalty-action-btn" onclick="updateLoyaltyPoints('${p.id}')" title="Atualizar pontos">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         Atualizar
@@ -257,6 +285,7 @@ function _loyCard(p) {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Editar
       </button>
+      </div>
     </div>
   </div>`;
 }

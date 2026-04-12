@@ -278,11 +278,11 @@ async function loadDashboard(){
       const _titleEl = document.querySelector('#page-dashboard .page-header-bar-title');
       if (_titleEl) {
         _titleEl.textContent = _msg;
-        // Reverter para "Dashboard" após 6 segundos
+        // Reverter para "Dashboard" após 12 segundos
         setTimeout(() => {
           const el = document.querySelector('#page-dashboard .page-header-bar-title');
           if (el && el.textContent !== 'Dashboard') el.textContent = 'Dashboard';
-        }, 6000);
+        }, 12000);
       }
       // Ocultar elemento legado (mantido no HTML mas não mais necessário)
       const _greetEl = document.getElementById('dashWelcomeMsg');
@@ -4541,53 +4541,86 @@ async function _loadDashLoyaltyCard() {
   }
 
   let html = '';
-  active.forEach(function(p) {
-    const color    = pColor(p);
-    const icon     = pIcon(p);
-    const pts      = Number(p.points_balance||0);
-    const expiry   = expiryInfo(p);
-    const accName  = linkedAccName(p);
-    const subLine  = accName ? ('&#x1F3E6; ' + E(accName))
-                             : E(p.program_type !== 'custom' ? p.program_type.replace(/_/g,' ') : 'Personalizado');
-    const pid      = E(p.id);
+  // Build dash-fav-card style grid — same as favorite accounts
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));'
+    + 'gap:10px;padding:12px 16px 4px">';
 
-    let expiryHtml = '';
+  active.forEach(function(p) {
+    const color   = pColor(p);
+    const icon    = pIcon(p);
+    const pts     = Number(p.points_balance||0);
+    const expiry  = expiryInfo(p);
+    const accName = linkedAccName(p);
+    const pid     = E(p.id);
+    const subLine = accName ? accName
+                            : (p.program_type !== 'custom' ? p.program_type.replace(/_/g,' ') : 'Pontos');
+
+    // Shine overlay hex — lighter version of color
+    let expiryBadge = '';
     if (expiry) {
-      expiryHtml = '<div style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;'
-        + 'padding:1px 6px;border-radius:8px;font-size:.6rem;font-weight:700;'
-        + 'background:' + expiry.bg + ';color:' + expiry.color + ';'
-        + 'border:1px solid ' + expiry.color + '30">'
-        + expiry.label + '</div>';
+      expiryBadge = '<span style="display:inline-flex;align-items:center;gap:2px;'
+        + 'padding:1px 5px;border-radius:6px;font-size:.58rem;font-weight:700;'
+        + 'background:rgba(0,0,0,.25);color:#fff;margin-top:3px">'
+        + expiry.label + '</span>';
     }
 
     html += '<div data-loyid="' + pid + '" onclick="_dashLoyaltyOpen(this)"'
-      + ' style="display:flex;align-items:center;gap:12px;padding:11px 16px;'
-      + 'border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"'
-      + ' onmouseover="this.style.background=\'var(--bg2)\'"'
-      + ' onmouseout="this.style.background=\'\'">'
-      + '<div style="width:38px;height:38px;border-radius:10px;flex-shrink:0;'
-      + 'background:' + color + '15;border:1.5px solid ' + color + '30;'
-      + 'display:flex;align-items:center;justify-content:center;font-size:1.1rem">'
-      + icon + '</div>'
-      + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:.83rem;font-weight:700;color:var(--text);'
-      + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(p.name) + '</div>'
-      + '<div style="font-size:.67rem;color:var(--muted);margin-top:2px;'
-      + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + subLine + '</div>'
+      // Card shell — dash-fav-card style with program color
+      + ' style="position:relative;overflow:hidden;border-radius:12px;'
+      + 'padding:10px 12px 9px;cursor:pointer;'
+      + 'background:linear-gradient(135deg,'
+      + color + ' 0%,'
+      + color + 'cc 100%);'
+      + 'color:#fff;'
+      + 'box-shadow:0 4px 14px ' + color + '55,0 1px 3px rgba(0,0,0,.18);'
+      + 'transition:transform .18s,box-shadow .18s;'
+      + 'display:flex;flex-direction:column;min-height:110px;'
+      + 'user-select:none;-webkit-tap-highlight-color:transparent"'
+      + ' onmouseover="this.style.transform=\'translateY(-2px) scale(1.01)\'"'
+      + ' onmouseout="this.style.transform=\'\'">'
+
+      // Shine overlay
+      + '<div style="pointer-events:none;position:absolute;inset:0;'
+      + 'background:linear-gradient(135deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 55%);'
+      + 'border-radius:inherit"></div>'
+
+      // Decorative circle
+      + '<div style="pointer-events:none;position:absolute;width:80px;height:80px;'
+      + 'border-radius:50%;background:rgba(255,255,255,.08);'
+      + 'bottom:-18px;right:-18px"></div>'
+
+      // Top: icon + api badge
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-size:1.4rem;line-height:1">' + icon + '</span>'
+      + (p.api_enabled ? '<span style="font-size:.55rem;font-weight:800;padding:1px 5px;'
+        + 'border-radius:5px;background:rgba(255,255,255,.25);color:#fff">API</span>' : '')
       + '</div>'
-      + '<div style="text-align:right;flex-shrink:0">'
-      + '<div style="font-size:.95rem;font-weight:800;color:' + color + ';'
-      + 'font-family:var(--font-serif);letter-spacing:-.01em">' + fmtPts(pts) + '</div>'
-      + '<div style="font-size:.62rem;color:var(--muted);margin-top:1px">pts</div>'
-      + expiryHtml
+
+      // Program name
+      + '<div style="font-size:.78rem;font-weight:700;color:rgba(255,255,255,.95);'
+      + 'line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+      + 'margin-bottom:2px">' + E(p.name) + '</div>'
+
+      // Linked account or type
+      + '<div style="font-size:.62rem;color:rgba(255,255,255,.65);'
+      + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:auto">'
+      + E(subLine) + '</div>'
+
+      // Points balance — big number
+      + '<div style="margin-top:8px">'
+      + '<div style="font-size:1.2rem;font-weight:800;color:#fff;'
+      + 'font-family:var(--font-serif);line-height:1;letter-spacing:-.02em">'
+      + fmtPts(pts) + '</div>'
+      + '<div style="font-size:.6rem;color:rgba(255,255,255,.65);margin-top:1px">pontos</div>'
+      + expiryBadge
       + '</div>'
-      + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
-      + ' stroke-width="2" stroke-linecap="round" style="color:var(--muted);flex-shrink:0">'
-      + '<polyline points="9 18 15 12 9 6"/></svg>'
       + '</div>';
   });
 
-  html += '<div style="padding:8px 16px 10px">'
+  html += '</div>';
+
+  // Footer: manage button
+  html += '<div style="padding:4px 16px 12px">'
     + '<button onclick="navigate(\'accounts\');'
     + 'setTimeout(()=>document.querySelector(\'.loy-section\')?.scrollIntoView({behavior:\'smooth\'}),400)"'
     + ' style="width:100%;font-size:.74rem;font-weight:600;color:var(--accent);'
