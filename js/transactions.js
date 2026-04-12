@@ -1345,7 +1345,7 @@ async function _aiSmartRun(desc, ctx) {
 
   _aiSuggest.loading[ctx] = true;
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    const apiKey = await getGeminiApiKey().catch(() => '');
     if (apiKey?.startsWith('AIza')) {
       await _aiSmartGemini(desc, ctx, { payeeAlreadySet, catAlreadySet, accAlreadySet, memberAlreadySet });
     } else {
@@ -1398,7 +1398,7 @@ Respond ONLY with valid JSON, no explanation:
   "confidence": "high|medium|low"
 }`;
 
-  const apiKey = await getAppSetting('gemini_api_key', '');
+  const apiKey = await getGeminiApiKey();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${RECEIPT_AI_MODEL}:generateContent?key=${apiKey}`;
 
   let result;

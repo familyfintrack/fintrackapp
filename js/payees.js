@@ -619,7 +619,7 @@ window.payeeAiSuggestLogo = async function() {
   content.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:12px;width:100%">⏳ Buscando sugestões…</div>';
 
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '');
+    const apiKey = await getGeminiApiKey();
     if (!apiKey) { content.innerHTML = '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>'; return; }
 
     const domain = (() => {

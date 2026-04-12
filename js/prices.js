@@ -1589,7 +1589,7 @@ async function rpmNormalizeAI(idx) {
   const descEl = document.getElementById(`rpmDesc-${idx}`);
   const raw    = descEl?.value?.trim();
   if (!raw) return;
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey) { toast('Configure a chave Gemini para usar IA.', 'warning'); return; }
   const btn = descEl?.parentElement?.querySelector('.rpm-ai-btn');
   if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
@@ -1919,7 +1919,7 @@ async function onPricesReceiptDrop(event) {
 
 async function readPricesReceiptWithAI() {
   if (!_pricesReceiptPending) { toast('Selecione um arquivo primeiro.', 'warning'); return; }
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey) { toast('Configure a chave Gemini em Configurações → IA.', 'warning'); return; }
   const btn    = document.getElementById('pricesReadAiBtn');
   const status = document.getElementById('pricesAiStatus');

@@ -1191,7 +1191,7 @@ window.accountAiSuggestIcon = async function() {
 
   // ── Step 2: AI emoji suggestions ────────────────────────────────────
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '');
+    const apiKey = await getGeminiApiKey();
     if (!apiKey) {
       content.innerHTML = bankChipHtml ||
         '<div style="color:var(--red,#dc2626);font-size:.78rem;padding:8px">Configure a chave Gemini em Configurações → IA</div>';

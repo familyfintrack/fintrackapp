@@ -6,6 +6,48 @@
 ═══════════════════════════════════════════════════════════════════════════ */
 
 const RECEIPT_AI_KEY_SETTING   = 'gemini_api_key';
+const GEMINI_USE_GLOBAL_SETTING = 'gemini_use_global';
+
+/**
+ * getGeminiApiKey() — resolução centralizada da chave Gemini
+ * Prioridade:
+ *   1. Chave própria da família (family_settings.gemini_api_key)
+ *   2. Chave global do servidor (_globalGeminiKey, injetada no login via app_settings)
+ *   3. '' (funciona só com parser local)
+ *
+ * Todos os módulos que usam Gemini devem chamar esta função.
+ */
+async function getGeminiApiKey() {
+  try {
+    // 1. Chave da família
+    const familyKey = await getGeminiApiKey();
+    const clean = typeof familyKey === 'string' ? familyKey.trim() : '';
+    if (clean && clean.startsWith('AIza')) return clean;
+
+    // 2. Verificar preferência: família optou por não usar global?
+    const useGlobalPref = await getAppSetting(GEMINI_USE_GLOBAL_SETTING, 'true');
+    if (useGlobalPref === 'false') return '';
+
+    // 3. Chave global (carregada em login.html via _globalGeminiKey, ou app_settings)
+    if (typeof window._globalGeminiKey === 'string' && window._globalGeminiKey.startsWith('AIza')) {
+      return window._globalGeminiKey;
+    }
+    // Fallback: tentar buscar direto se não está em cache
+    if (typeof sb !== 'undefined' && sb) {
+      const { data } = await sb.from('app_settings')
+        .select('value').eq('key', '_global_gemini_key').maybeSingle();
+      const gKey = typeof data?.value === 'string' ? data.value.trim() : '';
+      if (gKey && gKey.startsWith('AIza')) {
+        window._globalGeminiKey = gKey;
+        return gKey;
+      }
+    }
+  } catch(e) {
+    console.warn('[getGeminiApiKey]', e?.message);
+  }
+  return '';
+}
+window.getGeminiApiKey = getGeminiApiKey;
 const GEMINI_MODEL_SETTING     = 'gemini_model';
 const GEMINI_MODEL_DEFAULT     = 'gemini-2.5-flash';   // stable, widely available
 
@@ -45,12 +87,26 @@ window._receiptAiPending = null; // { base64, mediaType, fileName }
 // ══════════════════════════════════════════════════════════════════════════
 
 async function showAiConfig() {
-  const val   = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
-  const model = await getGeminiModel();
+  const val        = await getGeminiApiKey();
+  const model      = await getGeminiModel();
+  const useGlobal  = await getAppSetting(GEMINI_USE_GLOBAL_SETTING, 'true');
+  const isGlobal   = useGlobal !== 'false' && useGlobal !== false;
+  // Set radio selection
+  const modeGlobal = document.getElementById('geminiModeGlobal');
+  const modeOwn    = document.getElementById('geminiModeOwn');
+  if (modeGlobal) modeGlobal.checked = isGlobal;
+  if (modeOwn)    modeOwn.checked    = !isGlobal;
+  _onGeminiModeChange(); // update UI visibility
   const inp = document.getElementById('anthropicApiKeyInput');
   if (inp) { inp.value = val || ''; inp.type = 'password'; }
   const tog = document.getElementById('aiKeyToggle');
   if (tog) tog.textContent = '👁';
+  // Hide global toggle if user is not owner/admin
+  const gSection = document.getElementById('geminiGlobalSection');
+  if (gSection) {
+    const role = window.currentUser?.role || '';
+    gSection.style.display = (role === 'owner' || role === 'admin') ? '' : 'none';
+  }
   // Pre-select configured model
   const modelSel = document.getElementById('geminiModelSelect');
   if (modelSel) {
@@ -73,11 +129,18 @@ async function saveAiConfig() {
   const key      = (inp?.value || '').trim();
   const model    = (modelSel?.value || GEMINI_MODEL_DEFAULT).trim();
 
-  if (key && !key.startsWith('AIza')) {
-    toast('Chave inválida — deve começar com AIza…', 'error');
-    return;
+  const modeGlobal = document.getElementById('geminiModeGlobal');
+  const useGlobal  = modeGlobal ? modeGlobal.checked : true;
+  await saveAppSetting(GEMINI_USE_GLOBAL_SETTING, useGlobal ? 'true' : 'false');
+
+  // Only validate/save key if using own key mode
+  if (!useGlobal) {
+    if (key && !key.startsWith('AIza')) {
+      toast('Chave inválida — deve começar com AIza…', 'error');
+      return;
+    }
+    await saveAppSetting(RECEIPT_AI_KEY_SETTING, key);
   }
-  await saveAppSetting(RECEIPT_AI_KEY_SETTING, key);
   await saveAppSetting(GEMINI_MODEL_SETTING, model);
   // Save n8n settings
   const n8nUrl = (document.getElementById('agentN8nWebhookUrl')?.value || '').trim();
@@ -101,7 +164,7 @@ function toggleAiKeyVisibility() {
 }
 
 async function _updateAiStatusBadge() {
-  const key   = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const key   = await getGeminiApiKey();
   const model = await getGeminiModel();
   const ok    = !!(key && key.startsWith('AIza'));
   const dot   = document.getElementById('aiStatusDot');
@@ -109,10 +172,36 @@ async function _updateAiStatusBadge() {
   if (dot) {
     dot.style.cssText = `width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${ok ? 'var(--green,#22c55e)' : '#d1d5db'}`;
   }
+  const useGlobalSaved = await getAppSetting(GEMINI_USE_GLOBAL_SETTING, 'true');
+  const isGlobalMode   = useGlobalSaved !== 'false' && useGlobalSaved !== false;
+  const dotGreen = ok || isGlobalMode; // green if own key OK or global mode active
+  if (dot) {
+    dot.style.cssText = `width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${dotGreen ? 'var(--green,#22c55e)' : '#d1d5db'}`;
+  }
   if (sub) sub.textContent = ok
-    ? `✓ Configurado · modelo: ${model}`
-    : 'Configure para habilitar leitura automática de recibos';
+    ? `✓ Chave própria · modelo: ${model}`
+    : isGlobalMode
+      ? `✓ IA compartilhada · modelo: ${model}`
+      : 'Configure para habilitar leitura automática de recibos';
 }
+
+// Mostra/oculta seção de chave própria conforme seleção
+window._onGeminiModeChange = function() {
+  const modeOwn   = document.getElementById('geminiModeOwn');
+  const ownSec    = document.getElementById('geminiOwnKeySection');
+  const globalOpt = document.getElementById('geminiGlobalOpt');
+  const ownOpt    = document.getElementById('geminiOwnOpt');
+  const isOwn     = modeOwn?.checked;
+  if (ownSec) ownSec.style.display = isOwn ? '' : 'none';
+  if (globalOpt) {
+    globalOpt.style.borderColor = isOwn ? 'var(--border)' : 'var(--accent)';
+    globalOpt.style.background  = isOwn ? 'var(--surface)' : 'var(--accent-lt)';
+  }
+  if (ownOpt) {
+    ownOpt.style.borderColor = isOwn ? 'var(--accent)' : 'var(--border)';
+    ownOpt.style.background  = isOwn ? 'var(--accent-lt)' : 'var(--surface)';
+  }
+};
 
 // chamado por loadSettings()
 function initAiSettings() { _updateAiStatusBadge(); }
@@ -244,7 +333,7 @@ async function readReceiptWithAI() {
     return;
   }
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast(t('ai.no_api_key_config'), 'warning');
     showAiConfig();

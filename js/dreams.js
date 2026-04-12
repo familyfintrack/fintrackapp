@@ -778,7 +778,7 @@ async function runDreamAiAnalysis(dreamId) {
   const d = _drm.dreams.find(x => x.id === dreamId);
   if (!d) return;
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast('Configure a chave Gemini em Configurações → IA para usar esta função', 'warning');
     return;
@@ -1024,7 +1024,7 @@ async function wizardAiInterpret() {
   const input = document.getElementById('wizFreeInput')?.value?.trim();
   if (!input) return;
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast('Configure a chave Gemini para usar interpretação por IA', 'warning');
     return;
@@ -1322,7 +1322,7 @@ async function wizardAiSuggestItems() {
   const w = _drm.wizard;
   if (!w) return;
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast('Configure a chave Gemini para usar sugestões por IA', 'warning');
     return;

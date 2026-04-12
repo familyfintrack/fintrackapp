@@ -872,7 +872,7 @@ async function generateAutoTransactionDescription({ categoryName, payeeName, mem
   if (!cat && !pay && !mem) return fallback;
 
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    const apiKey = await getGeminiApiKey();
     if (!apiKey || !apiKey.startsWith('AIza')) return fallback;
 
     const prompt = `Você cria descrições curtas e padronizadas para lançamentos financeiros.

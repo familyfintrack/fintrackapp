@@ -243,7 +243,7 @@ async function suggestObjIconWithAI() {
   if (fb)  { fb.style.display = 'none'; }
 
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    const apiKey = await getGeminiApiKey().catch(() => '');
     if (!apiKey) throw new Error('Chave Gemini não configurada em Configurações → IA');
 
     const prompt = `Você é um assistente que sugere emojis para objetivos financeiros.

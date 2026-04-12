@@ -532,7 +532,7 @@ async function processGroceryReceiptWithAI() {
   if (!window._groceryReceiptPending) {
     toast('Selecione um arquivo primeiro.', 'warning'); return;
   }
-  const apiKey = await getAppSetting('gemini_api_key', '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast('Configure a chave Gemini em Configurações → IA.', 'warning');
     if (typeof showAiConfig === 'function') showAiConfig();

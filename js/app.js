@@ -569,6 +569,12 @@ async function bootApp(){
       (typeof getFamilyPreferences === 'function'
         ? getFamilyPreferences().catch(e => console.warn('[boot] getFamilyPreferences (não fatal):', e?.message))
         : Promise.resolve()),
+      // Carrega chave Gemini global em cache (para getGeminiApiKey())
+      sb ? sb.from('app_settings').select('value').eq('key','_global_gemini_key').maybeSingle()
+           .then(({data}) => {
+             const k = typeof data?.value === 'string' ? data.value.trim() : '';
+             if (k && k.startsWith('AIza')) window._globalGeminiKey = k;
+           }).catch(()=>{}) : Promise.resolve(),
     ]);
   } catch(e) {
     toast(t('error.load_data')+' '+e.message,'error');

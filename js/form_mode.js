@@ -390,7 +390,7 @@ async function txAiAnalyze() {
   if (analyzeBtn) { analyzeBtn.disabled = true; analyzeBtn.textContent = '⏳ Analisando…'; }
 
   try {
-    const apiKey = await getAppSetting('gemini_api_key', '').catch(() => '');
+    const apiKey = await getGeminiApiKey().catch(() => '');
     if (!apiKey || !apiKey.startsWith('AIza')) {
       throw new Error('Chave Gemini não configurada. Acesse Configurações → IA para adicionar.');
     }

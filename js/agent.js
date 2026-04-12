@@ -885,7 +885,7 @@ async function _agProcess(userText) {
 ════════════════════════════════════════════════════════════════════════════ */
 function _agLoadKey() {
   if (_ag.apiKey) return Promise.resolve();
-  return getAppSetting(RECEIPT_AI_KEY_SETTING,'').then(k=>{
+  return getGeminiApiKey().then(k=>{
     _ag.apiKey = (k&&String(k).startsWith('AIza'))?k:null;
     _agUpdateStatus();
   }).catch(()=>{});

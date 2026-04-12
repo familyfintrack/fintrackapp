@@ -30,8 +30,12 @@ function cfgShowPane(paneId) {
 window.cfgShowPane = cfgShowPane;
 
 function _cfgApplyAdminNav() {
-  const role = (typeof currentUser !== 'undefined') ? currentUser?.role : null;
-  const isAdmin = role === 'admin' || role === 'owner';
+  // Settings page is admin-only (blocked at navigate() level for non-admin).
+  // Owner manages family via Menu do Usuário → Gerenciar Família, NOT via settings.
+  const role    = (typeof currentUser !== 'undefined') ? currentUser?.role : null;
+  const isAdmin = role === 'admin';
+
+  // All optional tabs visible only to admin
   ['cfgNavBtn-familia','cfgNavBtn-aparencia','cfgNavBtn-avancado','cfgNavBtn-feedbacks'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isAdmin ? '' : 'none';
@@ -240,6 +244,7 @@ window._initModuleFlagRealtimeSync = _initModuleFlagRealtimeSync;
 const _FAMILY_SETTING_KEYS = new Set([
   'gemini_api_key',
   'gemini_model',
+  'gemini_use_global',
   'agent_n8n_webhook_url',
   'agent_n8n_secret_key',
   'tg_bot_name',
@@ -849,7 +854,9 @@ function loadSettings() {
   if (tl && pt) { tl.style.display='none'; pt.style.display=''; }
   if (typeof initLogoSettings === 'function') initLogoSettings();
 
-  const isAdmin = (currentUser?.role==='admin');
+  const isAdmin = (currentUser?.role === 'admin'); // app-level admin
+  // isOwner = family owner (cannot see app-wide admin tools)
+  // isAdmin = can see everything including pane-avancado
 
   // DB Backup section — admin only
   const dbBackupSec = document.getElementById('dbBackupSection');
@@ -860,6 +867,11 @@ function loadSettings() {
 
   // IA settings
   if (typeof initAiSettings === 'function') initAiSettings();
+
+  // Global Gemini key — admin only (app-wide key)
+  const globalGeminiCard = document.getElementById('globalGeminiCfgCard');
+  if (globalGeminiCard) globalGeminiCard.style.display = isAdmin ? '' : 'none';
+  if (isAdmin) loadGlobalGeminiKeyUI().catch(() => {});
 
   // Telegram bot — load token UI + show admin section for owners/admins + load bot name
   if (typeof loadTelegramBotTokenUI === 'function') loadTelegramBotTokenUI();
@@ -4536,6 +4548,55 @@ window.saveTgBotName = async function() {
   } catch(e) {
     toast('Erro ao salvar: ' + e.message, 'error');
   }
+};
+
+/* ── Chave Gemini Global (admin) ─────────────────────────────────────────── */
+async function loadGlobalGeminiKeyUI() {
+  const input  = document.getElementById('globalGeminiKeyInput');
+  const status = document.getElementById('globalGeminiStatus');
+  if (!input || !sb) return;
+  try {
+    const { data } = await sb.from('app_settings')
+      .select('value').eq('key', '_global_gemini_key').maybeSingle();
+    const key = typeof data?.value === 'string' ? data.value.trim() : '';
+    if (key) {
+      input.value = key;
+      window._globalGeminiKey = key;
+      if (status) {
+        status.textContent = '✅ Chave global configurada · ' + key.slice(0,12) + '…';
+        status.style.color = 'var(--green)';
+      }
+    }
+  } catch(_) {}
+}
+
+window.saveGlobalGeminiKey = async function() {
+  const input  = document.getElementById('globalGeminiKeyInput');
+  const status = document.getElementById('globalGeminiStatus');
+  const key    = (input?.value || '').trim();
+  if (key && !key.startsWith('AIza')) {
+    toast('Chave inválida — deve começar com AIza…', 'error'); return;
+  }
+  try {
+    if (key) {
+      await sb.from('app_settings').upsert({ key: '_global_gemini_key', value: key }, { onConflict: 'key' });
+      window._globalGeminiKey = key;
+      if (status) { status.textContent = '✅ Chave global salva!'; status.style.color = 'var(--green)'; }
+    } else {
+      await sb.from('app_settings').delete().eq('key', '_global_gemini_key');
+      window._globalGeminiKey = '';
+      if (status) { status.textContent = 'Chave removida.'; status.style.color = 'var(--muted)'; }
+    }
+    toast(key ? '✅ Chave Gemini global salva!' : 'Chave global removida.', 'success');
+  } catch(e) { toast('Erro ao salvar: ' + e.message, 'error'); }
+};
+
+window.toggleGlobalGeminiVisibility = function() {
+  const inp = document.getElementById('globalGeminiKeyInput');
+  const btn = document.getElementById('globalGeminiToggle');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (btn) btn.textContent = inp.type === 'password' ? '👁' : '🙈';
 };
 
 window.openTelegramLinkFlow                = openTelegramLinkFlow;

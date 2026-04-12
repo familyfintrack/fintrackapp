@@ -24,7 +24,7 @@ window._importAiResult = null;
 // ══════════════════════════════════════════════════════════════════════════
 
 async function analyzeImportWithAI(file, rows) {
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     // Sem IA configurada — fluxo normal
     _renderImportAiBadge(null);

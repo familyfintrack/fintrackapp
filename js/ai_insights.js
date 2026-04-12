@@ -75,7 +75,7 @@ async function initAiInsightsPage() {
     return;
   }
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     page.innerHTML = `
       <div class="ai-disabled-state">
@@ -1126,7 +1126,7 @@ function _aiDetectAnomalies(txs, catMap, payMap, historicalTrend, byCategory) {
 async function runAiAnalysis() {
   if (_ai.analysisLoading) return;
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast(t('ai.no_api_key_config'), 'warning');
     showAiConfig();
@@ -2472,7 +2472,7 @@ async function sendAiChatMessage() {
   const enabled = await isAiInsightsEnabled();
   if (!enabled) { toast('AI Insights não está habilitado para esta família', 'warning'); return; }
 
-  const apiKey = await getAppSetting(RECEIPT_AI_KEY_SETTING, '');
+  const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) { toast('Configure a chave Gemini', 'warning'); showAiConfig(); return; }
 
   // Adiciona mensagem do usuário

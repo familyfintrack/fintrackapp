@@ -3453,7 +3453,7 @@ async function _patAnalyzeWithGemini() {
   if (!btn || !result) return;
 
   const apiKey = typeof getAppSetting === 'function'
-    ? await getAppSetting('gemini_api_key', '').catch(() => '')
+    ? await getGeminiApiKey().catch(() => '')
     : '';
 
   if (!apiKey || !apiKey.startsWith('AIza')) {
