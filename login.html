@@ -350,6 +350,11 @@ body.platform-windows .lgn-screen {
   background: #0a1e12 !important;
 }
 </style>
+
+<style>
+  /* PWA touch fix */
+  button, a, [onclick] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+</style>
 </head>
 <body>
 <div id="loginScreen" class="lgn-screen" style="display:flex;position:fixed;inset:0;z-index:9999">
