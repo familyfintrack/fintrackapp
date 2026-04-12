@@ -297,12 +297,106 @@ async function renderLoyaltySection() {
 }
 window.renderLoyaltySection = renderLoyaltySection;
 
-// ── Loyalty page init ────────────────────────────────────────────────────────
+// ── Loyalty page init — renders everything dynamically ───────────────────────
 async function initLoyaltyPage() {
-  await loadLoyaltyPrograms();
-  _lpUpdateHeroKpis();
-  _lpUpdateStats();
-  renderLoyaltySection();
+  const page = document.getElementById('page-loyalty');
+  if (!page) return;
+
+  // Render the full page shell immediately (synchronous)
+  page.innerHTML = `
+    <style>
+      .lp-hero {
+        background: linear-gradient(135deg, #1e5c42 0%, #2a7550 60%, #1a5c38 100%);
+        border-radius: 14px; padding: 20px 22px 16px;
+        position: relative; overflow: hidden; margin-bottom: 16px;
+      }
+      .lp-hero::after {
+        content: '⭐'; position: absolute; right: 20px; bottom: -10px;
+        font-size: 5rem; opacity: .07; line-height: 1; pointer-events: none;
+      }
+      .lp-hero-kpis { display: flex; gap: 20px; margin-top: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
+      .lp-hero-kpi-lbl { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.5); margin-bottom: 2px; }
+      .lp-hero-kpi-val { font-size: 1.15rem; font-weight: 800; color: #fff; font-family: var(--font-serif); line-height: 1; }
+      .lp-hero-kpi-sub { font-size: .62rem; color: rgba(255,255,255,.45); margin-top: 1px; }
+      .lp-toolbar { background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .lp-search-wrap { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 12px; flex: 1; min-width: 180px; transition: border-color .15s; }
+      .lp-search-wrap:focus-within { border-color: var(--accent); }
+      .lp-search-input { border: none; background: transparent; outline: none; font-size: .83rem; color: var(--text); width: 100%; font-family: inherit; }
+      .lp-search-input::placeholder { color: var(--muted); }
+      .lp-pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; border-radius: 20px; font-size: .74rem; font-weight: 700; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; font-family: inherit; transition: all .15s; touch-action: manipulation; }
+      .lp-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .lp-pill:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+      .lp-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+      @media (max-width:480px) { .lp-stats { grid-template-columns: 1fr 1fr; } }
+      .lp-stat { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: border-color .15s; cursor: pointer; }
+      .lp-stat:hover { border-color: var(--accent); }
+      .lp-stat-lbl { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 4px; }
+      .lp-stat-val { font-size: 1.1rem; font-weight: 800; font-family: var(--font-serif); color: var(--text); }
+      .lp-stat-sub { font-size: .65rem; color: var(--muted); margin-top: 2px; }
+      .lp-group-hdr { display: flex; align-items: center; gap: 8px; padding: 8px 2px; margin: 18px 0 10px; border-bottom: 2px solid var(--border); }
+      .lp-group-title { font-size: .82rem; font-weight: 800; color: var(--text); flex: 1; }
+      .lp-group-count { font-size: .7rem; font-weight: 700; padding: 2px 9px; border-radius: 10px; background: var(--accent-lt); color: var(--accent); border: 1px solid rgba(0,0,0,.05); }
+      .lp-empty { text-align: center; padding: 56px 24px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; color: var(--muted); }
+      .lp-hero-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 9px; font-size: .76rem; font-weight: 700; border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12); color: #fff; cursor: pointer; font-family: inherit; transition: background .15s; touch-action: manipulation; }
+      .lp-hero-btn:hover { background: rgba(255,255,255,.22); }
+      .lp-hero-btn-primary { background: rgba(255,255,255,.95); color: #1e5c42; border-color: transparent; }
+      .lp-hero-btn-primary:hover { background: #fff; }
+    </style>
+
+    <!-- Hero -->
+    <div class="lp-hero">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:1">
+        <div>
+          <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.55);margin-bottom:4px">Programas de Fidelidade</div>
+          <div style="font-size:1.25rem;font-weight:800;color:#fff;letter-spacing:-.02em" id="lpHeroTitle">Meus Programas</div>
+        </div>
+        <div style="display:flex;gap:7px;flex-shrink:0;position:relative;z-index:1">
+          <button class="lp-hero-btn" onclick="openLoyaltyApiSettings()">⚙️ API</button>
+          <button class="lp-hero-btn lp-hero-btn-primary" onclick="openLoyaltyModal('')">+ Novo</button>
+        </div>
+      </div>
+      <div class="lp-hero-kpis">
+        <div class="lp-hero-kpi"><div class="lp-hero-kpi-lbl">Programas ativos</div><div class="lp-hero-kpi-val" id="lpKpiCount">—</div></div>
+        <div class="lp-hero-kpi"><div class="lp-hero-kpi-lbl">Total de pontos</div><div class="lp-hero-kpi-val" id="lpKpiPoints">—</div><div class="lp-hero-kpi-sub">em todos os programas</div></div>
+        <div class="lp-hero-kpi"><div class="lp-hero-kpi-lbl">Expirando em 30 dias</div><div class="lp-hero-kpi-val" id="lpKpiExpiring" style="color:rgba(255,255,255,.9)">—</div></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="lp-toolbar">
+      <div class="lp-search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color:var(--muted);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" class="lp-search-input" id="lpSearch" placeholder="Buscar programa…" oninput="_lpFilter()">
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap" id="lpPills">
+        <button class="lp-pill active" data-cat="" onclick="_lpSetCat(this,'')">🌟 Todos</button>
+        <button class="lp-pill" data-cat="airline" onclick="_lpSetCat(this,'airline')">✈️ Aéreas</button>
+        <button class="lp-pill" data-cat="bank"    onclick="_lpSetCat(this,'bank')">💳 Cartões</button>
+        <button class="lp-pill" data-cat="hotel"   onclick="_lpSetCat(this,'hotel')">🏨 Hotéis</button>
+        <button class="lp-pill" data-cat="retail"  onclick="_lpSetCat(this,'retail')">🛒 Varejo</button>
+        <button class="lp-pill" data-cat="other"   onclick="_lpSetCat(this,'other')">⭐ Outros</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="lp-stats" id="lpStats"></div>
+
+    <!-- Programs -->
+    <div id="loyaltySectionWrap">
+      <div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>
+    </div>`;
+
+  // Now load data and render
+  try {
+    await loadLoyaltyPrograms();
+    _lpUpdateHeroKpis();
+    _lpUpdateStats();
+    renderLoyaltySection();
+  } catch(err) {
+    const wrap = document.getElementById('loyaltySectionWrap');
+    if (wrap) wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⚠️ Erro ao carregar: ' + (err?.message || err) + '</div>';
+    console.error('[initLoyaltyPage]', err);
+  }
 }
 window.initLoyaltyPage = initLoyaltyPage;
 
