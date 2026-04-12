@@ -3644,6 +3644,11 @@ html, body { overscroll-behavior: none; }
   .cat-inline-actions {
     opacity: 1 !important;
   }
+  /* Always show IOF button on touch — no hover available */
+  .cat-group-hdr .cat-inline-actions,
+  .cat-sub-row .cat-inline-actions {
+    opacity: 1 !important;
+  }
 
   /* DB Backup rows: stack on mobile */
   .db-backup-row {

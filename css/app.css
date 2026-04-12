@@ -1,3 +1,22 @@
+/* ═══════════════════════════════════════════════════════════════
+   PWA TOUCH FIX — Eliminates 300ms tap delay across the entire app
+   Required for iOS Safari PWA (added to home screen)
+   touch-action:manipulation = no double-tap zoom = instant tap response
+═══════════════════════════════════════════════════════════════ */
+button,
+[role="button"],
+[onclick],
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+label[for],
+a,
+select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
 :root{
   --bg:#f7f6f3;--bg2:#f0ede8;--surface:#ffffff;--surface2:#f9f8f6;
   --border:#e8e4de;--border2:#d6d0c8;
@@ -59,6 +78,8 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);height:
 
 /* CONTENT */
 .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;padding-bottom:max(24px,env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;touch-action:pan-y;height:0;min-height:0;}
+/* PWA fix: eliminate 300ms tap delay for all buttons/links inside content */
+.content button,.content a,.content [onclick],.content input,.content select,.content textarea{touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .page{display:none;}
 .page.active{display:block;}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
