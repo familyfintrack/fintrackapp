@@ -11293,6 +11293,16 @@ Se você não solicitou isso, ignore este e-mail.`,
         onclick="closeUserMenu();openChatTxLog()">
         <span>📋</span><span>Histórico via Chat</span>
       </button>
+      <button class="user-menu-item" id="chatValidateBtn" style="display:none"
+        onclick="closeUserMenu();openChatValidation()">
+        <span>✅</span>
+        <span>Validar transações por chat</span>
+        <span id="chatValidateBadge" style="display:none;margin-left:auto;
+          background:#dc2626;color:#fff;font-size:.65rem;font-weight:800;
+          min-width:18px;height:18px;border-radius:9px;
+          display:inline-flex;align-items:center;justify-content:center;
+          padding:0 5px;"></span>
+      </button>
       <div style="height:1px;background:var(--border);margin:4px 0"></div>
       <button class="user-menu-item" onclick="closeUserMenu();navigate('help')">
         <span>❓</span><span>Central de Ajuda</span>
@@ -11304,6 +11314,20 @@ Se você não solicitou isso, ignore este e-mail.`,
       <button class="user-menu-item" onclick="doLogout()" style="color:var(--red,#dc2626)">
         <span>↩</span><span data-i18n="topbar.logout">Sair</span>
       </button>
+    </div>
+  </div>
+
+  <!-- ══ Modal: Validar Transações por Chat ═══════════════════════════════════ -->
+  <div class="modal-overlay" id="chatValidationModal" onclick="if(event.target===this)closeModal('chatValidationModal')">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">✅ Validar Transações por Chat</span>
+        <button class="modal-close" onclick="closeModal('chatValidationModal')">✕</button>
+      </div>
+      <div class="modal-body" id="chatValidationBody" style="padding:0">
+        <div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando…</div>
+      </div>
     </div>
   </div>
 
