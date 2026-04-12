@@ -31,7 +31,7 @@ function _helpContent() {
           id: 'navigation',
           title: { pt: 'Navegando no app', en: 'Navigating the app', es: 'Navegando en la app', fr: "Naviguer dans l'app" },
           body: {
-            pt: `<h4>Menu lateral (Sidebar)</h4><p>No desktop, o menu lateral esquerdo dá acesso a todas as seções. No mobile, use a barra de navegação inferior ou o ícone ☰ no topo.</p><div class="help-card-grid"><div class="help-mini-card"><strong>🏠 Dashboard</strong>Visão geral das finanças com KPIs e gráficos</div><div class="help-mini-card"><strong>💸 Lançamentos</strong>Lista completa de receitas e despesas</div><div class="help-mini-card"><strong>🏦 Contas</strong>Suas contas bancárias e carteiras</div><div class="help-mini-card"><strong>📊 Relatórios</strong>Análises e gráficos detalhados</div><div class="help-mini-card"><strong>🎯 Orçamentos</strong>Limite de gastos por categoria</div><div class="help-mini-card"><strong>🏷️ Categorias</strong>Organização dos lançamentos</div><div class="help-mini-card"><strong>👥 Beneficiários</strong>Lojas, pessoas e empresas</div><div class="help-mini-card"><strong>📅 Programados</strong>Cobranças e pagamentos recorrentes</div></div><div class="help-tip">💡 O idioma pode ser alterado no menu superior (ícone 🌐) ou nas configurações do perfil.</div>`,
+            pt: `<h4>Menu lateral (Sidebar)</h4><p>No desktop, o menu lateral esquerdo dá acesso a todas as seções. No mobile, use a barra de navegação inferior ou o ícone ☰ no topo.</p><div class="help-card-grid"><div class="help-mini-card"><strong>🏠 Dashboard</strong>Visão geral das finanças com KPIs e gráficos</div><div class="help-mini-card"><strong>💸 Lançamentos</strong>Lista completa de receitas e despesas</div><div class="help-mini-card"><strong>🏦 Contas</strong>Suas contas bancárias e carteiras</div><div class="help-mini-card"><strong>📊 Relatórios</strong>Análises e gráficos detalhados</div><div class="help-mini-card"><strong>🎯 Orçamentos</strong>Limite de gastos por categoria</div><div class="help-mini-card"><strong>🏷️ Categorias</strong>Organização dos lançamentos</div><div class="help-mini-card"><strong>👥 Beneficiários</strong>Lojas, pessoas e empresas</div><div class="help-mini-card"><strong>📅 Programados</strong>Cobranças e pagamentos recorrentes</div><div class="help-mini-card"><strong>⭐ Fidelidades</strong>Programas de milhas, pontos e recompensas</div><div class="help-mini-card"><strong>💬 Chat FinTrack</strong>Registre transações via Telegram</div></div><div class="help-tip">💡 O idioma pode ser alterado no menu superior (ícone 🌐) ou nas configurações do perfil.</div>`,
             en: `<h4>Sidebar menu</h4><p>On desktop, the left sidebar gives access to all sections. On mobile, use the bottom navigation bar or the ☰ icon at the top.</p><div class="help-card-grid"><div class="help-mini-card"><strong>🏠 Dashboard</strong>Financial overview with KPIs and charts</div><div class="help-mini-card"><strong>💸 Transactions</strong>Complete list of income and expenses</div><div class="help-mini-card"><strong>🏦 Accounts</strong>Your bank accounts and wallets</div><div class="help-mini-card"><strong>📊 Reports</strong>Detailed analysis and charts</div><div class="help-mini-card"><strong>🎯 Budgets</strong>Spending limits by category</div><div class="help-mini-card"><strong>🏷️ Categories</strong>Transaction organization</div><div class="help-mini-card"><strong>👥 Payees</strong>Stores, people and companies</div><div class="help-mini-card"><strong>📅 Scheduled</strong>Recurring bills and payments</div></div><div class="help-tip">💡 Language can be changed from the top menu (🌐 icon) or in profile settings.</div>`,
             es: `<h4>Menú lateral</h4><p>En escritorio, el menú lateral izquierdo da acceso a todas las secciones. En móvil, use la barra de navegación inferior o el ícono ☰.</p><div class="help-card-grid"><div class="help-mini-card"><strong>🏠 Panel</strong>Resumen financiero</div><div class="help-mini-card"><strong>💸 Transacciones</strong>Lista completa</div><div class="help-mini-card"><strong>🏦 Cuentas</strong>Cuentas bancarias</div><div class="help-mini-card"><strong>📊 Informes</strong>Análisis detallados</div></div>`,
             fr: `<h4>Menu latéral</h4><p>Sur desktop, le menu latéral gauche donne accès à toutes les sections. Sur mobile, utilisez la barre de navigation inférieure ou l'icône ☰.</p><div class="help-card-grid"><div class="help-mini-card"><strong>🏠 Tableau de bord</strong>Vue d'ensemble</div><div class="help-mini-card"><strong>💸 Transactions</strong>Liste complète</div><div class="help-mini-card"><strong>🏦 Comptes</strong>Comptes bancaires</div><div class="help-mini-card"><strong>📊 Rapports</strong>Analyses détaillées</div></div>`,
@@ -477,6 +477,314 @@ function _helpContent() {
     },
 
     {
+      id: 'loyalty', icon: '⭐', color: '#b45309',
+      title: { pt: 'Fidelidades', en: 'Loyalty Programs', es: 'Programas de fidelidad', fr: 'Programmes de fidélité' },
+      articles: [
+        {
+          id: 'loyalty-intro',
+          title: { pt: 'O que são Programas de Fidelidade?', en: 'What are Loyalty Programs?', es: '¿Qué son los programas de fidelidad?', fr: 'Que sont les programmes de fidélité ?' },
+          body: {
+            pt: `_helpIntroCard('Para que controlar programas de fidelidade?','⭐','Milhas expiram. Pontos acumulam sem que você saiba quanto vale. Benefícios ficam disponíveis e você não usa. O módulo de <strong>Fidelidades</strong> centraliza todos os seus programas — Smiles, LATAM Pass, Livelo, hotéis, cartões de crédito — em um único lugar para que você saiba exatamente quanto tem, quando expira e como acessar cada programa. A página fica acessível diretamente no menu lateral.','#b45309') +
+<p>A página <strong>Fidelidades</strong> está acessível pelo menu lateral (ícone ⭐). Ela centraliza todos os seus programas de milhas, pontos e recompensas com grupos por categoria.</p>
+<h4>Programas suportados</h4>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>✈️ Companhias Aéreas</strong>Smiles (GOL), LATAM Pass, TudoAzul, TAP Miles&Go</div>
+  <div class="help-mini-card"><strong>💳 Bancos e Cartões</strong>Livelo, Esfera, Clube Itaú, XP Rewards, Inter Loop</div>
+  <div class="help-mini-card"><strong>🏨 Hotéis</strong>Marriott Bonvoy, Hilton Honors, ALL Accor, IHG</div>
+  <div class="help-mini-card"><strong>🛒 Varejo</strong>Stix, Dotz, Rappi, iFood e outros</div>
+  <div class="help-mini-card"><strong>⭐ Personalizado</strong>Qualquer programa não listado</div>
+</div>
+<h4>Filtros e agrupamento</h4>
+<p>Na página de Fidelidades, use as pílulas de filtro no topo para ver apenas uma categoria (Aéreas, Cartões, Hotéis, Varejo) ou todos os programas agrupados por tipo. Use o campo de busca para encontrar por nome, abreviação ou número.</p>
+<h4>KPIs no cabeçalho</h4>
+<ul>
+  <li><strong>Programas ativos:</strong> total de programas cadastrados</li>
+  <li><strong>Total de pontos:</strong> soma de todos os saldos em pontos/milhas</li>
+  <li><strong>Expirando em 30 dias:</strong> programas com validade próxima (destacados em amarelo)</li>
+</ul>`,
+            en: `<p>The <strong>Loyalty Programs</strong> page is accessible from the sidebar (⭐ icon). It centralizes all your miles, points and rewards programs in one place, grouped by category.</p>
+<h4>Supported programs</h4>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>✈️ Airlines</strong>Smiles, LATAM Pass, TudoAzul, TAP Miles&Go</div>
+  <div class="help-mini-card"><strong>💳 Banks & Cards</strong>Livelo, Esfera, Clube Itaú, XP Rewards</div>
+  <div class="help-mini-card"><strong>🏨 Hotels</strong>Marriott Bonvoy, Hilton Honors, ALL Accor, IHG</div>
+  <div class="help-mini-card"><strong>🛒 Retail</strong>Stix, Dotz, Rappi and others</div>
+</div>
+<h4>Filters and grouping</h4>
+<p>Use the filter pills at the top to see only one category or all programs grouped by type. Use the search field to find by name, abbreviation or member number.</p>
+<h4>Header KPIs</h4>
+<ul>
+  <li><strong>Active programs:</strong> total programs registered</li>
+  <li><strong>Total points:</strong> sum of all point/mile balances</li>
+  <li><strong>Expiring in 30 days:</strong> programs with nearby expiry (highlighted yellow)</li>
+</ul>`,
+            es: `<p>La página <strong>Programas de Fidelidad</strong> está accesible desde el menú lateral (ícono ⭐). Centraliza todos sus programas de millas, puntos y recompensas agrupados por categoría.</p>
+<h4>Filtros y agrupamiento</h4>
+<p>Use los filtros en la parte superior para ver solo una categoría o todos los programas agrupados. Use la búsqueda para encontrar por nombre, abreviatura o número.</p>`,
+            fr: `<p>La page <strong>Programmes de fidélité</strong> est accessible depuis la barre latérale (icône ⭐). Elle centralise tous vos programmes de miles, points et récompenses regroupés par catégorie.</p>
+<h4>Filtres et regroupement</h4>
+<p>Utilisez les filtres en haut pour voir une seule catégorie ou tous les programmes regroupés. Utilisez la recherche pour trouver par nom, abréviation ou numéro.</p>`,
+          },
+        },
+        {
+          id: 'loyalty-credentials',
+          title: { pt: 'Credenciais e acesso ao programa', en: 'Credentials and program access', es: 'Credenciales y acceso al programa', fr: 'Identifiants et accès au programme' },
+          body: {
+            pt: `<p>No cadastro de cada programa, a seção <strong>Número e acesso</strong> permite guardar informações de acesso de forma segura.</p>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>🪪 Número da fidelidade</strong>Seu número de sócio ou CPF vinculado ao programa — exibido nos cards</div>
+  <div class="help-mini-card"><strong>🌐 Site do programa</strong>URL para acesso ao programa — botão direto nos cards</div>
+  <div class="help-mini-card"><strong>👤 Usuário / e-mail</strong>Login de acesso ao site do programa</div>
+  <div class="help-mini-card"><strong>🔒 Senha</strong>Armazenada oculta — clique 👁 para revelar</div>
+</div>
+<h4>Abreviação / apelido</h4>
+<p>Campo <strong>Abreviação</strong> permite identificar o programa de forma resumida nos cards: "GOL", "LAT", "LIV". Aparece como subtítulo abaixo do nome.</p>
+<h4>Prevenção de duplicados</h4>
+<p>Ao digitar o nome de um novo programa, o app verifica automaticamente se já existe um programa com nome similar e exibe um alerta ⚠️ para evitar duplicatas.</p>
+<div class="help-tip">💡 A senha é armazenada localmente na família. Nunca enviada a terceiros.</div>`,
+            en: `<p>In each program's registration, the <strong>Number and access</strong> section lets you store access information securely.</p>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>🪪 Member number</strong>Your membership number or linked CPF — shown on cards</div>
+  <div class="help-mini-card"><strong>🌐 Program website</strong>URL for accessing the program — direct link on cards</div>
+  <div class="help-mini-card"><strong>👤 Username / email</strong>Login credentials for the program website</div>
+  <div class="help-mini-card"><strong>🔒 Password</strong>Stored hidden — click 👁 to reveal</div>
+</div>
+<h4>Duplicate prevention</h4>
+<p>When typing a new program name, the app automatically checks for similar existing programs and displays a ⚠️ alert to prevent duplicates.</p>
+<div class="help-tip">💡 The password is stored locally within the family. Never sent to third parties.</div>`,
+            es: `<p>En el registro de cada programa, la sección <strong>Número y acceso</strong> permite guardar información de acceso de forma segura: número de fidelidad, URL del sitio, usuario y contraseña (oculta, revelar con 👁).</p>
+<div class="help-tip">💡 La contraseña se almacena de forma segura dentro de la familia. Nunca se envía a terceros.</div>`,
+            fr: `<p>Dans l'inscription de chaque programme, la section <strong>Numéro et accès</strong> permet de stocker les informations d'accès en toute sécurité : numéro de fidélité, URL du site, identifiant et mot de passe (masqué, afficher avec 👁).</p>
+<div class="help-tip">💡 Le mot de passe est stocké de manière sécurisée au sein de la famille. Jamais envoyé à des tiers.</div>`,
+          },
+        },
+        {
+          id: 'loyalty-scheduled',
+          title: { pt: 'Creditar pontos ao registrar programados', en: 'Credit points when registering scheduled transactions', es: 'Acreditar puntos al registrar programados', fr: "Créditer des points lors de l'enregistrement" },
+          body: {
+            pt: `<p>Ao registrar a ocorrência de um lançamento programado (ex: pagamento de fatura de cartão que gera milhas), você pode creditar pontos automaticamente em um programa de fidelidade.</p>
+<h4>Como usar</h4>
+<ol>
+  <li>Na tela de <strong>Programados</strong>, clique em <strong>Registrar</strong> para uma ocorrência</li>
+  <li>No modal, ative o toggle <strong>🌟 Creditar pontos de fidelidade</strong></li>
+  <li>Selecione o programa e informe a quantidade de pontos</li>
+  <li>Clique em <strong>Confirmar Recebimento</strong></li>
+</ol>
+<p>Os pontos são creditados automaticamente e o saldo do programa é atualizado.</p>
+<div class="help-tip">💡 Use essa função para registrar milhas ganhas em faturas de cartão de crédito ou cashback de programas parceiros.</div>`,
+            en: `<p>When registering a scheduled transaction occurrence (e.g. a credit card payment that earns miles), you can automatically credit points to a loyalty program.</p>
+<h4>How to use</h4>
+<ol>
+  <li>In <strong>Scheduled</strong>, click <strong>Register</strong> for an occurrence</li>
+  <li>In the modal, enable the <strong>🌟 Credit loyalty points</strong> toggle</li>
+  <li>Select the program and enter the number of points</li>
+  <li>Click <strong>Confirm</strong></li>
+</ol>
+<div class="help-tip">💡 Use this to record miles earned on credit card bills or partner cashback programs.</div>`,
+            es: `<p>Al registrar una ocurrencia de un programado, puede acreditar puntos automáticamente en un programa de fidelidad.</p>
+<ol>
+  <li>En <strong>Programados</strong>, haga clic en <strong>Registrar</strong></li>
+  <li>Active el toggle <strong>🌟 Acreditar puntos de fidelidad</strong></li>
+  <li>Seleccione el programa e ingrese la cantidad de puntos</li>
+</ol>`,
+            fr: `<p>Lors de l'enregistrement d'une occurrence programmée, vous pouvez créditer automatiquement des points dans un programme de fidélité.</p>
+<ol>
+  <li>Dans <strong>Programmés</strong>, cliquez sur <strong>Enregistrer</strong></li>
+  <li>Activez le toggle <strong>🌟 Créditer des points fidélité</strong></li>
+  <li>Sélectionnez le programme et saisissez les points</li>
+</ol>`,
+          },
+        },
+      ],
+    },
+    {
+      id: 'chat-transactions', icon: '💬', color: '#1d4ed8',
+      title: { pt: 'Transações por Chat (Telegram)', en: 'Chat Transactions (Telegram)', es: 'Transacciones por Chat (Telegram)', fr: 'Transactions par Chat (Telegram)' },
+      articles: [
+        {
+          id: 'chat-intro',
+          title: { pt: 'Registrar transações via Telegram', en: 'Record transactions via Telegram', es: 'Registrar transacciones via Telegram', fr: 'Enregistrer des transactions via Telegram' },
+          body: {
+            pt: `_helpIntroCard('Por que usar o Telegram para registrar?','💬','Você acabou de pagar R$ 42,50 no almoço. Pegar o celular, abrir o app, navegar até Lançamentos, clicar em +, preencher os campos... 30 segundos que você pode não ter. Com o <strong>Chat FinTrack</strong>, você simplesmente manda uma mensagem: "almoço 42,50" — o bot entende tudo com IA e registra. Funciona também com fotos de nota fiscal, que a IA lê e converte em lançamento automaticamente.','#1d4ed8') +
+<p>O <strong>Chat FinTrack</strong> permite registrar transações enviando uma mensagem simples para o bot no Telegram — sem abrir o app.</p>
+<h4>Como ativar</h4>
+<ol>
+  <li>Acesse seu avatar no app → <strong>Transações por Chat</strong> (toggle)</li>
+  <li>Configure seu <code>telegram_chat_id</code> no seu perfil (Gerenciar Família → membros)</li>
+  <li>Encontre o bot do FinTrack no Telegram e inicie uma conversa</li>
+</ol>
+<h4>Formas de registrar</h4>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>📝 Texto livre</strong>"uber 32,50", "recebi 5000 salario", "gastei 120 no mercado"</div>
+  <div class="help-mini-card"><strong>📷 Foto de nota fiscal</strong>Tire uma foto do recibo — a IA lê e extrai valor, loja e data</div>
+  <div class="help-mini-card"><strong>🧠 Memória</strong>O bot lembra seus padrões — sugere conta e categoria automaticamente</div>
+</div>
+<h4>Fluxo de confirmação</h4>
+<p>Após enviar uma mensagem, o bot responde com os dados interpretados e três opções:</p>
+<ul>
+  <li><strong>1️⃣ Confirmar</strong> — lançamento registrado definitivamente</li>
+  <li><strong>2️⃣ Cancelar</strong> — descarta a transação</li>
+  <li><strong>3️⃣ Confirmar como pendente</strong> — salva para revisão no app</li>
+</ul>
+<div class="help-tip">💡 Toda transação criada pelo chat entra como <em>pendente de validação</em> por padrão, para que você possa revisar e complementar os detalhes no app antes de confirmar.</div>`,
+            en: `<p><strong>Chat FinTrack</strong> lets you record transactions by sending a simple message to the bot on Telegram — without opening the app.</p>
+<h4>How to activate</h4>
+<ol>
+  <li>Tap your avatar → <strong>Chat Transactions</strong> (toggle)</li>
+  <li>Set your <code>telegram_chat_id</code> in your profile</li>
+  <li>Find the FinTrack bot on Telegram and start a conversation</li>
+</ol>
+<h4>Ways to record</h4>
+<div class="help-card-grid">
+  <div class="help-mini-card"><strong>📝 Free text</strong>"uber 32.50", "received 5000 salary", "spent 120 at the market"</div>
+  <div class="help-mini-card"><strong>📷 Receipt photo</strong>Take a photo of the receipt — AI reads and extracts amount, store and date</div>
+  <div class="help-mini-card"><strong>🧠 Memory</strong>The bot remembers your patterns and auto-suggests account and category</div>
+</div>
+<h4>Confirmation flow</h4>
+<p>After sending a message, the bot responds with three options:</p>
+<ul>
+  <li><strong>1️⃣ Confirm</strong> — transaction registered definitively</li>
+  <li><strong>2️⃣ Cancel</strong> — discard the transaction</li>
+  <li><strong>3️⃣ Confirm as pending</strong> — save for review in the app</li>
+</ul>
+<div class="help-tip">💡 All chat transactions are pending by default for review before being confirmed.</div>`,
+            es: `<p><strong>Chat FinTrack</strong> permite registrar transacciones enviando un mensaje simple al bot en Telegram.</p>
+<h4>Flujo de confirmación</h4>
+<ul>
+  <li><strong>1️⃣ Confirmar</strong> — transacción registrada definitivamente</li>
+  <li><strong>2️⃣ Cancelar</strong> — descarta la transacción</li>
+  <li><strong>3️⃣ Confirmar como pendiente</strong> — guarda para revisión en la app</li>
+</ul>
+<div class="help-tip">💡 Toda transacción del chat entra como <em>pendiente de validación</em> por defecto.</div>`,
+            fr: `<p><strong>Chat FinTrack</strong> vous permet d'enregistrer des transactions en envoyant un simple message au bot Telegram.</p>
+<h4>Flux de confirmation</h4>
+<ul>
+  <li><strong>1️⃣ Confirmer</strong> — transaction enregistrée définitivement</li>
+  <li><strong>2️⃣ Annuler</strong> — abandonne la transaction</li>
+  <li><strong>3️⃣ Confirmer comme en attente</strong> — sauvegarde pour révision dans l'app</li>
+</ul>
+<div class="help-tip">💡 Toutes les transactions de chat entrent en attente de validation par défaut.</div>`,
+          },
+        },
+        {
+          id: 'chat-validation',
+          title: { pt: 'Validar transações por chat no app', en: 'Validate chat transactions in the app', es: 'Validar transacciones por chat en la app', fr: "Valider les transactions chat dans l'app" },
+          body: {
+            pt: `<p>Transações criadas pelo chat ficam pendentes de validação até você revisá-las no app.</p>
+<h4>Acessar validação</h4>
+<ol>
+  <li>No app, toque no avatar (menu do usuário)</li>
+  <li>Clique em <strong>✅ Validar transações por chat</strong></li>
+  <li>Uma pílula vermelha mostra a contagem de transações pendentes</li>
+</ol>
+<h4>Tela de validação</h4>
+<p>Cada card exibe o valor, descrição e data da transação com campos inline para:</p>
+<ul>
+  <li>🏷️ <strong>Categoria</strong> — classifique o lançamento</li>
+  <li>🏦 <strong>Conta</strong> — confirme ou altere a conta de débito</li>
+  <li>👤 <strong>Beneficiário</strong> — associe a um beneficiário cadastrado</li>
+</ul>
+<p>Após preencher, clique em <strong>✅ Validar e confirmar</strong> para efetivar o lançamento. Ou <strong>🗑 Descartar</strong> para remover.</p>
+<h4>Detecção de duplicatas</h4>
+<p>O bot avisa no chat se encontrar uma transação similar (mesmo valor ±5% e descrição parecida) nos últimos 7 dias. Se for duplicata, basta descartar na tela de validação.</p>
+<div class="help-tip">💡 O badge vermelho aparece mesmo se o menu estiver fechado — basta abrir o avatar para ver quantas transações aguardam validação.</div>`,
+            en: `<p>Transactions created by chat remain pending until you review them in the app.</p>
+<h4>Access validation</h4>
+<ol>
+  <li>In the app, tap the avatar (user menu)</li>
+  <li>Click <strong>✅ Validate chat transactions</strong></li>
+  <li>A red badge shows the count of pending transactions</li>
+</ol>
+<h4>Validation screen</h4>
+<p>Each card shows the amount, description and date with inline fields to set:</p>
+<ul>
+  <li>🏷️ <strong>Category</strong></li>
+  <li>🏦 <strong>Account</strong></li>
+  <li>👤 <strong>Payee</strong></li>
+</ul>
+<p>Click <strong>✅ Validate and confirm</strong> to finalize, or <strong>🗑 Discard</strong> to remove.</p>
+<h4>Duplicate detection</h4>
+<p>The bot warns in chat if it finds a similar transaction (same value ±5% and similar description) in the last 7 days.</p>`,
+            es: `<p>Las transacciones del chat quedan pendientes de validación hasta que las revise en la app.</p>
+<h4>Acceder a la validación</h4>
+<ol>
+  <li>En la app, toque el avatar (menú de usuario)</li>
+  <li>Haga clic en <strong>✅ Validar transacciones por chat</strong></li>
+  <li>Una pastilla roja muestra el conteo de transacciones pendientes</li>
+</ol>
+<h4>Detección de duplicados</h4>
+<p>El bot avisa en el chat si encuentra una transacción similar (mismo valor ±5% y descripción parecida) en los últimos 7 días.</p>`,
+            fr: `<p>Les transactions créées par chat restent en attente jusqu'à ce que vous les révisiez dans l'app.</p>
+<h4>Accéder à la validation</h4>
+<ol>
+  <li>Dans l'app, touchez l'avatar (menu utilisateur)</li>
+  <li>Cliquez sur <strong>✅ Valider les transactions chat</strong></li>
+  <li>Un badge rouge montre le nombre de transactions en attente</li>
+</ol>
+<h4>Détection de doublons</h4>
+<p>Le bot avertit dans le chat s'il trouve une transaction similaire (même valeur ±5% et description proche) dans les 7 derniers jours.</p>`,
+          },
+        },
+      ],
+    },
+    {
+      id: 'ai-review', icon: '🔍', color: '#6d28d9',
+      title: { pt: 'AI Insights — Revisar antes de enviar', en: 'AI Insights — Review before sending', es: 'AI Insights — Revisar antes de enviar', fr: 'AI Insights — Réviser avant envoi' },
+      articles: [
+        {
+          id: 'ai-review-modal',
+          title: { pt: 'Modal de revisão pré-análise', en: 'Pre-analysis review modal', es: 'Modal de revisión previa al análisis', fr: 'Modal de révision pré-analyse' },
+          body: {
+            pt: `<p>Antes de enviar os dados ao Gemini, o app exibe um <strong>modal de revisão</strong> que mostra um resumo do que será enviado e permite adicionar contexto adicional.</p>
+<h4>O que aparece no modal</h4>
+<ul>
+  <li>📅 Período selecionado para análise</li>
+  <li>📊 Total de transações, receitas e despesas</li>
+  <li>💰 Saldo do período</li>
+  <li>🏷️ Top categorias e beneficiários</li>
+  <li>🏦 Saldos das contas principais</li>
+  <li>📦 Tamanho estimado do contexto em KB e tokens</li>
+</ul>
+<h4>JSON completo</h4>
+<p>Clique em <strong>📋 Ver / ocultar JSON completo</strong> para inspecionar exatamente o que será enviado à IA em formato técnico.</p>
+<h4>Contexto adicional</h4>
+<p>O campo de texto ao fundo permite adicionar instruções extras para o Gemini antes de enviar:</p>
+<ul>
+  <li><em>"Estou planejando uma viagem em julho — foque no que posso cortar"</em></li>
+  <li><em>"Os gastos de novembro foram atípicos por causa de mudança — ignore"</em></li>
+  <li><em>"Quero entender melhor meus gastos com alimentação fora de casa"</em></li>
+</ul>
+<p>O contexto adicional <strong>complementa</strong> os dados — a IA nunca ignora os números computados pelo app.</p>
+<div class="help-tip">💡 Clique em <strong>✕ Cancelar</strong> a qualquer momento para interromper a análise sem custo de tokens.</div>`,
+            en: `<p>Before sending data to Gemini, the app displays a <strong>review modal</strong> showing a summary of what will be sent and allowing additional context to be added.</p>
+<h4>What appears in the modal</h4>
+<ul>
+  <li>📅 Selected analysis period</li>
+  <li>📊 Total transactions, income and expenses</li>
+  <li>🏷️ Top categories and payees</li>
+  <li>📦 Estimated context size in KB and tokens</li>
+</ul>
+<h4>Additional context</h4>
+<p>The text field lets you add extra instructions for Gemini before sending. Examples:</p>
+<ul>
+  <li><em>"I'm planning a trip in July — focus on what I can cut"</em></li>
+  <li><em>"November spending was unusual due to moving house — ignore"</em></li>
+</ul>
+<p>Additional context <strong>complements</strong> the data — the AI never ignores the numbers computed by the app.</p>
+<div class="help-tip">💡 Click <strong>✕ Cancel</strong> at any time to abort without any token cost.</div>`,
+            es: `<p>Antes de enviar los datos a Gemini, la app muestra un <strong>modal de revisión</strong> con un resumen de lo que se enviará y permite agregar contexto adicional.</p>
+<h4>Contexto adicional</h4>
+<p>El campo de texto permite agregar instrucciones extras para Gemini. El contexto adicional <strong>complementa</strong> los datos — la IA nunca ignora los números calculados por la app.</p>
+<div class="help-tip">💡 Haga clic en <strong>✕ Cancelar</strong> para interrumpir el análisis sin costo de tokens.</div>`,
+            fr: `<p>Avant d'envoyer les données à Gemini, l'app affiche un <strong>modal de révision</strong> montrant un résumé et permettant d'ajouter du contexte.</p>
+<h4>Contexte additionnel</h4>
+<p>Le champ texte permet d'ajouter des instructions supplémentaires pour Gemini. Le contexte <strong>complète</strong> les données — l'IA n'ignore jamais les chiffres calculés par l'app.</p>
+<div class="help-tip">💡 Cliquez sur <strong>✕ Annuler</strong> pour interrompre l'analyse sans coût de tokens.</div>`,
+          },
+        },
+      ],
+    },
+    {
       id: 'tips', icon: '💡', color: '#f59e0b',
       title: { pt: 'Dicas e Boas Práticas', en: 'Tips & Best Practices', es: 'Consejos y buenas prácticas', fr: 'Conseils et bonnes pratiques' },
       articles: [
@@ -592,6 +900,11 @@ function _helpContent() {
     <div class="help-action-icon">⚙️</div>
     <div class="help-action-label">Configurações</div>
     <button class="help-action-btn" onclick="navigate('settings')">Abrir →</button>
+  </div>
+  <div class="help-action-card">
+    <div class="help-action-icon">⭐</div>
+    <div class="help-action-label">Fidelidades</div>
+    <button class="help-action-btn" onclick="navigate('loyalty')">Abrir →</button>
   </div>
   <div class="help-action-card">
     <div class="help-action-icon">🧙</div>
