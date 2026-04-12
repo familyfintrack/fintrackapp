@@ -1110,13 +1110,32 @@ async function _agRefreshChatPendingBadge() {
     const { count } = await sb.from('transactions')
       .select('id', { count: 'exact', head: true })
       .eq('family_id', fid).eq('source', 'chat').eq('status', 'pending');
+    const n = count || 0;
+
+    // Update menu badge
     const badge = document.getElementById('chatValidateBadge');
-    const btn   = document.getElementById('chatValidateBtn');
     if (badge) {
-      badge.textContent = count || '';
-      badge.style.display = count > 0 ? '' : 'none';
+      badge.textContent = n || '';
+      badge.style.display = n > 0 ? 'inline-flex' : 'none';
     }
-    if (btn) btn.style.display = count > 0 ? '' : 'none';
+
+    // Update topbar button (visible whenever there are pending chat transactions)
+    const topbarBtn   = document.getElementById('chatPendingTopbarBtn');
+    const topbarCount = document.getElementById('chatPendingTopbarCount');
+    if (topbarBtn) {
+      topbarBtn.style.display = n > 0 ? '' : 'none';
+      topbarBtn.style.color = n > 0 ? '#dc2626' : 'var(--muted)';
+    }
+    if (topbarCount) topbarCount.textContent = n > 0 ? String(n) : '';
+
+    // Show/update a toast banner only first time there are new pending transactions
+    if (n > 0 && !window._chatPendingNotified) {
+      window._chatPendingNotified = true;
+      if (typeof toast === 'function') {
+        toast(`💬 ${n} transaç${n===1?'ão':'ões'} do chat aguardando validação — toque em ✅ no topo`, 'info', 6000);
+      }
+    }
+    if (n === 0) window._chatPendingNotified = false;
   } catch(e) { console.warn('[chatPendingBadge]', e?.message); }
 }
 window._agRefreshChatPendingBadge = _agRefreshChatPendingBadge;
