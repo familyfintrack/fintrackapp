@@ -327,6 +327,45 @@ function _dreamStatusColor(status) {
 }
 
 /* ── Main page render ─────────────────────────────────────────────── */
+function _updateDreamsHero(active, achieved) {
+  // Populate hero banner KPIs
+  const kpiActive   = document.getElementById('drmKpiActive');
+  const kpiTotal    = document.getElementById('drmKpiTotal');
+  const kpiAcc      = document.getElementById('drmKpiAcc');
+  const kpiAccSub   = document.getElementById('drmKpiAccSub');
+  const kpiAchieved = document.getElementById('drmKpiAchieved');
+  const progDiv     = document.getElementById('drmHeroProgress');
+  const progFill    = document.getElementById('drmHeroProgressFill');
+  const progPct     = document.getElementById('drmHeroProgressPct');
+  const heroTitle   = document.getElementById('drmHeroTitle');
+
+  const totalTarget = active.reduce((s, d) => s + (parseFloat(d.target_amount) || 0), 0);
+  const totalAcc    = active.reduce((s, d) => s + _dreamAccumulated(d), 0);
+  const pct         = totalTarget > 0 ? Math.min(100, Math.round((totalAcc / totalTarget) * 100)) : 0;
+
+  if (kpiActive)   kpiActive.textContent   = active.length || '—';
+  if (kpiTotal)    kpiTotal.textContent    = totalTarget > 0 ? _fmtCurrency(totalTarget) : '—';
+  if (kpiAcc)      kpiAcc.textContent      = totalAcc > 0 ? _fmtCurrency(totalAcc) : '—';
+  if (kpiAccSub)   kpiAccSub.textContent   = totalTarget > 0 ? pct + '% do total' : '';
+  if (kpiAchieved) kpiAchieved.textContent = achieved.length || '0';
+
+  // Show progress bar only when there are active dreams with targets
+  if (progDiv) progDiv.style.display = (active.length && totalTarget > 0) ? '' : 'none';
+  if (progFill) progFill.style.width = pct + '%';
+  if (progPct)  progPct.textContent  = pct + '%';
+
+  // Personalise title
+  if (heroTitle) {
+    if (!active.length && !achieved.length) {
+      heroTitle.textContent = 'Objetivos & Realizações';
+    } else if (achieved.length && !active.length) {
+      heroTitle.textContent = achieved.length + (achieved.length === 1 ? ' sonho conquistado' : ' sonhos conquistados') + ' 🏆';
+    } else {
+      heroTitle.textContent = active.length + (active.length === 1 ? ' sonho ativo' : ' sonhos ativos');
+    }
+  }
+}
+
 function renderDreamsPage() {
   const container = document.getElementById('dreams-list-container');
   if (!container) return;
@@ -335,6 +374,9 @@ function renderDreamsPage() {
   const achieved = _drm.dreams.filter(d => d.status === 'achieved');
   const paused   = _drm.dreams.filter(d => d.status === 'paused');
   const others   = _drm.dreams.filter(d => d.status === 'cancelled');
+
+  // Update hero banner with live KPIs
+  _updateDreamsHero(active, achieved);
 
   const allGroups = [
     { label: 'Ativos', dreams: active, emptyMsg: '' },
