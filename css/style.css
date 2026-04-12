@@ -28389,6 +28389,48 @@ input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; 
 }
 
 
+
+/* ── Loyalty card: compact icon-only action buttons ─────────────────────── */
+.loy-icon-actions {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.loy-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .13s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.loy-icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-lt, rgba(42,96,73,.08));
+}
+.loy-icon-btn--accent {
+  border-color: rgba(42,96,73,.3);
+  color: var(--accent);
+  background: var(--accent-lt, rgba(42,96,73,.06));
+}
+.loy-icon-btn--accent:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* ── Loyalty programs as account-grid cards (Contas page) ────────────────── */
 .loy-acc-card {
   border-radius: 14px !important;
