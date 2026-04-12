@@ -9985,6 +9985,10 @@ Se você não solicitou isso, ignore este e-mail.`,
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           Nova
         </button>
+        <button class="mfm-tab" id="mfmNavIa" onclick="mfmSwitchTab('ia')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          IA
+        </button>
       </div>
 
       <!-- ── Tab panes ── -->
@@ -10104,6 +10108,89 @@ Se você não solicitou isso, ignore este e-mail.`,
                 🏠 Criar família
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- ── IA pane ── -->
+        <div class="mfm-pane" id="mfmPaneIa">
+          <div class="mfm-pane-intro">
+            <div class="mfm-pane-intro-title">Inteligência Artificial</div>
+            <div class="mfm-pane-intro-sub">Configure a chave Gemini da sua família</div>
+          </div>
+
+          <!-- Modo: compartilhada ou própria -->
+          <div style="padding:0 16px 12px">
+            <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+              <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:10px">🤖 Como usar a IA</div>
+
+              <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;
+                padding:10px 12px;border-radius:9px;border:2px solid var(--accent);
+                background:var(--accent-lt);margin-bottom:8px" id="mfmGeminiGlobalOpt">
+                <input type="radio" name="mfmGeminiMode" value="global" id="mfmGeminiModeGlobal"
+                  style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;margin-top:2px"
+                  onchange="_mfmOnGeminiModeChange()">
+                <div>
+                  <div style="font-size:.81rem;font-weight:700;color:var(--text)">IA Compartilhada do FinTrack</div>
+                  <div style="font-size:.72rem;color:var(--muted);margin-top:3px;line-height:1.5">
+                    Chave gerenciada pelo administrador do app. Funciona sem configuração.
+                    <span style="color:var(--accent);font-weight:600">Recomendado</span>
+                  </div>
+                </div>
+              </label>
+
+              <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;
+                padding:10px 12px;border-radius:9px;border:2px solid var(--border);
+                background:var(--surface)" id="mfmGeminiOwnOpt">
+                <input type="radio" name="mfmGeminiMode" value="own" id="mfmGeminiModeOwn"
+                  style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;margin-top:2px"
+                  onchange="_mfmOnGeminiModeChange()">
+                <div>
+                  <div style="font-size:.81rem;font-weight:700;color:var(--text)">Chave própria da minha família</div>
+                  <div style="font-size:.72rem;color:var(--muted);margin-top:3px;line-height:1.5">
+                    Configure sua chave do Google AI Studio para uso exclusivo.
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Campo chave própria — visível só quando "própria" selecionado -->
+            <div id="mfmGeminiOwnSection" style="display:none">
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;
+                padding:10px 12px;font-size:.75rem;line-height:1.7;margin-bottom:12px">
+                <strong>Como obter sua chave gratuita:</strong><br>
+                1. Acesse <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                  style="color:#2563eb">aistudio.google.com/app/apikey</a><br>
+                2. Faça login com o Gmail → clique <em>Create API Key</em><br>
+                3. Copie a chave (começa com <code>AIza</code>)<br>
+                <span style="color:var(--accent);font-weight:600">✓ Gratuito: 1.500 leituras/dia</span>
+              </div>
+
+              <label style="font-size:.76rem;font-weight:600;color:var(--text2);
+                display:block;margin-bottom:6px">Chave API Google Gemini</label>
+              <div style="display:flex;gap:6px">
+                <input type="password" id="mfmGeminiKeyInput"
+                  placeholder="AIzaSy…" autocomplete="off" autocorrect="off" spellcheck="false"
+                  style="flex:1;font-family:monospace;font-size:.82rem;border:1.5px solid var(--border);
+                    border-radius:9px;padding:8px 10px;background:var(--surface);color:var(--text)">
+                <button class="btn btn-ghost btn-sm" onclick="_mfmToggleGeminiKeyVis()"
+                  id="mfmGeminiKeyToggle" style="flex-shrink:0;padding:0 10px;font-size:1rem">👁</button>
+              </div>
+              <div id="mfmGeminiKeyStatus" style="font-size:.7rem;color:var(--muted);margin-top:5px"></div>
+            </div>
+
+            <!-- Status when global mode -->
+            <div id="mfmGeminiGlobalStatus" style="display:none;background:rgba(42,96,73,.07);
+              border:1px solid rgba(42,96,73,.2);border-radius:9px;padding:10px 12px;
+              font-size:.76rem;color:var(--text2);line-height:1.6">
+              ✅ <strong>IA Compartilhada ativa.</strong> Sua família usa a chave configurada pelo administrador do app.
+              Nenhuma configuração adicional necessária.
+            </div>
+          </div>
+
+          <div style="padding:0 16px 16px">
+            <button class="btn btn-primary" style="width:100%" onclick="_mfmSaveGeminiConfig()">
+              💾 Salvar configuração de IA
+            </button>
           </div>
         </div>
 
