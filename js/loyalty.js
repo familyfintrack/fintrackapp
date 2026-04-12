@@ -183,7 +183,7 @@ async function renderLoyaltySection() {
   if (!container) return;
 
   await loadLoyaltyPrograms();
-  const programs = _loy.programs;
+  let programs = (_loy.programs || []).slice();
 
   if (!programs.length) {
     container.innerHTML = `
