@@ -552,75 +552,233 @@ function _renderPricesCharts() {
 
   const storeCount = _px._storeCount || {};
   const itemCount  = _px._itemCount  || {};
-
   if (!Object.keys(storeCount).length && !Object.keys(itemCount).length) {
-    el.style.display = 'none';
-    return;
+    el.style.display = 'none'; return;
   }
 
-  // Top stores (by number of price records)
-  const storeMap  = {};
-  (_px.stores || []).forEach(s => { storeMap[s.id] = s.payees?.name || s.name; });
-  const topStores = Object.entries(storeCount)
-    .map(([id, cnt]) => ({ name: storeMap[id] || 'Desconhecido', count: cnt }))
-    .sort((a, b) => b.count - a.count).slice(0, 8);
+  // ── Group stores by payee: multiple price_stores with same payee_id merge ──
+  const payeeGroups = {};   // key: 'p:payeeId' or 's:storeId'
+  const storeIdToKey = {};  // store_id → group key
 
-  // Top items (by number of price records)
-  const itemMap  = {};
+  (_px.stores || []).forEach(s => {
+    const key   = s.payee_id ? ('p:' + s.payee_id) : ('s:' + s.id);
+    const label = s.payees?.name || s.name || 'Desconhecido';
+    if (!payeeGroups[key]) payeeGroups[key] = { label, count: 0, storeIds: [] };
+    else if (!payeeGroups[key].label) payeeGroups[key].label = label;
+    payeeGroups[key].storeIds.push(s.id);
+    storeIdToKey[s.id] = key;
+  });
+
+  // Accumulate history counts into payee groups
+  (_px._histRaw || []).forEach(h => {
+    if (!h.store_id) return;
+    const key = storeIdToKey[h.store_id];
+    if (key && payeeGroups[key]) payeeGroups[key].count++;
+  });
+
+  // Build storeIds lookup for drill-down (store→items)
+  const topStores = Object.entries(payeeGroups)
+    .filter(([, g]) => g.count > 0)
+    .map(([key, g]) => ({ key, name: g.label, count: g.count, storeIds: g.storeIds }))
+    .sort((a, b) => b.count - a.count).slice(0, 10);
+
+  // Top items
+  const itemMap = {};
   (_px.items || []).forEach(i => { itemMap[i.id] = i.name; });
   const topItems = Object.entries(itemCount)
-    .map(([id, cnt]) => ({ name: itemMap[id] || 'Desconhecido', count: cnt }))
-    .sort((a, b) => b.count - a.count).slice(0, 8);
+    .map(([id, cnt]) => ({ id, name: itemMap[id] || 'Desconhecido', count: cnt }))
+    .sort((a, b) => b.count - a.count).slice(0, 10);
 
   const maxStore = topStores[0]?.count || 1;
   const maxItem  = topItems[0]?.count  || 1;
 
-  const accent = '#2a6049';
-  const accent2 = '#f59e0b';
-
-  const barHtml = (items, maxVal, color) => items.map(({ name, count }) => {
-    const pct = (count / maxVal * 100).toFixed(1);
-    return `<div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:5px 0">
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">${esc(name)}</span>
-          <span style="font-size:.7rem;color:var(--muted);margin-left:8px;flex-shrink:0">${count}×</span>
-        </div>
-        <div style="height:6px;border-radius:3px;background:var(--border)">
-          <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s ease"></div>
-        </div>
+  const mkStoreBar = ({ key, name, count, storeIds }) => {
+    const pct = (count / maxStore * 100).toFixed(1);
+    const safeKey = esc(key);
+    const safeIds = esc(JSON.stringify(storeIds));
+    return `<div class="px-chart-row" onclick="_pxDrillStore(${JSON.stringify(storeIds)},${JSON.stringify(name)})"
+      style="cursor:pointer;border-radius:9px;padding:6px 8px;margin:-6px -8px;transition:background .12s"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:.79rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(name)}</span>
+        <span style="font-size:.7rem;font-weight:700;color:var(--accent);margin-left:8px;flex-shrink:0">${count}×</span>
+      </div>
+      <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:#2a6049;border-radius:3px;transition:width .4s ease"></div>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  const mkItemBar = ({ id, name, count }) => {
+    const pct = (count / maxItem * 100).toFixed(1);
+    return `<div class="px-chart-row" onclick="_pxDrillItem(${JSON.stringify(id)},${JSON.stringify(name)})"
+      style="cursor:pointer;border-radius:9px;padding:6px 8px;margin:-6px -8px;transition:background .12s"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:.79rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(name)}</span>
+        <span style="font-size:.7rem;font-weight:700;color:#f59e0b;margin-left:8px;flex-shrink:0">${count}×</span>
+      </div>
+      <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:#f59e0b;border-radius:3px;transition:width .4s ease"></div>
+      </div>
+    </div>`;
+  };
 
   el.style.display = '';
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-
-      <!-- Top lojas -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px">
       ${topStores.length ? `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
           <span style="font-size:1rem">🏪</span>
           <span style="font-size:.82rem;font-weight:800;color:var(--text)">Lojas mais usadas</span>
-          <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${topStores.length} lojas</span>
+          <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${topStores.length}</span>
         </div>
-        ${barHtml(topStores, maxStore, accent)}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${topStores.map(mkStoreBar).join('')}
+        </div>
+        <div style="font-size:.67rem;color:var(--muted);margin-top:10px;text-align:right">Clique para ver detalhes →</div>
       </div>` : ''}
-
-      <!-- Top artigos -->
       ${topItems.length ? `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
           <span style="font-size:1rem">📦</span>
           <span style="font-size:.82rem;font-weight:800;color:var(--text)">Artigos mais registrados</span>
-          <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${topItems.length} itens</span>
+          <span style="font-size:.7rem;color:var(--muted);margin-left:auto">${topItems.length}</span>
         </div>
-        ${barHtml(topItems, maxItem, accent2)}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${topItems.map(mkItemBar).join('')}
+        </div>
+        <div style="font-size:.67rem;color:var(--muted);margin-top:10px;text-align:right">Clique para ver detalhes →</div>
       </div>` : ''}
-
     </div>`;
 }
+
+// ── Drill-down: store click → query full history for those store IDs ──
+async function _pxDrillStore(storeIds, storeName) {
+  _pxShowDrillModal(storeName, '🏪', [], 'store', true); // show modal with loading state
+  try {
+    const fid = _famId();
+    if (!fid || !sb) return;
+    const { data } = await sb.from('price_history')
+      .select('item_id, store_id, unit_price, quantity, purchased_at')
+      .eq('family_id', fid)
+      .in('store_id', storeIds)
+      .order('purchased_at', { ascending: false })
+      .limit(200);
+    _pxShowDrillModal(storeName, '🏪', data || [], 'store');
+  } catch(e) {
+    toast('Erro ao carregar histórico: ' + e.message, 'error');
+  }
+}
+
+// ── Drill-down: item click → query full history for that item ──
+async function _pxDrillItem(itemId, itemName) {
+  _pxShowDrillModal(itemName, '📦', [], 'item', true); // show modal with loading state
+  try {
+    const fid = _famId();
+    if (!fid || !sb) return;
+    const { data } = await sb.from('price_history')
+      .select('item_id, store_id, unit_price, quantity, purchased_at')
+      .eq('family_id', fid)
+      .eq('item_id', itemId)
+      .order('purchased_at', { ascending: false })
+      .limit(200);
+    _pxShowDrillModal(itemName, '📦', data || [], 'item');
+  } catch(e) {
+    toast('Erro ao carregar histórico: ' + e.message, 'error');
+  }
+}
+
+function _pxShowDrillModal(title, icon, rows, mode, loading = false) {
+  // Build sorted rows (most recent first)
+  const sorted = [...rows].sort((a, b) => {
+    const da = a.purchased_at || ''; const db = b.purchased_at || '';
+    return db.localeCompare(da);
+  });
+
+  const itemMap  = {};
+  (_px.items  || []).forEach(i => { itemMap[i.id]  = i.name; });
+  const storeMap = {};
+  (_px.stores || []).forEach(s => { storeMap[s.id] = s.payees?.name || s.name; });
+
+  const totalAmt = sorted.reduce((s, r) => s + (+(r.unit_price)||0) * (+(r.quantity)||1), 0);
+  const avgPrice = sorted.length ? (sorted.reduce((s, r) => s + (+(r.unit_price)||0), 0) / sorted.length) : 0;
+  const minPrice = sorted.length ? Math.min(...sorted.map(r => +(r.unit_price)||0)) : 0;
+
+  const fmt2 = v => 'R$ ' + (+(v)||0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  const rowsHtml = sorted.slice(0, 50).map(r => {
+    const date  = r.purchased_at ? new Date(r.purchased_at + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    const item  = mode === 'store' ? (itemMap[r.item_id]  || '—') : (storeMap[r.store_id] || '—');
+    const price = +(r.unit_price) || 0;
+    const qty   = +(r.quantity)   || 1;
+    const total = price * qty;
+    return `<div style="display:grid;grid-template-columns:80px 1fr 60px 70px;gap:8px;align-items:center;
+      padding:8px 12px;border-bottom:1px solid var(--border);font-size:.79rem;
+      transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <span style="color:var(--muted)">${date}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text)">${esc(item)}</span>
+      <span style="text-align:right;color:var(--muted)">×${qty}</span>
+      <span style="text-align:right;font-weight:700;color:var(--accent)">${fmt2(price)}</span>
+    </div>`;
+  }).join('');
+
+  const summary = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px;
+      background:var(--surface2);border-bottom:1px solid var(--border)">
+      <div style="text-align:center">
+        <div style="font-size:.6rem;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.06em">Registros</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--text)">${sorted.length}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:.6rem;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.06em">Preço médio</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--accent)">${fmt2(avgPrice)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:.6rem;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.06em">Mínimo visto</div>
+        <div style="font-size:1.1rem;font-weight:800;color:#16a34a">${fmt2(minPrice)}</div>
+      </div>
+    </div>`;
+
+  const header = `
+    <div style="display:grid;grid-template-columns:80px 1fr 60px 70px;gap:8px;
+      padding:6px 12px;background:var(--surface2);border-bottom:1.5px solid var(--border);
+      font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">
+      <span>Data</span><span>${mode === 'store' ? 'Artigo' : 'Loja'}</span>
+      <span style="text-align:right">Qtd</span><span style="text-align:right">Preço</span>
+    </div>`;
+
+  // Reuse the priceItemDetailModal or create inline
+  let modal = document.getElementById('pxDrillModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'pxDrillModal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal" style="max-width:520px">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title" id="pxDrillTitle"></span>
+        <button class="modal-close" onclick="closeModal('pxDrillModal')">✕</button>
+      </div>
+      <div id="pxDrillBody" style="overflow-y:auto;max-height:65vh"></div>
+    </div>`;
+    modal.onclick = e => { if (e.target === modal) closeModal('pxDrillModal'); };
+    document.body.appendChild(modal);
+  }
+
+  document.getElementById('pxDrillTitle').textContent = icon + ' ' + title;
+  if (loading) {
+    document.getElementById('pxDrillBody').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:.85rem">⏳ Carregando registros…</div>';
+    openModal('pxDrillModal');
+    return;
+  }
+  document.getElementById('pxDrillBody').innerHTML = summary + header + rowsHtml +
+    (sorted.length > 50 ? `<div style="text-align:center;padding:10px;font-size:.75rem;color:var(--muted)">Mostrando 50 de ${sorted.length} registros</div>` : '');
+  openModal('pxDrillModal');
+}
+window._pxDrillStore = _pxDrillStore;
+window._pxDrillItem  = _pxDrillItem;
 function pricesCatFilter(val)   {
   _px.catFilter = val;
   _populatePxSubcatFilter();

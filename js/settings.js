@@ -100,11 +100,11 @@ async function loadAppSettings() {
     // Will be re-applied in loadSettings() once page is open
 
 
-    // Hydrate EmailJS config
-    EMAILJS_CONFIG.serviceId  = _appSettingsCache['ej_service']  || '';
-    EMAILJS_CONFIG.templateId = _appSettingsCache['ej_template'] || '';
-    EMAILJS_CONFIG.scheduledTemplateId = _appSettingsCache['ej_sched_template'] || '';
-    EMAILJS_CONFIG.publicKey  = _appSettingsCache['ej_key']      || '';
+    // Hydrate EmailJS config — only overwrite hardcoded defaults when DB has a real value
+    if (_appSettingsCache['ej_service'])       EMAILJS_CONFIG.serviceId           = _appSettingsCache['ej_service'];
+    if (_appSettingsCache['ej_template'])      EMAILJS_CONFIG.templateId          = _appSettingsCache['ej_template'];
+    if (_appSettingsCache['ej_sched_template'])EMAILJS_CONFIG.scheduledTemplateId = _appSettingsCache['ej_sched_template'];
+    if (_appSettingsCache['ej_key'])           EMAILJS_CONFIG.publicKey           = _appSettingsCache['ej_key'];
     // Hydrate masterPin
     const dbPin = _appSettingsCache['masterPin'];
     if (dbPin) localStorage.setItem('masterPin', dbPin); // keep local in sync
@@ -115,10 +115,10 @@ async function loadAppSettings() {
     }
   } catch(e) {
     console.warn('loadAppSettings fallback to localStorage:', e.message);
-    // Fallback: load from localStorage
-    EMAILJS_CONFIG.serviceId  = _appSettingsCache?.['ej_service']  || '';
-    EMAILJS_CONFIG.templateId = _appSettingsCache?.['ej_template'] || '';
-    EMAILJS_CONFIG.publicKey  = _appSettingsCache?.['ej_key']      || '';
+    // Fallback: only overwrite when value is non-empty
+    if (_appSettingsCache?.['ej_service'])  EMAILJS_CONFIG.serviceId  = _appSettingsCache['ej_service'];
+    if (_appSettingsCache?.['ej_template']) EMAILJS_CONFIG.templateId = _appSettingsCache['ej_template'];
+    if (_appSettingsCache?.['ej_key'])      EMAILJS_CONFIG.publicKey  = _appSettingsCache['ej_key'];
   }
   // Signal that app_settings are ready — lets modules do a cross-device restore pass
   try { document.dispatchEvent(new CustomEvent('appsettings:loaded')); } catch(_) {}

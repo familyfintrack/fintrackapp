@@ -86,42 +86,48 @@ window._receiptAiPending = null; // { base64, mediaType, fileName }
 //  SEÇÃO 1 — CONFIGURAÇÃO DA API KEY
 // ══════════════════════════════════════════════════════════════════════════
 
-async function showAiConfig() {
-  const val        = await getGeminiApiKey();
-  const model      = await getGeminiModel();
-  const useGlobal  = await getAppSetting(GEMINI_USE_GLOBAL_SETTING, 'true');
-  const isGlobal   = useGlobal !== 'false' && useGlobal !== false;
-  // Set radio selection
-  const modeGlobal = document.getElementById('geminiModeGlobal');
-  const modeOwn    = document.getElementById('geminiModeOwn');
-  if (modeGlobal) modeGlobal.checked = isGlobal;
-  if (modeOwn)    modeOwn.checked    = !isGlobal;
-  _onGeminiModeChange(); // update UI visibility
-  const inp = document.getElementById('anthropicApiKeyInput');
-  if (inp) { inp.value = val || ''; inp.type = 'password'; }
-  const tog = document.getElementById('aiKeyToggle');
-  if (tog) tog.textContent = '👁';
-  // Hide global toggle if user is not owner/admin
+function showAiConfig() {
+  // PWA fix: open modal SYNCHRONOUSLY on tap, then load data asynchronously
+  // iOS Safari PWA swallows taps if no synchronous DOM change occurs within ~300ms
+  openModal('aiConfigModal');
+  // Apply role visibility immediately
   const gSection = document.getElementById('geminiGlobalSection');
   if (gSection) {
     const role = window.currentUser?.role || '';
     gSection.style.display = (role === 'owner' || role === 'admin') ? '' : 'none';
   }
-  // Pre-select configured model
-  const modelSel = document.getElementById('geminiModelSelect');
-  if (modelSel) {
-    const opt = Array.from(modelSel.options).find(o => o.value === model);
-    if (opt) { modelSel.value = model; }
-    else if (model) { const c = new Option(model+' (personalizado)',model); modelSel.add(c); modelSel.value=model; }
-  }
-  // Load n8n settings
-  const n8nUrl = await getAppSetting('agent_n8n_webhook_url', '');
-  const n8nKey = await getAppSetting('agent_n8n_secret_key', '');
-  const urlEl = document.getElementById('agentN8nWebhookUrl');
-  const keyEl = document.getElementById('agentN8nSecretKey');
-  if (urlEl) urlEl.value = n8nUrl || '';
-  if (keyEl) keyEl.value = n8nKey || '';
-  openModal('aiConfigModal');
+  // Load data in background after modal is visible
+  (async () => {
+    try {
+      const [val, model, useGlobal, n8nUrl, n8nKey] = await Promise.all([
+        getGeminiApiKey(),
+        getGeminiModel(),
+        getAppSetting(GEMINI_USE_GLOBAL_SETTING, 'true'),
+        getAppSetting('agent_n8n_webhook_url', ''),
+        getAppSetting('agent_n8n_secret_key', ''),
+      ]);
+      const isGlobal = useGlobal !== 'false' && useGlobal !== false;
+      const modeGlobal = document.getElementById('geminiModeGlobal');
+      const modeOwn    = document.getElementById('geminiModeOwn');
+      if (modeGlobal) modeGlobal.checked = isGlobal;
+      if (modeOwn)    modeOwn.checked    = !isGlobal;
+      _onGeminiModeChange();
+      const inp = document.getElementById('anthropicApiKeyInput');
+      if (inp) { inp.value = val || ''; inp.type = 'password'; }
+      const tog = document.getElementById('aiKeyToggle');
+      if (tog) tog.textContent = '👁';
+      const modelSel = document.getElementById('geminiModelSelect');
+      if (modelSel) {
+        const opt = Array.from(modelSel.options).find(o => o.value === model);
+        if (opt) { modelSel.value = model; }
+        else if (model) { const c = new Option(model+' (personalizado)',model); modelSel.add(c); modelSel.value=model; }
+      }
+      const urlEl = document.getElementById('agentN8nWebhookUrl');
+      const keyEl = document.getElementById('agentN8nSecretKey');
+      if (urlEl) urlEl.value = n8nUrl || '';
+      if (keyEl) keyEl.value = n8nKey || '';
+    } catch(e) { console.warn('[showAiConfig]', e?.message); }
+  })();
 }
 async function saveAiConfig() {
   const inp      = document.getElementById('anthropicApiKeyInput');

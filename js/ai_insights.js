@@ -1126,6 +1126,12 @@ function _aiDetectAnomalies(txs, catMap, payMap, historicalTrend, byCategory) {
 async function runAiAnalysis() {
   if (_ai.analysisLoading) return;
 
+  // PWA fix: set visual feedback synchronously BEFORE any await calls
+  // iOS Safari PWA swallows taps if no DOM change occurs within ~300ms
+  _ai.analysisLoading = true;
+  const analyzeBtn = document.querySelector('.ai2-btn-analyze');
+  if (analyzeBtn) { analyzeBtn.disabled = true; analyzeBtn.style.opacity = '.7'; }
+
   const apiKey = await getGeminiApiKey();
   if (!apiKey || !apiKey.startsWith('AIza')) {
     toast(t('ai.no_api_key_config'), 'warning');
@@ -1158,6 +1164,8 @@ async function runAiAnalysis() {
   } finally {
     _ai.analysisLoading = false;
     _aiRefreshSnapshotButton();
+    const analyzeBtn = document.querySelector('.ai2-btn-analyze');
+    if (analyzeBtn) { analyzeBtn.disabled = false; analyzeBtn.style.opacity = ''; }
   }
 }
 

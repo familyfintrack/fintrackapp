@@ -3452,6 +3452,9 @@ async function _patAnalyzeWithGemini() {
   const result = document.getElementById('patAiResult');
   if (!btn || !result) return;
 
+  // PWA fix: update UI synchronously before any await
+  // (loading state already set above)
+
   const apiKey = typeof getAppSetting === 'function'
     ? await getGeminiApiKey().catch(() => '')
     : '';

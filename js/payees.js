@@ -411,6 +411,16 @@ function _pyeCard(p, g) {
       ${txBadge}
       <div class="pye-card-actions" onclick="event.stopPropagation()">
         ${txCount>0?`<button class="pye-icon-btn" onclick="${openDetail}" title="Ver histórico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`:''}
+        ${(() => {
+          const _isActive = window._iofPayeeId === p.id;
+          const _hasOther = !!window._iofPayeeId && window._iofPayeeId !== p.id;
+          const _color    = _isActive ? '#dc2626' : _hasOther ? 'var(--border)' : 'var(--muted)';
+          const _bg       = _isActive ? 'rgba(220,38,38,.08)' : 'transparent';
+          const _opacity  = _hasOther ? '0.35' : '1';
+          const _events   = _hasOther ? 'none' : 'auto';
+          const _title    = _isActive ? 'IOF ativo — clique para remover' : _hasOther ? 'Desative o IOF atual primeiro' : 'Definir como beneficiário padrão do IOF';
+          return `<button class="pye-icon-btn" onclick="setIofPayeeTarget('${p.id}','${esc(p.name)}')" title="${_title}" style="font-size:.6rem;font-weight:800;letter-spacing:.03em;color:${_color};background:${_bg};opacity:${_opacity};pointer-events:${_events};${_isActive?'border-color:rgba(220,38,38,.3)':''}">IOF</button>`;
+        })()}
         <button class="pye-icon-btn" onclick="openPayeeModal('${p.id}')" title="Editar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
         <button class="pye-icon-btn" onclick="typeof openNewTxWithPayee==='function'?openNewTxWithPayee('${p.id}'):openTransactionModal({payee_id:'${p.id}'})" title="Nova transação" style="color:var(--accent);border-color:rgba(42,96,73,.25)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
       </div>
