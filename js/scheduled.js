@@ -1739,8 +1739,31 @@ function openRegisterOcc(scId, date) {
 
   // Show/hide the "Não Recebido" button — only for income type
   _scArShowBtn(sc);
+
+  // Populate loyalty program select
+  const loySelEl = document.getElementById('occLoyaltyProgram');
+  if (loySelEl) {
+    const loyProgs = typeof _loy !== 'undefined' ? (_loy.programs || []) : [];
+    loySelEl.innerHTML = '<option value="">— Selecionar programa —</option>' +
+      loyProgs.map(p => `<option value="${p.id}">${(p.icon||'⭐')} ${p.name}</option>`).join('');
+  }
+  // Reset loyalty fields
+  const loyChk = document.getElementById('occLoyaltyEnabled');
+  const loyFields = document.getElementById('occLoyaltyFields');
+  const loyPts = document.getElementById('occLoyaltyPoints');
+  if (loyChk) loyChk.checked = false;
+  if (loyFields) loyFields.style.display = 'none';
+  if (loyPts) loyPts.value = '';
+
   openModal('registerOccModal');
 }
+
+// Toggle loyalty fields visibility
+window._occToggleLoyalty = function() {
+  const chk = document.getElementById('occLoyaltyEnabled');
+  const fields = document.getElementById('occLoyaltyFields');
+  if (fields) fields.style.display = chk?.checked ? '' : 'none';
+};
 
 async function confirmRegisterOccurrence() {
   const scId = _registerOccScId;
@@ -1831,6 +1854,37 @@ async function confirmRegisterOccurrence() {
   }
 
   toast('Transação registrada!', 'success');
+
+  // Credit loyalty points if enabled
+  try {
+    const loyEnabled = document.getElementById('occLoyaltyEnabled')?.checked;
+    const loyProgId  = document.getElementById('occLoyaltyProgram')?.value;
+    const loyPts     = parseInt(document.getElementById('occLoyaltyPoints')?.value || '0', 10);
+    if (loyEnabled && loyProgId && loyPts > 0) {
+      await sb.from('loyalty_transactions').insert({
+        family_id:   famId(),
+        program_id:  loyProgId,
+        type:        'earn',
+        points:      loyPts,
+        description: `Pontos via programado: ${sc.description || ''}`,
+        date:        actualDate,
+      });
+      // Update balance in loyalty_programs
+      const prog = typeof _loy !== 'undefined' ? (_loy.programs || []).find(p => p.id === loyProgId) : null;
+      if (prog) {
+        await sb.from('loyalty_programs')
+          .update({ points_balance: (prog.points_balance || 0) + loyPts })
+          .eq('id', loyProgId);
+      }
+      toast('✈️ ' + loyPts + ' pontos creditados!', 'success');
+      if (typeof renderLoyaltySection === 'function' && typeof loadLoyaltyPrograms === 'function') {
+        loadLoyaltyPrograms(true).catch(() => {});
+      }
+    }
+  } catch(loyErr) {
+    console.warn('[loyalty credit]', loyErr?.message);
+  }
+
   closeModal('registerOccModal');
   await loadScheduled();
   // Refresh dashboard upcoming list if visible so registered tx disappears immediately

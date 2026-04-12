@@ -135,7 +135,7 @@ async function renderAccounts(ft=''){
   _syncAccountsTab(ft);
   try { renderGroupManager(); } catch(e) {}
   // Render loyalty programs section (já carregado acima, só renderiza a seção)
-  if (typeof renderLoyaltySection === 'function') renderLoyaltySection().catch(()=>{});
+  // Loyalty programs now on dedicated page (navigate to 'loyalty')
 }
 
 function _renderArchivedSection(grid) {

@@ -11,58 +11,68 @@
 
 /* ── Catálogo de programas populares no Brasil ────────────────────────────── */
 const LOYALTY_CATALOG = [
-  { type:'smiles', name:'Smiles (GOL)', icon:'😊', color:'#FF6600',
-    api_url:'https://developers.smiles.com.br', has_api:true,
-    docs_url:'https://developers.smiles.com.br/docs',
-    note:'API OAuth 2.0 — requer Client ID e Secret do portal do desenvolvedor',
-    api_fields:['client_id','client_secret','cpf'],
-    api_token_url:'https://api.smiles.com.br/v1/auth/oauth/token',
-    api_balance_url:'https://api.smiles.com.br/v1/member/balance',
-  },
-  { type:'latam_pass', name:'LATAM Pass', icon:'🌎', color:'#E31837',
-    api_url:'https://developer.latam.com', has_api:true,
-    docs_url:'https://developer.latam.com/api-catalog',
-    note:'API OAuth 2.0 — requer Client ID e Secret do portal LATAM Developer',
-    api_fields:['client_id','client_secret','email'],
-    api_token_url:'https://api.latam.com/oauth/token',
-    api_balance_url:'https://api.latam.com/latampass/v1/member/balance',
-  },
-  { type:'livelo', name:'Livelo', icon:'🔴', color:'#B31017',
-    api_url:'https://developers.livelo.com.br', has_api:true,
-    docs_url:'https://developers.livelo.com.br/reference',
-    note:'API OAuth 2.0 — acesso via portal Livelo para parceiros',
-    api_fields:['client_id','client_secret','cpf'],
-    api_token_url:'https://api.livelo.com.br/oauth/token',
-    api_balance_url:'https://api.livelo.com.br/v1/participant/balance',
-  },
-  { type:'tudoazul', name:'TudoAzul (Azul)', icon:'💙', color:'#0056A2',
-    api_url:'https://api.azul.com.br', has_api:true,
-    docs_url:'https://api.azul.com.br/docs',
-    note:'API via parceria Azul Linhas Aéreas — credenciais de parceiro',
-    api_fields:['client_id','client_secret','login'],
-    api_token_url:'https://api.azul.com.br/oauth2/token',
-    api_balance_url:'https://api.azul.com.br/tudoazul/v1/member/points',
-  },
-  { type:'esfera',       name:'Esfera (Santander)',   icon:'🟡', color:'#E5001E',
-    api_url:null, has_api:false,
-    note:'Sem API pública — consulta manual pelo app/site Santander' },
-  { type:'clube_itau',   name:'Clube Itaú',           icon:'🔶', color:'#FF6600',
-    api_url:null, has_api:false,
-    note:'Sem API pública — dados via app Itaú' },
-  { type:'multiplus',    name:'Multiplus (Livelo)',   icon:'🟠', color:'#F47920',
-    api_url:null, has_api:false,
-    note:'Migrado para Livelo — use o tipo Livelo' },
-  { type:'azul_mais',    name:'Azul Mais (Azul)',     icon:'✈️', color:'#004F9F',
-    api_url:null, has_api:false,
-    note:'Programa premium da Azul — sem API pública' },
-  { type:'dotz',         name:'Dotz',                icon:'🟤', color:'#8B4513',
-    api_url:null, has_api:false,
+  // ── Companhias aéreas ──────────────────────────────────────────────────────
+  { type:'smiles',      name:'Smiles',        short:'GOL',    icon:'🟠', color:'#FF6600', category:'airline',
+    site_url:'https://www.smiles.com.br', has_api:true,
+    note:'GOL Linhas Aéreas — programa de milhas',
+    api_fields:['client_id','client_secret','cpf'] },
+  { type:'latam_pass',  name:'LATAM Pass',    short:'LATAM',  icon:'🔴', color:'#E31837', category:'airline',
+    site_url:'https://www.latamairlines.com/br/pt/latam-pass', has_api:true,
+    note:'LATAM Airlines Brasil',
+    api_fields:['client_id','client_secret','email'] },
+  { type:'tudoazul',    name:'TudoAzul',      short:'Azul',   icon:'🔵', color:'#0056A2', category:'airline',
+    site_url:'https://www.voeazul.com.br/tudoazul', has_api:true,
+    note:'Azul Linhas Aéreas',
+    api_fields:['client_id','client_secret','login'] },
+  { type:'tap_miles',   name:'TAP Miles&Go',  short:'TAP',    icon:'✈️', color:'#007749', category:'airline',
+    site_url:'https://www.flytap.com/pt-br/miles-go', has_api:false,
+    note:'TAP Air Portugal — sem API pública' },
+  // ── Bancos / Cartões ──────────────────────────────────────────────────────
+  { type:'livelo',      name:'Livelo',        short:'Livelo', icon:'💎', color:'#B31017', category:'bank',
+    site_url:'https://www.livelo.com.br', has_api:true,
+    note:'Plataforma de pontos do Itaú, Bradesco, BB',
+    api_fields:['client_id','client_secret','cpf'] },
+  { type:'esfera',      name:'Esfera',        short:'Santan', icon:'🔥', color:'#E5001E', category:'bank',
+    site_url:'https://www.esfera.com.vc', has_api:false,
+    note:'Santander — sem API pública' },
+  { type:'clube_itau',  name:'Clube Itaú',    short:'Itaú',   icon:'🧡', color:'#FF6600', category:'bank',
+    site_url:'https://www.itau.com.br/clube-itau', has_api:false,
     note:'Sem API pública' },
-  { type:'stix',         name:'Stix (Grupo Pão)',     icon:'🟢', color:'#008000',
-    api_url:null, has_api:false,
-    note:'Programa Pão de Açúcar / Raízen — sem API pública' },
-  { type:'custom',       name:'Personalizado',        icon:'⭐', color:'#f59e0b',
-    api_url:null, has_api:false,
+  { type:'xp_rewards',  name:'XP Rewards',   short:'XP',     icon:'💛', color:'#FFB800', category:'bank',
+    site_url:'https://www.xpi.com.br/rewards', has_api:false,
+    note:'XP Investimentos — sem API pública' },
+  { type:'inter_loop',  name:'Inter Loop',   short:'Inter',  icon:'🟠', color:'#FF8C00', category:'bank',
+    site_url:'https://www.bancointer.com.br/loop', has_api:false,
+    note:'Banco Inter — sem API pública' },
+  // ── Hotéis ────────────────────────────────────────────────────────────────
+  { type:'marriott',    name:'Marriott Bonvoy', short:'Marri', icon:'🏨', color:'#A30F19', category:'hotel',
+    site_url:'https://www.marriott.com/loyalty/mermiles/earning/default.mi', has_api:false,
+    note:'Sem API pública' },
+  { type:'hilton',      name:'Hilton Honors', short:'Hilton', icon:'🏩', color:'#00356B', category:'hotel',
+    site_url:'https://www.hilton.com/en/hilton-honors/', has_api:false,
+    note:'Sem API pública' },
+  { type:'accor',       name:'ALL Accor Live', short:'Accor',  icon:'🏪', color:'#6E2584', category:'hotel',
+    site_url:'https://all.accor.com', has_api:false,
+    note:'Accor Hotels — sem API pública' },
+  { type:'ihg',         name:'IHG One Rewards', short:'IHG', icon:'🏰', color:'#007CC3', category:'hotel',
+    site_url:'https://www.ihg.com/onerewards', has_api:false,
+    note:'Sem API pública' },
+  // ── Varejo / Supermercado ─────────────────────────────────────────────────
+  { type:'stix',        name:'Stix Fidelidade', short:'Stix', icon:'🛒', color:'#008000', category:'retail',
+    site_url:'https://www.stix.com.vc', has_api:false,
+    note:'Pão de Açúcar / Raízen — sem API pública' },
+  { type:'dotz',        name:'Dotz',          short:'Dotz',   icon:'🟤', color:'#8B4513', category:'retail',
+    site_url:'https://www.dotz.com.br', has_api:false,
+    note:'Sem API pública' },
+  { type:'rappi_turbo', name:'Rappi Turbo',   short:'Rappi',  icon:'🛵', color:'#FF441F', category:'retail',
+    site_url:'https://www.rappi.com.br', has_api:false,
+    note:'Sem API pública' },
+  { type:'ifood',       name:'iFood Benefícios', short:'iFood', icon:'🍔', color:'#EA1D2C', category:'retail',
+    site_url:'https://www.ifood.com.br', has_api:false,
+    note:'Sem API pública' },
+  // ── Personalizado ─────────────────────────────────────────────────────────
+  { type:'custom',      name:'Personalizado', short:'',        icon:'⭐', color:'#f59e0b', category:'other',
+    site_url:null, has_api:false,
     note:'Programa personalizado' },
 ];
 
@@ -188,15 +198,186 @@ async function renderLoyaltySection() {
     return;
   }
 
-  container.innerHTML = `
-    <div class="account-grid" style="margin-bottom:12px">
-      ${programs.map(p => _loyCard(p)).join('')}
-    </div>
+  // Apply text search filter
+  const searchQ = (window._loySearchFilter || '').toLowerCase().trim();
+  if (searchQ) {
+    programs = programs.filter(p =>
+      p.name.toLowerCase().includes(searchQ) ||
+      (p.short_name||'').toLowerCase().includes(searchQ) ||
+      (p.member_number||'').toLowerCase().includes(searchQ)
+    );
+  }
+
+  // Update pill counts after filtering
+  document.querySelectorAll('.lp-pill[data-cat]').forEach(pill => {
+    const cat = pill.getAttribute('data-cat');
+    if (!cat) return;
+    const count = programs.filter(p => {
+      const c = LOYALTY_CATALOG.find(lc => lc.type === p.program_type);
+      return (c?.category || 'other') === cat;
+    }).length;
+    // Show/hide pills based on content
+    pill.style.display = count > 0 || cat === '' ? '' : 'none';
+  });
+
+  // Group programs by category
+  const CATEGORY_META = [
+    { key:'airline', label:'✈️ Companhias Aéreas',   icon:'✈️' },
+    { key:'bank',    label:'💳 Bancos e Cartões',     icon:'💳' },
+    { key:'hotel',   label:'🏨 Hotéis',               icon:'🏨' },
+    { key:'retail',  label:'🛒 Varejo e Serviços',    icon:'🛒' },
+    { key:'other',   label:'⭐ Outros',               icon:'⭐' },
+  ];
+
+  // Determine each program's category from catalog
+  const getCat = p => {
+    const cat = LOYALTY_CATALOG.find(c => c.type === p.program_type);
+    return cat?.category || 'other';
+  };
+
+  const grouped = {};
+  programs.forEach(p => {
+    const k = getCat(p);
+    if (!grouped[k]) grouped[k] = [];
+    grouped[k].push(p);
+  });
+
+  // Current filter state
+  const activeFilter = window._loyTypeFilter || '';
+  const filtered = activeFilter
+    ? programs.filter(p => getCat(p) === activeFilter)
+    : programs;
+
+  // Build filter pills
+  const pillsHtml = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;overflow-x:auto;padding:2px">
+      ${[{key:'', label:'Todos', icon:'🌟'}, ...CATEGORY_META.filter(c => grouped[c.key]?.length)].map(c => `
+        <button onclick="window._loyTypeFilter='${c.key}';renderLoyaltySection()"
+          style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;
+            font-size:.76rem;font-weight:700;border:1.5px solid;cursor:pointer;font-family:inherit;
+            transition:all .15s;white-space:nowrap;touch-action:manipulation;
+            background:${activeFilter===c.key?'var(--accent)':'var(--surface)'};
+            color:${activeFilter===c.key?'#fff':'var(--muted)'};
+            border-color:${activeFilter===c.key?'var(--accent)':'var(--border)'}">
+          ${c.icon} ${c.label}
+          ${grouped[c.key]?.length ? `<span style="background:${activeFilter===c.key?'rgba(255,255,255,.25)':'var(--surface2)'};border-radius:10px;padding:0 5px;font-size:.68rem">${grouped[c.key].length}</span>` : ''}
+        </button>`).join('')}
+    </div>`;
+
+  // Build groups HTML
+  let groupsHtml = '';
+  if (activeFilter) {
+    // Flat grid when filtered
+    groupsHtml = `<div class="account-grid">${filtered.map(p => _loyCard(p)).join('')}</div>`;
+  } else {
+    // Grouped by category
+    CATEGORY_META.forEach(cat => {
+      const items = grouped[cat.key];
+      if (!items?.length) return;
+      groupsHtml += `
+        <div style="margin-bottom:18px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:7px;
+            border-bottom:2px solid var(--border)">
+            <span style="font-size:1rem">${cat.icon}</span>
+            <span style="font-size:.8rem;font-weight:800;color:var(--text)">${cat.label}</span>
+            <span style="font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:10px;
+              background:var(--accent-lt);color:var(--accent);border:1px solid var(--accent)22;margin-left:auto">
+              ${items.length}
+            </span>
+          </div>
+          <div class="account-grid">${items.map(p => _loyCard(p)).join('')}</div>
+        </div>`;
+    });
+  }
+
+  container.innerHTML = pillsHtml + groupsHtml + `
     <div style="display:flex;justify-content:center;padding:4px 0 8px">
       <button class="btn btn-ghost btn-sm" onclick="openLoyaltyModal('')">+ Adicionar programa</button>
     </div>`;
 }
 window.renderLoyaltySection = renderLoyaltySection;
+
+// ── Loyalty page init ────────────────────────────────────────────────────────
+async function initLoyaltyPage() {
+  await loadLoyaltyPrograms();
+  _lpUpdateHeroKpis();
+  _lpUpdateStats();
+  renderLoyaltySection();
+}
+window.initLoyaltyPage = initLoyaltyPage;
+
+function _lpUpdateHeroKpis() {
+  const progs = _loy.programs || [];
+  const total = progs.length;
+  const totalPts = progs.reduce((s, p) => s + (+(p.points_balance) || 0), 0);
+  const fmtPts = n => {
+    if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + 'M';
+    if (n >= 1000)    return (n/1000).toFixed(1).replace('.0','') + 'k';
+    return String(n);
+  };
+  const today = new Date().toISOString().slice(0, 10);
+  const in30  = new Date(); in30.setDate(in30.getDate() + 30);
+  const in30s = in30.toISOString().slice(0, 10);
+  const expiring = progs.filter(p => p.points_expiry_date && p.points_expiry_date >= today && p.points_expiry_date <= in30s).length;
+
+  const kpiCount    = document.getElementById('lpKpiCount');
+  const kpiPoints   = document.getElementById('lpKpiPoints');
+  const kpiExpiring = document.getElementById('lpKpiExpiring');
+  const heroTitle   = document.getElementById('lpHeroTitle');
+
+  if (kpiCount)    kpiCount.textContent    = total;
+  if (kpiPoints)   kpiPoints.textContent   = fmtPts(totalPts);
+  if (kpiExpiring) {
+    kpiExpiring.textContent = expiring;
+    kpiExpiring.style.color = expiring > 0 ? '#fde68a' : '#fff';
+  }
+  if (heroTitle) {
+    const family = typeof state !== 'undefined' ? (state.families?.find?.(f=>f.id===currentUser?.family_id)?.name || '') : '';
+    heroTitle.textContent = family ? family + ' · Fidelidades' : 'Meus Programas';
+  }
+}
+
+function _lpUpdateStats() {
+  const progs = _loy.programs || [];
+  const el = document.getElementById('lpStats');
+  if (!el) return;
+
+  const CATEGORY_META = [
+    { key:'airline', label:'Companhias Aéreas', icon:'✈️' },
+    { key:'bank',    label:'Bancos e Cartões',   icon:'💳' },
+    { key:'hotel',   label:'Hotéis',             icon:'🏨' },
+    { key:'retail',  label:'Varejo',             icon:'🛒' },
+    { key:'other',   label:'Outros',             icon:'⭐' },
+  ];
+
+  const getCat = p => (LOYALTY_CATALOG.find(c => c.type === p.program_type)?.category) || 'other';
+
+  el.innerHTML = CATEGORY_META.map(cat => {
+    const items = progs.filter(p => getCat(p) === cat.key);
+    if (!items.length) return '';
+    const totalPts = items.reduce((s,p) => s + (+(p.points_balance)||0), 0);
+    const fmtPts = n => n >= 1000 ? (n/1000).toFixed(1).replace('.0','')+'k' : String(n);
+    return `<div class="lp-stat" onclick="_lpSetCat(document.querySelector('.lp-pill[data-cat=\'${cat.key}\']'),'${cat.key}')">
+      <div class="lp-stat-lbl">${cat.icon} ${cat.label}</div>
+      <div class="lp-stat-val">${items.length}</div>
+      <div class="lp-stat-sub">${fmtPts(totalPts)} pts total</div>
+    </div>`;
+  }).join('');
+}
+
+// Filter helpers for new page
+window._lpFilter = function() {
+  const q = (document.getElementById('lpSearch')?.value || '').toLowerCase();
+  window._loySearchFilter = q;
+  renderLoyaltySection();
+};
+
+window._lpSetCat = function(btn, cat) {
+  document.querySelectorAll('.lp-pill').forEach(p => p.classList.toggle('active', p === btn));
+  window._loyTypeFilter = cat;
+  renderLoyaltySection();
+};
+
 
 function _loyCard(p) {
   const cat   = _loyCatalog(p.program_type);
@@ -241,7 +422,7 @@ function _loyCard(p) {
           <div style="flex:1;min-width:0">
             <div style="font-size:.85rem;font-weight:700;color:var(--text);
               white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_loyEsc(p.name)}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${_loyEsc(cat.name)}</div>
+            <div style="font-size:.68rem;color:var(--muted)">${p.short_name ? _loyEsc(p.short_name) + " · " : ""}${_loyEsc(cat.name)}</div>
             ${linkedLine}
           </div>
           <div style="text-align:right;flex-shrink:0">
@@ -251,8 +432,16 @@ function _loyCard(p) {
             ${p.api_enabled ? '<div style="font-size:.6rem;padding:1px 5px;border-radius:5px;background:rgba(22,163,74,.1);color:#16a34a;font-weight:700;margin-top:3px">🟢 API</div>' : ''}
           </div>
         </div>
-        ${expiryLine ? '<div style="margin-bottom:6px">' + expiryLine + '</div>' : ''}
-        ${avgLine ? '<div style="margin-bottom:4px">' + avgLine + '</div>' : ''}
+        ${expiryLine ? '<div style="margin-bottom:4px">' + expiryLine + '</div>' : ''}
+        ${avgLine   ? '<div style="margin-bottom:4px">' + avgLine + '</div>' : ''}
+        ${p.member_number ? `<div style="font-size:.67rem;color:var(--muted);margin-top:3px">
+          🪪 <span style="font-family:monospace;letter-spacing:.03em;color:var(--text2)">${_loyEsc(p.member_number)}</span>
+        </div>` : ''}
+        ${p.site_url ? `<a href="${_loyEsc(p.site_url)}" target="_blank" rel="noopener"
+          onclick="event.stopPropagation()"
+          style="display:inline-flex;align-items:center;gap:3px;font-size:.66rem;color:var(--accent);
+            margin-top:3px;text-decoration:none;font-weight:600">
+          🌐 Acessar site</a>` : ''}
       </div>
       <div class="loyalty-card-actions loy-icon-actions" onclick="event.stopPropagation()">
         <!-- Atualizar -->
@@ -604,7 +793,18 @@ window._loyApiSync = _loyApiSync;
 
 /* ── Modal: criar / editar programa ─────────────────────────────────────────*/
 // ── Loyalty icon picker ──────────────────────────────────────────────────────
-const _LOY_ICONS = ['⭐', '🏆', '✈️', '🎯', '💎', '🛒', '🍔', '🍕', '☕', '🛍️', '🏦', '💳', '💰', '🪙', '📱', '🎮', '🎬', '🎵', '📚', '🏋️', '🚗', '⛽', '🏠', '🌟', '🔮', '💫', '🎁', '🎪', '🏅', '🥇', '🦁', '🐝', '🦋', '🦅', '🌈', '🍀', '🌺', '🌸', '🎨', '🖌️'];
+const _LOY_ICONS = [
+  // Viagens e transporte
+  '✈️','🛫','🛬','🚀','🚢','🚂','🚗','🛵','🏨','🏩','🏪','🏰','🗺️','🌍','🌎','🌏','🗽','🗼','🎡',
+  // Finanças e pontos
+  '💎','💳','💰','🪙','🏦','💵','💴','💶','🏅','🥇','🥈','🎖️','🏆','🥉','⭐','🌟','💫','✨',
+  // Compras
+  '🛒','🛍️','🏬','🎁','🎀','🎊','🛏️','⌚','📱','💻','🖥️','⌨️',
+  // Alimentação
+  '🍔','🍕','🍣','☕','🍷','🍺','🍰','🍦','🍫','🥑',
+  // Outros
+  '🎯','🎮','🎬','🎵','🏋️','⛽','🏠','🔮','🌈','🍀','🦁','🔥','🟠','🔴','🔵','🟡','🟢','🟤','🔶','❤️',
+];
 
 function _loyIconPickerHtml(selected) {
   return _LOY_ICONS.map(ic => {
@@ -636,169 +836,314 @@ async function openLoyaltyModal(id) {
 
   if (!prog) {
     prog = {
-      id:'', name:'', icon:'⭐', color:'#f59e0b', program_type:'custom',
+      id:'', name:'', short_name:'', icon:'⭐', color:'#f59e0b', program_type:'custom',
       linked_account_id:null, points_balance:0, points_expiry_date:'',
-      show_in_account_card:true, notes:'',
+      show_in_account_card:true, show_in_dash_fav:true, notes:'',
+      site_url:'', member_number:'', login_username:'', login_password:'',
     };
   }
 
-  // Catalog picker HTML
-  const catalogHtml = LOYALTY_CATALOG.map(c => `
-    <div class="loy-prog-chip ${prog.program_type===c.type?'loy-prog-chip--active':''}"
-         onclick="_loyPickCatalog('${c.type}','${c.icon}','${c.color}','${_loyEsc(c.name)}')"
-         title="${c.has_api?'✅ API disponível':'⚠️ Sem API pública'}">
-      <span style="font-size:1.2rem">${c.icon}</span>
-      <span style="font-size:.72rem;font-weight:600">${_loyEsc(c.name)}</span>
-    </div>`).join('');
+  // Group catalog by category
+  const categories = [
+    { key:'airline', label:'✈️ Companhias Aéreas' },
+    { key:'bank',    label:'💳 Bancos e Cartões' },
+    { key:'hotel',   label:'🏨 Hotéis' },
+    { key:'retail',  label:'🛒 Varejo' },
+    { key:'other',   label:'⭐ Outros' },
+  ];
 
-  // Accounts select
+  const catalogHtml = categories.map(cat => {
+    const items = LOYALTY_CATALOG.filter(c => (c.category||'other') === cat.key);
+    if (!items.length) return '';
+    return `<div style="margin-bottom:10px">
+      <div style="font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;
+        color:var(--muted);margin-bottom:6px">${cat.label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${items.map(c => `
+          <button type="button" class="loy-prog-chip ${prog.program_type===c.type?'loy-prog-chip--active':''}"
+            onclick="_loyPickCatalog('${c.type}','${c.icon}','${c.color}','${_loyEsc(c.name)}','${_loyEsc(c.site_url||'')}','${_loyEsc(c.short_name||c.short||'')}')"
+            title="${c.site_url?'🌐 '+c.site_url:c.note||''}">
+            <span style="font-size:1.1rem">${c.icon}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-start">
+              <span style="font-size:.7rem;font-weight:700;line-height:1.2">${_loyEsc(c.short||c.name)}</span>
+              ${c.has_api ? '<span style="font-size:.55rem;color:#16a34a;font-weight:700">API</span>' : ''}
+            </div>
+          </button>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
   const acctOptions = (state.accounts||[])
     .filter(a => a.type !== 'programa_fidelidade')
     .map(a => `<option value="${a.id}" ${prog.linked_account_id===a.id?'selected':''}>${_loyEsc(a.name)}</option>`)
     .join('');
 
+  const section = (title, icon, content) =>
+    `<div class="loy-section">
+      <div class="loy-section-hdr"><span>${icon}</span><span>${title}</span></div>
+      ${content}
+    </div>`;
+
+  const fld = (label, content) =>
+    `<div class="loy-fld"><label class="loy-fld-lbl">${label}</label>${content}</div>`;
+
+  const inp = (id, opts='') =>
+    `<input class="loy-input" id="${id}" ${opts}>`;
+
   const html = `
   <div class="modal-overlay open" id="loyaltyProgramModal" onclick="if(event.target===this)closeModal('loyaltyProgramModal')">
-    <div class="modal" style="max-width:580px">
+    <div class="modal" style="max-width:600px">
       <div class="modal-handle"></div>
       <div class="modal-header">
-        <span class="modal-title">${isNew?'Novo Programa de Fidelidade':'Editar Programa'}</span>
+        <span class="modal-title">${isNew?'✨ Novo Programa de Fidelidade':'✏️ Editar Programa'}</span>
         <button class="modal-close" onclick="closeModal('loyaltyProgramModal')">✕</button>
       </div>
-      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+      <div class="modal-body" style="padding:0">
+        <style>
+          .loy-section { padding:14px 16px; border-bottom:1px solid var(--border); }
+          .loy-section:last-child { border-bottom:none; }
+          .loy-section-hdr { display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:800;
+            color:var(--text);margin-bottom:12px; }
+          .loy-fld { margin-bottom:10px; }
+          .loy-fld:last-child { margin-bottom:0; }
+          .loy-fld-lbl { font-size:.72rem;font-weight:700;color:var(--text2);display:block;margin-bottom:4px; }
+          .loy-input { width:100%;padding:8px 11px;border:1.5px solid var(--border);border-radius:9px;
+            font-size:.83rem;font-family:inherit;background:var(--surface2);color:var(--text);
+            transition:border-color .15s; }
+          .loy-input:focus { outline:none;border-color:var(--accent); }
+          .loy-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+          .loy-prog-chips { max-height:240px;overflow-y:auto;padding:2px; }
+          .loy-prog-chip {
+            display:inline-flex;align-items:center;gap:6px;padding:5px 9px;
+            border-radius:9px;border:1.5px solid var(--border);background:var(--surface);
+            cursor:pointer;font-family:inherit;transition:all .12s;
+          }
+          .loy-prog-chip:hover { border-color:var(--accent);background:var(--accent-lt); }
+          .loy-prog-chip--active { border-color:var(--accent);background:var(--accent-lt); }
+          .loy-pwd-wrap { position:relative; }
+          .loy-pwd-wrap .loy-input { padding-right:38px; }
+          .loy-pwd-reveal {
+            position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            background:none;border:none;cursor:pointer;font-size:1rem;color:var(--muted);
+            padding:4px;touch-action:manipulation;
+          }
+          .loy-dup-alert { display:none;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;
+            border-radius:9px;font-size:.76rem;color:#dc2626;margin-top:6px; }
+        </style>
+
         <input type="hidden" id="loyProgId" value="${prog.id}">
+        <input type="hidden" id="loyProgIcon" value="${_loyEsc(prog.icon)}">
 
-        <!-- Programa predefinido -->
-        <div>
-          <label style="font-size:.78rem;font-weight:700;color:var(--text2);display:block;margin-bottom:8px">Programa</label>
-          <div class="loy-prog-chips" id="loyProgChips">${catalogHtml}</div>
-        </div>
+        <!-- Seção 1: Tipo de programa -->
+        ${section('Tipo de programa', '🏷️', `
+          <div class="loy-prog-chips">${catalogHtml}</div>
+        `)}
 
-        <!-- Nome + cor -->
-        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
-          <div>
-            <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Nome do programa *</label>
-            <input type="text" id="loyProgName" class="form-input" value="${_loyEsc(prog.name)}"
-              placeholder="Ex: Smiles, Livelo, LATAM Pass…" style="margin-top:4px">
+        <!-- Seção 2: Identificação -->
+        ${section('Identificação', '📋', `
+          <div class="loy-grid-2">
+            ${fld('Nome do programa *', inp('loyProgName', `value="${_loyEsc(prog.name)}" placeholder="Ex: Smiles, Livelo, LATAM Pass…"`))}
+            ${fld('Abreviação / Apelido', inp('loyShortName', `value="${_loyEsc(prog.short_name||'')}" placeholder="Ex: GOL, LAT, LIV"`))}
           </div>
-          <div>
-            <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Cor</label>
-            <input type="color" id="loyProgColor" value="${prog.color}"
-              style="margin-top:4px;width:48px;height:38px;border-radius:8px;border:1px solid var(--border);padding:2px;cursor:pointer">
-          </div>
-        </div>
-
-        <!-- Ícone picker -->
-        <div>
-          <label style="font-size:.78rem;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            Ícone
-            <span id="loyIconPreview" style="font-size:1.4rem;line-height:1">${_loyEsc(prog.icon)}</span>
-            <input type="hidden" id="loyProgIcon" value="${_loyEsc(prog.icon)}">
-          </label>
-          <div id="loyIconGrid" style="display:flex;flex-wrap:wrap;gap:5px">
-            ${_loyIconPickerHtml(prog.icon)}
-          </div>
-        </div>
-
-        <!-- Conta vinculada -->
-        <div>
-          <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Conta vinculada <span style="font-size:.7rem;color:var(--muted)">(opcional — exibe pontos junto ao saldo)</span></label>
-          <select id="loyLinkedAccount" class="form-input" style="margin-top:4px">
-            <option value="">— Nenhuma (stand-alone) —</option>
-            ${acctOptions}
-          </select>
-        </div>
-
-        <!-- Saldo inicial + validade -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div>
-            <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Saldo inicial de pontos</label>
-            <input type="number" id="loyInitBalance" class="form-input" value="${prog.points_balance||0}"
-              min="0" step="1" style="margin-top:4px" placeholder="0">
-          </div>
-          <div>
-            <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Validade dos pontos</label>
-            <input type="date" id="loyExpiry" class="form-input" value="${prog.points_expiry_date||''}"
-              style="margin-top:4px">
-          </div>
-        </div>
-
-        <!-- Mostrar no card da conta + dashboard -->
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-            <input type="checkbox" id="loyShowCard" ${prog.show_in_account_card?'checked':''} style="accent-color:var(--accent);width:16px;height:16px">
-            <div>
-              <div style="font-size:.84rem;font-weight:600;color:var(--text)">Exibir pontos no card da conta vinculada</div>
-              <div style="font-size:.73rem;color:var(--muted)">Mostra badge de pontos no card da conta na página Contas</div>
+          <div class="loy-grid-2">
+            <div style="display:flex;align-items:flex-end;gap:8px">
+              ${fld('Ícone', `
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span id="loyIconPreview" style="font-size:1.5rem;line-height:1">${_loyEsc(prog.icon)}</span>
+                  <button type="button" onclick="_loyToggleIconPicker()" class="loy-input"
+                    style="width:auto;padding:5px 12px;cursor:pointer;font-size:.78rem;font-weight:600">
+                    Trocar ícone
+                  </button>
+                </div>
+                <div id="loyIconGrid" style="display:none;flex-wrap:wrap;gap:4px;margin-top:8px;max-height:140px;overflow-y:auto;padding:4px;background:var(--surface2);border-radius:9px">
+                  ${_loyIconPickerHtml(prog.icon)}
+                </div>`)}
             </div>
-          </label>
-          <label id="loyShowDashRow" style="display:${prog.linked_account_id?'flex':'none'};align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-            <input type="checkbox" id="loyShowDash" ${prog.show_in_dash_fav!==false?'checked':''} style="accent-color:var(--accent);width:16px;height:16px">
-            <div>
-              <div style="font-size:.84rem;font-weight:600;color:var(--text)">Exibir pontos no Dashboard (contas favoritas)</div>
-              <div style="font-size:.73rem;color:var(--muted)">Mostra total de pontos de forma discreta na linha de ações do card favorito</div>
-            </div>
-          </label>
-        </div>
+            ${fld('Cor', `<input type="color" id="loyProgColor" value="${prog.color}"
+              style="width:100%;height:38px;border-radius:9px;border:1.5px solid var(--border);padding:2px;cursor:pointer">`)}
+          </div>
+          <div id="loyDupAlert" class="loy-dup-alert">⚠️ Possível duplicado detectado — verifique antes de salvar.</div>
+        `)}
 
-        <!-- Notas -->
-        <div>
-          <label style="font-size:.78rem;font-weight:600;color:var(--text2)">Observações</label>
-          <textarea id="loyNotes" class="form-input" rows="2" style="margin-top:4px;resize:vertical"
-            placeholder="Regras, taxa de acúmulo, parceiros…">${_loyEsc(prog.notes||'')}</textarea>
-        </div>
+        <!-- Seção 3: Número e acesso -->
+        ${section('Número e acesso ao programa', '🔑', `
+          ${fld('Número da fidelidade / CPF vinculado',
+            inp('loyMemberNumber', `value="${_loyEsc(prog.member_number||'')}" placeholder="Ex: 1234567890 ou CPF"`),
+          )}
+          ${fld('Site do programa',
+            inp('loyProgSiteUrl', `type="url" value="${_loyEsc(prog.site_url||'')}" placeholder="https://…"`),
+          )}
+          <div class="loy-grid-2">
+            ${fld('Usuário / e-mail de acesso',
+              inp('loyLoginUser', `value="${_loyEsc(prog.login_username||'')}" autocomplete="off" placeholder="Usuário ou e-mail"`),
+            )}
+            ${fld('Senha', `
+              <div class="loy-pwd-wrap">
+                <input class="loy-input" type="password" id="loyLoginPwd"
+                  value="${_loyEsc(prog.login_password||'')}" autocomplete="new-password" placeholder="••••••••">
+                <button type="button" class="loy-pwd-reveal" onclick="_loyTogglePwd()" title="Mostrar/ocultar">👁</button>
+              </div>`
+            )}
+          </div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:4px">
+            🔒 Senha armazenada localmente na família. Nunca enviada a terceiros.
+          </div>
+        `)}
 
-        <!-- Aviso API -->
-        <div id="loyApiNote" style="font-size:.74rem;color:var(--muted);padding:8px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-          ℹ️ A integração com APIs dos programas será configurável em versão futura. Por enquanto os pontos são atualizados manualmente.
-        </div>
+        <!-- Seção 4: Configurações -->
+        ${section('Configurações', '⚙️', `
+          <div class="loy-grid-2">
+            ${fld('Saldo inicial de pontos',
+              inp('loyInitBalance', `type="number" value="${prog.points_balance||0}" min="0" step="1" placeholder="0"`),
+            )}
+            ${fld('Validade dos pontos',
+              inp('loyExpiry', `type="date" value="${prog.points_expiry_date||''}"`)
+            )}
+          </div>
+          <div>
+            ${fld('Conta vinculada',
+              `<select id="loyLinkedAccount" class="loy-input">
+                <option value="">— Nenhuma (stand-alone) —</option>
+                ${acctOptions}
+              </select>`
+            )}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;
+              background:var(--surface2);border-radius:9px;border:1px solid var(--border)">
+              <input type="checkbox" id="loyShowCard" ${prog.show_in_account_card?'checked':''} style="accent-color:var(--accent);width:15px;height:15px">
+              <div>
+                <div style="font-size:.82rem;font-weight:600;color:var(--text)">Exibir no card da conta vinculada</div>
+                <div style="font-size:.7rem;color:var(--muted)">Mostra badge de pontos no card da conta</div>
+              </div>
+            </label>
+            <label id="loyShowDashRow" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;
+              background:var(--surface2);border-radius:9px;border:1px solid var(--border)">
+              <input type="checkbox" id="loyShowDash" ${prog.show_in_dash_fav!==false?'checked':''} style="accent-color:var(--accent);width:15px;height:15px">
+              <div>
+                <div style="font-size:.82rem;font-weight:600;color:var(--text)">Exibir no Dashboard (Favoritas)</div>
+                <div style="font-size:.7rem;color:var(--muted)">Mostra pontos junto às contas favoritas</div>
+              </div>
+            </label>
+          </div>
+        `)}
+
+        <!-- Seção 5: Observações -->
+        ${section('Observações', '📝', `
+          <textarea id="loyNotes" class="loy-input" rows="2" style="resize:vertical"
+            placeholder="Regras, taxa de acúmulo, parceiros, dicas…">${_loyEsc(prog.notes||'')}</textarea>
+        `)}
       </div>
       <div class="modal-footer">
         ${!isNew?`<button class="btn btn-ghost btn-sm" style="color:#dc2626;margin-right:auto" onclick="_loyDelete('${prog.id}')">🗑️ Excluir</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="closeModal('loyaltyProgramModal')">Cancelar</button>
-        <button class="btn btn-primary btn-sm" onclick="_loySaveProgram()">💾 Salvar</button>
+        <button class="btn btn-primary btn-sm" onclick="_loySaveProgram()">💾 Salvar programa</button>
       </div>
     </div>
   </div>`;
 
   document.getElementById('loyaltyProgramModal')?.remove();
   document.body.insertAdjacentHTML('beforeend', html);
+
+  // Watch name for duplicate detection
+  const nameEl = document.getElementById('loyProgName');
+  if (nameEl) {
+    nameEl.addEventListener('input', () => _loyCheckDuplicate(nameEl.value, prog.id));
+  }
 }
 window.openLoyaltyModal = openLoyaltyModal;
 
-function _loyPickCatalog(type, icon, color, name) {
+// Toggle icon picker panel
+window._loyToggleIconPicker = function() {
+  const grid = document.getElementById('loyIconGrid');
+  if (grid) grid.style.display = grid.style.display === 'none' ? 'flex' : 'none';
+};
+
+// Toggle password visibility
+window._loyTogglePwd = function() {
+  const inp = document.getElementById('loyLoginPwd');
+  const btn = document.querySelector('.loy-pwd-reveal');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (btn) btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+};
+
+// Duplicate detection
+function _loyCheckDuplicate(name, currentId) {
+  if (!name || name.length < 2) return;
+  const alert = document.getElementById('loyDupAlert');
+  if (!alert) return;
+  const q = name.toLowerCase().trim();
+  const existing = (_loy.programs || []).filter(p =>
+    p.id !== currentId &&
+    (p.name.toLowerCase().includes(q) || q.includes(p.name.toLowerCase().slice(0, 4)))
+  );
+  if (existing.length) {
+    alert.style.display = '';
+    alert.innerHTML = `⚠️ Possível duplicado: <strong>${existing.map(p=>_loyEsc(p.name)).join(', ')}</strong> — verifique antes de salvar.`;
+  } else {
+    alert.style.display = 'none';
+  }
+}
+
+
+
+function _loyPickCatalog(type, icon, color, name, siteUrl, shortName) {
   const nameEl  = document.getElementById('loyProgName');
   const iconEl  = document.getElementById('loyProgIcon');
   const colorEl = document.getElementById('loyProgColor');
-  if (nameEl && !nameEl.value) nameEl.value = name;
+  const siteEl  = document.getElementById('loyProgSiteUrl');
+  const shortEl = document.getElementById('loyShortName');
+  if (nameEl  && !nameEl.value)  nameEl.value  = name;
   if (iconEl)  iconEl.value  = icon;
   if (colorEl) colorEl.value = color;
-  // Sync icon picker grid
+  if (siteEl  && !siteEl.value  && siteUrl)  siteEl.value  = siteUrl;
+  if (shortEl && !shortEl.value && shortName) shortEl.value = shortName;
+  // Sync icon preview + grid
+  const preview = document.getElementById('loyIconPreview');
+  if (preview) preview.textContent = icon;
   if (typeof _loyPickIcon === 'function') _loyPickIcon(icon);
   // Update chip selection
   document.querySelectorAll('.loy-prog-chip').forEach(el => {
     el.classList.toggle('loy-prog-chip--active',
-      el.querySelector('span:last-child')?.textContent?.trim() === name);
+      el.getAttribute('onclick')?.includes(`'${type}'`));
   });
-  // Store type
   document.getElementById('loyProgId')?.setAttribute('data-type', type);
+  // Check duplicates when picking a catalog item
+  if (nameEl) _loyCheckDuplicate(nameEl.value, document.getElementById('loyProgId')?.value || '');
 }
 window._loyPickCatalog = _loyPickCatalog;
 
 async function _loySaveProgram() {
-  const id      = document.getElementById('loyProgId')?.value?.trim();
-  const name    = document.getElementById('loyProgName')?.value?.trim();
-  const icon    = document.getElementById('loyProgIcon')?.value?.trim() || '⭐';
-  const color   = document.getElementById('loyProgColor')?.value || '#f59e0b';
-  const typeEl  = document.getElementById('loyProgId')?.getAttribute('data-type');
-  const type    = typeEl || (id ? (_loyProgram(id)?.program_type || 'custom') : 'custom');
-  const linked  = document.getElementById('loyLinkedAccount')?.value || null;
-  const pts     = parseInt(document.getElementById('loyInitBalance')?.value||0, 10);
-  const expiry  = document.getElementById('loyExpiry')?.value || null;
-  const showCard= document.getElementById('loyShowCard')?.checked ?? true;
-  const notes   = document.getElementById('loyNotes')?.value?.trim() || '';
+  const id         = document.getElementById('loyProgId')?.value?.trim();
+  const name       = document.getElementById('loyProgName')?.value?.trim();
+  const icon       = document.getElementById('loyProgIcon')?.value?.trim() || '⭐';
+  const color      = document.getElementById('loyProgColor')?.value || '#f59e0b';
+  const typeEl     = document.getElementById('loyProgId')?.getAttribute('data-type');
+  const type       = typeEl || (id ? (_loyProgram(id)?.program_type || 'custom') : 'custom');
+  const linked     = document.getElementById('loyLinkedAccount')?.value || null;
+  const pts        = parseInt(document.getElementById('loyInitBalance')?.value||0, 10);
+  const expiry     = document.getElementById('loyExpiry')?.value || null;
+  const showCard   = document.getElementById('loyShowCard')?.checked ?? true;
+  const notes      = document.getElementById('loyNotes')?.value?.trim() || '';
+  const shortName  = document.getElementById('loyShortName')?.value?.trim() || '';
+  const siteUrl    = document.getElementById('loyProgSiteUrl')?.value?.trim() || '';
+  const memberNum  = document.getElementById('loyMemberNumber')?.value?.trim() || '';
+  const loginUser  = document.getElementById('loyLoginUser')?.value?.trim() || '';
+  const loginPwd   = document.getElementById('loyLoginPwd')?.value || '';
 
   if (!name) { _loyToast('Informe o nome do programa.', 'error'); return; }
+
+  // Duplicate check — warn if name too similar to existing (excluding current record)
+  const fid0 = _loyFamId();
+  const dup = (_loy.programs || []).find(p =>
+    p.id !== (id||null) &&
+    p.name.toLowerCase().replace(/\s+/g,'').includes(name.toLowerCase().replace(/\s+/g,'').slice(0,4))
+  );
+  if (dup) {
+    const go = confirm('⚠️ Possível duplicado encontrado: "' + dup.name + '". Deseja salvar mesmo assim?');
+    if (!go) return;
+  }
 
   const fid = _loyFamId();
   if (!fid) { _loyToast('Erro: família não identificada.', 'error'); return; }
@@ -809,11 +1154,16 @@ async function _loySaveProgram() {
     family_id: fid,
     name, icon, color,
     program_type:          type,
+    short_name:            shortName || null,
     linked_account_id:     linked || null,
     show_in_account_card:  showCard,
     show_in_dash_fav:      document.getElementById('loyShowDash')?.checked ?? true,
     points_expiry_date:    expiry || null,
     notes:                 notes || null,
+    site_url:              siteUrl || null,
+    member_number:         memberNum || null,
+    login_username:        loginUser || null,
+    login_password:        loginPwd || null,
     // Preserve api fields if already set
     api_enabled:           existingProg?.api_enabled ?? false,
     api_config:            existingProg?.api_config   ?? null,

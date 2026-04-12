@@ -1345,6 +1345,10 @@ function _refreshChatTxToggle() {
   track.style.background = enabled ? 'var(--accent)' : '';
   track.classList.toggle('active', enabled);
   if (logBtn) logBtn.style.display = enabled ? '' : 'none';
+  // Refresh pending chat badge
+  setTimeout(() => {
+    if (typeof _agRefreshChatPendingBadge === 'function') _agRefreshChatPendingBadge();
+  }, 800);
 }
 
 /* ── Histórico de transações criadas via chat ─────────────────────────────── */
@@ -1471,6 +1475,261 @@ async function openChatTxLog() {
   }
 }
 window.openChatTxLog = openChatTxLog;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHAT TRANSACTION VALIDATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function openChatValidation() {
+  openModal('chatValidationModal');
+  await _cvLoad();
+}
+
+async function _cvLoad() {
+  const body = document.getElementById('chatValidationBody');
+  if (!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:.84rem">⏳ Carregando…</div>';
+
+  try {
+    const fid = typeof famId === 'function' ? famId() : null;
+    if (!fid || !sb) { body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Não autenticado.</div>'; return; }
+
+    const { data: txs, error } = await sb.from('transactions')
+      .select('id,date,description,amount,currency,category_id,account_id,payee_id,notes,categories(id,name,icon,color),accounts(id,name,icon,color),payees(id,name)')
+      .eq('family_id', fid).eq('source', 'chat').eq('status', 'pending')
+      .order('created_at', { ascending: false }).limit(50);
+
+    if (error) throw error;
+
+    if (!txs || txs.length === 0) {
+      body.innerHTML = `
+        <div style="text-align:center;padding:48px 24px">
+          <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
+          <div style="font-weight:700;font-size:.95rem;color:var(--text);margin-bottom:6px">Tudo validado!</div>
+          <div style="font-size:.8rem;color:var(--muted)">Nenhuma transação do chat aguardando validação.</div>
+        </div>`;
+      if (typeof _agRefreshChatPendingBadge === 'function') _agRefreshChatPendingBadge();
+      return;
+    }
+
+    // Load categories, accounts, payees for quick edit selects
+    const cats  = (state.categories || []).filter(c => !c.parent_id || true);
+    const accs  = (state.accounts   || []).filter(a => !a.archived);
+    const payees = state.payees || [];
+
+    const catOpts  = cats.map(c  => `<option value="${c.id}">${c.icon||''} ${esc(c.name)}</option>`).join('');
+    const accOpts  = accs.map(a  => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
+    const payeeOpts = [
+      '<option value="">— Sem beneficiário —</option>',
+      ...payees.map(p => `<option value="${p.id}">${esc(p.name)}</option>`)
+    ].join('');
+
+    const rows = txs.map(tx => {
+      const amt    = parseFloat(tx.amount) || 0;
+      const isInc  = amt > 0;
+      const color  = isInc ? '#16a34a' : '#dc2626';
+      const sign   = isInc ? '+' : '−';
+      const fmtAmt = (typeof fmt === 'function' ? fmt : v => 'R$ '+Math.abs(v).toFixed(2))(Math.abs(amt));
+      const dateStr = tx.date ? new Date(tx.date + 'T12:00').toLocaleDateString('pt-BR') : '—';
+      const catSel  = tx.category_id ? `value="${tx.category_id}"` : '';
+      const accSel  = tx.account_id  ? `value="${tx.account_id}"`  : '';
+      const pyeSel  = tx.payee_id    ? `value="${tx.payee_id}"`    : '';
+
+      return `
+        <div class="cv-card" id="cv-${tx.id}">
+          <div class="cv-card-top">
+            <div class="cv-amount" style="color:${color}">${sign}${fmtAmt}</div>
+            <div class="cv-desc">${esc(tx.description || '—')}</div>
+            <div class="cv-date">${dateStr}</div>
+          </div>
+          <div class="cv-fields">
+            <div class="cv-field">
+              <label class="cv-lbl">🏷️ Categoria</label>
+              <select class="cv-sel" id="cv-cat-${tx.id}">
+                <option value="">— Sem categoria —</option>
+                ${catOpts}
+              </select>
+            </div>
+            <div class="cv-field">
+              <label class="cv-lbl">🏦 Conta</label>
+              <select class="cv-sel" id="cv-acc-${tx.id}">
+                ${accOpts}
+              </select>
+            </div>
+            <div class="cv-field">
+              <label class="cv-lbl">👤 Beneficiário</label>
+              <select class="cv-sel" id="cv-pye-${tx.id}">
+                ${payeeOpts}
+              </select>
+            </div>
+          </div>
+          <div class="cv-actions">
+            <button class="cv-btn cv-btn-dismiss" onclick="_cvDismiss('${tx.id}')">🗑 Descartar</button>
+            <button class="cv-btn cv-btn-confirm" onclick="_cvConfirm('${tx.id}')">✅ Validar e confirmar</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <style>
+        .cv-card {
+          border-bottom: 1px solid var(--border);
+          padding: 14px 16px;
+          transition: background .12s;
+        }
+        .cv-card:last-child { border-bottom: none; }
+        .cv-card-top {
+          display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+        }
+        .cv-amount {
+          font-size: 1.15rem; font-weight: 800; font-family: var(--font-serif); flex-shrink: 0;
+        }
+        .cv-desc {
+          font-size: .88rem; font-weight: 600; color: var(--text); flex: 1; min-width: 0;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cv-date { font-size: .72rem; color: var(--muted); flex-shrink: 0; }
+        .cv-fields {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;
+        }
+        @media (max-width: 420px) { .cv-fields { grid-template-columns: 1fr; } }
+        .cv-field:last-child { grid-column: 1 / -1; }
+        .cv-lbl { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: block; margin-bottom: 3px; }
+        .cv-sel {
+          width: 100%; padding: 7px 10px; border: 1.5px solid var(--border);
+          border-radius: 8px; font-size: .8rem; font-family: inherit;
+          background: var(--surface2); color: var(--text);
+          touch-action: manipulation;
+        }
+        .cv-sel:focus { outline: none; border-color: var(--accent); }
+        .cv-actions {
+          display: flex; gap: 8px;
+        }
+        .cv-btn {
+          flex: 1; padding: 9px 12px; border-radius: 9px; font-size: .8rem;
+          font-weight: 700; font-family: inherit; cursor: pointer; border: none;
+          touch-action: manipulation;
+        }
+        .cv-btn-dismiss {
+          background: var(--surface2); color: var(--muted);
+          border: 1.5px solid var(--border);
+        }
+        .cv-btn-dismiss:hover { background: #fef2f2; color: #dc2626; border-color: #dc2626; }
+        .cv-btn-confirm {
+          background: var(--accent); color: #fff;
+        }
+        .cv-btn-confirm:hover { opacity: .88; }
+        .cv-card.cv-removing {
+          opacity: 0; transform: translateX(60px); transition: all .3s ease;
+        }
+      </style>
+      <div style="padding:10px 16px 8px;border-bottom:1px solid var(--border);
+        background:var(--surface2);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:.8rem;font-weight:700;color:var(--text)">${txs.length} transaç${txs.length===1?'ão':'ões'} aguardando</span>
+        <button onclick="_cvDismissAll()" style="font-size:.72rem;color:var(--red,#dc2626);font-weight:700;background:none;border:none;cursor:pointer;touch-action:manipulation">Descartar todas</button>
+      </div>
+      <div style="overflow-y:auto;max-height:65vh">${rows}</div>`;
+
+    // Set current values after rendering
+    txs.forEach(tx => {
+      const catEl = document.getElementById('cv-cat-' + tx.id);
+      const accEl = document.getElementById('cv-acc-' + tx.id);
+      const pyeEl = document.getElementById('cv-pye-' + tx.id);
+      if (catEl && tx.category_id) catEl.value = tx.category_id;
+      if (accEl && tx.account_id)  accEl.value = tx.account_id;
+      if (pyeEl && tx.payee_id)    pyeEl.value = tx.payee_id;
+    });
+
+  } catch(e) {
+    body.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted)">⚠️ ${esc(e.message)}</div>`;
+  }
+}
+
+async function _cvConfirm(txId) {
+  const card = document.getElementById('cv-' + txId);
+  const catId = document.getElementById('cv-cat-' + txId)?.value || null;
+  const accId = document.getElementById('cv-acc-' + txId)?.value || null;
+  const pyeId = document.getElementById('cv-pye-' + txId)?.value || null;
+
+  try {
+    const updates = {
+      status: 'confirmed', source: null,
+      updated_at: new Date().toISOString(),
+    };
+    if (catId) updates.category_id = catId;
+    if (accId) updates.account_id  = accId;
+    if (pyeId) updates.payee_id    = pyeId;
+
+    const { error } = await sb.from('transactions').update(updates).eq('id', txId);
+    if (error) throw error;
+
+    if (card) {
+      card.classList.add('cv-removing');
+      setTimeout(() => { card.remove(); _cvCheckEmpty(); }, 300);
+    }
+
+    if (typeof loadTransactions === 'function') loadTransactions(true).catch(() => {});
+    if (typeof loadDashboard    === 'function') loadDashboard().catch(() => {});
+    if (typeof _agRefreshChatPendingBadge === 'function') _agRefreshChatPendingBadge();
+    toast('✅ Transação confirmada!', 'success');
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function _cvDismiss(txId) {
+  const card = document.getElementById('cv-' + txId);
+  try {
+    const { error } = await sb.from('transactions').delete().eq('id', txId);
+    if (error) throw error;
+    if (card) {
+      card.classList.add('cv-removing');
+      setTimeout(() => { card.remove(); _cvCheckEmpty(); }, 300);
+    }
+    if (typeof _agRefreshChatPendingBadge === 'function') _agRefreshChatPendingBadge();
+    toast('Transação descartada', 'info');
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function _cvDismissAll() {
+  if (!confirm('Descartar TODAS as transações pendentes por chat?')) return;
+  try {
+    const fid = typeof famId === 'function' ? famId() : null;
+    if (!fid) return;
+    await sb.from('transactions').delete()
+      .eq('family_id', fid).eq('source', 'chat').eq('status', 'pending');
+    await _cvLoad();
+    if (typeof _agRefreshChatPendingBadge === 'function') _agRefreshChatPendingBadge();
+    toast('Todas as transações descartadas', 'info');
+  } catch(e) {
+    toast('Erro: ' + e.message, 'error');
+  }
+}
+
+function _cvCheckEmpty() {
+  const body = document.getElementById('chatValidationBody');
+  if (!body) return;
+  const remaining = body.querySelectorAll('.cv-card').length;
+  const countEl   = body.querySelector('span[style*="font-size:.8rem"]');
+  if (countEl) countEl.textContent = remaining + ' transaç' + (remaining===1?'ão':'ões') + ' aguardando';
+  if (remaining === 0) {
+    body.innerHTML = `
+      <div style="text-align:center;padding:48px 24px">
+        <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
+        <div style="font-weight:700;font-size:.95rem;color:var(--text);margin-bottom:6px">Tudo validado!</div>
+        <div style="font-size:.8rem;color:var(--muted)">Todas as transações foram tratadas.</div>
+      </div>`;
+    if (typeof _agRefreshChatPendingBadge === 'function') _agRefreshChatPendingBadge();
+  }
+}
+
+window.openChatValidation    = openChatValidation;
+window._cvConfirm            = _cvConfirm;
+window._cvDismiss            = _cvDismiss;
+window._cvDismissAll         = _cvDismissAll;
+
 
 async function _toggleChatTxEnabled() {
   const newVal = !(currentUser?.chat_tx_enabled !== false);

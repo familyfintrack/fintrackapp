@@ -1035,6 +1035,7 @@ function navigate(page){
     }
   }
   else if(page==='accounts'){ if(typeof initAccountsPage==='function') initAccountsPage(); else renderAccounts(); }
+  else if(page==='loyalty'){ if(typeof initLoyaltyPage==='function') initLoyaltyPage(); }
   else if(page==='reports'){if(typeof populateSelects==='function')populateSelects();if(typeof populateReportFilters==='function')populateReportFilters();loadCurrentReport();}
   else if(page==='budgets')initBudgetsPage();
   else if(page==='categories')initCategoriesPage();
