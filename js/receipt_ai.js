@@ -19,8 +19,8 @@ const GEMINI_USE_GLOBAL_SETTING = 'gemini_use_global';
  */
 async function getGeminiApiKey() {
   try {
-    // 1. Chave da família
-    const familyKey = await getGeminiApiKey();
+    // 1. Chave da família (family_settings.gemini_api_key)
+    const familyKey = await getAppSetting('gemini_api_key', '');
     const clean = typeof familyKey === 'string' ? familyKey.trim() : '';
     if (clean && clean.startsWith('AIza')) return clean;
 
@@ -28,11 +28,11 @@ async function getGeminiApiKey() {
     const useGlobalPref = await getAppSetting(GEMINI_USE_GLOBAL_SETTING, 'true');
     if (useGlobalPref === 'false') return '';
 
-    // 3. Chave global (carregada em login.html via _globalGeminiKey, ou app_settings)
+    // 3. Chave global (carregada no boot via app.js → window._globalGeminiKey)
     if (typeof window._globalGeminiKey === 'string' && window._globalGeminiKey.startsWith('AIza')) {
       return window._globalGeminiKey;
     }
-    // Fallback: tentar buscar direto se não está em cache
+    // 4. Fallback: buscar diretamente de app_settings se não está em cache
     if (typeof sb !== 'undefined' && sb) {
       const { data } = await sb.from('app_settings')
         .select('value').eq('key', '_global_gemini_key').maybeSingle();
