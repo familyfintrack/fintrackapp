@@ -3411,7 +3411,7 @@ async function _openPatrimonioModal() {
     <span style="font-size:.8rem;font-weight:700;color:var(--text);flex:1">Análise Patrimonial com Gemini</span>
     <button id="patAiBtn"
       onclick="_patAnalyzeWithGemini()"
-      style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">
+      style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent">
       ✨ Analisar
     </button>
   </div>
@@ -3457,7 +3457,7 @@ async function _patAnalyzeWithGemini() {
     : '';
 
   if (!apiKey || !apiKey.startsWith('AIza')) {
-    result.innerHTML = '<span style="color:#f59e0b">⚠️ Configure a chave Gemini em <strong>Configurações → IA</strong> para usar esta análise.</span>';
+    result.innerHTML = '<span style="color:#f59e0b">⚠️ Configure a chave Gemini em <strong>Gerenciar Família → IA</strong> para usar esta análise.</span>';
     return;
   }
 
@@ -3660,82 +3660,75 @@ async function _loadDashBudgetsCard() {
       return b.over ? '#dc2626' : base;
     });
 
-    // Build HTML
-    let html = `
-      <!-- KPI summary -->
-      <div style="display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--border)">
-        <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
-          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Gasto</div>
-          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${totalSpent>totalLimit?'var(--red)':'var(--text)'}">${dashFmt(totalSpent,'BRL')}</div>
-          <div style="font-size:.68rem;color:var(--muted)">de ${dashFmt(totalLimit,'BRL')}</div>
-        </div>
-        <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
-          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Uso geral</div>
-          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${overallPct>=90?'var(--red)':overallPct>=70?'#b45309':'var(--accent)'}">${overallPct.toFixed(0)}%</div>
-          <div style="font-size:.68rem;color:var(--muted)">${hasAnnual?'incl. YTD':'do mês'}</div>
-        </div>
-        <div style="flex:1;padding:12px 16px">
-          <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px">Estourados</div>
-          <div style="font-size:1.15rem;font-weight:800;font-family:var(--font-serif);color:${overCount>0?'var(--red)':'var(--accent)'}">${overCount}</div>
-          <div style="font-size:.68rem;color:var(--muted)">de ${enriched.length} categoria${enriched.length!==1?'s':''}</div>
-        </div>
-      </div>
+    // Build HTML — compact layout matching investments card
+    let html = '';
 
-      <!-- Chart + bars side-by-side on wider screens -->
-      <div style="display:flex;gap:0;align-items:flex-start">
-        <div style="flex:0 0 120px;padding:12px 8px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <canvas id="dashBudgetDonut" width="100" height="100" style="max-width:100px;max-height:100px"></canvas>
-          <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:2px">por categoria</div>
+    // Hero KPI row
+    const kpiColor = totalSpent > totalLimit ? 'var(--red)' : overallPct >= 90 ? '#b45309' : 'var(--accent)';
+    const pctColor = overallPct >= 90 ? 'var(--red)' : overallPct >= 70 ? '#b45309' : 'var(--accent)';
+    html += `
+      <div style="display:flex;justify-content:space-between;align-items:center;
+        padding:12px 16px 10px;border-bottom:1px solid var(--border);
+        background:linear-gradient(135deg,rgba(180,83,9,.05),transparent)">
+        <div>
+          <div style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Total gasto</div>
+          <div style="font-size:1.35rem;font-weight:800;font-family:var(--font-serif);color:${kpiColor};line-height:1.1">${dashFmt(totalSpent,'BRL')}</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:2px">de ${dashFmt(totalLimit,'BRL')}</div>
         </div>
-        <div style="flex:1;padding:10px 14px 10px 6px;display:flex;flex-direction:column;gap:7px">`;
+        <div style="text-align:right">
+          <div style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Uso geral</div>
+          <div style="font-size:.95rem;font-weight:800;color:${pctColor}">${overallPct.toFixed(0)}%</div>
+          <div style="font-size:.7rem;color:${overCount>0?'var(--red)':'var(--muted)'}">
+            ${overCount > 0 ? overCount + ' estourado' + (overCount > 1 ? 's' : '') : 'dentro do limite'}
+          </div>
+        </div>
+      </div>`;
 
+    // Budget rows — compact vertical list
+    html += '<div style="padding:8px 14px 4px;display:flex;flex-direction:column;gap:6px">';
     enriched.slice(0, 6).forEach(b => {
       const icon    = b.categories?.icon || '📦';
       const name    = b.categories?.name || 'Sem categoria';
       const color   = b.over ? '#dc2626' : (b.categories?.color || 'var(--accent)');
       const barPct  = Math.min(b.pct, 100);
-      const overage = b.over ? `+${dashFmt(b.spent - b.limit,'BRL')}` : '';
       const catIdSafe = (b.category_id||'').replace(/'/g,'');
       const nameSafe  = (name||'').replace(/'/g,'').replace(/"/g,'');
       html += `
-          <div style="cursor:pointer;border-radius:7px;padding:4px 5px;margin:-4px -5px;transition:background .12s"
-            onclick="_openBudgetTxModal('${catIdSafe}','${nameSafe}','${b.budget_type||'monthly'}')"
-            onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-              <span style="font-size:.75rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px">
-                <span>${icon}</span>${esc(name)}${b.budget_type==='annual'?'<span style="font-size:.58rem;background:rgba(29,78,216,.1);color:#1d4ed8;border-radius:4px;padding:1px 4px;margin-left:3px">YTD</span>':''}${b.over?`<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px;margin-left:2px">${esc(overage)}</span>`:''}
-              </span>
-              <span style="font-size:.7rem;color:${b.pct>=90?'var(--red)':'var(--muted)'};white-space:nowrap">${b.pct.toFixed(0)}% <span style="font-size:.6rem;opacity:.6">▶</span></span>
-            </div>
-            <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
-              <div style="height:100%;width:${barPct}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-top:2px">
-              <span style="font-size:.62rem;color:var(--muted)">${dashFmt(b.spent,'BRL')}</span>
-              <span style="font-size:.62rem;color:var(--muted)">${dashFmt(b.limit,'BRL')}</span>
-            </div>
-          </div>`;
+        <div style="cursor:pointer;border-radius:7px;padding:5px 6px;margin:-5px -6px;transition:background .12s"
+          onclick="_openBudgetTxModal('${catIdSafe}','${nameSafe}','${b.budget_type||'monthly'}')"
+          onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:.78rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden">
+              <span style="flex-shrink:0">${icon}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
+              ${b.budget_type==='annual'?'<span style="flex-shrink:0;font-size:.55rem;background:rgba(29,78,216,.1);color:#1d4ed8;border-radius:4px;padding:1px 4px">YTD</span>':''}
+            </span>
+            <span style="font-size:.72rem;font-weight:700;color:${color};flex-shrink:0;margin-left:6px">${b.pct.toFixed(0)}%</span>
+          </div>
+          <div style="height:4px;border-radius:3px;background:var(--border);overflow:hidden">
+            <div style="height:100%;width:${barPct}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:2px">
+            <span style="font-size:.6rem;color:var(--muted)">${dashFmt(b.spent,'BRL')}</span>
+            <span style="font-size:.6rem;color:var(--muted)">${dashFmt(b.limit,'BRL')}</span>
+          </div>
+        </div>`;
     });
-
     if (enriched.length > 6) {
-      html += `<div style="font-size:.72rem;color:var(--muted);text-align:center;padding:4px 0">… e mais ${enriched.length - 6} categoria${enriched.length-6!==1?'s':''}</div>`;
+      html += `<div style="font-size:.7rem;color:var(--muted);text-align:center;padding:3px 0">+ ${enriched.length - 6} categoria${enriched.length-6!==1?'s':''}</div>`;
     }
+    html += '</div>';
+    html += `<div style="padding:4px 14px 10px;text-align:right">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')" style="font-size:.72rem">Ver orçamentos →</button>
+    </div>`;
 
-    html += `
-        </div>
-      </div>
-      <div style="padding:6px 14px 10px;text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick="navigate('budgets')">Ver orçamentos completos →</button>
-      </div>`;
-
-    // ── Objetivos ativos ───────────────────────────────────────────────
+    // Objetivos ativos (compact)
     let objHtml = '';
     try {
       const today = (typeof localDateStr==='function') ? localDateStr() : new Date().toISOString().slice(0,10);
       const fid = typeof famId==='function' ? famId() : null;
       let objs = [];
       if (fid) {
-        // Use cached list if available (populated by objectives.js)
         if (window._objList && window._objList.length) {
           objs = window._objList;
         } else {
@@ -3753,7 +3746,6 @@ async function _loadDashBudgetsCard() {
       ).slice(0, 5);
 
       if (activeObjs.length) {
-        // Fetch spending per objective
         const objIds = activeObjs.map(o => o.id);
         const { data: objTxs } = await famQ(
           sb.from('transactions').select('objective_id,amount')
@@ -3770,74 +3762,49 @@ async function _loadDashBudgetsCard() {
           const pct   = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
           const over  = limit > 0 && spent > limit;
           const color = over ? '#dc2626' : 'var(--accent)';
-          const limitLine = limit > 0
-            ? `<div style="display:flex;justify-content:space-between;margin-top:2px">
-                <span style="font-size:.62rem;color:var(--muted)">${dashFmt(spent,'BRL')}</span>
-                <span style="font-size:.62rem;color:var(--muted)">${dashFmt(limit,'BRL')}</span>
-               </div>`
-            : `<div style="font-size:.62rem;color:var(--muted);margin-top:2px">${dashFmt(spent,'BRL')} gasto</div>`;
-          return `<div style="cursor:pointer;border-radius:7px;padding:4px 5px;margin:-4px -5px;transition:background .12s"
+          return `<div style="cursor:pointer;border-radius:7px;padding:5px 6px;margin:-5px -6px;transition:background .12s"
               onclick="typeof openObjectiveDetail==='function'&&openObjectiveDetail('${o.id}')"
               onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-            <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-              <span style="font-size:.85rem">${o.icon||'🎯'}</span>
-              <span style="font-size:.75rem;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.name||'—')}</span>
-              ${over?'<span style="font-size:.6rem;background:rgba(220,38,38,.12);color:#dc2626;border-radius:4px;padding:1px 4px">estourado</span>':''}
-              ${limit>0?`<span style="font-size:.7rem;color:${pct>=90?'var(--red)':'var(--muted)'}">${pct.toFixed(0)}%</span>`:''}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${limit>0?'3':'0'}px">
+              <span style="display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden">
+                <span style="flex-shrink:0;font-size:.82rem">${o.icon||'🎯'}</span>
+                <span style="font-size:.77rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.name||'—')}</span>
+              </span>
+              <span style="flex-shrink:0;margin-left:6px;font-size:.72rem;font-weight:700;color:${over?'var(--red)':pct>=90?'#b45309':'var(--muted)'}">
+                ${limit>0 ? pct.toFixed(0)+'%' : dashFmt(spent,'BRL')}
+              </span>
             </div>
-            ${limit>0?`<div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+            ${limit>0?`<div style="height:4px;border-radius:3px;background:var(--border);overflow:hidden">
               <div style="height:100%;width:${pct.toFixed(1)}%;background:${color};border-radius:3px;transition:width .5s ease"></div>
-            </div>`:''}
-            ${limitLine}
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:2px">
+              <span style="font-size:.6rem;color:var(--muted)">${dashFmt(spent,'BRL')}</span>
+              <span style="font-size:.6rem;color:var(--muted)">${dashFmt(limit,'BRL')}</span>
+            </div>`:``}
           </div>`;
         }).join('');
 
-        objHtml = `<div class="dash-budgets-obj-panel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--accent)33">
-            <span style="font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)">🎯 Objetivos Ativos</span>
-            <span style="font-size:.68rem;color:var(--muted)">${activeObjs.length}</span>
+        objHtml = `
+          <div style="border-top:1px solid var(--border);padding:8px 14px 4px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+              <span style="font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent)">🎯 Objetivos Ativos</span>
+              <span style="font-size:.68rem;color:var(--muted)">${activeObjs.length}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">${objRows}</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px">${objRows}</div>
-          <div style="margin-top:10px;text-align:right">
-            <button class="btn btn-ghost btn-sm" onclick="navigate('objectives')" style="font-size:.7rem">Ver objetivos →</button>
-          </div>
-        </div>`;
+          <div style="padding:4px 14px 10px;text-align:right">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('objectives')" style="font-size:.72rem">Ver objetivos →</button>
+          </div>`;
       }
     } catch(eObj) {
       console.warn('[dash budgets] objectives:', eObj?.message);
     }
-    // ── Wrap orçamentos + objetivos lado a lado ─────────────────────────
-    const finalHtml = objHtml
-      ? `<div class="dash-budgets-grid">${html}${objHtml}</div>`
-      : html;
+    // Combine: budgets + objectives (vertical stack)
+    const finalHtml = html + objHtml;
 
-    // Destroy previous chart BEFORE replacing innerHTML (avoids "canvas in use" error)
     if (_dashBudgetChart) { try { _dashBudgetChart.destroy(); } catch(_) {} _dashBudgetChart = null; }
     body.innerHTML = finalHtml;
 
-    // Render donut chart
-    const donutCanvas = document.getElementById('dashBudgetDonut');
-    if (donutCanvas && typeof Chart !== 'undefined' && chartSpent.some(v => v > 0)) {
-      _dashBudgetChart = new Chart(donutCanvas, {
-        type: 'doughnut',
-        data: {
-          labels: chartLabels,
-          datasets: [{ data: chartSpent, backgroundColor: chartColors, borderColor: 'var(--surface)', borderWidth: 2 }],
-        },
-        options: {
-          responsive: false,
-          cutout: '62%',
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: ctx => ` ${ctx.label}: ${dashFmt(ctx.parsed,'BRL')}`,
-              },
-            },
-          },
-        },
-      });
-    }
   } catch(e) {
     body.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;font-size:.8rem">⚠️ ${esc(e.message)}</div>`;
   }

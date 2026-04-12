@@ -195,25 +195,20 @@ function payeeRow(p) {
   const rowAttrs = txCount > 0
     ? `onclick="typeof openPayeeDetailModal==='function'?openPayeeDetailModal('${p.id}'):openPayeeHistory('${p.id}','${esc(p.name)}')" style="cursor:pointer"`
     : '';
-  return `<tr class="payee-row py2-row" ${rowAttrs}>
-    <td>
-      <div class="py2-name-cell">
-        <div class="py2-avatar" style="background:${avatarColor}18;border:1.5px solid ${avatarColor}35;color:${avatarColor}">${initials}</div>
-        <div class="py2-name-body">
-          <div class="py2-name">${esc(p.name)}</div>
-          ${contactChips.length ? `<div class="py2-chips">${contactChips.join('')}</div>` : ''}
-          ${p.notes ? `<div class="py2-notes">${esc(p.notes)}</div>` : ''}
-        </div>
+  return `<div class="py3-card" ${rowAttrs}>
+    <!-- Left: avatar + info -->
+    <div class="py3-card-left">
+      <div class="py3-avatar" style="--av-clr:${avatarColor}">${initials}</div>
+      <div class="py3-info">
+        <div class="py3-name">${esc(p.name)}</div>
+        ${p.categories?.name ? `<span class="py3-cat">${esc(p.categories.name)}</span>` : ''}
+        ${contactChips.length ? `<div class="py3-chips">${contactChips.slice(0,3).join('')}</div>` : ''}
       </div>
-    </td>
-    <td>
-      ${p.categories?.name
-        ? `<span class="py2-cat-badge">${esc(p.categories.name)}</span>`
-        : `<span class="py2-cat-none">—</span>`}
-    </td>
-    <td style="text-align:center">${txBadge}</td>
-    <td>
-      <div class="payee-row-actions" style="display:flex;gap:4px;justify-content:flex-end;align-items:center">
+    </div>
+    <!-- Right: tx badge + actions -->
+    <div class="py3-card-right">
+      <div class="py3-tx">${txBadge}</div>
+      <div class="py3-actions">
         ${(() => {
               const _isActive = window._iofPayeeId === p.id;
               const _hasOther = !!window._iofPayeeId && window._iofPayeeId !== p.id;
@@ -232,8 +227,8 @@ function payeeRow(p) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         </button>
       </div>
-    </td>
-  </tr>`;
+    </div>
+  </div>`;
 }
 
 // Feature 4: modal com histórico de transações do beneficiário (últimos 6 meses)
@@ -306,60 +301,121 @@ const PAYEE_GROUP_DEF = [
 const payeeGroupState = { beneficiario: true, fonte_pagadora: true, ambos: true }; // true = expanded
 
 function renderPayees(filter='', typeFilter='') {
-  let ps = state.payees;
-  if(filter) ps = ps.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
-  if(typeFilter) ps = ps.filter(p => p.type === typeFilter);
+  let ps = state.payees || [];
+  if (filter)     ps = ps.filter(p => {
+    const q = filter.toLowerCase();
+    return (p.name||'').toLowerCase().includes(q)
+      || (p.cnpj_cpf||'').toLowerCase().includes(q)
+      || (p.city||'').toLowerCase().includes(q)
+      || (p.notes||'').toLowerCase().includes(q);
+  });
+  if (typeFilter) ps = ps.filter(p => p.type === typeFilter);
 
-  // Summary chips
-  const bar = document.getElementById('payeeSummaryBar');
-  if(bar) {
-    const all = typeFilter ? [] : PAYEE_GROUP_DEF.map(g => {
-      const cnt = ps.filter(p => p.type === g.key).length;
-      if(!cnt) return '';
-      return `<div class="payee-summary-chip" onclick="scrollPayeeGroup('${g.key}')" style="border-left:3px solid ${g.color}">
-        <span>${g.icon}</span>
-        <span style="font-weight:600;color:var(--text)">${g.label}</span>
-        <span class="badge" style="background:${g.colorLt};color:${g.color};border:1px solid ${g.color}30">${cnt}</span>
-      </div>`;
-    });
-    bar.innerHTML = all.join('');
-    bar.style.display = ps.length && !typeFilter ? 'flex' : 'none';
+  // Update hero stats
+  const all = state.payees || [];
+  const heroCount = document.getElementById('pyeHeroCount');
+  const heroSub   = document.getElementById('pyeHeroSub');
+  const statsRow  = document.getElementById('pyeStatsRow');
+  if (heroCount) heroCount.textContent = ps.length;
+  if (heroSub) {
+    const nBenef  = all.filter(p=>p.type==='beneficiario').length;
+    const nFonte  = all.filter(p=>p.type==='fonte_pagadora').length;
+    const nAmbos  = all.filter(p=>p.type==='ambos').length;
+    heroSub.textContent = `${nBenef} beneficiários · ${nFonte} fontes · ${nAmbos} ambos`;
+  }
+  if (statsRow) {
+    statsRow.style.display = ps.length ? '' : 'none';
+    const nBenef = all.filter(p=>p.type==='beneficiario').length;
+    const nFonte = all.filter(p=>p.type==='fonte_pagadora').length;
+    const nAmbos = all.filter(p=>p.type==='ambos').length;
+    const bv = document.getElementById('pyeStatBenefVal');
+    const fv = document.getElementById('pyeStatFonteVal');
+    const av = document.getElementById('pyeStatAmbosVal');
+    if (bv) bv.textContent = nBenef;
+    if (fv) fv.textContent = nFonte;
+    if (av) av.textContent = nAmbos;
   }
 
   const container = document.getElementById('payeeGroups');
-  if(!container) return;
+  if (!container) return;
 
-  if(!ps.length) {
-    container.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:var(--muted);font-size:.875rem">Nenhum beneficiário encontrado</div>';
+  if (!ps.length) {
+    container.innerHTML = `
+      <div class="pye-empty">
+        <div class="pye-empty-icon">${filter ? '🔍' : '👥'}</div>
+        <div class="pye-empty-title">${filter ? 'Nenhum resultado' : 'Nenhum beneficiário cadastrado'}</div>
+        <div class="pye-empty-sub">${filter ? 'Tente outros termos de busca.' : 'Cadastre quem recebe ou faz pagamentos para a família.'}</div>
+        ${!filter ? '<button class="btn btn-primary btn-sm" onclick="openPayeeModal()">+ Cadastrar beneficiário</button>' : ''}
+      </div>`;
     return;
   }
 
-  // When filtering by type, show a single flat group
+  // Group by type
   const groups = typeFilter
     ? [{ ...PAYEE_GROUP_DEF.find(g=>g.key===typeFilter)||{key:typeFilter,label:typeFilter,icon:'👤',color:'var(--accent)',colorLt:'var(--accent-lt)'}, items: ps }]
     : PAYEE_GROUP_DEF.map(g => ({ ...g, items: ps.filter(p=>p.type===g.key) })).filter(g=>g.items.length>0);
 
   container.innerHTML = groups.map(g => {
-    const expanded = payeeGroupState[g.key] !== false;
-    return `<div class="payee-group-wrap" id="payeeGroup-${g.key}">
-      <div class="payee-group-header" onclick="togglePayeeGroup('${g.key}')">
-        <div class="payee-group-icon" style="background:${g.colorLt}">${g.icon}</div>
-        <span class="payee-group-title">${g.label}</span>
-        <div class="payee-group-meta">
-          <span class="badge" style="background:${g.colorLt};color:${g.color};border:1px solid ${g.color}30;font-size:.75rem">${g.items.length} registro${g.items.length!==1?'s':''}</span>
-        </div>
-        <span class="payee-group-arrow${expanded?'':' collapsed'}">▼</span>
-      </div>
-      <div class="payee-group-body${expanded?'':' collapsed'}" id="payeeGroupBody-${g.key}">
-        <div class="table-wrap" style="margin:0">
-          <table style="border-radius:0">
-            <thead><tr><th>Nome</th><th>Categoria Padrão</th><th style="width:80px;text-align:center">Transações</th><th style="width:70px"></th></tr></thead>
-            <tbody>${g.items.map(p=>payeeRow(p)).join('')}</tbody>
-          </table>
-        </div>
-      </div>
-    </div>`;
+    const cards = g.items.map(p => _pyeCard(p, g)).join('');
+    return `
+    <div class="pye-section-hdr">
+      <div class="pye-section-icon" style="background:${g.colorLt}">${g.icon}</div>
+      <span class="pye-section-title">${g.label}</span>
+      <span class="pye-section-count" style="background:${g.colorLt};color:${g.color};border:1px solid ${g.color}22">${g.items.length} registro${g.items.length!==1?'s':''}</span>
+    </div>
+    <div class="pye-grid">${cards}</div>`;
   }).join('');
+}
+
+function _pyeCard(p, g) {
+  const initials   = (p.name||'?').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+  const colors     = ['#2a6049','#1e5ba8','#b45309','#6d28d9','#0e7490','#be185d','#047857','#7c3aed'];
+  const avatarClr  = p.color || colors[(p.name||'').charCodeAt(0) % colors.length];
+  const txCount    = _payeeTxCounts[p.id] || 0;
+  const gColor     = g.color || 'var(--accent)';
+  const gColorLt   = g.colorLt || 'var(--accent-lt)';
+
+  const metaChips = [
+    p.city    ? `<span class="pye-meta-chip">📍 ${esc(p.city)}${p.state_uf?', '+esc(p.state_uf):''}</span>` : '',
+    p.phone   ? `<span class="pye-meta-chip">📞 ${esc(p.phone)}</span>` : '',
+    p.cnpj_cpf? `<span class="pye-meta-chip">🪪 ${esc(p.cnpj_cpf)}</span>` : '',
+    p.website ? `<a class="pye-meta-chip" href="${esc(p.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent)">🌐 ${esc(p.website.replace(/^https?:\/\//, ''))}</a>` : '',
+  ].filter(Boolean).join('');
+
+  const catBadge = p.categories?.name
+    ? `<span class="pye-card-cat" style="border-color:${p.categories.color||'var(--border)'}20">${esc(p.categories.name)}</span>`
+    : '';
+
+  const txBadge = txCount > 0
+    ? `<span class="pye-tx-badge" onclick="event.stopPropagation();typeof openPayeeDetailModal==='function'?openPayeeDetailModal('${p.id}'):openPayeeHistory('${p.id}','${esc(p.name)}')" title="Ver transações">${txCount} transaç${txCount===1?'ão':'ões'}</span>`
+    : `<span style="font-size:.68rem;color:var(--muted)">Sem transações</span>`;
+
+  const openDetail = `typeof openPayeeDetailModal==='function'?openPayeeDetailModal('${p.id}'):openPayeeHistory('${p.id}','${esc(p.name)}')`;
+
+  return `
+  <div class="pye-card" onclick="${txCount>0?openDetail:'openPayeeModal(\'' + p.id + '\')'}">
+    <div class="pye-card-stripe" style="background:linear-gradient(90deg,${avatarClr},${avatarClr}88)"></div>
+    <div class="pye-card-body">
+      <div class="pye-card-top">
+        <div class="pye-card-avatar" style="background:${avatarClr}18;border:1.5px solid ${avatarClr}35;color:${avatarClr}">${initials}</div>
+        <div class="pye-card-info">
+          <div class="pye-card-name">${esc(p.name)}</div>
+          <span class="pye-card-type" style="background:${gColorLt};color:${gColor}">${g.icon} ${g.label}</span>
+        </div>
+      </div>
+      ${metaChips ? `<div class="pye-card-meta">${metaChips}</div>` : ''}
+      ${catBadge}
+      ${p.notes ? `<div class="pye-card-notes">${esc(p.notes)}</div>` : ''}
+    </div>
+    <div class="pye-card-footer">
+      ${txBadge}
+      <div class="pye-card-actions" onclick="event.stopPropagation()">
+        ${txCount>0?`<button class="pye-icon-btn" onclick="${openDetail}" title="Ver histórico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>`:''}
+        <button class="pye-icon-btn" onclick="openPayeeModal('${p.id}')" title="Editar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></button>
+        <button class="pye-icon-btn" onclick="typeof openNewTxWithPayee==='function'?openNewTxWithPayee('${p.id}'):openTransactionModal({payee_id:'${p.id}'})" title="Nova transação" style="color:var(--accent);border-color:rgba(42,96,73,.25)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function togglePayeeGroup(key) {
@@ -380,12 +436,22 @@ function scrollPayeeGroup(key) {
 
 function filterPayees(){renderPayees(document.getElementById('payeeSearch').value,document.getElementById('payeeTypeFilter').value);}
 
+function pyeSetView(view) {
+  const isRel = view === 'relatorio';
+  document.getElementById('payeeGroups').style.display      = isRel ? 'none' : '';
+  document.getElementById('payeesReportPanel').style.display = isRel ? ''     : 'none';
+  document.getElementById('pyeTabCadastro').classList.toggle('active', !isRel);
+  document.getElementById('pyeTabRelatorio').classList.toggle('active',  isRel);
+  if (isRel) loadPayeeReport();
+}
+window.pyeSetView = pyeSetView;
+
 function py2SetTypeFilter(btn, type) {
   // Update hidden select
   const sel = document.getElementById('payeeTypeFilter');
   if (sel) sel.value = type;
   // Update pill active state
-  document.querySelectorAll('.py2-type-pill').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.py2-type-pill,.pye-pill').forEach(b => b.classList.toggle('active', b === btn));
   filterPayees();
 }
 async function openPayeeModal(id=''){
@@ -1501,25 +1567,5 @@ async function openPayeeDetailModal(payeeId) {
 window.openPayeeDetailModal = openPayeeDetailModal;
 
 // ── Payees page tab switcher ─────────────────────────────────────────────
-function setPayeesTab(tab) {
-  const groupsEl = document.getElementById('payeeGroups');
-  const reportEl = document.getElementById('payeesReportPanel');
-  const tabCad   = document.getElementById('payeesTabCad');
-  const tabRpt   = document.getElementById('payeesTabRpt');
-
-  const showReport = (tab === 'relatorio');
-  if (groupsEl) groupsEl.style.display = showReport ? 'none' : '';
-  if (reportEl) reportEl.style.display = showReport ? '' : 'none';
-
-  if (tabCad) {
-    tabCad.style.background = showReport ? 'transparent' : 'var(--accent)';
-    tabCad.style.color      = showReport ? 'var(--muted)' : '#fff';
-  }
-  if (tabRpt) {
-    tabRpt.style.background = showReport ? 'var(--accent)' : 'transparent';
-    tabRpt.style.color      = showReport ? '#fff' : 'var(--muted)';
-  }
-
-  if (showReport && typeof loadPayeeReport === 'function') loadPayeeReport();
-}
+function setPayeesTab(tab) { if (typeof pyeSetView === 'function') pyeSetView(tab === 'relatorio' ? 'relatorio' : 'cadastro'); }
 window.setPayeesTab = setPayeesTab;
