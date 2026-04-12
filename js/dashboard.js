@@ -4619,15 +4619,14 @@ async function _loadDashLoyaltyCard() {
 
   html += '</div>';
 
-  // Footer: manage button
-  html += '<div style="padding:4px 16px 12px">'
+  // Footer: subtle link
+  html += '<div style="text-align:center;padding:6px 0 10px">'
     + '<button onclick="navigate(\'accounts\');'
     + 'setTimeout(()=>document.querySelector(\'.loy-section\')?.scrollIntoView({behavior:\'smooth\'}),400)"'
-    + ' style="width:100%;font-size:.74rem;font-weight:600;color:var(--accent);'
-    + 'background:var(--accent-lt);border:1px solid rgba(42,96,73,.2);border-radius:8px;'
-    + 'padding:7px 10px;cursor:pointer;font-family:inherit;transition:opacity .15s"'
-    + ' onmouseover="this.style.opacity=\'.8\'" onmouseout="this.style.opacity=\'1\'">'
-    + '&#x2B50; Gerenciar programas</button></div>';
+    + ' style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:.7rem;'
+    + 'color:var(--muted);transition:color .15s;padding:2px 8px"'
+    + ' onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--muted)\'">'
+    + 'Ver todos os programas \u2192</button></div>';
 
   if (body) body.innerHTML = html;
 }

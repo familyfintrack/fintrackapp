@@ -6046,8 +6046,8 @@ function mfmSwitchFamily(famId) {
 
 // ── Section tab switcher for the redesigned family modal ──────────────────
 function mfmSwitchTab(tab) {
-  const paneMap = { modulos:'mfmPaneModulos', membros:'mfmPaneMembros', integrantes:'mfmPaneIntegrantes', dados:'mfmPaneDados', nova:'mfmPaneNova' };
-  const navMap  = { modulos:'mfmNavModulos',  membros:'mfmNavMembros',  integrantes:'mfmNavIntegrantes',  dados:'mfmNavDados',  nova:'mfmNavNova' };
+  const paneMap = { modulos:'mfmPaneModulos', membros:'mfmPaneMembros', integrantes:'mfmPaneIntegrantes', dados:'mfmPaneDados', nova:'mfmPaneNova', ia:'mfmPaneIa' };
+  const navMap  = { modulos:'mfmNavModulos',  membros:'mfmNavMembros',  integrantes:'mfmNavIntegrantes',  dados:'mfmNavDados',  nova:'mfmNavNova',  ia:'mfmNavIa' };
   Object.keys(paneMap).forEach(t => {
     document.getElementById(paneMap[t])?.classList.toggle('active', t === tab);
     document.getElementById(navMap[t])?.classList.toggle('active', t === tab);
@@ -6055,8 +6055,118 @@ function mfmSwitchTab(tab) {
   if (tab === 'membros')     _mfmRenderMembros();
   if (tab === 'integrantes') _mfmLoadIntegrantes();
   if (tab === 'dados')       _mfmRenderDataSection(_mfmActiveFamilyId);
+  if (tab === 'ia')          _mfmLoadIaConfig();
 }
 window.mfmSwitchTab = mfmSwitchTab;
+
+/* ── IA tab: load and save Gemini config for the family ─────────────────── */
+async function _mfmLoadIaConfig() {
+  try {
+    const fid = _mfmActiveFamilyId || famId?.();
+    if (!fid || !sb) return;
+
+    // Load current family gemini settings
+    const [{ data: keyRow }, { data: modeRow }] = await Promise.all([
+      sb.from('family_settings').select('value').eq('family_id', fid).eq('key', 'gemini_api_key').maybeSingle(),
+      sb.from('family_settings').select('value').eq('family_id', fid).eq('key', 'gemini_use_global').maybeSingle(),
+    ]);
+
+    const familyKey = typeof keyRow?.value === 'string' ? keyRow.value.trim() : '';
+    const useGlobal = modeRow?.value !== 'false';
+
+    const modeGlobal = document.getElementById('mfmGeminiModeGlobal');
+    const modeOwn    = document.getElementById('mfmGeminiModeOwn');
+    if (modeGlobal) modeGlobal.checked = useGlobal || !familyKey;
+    if (modeOwn)    modeOwn.checked    = !useGlobal && !!familyKey;
+
+    const keyInput = document.getElementById('mfmGeminiKeyInput');
+    const keyStatus = document.getElementById('mfmGeminiKeyStatus');
+    if (keyInput && familyKey) {
+      keyInput.value = familyKey;
+      if (keyStatus) {
+        keyStatus.textContent = '✅ Chave configurada: ' + familyKey.slice(0,12) + '…';
+        keyStatus.style.color = 'var(--green)';
+      }
+    }
+
+    _mfmOnGeminiModeChange();
+  } catch(e) {
+    console.warn('[mfmIaConfig]', e?.message);
+  }
+}
+
+window._mfmOnGeminiModeChange = function() {
+  const modeOwn      = document.getElementById('mfmGeminiModeOwn');
+  const ownSec       = document.getElementById('mfmGeminiOwnSection');
+  const globalStatus = document.getElementById('mfmGeminiGlobalStatus');
+  const globalOpt    = document.getElementById('mfmGeminiGlobalOpt');
+  const ownOpt       = document.getElementById('mfmGeminiOwnOpt');
+  const isOwn        = modeOwn?.checked;
+
+  if (ownSec)       ownSec.style.display       = isOwn ? '' : 'none';
+  if (globalStatus) globalStatus.style.display  = isOwn ? 'none' : '';
+  if (globalOpt) {
+    globalOpt.style.borderColor = isOwn ? 'var(--border)' : 'var(--accent)';
+    globalOpt.style.background  = isOwn ? 'var(--surface)' : 'var(--accent-lt)';
+  }
+  if (ownOpt) {
+    ownOpt.style.borderColor = isOwn ? 'var(--accent)' : 'var(--border)';
+    ownOpt.style.background  = isOwn ? 'var(--accent-lt)' : 'var(--surface)';
+  }
+};
+
+window._mfmToggleGeminiKeyVis = function() {
+  const inp = document.getElementById('mfmGeminiKeyInput');
+  const btn = document.getElementById('mfmGeminiKeyToggle');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (btn) btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+};
+
+window._mfmSaveGeminiConfig = async function() {
+  const fid = _mfmActiveFamilyId || famId?.();
+  if (!fid || !sb) { toast('Família não encontrada', 'error'); return; }
+
+  const modeOwn = document.getElementById('mfmGeminiModeOwn');
+  const isOwn   = modeOwn?.checked;
+  const key     = (document.getElementById('mfmGeminiKeyInput')?.value || '').trim();
+  const keyStatus = document.getElementById('mfmGeminiKeyStatus');
+
+  if (isOwn && key && !key.startsWith('AIza')) {
+    toast('Chave inválida — deve começar com AIza…', 'error'); return;
+  }
+
+  try {
+    // Save gemini_use_global preference
+    const useGlobal = !isOwn;
+    const upsertMode = { family_id: fid, key: 'gemini_use_global', value: useGlobal ? 'true' : 'false' };
+    await sb.from('family_settings').upsert(upsertMode, { onConflict: 'family_id,key' });
+
+    // Save or clear family gemini key
+    if (isOwn && key) {
+      await sb.from('family_settings').upsert(
+        { family_id: fid, key: 'gemini_api_key', value: key },
+        { onConflict: 'family_id,key' }
+      );
+      if (keyStatus) {
+        keyStatus.textContent = '✅ Chave salva: ' + key.slice(0,12) + '…';
+        keyStatus.style.color = 'var(--green)';
+      }
+    } else if (!isOwn) {
+      // Switching to global — clear own key
+      await sb.from('family_settings').delete().eq('family_id', fid).eq('key', 'gemini_api_key');
+    }
+
+    // Update local cache so getGeminiApiKey() picks up immediately
+    if (!window._appSettingsCache) window._appSettingsCache = {};
+    window._appSettingsCache['gemini_use_global'] = useGlobal ? 'true' : 'false';
+    if (isOwn && key) window._appSettingsCache['gemini_api_key'] = key;
+
+    toast(isOwn && key ? '✅ Chave Gemini da família salva!' : '✅ IA compartilhada ativada!', 'success');
+  } catch(e) {
+    toast('Erro ao salvar: ' + (e.message || e), 'error');
+  }
+};
 
 async function _mfmRenderMembros(famId) {
   famId = famId || _mfmActiveFamilyId;
