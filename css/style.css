@@ -22013,6 +22013,9 @@ tr.tx-date-band-alt td.tx-date-header-cell .tx-date-label { color: var(--text2);
   transition: opacity .15s, transform .1s, box-shadow .15s;
   letter-spacing: .01em;
   box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 40%, transparent);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 .ai2-btn-analyze:hover {
   opacity: .92;
