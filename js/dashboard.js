@@ -2348,15 +2348,17 @@ async function _renderDashForecast() {
       borderColor: color,
       backgroundColor: gradientFill,
       fill: true,
-      tension: 0.4,
-      borderWidth: accounts.length === 1 ? 2.5 : 2,
-      pointRadius: 0,        // hidden — markers drawn by scatter datasets below
-      pointHoverRadius: 6,
-      pointHitRadius: 14,    // large hit area so hover still triggers tooltip
+      tension: 0.38,
+      borderWidth: accounts.length === 1 ? 3 : 2.2,
+      pointRadius: 0,
+      pointHoverRadius: 7,
+      pointHitRadius: 18,
       pointBackgroundColor: color,
       pointBorderColor: '#fff',
-      pointBorderWidth: 2,
+      pointBorderWidth: 2.5,
       spanGaps: true,
+      borderCapStyle: 'round',
+      borderJoinStyle: 'round',
     };
   });
 
@@ -2424,34 +2426,59 @@ async function _renderDashForecast() {
     }
   });
 
+  const fmtShort = v => {
+    const abs = Math.abs(v);
+    if (abs >= 1000000) return (v/1000000).toFixed(1).replace('.0','') + 'M';
+    if (abs >= 1000)    return (v/1000).toFixed(0) + 'k';
+    return fmt(v);
+  };
+
   const annotations = {
     ...weekGuides,
     zeroLine: {
       type: 'line', yMin: 0, yMax: 0,
-      borderColor: 'rgba(220,38,38,0.35)', borderWidth: 1.5, borderDash: [6,4],
+      borderColor: 'rgba(220,38,38,0.30)', borderWidth: 1.5, borderDash: [6,4],
     },
     todayLine: {
       type: 'line', xMin: fromStr, xMax: fromStr,
-      borderColor: 'rgba(42,96,73,0.7)', borderWidth: 2, borderDash: [4,3],
+      borderColor: 'rgba(42,96,73,0.75)', borderWidth: 2, borderDash: [4,3],
       label: {
-        content: 'Hoje', display: true, position: 'start',
-        font: { size: 10, weight: '700', family: 'Outfit, sans-serif' },
+        content: '▶ Hoje', display: true, position: 'start',
+        font: { size: 10, weight: '800', family: 'Outfit, sans-serif' },
         color: '#fff',
-        backgroundColor: 'rgba(42,96,73,0.82)',
-        padding: { x: 7, y: 4 }, borderRadius: 6,
+        backgroundColor: 'rgba(42,96,73,0.90)',
+        padding: { x: 8, y: 5 }, borderRadius: 7,
+        yAdjust: -4,
       },
     },
   };
   if (minIdx >= 0) annotations.minPt = {
     type: 'point', xValue: minIdx, yValue: minVal,
-    radius: 7, backgroundColor: '#ef4444', borderColor: '#fff', borderWidth: 2.5,
+    radius: 8, backgroundColor: '#ef4444', borderColor: '#fff', borderWidth: 2.5,
+    label: {
+      content: '↓ ' + fmtShort(minVal), display: true,
+      font: { size: 9, weight: '700', family: 'Outfit, sans-serif' },
+      color: '#fff', backgroundColor: 'rgba(239,68,68,0.88)',
+      padding: { x: 6, y: 3 }, borderRadius: 5,
+      yAdjust: 18,
+    },
   };
   if (maxIdx >= 0) annotations.maxPt = {
     type: 'point', xValue: maxIdx, yValue: maxVal,
-    radius: 7, backgroundColor: '#22c55e', borderColor: '#fff', borderWidth: 2.5,
+    radius: 8, backgroundColor: '#22c55e', borderColor: '#fff', borderWidth: 2.5,
+    label: {
+      content: '↑ ' + fmtShort(maxVal), display: true,
+      font: { size: 9, weight: '700', family: 'Outfit, sans-serif' },
+      color: '#fff', backgroundColor: 'rgba(34,197,94,0.88)',
+      padding: { x: 6, y: 3 }, borderRadius: 5,
+      yAdjust: -18,
+    },
   };
 
   // ── Chart instance ────────────────────────────────────────────────────────
+  // Set canvas pixel ratio for crisp rendering on retina
+  canvas.style.display = 'block';
+
   _dashForecastChart = new Chart(canvas, {
     type: 'line',
     data: { labels: allDates, datasets },
@@ -2459,7 +2486,8 @@ async function _renderDashForecast() {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
-      animation: { duration: 400, easing: 'easeOutQuart' },
+      animation: { duration: 500, easing: 'easeOutCubic' },
+      layout: { padding: { top: 8, right: 4, bottom: 4, left: 0 } },
       plugins: {
         legend: {
           position: 'bottom',
@@ -2595,17 +2623,25 @@ async function _renderDashForecast() {
           border: { display: false },
           ticks: {
             color: '#9ca3af',
-            font: { size: 10, family: 'Outfit, sans-serif' },
+            font: { size: 10, weight: '600', family: 'Outfit, sans-serif' },
             maxRotation: 0,
-            padding: 6,
+            padding: 8,
             callback(val, idx) {
               const d = allDates[idx];
               if (!d) return '';
               const [, m, day] = d.split('-');
-              const dow = new Date(d + 'T12:00').getDay();
-              if (idx === 0) return `${day}/${m}`;
-              if (idx === allDates.length - 1) return `${day}/${m}`;
-              if (dow === 1) return `${day}/${m}`;
+              const date = new Date(d + 'T12:00');
+              const dow  = date.getDay();
+              const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+              // First day, last day, every Monday, and 1st of month
+              const isFirst = idx === 0;
+              const isLast  = idx === allDates.length - 1;
+              const isMonday   = dow === 1;
+              const isMonthStart = day === '01';
+              if (isFirst || isLast)       return `${day}/${m}`;
+              if (isMonthStart)            return MONTHS[parseInt(m)-1];
+              if (isMonday && idx % 7 === 0) return `${day}/${m}`;
+              if (isMonday && (allDates.length <= 30)) return `${day}/${m}`;
               return '';
             },
           },
@@ -2614,27 +2650,41 @@ async function _renderDashForecast() {
             color: ctx => {
               const d = allDates[ctx.index];
               if (!d) return 'transparent';
-              const dow = new Date(d + 'T12:00').getDay();
-              return dow === 1 ? 'rgba(125,194,66,0.08)' : 'transparent';
+              const date = new Date(d + 'T12:00');
+              const dow  = date.getDay();
+              const day  = d.slice(8);
+              if (day === '01') return 'rgba(42,96,73,0.15)';   // month boundary — accent
+              if (dow === 1)    return 'rgba(156,163,175,0.08)'; // weekly grid
+              return 'transparent';
             },
-            lineWidth: 1,
+            lineWidth: ctx => {
+              const d = allDates[ctx.index];
+              if (!d) return 1;
+              return d.slice(8) === '01' ? 1.5 : 1;
+            },
           },
         },
         y: {
           position: 'right',
-          border: { display: false, dash: [4, 4] },
+          border: { display: false },
           ticks: {
-            callback: v => fmt(v),
+            callback: v => {
+              const abs = Math.abs(v);
+              if (abs >= 1000000) return (v/1000000).toFixed(1).replace('.0','') + 'M';
+              if (abs >= 1000)    return (v/1000).toFixed(0) + 'k';
+              return fmt(v);
+            },
             color: '#9ca3af',
             font: { size: 10, family: 'Outfit, sans-serif' },
-            maxTicksLimit: 5,
-            padding: 10,
+            maxTicksLimit: 6,
+            padding: 12,
           },
           grid: {
             color: ctx => ctx.tick.value === 0
-              ? 'rgba(239,68,68,0.18)'
-              : 'rgba(156,163,175,0.10)',
+              ? 'rgba(239,68,68,0.22)'
+              : 'rgba(156,163,175,0.08)',
             lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1,
+            borderDash: ctx => ctx.tick.value === 0 ? [6,4] : [0,0],
           },
         },
       },
@@ -2659,15 +2709,20 @@ async function _renderDashForecast() {
       const finalBal = _fcDailyData[lastDate]?.balances[a.id] ?? 0;
       const todayBal = _fcDailyData[fromStr]?.balances[a.id] ?? (parseFloat(a.balance)||0);
       const delta    = finalBal - todayBal;
+      const pct      = todayBal !== 0 ? (delta / Math.abs(todayBal) * 100) : 0;
       const isNeg    = finalBal < 0;
+      const isDown   = delta < 0;
       const color    = a.color || COLORS[idx % COLORS.length];
-      const deltaStr = (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta), a.currency);
-      const deltaClr = delta >= 0 ? 'var(--accent)' : 'var(--red,#c0392b)';
-      return `<span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
-        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>
-        <span style="color:var(--text2);font-size:.78rem">${esc(a.name)}</span>
-        <strong style="color:${isNeg?'var(--red,#c0392b)':'var(--accent)'};font-size:.78rem">${fmt(finalBal, a.currency)}</strong>
-        <span style="font-size:.7rem;color:${deltaClr};opacity:.8">(${deltaStr})</span>
+      const arrow    = isDown ? '↓' : '↑';
+      const deltaClr = isDown ? '#ef4444' : '#22c55e';
+      const pctStr   = Math.abs(pct) < 999 ? ` ${arrow} ${Math.abs(pct).toFixed(1)}%` : '';
+      return `<span style="display:flex;align-items:center;gap:5px;white-space:nowrap;
+        padding:5px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)">
+        <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;box-shadow:0 0 0 2px ${color}25"></span>
+        <span style="color:var(--text2);font-size:.75rem;font-weight:600">${esc(a.name)}</span>
+        <strong style="color:${isNeg?'#ef4444':'var(--text)'};font-size:.8rem">${fmt(finalBal, a.currency)}</strong>
+        <span style="font-size:.69rem;font-weight:700;color:${deltaClr};background:${deltaClr}18;
+          padding:1px 5px;border-radius:5px">${pctStr || (isDown ? '↓' : '↑')}</span>
       </span>`;
     }).join('');
   }
