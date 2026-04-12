@@ -341,6 +341,26 @@ async function initLoyaltyPage() {
       .lp-hero-btn:hover { background: rgba(255,255,255,.22); }
       .lp-hero-btn-primary { background: rgba(255,255,255,.95); color: #1e5c42; border-color: transparent; }
       .lp-hero-btn-primary:hover { background: #fff; }
+
+      /* Wider cards on loyalty page so all action icons fit in one row */
+      #page-loyalty .account-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 14px;
+      }
+      #page-loyalty .loy-icon-actions {
+        gap: 5px;
+        padding: 7px 12px 9px;
+        justify-content: flex-start;
+      }
+      #page-loyalty .loy-icon-btn {
+        width: 30px;
+        height: 30px;
+      }
+      @media (max-width: 600px) {
+        #page-loyalty .account-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
 
     <!-- Hero -->
