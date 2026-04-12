@@ -386,19 +386,71 @@ async function invokeScheduledTelegram(payload) {
 async function sendScheduledTelegramNotification(sc, date, amount, mode) {
   const chatId = String(sc?.notify_telegram_chat_id || currentUser?.telegram_chat_id || '').trim();
   if (!chatId) return null;
-  const amountLabel = typeof fmtBRL === 'function' ? fmtBRL(Math.abs(Number(amount || sc?.amount || 0))) : String(amount || sc?.amount || 0);
-  const title = mode === 'upcoming' ? '📅 Lembrete FinTrack' : '✅ FinTrack registrou';
-  const message = `${title}
-${sc?.description || 'Transação programada'}
-Data: ${date}
-Valor: ${amountLabel}`;
+
+  const rawAmt      = Number(amount || sc?.amount || 0);
+  const amountLabel = typeof fmtBRL === 'function'
+    ? fmtBRL(Math.abs(rawAmt))
+    : (typeof fmt === 'function' ? fmt(Math.abs(rawAmt), sc?.currency || 'BRL') : String(rawAmt));
+  const desc = sc?.description || 'Transação programada';
+
+  // Resolver conta e categoria do programado
+  const scAcc    = (state?.accounts   || []).find(a => a.id === sc?.account_id);
+  const scCat    = (state?.categories || []).find(c => c.id === sc?.category_id);
+  const accLabel = scAcc?.name || '';
+  const catLabel = scCat?.name || '';
+
+  // Gemini: sugerir quando conta ou categoria não resolvidas
+  let _suggest = null;
+  const _needsAcc = !accLabel;
+  const _needsCat = !catLabel;
+  if (_needsAcc || _needsCat) {
+    const _txType = rawAmt >= 0 ? 'income' : 'expense';
+    _suggest = await _tgGeminiSuggest(desc, rawAmt, _txType).catch(() => null);
+  }
+
+  // Montar mensagem HTML
+  const isUpcoming = mode === 'upcoming';
+  const bodyLines = [
+    isUpcoming
+      ? '\u{1F4C5} <b>FinTrack \u2014 Lembrete</b>'
+      : '\u2705 <b>FinTrack \u2014 Lan\u00E7amento Autom\u00E1tico</b>',
+    '',
+    '\u{1F4DD} <b>' + _tgEsc(desc) + '</b>',
+    '\u{1F4B0} ' + amountLabel,
+    '\u{1F4C6} ' + date,
+    ...(accLabel ? ['\u{1F3E6} ' + _tgEsc(accLabel)] : []),
+    ...(catLabel ? ['\u{1F3F7}\uFE0F ' + _tgEsc(catLabel)] : []),
+  ];
+
+  if (_suggest) {
+    bodyLines.push('');
+    bodyLines.push('\u{1F916} <i>Sugestão Gemini (conta/categoria não identificadas):</i>');
+    if (_needsAcc && _suggest.account) {
+      const bar = '\u2593'.repeat(Math.round(_suggest.accountConf / 10)) +
+                  '\u2591'.repeat(10 - Math.round(_suggest.accountConf / 10));
+      bodyLines.push('\u{1F3E6} <b>' + _tgEsc(_suggest.account) + '</b>  <code>' + bar + '</code> ' + _suggest.accountConf + '%');
+    }
+    if (_needsCat && _suggest.category) {
+      const bar = '\u2593'.repeat(Math.round(_suggest.categoryConf / 10)) +
+                  '\u2591'.repeat(10 - Math.round(_suggest.categoryConf / 10));
+      bodyLines.push('\u{1F3F7}\uFE0F <b>' + _tgEsc(_suggest.category) + '</b>  <code>' + bar + '</code> ' + _suggest.categoryConf + '%');
+    }
+    if (_suggest.reasoning) {
+      bodyLines.push('\u{1F4A1} <i>' + _tgEsc(_suggest.reasoning) + '</i>');
+    }
+  } else if (_needsAcc) {
+    bodyLines.push('');
+    bodyLines.push('\u26A0\uFE0F <i>Conta não encontrada no FinTrack. Verifique o programado.</i>');
+  }
+
+  const message = bodyLines.join('\n');
   const payload = {
-    scheduled_id: sc.id,
-    occurrence_date: date,
-    notification_type: mode === 'upcoming' ? 'upcoming' : 'processed',
-    chat_id: chatId,
+    scheduled_id:      sc.id,
+    occurrence_date:   date,
+    notification_type: isUpcoming ? 'upcoming' : 'processed',
+    chat_id:           chatId,
     message,
-    amount
+    amount,
   };
   try {
     return await invokeScheduledTelegram(payload);
@@ -804,10 +856,7 @@ window.saveTelegramBotToken = async function() {
   }
 
   if (dot) dot.style.background = '#22c55e';
-  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Clique em "Registrar Webhook" para conectar o bot.'; }
-  // Show webhook registration button
-  const webhookRow = document.getElementById('tgWebhookRow');
-  if (webhookRow) webhookRow.style.display = '';
+  if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✅ Token salvo! Informe o Chat ID abaixo e clique Testar.'; }
   // Show the test row with chat-id field
   const testRow = document.getElementById('tgBotTestRow');
   if (testRow) testRow.style.display = 'flex';
@@ -821,113 +870,6 @@ window.saveTelegramBotToken = async function() {
     }
   }
   toast('Token do Telegram salvo', 'success');
-};
-
-/** Registrar (ou atualizar) o webhook do bot no Telegram — chamada direta à API */
-window.registerTelegramWebhook = async function() {
-  const tokenInput = document.getElementById('telegramBotTokenInput');
-  const statusEl   = document.getElementById('tgBotStatus');
-  const webhookStatusEl = document.getElementById('tgWebhookStatus');
-  const btn        = document.getElementById('tgRegisterWebhookBtn');
-  const dot        = document.getElementById('tgBotStatusDot');
-  const nameBadge  = document.getElementById('tgBotNameBadge');
-
-  const token = (tokenInput?.value || getTelegramBotToken() || '').trim();
-  if (!token) {
-    toast('Salve o token primeiro.', 'error');
-    return;
-  }
-
-  // Construir webhook URL a partir da URL do Supabase configurada
-  const sbUrl = (window.SUPABASE_URL || '').replace(/\/$/, '');
-  if (!sbUrl) {
-    toast('URL do Supabase não encontrada. Configure a conexão primeiro.', 'error');
-    return;
-  }
-  const webhookUrl = `${sbUrl}/functions/v1/telegram-webhook`;
-
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Conectando…'; }
-  if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = '🔄 Verificando bot e registrando webhook…'; }
-  if (webhookStatusEl) webhookStatusEl.style.display = 'none';
-
-  try {
-    // 1. Verificar token via getMe
-    const getMeRes  = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-    const getMeData = await getMeRes.json();
-    if (!getMeData.ok) {
-      throw new Error(`Token inválido: ${getMeData.description || 'erro desconhecido'}`);
-    }
-    const botInfo = getMeData.result;
-    const botName = botInfo.username ? `@${botInfo.username}` : botInfo.first_name;
-
-    // 2. Registrar webhook
-    const setRes  = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url:             webhookUrl,
-        allowed_updates: ['message'],
-        drop_pending_updates: true,
-      }),
-    });
-    const setData = await setRes.json();
-    if (!setData.ok) {
-      throw new Error(`Erro ao registrar webhook: ${setData.description || 'erro desconhecido'}`);
-    }
-
-    // 3. Confirmar via getWebhookInfo
-    const infoRes  = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
-    const infoData = await infoRes.json();
-    const info     = infoData.result || {};
-
-    // Atualizar UI de sucesso
-    if (dot) dot.style.background = '#22c55e';
-    if (nameBadge) { nameBadge.textContent = botName; nameBadge.style.display = ''; }
-    if (statusEl) {
-      statusEl.style.color = 'var(--green)';
-      statusEl.textContent = `✅ Webhook registrado com sucesso! Envie uma mensagem para ${botName} no Telegram.`;
-    }
-
-    if (webhookStatusEl) {
-      const pendingCount = info.pending_update_count ?? 0;
-      const lastErr = info.last_error_message ? `<div style="color:#dc2626;font-size:.68rem;margin-top:4px">⚠️ Último erro: ${info.last_error_message}</div>` : '';
-      webhookStatusEl.style.display = '';
-      webhookStatusEl.innerHTML = `
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
-          <span style="font-size:1rem">✅</span>
-          <span style="font-size:.8rem;font-weight:700;color:var(--text)">Webhook ativo — ${botName}</span>
-        </div>
-        <div style="font-size:.7rem;color:var(--muted);word-break:break-all;margin-bottom:4px">
-          🔗 ${webhookUrl}
-        </div>
-        <div style="font-size:.7rem;color:var(--muted)">
-          📨 Pendentes: ${pendingCount}
-        </div>
-        ${lastErr}
-        <div style="margin-top:8px;padding:8px 10px;background:#f0fdf4;border-radius:7px;border:1px solid #86efac;font-size:.72rem;color:#166534;line-height:1.6">
-          <strong>Próximo passo:</strong> Abra o Telegram, pesquise por <strong>${botName}</strong> e envie
-          <code style="background:#dcfce7;padding:1px 5px;border-radius:4px">/start</code>.
-          Depois, registre seu Chat ID em <strong>Meu Perfil → Telegram</strong> e
-          ative <strong>Transações por Chat</strong> no menu do usuário.
-        </div>`;
-    }
-
-    toast(`✅ Bot ${botName} conectado!`, 'success');
-
-  } catch(e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (dot) dot.style.background = '#dc2626';
-    if (statusEl) { statusEl.style.color = 'var(--danger)'; statusEl.textContent = `❌ ${msg}`; }
-    if (webhookStatusEl) {
-      webhookStatusEl.style.display = '';
-      webhookStatusEl.style.background = '#fef2f2';
-      webhookStatusEl.style.borderColor = '#fca5a5';
-      webhookStatusEl.innerHTML = `<div style="font-size:.75rem;color:#dc2626;font-weight:600">❌ Falha ao registrar</div><div style="font-size:.7rem;color:#991b1b;margin-top:3px">${msg}</div>`;
-    }
-    toast('Erro: ' + msg, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Registrar Webhook'; }
-  }
 };
 
 window.testTelegramBotToken = async function() {
@@ -994,60 +936,23 @@ window.loadTelegramBotTokenUI = async function() {
   const testRow = document.getElementById('tgBotTestRow');
   const testBtn = document.getElementById('tgBotTestBtn');
   const chatIdInput = document.getElementById('tgBotTestChatId');
-  const webhookRow  = document.getElementById('tgWebhookRow');
   if (!input) return;
 
+  // ensureTelegramBotToken: lê localStorage → fallback Supabase DB
   const token = await ensureTelegramBotToken();
-  if (!token) return;
-
-  input.value = token;
-  if (dot) dot.style.background = '#22c55e';
-  if (testRow) testRow.style.display = 'flex';
-  if (webhookRow) webhookRow.style.display = '';
-
-  // Pre-fill Chat ID from currentUser if available
-  if (chatIdInput && !chatIdInput.value) {
-    const knownChatId = String(currentUser?.telegram_chat_id || '').trim();
-    if (knownChatId) {
-      chatIdInput.value = knownChatId;
-      if (testBtn) testBtn.style.display = '';
+  if (token) {
+    input.value = token;
+    if (dot) dot.style.background = '#22c55e';
+    if (testRow) testRow.style.display = 'flex';
+    // Pre-fill Chat ID from currentUser if available
+    if (chatIdInput && !chatIdInput.value) {
+      const knownChatId = String(currentUser?.telegram_chat_id || '').trim();
+      if (knownChatId) {
+        chatIdInput.value = knownChatId;
+        if (testBtn) testBtn.style.display = '';
+      }
     }
   }
-
-  // Check current webhook status and show info card
-  try {
-    const infoRes  = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
-    const infoData = await infoRes.json();
-    const info     = infoData.result || {};
-    const sbUrl    = (window.SUPABASE_URL || '').replace(/\/$/, '');
-    const expectedUrl = sbUrl ? `${sbUrl}/functions/v1/telegram-webhook` : '';
-    const isRegistered = info.url && info.url === expectedUrl;
-    const nameBadge    = document.getElementById('tgBotNameBadge');
-    const statusEl     = document.getElementById('tgBotStatus');
-    const webhookStatusEl = document.getElementById('tgWebhookStatus');
-
-    if (isRegistered) {
-      // Fetch bot name
-      const getMeRes  = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-      const getMeData = await getMeRes.json();
-      const botName   = getMeData.ok ? `@${getMeData.result.username || getMeData.result.first_name}` : '';
-      if (nameBadge && botName) { nameBadge.textContent = botName; nameBadge.style.display = ''; }
-      if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = `✅ Bot conectado e webhook ativo.`; }
-      if (webhookStatusEl) {
-        webhookStatusEl.style.display = '';
-        webhookStatusEl.innerHTML = `
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:.85rem">✅</span>
-            <span style="font-size:.77rem;font-weight:700;color:var(--text)">Webhook ativo${botName ? ' — ' + botName : ''}</span>
-          </div>
-          <div style="font-size:.68rem;color:var(--muted);margin-top:3px;word-break:break-all">${info.url}</div>
-          ${info.last_error_message ? `<div style="font-size:.68rem;color:#dc2626;margin-top:3px">⚠️ ${info.last_error_message}</div>` : ''}`;
-      }
-    } else if (info.url && info.url !== expectedUrl) {
-      // Different URL registered
-      if (statusEl) { statusEl.style.color = '#d97706'; statusEl.textContent = '⚠️ Webhook registrado em outro servidor. Clique "Registrar Webhook" para atualizar.'; }
-    }
-  } catch(_) { /* non-blocking */ }
 };
 
 /* ── Notify on manual/auto transaction ────────────────────────────────────── */
@@ -1145,6 +1050,43 @@ async function notifyOnTransaction(tx, sc = null) {
     const amtFmt = typeof fmt === 'function' ? fmt(Math.abs(amount), currency) : String(Math.abs(amount));
     const sign   = amount >= 0 && !isTransfer ? '+' : (isTransfer ? '' : '−');
 
+    // ── Gemini: sugerir conta e/ou categoria quando não resolvidos ───────────
+    const _needsAccSuggest = !accName && !isTransfer && !isCardPayment;
+    const _needsCatSuggest = !catName && !isTransfer && !isCardPayment;
+    let _geminiSuggest = null;
+    if (_needsAccSuggest || _needsCatSuggest) {
+      const _txType = amount >= 0 ? 'income' : 'expense';
+      _geminiSuggest = await _tgGeminiSuggest(desc, amount, _txType).catch(() => null);
+    }
+
+    // Linhas de sugestão para o Telegram (bloco separado, visualmente distinto)
+    const _suggestLines = [];
+    if (_geminiSuggest) {
+      _suggestLines.push('');
+      _suggestLines.push('🤖 <i>Sugestão Gemini (conta/categoria não identificadas):</i>');
+      if (_needsAccSuggest && _geminiSuggest.account) {
+        const _bar = '▓'.repeat(Math.round(_geminiSuggest.accountConf / 10)) +
+                     '░'.repeat(10 - Math.round(_geminiSuggest.accountConf / 10));
+        _suggestLines.push(
+          `🏦 <b>${_tgEsc(_geminiSuggest.account)}</b>  <code>${_bar}</code> ${_geminiSuggest.accountConf}%`
+        );
+      }
+      if (_needsCatSuggest && _geminiSuggest.category) {
+        const _bar = '▓'.repeat(Math.round(_geminiSuggest.categoryConf / 10)) +
+                     '░'.repeat(10 - Math.round(_geminiSuggest.categoryConf / 10));
+        _suggestLines.push(
+          `🏷️ <b>${_tgEsc(_geminiSuggest.category)}</b>  <code>${_bar}</code> ${_geminiSuggest.categoryConf}%`
+        );
+      }
+      if (_geminiSuggest.reasoning) {
+        _suggestLines.push(`💡 <i>${_tgEsc(_geminiSuggest.reasoning)}</i>`);
+      }
+    } else if (_needsAccSuggest) {
+      // Fallback: sem Gemini — apenas avisa
+      _suggestLines.push('');
+      _suggestLines.push('⚠️ <i>Conta não identificada. Verifique o programado.</i>');
+    }
+
     // ── Montar mensagem HTML para Telegram ──
     const lines = [
       `${typeEmoji} <b>${typeLabel}</b> — ${sign}${amtFmt}`,
@@ -1160,6 +1102,7 @@ async function notifyOnTransaction(tx, sc = null) {
       ...(memberName  ? [`👨‍👩‍👧 ${memberEmoji ? memberEmoji + ' ' : ''}${_tgEsc(memberName)}`] : []),
       ...(tags        ? [`🔖 ${_tgEsc(tags)}`] : []),
       ...(checkNum    ? [`🔢 Cheque: ${_tgEsc(checkNum)}`] : []),
+      ..._suggestLines,
     ];
     const msg = `<b>FinTrack</b> · Nova Transação\n` + lines.join('\n');
 
@@ -1250,6 +1193,157 @@ async function notifyOnTransaction(tx, sc = null) {
 function _tgEsc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   GEMINI SUGGEST — Conta e Categoria via uso habitual da família
+   Chamado quando account_id ou category_id não foram resolvidos na notificação.
+   Retorna { account, accountConf, category, categoryConf, reasoning } ou null.
+════════════════════════════════════════════════════════════════════════════ */
+async function _tgGeminiSuggest(description, amount, txType) {
+  try {
+    // ── 1. Chave Gemini ──────────────────────────────────────────────────────
+    const apiKey = await (typeof getAppSetting === 'function'
+      ? getAppSetting('gemini_api_key', '')
+      : Promise.resolve('')
+    ).catch(() => '');
+    if (!apiKey || !String(apiKey).startsWith('AIza')) return null;
+
+    // ── 2. Dados da família ──────────────────────────────────────────────────
+    const accounts   = (state?.accounts   || []).filter(a => !a.is_archived);
+    const categories = (state?.categories || []);
+    const fid        = typeof famId === 'function' ? famId() : null;
+
+    if (!accounts.length) return null;
+
+    // ── 3. Histórico recente (últimas 80 transações) ─────────────────────────
+    let history = [];
+    if (sb && fid) {
+      try {
+        const { data } = await famQ(
+          sb.from('transactions')
+            .select('description, amount, brl_amount, account_id, category_id')
+        ).eq('status', 'confirmed')
+         .order('date', { ascending: false })
+         .limit(80);
+        history = data || [];
+      } catch (_) {}
+    }
+
+    // ── 4. Construir contexto compacto para o Gemini ─────────────────────────
+    const fmtAmt = v => typeof fmt === 'function'
+      ? fmt(Math.abs(+v || 0), 'BRL')
+      : 'R$' + Math.abs(+v || 0).toFixed(2);
+
+    const accList = accounts
+      .map(a => `${a.id}|${a.name}|${a.type}`)
+      .join('\n');
+
+    const catType = txType === 'income' ? 'income' : 'expense';
+    const catList = categories
+      .filter(c => c.type === catType || !c.parent_id)
+      .map(c => `${c.id}|${c.name}|${c.type}`)
+      .join('\n');
+
+    // Agrupa histórico: conta → lista de descrições (top 6 por conta)
+    const accUsage = {};
+    const catUsage = {};
+    history.forEach(t => {
+      const aName = accounts.find(a => a.id === t.account_id)?.name;
+      const cName = categories.find(c => c.id === t.category_id)?.name;
+      if (aName) {
+        accUsage[aName] = accUsage[aName] || [];
+        if (accUsage[aName].length < 6) accUsage[aName].push(t.description);
+      }
+      if (cName) {
+        catUsage[cName] = catUsage[cName] || [];
+        if (catUsage[cName].length < 6) catUsage[cName].push(t.description);
+      }
+    });
+
+    const usageSummary = Object.entries(accUsage).slice(0, 8)
+      .map(([a, ds]) => `${a}: ${ds.slice(0, 4).join(', ')}`)
+      .join('\n');
+
+    const catSummary = Object.entries(catUsage).slice(0, 10)
+      .map(([c, ds]) => `${c}: ${ds.slice(0, 4).join(', ')}`)
+      .join('\n');
+
+    // ── 5. Prompt ────────────────────────────────────────────────────────────
+    const prompt = `Você é um assistente financeiro. Analise a transação abaixo e sugira a CONTA e a CATEGORIA mais prováveis com base no histórico de uso da família.
+
+TRANSAÇÃO:
+Descrição: "${description}"
+Valor: ${fmtAmt(amount)}
+Tipo: ${txType === 'income' ? 'Receita' : 'Despesa'}
+
+CONTAS DISPONÍVEIS (id|nome|tipo):
+${accList}
+
+CATEGORIAS DISPONÍVEIS (id|nome|tipo):
+${catList}
+
+PADRÃO DE USO DAS CONTAS (conta: transações típicas):
+${usageSummary || '(sem histórico)'}
+
+PADRÃO DE USO DAS CATEGORIAS (categoria: transações típicas):
+${catSummary || '(sem histórico)'}
+
+Responda APENAS com JSON válido, sem markdown, sem explicação fora do JSON:
+{
+  "account_id": "<uuid da conta mais provável>",
+  "account_name": "<nome da conta>",
+  "account_confidence": <0-100>,
+  "category_id": "<uuid da categoria mais provável>",
+  "category_name": "<nome da categoria>",
+  "category_confidence": <0-100>,
+  "reasoning": "<explicação curta em 1 frase, português>"
+}`;
+
+    // ── 6. Chamar Gemini ─────────────────────────────────────────────────────
+    const model = (typeof RECEIPT_AI_MODEL !== 'undefined' && RECEIPT_AI_MODEL)
+      ? RECEIPT_AI_MODEL
+      : 'gemini-2.0-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 256 },
+      }),
+    });
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+
+    // ── 7. Parsear resposta ──────────────────────────────────────────────────
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(clean); } catch (_) { return null; }
+
+    // Valida que os IDs retornados existem na família
+    const accMatch = accounts.find(a => a.id === parsed.account_id)
+      || accounts.find(a => (a.name || '').toLowerCase() === (parsed.account_name || '').toLowerCase());
+    const catMatch = categories.find(c => c.id === parsed.category_id)
+      || categories.find(c => (c.name || '').toLowerCase() === (parsed.category_name || '').toLowerCase());
+
+    return {
+      account:     accMatch?.name     || parsed.account_name     || '',
+      accountId:   accMatch?.id       || parsed.account_id       || null,
+      accountConf: Math.min(100, Math.max(0, parseInt(parsed.account_confidence)  || 0)),
+      category:    catMatch?.name     || parsed.category_name    || '',
+      categoryId:  catMatch?.id       || parsed.category_id      || null,
+      categoryConf:Math.min(100, Math.max(0, parseInt(parsed.category_confidence) || 0)),
+      reasoning:   parsed.reasoning   || '',
+    };
+  } catch (e) {
+    console.warn('[_tgGeminiSuggest]', e?.message || e);
+    return null;
+  }
+}
+
 window.notifyOnTransaction = notifyOnTransaction;
 
 // === PERIODICITY COLORS ===
