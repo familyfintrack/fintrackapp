@@ -302,10 +302,17 @@ window.renderLoyaltySection = renderLoyaltySection;
 // calling this function. #lp-content sits below those elements in the HTML and is
 // the only thing we touch here — header bar and fx bar are always preserved.
 async function initLoyaltyPage() {
-  const contentEl = document.getElementById('lp-content');
-  if (!contentEl) return;
+  const page = document.getElementById('page-loyalty');
+  if (!page) return;
 
-  // Inject the loyalty page shell — header/fx bar stay untouched above
+  // Preserve the page-header-bar and fxRatesBadge injected by navigate()
+  // Render content into a dedicated container that sits below them
+  let contentEl = document.getElementById('lp-content');
+  if (!contentEl) {
+    contentEl = document.createElement('div');
+    contentEl.id = 'lp-content';
+    page.appendChild(contentEl);
+  }
   contentEl.innerHTML = `
     <style>
       .lp-hero {
