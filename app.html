@@ -1993,130 +1993,379 @@
     <!-- PAYEES -->
     <div class="page" id="page-payees">
       <style>
-        /* ── Payees modern redesign ── */
-        #page-payees { --py-radius: 14px; }
+        /* ══ Beneficiários — redesign 2025 ══ */
+        #page-payees { --pye-accent: var(--accent); --pye-r: 14px; }
 
-        .py2-hero {
-          background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 65%, #0d2e1e) 100%);
-          border-radius: var(--py-radius);
-          padding: 10px 14px;
-          margin-bottom: 12px;
+        /* ── Topbar hero ── */
+        .pye-hero {
+          background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, #082) 100%);
+          border-radius: var(--pye-r);
+          padding: 14px 16px;
+          margin-bottom: 14px;
+          position: relative;
+          overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
-          position: relative;
-          overflow: hidden;
+          gap: 12px;
         }
-        .py2-hero::before {
+        .pye-hero::after {
           content: '';
           position: absolute;
           inset: 0;
-          background: radial-gradient(ellipse 60% 80% at 95% 50%, rgba(255,255,255,.07), transparent);
+          background: radial-gradient(ellipse 55% 90% at 96% 50%, rgba(255,255,255,.07), transparent);
           pointer-events: none;
         }
-        .py2-hero-left { display: flex; align-items: center; gap: 8px; }
-        .py2-hero-icon {
-          width: 32px; height: 32px; border-radius: 8px;
-          background: rgba(255,255,255,.15);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.1rem; flex-shrink: 0;
+        .pye-hero-left { display: flex; flex-direction: column; gap: 2px; }
+        .pye-hero-title {
+          font-size: .7rem; font-weight: 800; letter-spacing: .1em;
+          text-transform: uppercase; color: rgba(255,255,255,.6);
         }
-        .py2-hero-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-        .py2-hero-btn {
+        .pye-hero-count {
+          font-size: 1.6rem; font-weight: 800; color: #fff;
+          font-family: var(--font-serif); line-height: 1;
+        }
+        .pye-hero-sub { font-size: .7rem; color: rgba(255,255,255,.55); margin-top: 3px; }
+        .pye-hero-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; position: relative; z-index: 1; }
+        .pye-btn {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 11px; border-radius: 8px; font-size: .76rem; font-weight: 600;
+          padding: 7px 12px; border-radius: 9px; font-size: .76rem; font-weight: 700;
           border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12);
           color: #fff; cursor: pointer; font-family: inherit;
           transition: background .15s;
+          touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        .py2-hero-btn:hover { background: rgba(255,255,255,.22); }
-        .py2-hero-btn-primary {
-          background: rgba(255,255,255,.95); color: var(--accent); border-color: transparent;
+        .pye-btn:hover { background: rgba(255,255,255,.22); }
+        .pye-btn-primary {
+          background: rgba(255,255,255,.95); color: var(--accent);
+          border-color: transparent;
         }
-        .py2-hero-btn-primary:hover { background: #fff; }
+        .pye-btn-primary:hover { background: #fff; }
 
-        /* Filter section */
-        .py2-filter-section {
+        /* ── Toolbar: search + tabs ── */
+        .pye-toolbar {
           background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: var(--py-radius);
-          padding: 12px 14px;
+          border: 1.5px solid var(--border);
+          border-radius: var(--pye-r);
+          padding: 10px 12px;
           margin-bottom: 12px;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 8px;
         }
-        .py2-search-wrap {
-          display: flex; align-items: center; gap: 8px;
-          background: var(--bg2); border: 1.5px solid var(--border);
-          border-radius: 10px; padding: 8px 12px;
+        .pye-search-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: var(--surface2);
+          border: 1.5px solid var(--border);
+          border-radius: 10px;
+          padding: 8px 12px;
           transition: border-color .15s;
         }
-        .py2-search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-lt); }
-        .py2-search-icon { color: var(--muted); flex-shrink: 0; }
-        .py2-search-input {
+        .pye-search-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-lt); }
+        .pye-search-row svg { color: var(--muted); flex-shrink: 0; }
+        .pye-search-input {
           border: none; background: transparent; outline: none;
-          font-size: .83rem; color: var(--text); width: 100%;
+          font-size: .84rem; color: var(--text); width: 100%;
           font-family: inherit;
         }
-        .py2-search-input::placeholder { color: var(--muted); }
+        .pye-search-input::placeholder { color: var(--muted); }
 
-        /* Pill tabs */
-        .py2-pills-wrap {
-          display: flex; gap: 5px; align-items: center;
+        /* ── Type pill filters ── */
+        .pye-pills {
+          display: flex; gap: 5px;
           overflow-x: auto; -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
         }
-        .py2-pills-wrap::-webkit-scrollbar { display: none; }
-        .py2-type-pill {
+        .pye-pills::-webkit-scrollbar { display: none; }
+        .pye-pill {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 13px; border-radius: 20px; font-size: .78rem; font-weight: 600;
-          border: 1.5px solid var(--border); background: transparent;
-          color: var(--muted); cursor: pointer; white-space: nowrap;
+          padding: 5px 12px; border-radius: 20px;
+          font-size: .76rem; font-weight: 600;
+          border: 1.5px solid var(--border);
+          background: transparent; color: var(--muted);
+          cursor: pointer; white-space: nowrap;
           font-family: inherit; transition: all .15s;
+          touch-action: manipulation; flex-shrink: 0;
         }
-        .py2-type-pill:hover { background: var(--surface2); color: var(--text); }
-        .py2-type-pill.active {
-          background: var(--accent); color: #fff;
+        .pye-pill:hover { background: var(--surface2); color: var(--text); }
+        .pye-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        /* ── Stats row ── */
+        .pye-stats-row {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+        .pye-stat-card {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: 11px;
+          padding: 10px 12px;
+          cursor: pointer;
+          transition: border-color .15s, box-shadow .15s;
+          touch-action: manipulation;
+        }
+        .pye-stat-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+        .pye-stat-card.active { border-color: var(--accent); background: var(--accent-lt); }
+        .pye-stat-lbl { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+        .pye-stat-val { font-size: 1.1rem; font-weight: 800; font-family: var(--font-serif); color: var(--text); line-height: 1.1; margin: 2px 0; }
+        .pye-stat-sub { font-size: .62rem; color: var(--muted); }
+
+        /* ── View tabs ── */
+        .pye-tabs {
+          display: flex; gap: 3px;
+          background: var(--surface2);
+          border-radius: 11px;
+          padding: 3px;
+          margin-bottom: 12px;
+        }
+        .pye-tab {
+          flex: 1; padding: 7px 10px;
+          font-family: var(--font-sans); font-size: .79rem; font-weight: 700;
+          border: none; border-radius: 9px; cursor: pointer;
+          transition: all .15s; background: transparent; color: var(--muted);
+          touch-action: manipulation;
+        }
+        .pye-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+        /* ── Card grid (mobile + desktop) ── */
+        .pye-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        @media (min-width: 700px) {
+          .pye-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1100px) {
+          .pye-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .pye-card {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: 13px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: box-shadow .15s, border-color .15s, transform .12s;
+          display: flex;
+          flex-direction: column;
+          touch-action: manipulation;
+        }
+        .pye-card:hover {
           border-color: var(--accent);
-          box-shadow: 0 2px 8px rgba(0,0,0,.15);
+          box-shadow: 0 4px 18px rgba(0,0,0,.08);
+          transform: translateY(-1px);
+        }
+        .pye-card:active { transform: translateY(0); }
+
+        .pye-card-stripe { height: 3px; width: 100%; }
+
+        .pye-card-body { padding: 12px 14px 10px; flex: 1; }
+
+        .pye-card-top {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+        .pye-card-avatar {
+          width: 40px; height: 40px; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: .88rem; font-weight: 800;
+          flex-shrink: 0;
+        }
+        .pye-card-info { flex: 1; min-width: 0; }
+        .pye-card-name {
+          font-size: .9rem; font-weight: 700; color: var(--text);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          margin-bottom: 2px;
+        }
+        .pye-card-type {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: .64rem; font-weight: 700;
+          padding: 2px 8px; border-radius: 10px;
+        }
+        .pye-card-meta {
+          display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
+        }
+        .pye-meta-chip {
+          display: inline-flex; align-items: center; gap: 3px;
+          font-size: .67rem; color: var(--muted); white-space: nowrap;
+        }
+        .pye-card-cat {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: .68rem; font-weight: 600;
+          padding: 2px 8px; border-radius: 8px;
+          background: var(--surface2); color: var(--text2);
+          border: 1px solid var(--border);
+          margin-top: 4px;
+        }
+        .pye-card-notes {
+          font-size: .7rem; color: var(--muted); margin-top: 5px;
+          overflow: hidden; text-overflow: ellipsis;
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+
+        .pye-card-footer {
+          padding: 7px 14px 9px;
+          border-top: 1px solid var(--border);
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 8px;
+          background: var(--surface2);
+        }
+        .pye-tx-badge {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: .72rem; font-weight: 700;
+          color: var(--accent); background: var(--accent-lt);
+          border: 1px solid rgba(42,96,73,.2);
+          border-radius: 20px; padding: 2px 9px;
+        }
+        .pye-card-actions { display: flex; align-items: center; gap: 5px; }
+        .pye-icon-btn {
+          width: 28px; height: 28px; border-radius: 7px;
+          border: 1.5px solid var(--border);
+          background: var(--surface); color: var(--muted);
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all .13s;
+          touch-action: manipulation;
+        }
+        .pye-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── Desktop table view ── */
+        .pye-table-wrap {
+          display: none;
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: var(--pye-r);
+          overflow: hidden;
+        }
+        @media (min-width: 900px) {
+          .pye-table-wrap.active { display: block; }
+          .pye-grid.active { display: none; }
+        }
+
+        .pye-table { width: 100%; border-collapse: collapse; }
+        .pye-table thead th {
+          font-size: .68rem; font-weight: 800; text-transform: uppercase;
+          letter-spacing: .07em; color: var(--muted);
+          padding: 10px 14px; text-align: left;
+          background: var(--surface2);
+          border-bottom: 1.5px solid var(--border);
+        }
+        .pye-table tbody tr {
+          border-bottom: 1px solid var(--border);
+          transition: background .12s; cursor: pointer;
+        }
+        .pye-table tbody tr:last-child { border-bottom: none; }
+        .pye-table tbody tr:hover { background: var(--surface2); }
+        .pye-table td { padding: 10px 14px; vertical-align: middle; font-size: .82rem; }
+
+        /* ── Section header (grouping) ── */
+        .pye-section-hdr {
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 2px; margin: 14px 0 8px;
+        }
+        .pye-section-icon {
+          width: 30px; height: 30px; border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: .9rem; flex-shrink: 0;
+        }
+        .pye-section-title { font-size: .8rem; font-weight: 800; color: var(--text); flex: 1; }
+        .pye-section-count {
+          font-size: .68rem; font-weight: 700;
+          padding: 2px 9px; border-radius: 10px;
+        }
+
+        /* ── Empty state ── */
+        .pye-empty {
+          text-align: center; padding: 48px 24px;
+          background: var(--surface); border: 1.5px solid var(--border);
+          border-radius: var(--pye-r); color: var(--muted);
+        }
+        .pye-empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+        .pye-empty-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+        .pye-empty-sub { font-size: .78rem; line-height: 1.5; max-width: 260px; margin: 0 auto 16px; }
+
+        /* ── Report panel ── */
+        .pye-report-bar {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: var(--pye-r);
+          padding: 12px 14px;
+          margin-bottom: 12px;
+          display: flex; flex-wrap: wrap;
+          align-items: center; gap: 8px;
         }
       </style>
 
-      <!-- Hero header (replaces old duplicate title) -->
-      <div class="py2-hero">
-        <div class="py2-hero-left">
+      <!-- Hero -->
+      <div class="pye-hero">
+        <div class="pye-hero-left">
+          <div class="pye-hero-title">Beneficiários</div>
+          <div class="pye-hero-count" id="pyeHeroCount">—</div>
+          <div class="pye-hero-sub" id="pyeHeroSub">Carregando…</div>
         </div>
-        <div class="py2-hero-actions">
-          <button class="py2-hero-btn" onclick="openNormalizePayeesModal()" title="Padronizar nomes">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <div class="pye-hero-actions">
+          <button class="pye-btn" onclick="openNormalizePayeesModal()" title="Padronizar nomes">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
             Normalizar
           </button>
-          <button class="py2-hero-btn" onclick="openPayeeClipboardImport()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+          <button class="pye-btn" onclick="openPayeeClipboardImport()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
             Importar
           </button>
-          <button class="py2-hero-btn py2-hero-btn-primary" onclick="openPayeeModal()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button class="pye-btn pye-btn-primary" onclick="openPayeeModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Novo
           </button>
         </div>
       </div>
 
-      <!-- Filter section (search + type pills) -->
-      <div class="py2-filter-section">
-        <div class="py2-search-wrap">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="py2-search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="payeeSearch" class="py2-search-input" placeholder="Buscar por nome…" oninput="filterPayees()">
+      <!-- Toolbar -->
+      <div class="pye-toolbar">
+        <div class="pye-search-row">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="payeeSearch" class="pye-search-input"
+            placeholder="Buscar por nome, CNPJ, cidade…" oninput="filterPayees()">
         </div>
-        <div class="py2-pills-wrap">
-          <button class="py2-type-pill active" data-type="" onclick="py2SetTypeFilter(this,'')">Todos</button>
-          <button class="py2-type-pill" data-type="beneficiario" onclick="py2SetTypeFilter(this,'beneficiario')">💸 Beneficiários</button>
-          <button class="py2-type-pill" data-type="fonte_pagadora" onclick="py2SetTypeFilter(this,'fonte_pagadora')">💰 Fontes</button>
-          <button class="py2-type-pill" data-type="ambos" onclick="py2SetTypeFilter(this,'ambos')">🔄 Ambos</button>
+        <div class="pye-pills" id="pyePills">
+          <button class="pye-pill active" data-type="" onclick="py2SetTypeFilter(this,'')">Todos</button>
+          <button class="pye-pill" data-type="beneficiario" onclick="py2SetTypeFilter(this,'beneficiario')">💸 Beneficiários</button>
+          <button class="pye-pill" data-type="fonte_pagadora" onclick="py2SetTypeFilter(this,'fonte_pagadora')">💰 Fontes</button>
+          <button class="pye-pill" data-type="ambos" onclick="py2SetTypeFilter(this,'ambos')">🔄 Ambos</button>
         </div>
       </div>
-      <!-- Hidden select kept for JS compatibility -->
+
+      <!-- Stats row -->
+      <div class="pye-stats-row" id="pyeStatsRow" style="display:none">
+        <div class="pye-stat-card" onclick="py2SetTypeFilter(document.querySelector('.pye-pill[data-type=\'beneficiario\']'),'beneficiario')" id="pyeStatBenef">
+          <div class="pye-stat-lbl">Beneficiários</div>
+          <div class="pye-stat-val" id="pyeStatBenefVal">—</div>
+          <div class="pye-stat-sub">recebem pagamentos</div>
+        </div>
+        <div class="pye-stat-card" onclick="py2SetTypeFilter(document.querySelector('.pye-pill[data-type=\'fonte_pagadora\']'),'fonte_pagadora')" id="pyeStatFonte">
+          <div class="pye-stat-lbl">Fontes</div>
+          <div class="pye-stat-val" id="pyeStatFonteVal">—</div>
+          <div class="pye-stat-sub">geram receitas</div>
+        </div>
+        <div class="pye-stat-card" onclick="py2SetTypeFilter(document.querySelector('.pye-pill[data-type=\'ambos\']'),'ambos')" id="pyeStatAmbos">
+          <div class="pye-stat-lbl">Ambos</div>
+          <div class="pye-stat-val" id="pyeStatAmbosVal">—</div>
+          <div class="pye-stat-sub">entrada e saída</div>
+        </div>
+      </div>
+
+      <!-- View toggle (cards vs table — desktop only) -->
+      <div class="pye-tabs" id="pyeViewTabs">
+        <button class="pye-tab active" id="pyeTabCadastro" onclick="pyeSetView('cadastro')">👥 Cadastro</button>
+        <button class="pye-tab" id="pyeTabRelatorio" onclick="pyeSetView('relatorio')">📊 Relatório</button>
+      </div>
+
+      <!-- Legacy hidden select for JS compatibility -->
       <select id="payeeTypeFilter" onchange="filterPayees()" style="display:none">
         <option value="">Todos os tipos</option>
         <option value="beneficiario">Beneficiários</option>
@@ -2124,25 +2373,25 @@
         <option value="ambos">Ambos</option>
       </select>
 
-      <!-- Summary chips -->
-      <div id="payeeSummaryBar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
-      <div style="display:flex;gap:4px;margin-bottom:14px;background:var(--surface2);border-radius:12px;padding:4px">
-        <button id="payeesTabCad" onclick="setPayeesTab('cadastro')" style="flex:1;font-family:var(--font-sans);font-size:.8rem;font-weight:700;padding:7px 12px;border-radius:9px;border:none;cursor:pointer;transition:all .15s;background:var(--accent);color:#fff">👥 Cadastro</button>
-        <button id="payeesTabRpt" onclick="setPayeesTab('relatorio')" style="flex:1;font-family:var(--font-sans);font-size:.8rem;font-weight:700;padding:7px 12px;border-radius:9px;border:none;cursor:pointer;transition:all .15s;background:transparent;color:var(--muted)">📊 Beneficiários &amp; Fontes</button>
-      </div>
+      <!-- Card view (all screens) + Table view (desktop) -->
       <div id="payeeGroups"></div>
+
+      <!-- Report panel -->
       <div id="payeesReportPanel" style="display:none">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
+        <div class="pye-report-bar">
           <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px;flex-shrink:0">
-            <button id="rptBenefBtn" onclick="rptBenefSetMode('expense')" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff">📤 Beneficiários</button>
-            <button id="rptFontesBtn" onclick="rptBenefSetMode('income')" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--muted)">📥 Fontes</button>
+            <button id="rptBenefBtn" onclick="rptBenefSetMode('expense')" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;background:var(--accent);color:#fff;touch-action:manipulation">📤 Beneficiários</button>
+            <button id="rptFontesBtn" onclick="rptBenefSetMode('income')" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--muted);touch-action:manipulation">📥 Fontes</button>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
+          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:140px">
             <label style="font-size:.72rem;font-weight:700;color:var(--muted);white-space:nowrap">Período</label>
             <select id="rptBenefPeriod" onchange="loadPayeeReport()" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
-              <option value="month">Este mês</option><option value="quarter">Este trimestre</option>
-              <option value="year" selected>Este ano</option><option value="last12">Últimos 12 meses</option>
-              <option value="alltime">Todos os tempos</option><option value="custom">Intervalo livre</option>
+              <option value="month">Este mês</option>
+              <option value="quarter">Este trimestre</option>
+              <option value="year" selected>Este ano</option>
+              <option value="last12">Últimos 12 meses</option>
+              <option value="alltime">Todos os tempos</option>
+              <option value="custom">Intervalo livre</option>
             </select>
           </div>
           <div id="rptBenefCustomWrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
@@ -2150,10 +2399,12 @@
             <span style="font-size:.78rem;color:var(--muted)">até</span>
             <input type="date" id="rptBenefTo" onchange="loadPayeeReport()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.8rem;font-family:inherit;background:var(--surface);color:var(--text)">
           </div>
-          <button onclick="loadPayeeReport()" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:9px;cursor:pointer;flex-shrink:0">↻ Atualizar</button>
+          <button onclick="loadPayeeReport()" style="font-family:var(--font-sans);font-size:.78rem;font-weight:700;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:9px;cursor:pointer;flex-shrink:0;touch-action:manipulation">↻ Atualizar</button>
         </div>
         <div id="rptBenefKpi" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
-        <div id="rptBenefList" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:120px"><div style="text-align:center;padding:40px;color:var(--muted)">Clique em Atualizar para carregar.</div></div>
+        <div id="rptBenefList" style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;min-height:120px">
+          <div style="text-align:center;padding:40px;color:var(--muted)">Clique em Atualizar para carregar.</div>
+        </div>
       </div>
     </div><!-- /page-payees -->
 
@@ -3963,7 +4214,7 @@
         <div id="pricesAiStatus" style="display:none;font-size:.78rem;color:var(--muted);margin-top:4px"></div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="closePricesReceiptZone()">✕ Cancelar</button>
-          <button class="btn btn-primary btn-sm" id="pricesReadAiBtn" style="display:none"
+          <button class="btn btn-primary btn-sm" id="pricesReadAiBtn" style="display:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent"
                   onclick="readPricesReceiptWithAI()">🤖 Analisar com IA</button>
         </div>
       </div>
@@ -4227,7 +4478,7 @@
           </div><!-- /ai2-params-body -->
           <!-- Action buttons -->
           <div class="ai2-action-bar">
-            <button class="ai2-btn-analyze" onclick="runAiAnalysis()">
+            <button class="ai2-btn-analyze" onclick="runAiAnalysis()" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
               Analisar com IA
             </button>
@@ -9981,13 +10232,13 @@ Se você não solicitou isso, ignore este e-mail.`,
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
           Dados
         </button>
-        <button class="mfm-tab" id="mfmNavNova"        onclick="mfmSwitchTab('nova')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Nova
-        </button>
         <button class="mfm-tab" id="mfmNavIa" onclick="mfmSwitchTab('ia')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
           IA
+        </button>
+        <button class="mfm-tab" id="mfmNavNova"        onclick="mfmSwitchTab('nova')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Nova
         </button>
       </div>
 
