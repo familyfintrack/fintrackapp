@@ -175,7 +175,7 @@ function _fpDefaultPrefs(famId) {
       investments:  false,
       grocery:      false,
       prices:       false,
-      dreams:       false,
+      dreams:       true,   // default ON — dreams are a core feature
     },
     language: 'pt',
     ui: {},

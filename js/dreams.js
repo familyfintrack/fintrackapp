@@ -66,11 +66,25 @@ async function isDreamsEnabled() {
     try {
       await getFamilyPreferences(); // populates _fpCache
       if (typeof isModuleEnabled === 'function') {
-        // Only trust an EXPLICIT false — if cache empty/not loaded, default to enabled
         if (typeof _fpCache !== 'undefined' && _fpCache !== null) {
           const enabled = isModuleEnabled('dreams');
-          // If explicitly disabled, honour it
-          if (_fpCache.modules && 'dreams' in _fpCache.modules) return !!enabled;
+          if (_fpCache.modules && 'dreams' in _fpCache.modules) {
+            if (enabled) return true;
+            // Flag is false — but DB default is false, so check if family has
+            // existing dreams data. If yes, auto-enable so data is never hidden.
+            try {
+              const { count } = await sb.from('dreams')
+                .select('id', { count: 'exact', head: true })
+                .eq('family_id', fid);
+              if (count > 0) {
+                if (typeof updateFamilyPreferences === 'function') {
+                  updateFamilyPreferences({ modules: { dreams: true } }).catch(() => {});
+                }
+                return true;
+              }
+            } catch(_) {}
+            return false;
+          }
         }
       }
     } catch(_) {}
